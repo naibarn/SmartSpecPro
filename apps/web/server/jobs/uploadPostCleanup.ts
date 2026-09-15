@@ -7,6 +7,7 @@
  */
 
 import { sweepUploadPostJobRetention } from "../services/uploadPostService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
@@ -22,6 +23,10 @@ async function runCleanup(): Promise<void> {
 }
 
 export async function initializeUploadPostCleanupJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeUploadPostCleanupJob")) {
+    console.info("[Upload-Post Cleanup] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   if (intervalId) return;
 
   runCleanup().catch((err) => {

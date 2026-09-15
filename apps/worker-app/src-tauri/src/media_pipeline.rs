@@ -10,12 +10,20 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 use crate::settings::{RuntimeEnvironment, WorkerAppSettings};
 
 const MAX_MEDIA_DURATION_MS: u64 = 90_000;
 const MAX_OUTPUT_BYTES: u64 = 2_000_000_000;
-const CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v1";
+const CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v2";
+const LEGACY_CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v1";
+// FFmpeg receives the animated crop as one filter argument. On Windows the
+// WSL launcher has a bounded command line, so an unbounded detector track can
+// fail to spawn even when `ffmpeg -version` succeeds. Keep the render-side
+// expression small while retaining the full plan/evidence for preview and
+// future reprocessing.
+const MAX_CAMERA_MOTION_FILTER_KEYFRAMES: usize = 24;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -38,14 +46,45 @@ pub struct CameraMotionPlan {
     pub mode: String,
     pub duration_ms: u64,
     pub keyframes: Vec<CameraMotionKeyframe>,
+    #[serde(default)]
+    pub analysis_mode: Option<String>,
+    #[serde(default)]
+    pub target_tracks: Vec<Value>,
+    #[serde(default)]
+    pub evidence: Option<Value>,
 }
 
 pub fn validate_camera_motion_plan(plan: &CameraMotionPlan) -> Result<(), String> {
-    if plan.version != CAMERA_MOTION_PLAN_VERSION {
+    if plan.version != CAMERA_MOTION_PLAN_VERSION
+        && plan.version != LEGACY_CAMERA_MOTION_PLAN_VERSION
+    {
         return Err("camera_motion_plan_version_invalid".into());
     }
-    if !matches!(plan.mode.as_str(), "auto" | "face_focus" | "product_focus") {
+    if !matches!(
+        plan.mode.as_str(),
+        "auto" | "face_focus" | "product_focus" | "face_activity"
+    ) {
         return Err("camera_motion_plan_mode_invalid".into());
+    }
+    if let Some(mode) = plan.analysis_mode.as_deref() {
+        if !matches!(mode, "quick" | "full_scan") {
+            return Err("camera_motion_plan_analysis_mode_invalid".into());
+        }
+    }
+    if plan.target_tracks.len() > 256 {
+        return Err("camera_motion_plan_tracks_invalid".into());
+    }
+    let bounded_evidence_size = serde_json::to_vec(&plan.target_tracks)
+        .map(|value| value.len())
+        .unwrap_or(usize::MAX);
+    let bounded_provenance_size = plan
+        .evidence
+        .as_ref()
+        .and_then(|value| serde_json::to_vec(value).ok())
+        .map(|value| value.len())
+        .unwrap_or(0);
+    if bounded_evidence_size > 64_000 || bounded_provenance_size > 8_000 {
+        return Err("camera_motion_plan_evidence_too_large".into());
     }
     if plan.duration_ms > 86_400_000 || plan.keyframes.is_empty() || plan.keyframes.len() > 512 {
         return Err("camera_motion_plan_keyframes_invalid".into());
@@ -64,6 +103,21 @@ pub fn validate_camera_motion_plan(plan: &CameraMotionPlan) -> Result<(), String
             || !(1.0..=2.5).contains(&keyframe.scale)
         {
             return Err("camera_motion_plan_value_invalid".into());
+        }
+        if !matches!(keyframe.source.as_str(), "auto" | "user_mark") {
+            return Err("camera_motion_plan_source_invalid".into());
+        }
+        if let Some(easing) = keyframe.easing.as_deref() {
+            if !matches!(easing, "linear" | "ease-in" | "ease-out" | "ease-in-out") {
+                return Err("camera_motion_plan_easing_invalid".into());
+            }
+        }
+        if keyframe
+            .source_mark_id
+            .as_deref()
+            .is_some_and(|value| value.len() > 128)
+        {
+            return Err("camera_motion_plan_mark_id_invalid".into());
         }
         previous_time = keyframe.time_ms;
     }
@@ -248,6 +302,24 @@ pub struct MediaToolchain {
     ffprobe: MediaTool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaReadinessCheck {
+    pub id: String,
+    pub status: String,
+    pub executable: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaRuntimeReadiness {
+    pub status: String,
+    pub checked_at: String,
+    pub ffmpeg: MediaReadinessCheck,
+    pub ffprobe: MediaReadinessCheck,
+}
+
 #[derive(Debug, Clone)]
 enum MediaTool {
     Native(PathBuf),
@@ -279,17 +351,12 @@ impl MediaToolchain {
 
     pub fn from_settings(settings: &WorkerAppSettings, app_data_dir: &Path) -> Self {
         if settings.runtime_environment == RuntimeEnvironment::ManagedWsl {
-            let suffix = if cfg!(target_os = "windows") {
-                ".exe"
-            } else {
-                ""
-            };
-            if let (Some(ffmpeg_path), Some(ffprobe_path)) = (
-                find_binary_in_path(&format!("ffmpeg{suffix}")),
-                find_binary_in_path(&format!("ffprobe{suffix}")),
-            ) {
-                return Self::native(ffmpeg_path, ffprobe_path);
-            }
+            // Managed WSL owns this profile. Do not prefer a stale native
+            // runtime-pack left in app-data or beside the executable: an
+            // incomplete/corrupt pair there must not mask a healthy WSL
+            // runtime (this is a common upgrade/reinstall state on Windows).
+            // Native PATH discovery remains available only for the explicit
+            // RuntimePack profile below.
             return Self {
                 ffmpeg: MediaTool::ManagedWsl {
                     runtime_root: settings.managed_wsl_root.clone(),
@@ -322,6 +389,19 @@ impl MediaToolchain {
             .join(format!("ffprobe{suffix}"));
 
         if settings.runtime_environment == RuntimeEnvironment::RuntimePack {
+            // The installed runtime normally lives below app_data_dir, but a
+            // portable/dev Worker can legitimately keep it beside the
+            // executable or expose a managed pair on PATH. Resolve both
+            // binaries together so a missing app-data copy never masks a
+            // usable FFmpeg installation and so ffmpeg/ffprobe cannot drift
+            // to different runtime versions.
+            if let Some((ffmpeg_path, ffprobe_path)) = resolve_native_media_pair(
+                &runtime_root,
+                &format!("ffmpeg{suffix}"),
+                &format!("ffprobe{suffix}"),
+            ) {
+                return Self::native(ffmpeg_path, ffprobe_path);
+            }
             return Self::native(default_ffmpeg, default_ffprobe);
         }
 
@@ -416,13 +496,164 @@ impl MediaToolchain {
     }
 
     pub fn is_ready(&self) -> bool {
-        [MediaBinary::Ffmpeg, MediaBinary::Ffprobe]
-            .into_iter()
-            .all(|binary| {
-                self.output(binary, vec![literal("-version")])
-                    .is_ok_and(|output| output.status.success())
-            })
+        self.readiness_error().is_none()
     }
+
+    /// Probe the exact binaries selected for the current runtime profile. The
+    /// UI and render preflight use this same command path, so a green runtime
+    /// page means the executables can actually start, not merely that files
+    /// exist in the runtime archive.
+    pub fn readiness_report(&self) -> MediaRuntimeReadiness {
+        let ffmpeg = self.readiness_check(MediaBinary::Ffmpeg, "ffmpeg");
+        let ffprobe = self.readiness_check(MediaBinary::Ffprobe, "ffprobe");
+        MediaRuntimeReadiness {
+            status: if ffmpeg.status == "ok" && ffprobe.status == "ok" {
+                "ready".into()
+            } else {
+                "blocked".into()
+            },
+            checked_at: OffsetDateTime::now_utc()
+                .format(&Rfc3339)
+                .unwrap_or_default(),
+            ffmpeg,
+            ffprobe,
+        }
+    }
+
+    fn readiness_check(&self, binary: MediaBinary, id: &str) -> MediaReadinessCheck {
+        let executable = match self.tool(binary) {
+            MediaTool::Native(path) => path.to_string_lossy().to_string(),
+            MediaTool::ManagedWsl {
+                runtime_root,
+                binary_name,
+            } => format!(
+                "wsl:{}",
+                managed_wsl_executable_expr(runtime_root, binary_name)
+            ),
+        };
+        match self.output(binary, vec![literal("-version")]) {
+            Ok(output) if output.status.success() => {
+                let version = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .chain(String::from_utf8_lossy(&output.stderr).lines())
+                    .map(str::trim)
+                    .find(|line| !line.is_empty())
+                    .unwrap_or("executable started successfully")
+                    .chars()
+                    .take(240)
+                    .collect::<String>();
+                MediaReadinessCheck {
+                    id: id.into(),
+                    status: "ok".into(),
+                    executable,
+                    message: version,
+                }
+            }
+            Ok(output) => {
+                let detail = String::from_utf8_lossy(&output.stderr)
+                    .lines()
+                    .chain(String::from_utf8_lossy(&output.stdout).lines())
+                    .map(str::trim)
+                    .find(|line| !line.is_empty())
+                    .unwrap_or("process exited unsuccessfully")
+                    .chars()
+                    .take(240)
+                    .collect::<String>();
+                MediaReadinessCheck {
+                    id: id.into(),
+                    status: "error".into(),
+                    executable,
+                    message: format!(
+                        "exit {}: {detail}",
+                        output
+                            .status
+                            .code()
+                            .map_or_else(|| "unknown".into(), |v| v.to_string())
+                    ),
+                }
+            }
+            Err(error) => MediaReadinessCheck {
+                id: id.into(),
+                status: "error".into(),
+                executable,
+                message: error.to_string(),
+            },
+        }
+    }
+
+    /// Return a bounded, actionable explanation when either media executable
+    /// cannot be started. The old caller-facing `ffmpeg_unavailable` value hid
+    /// whether WSL was unavailable, the runtime path was missing, or a binary
+    /// exited with an error, making upgrades look like render regressions.
+    pub fn readiness_error(&self) -> Option<String> {
+        let report = self.readiness_report();
+        let failures = [&report.ffmpeg, &report.ffprobe]
+            .into_iter()
+            .filter(|check| check.status != "ok")
+            .map(|check| format!("{}: {}", check.executable, check.message))
+            .collect::<Vec<_>>();
+        (!failures.is_empty()).then(|| format!("media_runtime_not_ready: {}", failures.join("; ")))
+    }
+}
+
+/// Resolve a complete native media toolchain from the managed runtime, the
+/// executable directory, or PATH. A pair is returned only when both binaries
+/// exist, keeping probe/render behavior deterministic across releases.
+fn resolve_native_media_pair(
+    runtime_root: &Path,
+    ffmpeg_name: &str,
+    ffprobe_name: &str,
+) -> Option<(PathBuf, PathBuf)> {
+    let mut pairs = vec![
+        (
+            runtime_root
+                .join("runtime-pack")
+                .join("bin")
+                .join(ffmpeg_name),
+            runtime_root
+                .join("runtime-pack")
+                .join("bin")
+                .join(ffprobe_name),
+        ),
+        (
+            runtime_root.join("bin").join(ffmpeg_name),
+            runtime_root.join("bin").join(ffprobe_name),
+        ),
+    ];
+
+    if let Ok(executable) = std::env::current_exe() {
+        if let Some(parent) = executable.parent() {
+            // Tauri places bundled resources beside the executable in an
+            // `_up_` directory in development and in some portable release
+            // layouts. Keep these roots for the explicit native RuntimePack
+            // profile, and always resolve ffmpeg/ffprobe as one pair.
+            for root in [
+                parent.to_path_buf(),
+                parent.join("runtime-pack"),
+                parent.join("_up_").join("runtime-pack"),
+                parent.join("resources").join("runtime-pack"),
+                parent.join("_up_").join("resources").join("runtime-pack"),
+            ] {
+                let bin_root = if root.file_name().is_some_and(|name| name == "runtime-pack") {
+                    root.join("bin")
+                } else {
+                    root
+                };
+                pairs.push((bin_root.join(ffmpeg_name), bin_root.join(ffprobe_name)));
+            }
+        }
+    }
+
+    if let (Some(ffmpeg), Some(ffprobe)) = (
+        find_binary_in_path(ffmpeg_name),
+        find_binary_in_path(ffprobe_name),
+    ) {
+        pairs.push((ffmpeg, ffprobe));
+    }
+
+    pairs
+        .into_iter()
+        .find(|(ffmpeg, ffprobe)| ffmpeg.is_file() && ffprobe.is_file())
 }
 
 fn find_binary_in_path(binary_name: &str) -> Option<PathBuf> {
@@ -1086,7 +1317,13 @@ pub fn detect_audio_silence_custom(
         if peaks.is_empty() {
             return Err("ffmpeg_waveform_empty".into());
         }
-        (segments, peaks, waveform_bins, detected_first_speech, detected_last_speech)
+        (
+            segments,
+            peaks,
+            waveform_bins,
+            detected_first_speech,
+            detected_last_speech,
+        )
     };
 
     let buffer_ms = (buf_s * 1000.0) as u64;
@@ -1159,16 +1396,14 @@ pub fn execute_editor_media_operation(
         return Err("editor_media_toolchain_unavailable".into());
     }
     fs::create_dir_all(output_dir).map_err(|_| "editor_output_directory_failed".to_string())?;
-    let value_u64 = |key: &str, default: u64| {
-        options.get(key).and_then(Value::as_u64).unwrap_or(default)
-    };
-    let value_f64 = |key: &str, default: f64| {
-        options.get(key).and_then(Value::as_f64).unwrap_or(default)
-    };
+    let value_u64 =
+        |key: &str, default: u64| options.get(key).and_then(Value::as_u64).unwrap_or(default);
+    let value_f64 =
+        |key: &str, default: f64| options.get(key).and_then(Value::as_f64).unwrap_or(default);
     let run_ffmpeg = |args: Vec<MediaArgument>, output: &Path| -> Result<(), String> {
         let status = tools
             .status(MediaBinary::Ffmpeg, args)
-            .map_err(|_| "ffmpeg_unavailable".to_string())?;
+            .map_err(|error| format!("ffmpeg_spawn_failed:interactive_render: {error}"))?;
         if !status.success() || !output.is_file() {
             return Err("editor_media_operation_failed".into());
         }
@@ -1178,29 +1413,59 @@ pub fn execute_editor_media_operation(
         "media.probe" => {
             let probe = probe_media_file(source, tools)?;
             let output_path = output_dir.join("probe.json");
-            fs::write(&output_path, serde_json::to_vec_pretty(&probe).map_err(|_| "editor_output_encode_failed".to_string())?)
-                .map_err(|_| "editor_output_write_failed".to_string())?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "probe_json".into(), file_name: "probe.json".into(), content_type: "application/json".into(), metadata: serde_json::to_value(probe).unwrap_or_else(|_| json!({})) })
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&probe)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "probe_json".into(),
+                file_name: "probe.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(probe).unwrap_or_else(|_| json!({})),
+            })
         }
         "media.analysis" => {
             let analysis = analyze_media_file(source, tools)?;
             let output_path = output_dir.join("analysis.json");
-            fs::write(&output_path, serde_json::to_vec_pretty(&analysis).map_err(|_| "editor_output_encode_failed".to_string())?)
-                .map_err(|_| "editor_output_write_failed".to_string())?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "analysis_json".into(), file_name: "analysis.json".into(), content_type: "application/json".into(), metadata: serde_json::to_value(analysis).unwrap_or_else(|_| json!({})) })
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&analysis)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "analysis_json".into(),
+                file_name: "analysis.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(analysis).unwrap_or_else(|_| json!({})),
+            })
         }
         "media.silence_detect" => {
             let threshold = value_f64("thresholdDb", -35.0);
             let min_seconds = options
                 .get("minimumSilenceSeconds")
                 .and_then(Value::as_f64)
-                .or_else(|| options.get("minSilenceMs").and_then(Value::as_f64).map(|value| value / 1000.0))
+                .or_else(|| {
+                    options
+                        .get("minSilenceMs")
+                        .and_then(Value::as_f64)
+                        .map(|value| value / 1000.0)
+                })
                 .unwrap_or(0.4);
             let padding = options
                 .get("paddingBeforeSeconds")
                 .and_then(Value::as_f64)
                 .unwrap_or(0.08)
-                .max(options.get("paddingAfterSeconds").and_then(Value::as_f64).unwrap_or(0.08));
+                .max(
+                    options
+                        .get("paddingAfterSeconds")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.08),
+                );
             let result = detect_audio_silence_custom(
                 source,
                 tools,
@@ -1210,54 +1475,226 @@ pub fn execute_editor_media_operation(
                 None,
             )?;
             let output_path = output_dir.join("silence.json");
-            fs::write(&output_path, serde_json::to_vec_pretty(&result).map_err(|_| "editor_output_encode_failed".to_string())?)
-                .map_err(|_| "editor_output_write_failed".to_string())?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "silence_json".into(), file_name: "silence.json".into(), content_type: "application/json".into(), metadata: serde_json::to_value(result).unwrap_or_else(|_| json!({})) })
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&result)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "silence_json".into(),
+                file_name: "silence.json".into(),
+                content_type: "application/json".into(),
+                metadata: serde_json::to_value(result).unwrap_or_else(|_| json!({})),
+            })
         }
         "media.waveform" => {
             // `detect_audio_silence_custom` accepts a normalized percentage
             // (1..=100), not a dB value.  Keep the waveform VAD threshold at
             // -35 dB while passing the correct representation.
             let waveform_threshold_pct = silence_threshold_percent_from_db(-35.0);
-            let result = detect_audio_silence_custom(source, tools, waveform_threshold_pct, 0.4, 0.0, None)?;
+            let result =
+                detect_audio_silence_custom(source, tools, waveform_threshold_pct, 0.4, 0.0, None)?;
             let metadata = json!({ "durationMs": result.duration_ms, "peaks": result.waveform_peaks, "bins": result.waveform_bins, "sampleCount": result.waveform_bins.len(), "source": "ffmpeg_s16le_8khz" });
             let output_path = output_dir.join("waveform.json");
-            fs::write(&output_path, serde_json::to_vec_pretty(&metadata).map_err(|_| "editor_output_encode_failed".to_string())?)
-                .map_err(|_| "editor_output_write_failed".to_string())?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "waveform_json".into(), file_name: "waveform.json".into(), content_type: "application/json".into(), metadata })
+            fs::write(
+                &output_path,
+                serde_json::to_vec_pretty(&metadata)
+                    .map_err(|_| "editor_output_encode_failed".to_string())?,
+            )
+            .map_err(|_| "editor_output_write_failed".to_string())?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "waveform_json".into(),
+                file_name: "waveform.json".into(),
+                content_type: "application/json".into(),
+                metadata,
+            })
         }
         "media.thumbnail" => {
             let output_path = output_dir.join("thumbnail.jpg");
             let timestamp = value_u64("timeMs", 0);
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-ss"), literal(format!("{:.3}", timestamp as f64 / 1000.0)), literal("-i"), media_path(source), literal("-frames:v"), literal("1"), literal("-q:v"), literal("2"), media_path(&output_path)], &output_path)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "thumbnail_image".into(), file_name: "thumbnail.jpg".into(), content_type: "image/jpeg".into(), metadata: json!({ "timeMs": timestamp }) })
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-ss"),
+                    literal(format!("{:.3}", timestamp as f64 / 1000.0)),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-frames:v"),
+                    literal("1"),
+                    literal("-q:v"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "thumbnail_image".into(),
+                file_name: "thumbnail.jpg".into(),
+                content_type: "image/jpeg".into(),
+                metadata: json!({ "timeMs": timestamp }),
+            })
         }
         "media.proxy" => {
             let output_path = output_dir.join("proxy.mp4");
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-i"), media_path(source), literal("-map"), literal("0:v:0"), literal("-map"), literal("0:a?"), literal("-c:v"), literal("libx264"), literal("-preset"), literal("veryfast"), literal("-crf"), literal("23"), literal("-c:a"), literal("aac"), literal("-b:a"), literal("128k"), literal("-movflags"), literal("+faststart"), media_path(&output_path)], &output_path)?;
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-map"),
+                    literal("0:v:0"),
+                    literal("-map"),
+                    literal("0:a?"),
+                    literal("-c:v"),
+                    literal("libx264"),
+                    literal("-preset"),
+                    literal("veryfast"),
+                    literal("-crf"),
+                    literal("23"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("128k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
             let qc = probe_media_file(&output_path, tools)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "proxy_video".into(), file_name: "proxy.mp4".into(), content_type: "video/mp4".into(), metadata: serde_json::to_value(qc).unwrap_or_else(|_| json!({})) })
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "proxy_video".into(),
+                file_name: "proxy.mp4".into(),
+                content_type: "video/mp4".into(),
+                metadata: serde_json::to_value(qc).unwrap_or_else(|_| json!({})),
+            })
         }
         "media.audio_extract" => {
             let output_path = output_dir.join("extracted.m4a");
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-i"), media_path(source), literal("-vn"), literal("-c:a"), literal("aac"), literal("-b:a"), literal("192k"), literal("-movflags"), literal("+faststart"), media_path(&output_path)], &output_path)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "extracted_audio".into(), file_name: "extracted.m4a".into(), content_type: "audio/mp4".into(), metadata: json!({ "codec": "aac" }) })
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("192k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "extracted_audio".into(),
+                file_name: "extracted.m4a".into(),
+                content_type: "audio/mp4".into(),
+                metadata: json!({ "codec": "aac" }),
+            })
         }
         "media.audio_export" => {
             let output_path = output_dir.join("audio.mp3");
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-i"), media_path(source), literal("-vn"), literal("-c:a"), literal("libmp3lame"), literal("-q:a"), literal("2"), media_path(&output_path)], &output_path)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "audio_mp3".into(), file_name: "audio.mp3".into(), content_type: "audio/mpeg".into(), metadata: json!({ "codec": "mp3", "quality": 2 }) })
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-c:a"),
+                    literal("libmp3lame"),
+                    literal("-q:a"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "audio_mp3".into(),
+                file_name: "audio.mp3".into(),
+                content_type: "audio/mpeg".into(),
+                metadata: json!({ "codec": "mp3", "quality": 2 }),
+            })
         }
         "media.recording_normalize" => {
             let output_path = output_dir.join("normalized.m4a");
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-i"), media_path(source), literal("-vn"), literal("-af"), literal("loudnorm=I=-16:TP=-1.5:LRA=11"), literal("-c:a"), literal("aac"), literal("-b:a"), literal("192k"), literal("-movflags"), literal("+faststart"), media_path(&output_path)], &output_path)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "normalized_audio".into(), file_name: "normalized.m4a".into(), content_type: "audio/mp4".into(), metadata: json!({ "loudnessTarget": "-16 LUFS", "truePeak": "-1.5 dBTP" }) })
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-vn"),
+                    literal("-af"),
+                    literal("loudnorm=I=-16:TP=-1.5:LRA=11"),
+                    literal("-c:a"),
+                    literal("aac"),
+                    literal("-b:a"),
+                    literal("192k"),
+                    literal("-movflags"),
+                    literal("+faststart"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "normalized_audio".into(),
+                file_name: "normalized.m4a".into(),
+                content_type: "audio/mp4".into(),
+                metadata: json!({ "loudnessTarget": "-16 LUFS", "truePeak": "-1.5 dBTP" }),
+            })
         }
         "video.render_still" => {
             let output_path = output_dir.join("frame.jpg");
             let timestamp = value_u64("timeMs", 0);
-            run_ffmpeg(vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y"), literal("-ss"), literal(format!("{:.3}", timestamp as f64 / 1000.0)), literal("-i"), media_path(source), literal("-frames:v"), literal("1"), literal("-q:v"), literal("2"), media_path(&output_path)], &output_path)?;
-            Ok(EditorMediaOperationOutput { output_path, artifact_type: "preview_frame".into(), file_name: "frame.jpg".into(), content_type: "image/jpeg".into(), metadata: json!({ "timeMs": timestamp }) })
+            run_ffmpeg(
+                vec![
+                    literal("-hide_banner"),
+                    literal("-loglevel"),
+                    literal("error"),
+                    literal("-y"),
+                    literal("-ss"),
+                    literal(format!("{:.3}", timestamp as f64 / 1000.0)),
+                    literal("-i"),
+                    media_path(source),
+                    literal("-frames:v"),
+                    literal("1"),
+                    literal("-q:v"),
+                    literal("2"),
+                    media_path(&output_path),
+                ],
+                &output_path,
+            )?;
+            Ok(EditorMediaOperationOutput {
+                output_path,
+                artifact_type: "preview_frame".into(),
+                file_name: "frame.jpg".into(),
+                content_type: "image/jpeg".into(),
+                metadata: json!({ "timeMs": timestamp }),
+            })
         }
         _ => Err("editor_operation_adapter_unavailable".into()),
     }
@@ -1430,7 +1867,10 @@ pub fn run_allowlisted_ffmpeg(
             .filter(|point| point.confidence.is_finite() && point.confidence > 0.0)
             .count()
             >= 2;
-        if plan.camera_motion_plan.is_none() && !has_temporal_track && plan.focus_mode != "manual_region" {
+        if plan.camera_motion_plan.is_none()
+            && !has_temporal_track
+            && plan.focus_mode != "manual_region"
+        {
             return Err("focus_track_requires_ai_worker".into());
         }
     }
@@ -1509,7 +1949,7 @@ pub fn run_allowlisted_ffmpeg(
                 'y',
                 plan.focus_y.unwrap_or(0.5).clamp(0.0, 1.0),
             );
-            format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,(iw-ih*9/16)*({focus_x})))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,(ih-iw*16/9)*({focus_y})))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
+            format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
         };
         args.extend([literal("-vf"), literal(filter)]);
     } else if let Some(motion) = plan.still_motion.as_deref().filter(|_| source_is_still) {
@@ -1588,8 +2028,12 @@ pub fn run_editor_nle_render(
     let mut audio_clips: Vec<(u64, u64, u64, f64, bool, PathBuf)> = Vec::new();
     for track in tracks {
         let track_kind = track.get("kind").and_then(Value::as_str).unwrap_or("");
-        if track_kind != "video" && track_kind != "audio" { continue; }
-        let Some(track_clips) = track.get("clips").and_then(Value::as_array) else { continue };
+        if track_kind != "video" && track_kind != "audio" {
+            continue;
+        }
+        let Some(track_clips) = track.get("clips").and_then(Value::as_array) else {
+            continue;
+        };
         for clip in track_clips {
             let asset = clip
                 .get("asset")
@@ -1600,7 +2044,12 @@ pub fn run_editor_nle_render(
             }
             let key = asset
                 .get("id")
-                .map(|value| value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string()))
+                .map(|value| {
+                    value
+                        .as_str()
+                        .map(str::to_string)
+                        .unwrap_or_else(|| value.to_string())
+                })
                 .filter(|value| !value.is_empty())
                 .ok_or_else(|| "editor_clip_asset_id_missing".to_string())?;
             let source = asset_paths
@@ -1618,9 +2067,20 @@ pub fn run_editor_nle_render(
             if track_kind == "video" {
                 video_clips.push((timeline_start_ms, start_ms, end_ms, source.clone()));
             } else {
-                let volume = clip.get("volume").and_then(Value::as_f64).unwrap_or(1.0).clamp(0.0, 1.0);
+                let volume = clip
+                    .get("volume")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(1.0)
+                    .clamp(0.0, 1.0);
                 let muted = clip.get("muted").and_then(Value::as_bool).unwrap_or(false);
-                audio_clips.push((timeline_start_ms, start_ms, end_ms, volume, muted, source.clone()));
+                audio_clips.push((
+                    timeline_start_ms,
+                    start_ms,
+                    end_ms,
+                    volume,
+                    muted,
+                    source.clone(),
+                ));
             }
         }
     }
@@ -1633,11 +2093,20 @@ pub fn run_editor_nle_render(
         fs::create_dir_all(parent).map_err(|_| "editor_output_directory_failed".to_string())?;
     }
 
-    let mut args = vec![literal("-hide_banner"), literal("-loglevel"), literal("error"), literal("-y")];
+    let mut args = vec![
+        literal("-hide_banner"),
+        literal("-loglevel"),
+        literal("error"),
+        literal("-y"),
+    ];
     let mut filters = Vec::with_capacity(video_clips.len() + audio_clips.len() + 2);
     for (index, (_, start_ms, end_ms, source)) in video_clips.iter().enumerate() {
         let is_image = matches!(
-            source.extension().and_then(|value| value.to_str()).map(|value| value.to_ascii_lowercase()).as_deref(),
+            source
+                .extension()
+                .and_then(|value| value.to_str())
+                .map(|value| value.to_ascii_lowercase())
+                .as_deref(),
             Some("jpg" | "jpeg" | "png" | "webp")
         );
         if is_image {
@@ -1647,7 +2116,10 @@ pub fn run_editor_nle_render(
         args.push(literal("-ss"));
         args.push(literal(format!("{:.3}", *start_ms as f64 / 1000.0)));
         args.push(literal("-t"));
-        args.push(literal(format!("{:.3}", (*end_ms - *start_ms) as f64 / 1000.0)));
+        args.push(literal(format!(
+            "{:.3}",
+            (*end_ms - *start_ms) as f64 / 1000.0
+        )));
         args.push(literal("-i"));
         args.push(media_path(source));
         filters.push(format!(
@@ -1655,8 +2127,13 @@ pub fn run_editor_nle_render(
             (*end_ms - *start_ms) as f64 / 1000.0
         ));
     }
-    let concat_inputs = (0..video_clips.len()).map(|index| format!("[v{index}]")).collect::<String>();
-    filters.push(format!("{concat_inputs}concat=n={}:v=1:a=0[vout]", video_clips.len()));
+    let concat_inputs = (0..video_clips.len())
+        .map(|index| format!("[v{index}]"))
+        .collect::<String>();
+    filters.push(format!(
+        "{concat_inputs}concat=n={}:v=1:a=0[vout]",
+        video_clips.len()
+    ));
     let audio_input_offset = video_clips.len();
     for (index, (_, start_ms, end_ms, volume, muted, _)) in audio_clips.iter().enumerate() {
         let input_index = audio_input_offset + index;
@@ -1671,19 +2148,32 @@ pub fn run_editor_nle_render(
         let silence_index = video_clips.len();
         (format!("{silence_index}:a:0"), true)
     } else {
-        let audio_inputs = (0..audio_clips.len()).map(|index| format!("[a{index}]")).collect::<String>();
-        filters.push(format!("{audio_inputs}amix=inputs={}:duration=longest:dropout_transition=0[aout]", audio_clips.len()));
+        let audio_inputs = (0..audio_clips.len())
+            .map(|index| format!("[a{index}]"))
+            .collect::<String>();
+        filters.push(format!(
+            "{audio_inputs}amix=inputs={}:duration=longest:dropout_transition=0[aout]",
+            audio_clips.len()
+        ));
         ("[aout]".to_string(), false)
     };
     if extra_audio_input {
-        args.extend([literal("-f"), literal("lavfi"), literal("-i"), literal("anullsrc=channel_layout=stereo:sample_rate=48000")]);
+        args.extend([
+            literal("-f"),
+            literal("lavfi"),
+            literal("-i"),
+            literal("anullsrc=channel_layout=stereo:sample_rate=48000"),
+        ]);
     }
     if !audio_clips.is_empty() {
         for (_, start_ms, end_ms, _, _, source) in audio_clips.iter() {
             args.push(literal("-ss"));
             args.push(literal(format!("{:.3}", *start_ms as f64 / 1000.0)));
             args.push(literal("-t"));
-            args.push(literal(format!("{:.3}", (*end_ms - *start_ms) as f64 / 1000.0)));
+            args.push(literal(format!(
+                "{:.3}",
+                (*end_ms - *start_ms) as f64 / 1000.0
+            )));
             args.push(literal("-i"));
             args.push(media_path(source));
         }
@@ -1722,13 +2212,21 @@ pub fn run_editor_nle_render(
     let mut digest = Sha256::new();
     let mut buffer = [0_u8; 1024 * 1024];
     loop {
-        let read = file.read(&mut buffer).map_err(|_| "editor_output_read_failed".to_string())?;
-        if read == 0 { break; }
+        let read = file
+            .read(&mut buffer)
+            .map_err(|_| "editor_output_read_failed".to_string())?;
+        if read == 0 {
+            break;
+        }
         digest.update(&buffer[..read]);
     }
     let probe = probe_media_file(output, tools)?;
-    let width = probe.width.ok_or_else(|| "editor_output_qc_failed".to_string())?;
-    let height = probe.height.ok_or_else(|| "editor_output_qc_failed".to_string())?;
+    let width = probe
+        .width
+        .ok_or_else(|| "editor_output_qc_failed".to_string())?;
+    let height = probe
+        .height
+        .ok_or_else(|| "editor_output_qc_failed".to_string())?;
     Ok(LocalMediaQc {
         passed: true,
         size_bytes: metadata.len(),
@@ -1848,7 +2346,7 @@ pub fn run_allowlisted_ffmpeg_segments(
                         focus_expression(focus_track, 'x', focus_x.unwrap_or(0.5).clamp(0.0, 1.0));
                     let focus_y_expr =
                         focus_expression(focus_track, 'y', focus_y.unwrap_or(0.5).clamp(0.0, 1.0));
-                    format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,(iw-ih*9/16)*({focus_x_expr})))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,(ih-iw*16/9)*({focus_y_expr})))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
+                    format!("crop=if(gt(iw/ih\\,0.5625)\\,ih*9/16\\,iw):if(gt(iw/ih\\,0.5625)\\,ih\\,iw*16/9):if(gt(iw/ih\\,0.5625)\\,max(0\\,min(iw-ih*9/16\\,iw*({focus_x_expr})-ih*9/32))\\,0):if(gt(iw/ih\\,0.5625)\\,0\\,max(0\\,min(ih-iw*16/9\\,ih*({focus_y_expr})-iw*8/9)))),scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2")
                 };
                 args.extend([literal("-vf"), literal(filter)]);
             }
@@ -1966,6 +2464,7 @@ fn camera_motion_value_expression(
         }
         true
     });
+    frames = bounded_camera_motion_filter_frames(frames);
     let value = |frame: &CameraMotionKeyframe| match axis {
         'x' => frame.x,
         'y' => frame.y,
@@ -1976,16 +2475,17 @@ fn camera_motion_value_expression(
     } else {
         "t".to_string()
     };
-    let mut expression = format!("{:.4}", value(frames.last().expect("validated plan has keyframes")));
+    let mut expression = format!(
+        "{:.4}",
+        value(frames.last().expect("validated plan has keyframes"))
+    );
     for pair in frames.windows(2).rev() {
         let start = pair[0].time_ms as f64 / 1000.0;
         let end = pair[1].time_ms as f64 / 1000.0;
         let first = value(&pair[0]);
         let second = value(&pair[1]);
         let duration = (end - start).max(0.001);
-        let progress = format!(
-            "max(0\\,min(1\\,({time_expression}-{start:.3})/{duration:.3}))"
-        );
+        let progress = format!("max(0\\,min(1\\,({time_expression}-{start:.3})/{duration:.3}))");
         let eased = match pair[0].easing.as_deref() {
             Some("linear") => progress.clone(),
             Some("ease-in") => format!("({progress})*({progress})"),
@@ -1999,6 +2499,59 @@ fn camera_motion_value_expression(
         );
     }
     expression
+}
+
+/// Select a bounded, deterministic subset of keyframes for the FFmpeg filter
+/// expression. Automatic scan samples remain evenly distributed, while manual
+/// marks are retained whenever the configured cap permits it. The persisted
+/// camera plan is untouched so playback/evidence still has the full analysis.
+fn bounded_camera_motion_filter_frames(
+    frames: Vec<CameraMotionKeyframe>,
+) -> Vec<CameraMotionKeyframe> {
+    if frames.len() <= MAX_CAMERA_MOTION_FILTER_KEYFRAMES {
+        return frames;
+    }
+
+    let max = MAX_CAMERA_MOTION_FILTER_KEYFRAMES.max(2);
+    let last_index = frames.len() - 1;
+    let mut selected = vec![0usize, last_index];
+
+    // Keep authored marks first; those are explicit user intent rather than
+    // detector noise. In the unlikely case of more marks than the cap, the
+    // deterministic fallback below keeps a spread of the mark sequence.
+    for index in 1..last_index {
+        if frames[index].source == "user_mark" && selected.len() < max {
+            selected.push(index);
+        }
+    }
+
+    if selected.len() < max {
+        let remaining = max - selected.len();
+        for slot in 1..=remaining {
+            let target = (slot * last_index) / (remaining + 1);
+            let mut candidate = target;
+            while selected.contains(&candidate) && candidate < last_index {
+                candidate += 1;
+            }
+            if !selected.contains(&candidate) {
+                selected.push(candidate);
+            }
+        }
+    }
+
+    selected.sort_unstable();
+    selected.dedup();
+    if selected.len() > max {
+        selected.truncate(max);
+        if !selected.contains(&last_index) {
+            *selected.last_mut().expect("bounded selection is non-empty") = last_index;
+            selected.sort_unstable();
+        }
+    }
+    selected
+        .into_iter()
+        .map(|index| frames[index].clone())
+        .collect()
 }
 
 /// Maps source-timeline keyframes onto the retained output timeline. A point
@@ -2049,6 +2602,9 @@ pub fn remap_camera_motion_plan_for_segments(
         mode: plan.mode.clone(),
         duration_ms: retained_duration_ms,
         keyframes,
+        analysis_mode: plan.analysis_mode.clone(),
+        target_tracks: plan.target_tracks.clone(),
+        evidence: plan.evidence.clone(),
     })
 }
 
@@ -2084,7 +2640,13 @@ fn build_interactive_crop_filter(
         .unwrap_or((false, false));
     let target_scale = auto_pan_zoom_scale
         .filter(|scale| scale.is_finite() && *scale > 1.0)
-        .unwrap_or_else(|| if auto_pan_zoom_mode == "face_focus" { 1.18 } else { 1.16 })
+        .unwrap_or_else(|| {
+            if auto_pan_zoom_mode == "face_focus" {
+                1.18
+            } else {
+                1.16
+            }
+        })
         .clamp(1.0, 2.5);
     if auto_pan_zoom {
         if let Some(plan) = camera_motion_plan {
@@ -2097,15 +2659,21 @@ fn build_interactive_crop_filter(
             // under-pans right/bottom subjects after zooming.
             let focus_crop_x = format!("max(0\\,min(iw-{out_w}\\,iw*({x_expr})-{out_w}/2))");
             let focus_crop_y = format!("max(0\\,min(ih-{out_h}\\,ih*({y_expr})-{out_h}/2))");
+            // The second crop runs after the animated scale.  It still has
+            // to obey the same source-edge bounds as the first crop.  Without
+            // this clamp a portrait source (or a face near an edge) produces
+            // a negative crop origin; FFmpeg then pins the frame to the edge
+            // and the rendered person appears half outside the canvas even
+            // though playback has already reached the requested focal point.
             let zoom_crop_x = if has_horizontal_excess {
                 format!("(iw-{out_w})/2")
             } else {
-                format!("iw*({x_expr})-{out_w}/2")
+                format!("max(0\\,min(iw-{out_w}\\,iw*({x_expr})-{out_w}/2))")
             };
             let zoom_crop_y = if has_vertical_excess {
                 format!("(ih-{out_h})/2")
             } else {
-                format!("ih*({y_expr})-{out_h}/2")
+                format!("max(0\\,min(ih-{out_h}\\,ih*({y_expr})-{out_h}/2))")
             };
             return Some(format!(
                 "scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h}:{focus_crop_x}:{focus_crop_y},scale=w=trunc(iw*({scale_expr})/2)*2:h=trunc(ih*({scale_expr})/2)*2:eval=frame,crop={out_w}:{out_h}:{zoom_crop_x}:{zoom_crop_y},setsar=1{speed_vf_suffix}"
@@ -2122,12 +2690,12 @@ fn build_interactive_crop_filter(
         let zoom_crop_x = if has_horizontal_excess {
             format!("(iw-{out_w})/2")
         } else {
-            format!("iw*{fx:.4}-{out_w}/2")
+            format!("max(0\\,min(iw-{out_w}\\,iw*{fx:.4}-{out_w}/2))")
         };
         let zoom_crop_y = if has_vertical_excess {
             format!("(ih-{out_h})/2")
         } else {
-            format!("ih*{fy:.4}-{out_h}/2")
+            format!("max(0\\,min(ih-{out_h}\\,ih*{fy:.4}-{out_h}/2))")
         };
         return Some(format!(
             "scale={out_w}:{out_h}:force_original_aspect_ratio=increase,crop={out_w}:{out_h}:{focus_crop_x}:{focus_crop_y},scale=w=trunc(iw*({zoom_expr})/2)*2:h=trunc(ih*({zoom_expr})/2)*2:eval=frame,crop={out_w}:{out_h}:{zoom_crop_x}:{zoom_crop_y},setsar=1{speed_vf_suffix}"
@@ -2136,12 +2704,9 @@ fn build_interactive_crop_filter(
 
     let base_crop_width = format!("if(gt(iw/ih\\,{ar:.6})\\,ih*{ar:.6}\\,iw)");
     let base_crop_height = format!("if(gt(iw/ih\\,{ar:.6})\\,ih\\,iw/{ar:.6})");
-    let crop_x = format!(
-        "max(0\\,min(iw-({base_crop_width})\\,(iw-({base_crop_width}))*({fx:.4})))"
-    );
-    let crop_y = format!(
-        "max(0\\,min(ih-({base_crop_height})\\,(ih-({base_crop_height}))*({fy:.4})))"
-    );
+    let crop_x = format!("max(0\\,min(iw-({base_crop_width})\\,iw*{fx:.4}-({base_crop_width})/2))");
+    let crop_y =
+        format!("max(0\\,min(ih-({base_crop_height})\\,ih*{fy:.4}-({base_crop_height})/2))");
 
     Some(format!(
         "crop={base_crop_width}:{base_crop_height}:{crop_x}:{crop_y},scale={out_w}:{out_h}:force_original_aspect_ratio=decrease,pad={out_w}:{out_h}:(ow-iw)/2:(oh-ih)/2,setsar=1{speed_vf_suffix}"
@@ -2328,7 +2893,7 @@ pub fn run_interactive_media_render(
                 ]);
                 let s = tools
                     .status(MediaBinary::Ffmpeg, part_args)
-                    .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                    .map_err(|error| format!("ffmpeg_spawn_failed:segment_{idx}: {error}"))?;
                 if !s.success() {
                     return Err(format!("ffmpeg_part_{idx}_failed"));
                 }
@@ -2368,7 +2933,7 @@ pub fn run_interactive_media_render(
             ];
             let status = tools
                 .status(MediaBinary::Ffmpeg, concat_args)
-                .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                .map_err(|error| format!("ffmpeg_spawn_failed:concat: {error}"))?;
 
             if !status.success() {
                 let fallback_args = vec![
@@ -2392,7 +2957,7 @@ pub fn run_interactive_media_render(
                 ];
                 let fb_status = tools
                     .status(MediaBinary::Ffmpeg, fallback_args)
-                    .map_err(|_| "ffmpeg_unavailable".to_string())?;
+                    .map_err(|error| format!("ffmpeg_spawn_failed:concat_fallback: {error}"))?;
                 if !fb_status.success() {
                     return Err("ffmpeg_concat_failed".into());
                 }
@@ -3116,9 +3681,19 @@ mod tests {
 
     #[test]
     fn runtime_pack_media_tools_resolve_from_settings_not_process_path() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        let suffix = if cfg!(target_os = "windows") {
+            ".exe"
+        } else {
+            ""
+        };
+        fs::write(bin.join(format!("ffmpeg{suffix}")), b"ffmpeg").unwrap();
+        fs::write(bin.join(format!("ffprobe{suffix}")), b"ffprobe").unwrap();
         let mut settings = WorkerAppSettings::default();
         settings.runtime_environment = RuntimeEnvironment::RuntimePack;
-        settings.runtime_dir = "C:/SmartAIHub/runtime".into();
+        settings.runtime_dir = dir.path().to_string_lossy().into_owned();
         let tools = MediaToolchain::from_settings(&settings, Path::new("C:/unused"));
         match tools.ffmpeg {
             MediaTool::Native(path) => assert!(path.to_string_lossy().contains("runtime-pack")),
@@ -3127,22 +3702,61 @@ mod tests {
     }
 
     #[test]
+    fn managed_wsl_settings_do_not_use_stale_native_pair() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        // These files represent a stale/partial native pack left by an older
+        // install. Managed WSL must still execute through wsl.exe.
+        fs::write(bin.join("ffmpeg"), b"stale").unwrap();
+        fs::write(bin.join("ffprobe"), b"stale").unwrap();
+        let mut settings = WorkerAppSettings::default();
+        settings.runtime_environment = RuntimeEnvironment::ManagedWsl;
+        settings.runtime_dir = dir.path().to_string_lossy().into_owned();
+        let tools = MediaToolchain::from_settings(&settings, Path::new("C:/unused"));
+        assert!(matches!(tools.ffmpeg, MediaTool::ManagedWsl { .. }));
+        assert!(matches!(tools.ffprobe, MediaTool::ManagedWsl { .. }));
+    }
+
+    #[test]
+    fn runtime_pack_resolver_requires_a_matching_ffmpeg_and_ffprobe_pair() {
+        let dir = tempdir().unwrap();
+        let bin = dir.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        let ffmpeg_name = "ffmpeg-worker-test";
+        let ffprobe_name = "ffprobe-worker-test";
+        fs::write(bin.join(ffmpeg_name), b"ffmpeg").unwrap();
+        assert!(resolve_native_media_pair(dir.path(), ffmpeg_name, ffprobe_name).is_none());
+
+        fs::write(bin.join(ffprobe_name), b"ffprobe").unwrap();
+        let pair = resolve_native_media_pair(dir.path(), ffmpeg_name, ffprobe_name)
+            .expect("both runtime binaries should resolve together");
+        assert_eq!(pair.0, bin.join(ffmpeg_name));
+        assert_eq!(pair.1, bin.join(ffprobe_name));
+    }
+
+    #[test]
+    fn media_readiness_error_identifies_the_failed_toolchain() {
+        let tools = MediaToolchain::native(
+            "/definitely-missing-smartaihub-ffmpeg",
+            "/definitely-missing-smartaihub-ffprobe",
+        );
+        let error = tools
+            .readiness_error()
+            .expect("missing media tools must produce a readiness error");
+        assert!(error.starts_with("media_runtime_not_ready:"));
+        assert!(error.contains("definitely-missing-smartaihub-ffmpeg"));
+        assert!(error.contains("definitely-missing-smartaihub-ffprobe"));
+    }
+
+    #[test]
     fn interactive_crop_filter_keeps_auto_zoom_dynamic_for_ffmpeg() {
         let static_filter = build_interactive_crop_filter(
-            1080,
-            1920,
-            None,
-            0.5,
-            0.5,
-            false,
-            "off",
-            None,
-            None,
-            0,
-            "",
+            1080, 1920, None, 0.5, 0.5, false, "off", None, None, 0, "",
         )
         .expect("static crop filter should be present");
         assert!(!static_filter.contains("cos(2*PI*t/18)"));
+        assert!(static_filter.contains("iw*0.5000"));
 
         let auto_filter = build_interactive_crop_filter(
             1080,
@@ -3166,34 +3780,168 @@ mod tests {
     }
 
     #[test]
+    fn face_activity_camera_plan_accepts_bounded_evidence_metadata() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 5_000,
+            keyframes: vec![CameraMotionKeyframe {
+                time_ms: 0,
+                x: 0.5,
+                y: 0.5,
+                scale: 1.1,
+                easing: Some("ease-in-out".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            }],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: vec![json!({"timeMs": 0, "kind": "face", "confidence": 0.9})],
+            evidence: Some(json!({"status": "approved", "evidenceRef": "evidence-1"})),
+        };
+        assert!(validate_camera_motion_plan(&plan).is_ok());
+        let remapped =
+            remap_camera_motion_plan_for_segments(&plan, &[(0, 2_000), (3_000, 5_000)]).unwrap();
+        assert_eq!(remapped.analysis_mode.as_deref(), Some("full_scan"));
+        assert_eq!(remapped.target_tracks.len(), 1);
+    }
+
+    #[test]
     fn camera_plan_filter_has_long_holds_and_remaps_dead_air_time() {
         let plan = CameraMotionPlan {
             version: CAMERA_MOTION_PLAN_VERSION.into(),
             mode: "auto".into(),
             duration_ms: 36_000,
             keyframes: vec![
-                CameraMotionKeyframe { time_ms: 0, x: 0.5, y: 0.5, scale: 1.0, easing: Some("linear".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 9_000, x: 0.5, y: 0.5, scale: 1.0, easing: Some("ease-in-out".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 14_000, x: 0.62, y: 0.44, scale: 1.16, easing: Some("ease-in-out".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 23_000, x: 0.62, y: 0.44, scale: 1.16, easing: Some("linear".into()), source: "auto".into(), source_mark_id: None },
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 9_000,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 14_000,
+                    x: 0.62,
+                    y: 0.44,
+                    scale: 1.16,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 23_000,
+                    x: 0.62,
+                    y: 0.44,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
             ],
+            analysis_mode: None,
+            target_tracks: Vec::new(),
+            evidence: None,
         };
-        let filter = build_interactive_crop_filter(1080, 1920, Some((1080, 1920)), 0.5, 0.5, true, "auto", Some(1.16), Some(&plan), 0, "")
-            .expect("camera plan filter should be present");
+        let filter = build_interactive_crop_filter(
+            1080,
+            1920,
+            Some((1080, 1920)),
+            0.5,
+            0.5,
+            true,
+            "auto",
+            Some(1.16),
+            Some(&plan),
+            0,
+            "",
+        )
+        .expect("camera plan filter should be present");
         assert!(filter.contains("lt(t\\,14.000)"));
         assert!(filter.contains("eval=frame"));
+        assert!(filter.contains("max(0\\,min(iw-1080"));
+        assert!(filter.contains("max(0\\,min(ih-1920"));
         assert!(!filter.contains("cos(2*PI*t/18)"));
 
-        let remapped = remap_camera_motion_plan_for_segments(&plan, &[(0, 10_000), (20_000, 36_000)])
-            .expect("camera plan should remap");
+        let remapped =
+            remap_camera_motion_plan_for_segments(&plan, &[(0, 10_000), (20_000, 36_000)])
+                .expect("camera plan should remap");
         assert_eq!(remapped.duration_ms, 26_000);
         assert_eq!(remapped.keyframes[2].time_ms, 10_000);
         assert_eq!(remapped.keyframes[3].time_ms, 13_000);
     }
 
     #[test]
+    fn camera_plan_filter_bounds_large_scan_expression_without_dropping_endpoints() {
+        let keyframes = (0..96)
+            .map(|index| CameraMotionKeyframe {
+                time_ms: index * 1_000,
+                x: 0.35 + ((index % 8) as f64 * 0.04),
+                y: 0.4 + ((index % 6) as f64 * 0.03),
+                scale: 1.08 + ((index % 5) as f64 * 0.02),
+                easing: Some("ease-in-out".into()),
+                source: if index == 48 {
+                    "user_mark".into()
+                } else {
+                    "auto".into()
+                },
+                source_mark_id: (index == 48).then(|| "manual-1".into()),
+            })
+            .collect::<Vec<_>>();
+        let bounded = bounded_camera_motion_filter_frames(keyframes.clone());
+        assert_eq!(bounded.len(), MAX_CAMERA_MOTION_FILTER_KEYFRAMES);
+        assert_eq!(bounded.first().unwrap().time_ms, 0);
+        assert_eq!(bounded.last().unwrap().time_ms, 95_000);
+        assert!(bounded.iter().any(|frame| frame.source == "user_mark"));
+
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 95_000,
+            keyframes,
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let filter = build_interactive_crop_filter(
+            1080,
+            1920,
+            Some((1920, 1080)),
+            0.5,
+            0.5,
+            true,
+            "face_activity",
+            Some(1.18),
+            Some(&plan),
+            0,
+            "",
+        )
+        .expect("bounded camera filter should be generated");
+        assert!(
+            filter.len() < 30_000,
+            "filter is too large for the Windows launcher: {}",
+            filter.len()
+        );
+    }
+
+    #[test]
     fn camera_plan_native_ffmpeg_smoke_keeps_audio_after_dead_air_concat() {
-        if !Command::new("ffmpeg").arg("-version").status().map(|status| status.success()).unwrap_or(false) {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
             return;
         }
         let dir = tempdir().unwrap();
@@ -3201,10 +3949,26 @@ mod tests {
         let output = dir.path().join("rendered.mp4");
         let generated = Command::new("ffmpeg")
             .args([
-                "-hide_banner", "-loglevel", "error", "-y",
-                "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=30",
-                "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000",
-                "-t", "2", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=30",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=1000:sample_rate=48000",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
                 source.to_str().unwrap(),
             ])
             .status()
@@ -3215,11 +3979,46 @@ mod tests {
             mode: "auto".into(),
             duration_ms: 2_000,
             keyframes: vec![
-                CameraMotionKeyframe { time_ms: 0, x: 0.5, y: 0.5, scale: 1.0, easing: Some("linear".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 700, x: 0.5, y: 0.5, scale: 1.0, easing: Some("ease-in-out".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 1_200, x: 0.6, y: 0.4, scale: 1.16, easing: Some("ease-in-out".into()), source: "auto".into(), source_mark_id: None },
-                CameraMotionKeyframe { time_ms: 2_000, x: 0.6, y: 0.4, scale: 1.16, easing: Some("linear".into()), source: "auto".into(), source_mark_id: None },
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 700,
+                    x: 0.5,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 1_200,
+                    x: 0.6,
+                    y: 0.4,
+                    scale: 1.16,
+                    easing: Some("ease-in-out".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.6,
+                    y: 0.4,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
             ],
+            analysis_mode: None,
+            target_tracks: Vec::new(),
+            evidence: None,
         };
         let tools = MediaToolchain::native("ffmpeg", "ffprobe");
         run_interactive_media_render(
@@ -3255,7 +4054,12 @@ mod tests {
                 confidence: 1.0,
             }],
             waveform_peaks: vec![0.1, 0.8, 0.05, 0.05, 0.9],
-            waveform_bins: vec![WaveformBin { min: -0.1, max: 0.2, rms: 0.12, peak: 0.2 }],
+            waveform_bins: vec![WaveformBin {
+                min: -0.1,
+                max: 0.2,
+                rms: 0.12,
+                peak: 0.2,
+            }],
             audio_tracks: vec![],
             selected_audio_stream_index: None,
             cut_count: 1,
@@ -3291,8 +4095,14 @@ mod tests {
         assert_eq!(tracks[1].title.as_deref(), Some("Dialogue"));
         assert!(tracks[1].is_default);
         assert_eq!(resolve_audio_stream_index(&tracks, None).unwrap(), Some(4));
-        assert_eq!(resolve_audio_stream_index(&tracks, Some(1)).unwrap(), Some(1));
-        assert_eq!(resolve_audio_stream_index(&tracks, Some(9)).unwrap_err(), "audio_stream_not_found");
+        assert_eq!(
+            resolve_audio_stream_index(&tracks, Some(1)).unwrap(),
+            Some(1)
+        );
+        assert_eq!(
+            resolve_audio_stream_index(&tracks, Some(9)).unwrap_err(),
+            "audio_stream_not_found"
+        );
     }
 
     #[test]

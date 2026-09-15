@@ -155,6 +155,7 @@ import {
   VerticalDramaEpisodePlanPanel,
   type VerticalDramaEpisodePlanSummaryView,
 } from "./VerticalDramaEpisodePlanPanel";
+import type { VerticalDramaEpisodeStoryPlanView } from "@/lib/verticalDramaEpisodeStoryPlan";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import type {
@@ -1080,6 +1081,8 @@ export interface VerticalDramaEpisodeWorkspaceProps {
    *  above) via `VerticalDramaEpisodePlanPanel` — pure read-only reference
    *  data. `null`/`undefined` both render that panel's own empty state. */
   episodePlan?: VerticalDramaEpisodePlanSummaryView | null;
+  /** Shared normalized shot-summary view for normal and Special Tie-in episodes. */
+  episodeStoryPlan?: VerticalDramaEpisodeStoryPlanView | null;
 
   /* ---- Task #26 (data sanity — episode number beyond the planned season
      size, e.g. episode 11 while the plan only covers 10) —
@@ -1330,6 +1333,7 @@ export function VerticalDramaEpisodeWorkspace({
   seriesId,
   perShotDialoguePreview,
   episodePlan = null,
+  episodeStoryPlan = null,
   breakdownStatus,
   plannedEpisodeCount,
   seasonPlanTabHref,
@@ -1574,10 +1578,11 @@ export function VerticalDramaEpisodeWorkspace({
           surface. Read-only, rendered UNCONDITIONALLY (no
           `productionWizardEnabled` gate — this is plain reference data, not
           a wizard/flag-gated feature). */}
-      {!specialEpisode ? (
+      {!specialEpisode || episodeStoryPlan ? (
         <VerticalDramaEpisodePlanPanel
           lang={locale}
           episodePlan={episodePlan}
+          storyPlan={episodeStoryPlan}
         />
       ) : null}
 

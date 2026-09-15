@@ -9,6 +9,10 @@
 - Do not remove or delete any functions, features, or UI capabilities unless explicitly requested by the user.
 - Use the package manager already used by this repo.
 - Do not add new dependencies unless necessary.
+- Do not run `npm run typecheck` anywhere in this repository because of RAM
+  constraints. Run the repository's TypeScript type-check command only when
+  the user explicitly requests it; this rule applies across all packages,
+  workflows, and agents.
 - If you discover issues directly related to the requested work, required
   verification, failing tests, data safety, security, or correctness, report and
   address them as part of the task.

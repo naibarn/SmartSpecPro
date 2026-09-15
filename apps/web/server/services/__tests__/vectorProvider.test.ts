@@ -93,6 +93,7 @@ import {
   resetVectorProviderAdapterRegistry,
   resolveVectorProvider,
   validateProviderCapabilityRequest,
+  verifyVectorizeVectorOwnership,
   type VectorProvider,
 } from "../vectorProvider";
 
@@ -177,6 +178,12 @@ describe("vectorProvider resolver", () => {
     const config = getVectorProviderConfigFromEnv();
 
     expect(config.pgvectorConnectTimeout).toBe("9");
+  });
+
+  it("does not use a Workers AI key as a Vectorize token", () => {
+    vi.stubEnv("VECTORIZE_API_TOKEN", "");
+    vi.stubEnv("CLOUDFLARE_AI_API_KEY", "workers-ai-only");
+    expect(getVectorProviderConfigFromEnv().vectorizeApiToken).toBe("");
   });
 });
 
@@ -338,6 +345,126 @@ describe("vectorProvider adapter contract", () => {
     });
 
     expect(new Set(search.matches.map((match) => match.id)).size).toBe(20);
+  });
+
+  it("speaks the Vectorize v2 REST contract and preserves mutation evidence", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (String(url).endsWith("/upsert")) {
+        return new Response(JSON.stringify({ success: true, result: { mutationId: "upsert-1" } }), { status: 200 });
+      }
+      if (String(url).endsWith("/delete_by_ids")) {
+        return new Response(JSON.stringify({ success: true, result: { mutationId: "delete-1" } }), { status: 200 });
+      }
+      if (String(url).endsWith("/get_by_ids")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: {
+            vectors: [{ id: "v-1", metadata: { tenantId: "tenant-1", type: "doc", itemId: 10 } }],
+          },
+        }), { status: 200 });
+      }
+      return new Response(JSON.stringify({ success: true, result: { matches: [] } }), { status: 200 });
+    }));
+    const adapter = createVectorProviderAdapter("cloudflare_vectorize", {
+      vectorizeAccountId: "account-1",
+      vectorizeApiToken: "vectorize-token",
+    });
+    const vector = {
+      id: "v-1",
+      values: Array.from({ length: 768 }, () => 0.1),
+      metadata: { tenantId: "tenant-1", type: "doc", createdAt: Date.now(), title: "x", sourceUrl: "y" },
+    };
+
+    await expect(adapter.index({ indexName: "docs-index", vectors: [vector] })).resolves.toMatchObject({ count: 1, mutationId: "upsert-1" });
+    await expect(adapter.delete({ indexName: "docs-index", ids: ["v-1"] })).resolves.toMatchObject({ count: 1, mutationId: "delete-1" });
+    await expect(adapter.search({ indexName: "docs-index", vector: vector.values, topK: 10, filter: { tenantId: "tenant-1" } })).resolves.toEqual({ matches: [] });
+    await expect(adapter.getByIds?.({ indexName: "docs-index", ids: ["v-1"] })).resolves.toEqual([
+      expect.objectContaining({ id: "v-1", metadata: expect.objectContaining({ tenantId: "tenant-1", itemId: 10 }) }),
+    ]);
+
+    expect(calls[0].url).toContain("/vectorize/v2/indexes/docs-index/upsert");
+    expect(calls[0].init?.headers).toMatchObject({ "Content-Type": "application/x-ndjson" });
+    expect(String(calls[0].init?.body)).toMatch(/\n$/);
+    expect(calls[1].url).toContain("/vectorize/v2/indexes/docs-index/delete_by_ids");
+    expect(calls[2].url).toContain("/vectorize/v2/indexes/docs-index/query");
+    expect(calls[3].url).toContain("/vectorize/v2/indexes/docs-index/get_by_ids");
+    expect(JSON.parse(String(calls[2].init?.body)).returnMetadata).toBe("all");
+  });
+
+  it("fails closed when an asynchronous Vectorize write has no mutation evidence", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(
+      JSON.stringify({ success: true, result: {} }),
+      { status: 200 },
+    )));
+    const adapter = createVectorProviderAdapter("cloudflare_vectorize", {
+      vectorizeAccountId: "account-1",
+      vectorizeApiToken: "vectorize-token",
+    });
+    const vector = {
+      id: "v-1",
+      values: Array.from({ length: 768 }, () => 0.1),
+      metadata: { tenantId: "tenant-1", type: "doc", createdAt: Date.now(), title: "x", sourceUrl: "y" },
+    };
+
+    await expect(adapter.index({ indexName: "docs-index", vectors: [vector] })).rejects.toMatchObject({
+      code: "mutation_evidence_missing",
+    });
+    await expect(adapter.delete({ indexName: "docs-index", ids: ["v-1"] })).rejects.toMatchObject({
+      code: "mutation_evidence_missing",
+    });
+  });
+
+  it("requires tenant and item ownership evidence before destructive cleanup", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/get_by_ids")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: { vectors: [{ id: "v-1", metadata: { tenantId: "tenant-1", itemId: 11 } }] },
+        }), { status: 200 });
+      }
+      throw new Error("delete must not be reached");
+    }));
+
+    await expect(verifyVectorizeVectorOwnership({
+      indexName: "docs-index",
+      ids: ["v-1"],
+      tenantId: "tenant-1",
+      itemId: 10,
+      providerConfig: { provider: "cloudflare_vectorize", vectorizeAccountId: "a", vectorizeApiToken: "t" },
+    })).rejects.toMatchObject({ code: "vector_scope_invalid" });
+  });
+
+  it("validates every Vectorize vector and rejects provider-incompatible requests", async () => {
+    const valid = {
+      id: "v-1",
+      values: Array.from({ length: 768 }, () => 0.1),
+      metadata: { tenantId: "tenant-1", type: "doc", createdAt: Date.now(), title: "x", sourceUrl: "y" },
+    };
+    await expect(dispatchVectorOperation({
+      operation: "index",
+      indexName: "docs-index",
+      vectors: [valid, { ...valid, id: "v-2", values: Array.from({ length: 767 }, () => 0.1) }],
+      providerConfig: { provider: "cloudflare_vectorize", vectorizeAccountId: "a", vectorizeApiToken: "t" },
+    })).rejects.toMatchObject({ code: "VECTORIZE_VALUES_INVALID" });
+    await expect(dispatchVectorOperation({
+      operation: "search",
+      indexName: "docs-index",
+      vector: valid.values,
+      topK: 51,
+      providerConfig: { provider: "cloudflare_vectorize", vectorizeAccountId: "a", vectorizeApiToken: "t" },
+    })).rejects.toMatchObject({ code: "VECTORIZE_TOP_K_INVALID" });
+  });
+
+  it("rejects unsafe Vectorize index names before making a request", async () => {
+    await expect(dispatchVectorOperation({
+      operation: "search",
+      indexName: "../other-index",
+      vector: Array.from({ length: 768 }, () => 0.1),
+      topK: 10,
+      providerConfig: { provider: "cloudflare_vectorize", vectorizeAccountId: "a", vectorizeApiToken: "t" },
+    })).rejects.toMatchObject({ code: "VECTORIZE_INDEX_NAME_INVALID" });
   });
 });
 

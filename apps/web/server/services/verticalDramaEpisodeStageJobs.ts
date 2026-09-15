@@ -41,6 +41,11 @@
  */
 
 import { debugError } from "../_core/logger";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { getRedisClient } from "./redis";
 import type {
   EpisodeRunOwner,
@@ -98,7 +103,7 @@ async function defaultEnqueueBullmqJob(
       `${VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE} queue is not initialized`
     );
   }
-  await queue.add("run", data, {
+  await publishLegacyBullMqJob(queue, "run", data, {
     removeOnComplete: true,
     // No BullMQ-level retry: `runStoryboardShotgridStageJob`'s own outer
     // try/catch already guarantees the run row always resolves to
@@ -138,7 +143,18 @@ export async function enqueueVerticalDramaEpisodeStageJob(
   ) => Promise<void> = defaultEnqueueBullmqJob
 ): Promise<{ enqueued: boolean }> {
   try {
-    await enqueueBullmqJob(data);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId: `vd_episode_stage_${data.runId}`,
+        tenantId: data.owner.tenantId,
+        userId: data.owner.userId,
+        jobType: "vertical_drama.episode_stage",
+        executionClass: "long",
+        payload: data as unknown as Record<string, unknown>,
+      });
+    } else {
+      await enqueueBullmqJob(data);
+    }
     return { enqueued: true };
   } catch (error) {
     debugError(
@@ -222,6 +238,7 @@ function startStaleRunSweep(): void {
  * form a static circular import surprise at module-load time.
  */
 export async function initVerticalDramaEpisodeStageJobsQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   // Orphan sweep first, outside the BullMQ try/catch — it must arm even
   // when BullMQ init below fails (see `startStaleRunSweep`'s doc comment).
   startStaleRunSweep();

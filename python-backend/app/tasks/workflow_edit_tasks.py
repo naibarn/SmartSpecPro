@@ -42,6 +42,11 @@ def _run_async(coro):
 
 def _set_edit_status(task_id: str, status: dict) -> None:
     """Store workflow edit task status in Redis."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(task_id, status)
+        return
     try:
         r = _get_redis()
         r.set(f"wf-edit:{task_id}", json.dumps(status, default=str), ex=RESULT_TTL)
@@ -49,12 +54,25 @@ def _set_edit_status(task_id: str, status: dict) -> None:
         logger.error("redis_set_edit_status_failed", task_id=task_id, error=str(exc)[:200])
 
 
-def get_edit_status(task_id: str, user_id: int | None = None) -> dict | None:
-    """Read workflow edit task status from Redis.
+def get_edit_status(
+    task_id: str,
+    user_id: int | None = None,
+    tenant_id: str | None = None,
+) -> dict | None:
+    """Read workflow edit status from the canonical ledger in hard cutover.
 
     If user_id is provided, enforces ownership check.
     Returns None if task doesn't exist or user doesn't own it.
     """
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        return JobControlPlaneClient().legacy_status(
+            task_id,
+            task_name="app.tasks.workflow_edit_tasks.edit_workflow",
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
     r = _get_redis()
     raw = r.get(f"wf-edit:{task_id}")
     if raw is None:
@@ -89,7 +107,7 @@ def edit_workflow_task(
     node_types: list | None,
     model: str | None,
     default_model: str | None,
-    user_token: str | None,
+    user_token: str | None = None,
     user_id: int | None = None,
 ):
     """

@@ -18,7 +18,7 @@ from typing import Any
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_strict
+from app.core.media_job_validators import validate_provider_reference_url
 
 logger = structlog.get_logger()
 
@@ -44,10 +44,6 @@ _POLL_TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
 _QUEUE_AUDIO_MODELS = frozenset({"fal-ai/gemini-3.1-flash-tts"})
 _QUEUE_AUDIO_POLL_INTERVAL_SECONDS = 1.5
 _QUEUE_AUDIO_TIMEOUT_SECONDS = 300.0
-
-# Regex to detect URL-like values in extra_params (catch-all SSRF check)
-_URL_PATTERN = re.compile(r"^https?://", re.IGNORECASE)
-
 
 class FalAIProvider:
     BASE_URL = "https://fal.run"
@@ -115,23 +111,31 @@ class FalAIProvider:
     # ------------------------------------------------------------------
 
     async def _validate_urls(self, params: dict[str, Any]) -> None:
-        """SSRF: validate known URL fields + catch-all for URL-like string values."""
-        # Check known URL fields
-        for key in _URL_FIELDS:
-            url = params.get(key)
-            if url is None:
-                continue
-            if not isinstance(url, str):
-                raise ValueError(f"URL field '{key}' must be a string")
-            validate_uri_strict(url)
+        """Validate all provider input references before the request is sent."""
+        reference_keys = {
+            key.replace("_", "").replace("-", "").lower()
+            for key in _URL_FIELDS
+        } | {
+            "image", "images", "video", "videos", "audio", "audios",
+            "file", "files", "reference", "references", "source", "sources",
+        }
 
-        # Catch-all: validate any string value that looks like a URL
-        # This prevents SSRF via unknown/new URL fields in extra_params
+        def validate_nested(key: str, value: Any) -> None:
+            normalized_key = key.replace("_", "").replace("-", "").lower()
+            if isinstance(value, str):
+                if normalized_key in reference_keys or normalized_key.endswith("url") or normalized_key.endswith("urls"):
+                    validate_provider_reference_url(value)
+                return
+            if isinstance(value, dict):
+                for nested_key, nested_value in value.items():
+                    validate_nested(str(nested_key), nested_value)
+                return
+            if isinstance(value, list):
+                for item in value:
+                    validate_nested(normalized_key, item)
+
         for key, value in params.items():
-            if key in _URL_FIELDS:
-                continue  # Already validated above
-            if isinstance(value, str) and _URL_PATTERN.match(value):
-                validate_uri_strict(value)
+            validate_nested(str(key), value)
 
         # Async video file size check
         video_url = params.get("video_url")

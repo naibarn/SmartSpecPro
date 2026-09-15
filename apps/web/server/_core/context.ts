@@ -5,6 +5,7 @@ import { sdk } from "./sdk";
 import { debugLog } from "./logger";
 import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
+import { resolveRequestTenantId } from "../services/tenantContext";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -16,7 +17,7 @@ export type TrpcContext = {
   privateVaultToken: string | null;
   /** Temporary unlock token for age-gated protected surfaces */
   protectedSurfaceToken: string | null;
-  /** The current tenant ID from the tenant middleware */
+  /** Authenticated account tenant; public requests receive the host tenant. */
   tenantId: string | null;
   /** The public URL for the current tenant (e.g., https://smartaihub.app) for external services */
   publicUrl: string | null;
@@ -68,9 +69,15 @@ export async function createContext(
     protectedSurfaceToken = null;
   }
 
-  // Extract tenantId from tenant middleware (TenantRequest)
+  // Host tenant is branding/discovery context only after authentication. For
+  // authenticated requests, users.currentTenantId is the sole authority and
+  // a missing binding remains null so protected procedures fail closed.
   const tenantReq = opts.req as TenantRequest;
-  const tenantId = tenantReq.tenant?.id ?? null;
+  const tenantId = resolveRequestTenantId({
+    authenticated: Boolean(user),
+    accountTenantId: user?.currentTenantId,
+    publicTenantId: tenantReq.tenant?.id,
+  });
 
   // Build public URL from tenant's primary domain or request origin
   // This is used by external services (like KIE AI) to access uploaded files

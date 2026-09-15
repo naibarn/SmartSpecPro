@@ -85,6 +85,8 @@ export interface NleClip {
   fontSize?: number;
   fontColor?: string;
   fontFamily?: string;
+  fontWeight?: number;
+  fontStyle?: "normal" | "italic";
   backgroundColor?: string;
   strokeColor?: string;
   strokeWidth?: number;
@@ -206,6 +208,12 @@ export interface VideoProjectDraft {
     deadAirCutFingerprint?: string;
     deadAirCutRanges?: Array<{ startMs: number; endMs: number }>;
     cameraMotionPlan?: CameraMotionPlan;
+    visualMatch?: {
+      planFingerprint: string;
+      mode: "original" | "reordered";
+      previousProjectJson?: string;
+      appliedAt: string;
+    };
   };
 }
 

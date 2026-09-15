@@ -12,7 +12,7 @@ import {
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
 import { loadEnabledLlmModelRows } from "./enabledLlmModels";
 import { selectLlmModelCandidates } from "./intelligentModelSelector";
-import { shouldUseCloudTasksForMediaJobs } from "./mediaJobDispatchMode";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { getRedisClient } from "./redis";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { computeRenderHash } from "./renderHash";
@@ -32959,37 +32959,32 @@ async function submitRenderJob(params: {
     });
     await setRenderJobKey(jobId, "spec", renderSpec);
     await addActiveRenderJob(String(params.auth.userId), jobId);
-    if (await shouldUseCloudTasksForMediaJobs()) {
-      const { enqueueTask } = await import("./cloudTasks");
-      await enqueueTask({
-        queueName,
-        handlerPath: "/_internal/tasks/process-video",
-        payload: { render_spec: renderSpec, queue_name: queueName },
-      });
-    } else {
-      const runtime = await getAppRuntimeConfig();
-      const response = await fetch(
-        `${runtime.pythonBackendUrl}/api/v1/media/tasks/process-video`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            render_spec: renderSpec,
-            queue_name: queueName,
-          }),
-        }
-      );
-      if (!response.ok) {
-        await setRenderJobKey(jobId, "status", {
-          status: "error",
-          progress: 0,
-          jobId,
-          message: "Failed to dispatch render job",
-        });
-        await removeActiveRenderJob(String(params.auth.userId), jobId);
-        throw new Error(`Failed to dispatch render job: ${response.status}`);
-      }
-    }
+    await createControlPlaneJob({
+      context: {
+        tenantId: params.auth.tenantId,
+        actorType: "user",
+        actorId: params.auth.userId,
+        authorizationScope: "marketplace:auto-review:render",
+        correlationId: `marketplace-render:${jobId}`,
+        idempotencyKey: `marketplace-render:${params.auth.tenantId}:${jobId}`,
+      },
+      definition: {
+        contractVersion: "feature-186-v1",
+        jobType: "video.render",
+        executionClass: "cpu",
+        input: { renderSpec, queueName },
+        retryPolicy: {
+          maxAttempts: 3,
+          baseDelayMs: 5_000,
+          maxDelayMs: 15 * 60_000,
+          jitter: "bounded",
+          deadlineMs: 6 * 60 * 60 * 1000,
+          allowedErrorClasses: ["retryable", "timeout", "unavailable"],
+        },
+        timeoutPolicy: { softTimeoutMs: 30 * 60_000, hardTimeoutMs: 35 * 60_000 },
+        requiredCapabilities: { runtime: "cloudflare-container", queue: queueName },
+      },
+    });
   } catch (error) {
     const refund = await refundMarketplaceRenderCredits({
       auth: params.auth,

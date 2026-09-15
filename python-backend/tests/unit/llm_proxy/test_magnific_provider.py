@@ -164,7 +164,7 @@ def test_base_url_normalization_rejects_unsafe_hosts():
 async def test_rejects_unsafe_input_urls_before_submit():
     provider = MagnificProvider(api_key="secret-key", client=_client(lambda request: httpx.Response(200, json={})))
     try:
-        with pytest.raises(MagnificProviderError, match="public host"):
+        with pytest.raises(MagnificProviderError, match="MEDIA_REFERENCE_INVALID"):
             await provider.generate_image("magnific/seedream-v5-lite-edit", {"image_url": "https://127.0.0.1/private.png"})
     finally:
         await provider.aclose()

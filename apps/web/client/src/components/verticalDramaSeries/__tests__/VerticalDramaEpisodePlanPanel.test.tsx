@@ -5,7 +5,7 @@
  * state when `episodePlan` is null, and omitting the จุดค้าง section when
  * `cliffhangerLine` is null.
  */
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { VerticalDramaEpisodePlanPanel } from "@/components/verticalDramaSeries/VerticalDramaEpisodePlanPanel";
@@ -80,5 +80,36 @@ describe("VerticalDramaEpisodePlanPanel", () => {
     expect(
       screen.queryByTestId("vd-episode-plan-key-beats")
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps the nine-shot summary collapsed until the accessible toggle is clicked", () => {
+    render(
+      <VerticalDramaEpisodePlanPanel
+        lang="th"
+        episodePlan={null}
+        storyPlan={{
+          summary: "เรื่องราวต่อเนื่องตั้งแต่เริ่มต้นจนจบ",
+          shots: [
+            { shotNumber: 1, summary: "ตัวละครเริ่มลงมือ" },
+            { shotNumber: 2, summary: "ตัวละครเห็นผลลัพธ์" },
+          ],
+        }}
+      />
+    );
+
+    expect(
+      screen.getByTestId("vd-episode-plan-story-summary")
+    ).toHaveTextContent("เรื่องราวต่อเนื่อง");
+    expect(
+      screen.queryByTestId("vd-episode-plan-shot-summary-list")
+    ).not.toBeInTheDocument();
+
+    const toggle = screen.getByTestId("vd-episode-plan-shot-summary-toggle");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByTestId("vd-episode-plan-shot-1")).toHaveTextContent(
+      "ตัวละครเริ่มลงมือ"
+    );
   });
 });

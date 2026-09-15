@@ -7,6 +7,9 @@ export const SKILL_SLUG_ALIASES = {
   "grok-imagine-creator": "grok-imagine-prompt-planner",
   "elevenlabs-beauty-dialogue": "elevenlabs-product-voiceover-dialogue",
   "create-image-prompt": "image_prompt_engineer",
+  // The portable storyboard bundle keeps its historical underscore ID while
+  // the database/catalog uses the folder slug as the canonical reference.
+  cute_child_image_generator: "cute-child-image-generator",
   "marketplace-auto-review-director": "media-production-storyboard-planner",
   "marketplace-auto-review-verifier": "media-production-plan-verifier",
   "vertical-drama-season-critique": "vertical-drama-season-dramaturgy-critic",

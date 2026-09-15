@@ -9,10 +9,11 @@ import {
 const MAX_INPUT_DEPTH = 12;
 const MAX_INPUT_KEYS = 500;
 const MAX_STRING_LENGTH = 24_000;
+const MAX_SERIALIZED_PAYLOAD_BYTES = 1_048_576;
 const SECRET_KEY = /(authorization|api[_-]?key|credential|password|secret|token|private[_-]?key|signed[_-]?url)/i;
 const EXECUTION_CLASSES = new Set(["short", "long", "external", "cpu", "gpu", "scheduled"]);
 
-function assertSafeValue(value: unknown, depth: number, seenKeys: { count: number }): void {
+function assertSafeValue(value: unknown, depth: number, seenKeys: { count: number }, ancestors = new WeakSet<object>()): void {
   if (depth > MAX_INPUT_DEPTH) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition nesting is too deep");
   }
@@ -24,19 +25,33 @@ function assertSafeValue(value: unknown, depth: number, seenKeys: { count: numbe
   }
   if (value === null || typeof value === "number" || typeof value === "boolean") return;
   if (Array.isArray(value)) {
-    value.forEach(item => assertSafeValue(item, depth + 1, seenKeys));
+    if (ancestors.has(value)) {
+      throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition contains a circular value");
+    }
+    ancestors.add(value);
+    value.forEach(item => assertSafeValue(item, depth + 1, seenKeys, ancestors));
+    ancestors.delete(value);
     return;
   }
   if (typeof value !== "object") {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition contains an unsupported value");
   }
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    seenKeys.count += 1;
-    if (seenKeys.count > MAX_INPUT_KEYS) {
-      throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition contains too many keys");
+  const objectValue = value as object;
+  if (ancestors.has(objectValue)) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition contains a circular value");
+  }
+  ancestors.add(objectValue);
+  try {
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      seenKeys.count += 1;
+      if (seenKeys.count > MAX_INPUT_KEYS) {
+        throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition contains too many keys");
+      }
+      assertSafeValue(key, depth + 1, seenKeys, ancestors);
+      assertSafeValue(child, depth + 1, seenKeys, ancestors);
     }
-    assertSafeValue(key, depth + 1, seenKeys);
-    assertSafeValue(child, depth + 1, seenKeys);
+  } finally {
+    ancestors.delete(objectValue);
   }
 }
 
@@ -121,13 +136,24 @@ export function validateJobDefinition(definition: JobDefinition): void {
   }
   const seenKeys = { count: 0 };
   assertSafeValue(hashInput(definition), 0, seenKeys);
-  if (definition.idempotencyKey && definition.idempotencyKey.length > 128) {
-    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey is too long");
+  const serializedDefinition = JSON.stringify(normalizeForHash(hashInput(definition)));
+  if (typeof serializedDefinition !== "string" || Buffer.byteLength(serializedDefinition, "utf8") > MAX_SERIALIZED_PAYLOAD_BYTES) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "Job definition payload is too large");
+  }
+  if (definition.idempotencyKey !== undefined && (
+    typeof definition.idempotencyKey !== "string"
+    || !definition.idempotencyKey.trim().normalize("NFC")
+    || definition.idempotencyKey.trim().normalize("NFC").length > 128
+  )) {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey is empty or too long");
   }
 }
 
 /** Tenant-scoped idempotency keys use trim + NFC normalization before storage/lookup. */
 export function normalizeIdempotencyKey(value: string): string {
+  if (typeof value !== "string") {
+    throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey must be a string");
+  }
   const normalized = value.trim().normalize("NFC");
   if (!normalized || normalized.length > 128) throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "idempotencyKey is empty or too long");
   return normalized;
@@ -142,6 +168,10 @@ export function validateBoundedPayload(value: unknown, label = "payload"): void 
   const seenKeys = { count: 0 };
   try {
     assertSafeValue(value, 0, seenKeys);
+    const serialized = JSON.stringify(value);
+    if (typeof serialized !== "string" || Buffer.byteLength(serialized, "utf8") > MAX_SERIALIZED_PAYLOAD_BYTES) {
+      throw new JobControlPlaneError("JOB_PAYLOAD_INVALID", `${label}: payload is too large`);
+    }
   } catch (error) {
     if (error instanceof JobControlPlaneError) throw new JobControlPlaneError("JOB_PAYLOAD_INVALID", `${label}: ${error.message}`);
     throw error;

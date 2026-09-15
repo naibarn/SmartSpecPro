@@ -4,6 +4,7 @@ import { save as saveFileDialog } from "@tauri-apps/plugin-dialog";
 import type { DirectoryEntry } from "./MediaExplorerView";
 import type { NleClip, TextPresetStyle } from "../../types/nleProject";
 import { generateSrt, generateVtt, generateAss, type SubtitleSegmentItem } from "./subtitleFormatters";
+import { useWorkerLocale } from "../../app/workerContext";
 
 type SubtitleEngine = "whisper.cpp" | "faster-whisper" | "vibevoice-asr" | "cloud";
 type CapabilityState = "checking" | "ready" | "unavailable";
@@ -25,6 +26,8 @@ export function AutoSubtitleModal({
   sourceVideoFile,
   onApplySubtitles,
 }: AutoSubtitleModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [language, setLanguage] = useState<"th" | "en" | "auto">("th");
   const [engine, setEngine] = useState<SubtitleEngine>("whisper.cpp");
   const [wordTimestamps, setWordTimestamps] = useState(false);
@@ -278,8 +281,8 @@ export function AutoSubtitleModal({
           <div className="modal-title-group">
             <span className="modal-title-icon">🎙️</span>
             <div>
-              <h3>สร้าง Subtitle อัตโนมัติ (AI Whisper Transcribe)</h3>
-              <p className="modal-subtitle">เลือก engine ที่ติดตั้งจริง แล้วตรวจสอบผลก่อนวางลง Timeline</p>
+              <h3>{t("สร้าง Subtitle อัตโนมัติ (AI Whisper Transcribe)", "Create subtitles automatically (AI Whisper Transcribe)")}</h3>
+              <p className="modal-subtitle">{t("เลือก engine ที่ติดตั้งจริง แล้วตรวจสอบผลก่อนวางลง Timeline", "Choose an installed engine and review the result before placing it on the timeline")}</p>
             </div>
           </div>
           <button type="button" className="modal-close-button" onClick={onClose} disabled={isTranscribing}>✕</button>
@@ -305,7 +308,7 @@ export function AutoSubtitleModal({
           )}
           <div className="modal-grid-two">
             <div className="modal-field-block">
-              <label className="field-label" htmlFor="subtitle-engine">เครื่องมือถอดเสียง (ASR engine)</label>
+              <label className="field-label" htmlFor="subtitle-engine">{t("เครื่องมือถอดเสียง (ASR engine)", "Speech recognition engine (ASR)")}</label>
               <select id="subtitle-engine" value={engine} onChange={(e) => setEngine(e.target.value as SubtitleEngine)} disabled={isTranscribing}>
                 <option value="whisper.cpp" disabled={engineCapabilities["whisper.cpp"] === "unavailable"}>HyperFrames · Whisper.cpp · {engineCapabilities["whisper.cpp"] === "ready" ? "พร้อมใช้ (local)" : engineCapabilities["whisper.cpp"] === "checking" ? "กำลังตรวจสอบ runtime" : "runtime ไม่พร้อมใช้"}</option>
                 <option value="faster-whisper" disabled={engineCapabilities["faster-whisper"] !== "ready"}>Faster-Whisper + WhisperX · {engineCapabilities["faster-whisper"] === "ready" ? "พร้อมใช้" : "ยังไม่ติดตั้ง runtime"}</option>
@@ -315,7 +318,7 @@ export function AutoSubtitleModal({
               <small className="field-hint">ระบบจะไม่ดาวน์โหลดโมเดลหรือสลับไป engine อื่นโดยอัตโนมัติ</small>
             </div>
             <div className="modal-field-block">
-              <label className="field-label">ภาษาเสียงพูด (Spoken Language)</label>
+              <label className="field-label">{t("ภาษาเสียงพูด (Spoken Language)", "Spoken language")}</label>
               <select value={language} onChange={(e) => setLanguage(e.target.value as "th" | "en" | "auto")}>
                 <option value="th">🇹🇭 ภาษาไทย (Thai)</option>
                 <option value="en">🇺🇸 English</option>
@@ -324,7 +327,7 @@ export function AutoSubtitleModal({
             </div>
 
             <div className="modal-field-block">
-              <label className="field-label">รูปแบบตัวอักษรยอดนิยม (Preset)</label>
+              <label className="field-label">{t("รูปแบบตัวอักษรยอดนิยม (Preset)", "Text style preset")}</label>
               <select value={stylePreset} onChange={(e) => setStylePreset(e.target.value as TextPresetStyle)}>
                 <option value="viral_word_highlight">⚡ Viral Word Highlight (TikTok/Hormozi)</option>
                 <option value="impact_top_hook">🔥 Impact Top Hook (ตัวหนาสีเหลืองด้านบน)</option>
@@ -465,7 +468,7 @@ export function AutoSubtitleModal({
 
         <div className="media-intent-modal-footer">
           <button type="button" className="secondary-button" onClick={onClose} disabled={isTranscribing}>
-            ยกเลิก
+            {t("ยกเลิก", "Cancel")}
           </button>
           <button
             type="button"

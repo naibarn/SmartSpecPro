@@ -1,1 +1,1 @@
-"""Celery worker tasks for OpenSandbox job execution."""
+"""Long-running Python worker runtimes."""

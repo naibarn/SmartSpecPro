@@ -2,7 +2,6 @@ import { and, asc, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
 
 import type { DrizzleDB } from "../db";
 import { getDb } from "../db";
-import { enqueueTask } from "./cloudTasks";
 import { refreshLibraryKnowledgeItem } from "./libraryKnowledgeBackfillService";
 import { libraryIndexJobs } from "../../drizzle/schema";
 
@@ -10,10 +9,6 @@ const DEFAULT_LIBRARY_KNOWLEDGE_REFRESH_LIMIT = 25;
 const MAX_LIBRARY_KNOWLEDGE_REFRESH_LIMIT = 200;
 const KNOWLEDGE_REFRESH_RETRY_BASE_MS = 30_000;
 const KNOWLEDGE_REFRESH_RETRY_CAP_MS = 15 * 60 * 1000;
-
-function useCloudTasks(): boolean {
-  return process.env.USE_CLOUD_TASKS === "true";
-}
 
 export type LibraryKnowledgeRefreshExecutionStatus =
   | "pending"
@@ -322,35 +317,6 @@ export async function dispatchLibraryKnowledgeRefreshWorker(
 ): Promise<DispatchLibraryKnowledgeRefreshWorkerResult> {
   const normalizedFilter = normalizeWorkerFilter(input);
   const limit = input?.limit ? normalizeWorkerLimit(input.limit) : undefined;
-  const payload: Record<string, unknown> = {};
-
-  if (limit !== undefined) {
-    payload.limit = limit;
-  }
-  if (normalizedFilter?.jobIds?.length === 1) {
-    payload.jobId = normalizedFilter.jobIds[0];
-  }
-  if (normalizedFilter?.libraryItemId) {
-    payload.libraryItemId = normalizedFilter.libraryItemId;
-  }
-  if (normalizedFilter?.tenantId) {
-    payload.tenantId = normalizedFilter.tenantId;
-  }
-
-  if (useCloudTasks()) {
-    const taskName = await enqueueTask({
-      queueName: "periodic-tasks",
-      handlerPath: "/_internal/tasks/library-knowledge-refresh",
-      payload,
-      delaySeconds: input?.delaySeconds,
-      targetService: "node",
-    });
-
-    return {
-      mode: "cloud_tasks",
-      taskName,
-    };
-  }
 
   return {
     mode: "inline",

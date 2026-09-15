@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Validates Docker images build correctly and meet Cloud Run requirements.
 # Run from repository root: ./scripts/test-docker-images.sh
+# Retired: the production container target is Cloudflare Containers.
+echo "ERROR: test-docker-images.sh is retired for the Cloud Run runtime; use the Cloudflare Container contract tests." >&2
+exit 1
 
 set -euo pipefail
 

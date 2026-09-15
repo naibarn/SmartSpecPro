@@ -18,6 +18,8 @@ const CONTROL_PLANE_TIMEOUT_MS: u64 = 30_000;
 const WORKER_CLAIM_TIMEOUT_MS: u64 = 15_000;
 const ARTIFACT_UPLOAD_TIMEOUT_MS: u64 = 30 * 60 * 1000;
 const ARTIFACT_UPLOAD_ATTEMPTS: u8 = 3;
+const ARTIFACT_COMPLETE_ATTEMPTS: u8 = 3;
+const ARTIFACT_COMPLETE_RETRY_BACKOFF_MS: [u64; 2] = [500, 1_500];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -315,7 +317,7 @@ pub async fn upload_worker_artifact_file(
         .ok_or_else(|| "presigned artifact upload is missing uploadUrl".to_string())?;
     upload_presigned_artifact(&upload_url, content_type, &absolute_path, size_bytes).await?;
 
-    post_json(
+    post_json_with_retry(
         connection,
         &connection.server_url,
         &format!("/api/worker-jobs/{job_id}/artifacts/complete"),
@@ -330,6 +332,8 @@ pub async fn upload_worker_artifact_file(
             lease_owner_token: lease_owner_token.into(),
             assignment_attempt: Some(assignment_attempt.into()),
         },
+        ARTIFACT_COMPLETE_ATTEMPTS,
+        &ARTIFACT_COMPLETE_RETRY_BACKOFF_MS,
     )
     .await
 }
@@ -646,12 +650,16 @@ where
     }
     let response = request.json(&payload_value).send().await.map_err(|error| {
         if error.is_timeout() {
-            format!("worker control plane request timed out after {timeout_ms}ms: {error}")
+            format!(
+                "worker control plane request timed out for {path} after {timeout_ms}ms: {error}"
+            )
         } else {
-            format!("worker control plane request failed: {error}")
+            format!("worker control plane request failed for {path}: {error}")
         }
     })?;
-    read_json_response(response).await
+    read_json_response(response)
+        .await
+        .map_err(|error| format!("{error} for {path}"))
 }
 
 async fn post_json<T, P>(
@@ -674,6 +682,68 @@ where
         CONTROL_PLANE_TIMEOUT_MS,
     )
     .await
+}
+
+async fn post_json_with_retry<T, P>(
+    connection: &WorkerLoopConnection,
+    server_url: &str,
+    path: &str,
+    bearer_token: &str,
+    payload: &P,
+    max_attempts: u8,
+    retry_backoff_ms: &[u64],
+) -> Result<T, String>
+where
+    T: DeserializeOwned,
+    P: Serialize + ?Sized,
+{
+    let attempts = max_attempts.max(1);
+    let mut last_error = None;
+
+    for attempt in 0..attempts {
+        match post_json(connection, server_url, path, bearer_token, payload).await {
+            Ok(value) => return Ok(value),
+            Err(error) if attempt + 1 < attempts && is_retryable_control_plane_error(&error) => {
+                last_error = Some(error);
+                let backoff_ms = retry_backoff_ms
+                    .get(attempt as usize)
+                    .copied()
+                    .unwrap_or_else(|| retry_backoff_ms.last().copied().unwrap_or(0));
+                if backoff_ms > 0 {
+                    tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Err(last_error.unwrap_or_else(|| "worker control plane retry failed without an error".into()))
+}
+
+fn is_retryable_control_plane_error(message: &str) -> bool {
+    let normalized = message.to_ascii_lowercase();
+    if normalized.contains("worker control plane request failed")
+        || normalized.contains("worker control plane request timed out")
+        || normalized.contains("failed to read control plane response")
+    {
+        return true;
+    }
+
+    let Some(status_start) = normalized.find("worker control plane returned http ") else {
+        return false;
+    };
+    let code_start = status_start + "worker control plane returned http ".len();
+    let Some(status) = normalized[code_start..]
+        .chars()
+        .take(3)
+        .collect::<String>()
+        .parse::<u16>()
+        .ok()
+    else {
+        return false;
+    };
+
+    matches!(status, 408 | 429 | 500..=599)
 }
 
 async fn post_json_with_timeout<T, P>(
@@ -1005,6 +1075,42 @@ mod tests {
             sha256_file(&path).unwrap(),
             "5b33934eb21b484cae468bcc370ae0cef64b292a381a00801ee0c4920a658849"
         );
+    }
+
+    #[test]
+    fn artifact_completion_retries_only_transient_control_plane_failures() {
+        for error in [
+            "worker control plane request failed for /api/worker-jobs/job-1/artifacts/complete: connection reset",
+            "worker control plane request timed out after 30000ms: timeout",
+            "worker control plane returned HTTP 408: request timeout",
+            "worker control plane returned HTTP 429: too many requests",
+            "worker control plane returned HTTP 500: upstream unavailable",
+            "worker control plane returned HTTP 503: service unavailable",
+        ] {
+            assert!(
+                is_retryable_control_plane_error(error),
+                "expected retryable error: {error}"
+            );
+        }
+
+        for error in [
+            "worker control plane returned HTTP 400: invalid artifact",
+            "worker control plane returned HTTP 401: unauthorized",
+            "worker control plane returned HTTP 409: stale assignment",
+            "worker control plane returned HTTP 422: checksum mismatch",
+            "artifact file does not exist: output.mp4",
+        ] {
+            assert!(
+                !is_retryable_control_plane_error(error),
+                "expected non-retryable error: {error}"
+            );
+        }
+    }
+
+    #[test]
+    fn artifact_completion_retry_policy_is_bounded() {
+        assert_eq!(ARTIFACT_COMPLETE_ATTEMPTS, 3);
+        assert_eq!(ARTIFACT_COMPLETE_RETRY_BACKOFF_MS, [500, 1_500]);
     }
 
     #[test]

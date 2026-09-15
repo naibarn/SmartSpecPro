@@ -902,8 +902,17 @@ export async function createCapacityAssessmentRun(input: {
   trigger: "manual" | "scheduled";
   requestedByUserId?: number | null;
   tenantId?: string | null;
+  scheduledOccurrenceKey?: string;
 }): Promise<CapacityAssessment> {
   const db = await getDb();
+  if (input.scheduledOccurrenceKey) {
+    const [existingOccurrence] = await db
+      .select()
+      .from(capacityAssessments)
+      .where(eq(capacityAssessments.scheduledOccurrenceKey, input.scheduledOccurrenceKey))
+      .limit(1);
+    if (existingOccurrence) return existingOccurrence;
+  }
   const [activeRun] = await db
     .select()
     .from(capacityAssessments)
@@ -921,6 +930,7 @@ export async function createCapacityAssessmentRun(input: {
       trigger: input.trigger,
       requestedByUserId: input.requestedByUserId ?? null,
       policyVersion: capacityPolicy.version,
+      scheduledOccurrenceKey: input.scheduledOccurrenceKey ?? null,
       snapshot: {
         snapshotVersion: SNAPSHOT_VERSION,
         collectionStatus: "running",

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { NleClip } from "../../types/nleProject";
+import { useWorkerLocale } from "../../app/workerContext";
 
 export interface AiModelItem {
   modelId: string;
@@ -27,6 +28,8 @@ export function AiMediaStudioModal({
   currentTimeMs,
   onAddMediaClip,
 }: AiMediaStudioModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [activeTab, setActiveTab] = useState<"image" | "video" | "audio" | "settings">("image");
 
   // Dynamic Models List from Server API
@@ -336,9 +339,9 @@ export function AiMediaStudioModal({
           <div className="modal-header-title">
             <span className="modal-icon">✨</span>
             <div>
-              <h3>SmartAIHub Media Studio & Generation</h3>
+              <h3>{t("SmartAIHub Media Studio & Generation", "SmartAIHub Media Studio & Generation")}</h3>
               <p className="modal-subtext" style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
-                สร้างภาพ (Text/Image to Image) วิดีโอ และเสียงดนตรีด้วย AI ล้ำสมัย วางลง Timeline ได้ทันที
+                {t("สร้างภาพ (Text/Image to Image) วิดีโอ และเสียงดนตรีด้วย AI ล้ำสมัย วางลง Timeline ได้ทันที", "Create images, video and music with AI and place results on the timeline")}
               </p>
             </div>
           </div>

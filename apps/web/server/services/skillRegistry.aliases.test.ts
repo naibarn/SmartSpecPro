@@ -18,11 +18,18 @@ describe("skillRegistry slug aliases", () => {
 
   it.each([
     ["create-image-prompt", "image_prompt_engineer"],
+    ["cute_child_image_generator", "cute-child-image-generator"],
     ["marketplace-auto-review-director", "media-production-storyboard-planner"],
     ["marketplace-auto-review-verifier", "media-production-plan-verifier"],
     ["vertical-drama-season-critique", "vertical-drama-season-dramaturgy-critic"],
   ])("resolves legacy skill reference %s to %s", (legacySlug, canonicalSlug) => {
     expect(resolveSkillSlugAlias(legacySlug)).toBe(canonicalSlug);
+  });
+
+  it("lists the portable storyboard ID as a legacy alias of the database slug", () => {
+    expect(getLegacySkillSlugAliases("cute-child-image-generator")).toContain(
+      "cute_child_image_generator",
+    );
   });
 
   it("keeps workflow, artifact, and diagnostic references out of executable skill lookup", () => {

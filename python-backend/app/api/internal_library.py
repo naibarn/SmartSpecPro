@@ -73,6 +73,7 @@ MAX_PDF_OCR_PAGES = 3
 REINDEX_TASK_ID_KEY = "vectordb:reindex:task_id"
 REINDEX_BATCH_KEY = "vectordb:reindex:batch"
 REINDEX_BATCH_TTL_SECONDS = 24 * 60 * 60
+REINDEX_TASK_NAME = "app.tasks.media_tasks.reindex_all_library_task"
 GOOGLE_AI_VISION_MODEL = "gemini-2.5-flash"
 GOOGLE_AI_VISION_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GOOGLE_AI_VISION_MODEL}:generateContent"
 VISION_PROMPT = """Analyze this media frame and return a JSON object with EXACTLY these fields:
@@ -2764,9 +2765,30 @@ async def trigger_library_reindex_internal(
     session: AsyncSession = Depends(get_db),
 ):
     """Trigger a full reindex of all library items via Celery (internal)."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient, dispatch_python_task
+
+        baseline_job_id = int(await session.scalar(select(func.max(LibraryIndexJob.id))) or 0)
+        task = dispatch_python_task(
+            REINDEX_TASK_NAME,
+            kwargs={"tenant_id": None},
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+            idempotency_key=f"library:reindex:global:{baseline_job_id}",
+            correlation_id="internal:library-reindex",
+        )
+        if not task.created:
+            snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task.id)
+            canonical = str(snapshot.get("status") or "queued")
+            return ReindexResponse(
+                task_id=task.id,
+                status="running" if canonical in {"queued", "leased", "running", "waiting_external", "retry_scheduled"} else canonical,
+                message="A canonical reindex job already exists",
+            )
+        return ReindexResponse(task_id=task.id, status="started", message="Reindex job has been queued")
+
     import redis
-    from celery.result import AsyncResult
     from app.tasks.media_tasks import reindex_all_library_task
+    from app.services.legacy_task_status import read_legacy_task_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -2779,7 +2801,7 @@ async def trigger_library_reindex_internal(
             else existing_task_id
         )
         existing_batch = _match_reindex_batch_metadata(existing_batch, task_id=str(existing_task_id))
-        result = AsyncResult(existing_task_id)
+        result = read_legacy_task_status(existing_task_id)
         if result.state in ("PENDING", "STARTED", "RETRY"):
             return ReindexResponse(
                 task_id=existing_task_id,
@@ -2804,7 +2826,16 @@ async def trigger_library_reindex_internal(
         await session.scalar(select(func.max(LibraryIndexJob.id)))
         or 0
     )
-    task = reindex_all_library_task.delay(tenant_id=None)
+    from app.services.job_control_plane import dispatch_python_task
+
+    task = dispatch_python_task(
+        reindex_all_library_task.name,
+        kwargs={"tenant_id": None},
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"library:reindex:global:{baseline_job_id}",
+        correlation_id="internal:library-reindex",
+        legacy_task=reindex_all_library_task,
+    )
     batch_metadata = {
         "task_id": task.id,
         "baseline_job_id": baseline_job_id,
@@ -2829,8 +2860,37 @@ async def get_library_reindex_status_internal(
     session: AsyncSession = Depends(get_db),
 ):
     """Check the status of the current reindex job (internal)."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        task_id = await asyncio.to_thread(
+            JobControlPlaneClient().latest,
+            REINDEX_TASK_NAME,
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        )
+        if not task_id:
+            return ReindexStatusResponse(status="idle", task_id=None, result=None)
+        snapshot = await asyncio.to_thread(JobControlPlaneClient().status, task_id)
+        canonical = str(snapshot.get("status") or "queued")
+        status_map = {
+            "queued": "running",
+            "leased": "running",
+            "running": "running",
+            "waiting_external": "running",
+            "retry_scheduled": "running",
+            "succeeded": "completed",
+            "failed": "failed",
+            "cancelled": "cancelled",
+            "expired": "failed",
+        }
+        return ReindexStatusResponse(
+            task_id=task_id,
+            status=status_map.get(canonical, canonical),
+            result=snapshot.get("output") if isinstance(snapshot.get("output"), dict) else None,
+        )
+
     import redis
-    from celery.result import AsyncResult
+    from app.services.legacy_task_status import read_legacy_task_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -2842,7 +2902,7 @@ async def get_library_reindex_status_internal(
 
     task_id_str = task_id.decode() if isinstance(task_id, bytes) else str(task_id)
     batch_metadata = _match_reindex_batch_metadata(batch_metadata, task_id=task_id_str)
-    result = AsyncResult(task_id_str)
+    result = read_legacy_task_status(task_id_str)
     batch_summary = await _build_reindex_batch_summary(session, batch_metadata)
     task_result = result.result if isinstance(result.result, dict) else None
     merged_batch_metadata = _merge_reindex_batch_outcome(batch_metadata, task_result)

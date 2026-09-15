@@ -1,0 +1,2 @@
+smartspec-celery-media|running|smartspecpro|healthy|celery-media|{"sourceFingerprint": "old"}|new|idle
+smartspec-celery-beat|running|smartspecpro|healthy|celery-beat|{"sourceFingerprint": "beat"}|beat|idle

@@ -16,6 +16,11 @@ const DOCS_INDEX =
 const IMAGES_INDEX =
   process.env.VECTORIZE_IMAGES_INDEX || "images-index-prod";
 const MIN_RELEVANCE_SCORE = 0.5;
+const MAX_VECTORIZE_SEARCH_TOP_K = 50;
+
+function boundedTopK(limit: number): number {
+  return Math.min(Math.max(Number.isFinite(limit) ? Math.floor(limit) : 1, 1), MAX_VECTORIZE_SEARCH_TOP_K);
+}
 
 export interface DocSearchResult {
   id: string;
@@ -57,7 +62,7 @@ export async function searchDocs(params: {
       operation: "search",
       indexName: DOCS_INDEX,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
       providerConfig,
     });
@@ -66,7 +71,9 @@ export async function searchDocs(params: {
     return matches
       .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
       .map((match) => ({
-        id: match.id,
+        id: typeof match.metadata.sourceId === "string" && match.metadata.sourceId
+          ? match.metadata.sourceId
+          : match.id,
         score: match.score,
         title: match.metadata.title,
         type: match.metadata.type,
@@ -102,7 +109,7 @@ export async function searchImages(params: {
       operation: "search",
       indexName: IMAGES_INDEX,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
       providerConfig,
     });
@@ -111,7 +118,9 @@ export async function searchImages(params: {
     return matches
       .filter((match) => match.score >= MIN_RELEVANCE_SCORE)
       .map((match) => ({
-        id: match.id,
+        id: typeof match.metadata.sourceId === "string" && match.metadata.sourceId
+          ? match.metadata.sourceId
+          : match.id,
         score: match.score,
         imageUrl: match.metadata.sourceUrl,
         filename: match.metadata.title,
@@ -149,7 +158,7 @@ export async function searchImagesByBuffer(params: {
       operation: "search",
       indexName: IMAGES_INDEX,
       vector: queryEmbedding,
-      topK: params.limit,
+      topK: boundedTopK(params.limit),
       filter,
       providerConfig,
     });

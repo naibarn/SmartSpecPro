@@ -36,6 +36,47 @@ container_health() {
     "${DOCKER_BIN}" inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$1" 2>/dev/null || printf 'missing\n'
 }
 
+container_runtime_drift() {
+    local container="$1"
+    local recorded current
+
+    recorded="$("$DOCKER_BIN" exec "$container" sh -c 'cat /tmp/smartspec-celery-runtime.json 2>/dev/null' 2>/dev/null || true)"
+    if [[ -z "$recorded" ]]; then
+        printf 'unknown\n'
+        return 0
+    fi
+
+    current="$("$DOCKER_BIN" exec "$container" python -c 'from app.core.runtime_identity import compute_source_fingerprint; print(compute_source_fingerprint())' 2>/dev/null || true)"
+    if [[ -z "$current" ]]; then
+        printf 'unknown\n'
+    elif printf '%s' "$recorded" | grep -Fq '"sourceFingerprint": "'"$current"'"'; then
+        printf 'no\n'
+    else
+        printf 'yes\n'
+    fi
+}
+
+container_is_idle() {
+    local container="$1"
+    local result
+    result="$("$DOCKER_BIN" exec "$container" python -c '
+import os
+from celery import Celery
+
+control_app = Celery("smartspec-celery-doctor", broker=os.environ["CELERY_BROKER_URL"])
+inspector = control_app.control.inspect(timeout=3)
+active = inspector.active()
+reserved = inspector.reserved()
+if active is None or reserved is None:
+    raise SystemExit(2)
+if any(tasks for tasks in active.values()) or any(tasks for tasks in reserved.values()):
+    print("busy")
+else:
+    print("idle")
+' 2>/dev/null || true)"
+    [[ "$result" == "idle" ]]
+}
+
 service_candidate_count() {
     local service="$1"
     local output
@@ -50,7 +91,7 @@ service_candidate_count() {
 ensure_managed_container() {
     local service="$1"
     local container="$2"
-    local state project health
+    local state project health drift
 
     local candidate_count
     candidate_count="$(service_candidate_count "${service}")"
@@ -70,12 +111,26 @@ ensure_managed_container() {
     if [[ "${state}" == "running" ]]; then
         health="$(container_health "${container}")"
         if [[ "${health}" == "unhealthy" ]]; then
-            # Do not interrupt a possibly in-flight provider request. The
-            # container restart policy and the next doctor pass handle a
-            # stopped process; an unhealthy running process is observable.
+            # Do not interrupt a possibly in-flight provider request.
             log "WARN ${container} is running but unhealthy; no forced restart"
         else
-            log "OK ${container} is running (health=${health})"
+            drift="$(container_runtime_drift "${container}")"
+            if [[ "$drift" == "yes" ]]; then
+                if container_is_idle "${container}"; then
+                    log "WARN ${container} has stale runtime code and is idle; recreating ${service}"
+                    if ! "${DOCKER_BIN}" compose -p "${COMPOSE_PROJECT}" -f "${COMPOSE_FILE}" up -d --no-deps --force-recreate "${service}"; then
+                        log "CRITICAL failed to refresh stale ${service} runtime"
+                        return 1
+                    fi
+                    log "RECOVERED ${container} runtime code"
+                else
+                    log "WARN ${container} has stale runtime code but active/reserved work; deferring recreate"
+                fi
+            elif [[ "$drift" == "unknown" ]]; then
+                log "WARN ${container} runtime fingerprint unavailable; no forced restart"
+            else
+                log "OK ${container} is running (health=${health})"
+            fi
         fi
         return 0
     fi

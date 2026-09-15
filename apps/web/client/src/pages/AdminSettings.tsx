@@ -92,6 +92,7 @@ import {
 } from "@smartspec/shared";
 import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
+import AdminPlatformOperations from "./AdminPlatformOperations";
 import PublicContactProtectionSettingsPanel from "@/components/admin/PublicContactProtectionSettingsPanel";
 import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
 import DocumentOcrSettingsPanel from "@/components/admin/DocumentOcrSettingsPanel";
@@ -2363,6 +2364,12 @@ export default function AdminSettings() {
       label: copy.nav.infrastructure.label,
       sublabel: copy.nav.infrastructure.sublabel,
       icon: Server,
+    },
+    {
+      key: "platform_operations",
+      label: isThai ? "ปฏิบัติการแพลตฟอร์ม" : "Platform Operations",
+      sublabel: isThai ? "หลักฐาน cutover / rollback" : "Cutover evidence & rollback",
+      icon: Shield,
     },
     {
       key: "worker_runtime",
@@ -7876,6 +7883,10 @@ export default function AdminSettings() {
 
               <TabsContent value="infrastructure">
                 <InfrastructureSettingsPanel />
+              </TabsContent>
+
+              <TabsContent value="platform_operations">
+                <AdminPlatformOperations />
               </TabsContent>
 
               <TabsContent value="worker_runtime">

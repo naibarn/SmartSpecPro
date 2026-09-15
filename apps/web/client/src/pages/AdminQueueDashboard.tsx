@@ -380,7 +380,7 @@ export default function AdminQueueDashboard() {
         {/* Background Queues Overview */}
         <DashboardCard
           title="Background Queues"
-          description="Cloud Tasks queues for async processing"
+          description="Cloudflare canonical queues backed by the PostgreSQL outbox"
           leading={<Server className="h-5 w-5 text-slate-500" />}
         >
             {!queueStatus.data?.available ? (

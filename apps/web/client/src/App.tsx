@@ -113,6 +113,7 @@ const Profile = lazy(() => import("./pages/Profile"));
 const Terms = lazy(() => import("./pages/Terms"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const VerifyEmailChange = lazy(() => import("./pages/VerifyEmailChange"));
 const Gallery = lazy(() => import("./pages/Gallery"));
 const Marketplace = lazy(() => import("./pages/Marketplace"));
 const MarketplaceCaptureConnect = lazy(
@@ -175,6 +176,7 @@ const AdminSkillRepositories = lazy(
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
+const AdminPlatformOperations = lazy(() => import("./pages/AdminPlatformOperations"));
 const AdminFinanceRules = lazy(() => import("./pages/AdminFinanceRules"));
 const AdminBillingCenter = lazy(() => import("./pages/AdminBillingCenter"));
 const AdminDatabaseBackups = lazy(() => import("./pages/AdminDatabaseBackups"));
@@ -201,6 +203,7 @@ const DomainThemeEditor = lazy(() => import("./pages/DomainThemeEditor"));
 const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
+const TenantDataTransfer = lazy(() => import("./pages/TenantDataTransfer"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Finance = lazy(() => import("./pages/Finance"));
 const FinanceReports = lazy(() => import("./pages/FinanceReports"));
@@ -833,6 +836,11 @@ function Router() {
               <AdminSettings />
             </RequireAdmin>
           </Route>
+          <Route path="/admin/platform-operations">
+            <RequireAdmin>
+              <AdminPlatformOperations />
+            </RequireAdmin>
+          </Route>
           <Route path="/admin/finance-rules">
             <RequireAdmin>
               <AdminFinanceRules />
@@ -1021,6 +1029,11 @@ function Router() {
           <Route path="/domain-admin/settings">
             <RequireDomainAdmin>
               <TenantSettings />
+            </RequireDomainAdmin>
+          </Route>
+          <Route path="/domain-admin/data-transfer">
+            <RequireDomainAdmin>
+              <TenantDataTransfer />
             </RequireDomainAdmin>
           </Route>
           <Route path="/domain-admin/desktop-host">
@@ -1451,6 +1464,7 @@ function Router() {
             component={UploadPostCallback}
           />
           <Route path="/auth/callback/:provider" component={AuthCallback} />
+          <Route path="/verify-email-change" component={VerifyEmailChange} />
           <Route path="/workers/connect">
             <RequireAuth>
               <WorkerAppConnect />

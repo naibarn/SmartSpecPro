@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { normalizeStoryboardGlobalInput } from "../storyboardSkillFrameworkContracts";
 import {
+  buildStoryboardShotActivity,
   buildCuteChildPromptOnlyRequest,
   buildStoryboardVideoPrompt,
   planStoryboardShots,
@@ -21,6 +22,25 @@ const input = normalizeStoryboardGlobalInput({
 });
 
 describe("Storyboard Skill Framework pipeline", () => {
+  it("varies the activity instructions by shot while preserving the activity family", () => {
+    const first = buildStoryboardShotActivity({
+      baseActivity: "taste food, share food, and laugh",
+      beat: "setup",
+      shotNumber: 1,
+      totalShots: 9,
+    });
+    const turningPoint = buildStoryboardShotActivity({
+      baseActivity: "taste food, share food, and laugh",
+      beat: "turning_point",
+      shotNumber: 6,
+      totalShots: 9,
+    });
+    expect(first).toContain("taste food, share food, and laugh");
+    expect(turningPoint).toContain("taste food, share food, and laugh");
+    expect(first).not.toBe(turningPoint);
+    expect(turningPoint).toContain("change the direction of the story");
+  });
+
   it("plans exact 2-12 shots in narrative order", () => {
     expect(planStoryboardShots({ ...input, totalShots: 2 })).toHaveLength(2);
     expect(
@@ -53,6 +73,16 @@ describe("Storyboard Skill Framework pipeline", () => {
     expect(result.result.generation_request.reference_images).toEqual([
       { asset_id: "asset-1", url: null, role: "identity_reference" },
     ]);
+
+    const second = buildCuteChildPromptOnlyRequest(
+      withReference,
+      planStoryboardShots(withReference)[1]
+    );
+    expect(second.result.generation_prompt).not.toBe(
+      result.result.generation_prompt
+    );
+    expect(result.result.generation_prompt).toContain("Shot 1");
+    expect(second.result.generation_prompt).toContain("Shot 2");
   });
 
   it("runs prompt, image, and video stages in shot order without provider calls in prompt-only mode", async () => {
@@ -77,5 +107,18 @@ describe("Storyboard Skill Framework pipeline", () => {
         language: "th",
       })
     ).toContain("asset-1");
+  });
+
+  it("keeps shot numbering and dialogue bound to the selected shot", () => {
+    const shots = planStoryboardShots({ ...input, totalShots: 9 });
+    expect(shots).toHaveLength(9);
+    expect(shots[0].shotNumber).toBe(1);
+    expect(shots[8].shotNumber).toBe(9);
+    expect(buildStoryboardVideoPrompt({
+      shot: { ...shots[1], dialogueLines: [{ speaker: "เด็ก", text: "ช่วยด้วย", language: "th" }] },
+      imageAssetId: "42",
+      videoModelId: "video-model",
+      language: "th",
+    })).toContain("เด็ก: ช่วยด้วย");
   });
 });

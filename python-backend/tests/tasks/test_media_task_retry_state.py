@@ -1,4 +1,5 @@
 import pytest
+import httpx
 from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -9,6 +10,7 @@ from app.tasks.media_tasks import (
     _generate_image_async,
     _generate_audio_async,
     _is_non_retryable_media_error,
+    _is_retryable_media_download_error,
     _is_openai_policy_media_error,
     _mark_task_failed_async,
     _mark_task_retrying_async,
@@ -117,7 +119,10 @@ def test_permanent_reference_video_and_invalid_format_errors_are_non_retryable()
         RuntimeError("KIE_REFERENCE_IMAGE_INVALID_DATA_URL: invalid encoded data")
     ) is True
     assert _is_non_retryable_media_error(
-        RuntimeError("Kie reference image 1 has unsupported content type image/avif")
+        RuntimeError(
+            "KIE_REFERENCE_IMAGE_UNSUPPORTED_TYPE: "
+            "Kie reference image 1 has unsupported content type image/avif"
+        )
     ) is True
 
 
@@ -137,6 +142,13 @@ def test_reference_size_marker_is_non_retryable_even_when_limit_is_configured():
     ) is True
 
 
+def test_unmarked_provider_size_text_does_not_change_retry_classification():
+    """Configured size limits must use stable markers, not human text."""
+    assert _is_non_retryable_media_error(
+        RuntimeError("provider said the input exceeds the 10MB upload limit")
+    ) is False
+
+
 def test_openai_policy_errors_are_separated_from_other_permanent_failures():
     policy_error = RuntimeError(
         "500: Image generation failed: Task failed: Sorry, but the image we created "
@@ -150,6 +162,20 @@ def test_openai_policy_errors_are_separated_from_other_permanent_failures():
 
 def test_transient_provider_errors_remain_retryable():
     assert _is_non_retryable_media_error(RuntimeError("temporary provider timeout")) is False
+
+
+def test_transient_media_download_errors_are_retryable_but_not_4xx_policy_failures():
+    request = httpx.Request("GET", "https://cdn.example.com/result.mp4")
+    transient = httpx.HTTPStatusError(
+        "server unavailable", request=request, response=httpx.Response(503, request=request)
+    )
+    permanent = httpx.HTTPStatusError(
+        "not found", request=request, response=httpx.Response(404, request=request)
+    )
+
+    assert _is_retryable_media_download_error(transient) is True
+    assert _is_retryable_media_download_error(permanent) is False
+    assert _is_retryable_media_download_error(httpx.TimeoutException("timeout")) is True
 
 
 def test_provider_safety_system_refusals_are_non_retryable():

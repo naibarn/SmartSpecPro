@@ -57,6 +57,24 @@ The runtime must return:
 ## Direct handoff
 `generation_request` should be directly usable by SmartAIHub Image Generation Core.
 
+## Storyboard field binding
+
+When this skill is used by the Storyboard Skill Framework, the application
+provides structured fields rather than one combined prompt:
+
+- `idea` is the overall story premise and shot context.
+- `scene_detail` is the stable environment, lighting, composition, and
+  foreground/background direction shared by the sequence.
+- `custom_activity` is the concrete observable action for the current shot;
+  the orchestrator may add a beat-specific variation so shots do not repeat.
+- `custom_notes` contains stable identity, realism, styling, camera, safety,
+  and continuity constraints plus any shot-specific continuity instruction.
+
+The skill must preserve these distinctions when building `generation_prompt`.
+It must not treat `scene_detail` or `custom_notes` as a replacement for the
+current shot action, and it must keep `generation_prompt` identical to
+`generation_request.prompt` for the canonical handoff.
+
 
 # Storyboard Skill Framework Spec
 ## Dynamic Skill-Driven Storyboard Generation for Vertical Short Video

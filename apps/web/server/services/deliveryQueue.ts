@@ -14,6 +14,8 @@ import { decrypt } from "./crypto";
 import { getDb } from "../db";
 import { channelMessages, conversationChannels, systemSettings } from "../../drizzle/schema";
 import { adapterRegistry } from "./channelAdapters/registry";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -242,6 +244,10 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
 // ── Initialization ───────────────────────────────────────────────────────
 
 export async function initDeliveryQueue(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    console.info("[DeliveryQueue] skipped; Feature 186 control-plane adapter is active");
+    return;
+  }
   const redis = getRealtimeClient();
 
   deliveryQueue = new Queue<DeliveryJob>(QUEUE_NAME, {
@@ -313,6 +319,26 @@ export async function initDeliveryQueue(): Promise<void> {
 // ── Enqueue ──────────────────────────────────────────────────────────────
 
 export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    await createControlPlaneJob({
+      context: {
+        tenantId: job.tenantId,
+        actorType: "system",
+        authorizationScope: "channel:delivery",
+        correlationId: `channel-delivery:${job.channelMessageId}`,
+        idempotencyKey: `channel-delivery:${job.tenantId}:${job.channelMessageId}`,
+      },
+      definition: {
+        contractVersion: "feature-186-v1",
+        jobType: "channel.delivery",
+        executionClass: "short",
+        input: job as unknown as Record<string, unknown>,
+        retryPolicy: { maxAttempts: MAX_ATTEMPTS, baseDelayMs: 1000, maxDelayMs: 60000, jitter: "bounded", deadlineMs: 3600000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
+        timeoutPolicy: { softTimeoutMs: 30000, hardTimeoutMs: 120000 },
+      },
+    });
+    return;
+  }
   if (!deliveryQueue) {
     console.warn("[DeliveryQueue] Queue not initialized, skipping delivery");
     return;
@@ -335,7 +361,7 @@ export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
     // Non-critical — proceed with enqueue
   }
 
-  await deliveryQueue.add("deliver", job, {
+  await publishLegacyBullMqJob(deliveryQueue, "deliver", job, {
     jobId: `ch-deliver-${job.channelMessageId}`,
   });
 }

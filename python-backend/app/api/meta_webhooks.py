@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
 from typing import Any
 
@@ -183,7 +184,16 @@ async def ingest_meta_webhook_payload(
     await db.commit()
 
     try:
-        process_social_webhook_event.delay(raw_event_id)
+        from app.services.job_control_plane import dispatch_python_task
+
+        dispatch_python_task(
+            process_social_webhook_event.name,
+            args=[raw_event_id],
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+            idempotency_key=f"social:webhook:{raw_event_id}",
+            correlation_id=f"meta:webhook:{raw_event_id}",
+            legacy_task=process_social_webhook_event,
+        )
     except Exception as exc:
         logger.error("meta_webhook_dispatch_failed", raw_event_id=raw_event_id, error=str(exc))
 

@@ -28,14 +28,14 @@ vi.mock("../../services/embeddingQueue", () => ({
 }));
 
 vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
+  Queue: vi.fn(function QueueMock() { return {
     upsertJobScheduler: mocks.queueUpsertJobSchedulerMock,
     close: mocks.queueCloseMock,
-  })),
-  Worker: vi.fn().mockImplementation(() => ({
+  }; }),
+  Worker: vi.fn(function WorkerMock() { return {
     close: mocks.workerCloseMock,
     on: mocks.workerOnMock,
-  })),
+  }; }),
 }));
 
 import { getDb } from "../../db";

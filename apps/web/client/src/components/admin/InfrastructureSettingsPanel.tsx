@@ -1,8 +1,8 @@
 /**
  * InfrastructureSettingsPanel
  *
- * Admin panel for GCP configuration, Celery/Cloud Tasks toggle,
- * Cloud Tasks queue status dashboard, Redis/cache provider configuration,
+ * Admin panel for Cloudflare runtime configuration,
+ * Cloudflare canonical queue status dashboard, Redis/cache provider configuration,
  * and monitoring/observability settings (Sentry, PostHog, system health).
  */
 
@@ -77,21 +77,6 @@ import {
 // ============================================================
 // Types
 // ============================================================
-
-interface GcpConfigField {
-  value: string;
-  source: "db" | "env" | "none";
-}
-
-type GcpConfig = Record<string, GcpConfigField>;
-
-interface GcpForm {
-  gcp_project_id: string;
-  gcp_region: string;
-  cloud_run_python_url: string;
-  cloud_run_node_url: string;
-  cloud_run_sa_email: string;
-}
 
 interface QueueMetric {
   queueName: string;
@@ -243,18 +228,6 @@ function getBrowserPublicBaseUrl(): string {
 // Constants
 // ============================================================
 
-const GCP_REGIONS = [
-  "asia-southeast1",
-  "asia-east1",
-  "asia-northeast1",
-  "us-central1",
-  "us-east1",
-  "us-west1",
-  "europe-west1",
-  "europe-west3",
-  "australia-southeast1",
-];
-
 const QUEUE_LABELS: Record<string, string> = {
   "media-jobs": "Media Jobs",
   "video-jobs-short": "Video (Short)",
@@ -262,14 +235,6 @@ const QUEUE_LABELS: Record<string, string> = {
   "workflow-tasks": "Workflow",
   "polling-tasks": "Polling",
   "periodic-tasks": "Periodic",
-};
-
-const EMPTY_FORM: GcpForm = {
-  gcp_project_id: "",
-  gcp_region: "",
-  cloud_run_python_url: "",
-  cloud_run_node_url: "",
-  cloud_run_sa_email: "",
 };
 
 // ============================================================
@@ -281,7 +246,6 @@ export default function InfrastructureSettingsPanel() {
   const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const copy = {
     tabs: {
-      gcp: isThai ? "GCP" : "GCP",
       runtime: isThai ? "รันไทม์" : "Runtime",
       tasks: isThai ? "งาน" : "Tasks",
       queues: isThai ? "คิว" : "Queues",
@@ -289,19 +253,6 @@ export default function InfrastructureSettingsPanel() {
       monitoring: isThai ? "มอนิเตอร์" : "Monitoring",
       scaleTier: isThai ? "ระดับการสเกล" : "Scale Tier",
       mcp: isThai ? "MCP/OAuth" : "MCP/OAuth",
-    },
-    gcp: {
-      title: isThai ? "ตั้งค่า GCP" : "GCP Configuration",
-      description: isThai ? "ตั้งค่า Google Cloud Platform สำหรับ Cloud Run และ Cloud Tasks" : "Google Cloud Platform project settings for Cloud Run and Cloud Tasks.",
-      guideTitle: isThai ? "คู่มือการตั้งค่า — วิธีตั้งค่า GCP สำหรับ Cloud Tasks" : "Setup Guide — How to configure GCP for Cloud Tasks",
-      projectId: isThai ? "Project ID" : "Project ID",
-      region: isThai ? "รีเจียน" : "Region",
-      selectRegion: isThai ? "เลือกรีเจียน" : "Select region",
-      pythonServiceUrl: isThai ? "Python Service URL" : "Python Service URL",
-      nodeServiceUrl: isThai ? "Node Service URL" : "Node Service URL",
-      serviceAccountEmail: isThai ? "อีเมล Service Account" : "Service Account Email",
-      save: isThai ? "บันทึกการตั้งค่า GCP" : "Save GCP Configuration",
-      env: isThai ? "มาจาก env" : "from env",
     },
     runtime: {
       title: isThai ? "ปลายทางและโทเคนของ App Runtime" : "App Runtime Endpoints & Tokens",
@@ -345,11 +296,9 @@ export default function InfrastructureSettingsPanel() {
         : "When on, this server claims and renders ffmpeg video-assembly jobs from the Worker Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
     },
   } as const;
-  const [activeTab, setActiveTab] = useState("gcp");
-  const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
-  const [selectedMode, setSelectedMode] = useState<"celery" | "cloud_tasks">("celery");
+  const [activeTab, setActiveTab] = useState("app-runtime");
+  const [selectedMode, setSelectedMode] = useState<"cloudflare">("cloudflare");
   const [showFailedTasks, setShowFailedTasks] = useState(false);
-  const [showGcpGuide, setShowGcpGuide] = useState(false);
   const [showRedisGuide, setShowRedisGuide] = useState(false);
   const [showRedisPasswords, setShowRedisPasswords] = useState(false);
   const [redisForm, setRedisForm] = useState<RedisForm>({
@@ -424,18 +373,12 @@ export default function InfrastructureSettingsPanel() {
   const [confirmServerFfmpegWorker, setConfirmServerFfmpegWorker] = useState(false);
 
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
-  const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
+  const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudflare">("cloudflare");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [applyResults, setApplyResults] = useState<any[] | null>(null);
   const [, setLocation] = useLocation();
 
   // --- Queries ---
-  const {
-    data: gcpConfig,
-    isLoading: gcpLoading,
-    refetch: refetchGcp,
-  } = trpc.infrastructure.getGcpConfig.useQuery();
-
   const {
     data: modeData,
     isLoading: modeLoading,
@@ -519,7 +462,7 @@ export default function InfrastructureSettingsPanel() {
 
   const setDeployModeMutation = trpc.infrastructure.setDeployModeInfo.useMutation({
     onSuccess: (data) => {
-      toast.success(`Deploy mode switched to ${data.mode === "cloudrun" ? "Cloud Run" : "Localhost"}`);
+      toast.success(`Deploy mode switched to ${data.mode === "cloudflare" ? "Cloudflare" : "Localhost"}`);
       refetchDeployMode();
       refetchScaleTier();
     },
@@ -584,14 +527,6 @@ export default function InfrastructureSettingsPanel() {
       : `Failed to create signing key: ${err.message}`),
   });
 
-  const updateGcpMutation = trpc.infrastructure.updateGcpConfig.useMutation({
-    onSuccess: () => {
-      toast.success("GCP configuration saved");
-      refetchGcp();
-    },
-    onError: (err) => toast.error(`Failed to save: ${err.message}`),
-  });
-
   const updateRenderWorkerSettingMutation = trpc.systemSettings.updateSetting.useMutation({
     onSuccess: () => refetchInfrastructureSettings(),
     onError: (err: any) => toast.error(`Failed to save: ${err.message}`),
@@ -616,9 +551,7 @@ export default function InfrastructureSettingsPanel() {
 
   const setModeMutation = trpc.infrastructure.setTaskProcessingMode.useMutation({
     onSuccess: (data) => {
-      toast.success(
-        `Task processing switched to ${data.mode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`,
-      );
+      toast.success(`Task processing is fixed to ${data.mode === "cloudflare" ? "Cloudflare" : data.mode}`);
       refetchMode();
       refetchDashboard();
     },
@@ -642,20 +575,8 @@ export default function InfrastructureSettingsPanel() {
 
   // --- Populate form from query data ---
   useEffect(() => {
-    if (gcpConfig) {
-      setGcpForm({
-        gcp_project_id: gcpConfig.gcp_project_id?.value ?? "",
-        gcp_region: gcpConfig.gcp_region?.value ?? "",
-        cloud_run_python_url: gcpConfig.cloud_run_python_url?.value ?? "",
-        cloud_run_node_url: gcpConfig.cloud_run_node_url?.value ?? "",
-        cloud_run_sa_email: gcpConfig.cloud_run_sa_email?.value ?? "",
-      });
-    }
-  }, [gcpConfig]);
-
-  useEffect(() => {
     if (modeData) {
-      setSelectedMode(modeData.mode as "celery" | "cloud_tasks");
+      setSelectedMode("cloudflare");
     }
   }, [modeData]);
 
@@ -759,17 +680,13 @@ export default function InfrastructureSettingsPanel() {
   // Sync deploy mode — deployModeInfo is the authoritative source
   useEffect(() => {
     if (deployModeInfo?.mode) {
-      setSelectedDeployMode(deployModeInfo.mode as "localhost" | "cloudrun");
+      setSelectedDeployMode(deployModeInfo.mode === "localhost" ? "localhost" : "cloudflare");
     } else if (scaleTierData?.deployMode) {
-      setSelectedDeployMode(scaleTierData.deployMode as "localhost" | "cloudrun");
+      setSelectedDeployMode(scaleTierData.deployMode === "localhost" ? "localhost" : "cloudflare");
     }
   }, [deployModeInfo, scaleTierData]);
 
   // --- Handlers ---
-  const handleSaveGcp = () => {
-    updateGcpMutation.mutate(gcpForm);
-  };
-
   const handleSaveMode = () => {
     setModeMutation.mutate({ mode: selectedMode });
   };
@@ -844,10 +761,8 @@ export default function InfrastructureSettingsPanel() {
       : "Production-safe MCP defaults loaded. Save to apply them.");
   };
 
-  const hasGcpConfig = !!(gcpForm.gcp_project_id && gcpForm.gcp_region);
-
   // --- Loading state ---
-  if (gcpLoading && modeLoading) {
+  if (modeLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -860,10 +775,6 @@ export default function InfrastructureSettingsPanel() {
       <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
-          <TabsTrigger value="gcp" className="flex items-center gap-1">
-            <Cloud className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{copy.tabs.gcp}</span>
-          </TabsTrigger>
           <TabsTrigger value="app-runtime" className="flex items-center gap-1">
             <Globe className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.runtime}</span>
@@ -894,271 +805,21 @@ export default function InfrastructureSettingsPanel() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="gcp">
-      {/* ============================================ */}
-      {/* CARD 1: GCP Configuration                   */}
-      {/* ============================================ */}
-      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <h3 className="flex items-center gap-2 text-lg">
-            <Cloud className="w-5 h-5 text-purple-500" />
-            {copy.gcp.title}
-          </h3>
-          <p>
-            {copy.gcp.description}
-          </p>
-        </div>
-        <div className="space-y-5 pt-6">
-          {/* Setup Guide (collapsible) */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowGcpGuide(!showGcpGuide)}
-              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                {copy.gcp.guideTitle}
-              </span>
-              {showGcpGuide ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-            {showGcpGuide && (
-              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
-                {/* Step 1 */}
-                <div className="pt-3">
-                  <p className="font-semibold mb-1">Step 1: Create GCP Project</p>
-                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
-                    <li>
-                      Go to{" "}
-                      <a
-                        href="https://console.cloud.google.com/projectcreate"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline inline-flex items-center gap-0.5"
-                      >
-                        GCP Console → Create Project
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </li>
-                    <li>Enter a project name (e.g. <code className="bg-blue-100 px-1 rounded">smartaihub-mvp</code>)</li>
-                    <li>Copy the <strong>Project ID</strong> and paste it in the field below</li>
-                  </ol>
-                </div>
-
-                {/* Step 2 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 2: Enable Required APIs</p>
-                  <p className="text-blue-700 mb-1">Run these commands in Google Cloud Shell or local gcloud CLI:</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`gcloud services enable \\
-  run.googleapis.com \\
-  cloudtasks.googleapis.com \\
-  cloudbuild.googleapis.com \\
-  artifactregistry.googleapis.com \\
-  --project=YOUR_PROJECT_ID`}
-                  </pre>
-                </div>
-
-                {/* Step 3 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 3: Create Service Account</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# Create the service account
-gcloud iam service-accounts create cloud-run-api \\
-  --display-name="Cloud Run API" \\
-  --project=YOUR_PROJECT_ID
-
-# Grant Cloud Tasks permissions
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
-  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
-  --role="roles/cloudtasks.enqueuer"
-
-# Grant Cloud Run invoker (for OIDC auth)
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
-  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
-  --role="roles/run.invoker"`}
-                  </pre>
-                </div>
-
-                {/* Step 4 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 4: Create Cloud Tasks Queues</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# Create all 6 queues (adjust region as needed)
-for QUEUE in media-jobs video-jobs-short video-jobs-long \\
-             workflow-tasks polling-tasks periodic-tasks; do
-  gcloud tasks queues create $QUEUE \\
-    --location=YOUR_REGION \\
-    --project=YOUR_PROJECT_ID
-done`}
-                  </pre>
-                </div>
-
-                {/* Step 5 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 5: Deploy Cloud Run Services</p>
-                  <p className="text-blue-700">
-                    After deploying your services to Cloud Run, copy the service URLs
-                    from the{" "}
-                    <a
-                      href="https://console.cloud.google.com/run"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline inline-flex items-center gap-0.5"
-                    >
-                      Cloud Run Console
-                      <ExternalLink className="h-3 w-3" />
-                    </a>{" "}
-                    and paste them in the Python/Node Service URL fields below.
-                  </p>
-                </div>
-
-                {/* Step 6 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 6: Fill in the form below</p>
-                  <ul className="list-disc ml-5 space-y-1 text-blue-700">
-                    <li><strong>Project ID</strong> — Your GCP project ID</li>
-                    <li><strong>Region</strong> — Where queues and services are deployed</li>
-                    <li><strong>Python Service URL</strong> — Cloud Run URL for the Python backend</li>
-                    <li><strong>Node Service URL</strong> — Cloud Run URL for the Node.js API</li>
-                    <li>
-                      <strong>Service Account Email</strong> — Format:{" "}
-                      <code className="bg-blue-100 px-1 rounded text-xs">
-                        cloud-run-api@PROJECT_ID.iam.gserviceaccount.com
-                      </code>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Project ID */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_project_id">{copy.gcp.projectId}</Label>
-              {gcpConfig?.gcp_project_id?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
+        <TabsContent value="cloudflare-runtime">
+          <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+            <div className="border-b bg-gradient-to-r from-orange-50/50 to-cyan-50/30 pb-5">
+              <h3 className="flex items-center gap-2 text-lg">
+                <Cloud className="w-5 h-5 text-orange-500" />
+                Cloudflare production runtime
+              </h3>
+              <p>Google Cloud runtime configuration has been retired. OAuth and Google Drive remain product integrations only.</p>
             </div>
-            <Input
-              id="gcp_project_id"
-              value={gcpForm.gcp_project_id}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, gcp_project_id: e.target.value })
-              }
-              placeholder="e.g. smartaihub-mvp"
-            />
-          </div>
-
-          {/* Region */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_region">{copy.gcp.region}</Label>
-              {gcpConfig?.gcp_region?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
+            <div className="space-y-3 pt-6 text-sm text-slate-600">
+              <p><strong>Target:</strong> Cloudflare Workers, Queues, Workflows, Containers, Cron, Hyperdrive, R2 and Vectorize.</p>
+              <p><strong>Dispatch:</strong> canonical worker_jobs outbox to the deployment-owned <code>/internal/jobs/publish</code> boundary.</p>
+              <p><strong>Activation:</strong> target-account bindings, recovery rehearsal and rollback evidence are required before production enablement.</p>
             </div>
-            <Select
-              value={gcpForm.gcp_region}
-              onValueChange={(val) => setGcpForm({ ...gcpForm, gcp_region: val })}
-            >
-              <SelectTrigger id="gcp_region">
-                <SelectValue placeholder={copy.gcp.selectRegion} />
-              </SelectTrigger>
-              <SelectContent>
-                {GCP_REGIONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Python Service URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_python_url">{copy.gcp.pythonServiceUrl}</Label>
-              {gcpConfig?.cloud_run_python_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_python_url"
-              type="url"
-              value={gcpForm.cloud_run_python_url}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_python_url: e.target.value })
-              }
-              placeholder="https://python-orchestrator-xxx.run.app"
-            />
-          </div>
-
-          {/* Node Service URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_node_url">{copy.gcp.nodeServiceUrl}</Label>
-              {gcpConfig?.cloud_run_node_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_node_url"
-              type="url"
-              value={gcpForm.cloud_run_node_url}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_node_url: e.target.value })
-              }
-              placeholder="https://node-api-xxx.run.app"
-            />
-          </div>
-
-          {/* Service Account Email */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_sa_email">{copy.gcp.serviceAccountEmail}</Label>
-              {gcpConfig?.cloud_run_sa_email?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_sa_email"
-              type="email"
-              value={gcpForm.cloud_run_sa_email}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_sa_email: e.target.value })
-              }
-              placeholder="cloud-run-api@project.iam.gserviceaccount.com"
-            />
-          </div>
-
-          {/* Info notice */}
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-            <Info className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>
-              Changes to service URLs take effect on new task dispatches.
-              Running services may need a restart to pick up URL changes.
-            </span>
-          </div>
-
-          <Button
-            onClick={handleSaveGcp}
-            disabled={updateGcpMutation.isPending}
-          >
-            {updateGcpMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            {copy.gcp.save}
-          </Button>
-        </div>
-      </DashboardCard>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="app-runtime">
@@ -1429,47 +1090,14 @@ done`}
           </p>
         </div>
         <div className="space-y-5 pt-6">
-          {/* Mode selector */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Celery option */}
-            <button
-              type="button"
-              onClick={() => setSelectedMode("celery")}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
-                selectedMode === "celery"
-                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                  : "border-gray-200 hover:border-gray-300 bg-white"
-              }`}
-            >
-              {selectedMode === "celery" && (
-                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
-              )}
-              <div className="font-semibold text-base mb-1">Celery</div>
-              <p className="text-sm text-muted-foreground">
-                Redis-based task queue. Requires Celery workers running
-                (celery-media, celery-video, celery-beat).
-              </p>
-            </button>
-
-            {/* Cloud Tasks option */}
-            <button
-              type="button"
-              onClick={() => setSelectedMode("cloud_tasks")}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
-                selectedMode === "cloud_tasks"
-                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                  : "border-gray-200 hover:border-gray-300 bg-white"
-              }`}
-            >
-              {selectedMode === "cloud_tasks" && (
-                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
-              )}
-              <div className="font-semibold text-base mb-1">Cloud Tasks</div>
-              <p className="text-sm text-muted-foreground">
-                Google Cloud managed queue with OIDC auth. Requires GCP
-                configuration above.
-              </p>
-            </button>
+          <div className="relative rounded-xl border-2 border-purple-500 bg-purple-50/50 p-4 text-left ring-1 ring-purple-200">
+            <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+            <div className="font-semibold text-base mb-1">Cloudflare runtime</div>
+            <p className="text-sm text-muted-foreground">
+              The production target is fixed to Cloudflare Queues, Workflows,
+              Containers/Worker App, and Hyperdrive. Legacy Celery and Google
+              Cloud task controls are retired.
+            </p>
           </div>
 
           {/* Source indicator */}
@@ -1479,17 +1107,6 @@ done`}
               <Badge variant="outline" className="text-xs">
                 {modeData.source}
               </Badge>
-            </div>
-          )}
-
-          {/* Warning if switching to Cloud Tasks without GCP config */}
-          {selectedMode === "cloud_tasks" && !hasGcpConfig && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>
-                GCP Project ID and Region must be configured before enabling
-                Cloud Tasks. Save GCP configuration first.
-              </span>
             </div>
           )}
 
@@ -1505,9 +1122,7 @@ done`}
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            {modeData?.mode === selectedMode
-              ? "No changes"
-              : `Switch to ${selectedMode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`}
+            {modeData?.mode === selectedMode ? "Cloudflare is active" : "Use Cloudflare runtime"}
           </Button>
         </div>
       </DashboardCard>
@@ -1597,7 +1212,7 @@ done`}
                 Queue Status
               </h3>
               <p className="mt-1">
-                Cloud Tasks queue metrics (auto-refreshes every 30s).
+                Cloudflare canonical outbox metrics (auto-refreshes every 30s).
               </p>
             </div>
             <Button
@@ -1939,14 +1554,14 @@ REDIS_UPSTASH_URL=rediss://default:AXxx...@us1-xxx.upstash.io:6379
 
 # Still need local/Memorystore for realtime (pub/sub)
 REDIS_URL=redis://localhost:6379
-# OR for Cloud Run:
+# OR for a separately managed realtime Redis service:
 REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379`}
                   </pre>
                 </div>
 
-                {/* Cloud Run / Production */}
+                {/* Cloudflare / Production */}
                 <div>
-                  <p className="font-semibold mb-1">Cloud Run Production Setup</p>
+                  <p className="font-semibold mb-1">Cloudflare Production Setup</p>
                   <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
 {`# Recommended production configuration:
 # Cache → Upstash (global, serverless, TLS)
@@ -2078,7 +1693,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
                   Memorystore
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GCP managed. Lowest latency via VPC.
+                  Cloudflare-managed connectivity is configured by the deployment pipeline.
                 </p>
                 {redisConfig?.redis_memorystore_url?.source === "env" && (
                   <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
@@ -3056,23 +2671,22 @@ FIREBASE_PROJECT_ID=your-project-id`}
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedDeployMode("cloudrun")}
+                onClick={() => setSelectedDeployMode("cloudflare")}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  selectedDeployMode === "cloudrun"
+                  selectedDeployMode === "cloudflare"
                     ? "bg-purple-100 text-purple-700"
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <Cloud className="h-4 w-4" />
-                Cloud Run (GCP)
+                Cloudflare production target
               </button>
             </div>
-            {selectedDeployMode === "cloudrun" && deployModeInfo && !deployModeInfo.gcpConfigured && (
+            {selectedDeployMode === "cloudflare" && deployModeInfo && !deployModeInfo.runtime?.hardCutover && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
-                  GCP is not configured. Please fill in the <strong>GCP Configuration</strong> section above
-                  before applying Cloud Run mode.
+                Cloudflare hard cutover is not active yet. Target-account bindings and deployment evidence are required.
                 </span>
               </div>
             )}
@@ -3083,7 +2697,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 onClick={() => setDeployModeMutation.mutate({ mode: selectedDeployMode })}
                 disabled={
                   setDeployModeMutation.isPending ||
-                  (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
+                  (selectedDeployMode === "cloudflare" && deployModeInfo !== undefined && !deployModeInfo.runtime?.hardCutover)
                 }
               >
                 {setDeployModeMutation.isPending ? (
@@ -3153,7 +2767,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 <Info className="h-4 w-4" />
                 Configuration Preview — {(scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier}
                 <Badge variant="outline" className="text-xs ml-auto">
-                  {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                  {selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"}
                 </Badge>
               </p>
               {(() => {
@@ -3162,43 +2776,43 @@ FIREBASE_PROJECT_ID=your-project-id`}
                   : (scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier);
                 if (!config) return null;
 
-                if (selectedDeployMode === "cloudrun") {
+                if (selectedDeployMode === "cloudflare") {
                   return (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node Instances</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeMinInstances ?? 0}–{config.cloudRunNodeMaxInstances ?? "—"}
+                          {config.cloudflareNodeMinInstances ?? 0}–{config.cloudflareNodeMaxInstances ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node CPU / Memory</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeCpu ?? "—"} / {config.cloudRunNodeMemory ?? "—"}
+                          {config.cloudflareNodeCpu ?? "—"} / {config.cloudflareNodeMemory ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node Concurrency</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeConcurrency ?? "—"}
+                          {config.cloudflareNodeConcurrency ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python Instances</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonMinInstances ?? 0}–{config.cloudRunPythonMaxInstances ?? "—"}
+                          {config.cloudflarePythonMinInstances ?? 0}–{config.cloudflarePythonMaxInstances ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python CPU / Memory</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonCpu ?? "—"} / {config.cloudRunPythonMemory ?? "—"}
+                          {config.cloudflarePythonCpu ?? "—"} / {config.cloudflarePythonMemory ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python Concurrency</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonConcurrency ?? "—"}
+                          {config.cloudflarePythonConcurrency ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-gray-50 p-3 space-y-1">
@@ -3216,13 +2830,13 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       <div className="rounded-lg bg-purple-50 p-3 space-y-1">
                         <span className="text-xs text-purple-600 block">Media Queue</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunMediaQueueConcurrency ?? "—"} concurrent
+                          {config.cloudflareMediaQueueConcurrency ?? "—"} concurrent
                         </span>
                       </div>
                       <div className="rounded-lg bg-purple-50 p-3 space-y-1">
                         <span className="text-xs text-purple-600 block">Workflow Queue</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunWorkflowQueueConcurrency ?? "—"} concurrent
+                          {config.cloudflareWorkflowQueueConcurrency ?? "—"} concurrent
                         </span>
                       </div>
                     </div>
@@ -3298,13 +2912,12 @@ FIREBASE_PROJECT_ID=your-project-id`}
           )}
 
           {/* Info notice — mode-aware */}
-          {selectedDeployMode === "cloudrun" ? (
+          {selectedDeployMode === "cloudflare" ? (
             <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
               <Cloud className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                Applying will update <strong>Cloud Run service configs</strong> (instances, CPU, memory)
-                and <strong>Cloud Tasks queue concurrency</strong> via <code className="bg-blue-100 px-1 rounded text-xs">gcloud</code> CLI.
-                <strong> Zero-downtime</strong> rolling updates via new Cloud Run revisions.
+                Applying will record Cloudflare target budgets for the deployment pipeline.
+                <strong> No local infrastructure mutation</strong>; target-account bindings and recovery evidence remain gated.
               </span>
             </div>
           ) : (
@@ -3327,19 +2940,19 @@ FIREBASE_PROJECT_ID=your-project-id`}
             disabled={
               applyScaleTierMutation.isPending ||
               (scaleTierData?.tier === selectedTier && selectedDeployMode === (deployModeInfo?.mode ?? "localhost") && !applyResults) ||
-              (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
+              (selectedDeployMode === "cloudflare" && deployModeInfo !== undefined && !deployModeInfo.runtime?.hardCutover)
             }
           >
             {applyScaleTierMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : selectedDeployMode === "cloudrun" ? (
+            ) : selectedDeployMode === "cloudflare" ? (
               <Cloud className="h-4 w-4 mr-2" />
             ) : (
               <Zap className="h-4 w-4 mr-2" />
             )}
             {scaleTierData?.tier === selectedTier
-              ? `Re-apply Current Tier (${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"})`
-              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} — ${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Restart Services"}`}
+              ? `Re-apply Current Tier (${selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"})`
+              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} — ${selectedDeployMode === "cloudflare" ? "Cloudflare" : "Restart Services"}`}
           </Button>
 
           {/* Apply Results */}
@@ -3350,7 +2963,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 Apply Results
                 {applyResults[0]?.mode && (
                   <Badge variant="outline" className="text-xs ml-auto">
-                    {applyResults[0].mode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                    {applyResults[0].mode === "cloudflare" ? "Cloudflare" : "Localhost"}
                   </Badge>
                 )}
               </p>
@@ -3399,14 +3012,14 @@ FIREBASE_PROJECT_ID=your-project-id`}
             <AlertDialogTitle className="flex items-center gap-2">
               Apply Scale Tier Configuration
               <Badge variant="outline" className="text-xs font-normal">
-                {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                {selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"}
               </Badge>
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
                   This will apply the <strong className="capitalize">{selectedTier}</strong> tier
-                  configuration{selectedDeployMode === "cloudrun" ? " to Cloud Run services." : " and restart services."}
+              configuration{selectedDeployMode === "cloudflare" ? " for the Cloudflare deployment pipeline." : " and restart services."}
                 </p>
                 {scaleTierData?.tier && scaleTierData.tier !== selectedTier && (
                   <div className="flex items-center gap-2 text-sm">
@@ -3415,17 +3028,17 @@ FIREBASE_PROJECT_ID=your-project-id`}
                     <Badge className="bg-purple-100 text-purple-700 capitalize">{selectedTier}</Badge>
                   </div>
                 )}
-                {selectedDeployMode === "cloudrun" ? (
+                {selectedDeployMode === "cloudflare" ? (
                   <>
                     <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-                      <strong>Cloud Run:</strong> Zero-downtime rolling updates via new revisions.
+                      <strong>Cloudflare:</strong> target-account deployment and rollback are controlled by the approved pipeline.
                       No service interruption for users.
                     </div>
                     <p className="text-sm">The following changes will be made:</p>
                     <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
-                      <li>Update Node API Cloud Run service (instances, CPU, memory, env vars)</li>
-                      <li>Update Python Orchestrator Cloud Run service (instances, CPU, memory, env vars)</li>
-                      <li>Update Cloud Tasks queue concurrency (media-jobs, workflow-tasks)</li>
+                      <li>Validate Hyperdrive, Queues, Workflows, Containers, Worker App, R2, and Vectorize bindings</li>
+                      <li>Promote only after target-account recovery and rollback evidence is accepted</li>
+                      <li>Apply Cloudflare Queue/Workflow capacity through the target-account deployment pipeline</li>
                       <li>Redis: skipped (Upstash memory is per-plan)</li>
                     </ul>
                   </>
@@ -3465,15 +3078,15 @@ FIREBASE_PROJECT_ID=your-project-id`}
             >
               {applyScaleTierMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : selectedDeployMode === "cloudrun" ? (
+              ) : selectedDeployMode === "cloudflare" ? (
                 <Cloud className="h-4 w-4 mr-2" />
               ) : (
                 <Zap className="h-4 w-4 mr-2" />
               )}
               {applyScaleTierMutation.isPending
                 ? "Applying..."
-                : selectedDeployMode === "cloudrun"
-                  ? "Apply to Cloud Run"
+                : selectedDeployMode === "cloudflare"
+                  ? "Apply Cloudflare target budgets"
                   : "Apply & Restart"}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -8,6 +8,7 @@ import {
   isProductionSpaceStorageUnavailable,
   reconcilePendingProductionExecutions,
 } from "../services/productionSpaceService";
+import { isCloudflareHardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_TENANT_LIMIT = 50;
@@ -43,7 +44,7 @@ function shouldUseInProcessInterval(): boolean {
   const mode = getSchedulerMode();
   if (mode === "interval") return true;
   if (mode === "external") return false;
-  return process.env.USE_CLOUD_TASKS !== "true";
+  return !isCloudflareHardCutoverEnabled();
 }
 
 function createProductionReconcileToken(input: {
@@ -191,7 +192,7 @@ async function tick(): Promise<void> {
 export async function initializeProductionExecutionReconciliationJob(): Promise<void> {
   if (intervalId) return;
   if (!shouldUseInProcessInterval()) {
-    console.log("[production-execution-reconciler] In-process interval disabled; use Cloud Scheduler to POST /_internal/tasks/production-execution-reconcile.");
+    console.log("[production-execution-reconciler] In-process interval disabled; use the Cloudflare Cron/Worker control-plane schedule.");
     return;
   }
   await tick();

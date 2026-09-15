@@ -28,7 +28,7 @@ foreign keys, indexes, retention, bounded payloads, no parallel generic jobs
 ledger, and migration ordering against the repository's current 0305 maximum.
 
 Result: PASS. The plan requires additive migration
-`0306_feature_188_platform_operations.sql` after 0305 and database-level
+`0318_feature_188_platform_operations.sql` after the Feature 189 `0316` schema and `0317` backfill migrations and database-level
 duplicate/orphan protection. No migration file was created during this review.
 
 ## Round 3 — PostgreSQL and Hyperdrive topology

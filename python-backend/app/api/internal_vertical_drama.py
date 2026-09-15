@@ -3,15 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
+import os
 import secrets
 from typing import Optional
 
-from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.core.celery_app import celery_app
 
 router = APIRouter(prefix="/api/internal/vertical-drama", tags=["Internal Vertical Drama"])
 
@@ -36,46 +37,111 @@ class ClipQcFramesRequest(BaseModel):
     wait_seconds: int = Field(default=145, ge=1, le=150)
 
 
-@router.post("/clip-qc-frames", dependencies=[Depends(_verify_proxy_token)])
-async def enqueue_clip_qc_frames(request: ClipQcFramesRequest) -> dict:
-    from app.tasks.media_tasks import extract_clip_qc_frames
-
-    task = extract_clip_qc_frames.apply_async(
-        args=[request.source_url, request.positions, request.max_frames, request.user_id],
-        queue="media",
-    )
-    if not request.wait:
-        return {"status": "queued", "task_id": task.id}
-
-    result = AsyncResult(task.id, app=celery_app)
-    deadline = asyncio.get_running_loop().time() + request.wait_seconds
-    while not result.ready() and asyncio.get_running_loop().time() < deadline:
-        await asyncio.sleep(0.5)
-    if not result.ready():
-        return {"status": "sampling", "task_id": task.id}
-    if result.failed():
-        return {
-            "status": "samples_unavailable",
-            "task_id": task.id,
-            "samples": [],
-            "warning": str(result.result)[:500],
-        }
-    payload = result.result if isinstance(result.result, dict) else {}
-    return {"task_id": task.id, **payload}
+def _feature_186_python_worker_enabled() -> bool:
+    # Canonical status is authoritative as soon as hard cutover is enabled.
+    # The PostgreSQL-pull flag selects the executor, not the status source;
+    # hard-cutover jobs may still be consumed by the Celery compatibility
+    # adapter during a rolling deployment.
+    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
 
 
-@router.get("/clip-qc-frames/{task_id}", dependencies=[Depends(_verify_proxy_token)])
-async def get_clip_qc_frames(task_id: str) -> dict:
-    result = AsyncResult(task_id, app=celery_app)
-    if not result.ready():
-        return {"status": result.state.lower(), "task_id": task_id}
-    if result.failed():
+async def _read_clip_qc_status(task_id: str) -> dict:
+    if _feature_186_python_worker_enabled():
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        return await asyncio.to_thread(JobControlPlaneClient().status, task_id)
+
+    from app.core.celery_app import celery_app
+    from app.services.legacy_task_status import read_legacy_task_status
+
+    result = read_legacy_task_status(task_id, app=celery_app)
+    state = result.state
+    if state in ("PENDING", "STARTED", "RETRY"):
+        return {"status": "running" if state != "PENDING" else "queued", "task_id": task_id}
+    if state == "FAILURE":
+        return {"status": "failed", "task_id": task_id, "error": str(result.result)[:500]}
+    if state == "REVOKED":
+        return {"status": "cancelled", "task_id": task_id}
+    if state == "SUCCESS":
+        payload = result.result if isinstance(result.result, dict) else {}
+        return {"status": "succeeded", "task_id": task_id, "output": payload, **payload}
+    return {"status": state.lower() or "queued", "task_id": task_id}
+
+
+def _clip_qc_control_plane_payload(task_id: str, snapshot: dict) -> dict:
+    status = str(snapshot.get("status") or "queued")
+    progress = snapshot.get("progress") if isinstance(snapshot.get("progress"), dict) else {}
+    output = snapshot.get("output") if isinstance(snapshot.get("output"), dict) else {}
+    if status == "succeeded":
+        return {"task_id": task_id, "status": "succeeded", **output}
+    if status in {"failed", "expired", "cancelled"}:
         return {
             "status": "samples_unavailable",
             "task_id": task_id,
             "samples": [],
-            "warning": str(result.result)[:500],
+            "warning": str(snapshot.get("errorMessage") or snapshot.get("operatorReviewReason") or status)[:500],
         }
-    payload = result.result if isinstance(result.result, dict) else {}
-    return {"task_id": task_id, **payload}
+    return {
+        "status": "sampling" if status in {"leased", "running", "waiting_external"} else status,
+        "task_id": task_id,
+        "progress": progress.get("progress", 0),
+        "stage": progress.get("stage"),
+    }
 
+
+@router.post("/clip-qc-frames", dependencies=[Depends(_verify_proxy_token)])
+async def enqueue_clip_qc_frames(request: ClipQcFramesRequest) -> dict:
+    from app.tasks.media_tasks import extract_clip_qc_frames
+
+    from app.services.job_control_plane import dispatch_python_task
+
+    task = dispatch_python_task(
+        extract_clip_qc_frames.name,
+        args=[request.source_url, request.positions, request.max_frames, request.user_id],
+        queue="media",
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        user_id=request.user_id or None,
+        idempotency_key=(
+            "vertical-drama:clip-qc:"
+            + hashlib.sha256(
+                json.dumps(request.model_dump(), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()[:32]
+        ),
+        correlation_id="internal:vertical-drama-clip-qc",
+        legacy_task=extract_clip_qc_frames,
+    )
+    if not request.wait:
+        return {"status": "queued", "task_id": task.id}
+
+    deadline = asyncio.get_running_loop().time() + request.wait_seconds
+    snapshot = await _read_clip_qc_status(task.id)
+    while snapshot.get("status") in {"queued", "running", "leased", "waiting_external"} and asyncio.get_running_loop().time() < deadline:
+        await asyncio.sleep(0.5)
+        snapshot = await _read_clip_qc_status(task.id)
+    if _feature_186_python_worker_enabled():
+        if snapshot.get("status") in {"queued", "running", "leased", "waiting_external"}:
+            return {"status": "sampling", "task_id": task.id}
+        return _clip_qc_control_plane_payload(task.id, snapshot)
+
+    if snapshot.get("status") in {"queued", "running", "leased", "waiting_external"}:
+        return {"status": "sampling", "task_id": task.id}
+    if snapshot.get("status") == "failed":
+        return {
+            "status": "samples_unavailable",
+            "task_id": task.id,
+            "samples": [],
+            "warning": str(snapshot.get("error") or "clip QC task failed")[:500],
+        }
+    return {"task_id": task.id, **(snapshot.get("output") or {})}
+
+
+@router.get("/clip-qc-frames/{task_id}", dependencies=[Depends(_verify_proxy_token)])
+async def get_clip_qc_frames(task_id: str) -> dict:
+    snapshot = await _read_clip_qc_status(task_id)
+    if _feature_186_python_worker_enabled():
+        return _clip_qc_control_plane_payload(task_id, snapshot)
+    if snapshot.get("status") in {"queued", "running"}:
+        return {"status": snapshot["status"], "task_id": task_id}
+    if snapshot.get("status") == "failed":
+        return {"status": "samples_unavailable", "task_id": task_id, "samples": [], "warning": snapshot.get("error")}
+    return {"task_id": task_id, **(snapshot.get("output") or {})}

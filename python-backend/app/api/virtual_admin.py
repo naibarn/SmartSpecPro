@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import secrets
 from typing import Any
 
@@ -33,8 +34,17 @@ def _require_internal_access(request: Request) -> None:
 
 @router.get("/celery-health")
 async def celery_health(request: Request) -> dict[str, Any]:
-    """Return Celery worker health status for the System Guardian sensor."""
+    """Return legacy health only before hard cutover; Cloudflare is production-only after it."""
     _require_internal_access(request)
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        return {
+            "runtime": "cloudflare",
+            "retired": "celery",
+            "workers": 0,
+            "activeTasks": 0,
+            "queueLengths": {},
+            "healthy": True,
+        }
     try:
         from app.core.celery_app import celery_app
         import redis as redis_lib
@@ -81,6 +91,8 @@ async def celery_health(request: Request) -> dict[str, Any]:
 async def restart_worker(request: Request) -> dict[str, Any]:
     """Send shutdown signal to a Celery worker (supervisor/systemd auto-restarts)."""
     _require_internal_access(request)
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        raise HTTPException(status_code=410, detail="CELERY_RUNTIME_RETIRED_USE_CLOUDFLARE_OPERATIONS")
     try:
         body = await request.json()
         worker_name = body.get("worker_name")
@@ -100,6 +112,8 @@ async def restart_worker(request: Request) -> dict[str, Any]:
 async def revoke_task(request: Request) -> dict[str, Any]:
     """Revoke/terminate a stuck Celery task."""
     _require_internal_access(request)
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        raise HTTPException(status_code=410, detail="CELERY_RUNTIME_RETIRED_USE_CANONICAL_JOB_CANCEL")
     try:
         body = await request.json()
         task_id = body.get("task_id")

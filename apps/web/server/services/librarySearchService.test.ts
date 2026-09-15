@@ -5,7 +5,10 @@ const {
   mockDb,
   mockGetEffectiveVectorProviderConfig,
   mockResolveVectorProvider,
+  mockDispatchVectorOperation,
+  mockGenerateEmbedding,
   mockFetch,
+  mockGetAppRuntimeConfig,
 } = vi.hoisted(() => {
   const db = {
     select: vi.fn(),
@@ -18,7 +21,10 @@ const {
     mockDb: db,
     mockGetEffectiveVectorProviderConfig: vi.fn(),
     mockResolveVectorProvider: vi.fn(),
+    mockDispatchVectorOperation: vi.fn(),
+    mockGenerateEmbedding: vi.fn(),
     mockFetch: vi.fn(),
+    mockGetAppRuntimeConfig: vi.fn(),
   };
 });
 
@@ -37,6 +43,15 @@ vi.mock("./groupsService", async (importOriginal) => {
 vi.mock("./vectorProvider", () => ({
   getEffectiveVectorProviderConfig: mockGetEffectiveVectorProviderConfig,
   resolveVectorProvider: mockResolveVectorProvider,
+  dispatchVectorOperation: mockDispatchVectorOperation,
+}));
+
+vi.mock("./appRuntimeConfig", () => ({
+  getAppRuntimeConfig: mockGetAppRuntimeConfig,
+}));
+
+vi.mock("./vectorize", () => ({
+  generateEmbedding: mockGenerateEmbedding,
 }));
 
 import { searchLibraryItems } from "./libraryService";
@@ -60,6 +75,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(mockDb);
   mockDb.select.mockReset();
+  // Runtime-config and compatibility paths may perform an additional read;
+  // keep the fixture safe for those reads instead of returning undefined.
+  mockDb.select.mockReturnValue(makeSelect([]));
   mockDb.insert.mockReset();
   mockDb.update.mockReset();
   mockGetEffectiveVectorProviderConfig.mockResolvedValue({
@@ -71,7 +89,13 @@ beforeEach(() => {
     provider: "chromadb",
     fallbackApplied: false,
   });
+  mockDispatchVectorOperation.mockReset();
+  mockGenerateEmbedding.mockReset();
   mockFetch.mockReset();
+  mockGetAppRuntimeConfig.mockImplementation(async () => ({
+    proxyToken: process.env.SMARTSPEC_PROXY_TOKEN || "",
+    pythonBackendUrl: "http://localhost:8000",
+  }));
   vi.stubGlobal("fetch", mockFetch);
   delete process.env.SMARTSPEC_PROXY_TOKEN;
 });
@@ -160,8 +184,9 @@ describe("searchLibraryItems", () => {
       }),
     );
 
-    // Deterministic hybrid ranking: both-channel item first, then vector-only, then keyword-only.
-    expect(response.results.map((r) => r.item_id)).toEqual([3, 2, 1]);
+    // Deterministic hybrid ranking: both-channel item first, then the stronger
+    // keyword result, then the weaker chunk-only fallback result.
+    expect(response.results.map((r) => r.item_id)).toEqual([3, 1, 2]);
     expect(response.results[0].combined_score).toBeGreaterThan(response.results[1].combined_score);
     expect(response.results[1].combined_score).toBeGreaterThan(response.results[2].combined_score);
     expect(response.results.find((r) => r.item_id === 2)?.source_url).toBe("https://cdn.example.com/demo.mp4");
@@ -310,6 +335,7 @@ describe("searchLibraryItems", () => {
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
       .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]))
       .mockReturnValueOnce(makeSelect([]));
 
     const response = await searchLibraryItems(
@@ -358,8 +384,8 @@ describe("searchLibraryItems", () => {
         ownerUserId: 7,
         itemType: "document",
         source: "upload",
-        title: "Launch summary",
-        description: "keyword-only match",
+        title: "Summary memo",
+        description: "keyword-only launch match",
         status: "ready",
         visibility: "private",
         metadata: {},
@@ -390,6 +416,8 @@ describe("searchLibraryItems", () => {
 
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]))
       .mockReturnValueOnce(makeSelect([]));
 
     const response = await searchLibraryItems(
@@ -411,6 +439,73 @@ describe("searchLibraryItems", () => {
     expect(response.results.map((r) => r.item_id)).toEqual([2, 1]);
     expect(response.results[0].vector_score).toBe(0.95);
     expect(response.results[1].vector_score).toBe(0);
+  });
+
+  it("uses Vectorize scores with a tenant/type filter when Cloudflare is the active read provider", async () => {
+    mockGetEffectiveVectorProviderConfig.mockResolvedValue({
+      provider: "cloudflare_vectorize",
+      currentReadProvider: "cloudflare_vectorize",
+      targetProvider: "cloudflare_vectorize",
+      vectorizeIndexName: "library-index",
+    });
+    mockResolveVectorProvider.mockReturnValue({
+      provider: "cloudflare_vectorize",
+      fallbackApplied: false,
+    });
+    mockGenerateEmbedding.mockResolvedValue(Array.from({ length: 768 }, () => 0.1));
+    mockDispatchVectorOperation.mockResolvedValue({
+      matches: [{
+        id: "lib:vector-2",
+        score: 0.94,
+        metadata: {
+          tenantId: "56",
+          type: "library_chunk",
+          itemId: 2,
+          createdAt: Date.now(),
+          title: "",
+          sourceUrl: "",
+        },
+      }],
+    });
+
+    const items = [1, 2].map((id) => ({
+      id,
+      tenantId: 56,
+      ownerUserId: 7,
+      itemType: "document",
+      source: "upload",
+      title: id === 1 ? "Unrelated note" : "Another note",
+      description: "",
+      status: "ready",
+      visibility: "private",
+      metadata: {},
+      sourceUrl: null,
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date(baseDate.getTime() + id * 1000),
+      updatedAt: new Date(baseDate.getTime() + id * 1000),
+    }));
+
+    mockDb.select
+      .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]));
+
+    const response = await searchLibraryItems(
+      { query: "semantic", limit: 10, offset: 0 },
+      { userId: 7, tenantId: 56, role: "user" },
+    );
+
+    expect(mockGenerateEmbedding).toHaveBeenCalledWith("semantic");
+    expect(mockDispatchVectorOperation).toHaveBeenCalledWith(expect.objectContaining({
+      operation: "search",
+      indexName: "library-index",
+      topK: 2,
+      filter: { tenantId: "56", type: "library_chunk" },
+    }));
+    expect(response.results.map((result) => result.item_id)).toEqual([2]);
+    expect(response.results[0].vector_score).toBe(0.94);
   });
 
   it("falls back to chunk scoring when native pgvector search errors", async () => {
@@ -519,6 +614,8 @@ describe("searchLibraryItems", () => {
 
     mockDb.select
       .mockReturnValueOnce(makeSelectWithOrder(items))
+      .mockReturnValueOnce(makeSelect([]))
+      .mockReturnValueOnce(makeSelect([]))
       .mockReturnValueOnce(makeSelect([]));
 
     await searchLibraryItems(

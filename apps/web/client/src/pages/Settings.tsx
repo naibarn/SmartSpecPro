@@ -784,6 +784,34 @@ export default function Settings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const { data: accountAuthStatus, refetch: refetchAccountAuthStatus } =
+    trpc.auth.getAccountAuthStatus.useQuery(undefined, { enabled: isAuthenticated });
+  const requestEmailChangeMut = trpc.auth.requestEmailChange.useMutation({
+    onSuccess: (result) => {
+      setEmailChangePassword('');
+      setNewEmail('');
+      refetchAccountAuthStatus();
+      toast.success(`${t('settings.profile.emailVerificationSent')} ${result.pendingEmail}`);
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const startGoogleOnlyLinkMut = trpc.auth.startGoogleOnlyLink.useMutation({
+    onSuccess: ({ authorizationUrl }) => {
+      sessionStorage.setItem('oauth_account_link', 'google');
+      window.location.href = authorizationUrl;
+    },
+    onError: (error) => toast.error(error.message),
+  });
+  const handleGoogleOnlyLink = async () => {
+    const confirmed = await confirm({
+      title: t('settings.profile.googleOnlyConfirmTitle'),
+      description: t('settings.profile.googleOnlyConfirmDescription'),
+      confirmText: t('settings.profile.continueWithGoogle'),
+    });
+    if (!confirmed) return;
+    startGoogleOnlyLinkMut.mutate({ currentPassword: googleLinkPassword });
+  };
+
   // Context7 states
   const [context7Key, setContext7Key] = useState('');
   const [showContext7Key, setShowContext7Key] = useState(false);
@@ -811,8 +839,38 @@ export default function Settings() {
   });
 
   // Form states
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactAddressLine1, setContactAddressLine1] = useState('');
+  const [contactAddressLine2, setContactAddressLine2] = useState('');
+  const [contactCity, setContactCity] = useState('');
+  const [contactStateOrProvince, setContactStateOrProvince] = useState('');
+  const [contactPostalCode, setContactPostalCode] = useState('');
+  const [contactCountryCode, setContactCountryCode] = useState('');
+  const [ownershipOwnerType, setOwnershipOwnerType] = useState('individual');
+  const [ownershipLegalName, setOwnershipLegalName] = useState('');
+  const [ownershipDisplayName, setOwnershipDisplayName] = useState('');
+  const [ownershipCountryCode, setOwnershipCountryCode] = useState('');
+  const [ownershipAddressLine1, setOwnershipAddressLine1] = useState('');
+  const [ownershipAddressLine2, setOwnershipAddressLine2] = useState('');
+  const [ownershipCity, setOwnershipCity] = useState('');
+  const [ownershipStateOrProvince, setOwnershipStateOrProvince] = useState('');
+  const [ownershipPostalCode, setOwnershipPostalCode] = useState('');
+  const [ownershipContactEmail, setOwnershipContactEmail] = useState('');
+  const [ownershipContactPhone, setOwnershipContactPhone] = useState('');
+  const [primaryChannelName, setPrimaryChannelName] = useState('');
+  const [primaryChannelUrl, setPrimaryChannelUrl] = useState('');
+  const [ownershipWebsiteUrl, setOwnershipWebsiteUrl] = useState('');
+  const [licenseDisplayName, setLicenseDisplayName] = useState('');
+  const [copyrightNotice, setCopyrightNotice] = useState('');
+  const [watermarkText, setWatermarkText] = useState('');
+  const [attributionText, setAttributionText] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailChangePassword, setEmailChangePassword] = useState('');
+  const [googleLinkPassword, setGoogleLinkPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -838,6 +896,12 @@ export default function Settings() {
   const prefsQuery = trpc.users.getPreferences.useQuery(undefined, {
     enabled: isAuthenticated,
   });
+  const { data: profileData, refetch: refetchProfile } = trpc.users.getProfile.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const { data: ownershipProfileData, refetch: refetchOwnershipProfile } = trpc.users.getOwnershipProfile.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
   const safetyProfileStatus = trpc.users.getSafetyProfileCompletionStatus.useQuery(undefined, {
     enabled: isAuthenticated,
   });
@@ -851,6 +915,20 @@ export default function Settings() {
   );
   const updatePrefsMutation = trpc.users.updatePreferences.useMutation({
     onSuccess: () => toast.success(t('settings.translation.saved')),
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateProfileMutation = trpc.users.updateProfile.useMutation({
+    onSuccess: async () => {
+      toast.success('Profile information saved');
+      await refetchProfile();
+    },
+    onError: (err: any) => toast.error(err.message),
+  });
+  const updateOwnershipProfileMutation = trpc.users.updateOwnershipProfile.useMutation({
+    onSuccess: async () => {
+      toast.success('Creator ownership profile saved');
+      await refetchOwnershipProfile();
+    },
     onError: (err: any) => toast.error(err.message),
   });
   const updateSafetyProfileMutation = trpc.users.updateSafetyProfile.useMutation({
@@ -965,6 +1043,42 @@ export default function Settings() {
   }, [enabledTranslationModelIds, modelsData?.models, prefsData]);
 
   useEffect(() => {
+    if (!profileData) return;
+    setFirstName(profileData.firstName ?? '');
+    setLastName(profileData.lastName ?? '');
+    setContactEmail(profileData.contactEmail ?? '');
+    setContactPhone(profileData.contactPhone ?? '');
+    setContactAddressLine1(profileData.contactAddressLine1 ?? '');
+    setContactAddressLine2(profileData.contactAddressLine2 ?? '');
+    setContactCity(profileData.contactCity ?? '');
+    setContactStateOrProvince(profileData.contactStateOrProvince ?? '');
+    setContactPostalCode(profileData.contactPostalCode ?? '');
+    setContactCountryCode(profileData.contactCountryCode ?? '');
+  }, [profileData]);
+
+  useEffect(() => {
+    if (!ownershipProfileData) return;
+    setOwnershipOwnerType(ownershipProfileData.ownerType ?? 'individual');
+    setOwnershipLegalName(ownershipProfileData.legalName ?? '');
+    setOwnershipDisplayName(ownershipProfileData.displayName ?? '');
+    setOwnershipCountryCode(ownershipProfileData.countryCode ?? '');
+    setOwnershipAddressLine1(ownershipProfileData.addressLine1 ?? '');
+    setOwnershipAddressLine2(ownershipProfileData.addressLine2 ?? '');
+    setOwnershipCity(ownershipProfileData.city ?? '');
+    setOwnershipStateOrProvince(ownershipProfileData.stateOrProvince ?? '');
+    setOwnershipPostalCode(ownershipProfileData.postalCode ?? '');
+    setOwnershipContactEmail(ownershipProfileData.contactEmail ?? '');
+    setOwnershipContactPhone(ownershipProfileData.contactPhone ?? '');
+    setPrimaryChannelName(ownershipProfileData.primaryChannelName ?? '');
+    setPrimaryChannelUrl(ownershipProfileData.primaryChannelUrl ?? '');
+    setOwnershipWebsiteUrl(ownershipProfileData.websiteUrl ?? '');
+    setLicenseDisplayName(ownershipProfileData.licenseDisplayName ?? '');
+    setCopyrightNotice(ownershipProfileData.copyrightNotice ?? '');
+    setWatermarkText(ownershipProfileData.watermarkText ?? '');
+    setAttributionText(ownershipProfileData.attributionText ?? '');
+  }, [ownershipProfileData]);
+
+  useEffect(() => {
     const profile = (prefsData as any)?.safetyProfile;
     if (profile?.dateOfBirth && !dateOfBirth) {
       setDateOfBirth(String(profile.dateOfBirth));
@@ -1024,10 +1138,17 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
-      setName(user.name || '');
       setEmail(user.email || '');
+      setNewEmail(user.email || '');
     }
   }, [user]);
+
+  useEffect(() => {
+    if (accountAuthStatus?.email && accountAuthStatus.email !== email) {
+      setEmail(accountAuthStatus.email);
+      if (!accountAuthStatus.pendingEmail) setNewEmail(accountAuthStatus.email);
+    }
+  }, [accountAuthStatus?.email, accountAuthStatus?.pendingEmail, email]);
 
   const privateVaultPrefs = prefsData?.privateVault as {
     enabled?: boolean;
@@ -1080,6 +1201,44 @@ export default function Settings() {
   const handleSave = () => {
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
+  };
+
+  const handleSaveProfile = () => {
+    updateProfileMutation.mutate({
+      firstName,
+      lastName,
+      contactEmail,
+      contactPhone,
+      contactAddressLine1,
+      contactAddressLine2,
+      contactCity,
+      contactStateOrProvince,
+      contactPostalCode,
+      contactCountryCode,
+    });
+  };
+
+  const handleSaveOwnershipProfile = () => {
+    updateOwnershipProfileMutation.mutate({
+      ownerType: ownershipOwnerType as 'individual' | 'company' | 'organization' | 'brand' | 'other',
+      legalName: ownershipLegalName,
+      displayName: ownershipDisplayName,
+      countryCode: ownershipCountryCode,
+      addressLine1: ownershipAddressLine1,
+      addressLine2: ownershipAddressLine2,
+      city: ownershipCity,
+      stateOrProvince: ownershipStateOrProvince,
+      postalCode: ownershipPostalCode,
+      contactEmail: ownershipContactEmail,
+      contactPhone: ownershipContactPhone,
+      primaryChannelName,
+      primaryChannelUrl,
+      websiteUrl: ownershipWebsiteUrl,
+      licenseDisplayName,
+      copyrightNotice,
+      watermarkText,
+      attributionText,
+    });
   };
 
   const handleSaveSafetyProfile = () => {
@@ -1327,28 +1486,133 @@ export default function Settings() {
                   </div>
 
                   <div className="space-y-4">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="profile-first-name" className="block text-sm font-medium text-gray-700 mb-2">First name</label>
+                        <input
+                          id="profile-first-name"
+                          type="text"
+                          autoComplete="given-name"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="profile-last-name" className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
+                        <input
+                          id="profile-last-name"
+                          type="text"
+                          autoComplete="family-name"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="profile-contact-email" className="block text-sm font-medium text-gray-700 mb-2">Contact email</label>
+                        <input
+                          id="profile-contact-email"
+                          type="email"
+                          autoComplete="email"
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          placeholder="name@example.com"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="profile-contact-phone" className="block text-sm font-medium text-gray-700 mb-2">Contact phone</label>
+                        <input
+                          id="profile-contact-phone"
+                          type="tel"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          value={contactPhone}
+                          onChange={(e) => setContactPhone(e.target.value)}
+                          placeholder="+14155552671"
+                          aria-describedby="profile-contact-phone-help"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p id="profile-contact-phone-help" className="mt-1 text-xs text-gray-500">Use international E.164 format.</p>
+                      </div>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('settings.profile.fullName')}
-                      </label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
+                      <p className="mb-2 text-sm font-medium text-gray-700">Contact address</p>
+                      <div className="space-y-3">
+                        <input type="text" autoComplete="address-line1" value={contactAddressLine1} onChange={(e) => setContactAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <input type="text" autoComplete="address-line2" value={contactAddressLine2} onChange={(e) => setContactAddressLine2(e.target.value)} placeholder="Address line 2 (optional)" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                          <input type="text" autoComplete="address-level2" value={contactCity} onChange={(e) => setContactCity(e.target.value)} placeholder="City" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                          <input type="text" autoComplete="address-level1" value={contactStateOrProvince} onChange={(e) => setContactStateOrProvince(e.target.value)} placeholder="State / province" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                          <input type="text" autoComplete="postal-code" value={contactPostalCode} onChange={(e) => setContactPostalCode(e.target.value)} placeholder="Postal code" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        </div>
+                        <input type="text" autoComplete="country" value={contactCountryCode} onChange={(e) => setContactCountryCode(e.target.value.toUpperCase())} placeholder="Country code (ISO 3166-1 alpha-2, e.g. US)" maxLength={2} className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        {t('settings.profile.emailAddress')}
+                        {t('settings.profile.currentEmail')}
                       </label>
                       <input
                         type="email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        readOnly
+                        className="w-full cursor-not-allowed rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-gray-600"
                       />
+                    </div>
+
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+                      <label className="block text-sm font-semibold text-blue-950 mb-2">
+                        {t('settings.profile.newEmail')}
+                      </label>
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        disabled={!accountAuthStatus?.passwordLoginEnabled || requestEmailChangeMut.isPending}
+                        className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:bg-gray-100"
+                      />
+                      <label className="mt-3 block text-sm font-medium text-blue-950">
+                        {t('settings.profile.currentPasswordToChangeEmail')}
+                      </label>
+                      <Input
+                        type="password"
+                        value={emailChangePassword}
+                        onChange={(e) => setEmailChangePassword(e.target.value)}
+                        placeholder={t('settings.profile.currentPasswordPlaceholder')}
+                        disabled={!accountAuthStatus?.passwordLoginEnabled || requestEmailChangeMut.isPending}
+                        className="mt-2 bg-white"
+                      />
+                      <Button
+                        type="button"
+                        className="mt-3 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white"
+                        disabled={!accountAuthStatus?.passwordLoginEnabled || !newEmail.trim() || !emailChangePassword || requestEmailChangeMut.isPending}
+                        onClick={() => requestEmailChangeMut.mutate({ newEmail, currentPassword: emailChangePassword })}
+                      >
+                        {requestEmailChangeMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                        {t('settings.profile.sendEmailVerification')}
+                      </Button>
+                      {accountAuthStatus?.passwordLoginEnabled && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="mt-2 block px-0 text-sm text-blue-800"
+                          onClick={() => setLocation(`/forgot-password?email=${encodeURIComponent(user.email)}`)}
+                        >
+                          {t('settings.profile.forgotPasswordFirst')}
+                        </Button>
+                      )}
+                      {accountAuthStatus?.pendingEmail && (
+                        <p className="mt-3 text-sm font-medium text-blue-900">
+                          {t('settings.profile.pendingEmail', { email: accountAuthStatus.pendingEmail })}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1363,11 +1627,158 @@ export default function Settings() {
                     </div>
                   </div>
 
+                  <section className="rounded-2xl border-2 border-slate-200 bg-slate-50/80 p-5" aria-labelledby="creator-ownership-heading">
+                    <div className="mb-5 flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900 text-white">
+                        <ShieldCheck className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h2 id="creator-ownership-heading" className="text-lg font-semibold text-slate-950">Creator ownership and digital license</h2>
+                        <p className="mt-1 text-sm leading-6 text-slate-600">Use this separate profile as the ownership source for licenses, attribution, and digital watermarks on AI-generated images, audio, and video.</p>
+                        <p className="mt-2 text-xs leading-5 text-slate-500">For consistent international rendering, use English for license display names, copyright notices, watermark text, and attribution. Entering this information does not by itself verify legal ownership.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="ownership-owner-type" className="block text-sm font-medium text-gray-700 mb-2">Owner type</label>
+                        <select id="ownership-owner-type" value={ownershipOwnerType} onChange={(e) => setOwnershipOwnerType(e.target.value)} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                          <option value="individual">Individual</option>
+                          <option value="company">Company</option>
+                          <option value="organization">Organization</option>
+                          <option value="brand">Brand</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-country-code" className="block text-sm font-medium text-gray-700 mb-2">Country code</label>
+                        <input id="ownership-country-code" type="text" value={ownershipCountryCode} onChange={(e) => setOwnershipCountryCode(e.target.value.toUpperCase())} placeholder="ISO 3166-1 alpha-2, e.g. US" maxLength={2} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-legal-name" className="block text-sm font-medium text-gray-700 mb-2">Legal owner name</label>
+                        <input id="ownership-legal-name" type="text" autoComplete="organization" value={ownershipLegalName} onChange={(e) => setOwnershipLegalName(e.target.value)} placeholder="Your legal name or registered organization" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-display-name" className="block text-sm font-medium text-gray-700 mb-2">Public display name</label>
+                        <input id="ownership-display-name" type="text" value={ownershipDisplayName} onChange={(e) => setOwnershipDisplayName(e.target.value)} placeholder="Name shown in attribution" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <p className="mb-2 text-sm font-medium text-gray-700">Ownership address</p>
+                      <div className="space-y-3">
+                        <input type="text" autoComplete="address-line1" value={ownershipAddressLine1} onChange={(e) => setOwnershipAddressLine1(e.target.value)} placeholder="Address line 1" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <input type="text" autoComplete="address-line2" value={ownershipAddressLine2} onChange={(e) => setOwnershipAddressLine2(e.target.value)} placeholder="Address line 2 (optional)" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                          <input type="text" autoComplete="address-level2" value={ownershipCity} onChange={(e) => setOwnershipCity(e.target.value)} placeholder="City" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                          <input type="text" autoComplete="address-level1" value={ownershipStateOrProvince} onChange={(e) => setOwnershipStateOrProvince(e.target.value)} placeholder="State / province" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                          <input type="text" autoComplete="postal-code" value={ownershipPostalCode} onChange={(e) => setOwnershipPostalCode(e.target.value)} placeholder="Postal code" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label htmlFor="ownership-contact-email" className="block text-sm font-medium text-gray-700 mb-2">Ownership contact email</label>
+                        <input id="ownership-contact-email" type="email" autoComplete="email" value={ownershipContactEmail} onChange={(e) => setOwnershipContactEmail(e.target.value)} placeholder="creator@example.com" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-contact-phone" className="block text-sm font-medium text-gray-700 mb-2">Ownership contact phone</label>
+                        <input id="ownership-contact-phone" type="tel" inputMode="tel" autoComplete="tel" value={ownershipContactPhone} onChange={(e) => setOwnershipContactPhone(e.target.value)} placeholder="+14155552671" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-channel-name" className="block text-sm font-medium text-gray-700 mb-2">Primary page or channel name</label>
+                        <input id="ownership-channel-name" type="text" value={primaryChannelName} onChange={(e) => setPrimaryChannelName(e.target.value)} placeholder="Your official page or channel" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-channel-url" className="block text-sm font-medium text-gray-700 mb-2">Primary page or channel URL</label>
+                        <input id="ownership-channel-url" type="url" value={primaryChannelUrl} onChange={(e) => setPrimaryChannelUrl(e.target.value)} placeholder="https://example.com/channel" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label htmlFor="ownership-website-url" className="block text-sm font-medium text-gray-700 mb-2">Official website URL (optional)</label>
+                        <input id="ownership-website-url" type="url" value={ownershipWebsiteUrl} onChange={(e) => setOwnershipWebsiteUrl(e.target.value)} placeholder="https://example.com" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 space-y-4">
+                      <div>
+                        <label htmlFor="ownership-license-display-name" className="block text-sm font-medium text-gray-700 mb-2">License display name</label>
+                        <input id="ownership-license-display-name" type="text" value={licenseDisplayName} onChange={(e) => setLicenseDisplayName(e.target.value)} placeholder="© 2026 Your Name. All rights reserved." className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div>
+                        <label htmlFor="ownership-copyright-notice" className="block text-sm font-medium text-gray-700 mb-2">Copyright notice</label>
+                        <textarea id="ownership-copyright-notice" rows={2} value={copyrightNotice} onChange={(e) => setCopyrightNotice(e.target.value)} placeholder="Copyright notice used in generated media metadata" className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                          <label htmlFor="ownership-watermark-text" className="block text-sm font-medium text-gray-700 mb-2">Digital watermark text</label>
+                          <input id="ownership-watermark-text" type="text" value={watermarkText} onChange={(e) => setWatermarkText(e.target.value)} placeholder="Your Name | Official" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        </div>
+                        <div>
+                          <label htmlFor="ownership-attribution-text" className="block text-sm font-medium text-gray-700 mb-2">Attribution text</label>
+                          <input id="ownership-attribution-text" type="text" value={attributionText} onChange={(e) => setAttributionText(e.target.value)} placeholder="Created by Your Name" className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Button type="button" onClick={handleSaveOwnershipProfile} disabled={updateOwnershipProfileMutation.isPending} className="mt-5 bg-slate-900 text-white hover:bg-slate-800">
+                      {updateOwnershipProfileMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                      Save creator ownership profile
+                    </Button>
+                  </section>
+
+                  <div className={`rounded-2xl border p-5 ${accountAuthStatus?.googleOnly ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className={`mt-0.5 h-5 w-5 shrink-0 ${accountAuthStatus?.googleOnly ? 'text-green-600' : 'text-amber-600'}`} />
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-900">
+                          {accountAuthStatus?.googleOnly ? t('settings.profile.googleOnlyEnabled') : t('settings.profile.switchToGoogle')}
+                        </h3>
+                        <p className="mt-1 text-sm leading-6 text-gray-700">
+                          {accountAuthStatus?.googleOnly
+                            ? t('settings.profile.googleOnlyEnabledDescription')
+                            : t('settings.profile.googleOnlyWarning')}
+                        </p>
+                        {!accountAuthStatus?.googleOnly && accountAuthStatus?.passwordLoginEnabled && (
+                          <>
+                            <Input
+                              type="password"
+                              value={googleLinkPassword}
+                              onChange={(e) => setGoogleLinkPassword(e.target.value)}
+                              placeholder={t('settings.profile.currentPasswordPlaceholder')}
+                              className="mt-3 max-w-md bg-white"
+                              disabled={startGoogleOnlyLinkMut.isPending}
+                            />
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                              <Button
+                                type="button"
+                                onClick={handleGoogleOnlyLink}
+                                disabled={!googleLinkPassword || startGoogleOnlyLinkMut.isPending}
+                                className="bg-gray-900 text-white hover:bg-gray-800"
+                              >
+                                {startGoogleOnlyLinkMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                {t('settings.profile.continueWithGoogle')}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="link"
+                                className="px-0 text-amber-800"
+                                onClick={() => setLocation(`/forgot-password?email=${encodeURIComponent(user.email)}`)}
+                              >
+                                {t('settings.profile.forgotPasswordFirst')}
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   {safetyProfilePanel}
 
-                  <Button onClick={handleSave} className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white">
-                    <Save className="w-4 h-4 mr-2" />
-                    {t('common.saveChanges')}
+                  <Button type="button" onClick={handleSaveProfile} disabled={updateProfileMutation.isPending} className="bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500 text-white">
+                    {updateProfileMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save profile information
                   </Button>
                 </div>
               )}

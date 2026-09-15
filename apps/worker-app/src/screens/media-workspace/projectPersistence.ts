@@ -1,5 +1,6 @@
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { exportToCapCutDraftJson, type SmartSpecProjectDraft } from "../../types/nleProject";
+import { normalizeDisplayPath } from "./sourcePath";
 
 export function safeConvertFileSrc(filePath?: string | null): string {
   if (!filePath || filePath.trim().length === 0) return "";
@@ -14,10 +15,7 @@ export function safeConvertFileSrc(filePath?: string | null): string {
     return trimmed;
   }
   try {
-    let clean = trimmed;
-    if (clean.startsWith("\\\\?\\") || clean.startsWith("//?/")) {
-      clean = clean.slice(4);
-    }
+    const clean = normalizeDisplayPath(trimmed);
     return convertFileSrc(clean);
   } catch (err) {
     console.warn("safeConvertFileSrc fallback to raw path:", filePath, err);
@@ -128,4 +126,3 @@ export async function saveCapCutDraft(project: SmartSpecProjectDraft, draftDir: 
   const capcutJson = exportToCapCutDraftJson(project);
   return invoke<string>("worker_app_export_capcut_draft", { draftDir: cleanDir, draftJson: JSON.stringify(capcutJson) });
 }
-

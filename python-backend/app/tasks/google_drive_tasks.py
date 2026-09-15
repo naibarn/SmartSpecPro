@@ -7,6 +7,7 @@ and Google Drive file indexing for RAG search.
 
 import asyncio
 import hashlib
+import inspect
 import logging
 import time
 from contextlib import contextmanager
@@ -296,8 +297,16 @@ async def process_google_drive_index_job(
     """Process a Google Drive file index job through extract/chunk/embed/upsert pipeline."""
     from sqlalchemy import select, delete, and_
     from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
-    from app.services.embedding_service import get_embedding_service
-    from app.services.library_indexing_service import chunk_text_content
+    from app.services.library_indexing_service import (
+        chunk_text_content,
+        _cloudflare_library_vector_id,
+        delete_stale_cloudflare_vectors,
+        get_vector_upsert_fn,
+        resolve_library_embedding_service,
+        resolve_library_vector_provider,
+        validate_cloudflare_embeddings,
+        validate_cloudflare_vector_upsert_result,
+    )
     from app.services.credit_billing_client import charge_credits_post_deduct
 
     job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
@@ -403,9 +412,15 @@ async def process_google_drive_index_job(
         if not chunks:
             raise ValueError("Chunking produced no content")
 
-        # Generate embeddings
-        embedder = embedding_service or get_embedding_service()
+        resolved_provider, resolved_provider_config = resolve_library_vector_provider()
+        embedder = resolve_library_embedding_service(
+            embedding_service,
+            provider=resolved_provider,
+            config=resolved_provider_config,
+        )
         embeddings = embedder.embed_batch([chunk["content"] for chunk in chunks])
+        if resolved_provider == "cloudflare_vectorize":
+            validate_cloudflare_embeddings(embeddings, expected_count=len(chunks))
 
         # Build vector IDs with gdrive: prefix
         tenant_id = job.tenant_id
@@ -414,14 +429,50 @@ async def process_google_drive_index_job(
             for chunk in chunks
         ]
 
-        # Upsert to vector store with gdrive: prefix IDs
-        if vector_upsert_fn:
-            vector_upsert_fn(
+        # The Cloudflare adapter owns the canonical safe IDs. Legacy injected
+        # upsert functions retain their historical ID behavior for compatibility.
+        item_scopes = item.allowed_scopes or []
+        vectorize_mutation_ids: list[str] = []
+        old_vector_ids: list[str] = []
+        if resolved_provider == "cloudflare_vectorize":
+            existing_vector_rows = (
+                await db.execute(
+                    select(LibraryChunk.vector_ref_id).where(
+                        and_(
+                            LibraryChunk.library_item_id == item.id,
+                            LibraryChunk.tenant_id == tenant_id,
+                        )
+                    )
+                )
+            ).all()
+            old_vector_ids = [str(row[0]) for row in existing_vector_rows if row[0]]
+        active_upsert_fn = vector_upsert_fn
+        if active_upsert_fn is None and resolved_provider == "cloudflare_vectorize":
+            active_upsert_fn = get_vector_upsert_fn(resolved_provider, config=resolved_provider_config)
+        if active_upsert_fn:
+            upsert_result = active_upsert_fn(
                 tenant_id=tenant_id,
                 item_id=job.library_item_id,
-                chunks=chunks,
+                chunks=[{**chunk, "allowed_scopes": list(item_scopes)} for chunk in chunks],
                 embeddings=embeddings,
             )
+            if inspect.isawaitable(upsert_result):
+                upsert_result = await upsert_result
+            if resolved_provider == "cloudflare_vectorize":
+                vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
+                    upsert_result,
+                    expected_ids=[
+                        _cloudflare_library_vector_id(tenant_id, job.library_item_id, int(chunk["chunk_index"]))
+                        for chunk in chunks
+                    ],
+                )
+                await delete_stale_cloudflare_vectors(
+                    tenant_id=tenant_id,
+                    item_id=job.library_item_id,
+                    old_vector_ids=old_vector_ids,
+                    new_vector_ids=vector_ids,
+                    vectorize_config=resolved_provider_config,
+                )
         else:
             from app.core.vectordb import VectorCollection
             collection_name = f"library_tenant_{tenant_id}"
@@ -452,11 +503,16 @@ async def process_google_drive_index_job(
             )
 
         # Delete existing chunks and insert new ones
-        await db.execute(delete(LibraryChunk).where(LibraryChunk.library_item_id == item.id))
+        await db.execute(
+            delete(LibraryChunk).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.tenant_id == tenant_id,
+                )
+            )
+        )
 
         # Inherit allowed_scopes from parent item for permission-based RAG filtering
-        item_scopes = item.allowed_scopes or []
-
         created_at = datetime.utcnow()
         for chunk, vector_id in zip(chunks, vector_ids):
             db.add(
@@ -476,6 +532,7 @@ async def process_google_drive_index_job(
                         "job_id": job.id,
                         "user_id": item.owner_user_id,
                         "item_id": item.id,
+                        **({"vectorizeMutationIds": vectorize_mutation_ids} if vectorize_mutation_ids else {}),
                     },
                     created_at=created_at,
                 )
@@ -938,7 +995,14 @@ def _enqueue_index_job(db, tenant_id: str, item_id: int):
             )
             row = result.fetchone()
             if row:
-                process_google_drive_index_job_task.delay(row[0])
+                from app.services.job_control_plane import dispatch_python_task
+                dispatch_python_task(
+                    process_google_drive_index_job_task.name,
+                    args=(row[0],),
+                    tenant_id=tenant_id,
+                    idempotency_key=f"gdrive:index:{tenant_id}:{row[0]}",
+                    legacy_task=process_google_drive_index_job_task,
+                )
                 logger.info("Enqueued GDrive index job %d for item %d", row[0], item_id)
     except Exception as e:
         logger.warning("Failed to enqueue GDrive index job for item %d: %s", item_id, str(e))

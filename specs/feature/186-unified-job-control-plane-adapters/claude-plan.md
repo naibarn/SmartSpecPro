@@ -14,22 +14,21 @@ apps/web/drizzle/0303_feature_186_unified_job_control_plane.sql # existing found
 apps/web/drizzle/0304_feature_186_contract_version.sql           # existing compatibility migration
 apps/web/drizzle/0305_feature_186_timeout_policy.sql              # existing timeout migration
 apps/web/drizzle/0306_feature_186_outbox_cancellation.sql         # existing outbox-cancellation migration; inspect
-apps/web/drizzle/0307_feature_186_followup.sql                    # only if inventory requires more fields
+apps/web/drizzle/0307_feature_186_action_callback_evidence.sql     # durable action/callback evidence and FK safety closure
+apps/web/drizzle/0308_feature_186_operator_review_reason.sql       # bounded review reason projection
 apps/web/server/services/jobControlPlane.ts        # canonical service and ports
 apps/web/server/services/jobCanonicalization.ts    # deterministic definition hash
 apps/web/server/services/jobOutboxPublisher.ts    # publisher claim/retry/quarantine
 apps/web/server/services/jobTransportAdapters.ts  # BullMQ and generic adapters
 apps/web/server/services/jobReconciler.ts          # lease/outbox/recovery sweep
+apps/web/server/services/jobScheduler.ts           # schedule occurrence validation and deterministic keys
 apps/web/server/services/jobControlPlaneMonitor.ts # canonical admin/user projections
 apps/web/server/services/workerJobMonitorService.ts # existing monitor compatibility surface
-apps/web/server/services/tenantDataTransferService.ts # explicit transfer workflow
 apps/web/server/routers/workerJobs.ts              # compatibility-safe API actions
-apps/web/server/routers/tenantDataTransfer.ts       # transfer preview/actions
 apps/web/server/jobs/unifiedJobControlPlaneReconcilerJob.ts # bounded scheduler entry point
 apps/web/scripts/backfill-unified-job-control-plane.ts # dry-run/batched backfill
 apps/web/scripts/verify-feature-186.ts              # migration/artifact contract check
 apps/web/server/services/__tests__/...             # focused contract tests
-apps/web/server/services/__tests__/tenantDataTransfer.test.ts
 python-backend/app/services/job_control_plane.py  # Python port/client
 python-backend/app/tasks/job_adapter.py            # thin Celery wrapper helpers
 python-backend/tests/services/test_job_control_plane.py
@@ -51,17 +50,6 @@ Tests must cover equivalent definitions producing the same hash, meaningful diff
 Extend `worker_jobs` with only canonical current-state fields that are absent and safe to add: definition hash, canonical attempt/max-attempt/retry fields, execution class, fencing version, heartbeat, progress/result references, and schedule identity as required by the actual schema. Preserve existing columns and legacy enum values during expand. Extend `worker_job_events` with lifecycle event sequence and idempotency key without overloading assignment sequence.
 
 Add companion tables for attempts, dispatch references, outbox publication, settlements, operator actions, inbound callbacks, and schedule occurrence mapping. Each table must foreign-key to `worker_jobs.id`, use tenant-aware indexes, and have uniqueness constraints for attempts, event sequence, action/callback idempotency, schedule occurrence, external reference namespace, settlement effect, and outbox dedupe. Do not add a second status/retry/lease source. Allocate lifecycle event sequence under the job lock or an equivalent serializable allocator.
-
-If the existing transfer domain has no suitable durable records, add only
-transfer plan/preview/item/checkpoint companions linked to the canonical
-`tenant_data_transfer` worker job. Persist the immutable full-snapshot
-fingerprint, deterministic item key, handler/policy versions, and explicit
-disposition/result fields needed for resumability and audit. Enforce unique
-item keys within one transfer and foreign-key every item/plan/checkpoint to
-`worker_jobs.id`; these records are projections/checkpoints and must not own
-an independent job status, retry counter, lease, result identity, or
-idempotency key. Apply the same payload bounds, redaction, retention, and
-tenant-deletion rules as the lifecycle ledger.
 
 The migration must be additive and restart-safe. Existing rows receive only deterministic metadata that can be derived from existing fields. Existing status values remain readable aliases. A batched backfill command supports `--dry-run`, bounded batch size, resume cursor, verification-only mode, and an explicit quarantine report for rows with missing tenant, ambiguous legacy binding, conflicting idempotency, or unsafe payload. It must not infer identity from queue position or issue provider calls.
 
@@ -89,7 +77,7 @@ Tests cover broker outage, duplicate publish, publish response loss, publisher c
 
 Add a thin executor wrapper that claims by canonical ID, invokes the existing domain executor, and reports all heartbeat/progress/wait/result/error calls with `LeaseContext`. Add a bounded reconciler running on a configurable 1–5 minute cadence (subject to capacity) for expired leases, missing dispatch evidence, due retries, soft-timeout requests, hard deadlines, external timeout, unresolved settlement, and duplicate schedule occurrences. Reconciler work is tenant-aware, bounded per tick, idempotent, and observable.
 
-Add scheduler occurrence validation for tenant, schedule ID/version, timezone, occurrence window, missed policy, and deterministic occurrence key. Beat/Cron only creates job intent; it never runs business logic inline. Add the web scheduled entry point and a Python-compatible scheduler hook without duplicating scheduler state. If provider inspection is unavailable after an ambiguous external operation, fail closed to an operator-review marker rather than guessing cancellation or re-submitting the operation.
+Add scheduler occurrence validation for tenant, schedule ID/version, timezone, occurrence window, missed policy, and deterministic occurrence key in `jobScheduler.ts`. Beat/Cron only creates job intent; it never runs business logic inline. Add the web scheduled entry point and a Python-compatible scheduler hook without duplicating scheduler state. If provider inspection is unavailable after an ambiguous external operation, fail closed to an operator-review marker rather than guessing cancellation or re-submitting the operation.
 
 Tests cover worker crash, event-loop stall, provider ambiguity, external callbacks, scheduler duplicate/mismatch, DST/timezone, missed occurrence policies, and reconciler boundedness.
 
@@ -99,45 +87,18 @@ Extend the existing worker-job monitor without breaking legacy aliases. Provide 
 
 Preserve tenant isolation and existing auth/CSRF/rate-limit/audit boundaries. Redact payloads, provider responses, credentials, signed URLs, and arbitrary command strings. Verify provider callback signatures/replay protection and correlate callbacks to stored tenant/reference before reconciliation.
 
-Implement the explicit account/tenant data-transfer boundary in
-`tenantDataTransferService.ts`. Changing an account's `currentTenantId` must
-never implicitly move historical data. A v1 transfer is source-user to
-target-user within the same active tenant and uses versioned, allowlisted
-resource handlers. Handlers may change only approved target-user ownership or
-access fields and must preserve tenant scope, primary keys, authorship,
-execution actors, canonical job IDs, lifecycle history, billing/usage
-references, and managed artifact identity. Credentials, sessions, secrets,
-credits, transactions, billing/settlement history, and active execution state
-remain outside the transfer.
+Feature 189 owns account identity, System Admin tenant moves, transfer handler
+registration, preview/approval, transfer item execution, transfer UI, and
+transfer-specific audit projections. Feature 186 supplies only the already
+completed canonical job lifecycle used by that feature: queue cancellation,
+lease fencing, outbox cancellation, settlement markers, and reconciliation.
+Feature 186 must not add transfer routes, handlers, item tables, or duplicate
+transfer tests. Feature 189 must prove those behaviors in its own plan and
+reuse the Feature 186 contract through its public ports.
 
-The transfer is preview-first: persist immutable per-resource preview items,
-the complete snapshot fingerprint, deterministic item keys, handler/policy
-versions, and explicit `unsupported`/conflict dispositions. Approval must
-re-enumerate queueable work and return `PREVIEW_STALE` when the reviewed
-snapshot changes. Queueable canonical jobs are automatically enumerated and
-cancelled/fenced with durable `queue_cancelled` evidence; active
-leased/running/waiting-external jobs return `ACTIVE_JOB_BLOCKED`. Never flush a
-shared queue or infer legacy ownership from queue position/payload.
-
-Execution uses one canonical `worker_jobs` record with
-`jobType = tenant_data_transfer`; item/plan tables are projections and
-checkpoints only. Recoverable errors pause with operator review while the
-canonical job is `retry_scheduled`; an authorized idempotent resume reuses the
-same operation, item keys, and settled results. Cancellation is terminal,
-marks only unsettled items `operator_cancelled`, retains completed items, and
-never creates a replacement operation or repeats a paid/provider/artifact side
-effect.
-
-Implement the System Admin tenant-binding move as a separate guarded command:
-enumerate and cancel/fence only the source user's verified queueable canonical
-jobs before committing the new binding, block on active leased/running/
-waiting-external jobs with `ACTIVE_JOB_BLOCKED`, and retain durable cancellation
-evidence if the account update fails. A repeated action must resume from the
-remaining verified jobs under the same action idempotency key; it must never
-flush a shared queue, infer ownership from a legacy payload/position, or start
-the transfer implicitly.
-
-Tests cover user/admin authorization, cross-tenant denial, cursor tampering, redaction, action idempotency, illegal admin actions, callback authentication, and rate/backpressure limits. Transfer tests cover preview fingerprinting, stale approval, active-job blocking, queue cancellation/fencing, unsupported handlers, pause/resume checkpoints, terminal cancellation, and preservation of already transferred items. Browser coverage is required for loading, empty, error, populated, stale, and action-disabled monitor states; no new visual system is required.
+Feature 186 integration tests may retain a focused fake-adapter contract for
+`tenant_data_transfer` cancellation/fencing, but ownership and product
+acceptance remain in the Feature 189 specification.
 
 ## 9. Section 07 — Python/Celery compatibility and backfill
 
@@ -151,7 +112,7 @@ Python tests cover client failures, retry semantics, canonical-ID payloads, Beat
 
 Add focused web and Python contract suites, migration verification, fake adapters for BullMQ/Celery/Queues/Workflows/Containers/Worker App, and failure-injection tests. Add action/callback idempotency, event-ordering, unknown-resolution, publication ambiguity, settlement replay, backup/restore, and PITR replay tests. Add the future Cloudflare connectivity contract for a dedicated Hyperdrive binding to the existing PostgreSQL database: no second ledger, fresh canonical reads must bypass stale caching, transactions must not span external calls, and PostgreSQL/Hyperdrive unavailability must prevent acknowledgement without a durable write. Verify Queues-like at-least-once convergence, Workflow-like step keys/completion markers across pause/resume, Container-like capability/heartbeat/timeout/artifact reporting, and provider-native retry separation from business attempts. Add runbook/manifests describing schema migration, backup, dry-run, backfill, rollout flags, canary, producer ownership switch, drain, rollback, reconciler evidence, numeric per-class admission/event-rate/transaction budgets, Hyperdrive binding/pool/cache/connectivity proof, account/plan capability checks, disaster recovery rehearsal, and production proof requirements.
 
-Run checks in this order: focused tests per section, schema/typecheck on changed paths, `npm --workspace @smartspec/web run verify:feature-186`, migration dry-run via the repository script against a test database, integration tests with `RUN_DB_INTEGRATION_TESTS=true` only when a safe test database is confirmed, then broader tests. Do not run a mutating production/local data backfill from the active `.env` without backup and explicit target verification.
+Run checks in this order: focused tests per section, migration-shape checks, `npm --workspace @smartspec/web run verify:feature-186`, migration dry-run via the repository script against a test database, integration tests with `RUN_DB_INTEGRATION_TESTS=true` only when a safe test database is confirmed, then broader tests. Type checking remains a separate low-memory-sensitive gate and is explicitly deferred in the current implementation pass. Do not run a mutating production/local data backfill from the active `.env` without backup and explicit target verification.
 
 ## 11. Cross-cutting risks and mitigations
 

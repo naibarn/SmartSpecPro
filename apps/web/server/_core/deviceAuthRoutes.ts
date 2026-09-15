@@ -190,6 +190,7 @@ async function verifyRefreshToken(token: string): Promise<{
   openId: string;
   scopes: string[];
   jti?: string;
+  issuedAt?: number;
 } | null> {
   try {
     const { payload } = await jwtVerify(token, getSigningKey(), {
@@ -214,6 +215,7 @@ async function verifyRefreshToken(token: string): Promise<{
       openId: payload.sub as string,
       scopes: payload.scopes as string[],
       jti,
+      issuedAt: typeof payload.iat === "number" ? payload.iat : undefined,
     };
   } catch {
     return null;
@@ -619,6 +621,17 @@ export function registerDeviceAuthRoutes(app: Express) {
         res.status(400).json({
           error: "invalid_grant",
           error_description: "User not found",
+        });
+        return;
+      }
+
+      if (
+        user.sessionRevokedAt
+        && (!tokenData.issuedAt || tokenData.issuedAt * 1000 <= user.sessionRevokedAt.getTime())
+      ) {
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Refresh token revoked",
         });
         return;
       }

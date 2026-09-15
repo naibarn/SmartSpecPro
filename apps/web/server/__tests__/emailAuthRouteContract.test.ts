@@ -18,6 +18,21 @@ describe("email auth route contract", () => {
     expect(routerSource).toContain('code: "UNAUTHORIZED"');
   });
 
+  it("keeps auth user reads compatible while tenant-identity migrations are pending", () => {
+    const dbSource = fs.readFileSync(path.join(serverDir, "db.ts"), "utf-8");
+
+    expect(dbSource).toContain("AUTH_USER_SELECT_FIELDS");
+    expect(dbSource).toContain("select(AUTH_USER_SELECT_FIELDS)");
+
+    for (const functionName of ["getUserByOpenId", "getUserById", "getUserByEmail"]) {
+      const start = dbSource.indexOf(`export async function ${functionName}`);
+      const end = dbSource.indexOf("\nexport async function", start + 1);
+      const functionSource = dbSource.slice(start, end === -1 ? undefined : end);
+      expect(functionSource).toContain("return findAuthUser(");
+      expect(functionSource).not.toContain("select().from(users)");
+    }
+  });
+
   it("rate-limits reset-code verification separately from password reset", () => {
     const trpcSource = fs.readFileSync(
       path.join(serverDir, "_core/trpc.ts"),

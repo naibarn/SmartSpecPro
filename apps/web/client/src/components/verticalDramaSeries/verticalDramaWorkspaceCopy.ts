@@ -922,6 +922,9 @@ export const VD_COPY = {
     episodePlanKeyBeatsLabel: "Key beats",
     episodePlanCliffhangerLabel: "Cliffhanger",
     episodePlanEmptyState: "This Sub-episode has no drafted story plan yet.",
+    episodePlanShotSummaryLabel: "Shot-by-shot story summary",
+    episodePlanShotSummaryExpand: "Show 9 shots",
+    episodePlanShotSummaryCollapse: "Hide shots",
 
     /* ---- Per-shot character/variant reference picker (planning/vertical-
        drama-twin-variant-completeness/plan.md, W6 frontend) — distinct from
@@ -1643,6 +1646,9 @@ export const VD_COPY = {
     episodePlanKeyBeatsLabel: "จุดดำเนินเรื่อง",
     episodePlanCliffhangerLabel: "จุดค้าง",
     episodePlanEmptyState: "ยังไม่มีแผนเนื้อเรื่องของตอนย่อยนี้",
+    episodePlanShotSummaryLabel: "สรุปเรื่องรายช็อต",
+    episodePlanShotSummaryExpand: "ดูสรุป 9 ช็อต",
+    episodePlanShotSummaryCollapse: "ย่อรายการช็อต",
 
     /* ---- Per-shot character/variant reference picker (planning/vertical-
        drama-twin-variant-completeness/plan.md, W6 frontend) ---- */

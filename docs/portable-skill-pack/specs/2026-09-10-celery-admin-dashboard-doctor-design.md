@@ -91,6 +91,22 @@ foreign project is surfaced as critical and left untouched. The compose
 startup template also starts only the required media/beat services, avoiding a
 stale unrelated presentation container from blocking them.
 
+## Runtime code drift protection
+
+The media compose file bind-mounts `python-backend`, so a running Celery
+master can keep old Python modules in memory after the mounted source changes.
+Each Celery master/Beat process writes a source fingerprint to
+`/tmp/smartspec-celery-runtime.json` at import time. The host doctor compares
+that startup fingerprint with the current mounted source.
+
+When fingerprints differ, the doctor performs a read-only Celery control
+inspection. It recreates only the exact stale service when active and reserved
+work are both empty; otherwise it defers and reports the drift for the next
+30-second pass. The idle probe uses a standalone Celery control connection and
+must not import `app.core.celery_app`, because importing the application would
+overwrite the startup fingerprint. Missing or unreadable identity data is
+fail-safe: it reports `unknown` and does not force a restart.
+
 ## Verification
 
 - Unit tests cover exact-admin authorization, status aggregation, duplicate
@@ -99,8 +115,9 @@ stale unrelated presentation container from blocking them.
 - Python tests cover the three-minute pending recovery rule, provider-id and
   active-task safety gates, and same-Celery-id re-dispatch.
 - Shell tests cover healthy no-op, stopped-service repair, foreign-project
-  refusal, and duplicate refusal.
+  refusal, duplicate refusal, stale-idle recreation, and stale-busy deferral.
 - Runtime checks verify both containers, media queue subscription, queue depth,
   Admin Feedback path, and the affected user's task state without injecting a
   live worker crash while provider work is active.
-
+- Runtime identity unit tests cover deterministic hashing and atomic identity
+  writes.

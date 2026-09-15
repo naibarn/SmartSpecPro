@@ -1,78 +1,212 @@
 feature: 186
-status: foundation-ready
+status: hard-cutover-waves-1-5-implemented-local-not-production-complete
 canonical_persistence:
   jobs_table: worker_jobs
   events_table: worker_job_events
   canonical_id: worker_jobs.id
   queue_is_source_of_truth: false
-active_side_effecting_adapter: legacy
-selected_job_types: []
+active_side_effecting_adapter: postgres-pull-node-plus-postgres-pull-python-with-legacy-compatibility
+selected_job_types:
+  - webhook.dispatch
+  - webhook.api_delivery
+  - embedding.generate
+  - capacity.assessment
+  - channel.delivery
+  - automation.execute
+  - database.backup
+  - database.backup.maintenance
+  - library.trash_purge
+  - python.media
+  - vertical_drama.character_prompt
+  - vertical_drama.draft_composition
+  - vertical_drama.draft_quality_qc
+  - vertical_drama.episode_stage
+  - vertical_drama.interactive
+  - vertical_drama.shot_prompt
+  - vertical_drama.shot_video_prompt
+  - vertical_drama.story
+  - storyboard.skill.run
+  - notification.escalation
+  - notification.digest
+  - notification.retention
+  - notification.webhook_delivery
+  - memory.archive_cleanup
+  - memory.chunk_cleanup
+  - memory.embedding_reconciliation
+  - memory.eviction
+  - video.intelligence
 producer_inventory:
   source: apps/web/scripts/audit-feature-186-call-sites.ts
-  audited_at: "2026-09-13"
-  direct_transport_call_sites: 52
-  migrated_wave: []
+  audited_at: "2026-09-14"
+  direct_transport_call_sites: 0
+  direct_transport_call_sites_by_transport:
+    bullmq: 0
+    celery: 0
+  approved_compatibility_call_sites: 0
+  adapter_owned_call_sites: 47
+  unmigrated_side_effecting_call_sites: 0
+  legacy_adapter_transport_call_sites: 3
+  status_reader_call_sites: 0
+  compatibility_status_reader_call_sites: 7
+  audit_accuracy: "Counts queue.add, queue.addBulk, upsertJobScheduler, and normalized Python paths; do not replace with naming-based estimates."
+  migrated_wave:
+    - webhook.dispatch
+    - webhook.api_delivery
+    - embedding.generate
+    - capacity.assessment
+    - channel.delivery
+    - automation.execute
+    - database.backup
+    - database.backup.maintenance
+    - library.trash_purge
+    - python.media
+    - storyboard.skill.run
+    - notification.escalation
+    - notification.digest
+    - notification.retention
+    - notification.webhook_delivery
+    - memory.archive_cleanup
+    - memory.chunk_cleanup
+    - memory.embedding_reconciliation
+    - memory.eviction
+    - vertical_drama.character_prompt
+    - vertical_drama.draft_composition
+    - vertical_drama.draft_quality_qc
+    - vertical_drama.episode_stage
+    - vertical_drama.interactive
+    - vertical_drama.shot_prompt
+    - vertical_drama.shot_video_prompt
+    - vertical_drama.story
+    - video.intelligence
+  compatibility_allowlist:
+    - "apps/web/server/jobs/capacityAssessmentJob.ts"
+    - "apps/web/server/jobs/databaseBackupJob.ts"
+    - "apps/web/server/services/deliveryQueue.ts"
+    - "apps/web/server/services/webhookDeliveryService.ts"
+    - "apps/web/server/services/embeddingQueue.ts"
+    - "apps/web/server/services/jobAutomationService.ts"
   bullmq:
-    status: legacy-unmigrated
-    call_sites:
-      - "apps/web/server/jobs/capacityAssessmentJob.ts:44"
-      - "apps/web/server/jobs/databaseBackupJob.ts:60"
-      - "apps/web/server/services/deliveryQueue.ts:338"
-      - "apps/web/server/services/embeddingQueue.ts:78"
-      - "apps/web/server/services/jobAutomationService.ts:192"
-      - "apps/web/server/services/webhookDeliveryService.ts:150"
-      - "apps/web/server/services/webhookDeliveryService.ts:197"
-      - "apps/web/server/services/webhookDispatchQueue.ts:293"
+    status: compatibility-boundary-only
+    compatibility_call_sites:
+      - "apps/web/server/services/jobLegacyTransportAdapters.ts:15"
+      - "apps/web/server/services/jobLegacyTransportAdapters.ts:28"
+      - "apps/web/server/services/jobLegacyTransportAdapters.ts:35"
+    unmigrated_call_sites: []
+    legacy_adapter_boundary: "apps/web/server/services/jobLegacyTransportAdapters.ts"
   celery:
-    status: legacy-unmigrated
-    call_sites:
-      - "python-backend/app/api/admin.py:1064"
-      - "python-backend/app/api/agency_creator.py:65"
-      - "python-backend/app/api/agency_creator.py:170"
-      - "python-backend/app/api/automation_copilot.py:110"
-      - "python-backend/app/api/automation_copilot.py:191"
-      - "python-backend/app/api/internal_gdrive.py:105"
-      - "python-backend/app/api/internal_gdrive.py:123"
-      - "python-backend/app/api/internal_gdrive.py:159"
-      - "python-backend/app/api/internal_library.py:2807"
-      - "python-backend/app/api/internal_onedrive.py:133"
-      - "python-backend/app/api/internal_onedrive.py:151"
-      - "python-backend/app/api/internal_onedrive.py:187"
-      - "python-backend/app/api/internal_vertical_drama.py:43"
-      - "python-backend/app/api/meta_webhooks.py:186"
-      - "python-backend/app/api/v1/media_generation.py:2052"
-      - "python-backend/app/api/v1/media_generation.py:2121"
-      - "python-backend/app/api/v1/media_jobs.py:40"
-      - "python-backend/app/api/v1/presentation_import.py:115"
-      - "python-backend/app/api/v1/presentations_export.py:217"
-      - "python-backend/app/api/vision.py:86"
-      - "python-backend/app/api/workflows.py:259"
-      - "python-backend/app/api/workflows.py:389"
-      - "python-backend/app/api/workflows.py:869"
-      - "python-backend/app/api/workflows.py:2269"
-      - "python-backend/app/services/queue_consumer.py:119"
-      - "python-backend/app/services/sandbox_dispatcher.py:230"
-      - "python-backend/app/services/social/workflow_trigger_listener.py:88"
-      - "python-backend/app/tasks/agency_creator_task.py:380"
-      - "python-backend/app/tasks/agency_creator_task.py:391"
-      - "python-backend/app/tasks/google_drive_tasks.py:941"
-      - "python-backend/app/tasks/media_tasks.py:907"
-      - "python-backend/app/tasks/media_tasks.py:911"
-      - "python-backend/app/tasks/media_tasks.py:955"
-      - "python-backend/app/tasks/media_tasks.py:1017"
-      - "python-backend/app/tasks/media_tasks.py:1082"
-      - "python-backend/app/tasks/media_tasks.py:3367"
-      - "python-backend/app/tasks/media_tasks.py:3369"
-      - "python-backend/app/tasks/media_tasks.py:4326"
-      - "python-backend/app/tasks/onedrive_tasks.py:195"
-      - "python-backend/app/tasks/onedrive_tasks.py:226"
-      - "python-backend/app/tasks/onedrive_tasks.py:1073"
-      - "python-backend/app/tasks/onedrive_tasks.py:1149"
-      - "python-backend/app/tasks/social_webhook_task.py:335"
-      - "python-backend/app/tasks/social_workflow_trigger_task.py:359"
-  beat: []
-  callbacks: []
-rollout_waves: []
+    status: compatibility-boundary-with-centralized-legacy-reader
+    migrated_producer_boundary: python-backend/app/services/job_control_plane.py
+    postgres_pull_worker: python-backend/app/workers/postgres_job_worker.py
+    status_reader_call_sites: 0
+    compatibility_status_reader_call_sites: 7
+    remaining_call_sites_are_generated_by_audit: false
+  beat:
+    - "apps/web/server/jobs/capacityAssessmentJob.ts:durable-occurrence-scheduler"
+  callbacks:
+    - "apps/web/server/routes/jobControlPlane.ts:authenticated-evidence-boundary"
+  status_readers:
+    status: canonical-first-with-centralized-legacy-compatibility
+    canonical_paths:
+      - "apps/web/server/routes/jobControlPlane.ts:status"
+      - "python-backend/app/services/job_control_plane.py:status"
+      - "python-backend/app/api/v1/presentations_export.py:postgres-pull"
+      - "python-backend/app/api/internal_vertical_drama.py:postgres-pull"
+      - "python-backend/app/api/internal_library.py:postgres-pull"
+      - "python-backend/app/api/admin.py:postgres-pull"
+    legacy_compatibility_adapter:
+      - "python-backend/app/services/legacy_task_status.py"
+    rule: "Direct business/API/recovery reads of Celery result state are forbidden; rollback-only reads must pass through the centralized compatibility adapter and must not become canonical Feature 186 state."
+    retirement_gate: "Remove the compatibility adapter only after the rollback retention window, legacy task drain, and deployment rollback evidence are accepted."
+rollout_waves:
+  - wave: 1
+    name: node-webhook-control-plane
+    status: implemented-local-not-production-complete
+    job_types:
+      - webhook.dispatch
+      - webhook.api_delivery
+      - embedding.generate
+    active_adapter: postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true
+    transport_legacy_drain: webhookDeliveryService legacy API-webhook queue remains disabled only when the flag is true
+    rollback: unset FEATURE_186_HARD_CUTOVER and drain canonical jobs before restoring legacy producer
+    evidence:
+      - apps/web/server/services/__tests__/webhookDispatchQueue.hardCutover.test.ts
+      - apps/web/server/services/__tests__/jobTransportAdapters.test.ts
+      - apps/web/server/services/__tests__/unifiedJobConsumer.test.ts
+  - wave: 2
+    name: tenant-bound-python-postgres-pull
+    status: implemented-local-not-production-complete
+    job_types:
+      - python.legacy_task
+    active_adapter: postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true plus FEATURE_186_POSTGRES_PYTHON_WORKER=true
+    producer_boundary: python-backend/app/services/job_control_plane.py
+    executor: python-backend/app/workers/postgres_job_worker.py
+    legacy_drain: centralized legacy status adapter remains available only for rollback and in-flight legacy drain
+    rollback: unset FEATURE_186_POSTGRES_PYTHON_WORKER; preserve canonical rows and let approved compatibility producers drain
+    evidence:
+      - python-backend/tests/services/test_job_control_plane.py
+      - apps/web/server/services/__tests__/jobTransportAdapters.test.ts
+  - wave: 3
+    name: node-domain-and-python-media-adapters
+    status: implemented-local-not-production-complete
+    job_types:
+      - capacity.assessment
+      - channel.delivery
+      - automation.execute
+      - database.backup
+      - database.backup.maintenance
+      - library.trash_purge
+      - python.media
+    active_adapter: postgres-direct-or-postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true plus FEATURE_186_POSTGRES_PYTHON_WORKER=true for Python jobs
+    legacy_drain: canonical status/recovery owns hard-cutover jobs; centralized legacy adapter remains for rollback drain
+    rollback: disable the relevant hard-cutover flag and preserve canonical rows and terminal history
+    evidence:
+      - python-backend/app/tasks/unified_job_task.py
+      - python-backend/app/workers/postgres_job_worker.py
+      - apps/web/server/services/__tests__/jobControlPlane.test.ts
+  - wave: 4
+    name: node-vertical-drama-and-video-intelligence-adapters
+    status: implemented-local-not-production-complete
+    job_types:
+      - vertical_drama.character_prompt
+      - vertical_drama.draft_composition
+      - vertical_drama.draft_quality_qc
+      - vertical_drama.episode_stage
+      - vertical_drama.interactive
+      - vertical_drama.shot_prompt
+      - vertical_drama.shot_video_prompt
+      - vertical_drama.story
+      - storyboard.skill.run
+      - video.intelligence
+    active_adapter: postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true
+    legacy_drain: Redis domain projections remain only as compatibility projections until canonical status/result readers and checkpoint persistence pass their own evidence gates
+    rollback: unset FEATURE_186_HARD_CUTOVER and drain canonical jobs before restoring the legacy producer path
+    evidence:
+      - apps/web/server/services/feature186VerticalDramaJobAdapter.ts
+      - apps/web/server/services/__tests__/jobControlPlane.test.ts
+      - apps/web/server/services/__tests__/unifiedJobConsumer.test.ts
+  - wave: 5
+    name: system-notification-and-memory-adapters
+    status: implemented-local-not-production-complete
+    job_types:
+      - notification.escalation
+      - notification.digest
+      - notification.retention
+      - notification.webhook_delivery
+      - memory.archive_cleanup
+      - memory.chunk_cleanup
+      - memory.embedding_reconciliation
+      - memory.eviction
+    active_adapter: postgres-pull
+    enable_flag: FEATURE_186_HARD_CUTOVER=true
+    legacy_drain: legacy queues are disabled in hard cutover and retained only for rollback
+    rollback: unset FEATURE_186_HARD_CUTOVER after draining canonical jobs and preserve terminal history
+    evidence:
+      - apps/web/server/jobs/feature186SystemScheduler.ts
+      - apps/web/server/services/jobExecutorRegistry.ts
 compatibility_projection:
   legacy_status_aliases: true
   api_projection_required_until_reader_migration: true
@@ -80,9 +214,156 @@ backfill_drain_policy:
   identity: verified-one-to-one-binding-only
   ambiguous_legacy_items: quarantine-for-operator-review
   shared_queue_flush: forbidden
-admission_budgets: {}
-event_rate_budgets: {}
-evidence_links: []
+admission_budgets:
+  short:
+    max_payload_bytes: 262144
+    max_result_bytes: 1048576
+    max_concurrent_per_tenant: 8
+    max_concurrent_global: 64
+    reconciler_items_per_tick: 100
+  long:
+    max_payload_bytes: 524288
+    max_result_bytes: 4194304
+    max_concurrent_per_tenant: 4
+    max_concurrent_global: 32
+    reconciler_items_per_tick: 50
+  cpu:
+    max_payload_bytes: 524288
+    max_result_bytes: 16777216
+    max_concurrent_per_tenant: 2
+    max_concurrent_global: 16
+    reconciler_items_per_tick: 25
+  external:
+    max_payload_bytes: 524288
+    max_result_bytes: 4194304
+    max_concurrent_per_tenant: 4
+    max_concurrent_global: 32
+    reconciler_items_per_tick: 50
+  gpu:
+    max_payload_bytes: 1048576
+    max_result_bytes: 33554432
+    max_concurrent_per_tenant: 1
+    max_concurrent_global: 8
+    reconciler_items_per_tick: 10
+  scheduled:
+    max_payload_bytes: 262144
+    max_result_bytes: 4194304
+    max_concurrent_per_tenant: 2
+    max_concurrent_global: 16
+    reconciler_items_per_tick: 25
+provider_submission_policies:
+  # These limits govern external submission/admission only. They do not cap
+  # canonical queue creation; valid work remains queued until eligible.
+  kie.ai:
+    safe_new_generation_requests: 18
+    provider_window_seconds: 10
+    documented_provider_requests: 20
+    per_user_active_provider_jobs: 3
+    provider_running_tasks: account-defined
+    durable_reservation_evidence: apps/web/server/services/providerSchedulerService.ts
+    callback_free_polling: apps/web/server/services/providerPollerService.ts
+    fairness_cooldown_seconds: 15
+  wavespeed_ai:
+    predictions_per_minute: 5
+    provider_concurrent_tasks: 2
+    per_user_active_provider_jobs: 3
+    durable_reservation_evidence: apps/web/server/services/providerSchedulerService.ts
+    callback_free_polling: apps/web/server/services/providerPollerService.ts
+    fairness_cooldown_seconds: 15
+  openrouter:
+    requests_per_minute: 20
+    requests_per_day: 1000
+    per_user_active_provider_jobs: 3
+    durable_reservation_evidence: apps/web/server/services/providerSchedulerService.ts
+    callback_free_polling: apps/web/server/services/providerPollerService.ts
+    fairness_cooldown_seconds: 15
+provider_durable_state:
+  account_slots_max: 5
+  schema_migration: 0325_feature_186_provider_admission_polling
+  reservation_table: worker_job_provider_reservations
+  submission_window_table: provider_admission_windows
+  fairness_state_table: provider_scheduler_states
+  worker_lease_held_during_provider_wait: false
+  callback_url_required_for_correctness: false
+  provider_output_must_be_copied_to_managed_storage: true
+  python_compatibility_registration: apps/web/server/routes/jobControlPlane.ts:register-external-provider
+  canonical_external_settlement: apps/web/server/routes/jobControlPlane.ts:complete-external
+  provider_poller_enable_flag: FEATURE_186_PROVIDER_POLLER=true
+  no_docker_provider_polling_after_cloudflare_cutover: true
+  capacity_claim: "requires target-account load and recovery evidence; schema alone does not claim thousands of users"
+capacity_validation_targets:
+  # These are bounded load-test targets, not production capacity claims.
+  canonical_queued_jobs_load_test: 10000
+  waiting_external_rows_load_test: 10000
+  provider_scheduler_decisions_per_sweep: 500
+  provider_poller_rows_per_sweep: 100
+  provider_poller_sweep_interval_seconds: 120
+  provider_poll_requests_per_minute_budget: 50
+  outbox_age_slo_seconds: 300
+  database_query_p95_ms: 500
+  database_transaction_p95_ms: 1000
+  acceptance_rule: target-account load, restart, provider-quota, and PITR evidence required before increasing limits
+event_rate_budgets:
+  short: { max_lifecycle_events_per_job: 100, max_progress_events_per_minute: 30 }
+  long: { max_lifecycle_events_per_job: 500, max_progress_events_per_minute: 30 }
+  cpu: { max_lifecycle_events_per_job: 500, max_progress_events_per_minute: 20 }
+  external: { max_lifecycle_events_per_job: 500, max_progress_events_per_minute: 30 }
+  gpu: { max_lifecycle_events_per_job: 500, max_progress_events_per_minute: 20 }
+  scheduled: { max_lifecycle_events_per_job: 200, max_progress_events_per_minute: 10 }
+runtime_budgets:
+  publisher_batch_size: 50
+  reconciler_batch_size: 100
+  outbox_age_slo_seconds: 300
+  heartbeat_freshness_slo_seconds: 90
+  database_transaction_timeout_ms: 5000
+  database_query_timeout_ms: 10000
+  restore_rehearsal_required: true
+  control_plane_absolute_max_payload_bytes: 1048576
+  per_class:
+    short:
+      heartbeat_interval_seconds: 30
+      lease_duration_seconds: 90
+      provider_deadline_seconds: 0
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 50
+    long:
+      heartbeat_interval_seconds: 60
+      lease_duration_seconds: 180
+      provider_deadline_seconds: 0
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 50
+    external:
+      heartbeat_interval_seconds: 20
+      lease_duration_seconds: 60
+      provider_deadline_seconds: 7200
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 50
+    cpu:
+      heartbeat_interval_seconds: 30
+      lease_duration_seconds: 120
+      provider_deadline_seconds: 0
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 25
+    gpu:
+      heartbeat_interval_seconds: 30
+      lease_duration_seconds: 180
+      provider_deadline_seconds: 0
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 10
+    scheduled:
+      heartbeat_interval_seconds: 20
+      lease_duration_seconds: 60
+      provider_deadline_seconds: 0
+      outbox_age_slo_seconds: 300
+      publisher_items_per_tick: 25
+evidence_links:
+  - apps/web/scripts/audit-feature-186-call-sites.ts
+  - apps/web/scripts/verify-feature-186.ts
+  - apps/web/server/services/__tests__/jobControlPlane.test.ts
+  - apps/web/server/services/__tests__/jobReconciler.test.ts
+  - apps/web/server/services/__tests__/providerSchedulerService.test.ts
+  - docs/portable-skill-pack/specs/2026-09-14-provider-intake-slot-scheduler-design.md
+  - python-backend/tests/services/test_job_control_plane.py
 tenant_data_transfer_boundary:
   status: not_enabled
   canonical_job_type: tenant_data_transfer
@@ -94,7 +375,16 @@ schema:
     - 0304_feature_186_contract_version
     - 0305_feature_186_timeout_policy
     - 0306_feature_186_outbox_cancellation
-  current_schema_version: "0306"
+    - 0307_feature_186_action_callback_evidence
+    - 0308_feature_186_operator_review_reason
+    - 0309_feature_186_python_job_runtime
+    - 0310_feature_186_error_and_evidence_safety
+    - 0311_feature_186_capacity_schedule_occurrence
+    - 0313_feature_186_node_job_runtime
+    - 0314_feature_186_admission_indexes
+    - 0315_feature_186_callback_timestamp
+    - 0325_feature_186_provider_admission_polling
+  current_schema_version: "0325"
   backfill_command: npm --workspace @smartspec/web run backfill:unified-job-control-plane -- --dry-run
   apply_requires: backup-and-approved-maintenance-window
 rollout_gates:
@@ -104,10 +394,24 @@ rollout_gates:
   - adapter-contract-and-duplicate-delivery-tests
   - tenant-admin-redaction-review
   - build-restart-worker-connectivity
+  - durable-action-and-callback-evidence
 rollback:
   new_work_flag: feature186.adapter.<job_type>
   rule: route-new-work-to-previous-adapter; preserve-canonical-terminal-history
 cloudflare_proof: not-established-by-local-tests
+cloudflare_local_contract:
+  status: implemented-local-not-account-proven
+  manifest: ops/feature-188/cloudflare-adapter-contract.yaml
+  verifier: apps/web/scripts/verify-cloudflare-local-readiness.ts
+  production_proof: false
+  target_account_proof: false
+production_evidence:
+  legacy_transport_retired: false
+  legacy_status_compatibility_retired: false
+  domain_projection_checkpoint_recovery: not-established
+  provider_recovery_integration: not-established
+  deployment_recovery: not-established
+  pitr_restore_rehearsal: not-established
 cloudflare_connectivity:
   mode: hyperdrive-to-existing-postgresql
   binding: HYPERDRIVE

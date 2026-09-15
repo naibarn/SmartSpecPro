@@ -33,25 +33,20 @@ Lifecycle, settlement, and transfer checkpoint history must not be silently
 deleted by a parent-row cascade; archival/redaction precedes any permitted
 deletion.
 
-## Account and tenant data-transfer boundary
+## Feature 189 integration boundary
 
-Changing an account's `currentTenantId` never implicitly transfers historical
-data. An explicit authorized transfer is limited in v1 to source-user to
-target-user within the same active tenant and uses versioned allowlisted
-resource handlers. It preserves tenant scope, primary keys, authorship,
-execution actors, canonical job IDs, lifecycle history, billing/usage
-references, and managed artifact identity; credentials, sessions, secrets,
-credits, transactions, billing/settlement history, and active execution state
-remain outside the transfer.
+[Feature 189 — Unified Tenant Identity and Data Transfer](../189-unified-tenant-identity-and-data-transfer/spec.md)
+owns account identity, System Admin tenant moves, transfer handlers,
+preview/approval, item execution, transfer-specific audit projections, and the
+transfer UI. Feature 186 supplies only the completed canonical execution
+boundary that Feature 189 consumes: `tenant_data_transfer` job creation,
+guarded queue cancellation/fencing, unpublished-outbox cancellation, retained
+events/dispatch references, settlement coordination, and reconciliation.
 
-Queueable canonical jobs are previewed, fenced, cancelled, and recorded as a
-separate `queue_cancelled` disposition; active jobs block approval. The
-transfer itself is one `tenant_data_transfer` canonical job with immutable
-preview fingerprint, deterministic item keys, resumable checkpoints, explicit
-unsupported/conflict outcomes, operator-reviewed pause/resume, and terminal
-cancellation that retains already transferred items. It never flushes a shared
-queue, creates a replacement operation, or repeats a paid/provider/artifact
-side effect.
+Feature 186 does not define transfer resource eligibility, ownership changes,
+preview fingerprints, item checkpoints, or transfer product behavior. Any
+transfer request must pass Feature 189's registered-handler, authorization, and
+preview gates before it can use this execution boundary.
 
 ## Constraints
 

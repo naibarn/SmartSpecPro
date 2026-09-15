@@ -41,6 +41,11 @@ import { and, eq, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { debugError } from "../_core/logger";
 import {
   armVideoIntelligenceRegistrationCheck,
@@ -349,7 +354,18 @@ export async function enqueueVideoIntelligenceJob(
 
   const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
   try {
-    await enqueueBullmqJob(jobId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "video.intelligence",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await enqueueBullmqJob(jobId);
+    }
   } catch (error) {
     // FAIL-FAST (section-01 hardening, mirrors `verticalDramaEpisodeStageJobs.ts`'s
     // own enqueue docblock): unlike `verticalDramaStoryJobs.ts`'s self-contained
@@ -536,7 +552,8 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   // job twice. `attempts: 1`: the worker body never rethrows, so a retry
   // could only fire on a genuine crash, and blind redelivery of an LLM
   // stage costs real credits.
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
@@ -750,7 +767,12 @@ export async function initVideoIntelligenceJobsQueue(
   dependencies?: VideoIntelligenceJobsQueueInitDependencies,
 ): Promise<void> {
   const sweep = dependencies?.sweep ?? (() => sweepOrphanedVideoIntelligenceJobs());
-  startOrphanSweep(sweep);
+  // Once the canonical video.intelligence job is enabled, lease expiry and
+  // retry recovery belong to PostgreSQL. The old Redis scan/re-enqueue path
+  // would otherwise race the outbox and could execute the same provider work
+  // twice. Lane-A render recovery below is a separate worker-runtime path and
+  // remains armed independently.
+  if (!isFeature186HardCutoverEnabled()) startOrphanSweep(sweep);
 
   // Lane-A render orphan sweep — armed alongside (never gated by) the
   // BullMQ/Redis init below, same reasoning as the VI-job sweep: a web
@@ -764,6 +786,8 @@ export async function initVideoIntelligenceJobsQueue(
   // broken, since that is exactly when registration never happens
   // (section-08 §6.4).
   armVideoIntelligenceRegistrationCheck();
+
+  if (isFeature186HardCutoverEnabled()) return;
 
   if (queue) return;
   try {

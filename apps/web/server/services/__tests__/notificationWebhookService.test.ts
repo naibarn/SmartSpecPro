@@ -60,15 +60,19 @@ vi.mock("../redisClients", () => ({
 
 // Mock BullMQ
 const mockQueueAdd = vi.fn();
+class MockQueue {
+  add = mockQueueAdd;
+  close = vi.fn();
+}
+
+class MockWorker {
+  close = vi.fn();
+  on = vi.fn();
+}
+
 vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
-    add: mockQueueAdd,
-    close: vi.fn(),
-  })),
-  Worker: vi.fn().mockImplementation(() => ({
-    close: vi.fn(),
-    on: vi.fn(),
-  })),
+  Queue: MockQueue,
+  Worker: MockWorker,
 }));
 
 // Mock fetch
@@ -514,7 +518,7 @@ describe("Webhook Delivery - deliverWebhook", () => {
         method: "POST",
         headers: expect.objectContaining({
           "Content-Type": "application/json",
-          "User-Agent": "SmartSpecPro-Webhook/1.0",
+          "User-Agent": "SmartAIHub-Webhook/1.0",
         }),
       })
     );

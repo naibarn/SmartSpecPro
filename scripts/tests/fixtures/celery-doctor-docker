@@ -44,6 +44,19 @@ case "${1:-}" in
             read_field "${container}" 4
         fi
         ;;
+    exec)
+        container="${2:-}"
+        if [[ "${container}" == "smartspec-celery-media" || "${container}" == "smartspec-celery-beat" ]]; then
+            if [[ "$*" == *"cat /tmp/smartspec-celery-runtime.json"* ]]; then
+                identity="$(read_field "${container}" 6 || true)"
+                [[ -n "${identity}" ]] && printf '%s\n' "${identity}"
+            elif [[ "$*" == *"compute_source_fingerprint"* ]]; then
+                read_field "${container}" 7 || true
+            elif [[ "$*" == *"control_app.control.inspect"* ]]; then
+                read_field "${container}" 8 || true
+            fi
+        fi
+        ;;
     compose)
         printf '%s\n' "$*" >> "${CALL_LOG}"
         args="$*"

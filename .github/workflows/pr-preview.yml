@@ -11,6 +11,8 @@ permissions:
 
 jobs:
   build-preview:
+    # Retired: preview runtime is no longer provisioned on Google Cloud.
+    if: ${{ false }}
     runs-on: ubuntu-latest
 
     steps:

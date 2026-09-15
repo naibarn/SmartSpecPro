@@ -1,10 +1,18 @@
 # Orchestra Decisions
 
-- [2026-09-13T01:54:06Z] DECISION: Use a provider-boundary upload/validation contract instead of a Qwen-specific patch. Context: the same long/protected URL and format failures can affect multiple Kie image/video models. Alternatives considered: patch only Qwen3 or pass base64; both leave recurrence paths.
-- [2026-09-13T01:54:06Z] DECISION: No automatic base64 fallback for provider references. Context: it increases payload size and can reduce fidelity or hit request limits; the Kie file-upload API is the canonical re-hosting boundary.
-- [2026-09-13T09:10:00+07:00] DECISION: Detect actual bytes and preserve the source format at the Python Kie boundary. Context: headers/extensions can be stale (including WebP stored under a JPEG name); the adapter must validate before paid submission and never silently relabel content.
-- [2026-09-13T09:10:00+07:00] DECISION: Classify deterministic attachment access/format failures as non-retryable. Context: transport retries cannot repair a missing tenant reference or invalid bytes and otherwise recreate the observed retry loop.
-- [2026-09-13T16:30:00+07:00] DECISION: Fail closed when staged reference conversion fails. Context: forwarding the original data/unsupported reference after a conversion error recreates the exact provider failure the boundary is meant to prevent; the job must surface a deterministic preparation error before paid submission.
-- [2026-09-13T16:30:00+07:00] DECISION: Use stable attachment error markers for retry classification. Context: human-readable size text changes with environment limits, so classification must not depend on `10MB`/`100MB` literals.
-- [2026-09-13T16:30:00+07:00] DECISION: Preserve transient video download errors as retryable. Context: a video-specific permanent marker must not be emitted for temporary 429/5xx/network failures.
-- [2026-09-13T16:30:00+07:00] DECISION: Do not weaken tenant-scoped managed-reference tests to hide baseline failures. Context: the exact media service suite has unrelated fixture/endpoint failures; changing authorization or URL behavior would create a regression in the attachment safety contract.
+[2026-09-15T01:09:06Z] DECISION: Start a fresh Orchestra review session.
+  Context: A prior Orchestra directory existed; it was archived with the safe archiver.
+  Alternatives considered: Reuse prior session; rejected to keep this ten-round review auditable.
+
+[2026-09-15T01:09:06Z] DECISION: Use direct-inline-waves in standard light mode.
+  Context: SocratiCode MCP and callable review subagents are unavailable, and the worktree has unrelated dirty changes.
+  Alternatives considered: Parallel writers; rejected because shared contract files would increase conflict risk.
+
+[2026-09-15T01:09:06Z] DECISION: Treat Cloudflare target-account, Hyperdrive, rollback, provider recovery/PITR, and Vectorize target evidence as external gates.
+  Context: Local mocks cannot honestly prove deployment/account behavior.
+  Alternatives considered: Mark local tests as production proof; rejected by Feature 186/192 contract.
+
+[2026-09-15T08:10:04+07:00] DECISION: Keep provider cancellation fail-closed and make partial storyboard output reviewable.
+  Context: The user confirmed providers generally cannot cancel after submission, while pending work must stop immediately and completed images must be inspectable before deciding whether to continue.
+  Result: Add a lightbox for completed managed images, project durable partial output on cancellation, preserve control-plane fencing for late provider results, and reuse successful image assets without re-submission.
+  Alternatives considered: Browser-only image caching and assuming provider cancellation were rejected because they lose recovery evidence or create false cancellation guarantees.

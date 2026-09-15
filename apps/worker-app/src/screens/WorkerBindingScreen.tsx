@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "../app/workerContext";
 import type { WorkerRouteId } from "../app/workerRoutes";
+import { normalizeDisplayPath } from "./media-workspace/sourcePath";
 
 type SeriesProjection = {
   seriesId: string;
@@ -71,13 +72,13 @@ export function WorkerBindingScreen({ onNavigate }: { onNavigate?: (route: Worke
   const selected = series.find(item => item.seriesId === selectedSeriesId) ?? null;
   const chooseRoot = async () => {
     const selectedPath = await openFolderDialog({ directory: true, multiple: false, title: "เลือกโฟลเดอร์ footage ของ Series" });
-    if (typeof selectedPath === "string") setRootPath(selectedPath);
+    if (typeof selectedPath === "string") setRootPath(normalizeDisplayPath(selectedPath));
   };
   const selectRoot = async () => {
     if (!selected || !rootPath.trim()) return;
     setBusy(true); setError(""); setMessage("");
     try {
-      const value = await invoke<WorkspaceStatus>("worker_app_pick_local_root", { seriesId: selected.seriesId, path: rootPath.trim() });
+      const value = await invoke<WorkspaceStatus>("worker_app_pick_local_root", { seriesId: selected.seriesId, path: normalizeDisplayPath(rootPath) });
       setWorkspace(value); setSelectedRootId(value?.rootId ?? null); setMessage("ตรวจสอบโฟลเดอร์บนเครื่อง Worker แล้ว");
     } catch (caught) { setError(caught instanceof Error ? caught.message : String(caught)); }
     finally { setBusy(false); }
@@ -113,7 +114,7 @@ export function WorkerBindingScreen({ onNavigate }: { onNavigate?: (route: Worke
       {error ? <p className="connect-message error" role="alert">{error}</p> : null}
       {message ? <p className="connect-message" role="status" aria-live="polite">{message}</p> : null}
       <section aria-labelledby="binding-series-heading"><h3 id="binding-series-heading">Series ที่เข้าถึงได้</h3><label className="field-label" htmlFor="binding-series-search">ค้นหา Series</label><div className="button-row"><input id="binding-series-search" value={seriesQuery} onChange={event => setSeriesQuery(event.target.value)} placeholder="ชื่อ Series" autoComplete="off" /><button type="button" className="secondary-button" onClick={() => void loadSeries({ query: seriesQuery })} disabled={busy}>ค้นหา</button></div><ul className="series-list">{series.map(item => <li key={item.seriesId} className={item.seriesId === selectedSeriesId ? "selected" : ""}><button type="button" onClick={() => { setSelectedSeriesId(item.seriesId); setWorkspace(null); setSelectedRootId(null); setRootPath(""); }} aria-pressed={item.seriesId === selectedSeriesId}><strong>{item.title}</strong><span>ID {item.seriesId} · {item.accessMode === "operate" ? "จัดการได้" : "ดูได้อย่างเดียว"} · binding {item.bindingStatus ?? "ยังไม่ผูก"}</span></button></li>)}</ul>{series.length === 0 ? <p className="subtle">ไม่พบ Series ที่เข้าถึงได้</p> : null}{nextSeriesCursor ? <button type="button" className="secondary-button" onClick={() => void loadSeries({ append: true, cursor: nextSeriesCursor })} disabled={busy}>โหลด Series เพิ่ม</button> : null}</section>
-      <section aria-labelledby="binding-root-heading"><h3 id="binding-root-heading">Local root</h3><label className="field-label" htmlFor="binding-root-path">โฟลเดอร์ footage</label><div className="button-row"><input id="binding-root-path" value={rootPath} onChange={event => setRootPath(event.target.value)} placeholder="เลือกโฟลเดอร์บนเครื่อง Worker" autoComplete="off" /><button type="button" className="secondary-button" onClick={() => void chooseRoot()} disabled={!selected || busy}>เลือกโฟลเดอร์</button></div><p className="field-help">path นี้ถูกใช้ใน native Worker เท่านั้น และไม่ถูกส่งกลับเป็น remote projection</p><div className="button-row"><button type="button" className="primary-button" onClick={() => void selectRoot()} disabled={!selected || !rootPath.trim() || busy}>ตรวจสอบ root</button><button type="button" className="primary-button" onClick={() => void bind()} disabled={!selected || !workspace || selected.accessMode !== "operate" || busy}>ผูก Series</button><button type="button" className="secondary-button" onClick={() => void revoke()} disabled={!workspace || busy}>ยกเลิกการผูก</button>{onNavigate ? <button type="button" className="secondary-button" onClick={() => onNavigate("media-workspace")}>ไปเตรียมสื่อ</button> : null}</div>{workspace ? <p className="workspace-status-card" role="status"><strong>{workspace.status}</strong><span>root {workspace.rootId} · {workspace.fileCount} files · {workspace.workspaceMode}</span></p> : <p className="subtle">ยังไม่ได้เลือก local root</p>}</section>
+      <section aria-labelledby="binding-root-heading"><h3 id="binding-root-heading">Local root</h3><label className="field-label" htmlFor="binding-root-path">โฟลเดอร์ footage</label><div className="button-row"><input id="binding-root-path" value={normalizeDisplayPath(rootPath)} onChange={event => setRootPath(normalizeDisplayPath(event.target.value))} placeholder="เลือกโฟลเดอร์บนเครื่อง Worker" autoComplete="off" /><button type="button" className="secondary-button" onClick={() => void chooseRoot()} disabled={!selected || busy}>เลือกโฟลเดอร์</button></div><p className="field-help">path นี้ถูกใช้ใน native Worker เท่านั้น และไม่ถูกส่งกลับเป็น remote projection</p><div className="button-row"><button type="button" className="primary-button" onClick={() => void selectRoot()} disabled={!selected || !rootPath.trim() || busy}>ตรวจสอบ root</button><button type="button" className="primary-button" onClick={() => void bind()} disabled={!selected || !workspace || selected.accessMode !== "operate" || busy}>ผูก Series</button><button type="button" className="secondary-button" onClick={() => void revoke()} disabled={!workspace || busy}>ยกเลิกการผูก</button>{onNavigate ? <button type="button" className="secondary-button" onClick={() => onNavigate("media-workspace")}>ไปเตรียมสื่อ</button> : null}</div>{workspace ? <p className="workspace-status-card" role="status"><strong>{workspace.status}</strong><span>root {workspace.rootId} · {workspace.fileCount} files · {workspace.workspaceMode}</span></p> : <p className="subtle">ยังไม่ได้เลือก local root</p>}</section>
     </article>
   </section>;
 }

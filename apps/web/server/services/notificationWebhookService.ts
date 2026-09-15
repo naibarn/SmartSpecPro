@@ -12,6 +12,8 @@ import { eq, and, or, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { notificationWebhooks } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ─── Types ───
 
@@ -179,8 +181,36 @@ export async function enqueueWebhookDelivery(
   payload: WebhookPayload
 ): Promise<void> {
   try {
+    if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+      const db = getDb();
+      const [webhook] = await db
+        .select({ tenantId: notificationWebhooks.tenantId })
+        .from(notificationWebhooks)
+        .where(eq(notificationWebhooks.id, webhookId))
+        .limit(1);
+      if (!webhook) throw new Error("NOTIFICATION_WEBHOOK_NOT_FOUND");
+      const payloadDigest = crypto.createHash("sha256").update(JSON.stringify(payload), "utf8").digest("hex").slice(0, 32);
+      await createControlPlaneJob({
+        context: {
+          tenantId: webhook.tenantId,
+          actorType: "system",
+          authorizationScope: "system:notification-webhook",
+          correlationId: `notification-webhook:${webhookId}:${payloadDigest}`,
+          idempotencyKey: `notification-webhook:${webhookId}:${payloadDigest}`,
+        },
+        definition: {
+          contractVersion: "feature-186-v1",
+          jobType: "notification.webhook_delivery",
+          executionClass: "short",
+          input: { webhookId, payload },
+          retryPolicy: { maxAttempts: 3, baseDelayMs: 5_000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
+          timeoutPolicy: { softTimeoutMs: 15_000, hardTimeoutMs: 60_000 },
+        },
+      });
+      return;
+    }
     const queue = await getWebhookQueue();
-    await queue.add(
+    await publishLegacyBullMqJob(queue,
       "webhook-deliver",
       { webhookId, payload },
       {
@@ -460,6 +490,7 @@ export async function findMatchingWebhooks(
 
 export async function initWebhookDeliveryWorker(): Promise<void> {
   if (webhookWorker) return;
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") return;
 
   const { getRealtimeClient } = await import("../services/redisClients");
   const redis = getRealtimeClient();

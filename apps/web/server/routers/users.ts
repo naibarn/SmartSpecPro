@@ -79,6 +79,15 @@ import {
   resolveJurisdictionPreset,
 } from "../../shared/ageSafetyPolicy";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import {
+  getOwnershipProfile,
+  getDigitalOwnershipMetadata,
+  getUserProfile,
+  ownershipProfileUpdateSchema,
+  updateOwnershipProfile,
+  updateUserProfile,
+  userProfileUpdateSchema,
+} from "../services/profileOwnershipService";
 
 // Zod schemas
 const userFiltersSchema = z.object({
@@ -857,6 +866,25 @@ export const usersRouter = router({
       lastSignedIn: user.lastSignedIn,
     };
   }),
+
+  /** Get the authenticated user's ordinary contact profile. */
+  getProfile: protectedProcedure.query(async ({ ctx }) => getUserProfile(ctx.user.id)),
+
+  /** Update ordinary contact data; login and recovery credentials are separate. */
+  updateProfile: protectedProcedure
+    .input(userProfileUpdateSchema)
+    .mutation(async ({ ctx, input }) => updateUserProfile(ctx.user.id, input)),
+
+  /** Get the authenticated user's private creator ownership/license profile. */
+  getOwnershipProfile: protectedProcedure.query(async ({ ctx }) => getOwnershipProfile(ctx.user.id)),
+
+  /** Return the redacted ownership fields safe for license/watermark consumers. */
+  getDigitalOwnershipMetadata: protectedProcedure.query(async ({ ctx }) => getDigitalOwnershipMetadata(ctx.user.id)),
+
+  /** Update the private metadata used by license, attribution, and watermark consumers. */
+  updateOwnershipProfile: protectedProcedure
+    .input(ownershipProfileUpdateSchema)
+    .mutation(async ({ ctx, input }) => updateOwnershipProfile(ctx.user.id, input)),
 
   /**
    * Domain Admin: Toggle user enabled/disabled status

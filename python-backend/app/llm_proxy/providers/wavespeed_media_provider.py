@@ -20,7 +20,10 @@ from urllib.parse import unquote
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_strict
+from app.core.media_job_validators import (
+    validate_provider_reference_url,
+    validate_uri_strict,
+)
 
 logger = structlog.get_logger()
 
@@ -776,6 +779,8 @@ class WaveSpeedMediaProvider:
             raise WaveSpeedError(
                 f"WaveSpeed supports at most {model_spec.max_reference_images} reference images"
             )
+        for reference_url in reference_image_urls or []:
+            validate_provider_reference_url(reference_url)
         if aspect_ratio not in model_spec.allowed_aspect_ratios:
             raise WaveSpeedError(
                 f"WaveSpeed aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"
@@ -867,6 +872,12 @@ class WaveSpeedMediaProvider:
             or extra.get("audios")
             or reference_audio_urls,
         )
+        for reference_url in (*images, *videos, *audios):
+            validate_provider_reference_url(reference_url)
+        for key in ("image", "last_image", "video", "last_video"):
+            value = extra.get(key)
+            if isinstance(value, str) and value.strip():
+                validate_provider_reference_url(value)
         if len(images) > model_spec.max_reference_images:
             raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_reference_images} reference images")
         if len(videos) > model_spec.max_reference_videos:
@@ -877,6 +888,10 @@ class WaveSpeedMediaProvider:
             loras = extra.get("loras")
             if loras is not None and (not isinstance(loras, list) or len(loras) > model_spec.max_loras):
                 raise WaveSpeedError(f"WaveSpeed supports at most {model_spec.max_loras} LoRA weights")
+            if isinstance(loras, list):
+                for lora in loras:
+                    if isinstance(lora, dict) and isinstance(lora.get("path"), str):
+                        validate_provider_reference_url(lora["path"])
         elif extra.get("loras"):
             raise WaveSpeedError("This WaveSpeed model does not support LoRA weights")
 
@@ -1146,6 +1161,8 @@ class WaveSpeedMediaProvider:
             raise WaveSpeedError(
                 f"WaveSpeed image models support at most {model_spec.max_reference_images} reference images"
             )
+        for reference_url in reference_image_urls or []:
+            validate_provider_reference_url(reference_url)
         if aspect_ratio not in model_spec.allowed_aspect_ratios:
             raise WaveSpeedError(
                 f"WaveSpeed image aspect_ratio must be one of {sorted(model_spec.allowed_aspect_ratios)}"

@@ -1,4 +1,22 @@
 /**
+ * Remove Windows verbatim path prefixes before a path is shown to a user or
+ * handed to a path-aware browser API. The prefix is an OS transport detail;
+ * keeping the rest of the path unchanged preserves drive and UNC semantics.
+ */
+export function stripWindowsVerbatimPrefix(value: string | null | undefined): string {
+  if (!value) return "";
+  const clean = value.trim();
+  if (clean.startsWith("\\\\?\\UNC\\")) return `\\\\${clean.slice(8)}`;
+  if (clean.startsWith("//?/UNC/")) return `//${clean.slice(8)}`;
+  if (clean.startsWith("\\\\?\\") || clean.startsWith("//?/")) return clean.slice(4);
+  if (clean.startsWith("\\??\\")) return clean.slice(4);
+  return clean;
+}
+
+/** User-facing form of a local path. */
+export const normalizeDisplayPath = stripWindowsVerbatimPrefix;
+
+/**
  * Convert a local media path into the root-relative path accepted by the
  * Worker queue. Absolute paths outside the active workspace are rejected so
  * callers cannot accidentally submit a basename for the wrong file.
@@ -50,7 +68,7 @@ export function resolveWorkspaceSourcePath(
 }
 
 function normalizeLocalPath(value: string): string {
-  let normalized = value.trim();
+  let normalized = stripWindowsVerbatimPrefix(value);
   if (/^file:\/\//i.test(normalized)) {
     try {
       const parsed = new URL(normalized);

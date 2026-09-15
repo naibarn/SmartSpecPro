@@ -1,16 +1,132 @@
 # Feature 186 — Unified Job Control Plane Adapters
 
-**Status:** PROPOSED — architecture and migration specification; no runtime implementation is included in this document.
+**Status:** IN PROGRESS — Cloudflare is the only production runtime target.
+The web origin publishes canonical PostgreSQL outbox envelopes and the
+Cloudflare Worker owns the native Queues/Workflows/Containers/Worker App
+boundary. Google Cloud Tasks, Cloud Run, and their OIDC task routes are
+retired from the runtime path; Google OAuth and Google Drive remain product
+integrations. The compatibility drain, domain projection/checkpoint evidence,
+target-account bindings, and external recovery gates remain explicit and cannot
+be treated as production-ready by local tests alone.
 **Created:** 2026-09-12
-**Scope:** Web/Node job dispatch, Python/Celery execution, Celery Beat scheduling, existing Worker App execution, and the future Cloudflare migration boundary.
+**Scope:** Web/Node job dispatch, Python execution, existing Worker App execution, Cloudflare Queues/Workflows/Containers/Cron, and the PostgreSQL/Hyperdrive control-plane boundary.
 **Authority:** This specification defines the canonical job contract, persistence invariants, adapter boundaries, rollout gates, and compatibility rules for Feature 186.
 **Continuation:** Extends the existing `worker_jobs` and `worker_job_events` foundation from the worker runtime platform. It does not introduce a second generic `jobs` table.
+**Related feature:** [Feature 189 — Unified Tenant Identity and Data Transfer](../189-unified-tenant-identity-and-data-transfer/spec.md) owns account identity, tenant moves, transfer handlers, and transfer UI; this specification owns the canonical job execution and cancellation contract used by that feature.
+**Implementation-readiness plan:** [Feature 192 — Local Cloudflare Migration Readiness](../192-cloudflare-local-migration-readiness/spec.md) owns repository-local hardening, tests, migration reconciliation, and local handoff evidence; it does not replace this contract or claim target-account proof.
+
+**Current implementation boundary:** `webhook.dispatch`,
+`webhook.api_delivery`, `embedding.generate`, `capacity.assessment`,
+`channel.delivery`, `automation.execute`, `database.backup`,
+`database.backup.maintenance`, notification, memory-maintenance, and the
+`library.trash_purge`, and the Wave-4 vertical-drama/video job types create canonical jobs and execute
+through the PostgreSQL outbox/PostgreSQL-pull adapter when
+`FEATURE_186_HARD_CUTOVER=true`. Tenant-bound Python ingress producers use the
+same canonical create boundary. When both
+`FEATURE_186_HARD_CUTOVER=true` and
+`FEATURE_186_POSTGRES_PYTHON_WORKER=true`, Python jobs are published as
+PostgreSQL-pull dispatches and executed by
+`python-backend.app.workers.postgres_job_worker`; Celery is not used for those
+jobs. Python media generation uses a durable provider-admission and callback-free
+polling boundary; a worker lease is not held while Kie.ai/WaveSpeedAI runs.
+Provider-specific recovery still requires integration evidence. Wave-4 domain
+records and projections retain Redis compatibility reads/writes until their
+canonical status/result readers and checkpoint evidence pass their own gates.
+Redis/BullMQ/Celery/Docker are compatibility/drain infrastructure only and are
+not selectable production targets. The web process publishes durable intents;
+Cloudflare consumes them through the target-account Queue/Hyperdrive boundary.
+The local PostgreSQL-pull executor remains a contract and recovery harness for
+the same canonical envelope, not a claim that Cloudflare target-account
+execution has already been proven. This feature is not production-complete
+until the legacy drain, target bindings, deployment rollback, and external
+recovery gates pass.
+
+### Cloudflare hard-cutover boundary
+
+When `FEATURE_186_HARD_CUTOVER=true`, the only accepted production target is
+Cloudflare. The web process must not initialize BullMQ, Celery, Cloud Run, or
+Google Cloud Tasks publishers. It commits `worker_jobs` and its outbox intent
+first, then publishes the canonical envelope to the deployment-owned
+Cloudflare Worker (`CLOUDFLARE_RUNTIME_URL`) or to the local PostgreSQL-pull
+contract used by the readiness harness. The Worker validates the envelope and
+publishes to the configured native Queue; Hyperdrive remains the only database
+connectivity boundary for canonical state.
+
+The former `USE_CLOUD_TASKS`, `CLOUD_RUN_*`, `GCP_*`, OIDC task routes, and
+provider-specific task-handler endpoints are retired and fail closed. They may
+remain as historical configuration/data during the drain, but no new work may
+be published through them. Google OAuth and Google Drive credentials/routes are
+outside this runtime boundary and remain enabled as product integrations.
+
+Provider-backed generation has two separate controls. Creating a canonical
+job is allowed to succeed and place the job in the durable PostgreSQL queue
+even when a provider rate window, provider concurrency slot, or per-user
+submission slot is full. Provider admission is enforced only at the point of
+external submission; work that is not yet eligible remains `queued` and its
+outbox/dispatch intent remains recoverable. Provider capacity is therefore
+not a reason to return `JOB_ADMISSION_BACKPRESSURE` for a valid request.
+
+The existing generic execution admission limits are safety limits for CPU,
+memory, database, or abuse protection. They must not be used as a provider
+quota. Provider-backed job classes opt into durable queue acceptance and use a
+provider scheduler with separate account, user, and rate-window dimensions.
+
+The provider-neutral Cloudflare boundary is implemented locally in
+`apps/web/server/services/cloudflareJobAdapters.ts` with injected bindings for
+Queues, Workflows, Containers, Cron, and Worker App. This is contract/test
+readiness only: it does not provide target-account bindings, Hyperdrive
+connectivity, deployment, or production recovery proof.
+
+The separate `apps/cloudflare` package now provides a deployment-safe Worker
+entrypoint, capability-aware native binding seam, Hyperdrive client boundary,
+at-least-once consumer harness, and local R2/Vectorize contract checks. Its
+Wrangler file intentionally keeps activation disabled and leaves account-specific
+resource bindings to the approved deployment pipeline. Local readiness is
+recorded in `ops/feature-187/local-readiness-manifest.yaml`; it is not a
+`CUTOVER_CANDIDATE` handoff.
+
+### Vectorize migration readiness boundary
+
+The Vectorize preparation covers the four currently approved index families:
+`library-index`, `docs-index-prod`, `images-index-prod`, and
+`drama-media-index-prod`. PostgreSQL/domain rows remain authoritative for
+content, ownership, vector references, deletion decisions, and rebuild
+checkpoints; Vectorize is a rebuildable retrieval projection. Node and Python
+adapters share the Cloudflare Vectorize v2 contract, NDJSON upsert, asynchronous
+mutation evidence, 768-dimensional `@cf/baai/bge-base-en-v1.5` embeddings,
+cosine distance, bounded metadata/filter payloads, and tenant metadata indexes.
+Workers AI credentials and Vectorize data-plane credentials are separate and
+must never be interchanged.
+
+Every Vectorize query is tenant-filtered and every destructive operation first
+correlates stored vector IDs to the authoritative tenant metadata. Missing,
+partial, cross-tenant, or ambiguous provider responses fail closed and remain
+operator-review/reconciliation work. Reindexing uses deterministic IDs,
+resumable source checkpoints, stale-vector cleanup, and the configured old-index
+retention window. The Cloudflare Worker binding also requires read-before-delete
+ownership verification.
+
+This does not claim that all application vector stores have already migrated.
+Conversation message chunks, scoped memories, Python agency memories/chunks,
+episodic/code/conversation Chroma collections, social-conversation archive
+collections, the generic `vector_documents` store, multimodal-memory vectors,
+and Kilo memory paths retain their existing stores until their own embedding,
+read-path, privacy deletion, and recovery evidence is accepted. The complete
+local inventory is recorded in
+`ops/feature-187/vectorize-readiness-manifest.yaml` and is enforced as thirteen
+named source families by the target-evidence verifier. The full-system
+Vectorize gate therefore requires an application vector-source inventory,
+embedding parity, read-path parity, and an explicit migration or approval
+decision for each remaining source. Local mocks and target-evidence files
+cannot substitute for target-account index probes, rebuild/checkpoint
+evidence, negative tenant tests, mutation recovery, or production backup/PITR
+rehearsal.
 
 ## Outcome
 
-SmartAIHub has one runtime-neutral Job Control Plane. Business services create and observe a canonical `worker_jobs` record and append lifecycle events to `worker_job_events`; BullMQ, Celery, Celery Beat, Worker App, and future Cloudflare services only implement transport, scheduling, or execution adapters.
+SmartAIHub has one runtime-neutral Job Control Plane. Business services create and observe a canonical `worker_jobs` record and append lifecycle events to `worker_job_events`; Cloudflare Queues, Workflows, Containers, Cron, and Worker App implement the active production transport, scheduling, and execution adapters. BullMQ/Celery/Beat remain compatibility-drain references only.
 
-The first release keeps the current Redis/BullMQ/Celery infrastructure operating. It adds a durable control-plane contract, lease and heartbeat recovery, centralized business retry policy, idempotency, transactional outbox publication, and adapter-by-adapter migration. A later Cloudflare migration can replace one adapter at a time without changing domain services or the canonical job ID.
+The Cloudflare hard-cutover release keeps the canonical PostgreSQL control-plane contract, lease and heartbeat recovery, centralized business retry policy, idempotency, transactional outbox publication, and adapter boundaries. Redis/BullMQ/Celery remain only for bounded compatibility drain and rollback observation; they are not production runtime choices. Cloudflare replaces the runtime target without changing domain services or the canonical job ID.
 
 The primary operational result is that a Redis outage, broker loss, worker restart, duplicate delivery, or stalled process does not erase the system's answer to these questions:
 
@@ -22,7 +138,7 @@ The primary operational result is that a Redis outage, broker loss, worker resta
 
 ## Non-negotiable invariants
 
-1. **`worker_jobs.id` is the canonical job ID.** It is generated before any transport submission, is immutable and never reused, and is used by the application, adapters, workers, APIs, logs, notifications, billing guards, and future Cloudflare integrations.
+1. **`worker_jobs.id` is the canonical job ID.** It is generated before any transport submission, is immutable and never reused, and is used by the application, adapters, workers, APIs, logs, notifications, billing guards, and Cloudflare integrations.
 2. **PostgreSQL is the source of truth.** Redis lists, BullMQ job records, Celery broker state, Celery result backends, Cloudflare message IDs, workflow instance IDs, and container instance IDs are transport/execution observations only.
 3. **`worker_jobs` is the current materialized state.** It is the fast query surface for status, ownership, lease, attempt, retry, progress, result, and error state.
 4. **`worker_job_events` is append-only history.** State-changing operations append an event in the same PostgreSQL transaction as the guarded current-state update. When an external side effect cannot share that transaction, the operation must use a durable outbox/settlement marker and a later guarded event; “best effort” event writes are not accepted. An adapter must never delete or rewrite history.
@@ -70,27 +186,141 @@ The physical migration may add the target enum values in an expand/compatibility
 
 When a job transition changes a domain projection, the implementation must either commit both changes in one database transaction or persist a durable projection/settlement outbox item linked to the same canonical job and event. A projection mismatch is reconciled by `job_id` and an explicit domain policy; it is never repaired by creating a replacement job or by blindly copying the queue state.
 
+### Provider queue acceptance and submission admission
+
+Provider capacity is a dispatch-time constraint, not a create-time queue
+capacity constraint. The required flow is:
+
+```text
+valid user request
+        │
+        ▼
+create worker_jobs + CREATED/QUEUED + outbox intent
+        │
+        ├─ provider slot/rate window available ──> submit provider operation
+        │                                           │
+        │                                           └─ persist provider reference
+        │
+        └─ provider full ──> remain queued ──> scheduler retries when eligible
+```
+
+The provider scheduler must enforce all applicable dimensions independently:
+
+- provider account/credential scope and its submission window;
+- provider-side concurrent running-task limit;
+- tenant/user submission or active-provider-task limit, with the initial
+  default of at most 3 provider-backed jobs per user for Kie.ai, WaveSpeedAI,
+  and OpenRouter policy classes; and
+- a separate application backlog/admission budget that protects PostgreSQL
+  and workers from abuse without rejecting work merely because the provider
+  is temporarily full.
+
+The per-user value of 3 is not a queue length. A fourth valid request is still
+created as a canonical job and waits. For asynchronous media providers, the
+provider-running slot is released only after the provider task reaches a
+terminal state or is durably cancelled; releasing it immediately after the
+HTTP submission response would incorrectly allow unlimited provider tasks.
+Submission-rate tokens are consumed only for an actual new provider
+generation request. Polling, callbacks, broker redelivery, and reconciliation
+do not consume a new-generation token.
+
+The initial safe policies are explicitly configuration, not hard-coded
+assumptions about every provider: Kie.ai uses 18 new generation requests per
+10 seconds as the application safety target below the documented 20/10-second
+account limit; WaveSpeedAI uses 5 predictions per minute and 2 concurrent
+provider tasks; OpenRouter uses 20 requests per minute and 1,000 requests per
+day. Account scope, model-specific quotas, plan changes, and provider
+`Retry-After` responses override these defaults through the provider policy
+registry. When an external provider exposes a different quota per
+credential/account, the scheduler keys the counters by that validated account
+scope rather than by an arbitrary user-supplied provider name.
+
+The current Node Bottleneck limiter is a best-effort submission guard for the
+active process. It is not evidence of a durable cross-process user/provider
+running-task scheduler. Before a provider-backed class is declared complete,
+the durable scheduler must reserve/release provider capacity with PostgreSQL
+or an equivalent single-writer coordination boundary, survive worker restart,
+and prove that queued work drains without duplicate provider submissions.
+
+### Callback-free provider polling
+
+Kie.ai and WaveSpeedAI jobs may take one minute, thirty minutes, or longer.
+After a provider operation is accepted, the control plane persists its
+deterministic operation key and provider reference, transitions the canonical
+job to `waiting_external`, and releases the execution lease. A durable
+provider reservation stores `nextPollAt`, poll attempt, provider deadline,
+poller fencing, and terminal evidence. A poller claims due rows in bounded
+transactions, performs one status request outside the transaction, and
+commits a guarded pending/complete/fail/unknown outcome. Polling does not
+consume a generation token or increment the business attempt.
+
+During the Python media compatibility wave, an already-submitted provider
+operation is registered through `register-external-provider` against the same
+waiting canonical job. This bridge exists only to drain the current Python
+submission path; it does not create a second canonical job and it must be
+replaced by the durable scheduler's account-selected submission path before
+the provider class is declared fully migrated.
+
+Polling is the correctness path and does not require a callback URL. It starts
+at a provider-specific short interval, increases with bounded backoff, applies
+an account poll budget, and stops at a persisted provider deadline. A lost
+submit/status response is inspected with the same operation key/reference;
+blind re-submission is forbidden. Completed provider URLs are copied into
+managed storage before the immutable result reference is settled. Callback
+URLs, if configured, only accelerate the durable poll and cannot mutate
+`worker_jobs` directly.
+
+The scheduler applies a persisted fairness cooldown of at most 15 seconds after
+the initial per-user burst of three. An eligible competitor is interleaved
+immediately; the same user receives one fallback slot only when no competitor
+is eligible and capacity remains. This state is PostgreSQL-backed and is not
+represented by an in-memory timer or process-local limiter.
+
 ## Account and tenant data-transfer boundary
 
-Feature 186 also defines the execution boundary for an explicit, authorized data-transfer operation. This operation is separate from changing an account's `currentTenantId`: changing the account tenant does not move old data, files, jobs, credits, transactions, or usage history. A later transfer must be initiated explicitly by an authorized Tenant Admin/System Admin workflow and must never be triggered implicitly by an identity move.
+The full account-identity and data-transfer product contract is maintained in
+[Feature 189](../189-unified-tenant-identity-and-data-transfer/spec.md). This
+section is the Feature 186 execution boundary only: canonical job binding,
+queue cancellation, lease fencing, outbox handling, and recovery evidence.
+Feature 189 governs identity resolution, authorization, resource handlers,
+preview/approval UX, and transfer-specific item semantics. If the documents
+appear to conflict, the more specific owner applies and both features must
+preserve the shared `worker_jobs.id` and guarded lifecycle invariants.
 
-When a System Admin changes an account's tenant binding, the guarded move operation must cancel/fence only that user's verified canonical queueable jobs (`pending`, `queued`, and `retry_scheduled`) before committing the new binding; `leased`, `running`, and `waiting_external` work blocks the move until its execution/provider state is resolved or explicitly reviewed. If queue cancellation partially succeeds but the move cannot commit, the cancellation evidence remains durable and a repeat of the same idempotent action continues from the remaining jobs. A shared broker queue must never be globally flushed. Unbound legacy queue items are handled by an explicit drain/quarantine policy and are never attributed to a user from queue position or payload.
+Feature 189 owns the complete identity and data-transfer product contract. The
+Feature 186 execution boundary is limited to the integration guarantees that
+Feature 189 consumes:
 
-The v1 transfer scope is source-user to target-user within the same active tenant. Transferable resources are limited to resources with a registered, versioned server-side handler and may include:
+- the canonical `worker_jobs.id` and `tenant_data_transfer` job type;
+- guarded cancellation/fencing of verified queueable jobs;
+- durable unpublished-outbox cancellation and retained dispatch references;
+- no-op/quarantine behavior for late redelivery; and
+- reconciler evidence for active-job blockers, paused work, and settlements.
 
-- images, videos, and files in an allowlisted supported format;
-- Series, Presentations, Storyboards, projects, and workflows;
-- completed artifacts/results and every other terminal job-linked domain resource whose handler proves ownership, dependency, storage, and audit safety.
+Feature 186 does not own transfer handlers, preview/approval semantics,
+resource eligibility, item checkpoints, transfer UI, or tenant identity
+resolution. Those requirements are maintained in [Feature 189](../189-unified-tenant-identity-and-data-transfer/spec.md).
 
-The supported-format list is handler-owned and versioned. An unregistered resource type or unsupported format is reported explicitly as `unsupported`; it is never silently skipped. A resource handler may change only approved target-user ownership/access fields. It must preserve tenant scope, primary keys, original authorship/execution actors, canonical `worker_jobs.id`, lifecycle history, billing/usage references, and managed artifact identity. Exposing a transferred result to the target user is not a transfer or rewrite of transaction history, usage history, credits, or job lifecycle history.
+### Cross-feature delivery order
 
-The following are always excluded and remain associated with the original scope: transactions, usage history, credits, billing/settlement records, credentials, passwords, sessions/tokens, secrets, admin roles, and active execution state. `pending`, `queued`, and `retry_scheduled` job-linked work is not transferred: the transfer preview must automatically enumerate it, the approved operation must issue a guarded `CANCEL_REQUESTED`/`CANCELLED` action, fence any attempt, mark unpublished outbox work cancelled, retain published dispatch references, remove/cancel transport delivery where supported, and record a separate `queue_cancelled` disposition. A cancelled canonical job must reject later claim/redelivery; a transport message that cannot be deleted is acknowledged only as a no-op or routed to an operator-visible quarantine/DLQ according to adapter capability. No shared queue flush, requeue, provider resubmission, regeneration, credit charge, or replacement job is allowed.
+The safe dependency order is explicit:
 
-`leased`, `running`, and `waiting_external` work is a blocking conflict. Transfer approval returns a stable `ACTIVE_JOB_BLOCKED` result until those jobs settle or are explicitly reviewed; it must not begin partial transfer around the blocker. The operation must resolve the lease/provider operation or require operator review before continuing. A legacy queue item without a verified one-to-one canonical job binding cannot be inferred or transferred from queue position/payload; it is quarantined or killed under the legacy drain policy with bounded evidence and no copied side effect.
+1. **Feature 186 foundation:** accept the canonical contract, additive schema,
+   guarded lifecycle, outbox, lease/fencing, callback evidence, and adapter
+   contract on the existing mini-server runtime.
+2. **Feature 189:** consume that accepted control-plane boundary to implement
+   server-derived tenant identity, tenant moves, transfer handlers, previews,
+   checkpoints, and transfer UI. It owns transfer semantics and does not add a
+   second job ledger.
+3. **Feature 187:** consume Features 186 and 189 to prepare environment parity,
+   data promotion, Cloudflare adapters, and staging rehearsal. It must not
+   activate production.
+4. **Feature 188:** consume all prior handoffs for the admin control center,
+   final promotion, production activation, rollback, and legacy retirement.
 
-Transfer execution is itself one canonical `worker_jobs` record with `jobType = tenant_data_transfer`; `operationId` is that canonical job ID, and item/plan tables are projections and checkpoints only. A large preview persists immutable per-resource preview items and exposes cursor pagination; approval fingerprints the complete snapshot, not only the first page. Approval must re-enumerate queueable jobs and reject with `PREVIEW_STALE` if the resource, queue-candidate, handler, or policy set changed; it must not silently add newly discovered work after review. The operation is preview-first, has immutable selection/fingerprint and deterministic item keys, persists per-item outcomes and checkpoints, and may enter `paused_on_error` on a recoverable system/database/transport failure. In that state the canonical job maps to `retry_scheduled` with `operatorReviewRequired = true`; the reconciler must not publish it automatically. An authorized, idempotent resume action reuses the same canonical job, attempt policy, item keys, and durable results, skips already transferred/approved-skipped items, and continues until all eligible items settle or explicit conflicts/unsupported/permanent items remain. It must never create a replacement operation or duplicate a paid/provider/artifact side effect.
-
-Cancelling a transfer operation fences its active attempt, marks the canonical transfer job `cancelled`, and marks only unsettled transfer items with an explicit `operator_cancelled` disposition; already transferred items are retained and are not rolled back automatically. Cancellation is terminal for that transfer operation and cannot be resumed as a hidden retry.
+Feature 189 and Feature 187 inventory work may proceed in parallel after the
+Feature 186 contract is stable, but no transfer or production-freeze gate may
+pass until the required Feature 186 and Feature 189 evidence is accepted.
 
 ## Architecture
 
@@ -113,17 +343,17 @@ Cancelling a transfer operation fences its active attempt, marks the canonical t
                             │
              ┌──────────────┼──────────────┐
              │              │              │
-       BullMQAdapter   CeleryAdapter   SchedulerAdapter
+        Cloudflare      Cloudflare      Cloudflare
+         Queues        Workflows       Containers/App
              │              │              │
-           Redis          Redis       Beat/Cron trigger
-             │              │              │
-        Node runner     Python task     job intent only
+          Worker       durable steps   heavy execution
              └──────────────┬──────────────┘
                             │
-                    JobExecutor / Services
+                 Hyperdrive + JobExecutor
+                 (canonical job_id only)
 ```
 
-Future adapter topology:
+Production adapter topology:
 
 ```text
                  Unified Job Control Plane
@@ -337,10 +567,11 @@ Companion tables are allowed only for one-to-many history or publication coordin
 - `worker_job_outbox`: transactional publication intent linked to the canonical job and event/attempt; stores a versioned envelope, dedupe key, publish attempts, and `publishedAt`/failure metadata.
 - `worker_job_outbox` also stores `nextAttemptAt`, publisher lease/fencing metadata, and a quarantine/operator-review reason so one lost or poison publisher cannot block the queue.
 - `worker_job_outbox.cancelledAt` (or an equivalent immutable cancellation marker) prevents unpublished intent from being republished after a guarded cancellation; published dispatch references remain retained for reconciliation.
+- A provider-admission companion may store short-lived account-window token reservations, provider-running reservations, and per-user active-provider reservations keyed to the canonical job/attempt. It coordinates submission only; it must not define job status, retry budget, result identity, or create identity. Reservations expire/reconcile safely after worker loss and are released only by provider terminal evidence or an authorized recovery decision.
 - `worker_job_settlements`: one durable settlement/projection marker per idempotency key for result publication, billing/credit guards, notification, webhook, or other domain completion that cannot share the lifecycle transaction. It is evidence/coordination metadata, not an independent job state.
 - `worker_job_actions`: one durable record per operator/API mutation idempotency key, storing actor, reason, expected state/attempt/fencing target, authorization scope, effective outcome, and safe error. A unique constraint makes a repeated action return the original outcome and prevents a second effective mutation.
 - `worker_job_callbacks`: one durable inbound-callback/replay record keyed by adapter namespace plus authenticated provider event ID. When a provider supplies no stable event ID, the adapter must use a documented bounded replay key; if it cannot prove replay identity, the callback may request read-only inspection but may not mutate canonical state.
-- Transfer plan/preview/item/checkpoint companions, when required by the transfer domain, persist the immutable preview fingerprint, deterministic item keys, handler/policy versions, dispositions, and resumable results linked to the canonical `tenant_data_transfer` job. They must not own status, retry, lease, result identity, or create identity.
+- Transfer plan/preview/item/checkpoint companions, when required by the transfer domain, are defined and owned by Feature 189. They persist the immutable preview fingerprint, deterministic item keys, handler/policy versions, dispositions, and resumable results linked to the canonical `tenant_data_transfer` job. They must not own status, retry, lease, result identity, or create identity.
 - A schedule-occurrence companion mapping may be used when existing schedule tables cannot safely own `scheduleId` plus `occurrenceKey`; it must have a unique constraint and point back to `worker_jobs.id`.
 
 No companion table may define its own independent job status, retry counter, lease, result, or idempotency identity.
@@ -524,9 +755,9 @@ Cancellation is also two-phase when transport cancellation is not guaranteed: th
 - The control plane validates that `scheduleId`, schedule version, timezone, and occurrence window agree with the stored schedule definition; a caller-supplied occurrence key cannot select another tenant or schedule definition. A unique constraint makes duplicate Beat/Cron delivery return the existing canonical job, while a same-occurrence definition mismatch returns `IDEMPOTENCY_CONFLICT`.
 - The same scheduler port can later be implemented by Cloudflare Cron or another scheduler without changing the scheduled domain service.
 
-### Future Cloudflare adapters
+### Cloudflare production adapters
 
-The Cloudflare boundary is intentionally capability-based and must be verified against the deployment account/plan during implementation:
+The Cloudflare boundary is intentionally capability-based and must be verified against the deployment account/plan during implementation. It is the active production target after hard cutover:
 
 - **Cloudflare Queues Adapter:** single-step/asynchronous message transport; maps the canonical job ID into a message and relies on control-plane idempotency for duplicate delivery.
 - **Cloudflare Workflows Adapter:** durable multi-step orchestration for jobs whose workflow needs persisted step boundaries, waiting, approvals, or long-lived coordination. Workflow instance IDs remain references attached to the canonical job.
@@ -601,7 +832,15 @@ The Job Control Plane must expose an admin/operator view before broad adapter mi
 
 Required metrics/log fields include canonical `jobId`, attempt ID, tenant ID, job type, adapter, queue, runner, status transition, latency, retry reason, lease age, outbox age, and provider reference. Alerts are based on stale canonical rows/outbox age and recovery SLOs, not queue length alone.
 
-Operational policies must also define per-class admission limits: maximum payload/result size, maximum concurrent jobs per tenant and execution class, maximum reconciler work per tick, outbox age SLO, heartbeat freshness SLO, and maximum event/progress write rate. When capacity is exhausted, creation or dispatch returns a truthful backpressure result and leaves the canonical job recoverable; it must not create an unbounded broker backlog or consume paid work speculatively.
+Operational policies must also define separate budgets for queue backlog and
+execution admission: maximum payload/result size, maximum durable queued jobs
+per tenant and system, provider account/user/rate-window limits, maximum
+concurrent jobs per tenant and execution class, maximum reconciler work per
+tick, outbox age SLO, heartbeat freshness SLO, and maximum event/progress
+write rate. Provider capacity exhaustion leaves valid provider-backed jobs
+queued; only an independently exceeded application safety/backlog budget may
+return a truthful backpressure result, and it must leave the canonical job
+recoverable without consuming paid work speculatively.
 
 ## Security and data safety
 
@@ -614,6 +853,7 @@ Operational policies must also define per-class admission limits: maximum payloa
 - Job type, execution class, capability requirements, and adapter selection are allowlisted server-side. User input cannot select a backend binding or execute shell/Python code.
 - Payloads, event data, progress messages, provider responses, and result metadata have explicit size/depth limits and are validated before persistence. Large data uses managed storage references with ownership checks.
 - Credit/payment/provider side effects require an idempotency key and durable settlement marker. A retry must preserve authored creative state and must not silently regenerate or consume credits again.
+- Provider-backed jobs must expose a guarded pre-submission boundary: safety/model/reference preflight completes before credit settlement, and credit settlement occurs immediately before the first provider request. A preflight failure must persist a bounded redacted cause and must not consume credits; an ambiguous failure after submission must preserve the operation evidence and remain operator-review/repair work rather than being blindly retried.
 - Cross-tenant reconciliation, dispatch, and admin queries fail closed. Background system jobs use an explicit system tenant/actor representation rather than a fake user.
 
 ## Completeness closure requirements
@@ -719,7 +959,7 @@ Migration is adapter-by-adapter and reversible at each queue-family boundary.
 
 ### Phase 0 — inventory and compatibility contract
 
-- Inventory direct BullMQ `.add()`, worker processors, Celery `.delay()`/`.apply_async()`/`send_task()`, Beat entries, queue monitors, task result polling, provider callbacks, billing settlement, notifications, and existing worker-job bindings.
+- Inventory direct BullMQ `.add()`, `.addBulk()`, and `upsertJobScheduler()` calls, worker processors, Celery `.delay()`/`.apply_async()`/`send_task()`, Beat entries, queue monitors, task result polling, provider callbacks, billing settlement, notifications, and existing worker-job bindings. The inventory must be file/line accurate and must not rely on a naming convention such as `*Queue.add()` that misses lower-case queue variables.
 - Map each call site to a domain job type, execution class, owner, side effects, timeout, retry behavior, and existing ID.
 - Identify which current tasks can bind to `worker_jobs` immediately and which require a compatibility wrapper.
 - Define how in-flight legacy tasks are observed, linked to a canonical job, or allowed to drain; no backfill may infer identity from a queue position or create a duplicate side effect.
@@ -753,13 +993,13 @@ Migration is adapter-by-adapter and reversible at each queue-family boundary.
 - Each cutover has a preflight inventory, bounded canary, explicit producer ownership switch, post-cutover reconciliation window, and rollback decision based on canonical metrics; the old producer is disabled for new work before the new side-effecting producer is enabled.
 - Do not delete old transport records or identifiers until the retention and reconciliation window has passed.
 
-### Phase 5 — Cloudflare migration
+### Phase 5 — Cloudflare hard-cutover verification
 
-- Implement and test Cloudflare Queues, Workflows, Containers, and Cron adapters behind the same ports.
-- Start with a non-critical queue in shadow/limited mode, then shift one job class at a time.
+- Keep Cloudflare Queues, Workflows, Containers, and Cron as the only production adapters behind the shared ports.
+- Promote one job class at a time only after the target-account binding and recovery gates pass.
 - Shadow mode must be observation-only or use a side-effect-free executor; it must not run a provider call, charge credits, publish artifacts, send notifications, or execute a duplicate business operation.
 - Prove that duplicate delivery, provider timeout, workflow pause/resume, container restart, and deployment rollback still converge on the same `worker_jobs.id`.
-- Retire BullMQ/Celery only after all canonical jobs have an accepted alternative, operational dashboards are equivalent, and recovery evidence is production-grade.
+- Retire BullMQ/Celery after the compatibility drain, operational dashboard parity, and production recovery evidence are accepted; neither can be re-enabled as a production target.
 
 No phase may require a simultaneous migration of all queues, a rewrite of domain services, or a destructive copy from `worker_jobs` into a new generic `jobs` table.
 
@@ -782,6 +1022,8 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - Event sequence allocation remains totally ordered under concurrent writers and bounded database transaction retries do not duplicate events or external effects.
 - Unknown/ambiguous failures have an evidence-backed operator-resolution path that is audited and cannot silently create a new job or provider operation.
 - Before a job class is enabled, its lease/heartbeat, timeout, retry, payload, concurrency, outbox-age, and event-rate budgets are recorded in the rollout manifest and exercised by a bounded test fixture.
+- A valid provider-backed request is accepted into `worker_jobs` when the provider rate window or provider/user slot is full; the job remains `queued` and is later submitted by the provider scheduler.
+- Provider scheduler tests prove Kie.ai 18/10-second safe submission, WaveSpeedAI 5/minute plus 2 running tasks, OpenRouter 20/minute plus 1,000/day, and the per-user 3-job policy without turning provider saturation into create rejection.
 
 ### Adapter boundaries
 
@@ -791,6 +1033,7 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - Beat creates job intents only; it does not execute business logic.
 - External references are queryable without becoming job identity or status truth.
 - Transport retries cannot silently increment business attempts or trigger billing/provider side effects.
+- Provider rate limiting and provider concurrency are enforced at submission/execution admission; they do not reject valid canonical queue creation or turn a provider slot into a second job status ledger.
 - Requeue, retry, and cancel actions preserve the same canonical job ID and append an auditable event; none creates an untracked replacement job.
 
 ### Reliability and safety
@@ -806,6 +1049,12 @@ Each rollout wave must publish a small migration manifest containing the selecte
 
 ### Cloud migration readiness
 
+- A hard-cutover boot with `FEATURE_186_HARD_CUTOVER=true` initializes no
+  Google Cloud Tasks/Cloud Run, BullMQ, or Celery publisher; stale Google
+  runtime flags fail closed and cannot select an adapter.
+- The web outbox can publish a canonical envelope to the Cloudflare Worker
+  dispatch boundary, which authenticates the request, validates the envelope,
+  and sends it to the configured native Queue.
 - A fake/in-memory adapter can execute the same contract without changing domain code.
 - Unsupported contract versions are rejected before claim, recorded with a safe error/event, and remain recoverable through an explicitly compatible adapter or operator action.
 - A Cloudflare Queues-like at-least-once adapter test demonstrates idempotent convergence.
@@ -813,6 +1062,7 @@ Each rollout wave must publish a small migration manifest containing the selecte
 - A Container-like executor test demonstrates capability routing, heartbeat, timeout, and artifact reporting.
 - The rollout runbook identifies exact deploy, flag, migration, rollback, and evidence gates. Mock tests are not presented as production Cloudflare proof.
 - Backup/restore or PITR rehearsal proves that replaying outbox, callback, and reconciler work preserves event ordering and does not duplicate paid/provider/artifact side effects.
+- The Vectorize readiness manifest inventories every application vector source, records the approved index/model contract, and blocks a full-system claim until embedding parity, tenant-filtered read-path parity, privacy-safe deletion, rebuild checkpoints, and an explicit disposition for every remaining non-Vectorize source are evidenced.
 
 ## Verification plan
 
@@ -821,7 +1071,7 @@ Focused verification should be organized by contract, not by transport implement
 1. Unit tests for state transitions, guarded leases, event idempotency, error classification, backoff, occurrence keys, and redaction.
 2. Repository/service tests for concurrent idempotent create, transactional create + outbox, duplicate publication, publisher loss, and poison-row quarantine.
 3. Adapter contract tests run against fake BullMQ, Celery, scheduler, queue, workflow, container, and Worker App adapters.
-4. Failure-injection tests for broker outage, worker loss, process timeout, lost publish response, duplicate message, stale callback, provider 429/5xx/400, database contention, external-wait lease release/reacquisition, and schedule timezone/DST/missed-occurrence behavior.
+4. Failure-injection tests for broker outage, worker loss, process timeout, lost publish response, duplicate message, stale callback, provider 429/5xx/400, database contention, external-wait lease release/reacquisition, provider saturation/queue drain, provider restart/reconciliation, and schedule timezone/DST/missed-occurrence behavior.
 5. Integration tests for representative media, video, presentation, sandbox, workflow, notification, and billing-bound jobs, with no real paid provider calls unless separately authorized.
 6. Browser/admin tests for monitor state, event timeline, authorization, redaction, safe actions, and truthful distinction between canonical state and queue observations.
 7. Migration tests against a representative copy of the existing schema/data must cover legacy status aliases, existing assignment/event sequences, nullable/duplicate idempotency keys, in-flight task bindings, and rollback-safe backfill/drain behavior before constraints become strict.
@@ -842,12 +1092,12 @@ Focused verification should be organized by contract, not by transport implement
 ## Explicit non-goals
 
 - No new parallel generic `jobs` table.
-- No immediate deletion of BullMQ, Celery, Celery Beat, Redis, or current queue configuration.
+- No destructive deletion of legacy BullMQ, Celery, Celery Beat, Redis, or historical queue records during the drain; none may remain an enabled production target after Cloudflare activation.
 - No rewrite of every domain service in one release.
 - No reliance on Redis queue length as the definition of stuck, running, or completed.
 - No unlimited retry, automatic destructive cleanup, silent provider regeneration, or duplicate credit consumption.
-- No Cloudflare deployment, production cutover, `.env` mutation, credential migration, or infrastructure provisioning in this specification.
-- No claim that mock adapters or local health checks prove a production Cloudflare deployment.
+- This specification does not itself mutate `.env`, copy credentials, provision an account, or claim target-account deployment proof; the approved Cloudflare deployment pipeline owns those gates.
+- No claim that mock adapters, local health checks, or the local PostgreSQL-pull harness prove a production Cloudflare deployment.
 
 ## External platform references
 

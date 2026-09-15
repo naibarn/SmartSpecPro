@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useWorkerLocale } from "../../app/workerContext";
 import type { NleClip } from "../../types/nleProject";
 
 interface BlurOverlayModalProps {
@@ -20,6 +21,8 @@ export function BlurOverlayModal({
   currentFocusY,
   productPin,
 }: BlurOverlayModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => (locale === "en" ? en : th);
   const [blurType, setBlurType] = useState<"gaussian" | "mosaic" | "solid_bar">("gaussian");
   const [autoTrack, setAutoTrack] = useState<"none" | "auto_person" | "auto_product">("auto_person");
   const [blurAmount, setBlurAmount] = useState(20);
@@ -104,7 +107,7 @@ export function BlurOverlayModal({
         <div className="nle-modal-header">
           <div className="modal-header-title">
             <span className="modal-icon">🔒</span>
-            <h3>แถบเบลอเซ็นเซอร์วัตถุ (Blur & Privacy Overlay)</h3>
+            <h3>{t("แถบเบลอเพื่อปกปิด", "Blur and privacy overlay")}</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
             ✕
@@ -114,7 +117,7 @@ export function BlurOverlayModal({
         <div className="nle-modal-body">
           {/* Style Selector */}
           <div className="modal-form-group">
-            <label className="form-label">สไตล์การเซ็นเซอร์ / เบลอ:</label>
+            <label className="form-label">{t("สไตล์การเซ็นเซอร์/เบลอ:", "Censor/blur style:")}</label>
             <div className="blur-style-grid">
               <button
                 type="button"
@@ -122,10 +125,10 @@ export function BlurOverlayModal({
                 onClick={() => setBlurType("gaussian")}
               >
                 <div className="blur-sample-box sample-gaussian">
-                  <span>ตัวอย่างเบลอ</span>
+                  <span>{t("ตัวอย่างเบลอ", "Blur preview")}</span>
                 </div>
-                <strong className="blur-style-title">✨ เบลอละมุน (Gaussian)</strong>
-                <span className="blur-style-desc">เบลอนุ่มเนียนตา เหมาะกับปกปิดใบหน้า/ข้อความ</span>
+                <strong className="blur-style-title">✨ {t("เบลอละมุน", "Soft blur")} (Gaussian)</strong>
+                <span className="blur-style-desc">{t("เบลอนุ่มเนียนตา เหมาะกับปกปิดใบหน้าหรือข้อความ", "A smooth blur for faces or text")}</span>
               </button>
 
               <button
@@ -134,10 +137,10 @@ export function BlurOverlayModal({
                 onClick={() => setBlurType("mosaic")}
               >
                 <div className="blur-sample-box sample-mosaic">
-                  <span>ตัวอย่างโมเสก</span>
+                  <span>{t("ตัวอย่างโมเสก", "Mosaic preview")}</span>
                 </div>
-                <strong className="blur-style-title">🔲 โมเสก (Mosaic Pixelate)</strong>
-                <span className="blur-style-desc">สไตล์เซ็นเซอร์พิกเซลแบบรายการทีวี/ข่าว</span>
+                <strong className="blur-style-title">🔲 {t("โมเสก", "Mosaic")} (Pixelate)</strong>
+                <span className="blur-style-desc">{t("สไตล์เซ็นเซอร์พิกเซลแบบรายการทีวีหรือข่าว", "Pixel censoring styled for TV or news")}</span>
               </button>
 
               <button
@@ -148,36 +151,36 @@ export function BlurOverlayModal({
                 <div className="blur-sample-box sample-solid">
                   <span>CENSOR</span>
                 </div>
-                <strong className="blur-style-title">⬛ แถบดำทึบ (Censor Bar)</strong>
-                <span className="blur-style-desc">แถบดำคลาสสิก ปิดมิดชิด 100%</span>
+                <strong className="blur-style-title">⬛ {t("แถบดำทึบ", "Solid bar")} (Censor Bar)</strong>
+                <span className="blur-style-desc">{t("แถบดำคลาสสิก ปิดมิดชิด 100%", "Classic black bar with full coverage")}</span>
               </button>
             </div>
           </div>
 
           {/* Tracking Mode */}
           <div className="modal-form-group">
-            <label className="form-label">การติดตามวัตถุ (Auto Tracking):</label>
+            <label className="form-label">{t("การติดตามวัตถุ:", "Object tracking:")}</label>
             <div className="track-mode-pills">
               <button
                 type="button"
                 className={`track-pill-btn ${autoTrack === "auto_person" ? "active" : ""}`}
                 onClick={() => setAutoTrack("auto_person")}
               >
-                👤 ล็อกติดตามหน้าคนอัตโนมัติ (Auto Person Track)
+                👤 {t("ล็อกติดตามหน้าคนอัตโนมัติ", "Auto-track person")}
               </button>
               <button
                 type="button"
                 className={`track-pill-btn ${autoTrack === "auto_product" ? "active" : ""}`}
                 onClick={() => setAutoTrack("auto_product")}
               >
-                📦 ล็อกตามจุดมาร์กสินค้า ({productPin ? "📍 มีจุดมาร์ก" : "ยังไม่ได้มาร์ก"})
+                📦 {t("ล็อกตามจุดมาร์กสินค้า", "Track product marker")} ({productPin ? t("📍 มีจุดมาร์ก", "📍 Marker set") : t("ยังไม่ได้มาร์ก", "No marker set")})
               </button>
               <button
                 type="button"
                 className={`track-pill-btn ${autoTrack === "none" ? "active" : ""}`}
                 onClick={() => setAutoTrack("none")}
               >
-                ✋ ตำแหน่งคงที่ / ปรับเอง (Manual)
+                ✋ {t("ตำแหน่งคงที่/ปรับเอง", "Fixed position/manual")}
               </button>
             </div>
           </div>
@@ -187,12 +190,12 @@ export function BlurOverlayModal({
             {blurType === "gaussian" && (
               <div className="form-col">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <label className="form-label">ระดับความแรงของการเบลอ: {blurAmount}px</label>
+                  <label className="form-label">{t("ระดับความแรงของการเบลอ", "Blur strength")}: {blurAmount}px</label>
                   <div style={{ display: "flex", gap: "4px" }}>
-                    <button type="button" className={`pos-chip ${blurAmount === 10 ? "active" : ""}`} onClick={() => setBlurAmount(10)}>อ่อน 10px</button>
-                    <button type="button" className={`pos-chip ${blurAmount === 25 ? "active" : ""}`} onClick={() => setBlurAmount(25)}>กลาง 25px</button>
-                    <button type="button" className={`pos-chip ${blurAmount === 50 ? "active" : ""}`} onClick={() => setBlurAmount(50)}>หนา 50px</button>
-                    <button type="button" className={`pos-chip ${blurAmount === 85 ? "active" : ""}`} onClick={() => setBlurAmount(85)}>มิดชิด 85px</button>
+                    <button type="button" className={`pos-chip ${blurAmount === 10 ? "active" : ""}`} onClick={() => setBlurAmount(10)}>{t("อ่อน", "Light")} 10px</button>
+                    <button type="button" className={`pos-chip ${blurAmount === 25 ? "active" : ""}`} onClick={() => setBlurAmount(25)}>{t("กลาง", "Medium")} 25px</button>
+                    <button type="button" className={`pos-chip ${blurAmount === 50 ? "active" : ""}`} onClick={() => setBlurAmount(50)}>{t("หนา", "Strong")} 50px</button>
+                    <button type="button" className={`pos-chip ${blurAmount === 85 ? "active" : ""}`} onClick={() => setBlurAmount(85)}>{t("มิดชิด", "Full")} 85px</button>
                   </div>
                 </div>
                 <input
@@ -208,17 +211,17 @@ export function BlurOverlayModal({
             )}
             {blurType === "mosaic" && (
               <div className="form-col">
-                <label className="form-label">ขนาดตารางพิกเซลโมเสก (Pixel Block Size): {blurAmount}px</label>
+                <label className="form-label">{t("ขนาดตารางพิกเซลโมเสก", "Mosaic pixel block size")}: {blurAmount}px</label>
                 <div style={{ display: "flex", gap: "6px", marginTop: "4px" }}>
-                  <button type="button" className={`pos-chip ${blurAmount === 8 ? "active" : ""}`} onClick={() => setBlurAmount(8)}>ละเอียด (8px)</button>
-                  <button type="button" className={`pos-chip ${blurAmount === 16 ? "active" : ""}`} onClick={() => setBlurAmount(16)}>มาตรฐาน (16px)</button>
-                  <button type="button" className={`pos-chip ${blurAmount === 24 ? "active" : ""}`} onClick={() => setBlurAmount(24)}>หนา (24px)</button>
-                  <button type="button" className={`pos-chip ${blurAmount === 36 ? "active" : ""}`} onClick={() => setBlurAmount(36)}>หยาบมาก (36px)</button>
+                  <button type="button" className={`pos-chip ${blurAmount === 8 ? "active" : ""}`} onClick={() => setBlurAmount(8)}>{t("ละเอียด", "Fine")} (8px)</button>
+                  <button type="button" className={`pos-chip ${blurAmount === 16 ? "active" : ""}`} onClick={() => setBlurAmount(16)}>{t("มาตรฐาน", "Standard")} (16px)</button>
+                  <button type="button" className={`pos-chip ${blurAmount === 24 ? "active" : ""}`} onClick={() => setBlurAmount(24)}>{t("หนา", "Large")} (24px)</button>
+                  <button type="button" className={`pos-chip ${blurAmount === 36 ? "active" : ""}`} onClick={() => setBlurAmount(36)}>{t("หยาบมาก", "Extra large")} (36px)</button>
                 </div>
               </div>
             )}
             <div className="form-col">
-              <label className="form-label">ความกว้างแถบ: {widthPx}px</label>
+              <label className="form-label">{t("ความกว้างแถบ", "Overlay width")}: {widthPx}px</label>
               <input
                 type="range"
                 min={60}
@@ -229,7 +232,7 @@ export function BlurOverlayModal({
               />
             </div>
             <div className="form-col">
-              <label className="form-label">ความสูงแถบ: {heightPx}px</label>
+              <label className="form-label">{t("ความสูงแถบ", "Overlay height")}: {heightPx}px</label>
               <input
                 type="range"
                 min={30}
@@ -243,28 +246,28 @@ export function BlurOverlayModal({
 
           <div className="modal-form-row">
             <div className="form-col">
-              <label className="form-label">ความโค้งมนของขอบ:</label>
+              <label className="form-label">{t("ความโค้งมนของขอบ:", "Corner radius:")}</label>
               <div className="radius-chips">
                 <button
                   type="button"
                   className={`pos-chip ${borderRadiusPx === 0 ? "active" : ""}`}
                   onClick={() => setBorderRadiusPx(0)}
                 >
-                  เหลี่ยม (0px)
+                  {t("เหลี่ยม", "Square")} (0px)
                 </button>
                 <button
                   type="button"
                   className={`pos-chip ${borderRadiusPx === 14 ? "active" : ""}`}
                   onClick={() => setBorderRadiusPx(14)}
                 >
-                  มน (14px)
+                  {t("มน", "Rounded")} (14px)
                 </button>
                 <button
                   type="button"
                   className={`pos-chip ${borderRadiusPx >= 90 ? "active" : ""}`}
                   onClick={() => setBorderRadiusPx(999)}
                 >
-                  วงรี / แคปซูล
+                  {t("วงรี/แคปซูล", "Pill")}
                 </button>
               </div>
             </div>
@@ -272,7 +275,7 @@ export function BlurOverlayModal({
             {autoTrack === "none" && (
               <>
                 <div className="form-col">
-                  <label className="form-label">ตำแหน่ง X: {(manualX * 100).toFixed(0)}%</label>
+                  <label className="form-label">{t("ตำแหน่ง X", "X position")}: {(manualX * 100).toFixed(0)}%</label>
                   <input
                     type="range"
                     min={0.1}
@@ -284,7 +287,7 @@ export function BlurOverlayModal({
                   />
                 </div>
                 <div className="form-col">
-                  <label className="form-label">ตำแหน่ง Y: {(manualY * 100).toFixed(0)}%</label>
+                  <label className="form-label">{t("ตำแหน่ง Y", "Y position")}: {(manualY * 100).toFixed(0)}%</label>
                   <input
                     type="range"
                     min={0.1}
@@ -299,7 +302,7 @@ export function BlurOverlayModal({
             )}
 
             <div className="form-col">
-              <label className="form-label">ระยะเวลาเบลอ: {durationSec.toFixed(1)} วินาที</label>
+              <label className="form-label">{t("ระยะเวลาเบลอ", "Blur duration")}: {durationSec.toFixed(1)} {t("วินาที", "seconds")}</label>
               <input
                 type="range"
                 min={1.0}
@@ -315,10 +318,10 @@ export function BlurOverlayModal({
 
         <div className="nle-modal-footer">
           <button type="button" className="modal-cancel-btn" onClick={onClose}>
-            ยกเลิก
+            {t("ยกเลิก", "Cancel")}
           </button>
           <button type="button" className="modal-confirm-btn" onClick={handleCreateClip}>
-            ➕ เพิ่มแถบเบลอลงวิดีโอ (Track O1)
+            ➕ {t("เพิ่มแถบเบลอลงวิดีโอ (Track O1)", "Add blur overlay to video (Track O1)")}
           </button>
         </div>
       </div>

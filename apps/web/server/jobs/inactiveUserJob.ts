@@ -8,12 +8,17 @@
  */
 
 import { checkAndDisableInactiveUsers } from "../services/inactiveUserService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 let intervalId: NodeJS.Timeout | null = null;
 let startupTimeoutId: NodeJS.Timeout | null = null;
 
 export async function initializeInactiveUserJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeInactiveUserJob")) {
+    console.info("[InactiveUserJob] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   // Clean up any previous instance (e.g., hot-reload)
   shutdownInactiveUserJob();
 

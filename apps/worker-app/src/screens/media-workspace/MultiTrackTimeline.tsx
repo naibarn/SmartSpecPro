@@ -1,5 +1,7 @@
+import { useWorkerLocale } from "../../app/workerContext";
 import { splitTimelineClip, trimTimelineClip } from "./timelineEdits";
 import { isProjectFilePath } from "./projectPersistence";
+import { normalizeDisplayPath } from "./sourcePath";
 import React, { useState, useRef, useMemo, useEffect } from "react";
 import type { SmartSpecProjectDraft, NleTrack, NleClip, ProjectAsset } from "../../types/nleProject";
 import {
@@ -33,6 +35,7 @@ export interface MultiTrackTimelineProps {
   onTogglePlay: () => void;
   onUpdateProject: (updated: SmartSpecProjectDraft) => void;
   onOpenAutoSubtitles: () => void;
+  onOpenVoiceGuidedVisualMatch?: () => void;
   onOpenCodeOverlayModal: () => void;
   onOpenAssetDrawer: () => void;
   onDetachAudio: () => void;
@@ -71,6 +74,7 @@ export function MultiTrackTimeline({
   onTogglePlay,
   onUpdateProject,
   onOpenAutoSubtitles,
+  onOpenVoiceGuidedVisualMatch,
   onOpenCodeOverlayModal,
   onOpenAssetDrawer,
   onDetachAudio,
@@ -89,6 +93,8 @@ export function MultiTrackTimeline({
   isDuckingActive = false,
   onDropAsset,
 }: MultiTrackTimelineProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const timelineTracksRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = React.useState<number>(1.0); // 1.0 = fit, up to 4.0
   const [soloTrackId, setSoloTrackId] = useState<string | null>(null);
@@ -96,6 +102,7 @@ export function MultiTrackTimeline({
   const [selectedTargetTrackId, setSelectedTargetTrackId] = useState<string | null>("track_v1");
   const pointerDragRef = useRef<TimelinePointerDrag | null>(null);
   const [pointerDraggingClip, setPointerDraggingClip] = useState<{ trackId: string; clipId: string } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ targetTrackId: string; timelineStartMs: number } | null>(null);
   const [pointerDragTargetTrackId, setPointerDragTargetTrackId] = useState<string | null>(null);
 
   const [trimmingClip, setTrimmingClip] = useState<{
@@ -217,10 +224,24 @@ export function MultiTrackTimeline({
     const targetTrack = project.tracks.find((track) => track.id === targetTrackId);
     const sourceTrack = project.tracks.find((track) => track.id === drag.sourceTrackId);
     if (!targetTrack || !sourceTrack || !canMoveTimelineClip(sourceTrack, targetTrack)) return null;
-    return {
-      targetTrackId,
-      timelineStartMs: Math.max(0, getDropTimeMs(clientX) - drag.pointerOffsetMs),
-    };
+    let timelineStartMs = Math.max(0, getDropTimeMs(clientX) - drag.pointerOffsetMs);
+    const movingClip = sourceTrack.clips.find((clip) => clip.id === drag.clipId);
+    const width = timelineTracksRef.current?.getBoundingClientRect().width ?? 0;
+    const thresholdMs = width > 0 ? effectiveDurationMs * 8 / width : 0;
+    const anchors = [0, currentTimeMs, ...targetTrack.clips.filter((clip) => clip.id !== drag.clipId).flatMap((clip) => [clip.timelineStartMs, clip.timelineStartMs + clip.durationMs])];
+    const unsnappedStartMs = timelineStartMs;
+    let bestDistance = thresholdMs;
+    for (const anchor of anchors) {
+      for (const candidate of [anchor, anchor - (movingClip?.durationMs ?? 0)]) {
+        const distance = Math.abs(candidate - unsnappedStartMs);
+        if (candidate >= 0 && distance < bestDistance) {
+          bestDistance = distance;
+          timelineStartMs = candidate;
+        }
+      }
+    }
+    return { targetTrackId, timelineStartMs };
+
   };
 
   useEffect(() => {
@@ -237,6 +258,7 @@ export function MultiTrackTimeline({
       drag.targetTrackId = nextDrop?.targetTrackId ?? drag.targetTrackId;
       drag.timelineStartMs = nextDrop?.timelineStartMs ?? drag.timelineStartMs;
       setPointerDragTargetTrackId(nextDrop?.targetTrackId ?? null);
+      setDragPreview(nextDrop);
     };
 
     const finishPointerDrag = (event: PointerEvent, canceled = false) => {
@@ -259,6 +281,7 @@ export function MultiTrackTimeline({
           setSelectedTargetTrackId(nextDrop.targetTrackId);
         }
       }
+      setDragPreview(null);
       pointerDragRef.current = null;
       setPointerDraggingClip(null);
       setPointerDragTargetTrackId(null);
@@ -502,7 +525,7 @@ export function MultiTrackTimeline({
         mediaPool: [...(project.mediaPool ?? []), ...filtered],
       });
     } catch (err) {
-      window.alert(`นำเข้าไฟล์ไม่สำเร็จ: ${String(err)}`);
+      window.alert(`${t("นำเข้าไฟล์ไม่สำเร็จ", "Import failed")}: ${String(err)}`);
     }
   };
 
@@ -650,17 +673,27 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn play-btn"
             onClick={onTogglePlay}
-            title={isPlaying ? "พักชั่วคราว (Space)" : "เล่น (Space)"}
+            title={isPlaying ? t("พักชั่วคราว (Space)", "Pause (Space)") : t("เล่น (Space)", "Play (Space)")}
           >
-            {isPlaying ? "⏸️ พัก" : "▶️ เล่น"}
+            {isPlaying ? t("⏸️ พัก", "⏸️ Pause") : t("▶️ เล่น", "▶️ Play")}
           </button>
+          {onOpenVoiceGuidedVisualMatch && (
+            <button
+              type="button"
+              className="nle-tool-btn highlight-btn"
+              onClick={onOpenVoiceGuidedVisualMatch}
+              title={t("จับคู่ภาพกับเสียงพูดตามความหมายและเวลา แล้วแสดงตัวอย่างก่อนใช้", "Match slide images to speech meaning and timing, then preview before applying")}
+            >
+              🧠 Visual Match
+            </button>
+          )}
           <button
             type="button"
             className="nle-tool-btn"
             onClick={handleSplitAtPlayhead}
-            title="ตัด/แยกคลิปที่ตำแหน่ง Playhead (Split)"
+            title={t("ตัด/แยกคลิปที่ตำแหน่ง Playhead (Split)", "Split clip at playhead")}
           >
-            ✂️ ตัด (Split)
+            {t("✂️ ตัด (Split)", "✂️ Split")}
           </button>
           <div className="nle-timecode-display">
             <span className="tc-current">{formatTimecode(currentTimeMs)}</span>
@@ -671,9 +704,9 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn action-detach"
             onClick={onDetachAudio}
-            title="แยกแทร็กเสียงพูดออกจากวิดีโอหลักเป็น Track A1"
+            title={t("แยกแทร็กเสียงพูดออกจากวิดีโอหลักเป็น Track A1", "Detach dialogue audio from the main video to Track A1")}
           >
-            🔊 แยกเสียง
+            {t("🔊 แยกเสียง", "🔊 Detach audio")}
           </button>
         </div>
 
@@ -683,7 +716,7 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn highlight-btn active nle-bin-status"
             onClick={() => onOpenMediaBin?.()}
-            title={isMediaBinOpen ? "Media Bin เปิดอยู่ทางขวาของ Workspace" : "เปิด Media Bin แบบเต็มความสูงทางขวา"}
+            title={isMediaBinOpen ? t("Media Bin เปิดอยู่ทางขวาของ Workspace", "Media Bin is open on the right") : t("เปิด Media Bin แบบเต็มความสูงทางขวา", "Open full-height Media Bin on the right")}
           >
             📥 Bin ({mediaPool.length})
           </button>
@@ -692,7 +725,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={handleCreateCompoundClip}
-              title="รวมคลิปบนแทร็กวิดีโอเข้าด้วยกันเป็น Compound Clip ก้อนเดียว"
+              title={t("รวมคลิปบนแทร็กวิดีโอเข้าด้วยกันเป็น Compound Clip ก้อนเดียว", "Combine video track clips into one compound clip")}
               style={{
                 background: "linear-gradient(135deg, rgba(59, 130, 246, 0.25), rgba(99, 102, 241, 0.25))",
                 borderColor: "#6366f1",
@@ -700,14 +733,14 @@ export function MultiTrackTimeline({
                 fontWeight: 700,
               }}
             >
-              📦 รวมคลิป
+              {t("📦 รวมคลิป", "📦 Combine clips")}
             </button>
           )}
           <button
             type="button"
             className="nle-tool-btn highlight-btn"
             onClick={onOpenAutoSubtitles}
-            title="ถอดเสียงพูดเป็นคำบรรยายอัตโนมัติด้วย Whisper AI"
+            title={t("ถอดเสียงพูดเป็นคำบรรยายอัตโนมัติด้วย Whisper AI", "Transcribe speech into subtitles with Whisper AI")}
           >
             🎙️ Subtitle
           </button>
@@ -715,7 +748,7 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn highlight-btn"
             onClick={onOpenCodeOverlayModal}
-            title="สั่ง AI สร้าง React / CSS / Three.js Overlay ด้วย Prompt"
+            title={t("สั่ง AI สร้าง React / CSS / Three.js Overlay ด้วย Prompt", "Generate a React / CSS / Three.js overlay from a prompt")}
           >
             🎨 3D Overlay
           </button>
@@ -723,7 +756,7 @@ export function MultiTrackTimeline({
             type="button"
             className="nle-tool-btn"
             onClick={onOpenAssetDrawer}
-            title="เลือก B-Roll, รูปภาพ หรือ BGM จาก Cloud Library / คอมพิวเตอร์"
+            title={t("เลือก B-Roll, รูปภาพ หรือ BGM จาก Cloud Library / คอมพิวเตอร์", "Choose B-roll, images or music from Cloud Library or your computer")}
           >
             🗂️ Library
           </button>
@@ -732,7 +765,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenAudioScoringModal}
-              title="สร้างดนตรีประกอบอัตโนมัติด้วย MiniMax Music 3 พร้อม Auto-Ducking & EBU R128 QC"
+              title={t("สร้างดนตรีประกอบอัตโนมัติด้วย MiniMax Music 3 พร้อม Auto-Ducking & EBU R128 QC", "Generate music with MiniMax Music 3, auto-ducking and EBU R128 QC")}
               style={{
                 background: "linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(168, 85, 247, 0.25))",
                 borderColor: "#a855f7",
@@ -740,7 +773,7 @@ export function MultiTrackTimeline({
                 fontWeight: 700,
               }}
             >
-              🎵 ดนตรี AI
+              {t("🎵 ดนตรี AI", "🎵 AI Music")}
             </button>
           )}
           {onOpenTextOverlayModal && (
@@ -748,7 +781,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenTextOverlayModal}
-              title="เพิ่มข้อความบนหน้าจอ เลือกฟอนต์ Google Fonts / ในเครื่อง พร้อม Effects & Presets"
+              title={t("เพิ่มข้อความบนหน้าจอ เลือกฟอนต์ Google Fonts / ในเครื่อง พร้อม Effects & Presets", "Add text with Google or system fonts, effects and presets")}
               style={{
                 background: "linear-gradient(135deg, rgba(236, 72, 153, 0.2), rgba(244, 63, 94, 0.2))",
                 borderColor: "#f43f5e",
@@ -764,7 +797,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenStockSvgModal}
-              title="เพิ่ม Stock SVG เวกเตอร์ / ปุ่ม Social / Badge ป้ายโปรโมชั่น ลงบนวิดีโอ"
+              title={t("เพิ่ม Stock SVG เวกเตอร์ / ปุ่ม Social / Badge ป้ายโปรโมชั่น ลงบนวิดีโอ", "Add stock SVG vectors, social buttons and promotional badges")}
               style={{
                 background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 88, 12, 0.2))",
                 borderColor: "#f59e0b",
@@ -780,7 +813,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenBlurOverlayModal}
-              title="เพิ่มแถบเบลอ เซ็นเซอร์ / ปิดบังวัตถุ รองรับ Auto-Tracking ติดตามหน้าคนหรือสินค้าอัตโนมัติ"
+              title={t("เพิ่มแถบเบลอ เซ็นเซอร์ / ปิดบังวัตถุ รองรับ Auto-Tracking ติดตามหน้าคนหรือสินค้าอัตโนมัติ", "Add blur or censor overlays with automatic face or product tracking")}
               style={{
                 background: "linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(20, 184, 166, 0.2))",
                 borderColor: "#10b981",
@@ -788,7 +821,7 @@ export function MultiTrackTimeline({
                 fontWeight: 700,
               }}
             >
-              🔒 แถบเบลอ
+              {t("🔒 แถบเบลอ", "🔒 Blur")}
             </button>
           )}
           {onOpenVoiceoverModal && (
@@ -796,7 +829,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenVoiceoverModal}
-              title="ห้องอัดเสียงพากย์สดพร้อมเล่นวิดีโอคู่ขนาน รองรับการทิ้งช่วงที่พูดผิด (Discard Take)"
+              title={t("ห้องอัดเสียงพากย์สดพร้อมเล่นวิดีโอคู่ขนาน รองรับการทิ้งช่วงที่พูดผิด (Discard Take)", "Record voiceover alongside video playback and discard unwanted takes")}
               style={{
                 background: "linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2))",
                 borderColor: "#ef4444",
@@ -804,7 +837,7 @@ export function MultiTrackTimeline({
                 fontWeight: 700,
               }}
             >
-              🎙️ อัดเสียง
+              {t("🎙️ อัดเสียง", "🎙️ Record")}
             </button>
           )}
           {onOpenAiMediaStudioModal && (
@@ -812,7 +845,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn highlight-btn"
               onClick={onOpenAiMediaStudioModal}
-              title="SmartAIHub AI Media Studio (สร้างภาพพื้นหลังใส, วิดีโอแนบภาพ 1-3 ภาพ, เสียงดนตรี)"
+              title={t("SmartAIHub AI Media Studio (สร้างภาพพื้นหลังใส, วิดีโอแนบภาพ 1-3 ภาพ, เสียงดนตรี)", "SmartAIHub AI Media Studio (transparent images, video with 1–3 references, music)")}
               style={{
                 background: "linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(139, 92, 246, 0.25))",
                 borderColor: "#a855f7",
@@ -828,7 +861,7 @@ export function MultiTrackTimeline({
         <div className="toolbar-right-group">
           <span
             className="track-badge"
-            title="ระบบดูดขอบคลิปและ Playhead อัตโนมัติ (Magnet Snap Active)"
+            title={t("ระบบดูดขอบคลิปและ Playhead อัตโนมัติ (Magnet Snap Active)", "Snap to clip edges and the playhead")}
             style={{ background: "rgba(56, 189, 248, 0.15)", borderColor: "#38bdf8", color: "#38bdf8", cursor: "default" }}
           >
             🧲 Snap
@@ -842,22 +875,22 @@ export function MultiTrackTimeline({
               step="0.1"
               value={zoom}
               onChange={(e) => setZoom(Number(e.target.value))}
-              title="ขยาย/ย่อ Timeline"
+              title={t("ขยาย/ย่อ Timeline", "Zoom timeline")}
             />
           </div>
           <button
             type="button"
             className="nle-tool-btn project-btn"
             onClick={onSaveProjectFile}
-            title="บันทึกโครงสร้างโปรเจกต์เป็นไฟล์ videoproject.json"
+            title={t("บันทึกโครงสร้างโปรเจกต์เป็นไฟล์ videoproject.json", "Save project as videoproject.json")}
           >
-            💾 บันทึก
+            {t("💾 บันทึก", "💾 Save")}
           </button>
           <button
             type="button"
             className="nle-tool-btn capcut-btn"
             onClick={onExportCapCutDraft}
-            title="ส่งออกโครงสร้าง Draft ให้เปิดต่อใน CapCut ได้"
+            title={t("ส่งออกโครงสร้าง Draft ให้เปิดต่อใน CapCut ได้", "Export draft for editing in CapCut")}
           >
             🎬 CapCut
           </button>
@@ -866,7 +899,7 @@ export function MultiTrackTimeline({
               type="button"
               className="nle-tool-btn project-btn"
               onClick={onOpenProjectSettings}
-              title={`ตั้งค่าโปรเจกต์ (${project.canvas.aspectRatio} · ${project.canvas.width}×${project.canvas.height})`}
+              title={`${t("ตั้งค่าโปรเจกต์", "Project settings")} (${project.canvas.aspectRatio} · ${project.canvas.width}×${project.canvas.height})`}
             >
               ⚙️ Project
             </button>
@@ -888,15 +921,15 @@ export function MultiTrackTimeline({
                   type="button"
                   className="bin-btn-compact"
                   onClick={() => void handleImportLocalFiles()}
-                  title="เลือกไฟล์จากเครื่องคอมพิวเตอร์เข้าสู่โปรเจกต์"
+                  title={t("เลือกไฟล์จากเครื่องคอมพิวเตอร์เข้าสู่โปรเจกต์", "Import files from your computer")}
                 >
-                  ＋ เครื่อง
+                  {t("＋ เครื่อง", "＋ Computer")}
                 </button>
                 <button
                   type="button"
                   className="bin-btn-compact cloud-btn"
                   onClick={onOpenAssetDrawer}
-                  title="ดึงไฟล์จาก Cloud Library หรือประวัติการสร้าง"
+                  title={t("ดึงไฟล์จาก Cloud Library หรือประวัติการสร้าง", "Import from Cloud Library or generation history")}
                 >
                   ☁️ Lib
                 </button>
@@ -904,15 +937,15 @@ export function MultiTrackTimeline({
                   type="button"
                   className="drawer-collapse-btn"
                   onClick={() => onCloseMediaBin?.()}
-                  title="ยุบปิด Media Bin ไปทางขวา"
+                  title={t("ยุบปิด Media Bin ไปทางขวา", "Collapse Media Bin to the right")}
                 >
-                  ▶ ยุบแผง
+                  {t("▶ ยุบแผง", "▶ Collapse")}
                 </button>
               </div>
             </div>
 
             <div className="media-bin-target-row">
-              <label htmlFor="media-bin-target-track">วางลงแทร็ก:</label>
+              <label htmlFor="media-bin-target-track">{t("วางลงแทร็ก:", "Target track:")}</label>
               <select
                 id="media-bin-target-track"
                 value={selectedTargetTrackId ?? ""}
@@ -928,14 +961,14 @@ export function MultiTrackTimeline({
               {mediaPool.length === 0 ? (
                 <div className="bin-empty-sidebar">
                   <span className="bin-empty-icon">📂</span>
-                  <span>ยังไม่มีสื่อใน Bin</span>
+                  <span>{t("ยังไม่มีสื่อใน Bin", "No media in Bin")}</span>
                   <div className="bin-empty-actions">
                     <button
                       type="button"
                       className="bin-btn-compact"
                       onClick={() => void handleImportLocalFiles()}
                     >
-                      ＋ เพิ่มไฟล์
+                      {t("＋ เพิ่มไฟล์", "＋ Add files")}
                     </button>
                     <button
                       type="button"
@@ -959,14 +992,14 @@ export function MultiTrackTimeline({
                         e.dataTransfer.setData("text/plain", payload);
                         e.dataTransfer.effectAllowed = "copy";
                       }}
-                      title={`คลิกค้างแล้วลากไปวางบน Timeline แทร็ก V1, V2, A1 ได้ทันที\nพาธ: ${asset.filePath}`}
+                      title={`${t("ลากไปวางบนแทร็ก V1, V2, A1", "Drag onto V1, V2 or A1")}\n${normalizeDisplayPath(asset.filePath)}`}
                     >
                       <div className="bin-card-top-row">
                         <span className="bin-item-icon">
                           {asset.mediaType === "video" ? "🎬" : asset.mediaType === "audio" ? "🎵" : "🖼️"}
                         </span>
                         <div className="bin-item-details">
-                          <strong className="bin-item-name" title={asset.filePath}>
+                          <strong className="bin-item-name" title={normalizeDisplayPath(asset.filePath)}>
                             {asset.name}
                           </strong>
                           <span className="bin-item-meta">
@@ -978,7 +1011,7 @@ export function MultiTrackTimeline({
                           type="button"
                           className="btn-remove-bin"
                           onClick={() => handleRemoveAssetFromBin(asset.id)}
-                          title="ลบออกจาก Bin"
+                          title={t("ลบออกจาก Bin", "Remove from Bin")}
                         >
                           🗑️
                         </button>
@@ -989,12 +1022,12 @@ export function MultiTrackTimeline({
                           type="button"
                           className="btn-place-timeline-compact"
                           onClick={() => handlePlaceAssetOnTimeline(asset)}
-                          title="วางคลิปนี้ลงใน Timeline ที่ตำแหน่งหัวอ่าน (Playhead)"
+                          title={t("วางคลิปนี้ลงใน Timeline ที่ตำแหน่งหัวอ่าน (Playhead)", "Insert this clip at the playhead")}
                         >
-                          ＋ วางที่ Playhead
+                          {t("＋ วางที่ Playhead", "＋ Insert at playhead")}
                         </button>
-                        <span className="drag-hint" title="คลิกค้างแล้วลากไปวางบนแทร็ก Timeline ทางขวา">
-                          ลากลงแทร็ก ➔
+                        <span className="drag-hint" title={t("คลิกค้างแล้วลากไปวางบนแทร็ก Timeline ทางขวา", "Drag onto a timeline track on the right")}>
+                          {t("ลากลงแทร็ก ➔", "Drag to track ➔")}
                         </span>
                       </div>
                     </div>
@@ -1013,7 +1046,7 @@ export function MultiTrackTimeline({
               key={track.id}
               className={`track-header-item type-${track.type} ${selectedTargetTrackId === track.id ? "selected-target-track" : ""}`}
               onClick={() => setSelectedTargetTrackId(track.id)}
-              title={`เลือก ${track.name} เป็นแทร็กปลายทางสำหรับการวางจาก Bin`}
+              title={`${t("แทร็กปลายทาง", "Target track")}: ${track.name}`}
             >
               <div className="track-title-row">
                 <span className="track-badge">
@@ -1063,8 +1096,8 @@ export function MultiTrackTimeline({
                     onClick={() => handleToggleDucking(track.id)}
                     title={
                       track.ducking.enabled
-                        ? "Auto Ducking ทำงานอยู่ (ลดเสียงเพลงเมื่อมีเสียงพูด)"
-                        : "เปิด Auto Ducking"
+                        ? t("Auto Ducking ทำงานอยู่ (ลดเสียงเพลงเมื่อมีเสียงพูด)", "Auto ducking active (lower music during speech)")
+                        : t("เปิด Auto Ducking", "Enable auto ducking")
                     }
                   >
                     🦆 {isDuckingActive && track.ducking.enabled ? "DUCKING" : "DUCK"}
@@ -1135,6 +1168,10 @@ export function MultiTrackTimeline({
                 }}
                 onDrop={(e) => handleTrackDrop(track.id, e)}
               >
+                {dragPreview?.targetTrackId === track.id && pointerDraggingClip && (() => {
+                  const clip = project.tracks.find((t) => t.id === pointerDraggingClip.trackId)?.clips.find((c) => c.id === pointerDraggingClip.clipId);
+                  return clip ? <aside data-testid="timeline-drag-preview" className={`timeline-clip-block clip-${track.type}`} style={{ pointerEvents: "none", zIndex: 31, left: `${dragPreview.timelineStartMs / effectiveDurationMs * 100}%`, width: `${Math.max(1, clip.durationMs / effectiveDurationMs * 100)}%` }}>{clip.name} · {formatTimecode(dragPreview.timelineStartMs)}</aside> : null;
+                })()}
                 {track.clips.map((clip) => {
                   const clipLeft = (clip.timelineStartMs / effectiveDurationMs) * 100;
                   const clipWidth = Math.max(1, (clip.durationMs / effectiveDurationMs) * 100);
@@ -1163,9 +1200,9 @@ export function MultiTrackTimeline({
                               type="button"
                               className="clip-decompose-btn"
                               onClick={(e) => handleDecomposeCompoundClip(track.id, clip.id, e)}
-                              title="แยก Compound Clip กลับเป็นคลิปย่อยเดิม"
+                              title={t("แยก Compound Clip กลับเป็นคลิปย่อยเดิม", "Decompose compound clip into original clips")}
                             >
-                              📤 แยก
+                              {t("📤 แยก", "📤 Decompose")}
                             </button>
                           )}
                           {!clip.isCompound && (track.type === "video_main" || track.type === "video_broll") && (
@@ -1173,7 +1210,7 @@ export function MultiTrackTimeline({
                               type="button"
                               className={`clip-kenburns-badge-btn ${clip.kenBurns?.enabled ? "active" : ""}`}
                               onClick={(e) => handleToggleClipKenBurns(track.id, clip.id, e)}
-                              title={`สลับ Ken Burns: ${clip.kenBurns?.enabled ? clip.kenBurns.panDirection : "ปิด"}`}
+                              title={`${t("สลับ", "Toggle")} Ken Burns: ${clip.kenBurns?.enabled ? clip.kenBurns.panDirection : t("ปิด", "Off")}`}
                             >
                               🎬 {clip.kenBurns?.enabled ? "KB 🟢" : "KB"}
                             </button>
@@ -1182,7 +1219,7 @@ export function MultiTrackTimeline({
                             type="button"
                             className="clip-del-btn"
                             onClick={(e) => handleDeleteClip(track.id, clip.id, e)}
-                            title="ลบคลิปนี้"
+                            title={t("ลบคลิปนี้", "Delete this clip")}
                           >
                             ✕
                           </button>
@@ -1191,7 +1228,7 @@ export function MultiTrackTimeline({
 
                       {clip.isCompound && (
                         <div className="clip-compound-strip">
-                          <span>📦 Compound Clip ({clip.subClips?.length || 0} คลิปย่อย)</span>
+                          <span>📦 Compound Clip ({clip.subClips?.length || 0} {t("คลิปย่อย", "clips")})</span>
                         </div>
                       )}
 
@@ -1229,7 +1266,7 @@ export function MultiTrackTimeline({
                             initialTrimOutMs: clip.trimOutMs ?? (clip.trimInMs ?? 0) + clip.durationMs * (clip.speed ?? 1),
                           });
                         }}
-                        title="คลิกค้างแล้วลากเพื่อ Trim In (ย่น/ขยายหัวคลิป)"
+                        title={t("คลิกค้างแล้วลากเพื่อ Trim In (ย่น/ขยายหัวคลิป)", "Drag to trim the start of the clip")}
                       />
                       <div
                         className="clip-trim-handle trim-handle-right"
@@ -1246,7 +1283,7 @@ export function MultiTrackTimeline({
                             initialTrimOutMs: clip.trimOutMs ?? (clip.trimInMs ?? 0) + clip.durationMs * (clip.speed ?? 1),
                           });
                         }}
-                        title="คลิกค้างแล้วลากเพื่อ Trim Out (ย่น/ขยายท้ายคลิป)"
+                        title={t("คลิกค้างแล้วลากเพื่อ Trim Out (ย่น/ขยายท้ายคลิป)", "Drag to trim the end of the clip")}
                       />
                     </div>
                   );

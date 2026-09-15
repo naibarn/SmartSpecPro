@@ -13,7 +13,7 @@ Make Celery and Beat thin adapters using canonical IDs while preserving existing
 
 ## Requirements
 
-Use existing HTTP/config dependencies to call the web control-plane port. Payloads contain canonical IDs and bounded metadata, never copied mutable business status. Map lease/report errors to stable domain errors. `task.retry()` remains transport-only; `acks_late`, prefetch, time limits, and routing remain runtime controls. Beat creates deterministic occurrence intents only. Legacy task IDs are references and ambiguous bindings are quarantined.
+Use existing HTTP/config dependencies to call the web control-plane port. Payloads contain canonical IDs and bounded metadata, never copied mutable business status. Map lease/report errors to stable domain errors. The Python port exposes claim, report, external-wait, resume, and authenticated-callback evidence operations; callbacks remain evidence/reconciliation signals and never complete a job directly. `task.retry()` remains transport-only; `acks_late`, prefetch, time limits, and routing remain runtime controls. Beat creates deterministic occurrence intents only. Legacy task IDs are references and ambiguous bindings are quarantined.
 
 ## TDD acceptance
 

@@ -632,8 +632,12 @@ export function getStoryboardTaskEffectiveGenerationContext(
   const transportMetadata = transportMetadataSource
     ? normalizeStoryboardTransportMetadata(transportMetadataSource)
     : null;
+  const referenceImages = Array.isArray(context.referenceImages) ? context.referenceImages : [];
+  const referenceVideos = Array.isArray(context.referenceVideos) ? context.referenceVideos : [];
   return {
     ...context,
+    referenceImages,
+    referenceVideos,
     ...(model ? { model } : {}),
     transportMetadata,
   };
@@ -1190,7 +1194,31 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     selectedTaskIds: Array.isArray(parsed.selectedTaskIds)
       ? parsed.selectedTaskIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
       : [],
-    tasks: parsed.tasks as StoryboardGenerationTask[],
+    tasks: parsed.tasks.map((rawTask, index) => {
+      const task = rawTask as StoryboardGenerationTask & {
+        imageUrl?: unknown;
+        image_url?: unknown;
+        mediaType?: unknown;
+      };
+      const imageUrl = typeof task.imageUrl === "string" && task.imageUrl.trim()
+        ? task.imageUrl
+        : typeof task.image_url === "string" && task.image_url.trim()
+          ? task.image_url
+          : null;
+      const normalizedUrl = typeof task.url === "string" && task.url.trim()
+        ? normalizeStoryboardMediaUrl(task.url)
+        : imageUrl
+          ? normalizeStoryboardMediaUrl(imageUrl)
+          : undefined;
+      const isImageProjection = Boolean(imageUrl) || task.mediaType === "image";
+      return {
+        ...task,
+        id: typeof task.id === "string" && task.id.trim() ? task.id : `storyboard-task-${index + 1}`,
+        type: task.type || (isImageProjection ? "image" : "video"),
+        status: task.status || (isImageProjection ? "completed" : "queued"),
+        ...(normalizedUrl ? { url: normalizedUrl } : {}),
+      };
+    }),
     companionAudio,
     companionAudioUpdatedAt,
     compoundStatus: typeof parsed.compoundStatus === "string" ? parsed.compoundStatus : null,

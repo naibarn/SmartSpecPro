@@ -23,12 +23,16 @@ import {
   importDramaCharacterToStoryboardLibrary,
   listDramaCharacterSources,
   listStoryboardCharacters,
+  listStoryboardSkillRuns,
   rebuildStoryboardSkillReviewProjection,
   retryStoryboardSkillShots,
+  pauseStoryboardSkillRun,
+  resumeStoryboardSkillRun,
   unbindStoryboardProjectCharacter,
   updateStoryboardSkillDraft,
   updateStoryboardCharacterName,
 } from "../services/storyboardSkillFrameworkService";
+import { expandStoryboardIdea } from "../services/storyboardIdeaExpansionService";
 
 const tenant = (value: string | null, userTenant: string | null): string => {
   const result = value ?? userTenant;
@@ -63,6 +67,22 @@ export const storyboardSkillFrameworkRouter = router({
         ),
       };
     }),
+  expandIdea: protectedProcedure
+    .input(
+      z.object({
+        idempotencyKey: z.string().trim().min(8).max(160),
+        roughIdea: z.string().trim().min(1).max(5000),
+        language: z.enum(["th", "en"]),
+        selectedSkillId: z.string().trim().min(1).max(160),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      expandStoryboardIdea({
+        userId: ctx.user.id,
+        tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
+        ...input,
+      })
+    ),
   createDraft: protectedProcedure
     .input(
       z.object({
@@ -135,10 +155,37 @@ export const storyboardSkillFrameworkRouter = router({
         runId: input.runId,
       })
     ),
+  listRuns: protectedProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+    .query(async ({ ctx, input }) =>
+      listStoryboardSkillRuns({
+        userId: ctx.user.id,
+        tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
+        limit: input?.limit,
+      })
+    ),
   cancel: protectedProcedure
     .input(z.object({ runId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) =>
       cancelStoryboardSkillRun({
+        userId: ctx.user.id,
+        tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
+        runId: input.runId,
+      })
+    ),
+  pause: protectedProcedure
+    .input(z.object({ runId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) =>
+      pauseStoryboardSkillRun({
+        userId: ctx.user.id,
+        tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
+        runId: input.runId,
+      })
+    ),
+  resume: protectedProcedure
+    .input(z.object({ runId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) =>
+      resumeStoryboardSkillRun({
         userId: ctx.user.id,
         tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
         runId: input.runId,

@@ -5,9 +5,27 @@ import { and, asc, count, desc, eq, exists, inArray, isNotNull, lt, not, or } fr
 import { db } from "../db";
 import { workerJobDispatches, workerJobEvents, workerJobSettlements, workerJobs } from "../../drizzle/schema";
 import { redactJobPayload } from "./jobCanonicalization";
-import { createJobControlPlane } from "./jobControlPlane";
+import { canonicalizeStoredStatus, compatibilityStatus, createJobControlPlane } from "./jobControlPlane";
+import type { JobMutationScope } from "./jobControlPlane";
+import { JobControlPlaneError } from "./jobControlPlaneTypes";
 
 const TERMINAL = ["succeeded", "failed", "cancelled", "expired"] as const;
+const STORED_STATUS_BY_CANONICAL: Record<string, string[]> = {
+  pending: ["pending"],
+  queued: ["queued"],
+  leased: ["leased", "claimed"],
+  running: ["running", "preparing", "uploading", "publishing", "indexing"],
+  waiting_external: ["waiting_external"],
+  retry_scheduled: ["retry_scheduled"],
+  succeeded: ["succeeded", "completed"],
+  failed: ["failed"],
+  cancelled: ["cancelled", "canceled"],
+  expired: ["expired"],
+};
+
+function storedStatusesForMonitorFilter(status: string): string[] {
+  return STORED_STATUS_BY_CANONICAL[status] ?? [status];
+}
 
 export type JobMonitorFilter = {
   tenantId?: string;
@@ -57,11 +75,17 @@ export function decodeJobMonitorCursor(value: string): JobMonitorCursor {
 export async function listCanonicalJobs(filter: JobMonitorFilter) {
   const conditions = [] as any[];
   if (filter.tenantId) conditions.push(eq(workerJobs.tenantId, filter.tenantId));
-  if (filter.status) conditions.push(eq(workerJobs.status, filter.status as any));
+  if (filter.status) conditions.push(inArray(workerJobs.status, storedStatusesForMonitorFilter(filter.status) as any));
   if (filter.jobType) conditions.push(eq(workerJobs.jobType, filter.jobType));
   if (filter.executionClass) conditions.push(eq(workerJobs.executionClass, filter.executionClass));
   if (filter.adapter) conditions.push(exists(db.select({ id: workerJobDispatches.id }).from(workerJobDispatches).where(and(eq(workerJobDispatches.workerJobId, workerJobs.id), eq(workerJobDispatches.adapter, filter.adapter)))));
-  if (filter.stale) conditions.push(lt(workerJobs.leaseExpiresAt, new Date()));
+  if (filter.stale) conditions.push(
+    inArray(workerJobs.status, [
+      "leased", "claimed", "running", "preparing", "uploading", "publishing", "indexing", "waiting_external",
+    ] as any),
+    isNotNull(workerJobs.leaseExpiresAt),
+    lt(workerJobs.leaseExpiresAt, new Date()),
+  );
   if (filter.before) conditions.push(lt(workerJobs.createdAt, filter.before));
   if (filter.beforeCursor) {
     const cursor = decodeJobMonitorCursor(filter.beforeCursor);
@@ -71,7 +95,7 @@ export async function listCanonicalJobs(filter: JobMonitorFilter) {
       and(eq(workerJobs.createdAt, cursorDate), lt(workerJobs.id, cursor.jobId)),
     ));
   }
-  return db.select({
+  const rows = await db.select({
     jobId: workerJobs.id,
     tenantId: workerJobs.tenantId,
     requestedByUserId: workerJobs.requestedByUserId,
@@ -91,6 +115,14 @@ export async function listCanonicalJobs(filter: JobMonitorFilter) {
     finishedAt: workerJobs.finishedAt,
   }).from(workerJobs).where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(workerJobs.createdAt), desc(workerJobs.id)).limit(Math.max(1, Math.min(filter.limit, 100)));
+  return rows.map(row => ({
+    ...row,
+    canonicalStatus: canonicalizeStoredStatus(row.status),
+    compatibilityStatus: compatibilityStatus(row.status),
+    stale: Boolean(row.leaseExpiresAt && row.leaseExpiresAt.getTime() <= Date.now() && [
+      "leased", "running", "waiting_external",
+    ].includes(canonicalizeStoredStatus(row.status))),
+  }));
 }
 
 export async function getCanonicalJobTimeline(jobId: string, limit = 200) {
@@ -103,7 +135,10 @@ export async function getCanonicalJobTimeline(jobId: string, limit = 200) {
     createdAt: workerJobEvents.createdAt,
   }).from(workerJobEvents).where(eq(workerJobEvents.workerJobId, jobId))
     .orderBy(asc(workerJobEvents.eventSequence), asc(workerJobEvents.createdAt), asc(workerJobEvents.id)).limit(Math.max(1, Math.min(limit, 500)));
-  return rows.map(row => ({ ...row, payloadJson: redactJobPayload(row.payloadJson ?? {}) as Record<string, unknown> }));
+  return rows.map((row: { payloadJson: Record<string, unknown> | null }) => ({
+    ...row,
+    payloadJson: redactJobPayload(row.payloadJson ?? {}) as Record<string, unknown>,
+  }));
 }
 
 export async function getCanonicalJobOverview(tenantId?: string) {
@@ -113,20 +148,27 @@ export async function getCanonicalJobOverview(tenantId?: string) {
     .where(scope)
     .groupBy(workerJobs.status);
   const staleConditions = [
-    inArray(workerJobs.status, ["leased", "running", "waiting_external"] as any),
+    inArray(workerJobs.status, [
+      "leased", "claimed", "running", "preparing", "uploading", "publishing", "indexing", "waiting_external",
+    ] as any),
     isNotNull(workerJobs.leaseExpiresAt),
     lt(workerJobs.leaseExpiresAt, new Date()),
   ];
   if (scope) staleConditions.push(scope);
   const [stale] = await db.select({ total: count() }).from(workerJobs).where(and(...staleConditions));
   const unsettledConditions = [
-    eq(workerJobs.status, "succeeded" as any),
+    inArray(workerJobs.status, ["succeeded", "completed"] as any),
     not(exists(db.select({ id: workerJobSettlements.id }).from(workerJobSettlements).where(eq(workerJobSettlements.workerJobId, workerJobs.id)))),
   ];
   if (scope) unsettledConditions.push(scope);
   const [terminalUnsettled] = await db.select({ total: count() }).from(workerJobs).where(and(...unsettledConditions));
+  const canonicalCounts = new Map<string, number>();
+  for (const row of grouped as Array<{ status: string | null; total: unknown }>) {
+    const canonical = canonicalizeStoredStatus(row.status ?? "unknown");
+    canonicalCounts.set(canonical, (canonicalCounts.get(canonical) ?? 0) + Number(row.total));
+  }
   return {
-    counts: Object.fromEntries(grouped.map(row => [row.status, Number(row.total)])),
+    counts: Object.fromEntries(canonicalCounts),
     stale: Number(stale?.total ?? 0),
     terminalUnsettled: Number(terminalUnsettled?.total ?? 0),
   };
@@ -138,11 +180,15 @@ export async function applyCanonicalJobAction(input: {
   reason: string;
   actionId: string;
   actorId?: number;
+  scope?: JobMutationScope;
 }) {
   const controlPlane = createJobControlPlane();
-  if (input.action === "cancel") await controlPlane.cancel(input.jobId, input.reason, input.actionId, input.actorId);
-  else if (input.action === "requeue") await controlPlane.makeRetryDue(input.jobId, input.actionId, input.actorId, input.reason);
-  else await controlPlane.forceFail(input.jobId, input.reason, input.actionId, input.actorId);
+  if (input.action === "cancel") await controlPlane.cancel(input.jobId, input.reason, input.actionId, input.actorId, input.scope);
+  else if (input.action === "requeue") {
+    const accepted = await controlPlane.makeRetryDue(input.jobId, input.actionId, input.actorId, input.reason, input.scope);
+    if (!accepted) throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Job cannot be requeued in its current state");
+  }
+  else await controlPlane.forceFail(input.jobId, input.reason, input.actionId, input.actorId, input.scope);
   return { jobId: input.jobId, action: input.action, accepted: true };
 }
 

@@ -1,0 +1,27 @@
+version: feature-188-environment-v1
+source_authority: dev-server-postgresql
+environments:
+  dev-mini:
+    database: dev-postgresql
+    queues: dev-only
+    production_traffic: false
+  staging:
+    database: dedicated-staging-postgresql
+    hyperdrive: staging-only
+    production_traffic: false
+  legacy-prod:
+    database: existing-production-postgresql
+    authoritative_until: cutover-maintenance-window
+    cloudflare_traffic: false
+  cutover:
+    database: frozen-source-plus-validated-target
+    synthetic_side_effects_only: true
+    production_traffic: false
+  production:
+    database: new-production-postgresql-via-hyperdrive
+    source_database_access: false
+    production_traffic: gated
+secrets:
+  source_control: forbidden
+  target_control: forbidden
+  manifest_files: metadata_only

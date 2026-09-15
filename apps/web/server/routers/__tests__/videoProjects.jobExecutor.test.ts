@@ -192,7 +192,10 @@ vi.mock("../../services/creditService", () => ({
 }));
 
 const { mockStoragePut } = vi.hoisted(() => ({ mockStoragePut: vi.fn() }));
-vi.mock("../../storage", () => ({ storagePut: mockStoragePut }));
+vi.mock("../../storage", () => ({
+  storagePut: mockStoragePut,
+  assertR2StorageActive: vi.fn(() => Promise.resolve()),
+}));
 
 vi.mock("../../services/hyperframesTranscriptionService", () => ({
   renderTranscriptCuesAsSrt: vi.fn(() => "SRT-OUTPUT"),

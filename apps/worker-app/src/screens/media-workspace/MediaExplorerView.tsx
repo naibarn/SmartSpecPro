@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { isProjectFilePath } from "./projectPersistence";
+import { normalizeDisplayPath } from "./sourcePath";
 
 export interface DirectoryEntry {
   name: string;
@@ -64,14 +65,9 @@ function formatDate(unixMs: number): string {
   return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-export function stripVerbatimPrefix(pathStr: string): string {
-  if (!pathStr) return "";
-  let clean = pathStr.trim();
-  if (clean.startsWith("\\\\?\\") || clean.startsWith("//?/")) {
-    clean = clean.slice(4);
-  }
-  return clean;
-}
+// Kept as a named export for existing callers/tests while sharing the same
+// normalization used by the rest of the workspace UI.
+export const stripVerbatimPrefix = normalizeDisplayPath;
 
 export function isProjectFile(entry: DirectoryEntry): boolean {
   if (entry.isDirectory) return false;
@@ -103,6 +99,7 @@ export function MediaExplorerView({
 }: MediaExplorerViewProps) {
   const [currentPath, setCurrentPath] = useState<string | null>(initialPath ? stripVerbatimPrefix(initialPath) : null);
   const [browseData, setBrowseData] = useState<DirectoryBrowseResult | null>(null);
+  const [selectedEntryPath, setSelectedEntryPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -122,6 +119,7 @@ export function MediaExplorerView({
   const [sortAsc, setSortAsc] = useState<boolean>(true);
 
   const browseRequest = useRef(0);
+  const autoOpenedWorkspacePath = useRef<string | null>(null);
 
   const projectCount = useMemo(() => {
     return (browseData?.entries || []).filter((e) => !e.isDirectory && isProjectFile(e)).length;
@@ -131,7 +129,10 @@ export function MediaExplorerView({
     return (browseData?.entries || []).filter((e) => !e.isDirectory && (e.isVideo || isAudioFile(e) || isImageFile(e))).length;
   }, [browseData?.entries]);
 
-  const loadDirectory = async (path?: string | null) => {
+  const loadDirectory = async (
+    path?: string | null,
+    options: { autoOpenSingleProject?: boolean } = {},
+  ) => {
     const requestId = ++browseRequest.current;
     setLoading(true);
     setError(null);
@@ -159,9 +160,21 @@ export function MediaExplorerView({
       setBrowseData(cleaned);
       setCurrentPath(cleaned.currentPath);
       setPathInputValue(cleaned.currentPath);
+      setSelectedEntryPath(null);
       setIsEditingPath(false);
       if (cleaned.currentPath && onDirectoryChange) {
         onDirectoryChange(cleaned.currentPath);
+      }
+      if (
+        options.autoOpenSingleProject &&
+        cleaned.currentPath &&
+        autoOpenedWorkspacePath.current !== cleaned.currentPath
+      ) {
+        autoOpenedWorkspacePath.current = cleaned.currentPath;
+        const projectEntries = cleaned.entries.filter(isProjectFile);
+        if (projectEntries.length === 1 && onOpenProjectFile) {
+          void onOpenProjectFile(projectEntries[0]);
+        }
       }
     } catch (err) {
       if (requestId === browseRequest.current) setError(String(err));
@@ -177,7 +190,7 @@ export function MediaExplorerView({
     if (cleanInitial && cleanInitial === currentPath && browseData) {
       return;
     }
-    void loadDirectory(initialPath ?? null);
+    void loadDirectory(initialPath ?? null, { autoOpenSingleProject: Boolean(initialPath) });
     return () => { browseRequest.current += 1; };
   }, [initialPath]);
 
@@ -192,7 +205,8 @@ export function MediaExplorerView({
         multiple: false,
       });
       if (selected && typeof selected === "string") {
-        void loadDirectory(selected);
+        autoOpenedWorkspacePath.current = null;
+        void loadDirectory(normalizeDisplayPath(selected), { autoOpenSingleProject: true });
       }
     } catch (err) {
       setError(`ไม่สามารถเปิดโฟลเดอร์ได้: ${String(err)}`);
@@ -265,12 +279,13 @@ export function MediaExplorerView({
         title: "เลือกโฟลเดอร์ทำงานสำหรับโปรเจกต์ใหม่ (Working Directory)",
       });
       if (selected && typeof selected === "string") {
+        const cleanSelected = normalizeDisplayPath(selected);
         try {
-          localStorage.setItem("smartspec_last_project_folder", selected);
+          localStorage.setItem("smartspec_last_project_folder", cleanSelected);
         } catch {}
-        void loadDirectory(selected);
+        void loadDirectory(cleanSelected);
         if (onNewProject) {
-          onNewProject(selected);
+          onNewProject(cleanSelected);
         }
       }
     } catch (err) {
@@ -364,7 +379,7 @@ export function MediaExplorerView({
                 type="text"
                 className="explorer-path-text-input"
                 value={pathInputValue}
-                onChange={(e) => setPathInputValue(e.target.value)}
+                onChange={(e) => setPathInputValue(normalizeDisplayPath(e.target.value))}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
                     setIsEditingPath(false);
@@ -586,7 +601,7 @@ export function MediaExplorerView({
 
             <div className="explorer-table-body">
               {sortedAndFilteredEntries.map((entry) => {
-                const isSelected = selectedFilePath === entry.path;
+                const isSelected = selectedFilePath === entry.path || selectedEntryPath === entry.path;
                 const isProj = isProjectFile(entry);
                 const isAud = isAudioFile(entry);
                 const isImg = isImageFile(entry);
@@ -600,8 +615,8 @@ export function MediaExplorerView({
                     onClick={() => {
                       if (entry.isDirectory) {
                         void loadDirectory(entry.path);
-                      } else if (isProj && onOpenProjectFile) {
-                        onOpenProjectFile(entry);
+                      } else if (isProj) {
+                        setSelectedEntryPath(entry.path);
                       } else if (entry.isVideo) {
                         onSelectVideoFile(entry);
                       }
@@ -610,7 +625,7 @@ export function MediaExplorerView({
                       if (entry.isDirectory) {
                         void loadDirectory(entry.path);
                       } else if (isProj && onOpenProjectFile) {
-                        onOpenProjectFile(entry);
+                        void onOpenProjectFile(entry);
                       } else if (entry.isVideo) {
                         onSelectVideoFile(entry);
                       }
@@ -620,8 +635,10 @@ export function MediaExplorerView({
                         e.preventDefault();
                         if (entry.isDirectory) {
                           void loadDirectory(entry.path);
-                        } else if (isProj && onOpenProjectFile) {
-                          onOpenProjectFile(entry);
+                        } else if (isProj && e.key === "Enter" && onOpenProjectFile) {
+                          void onOpenProjectFile(entry);
+                        } else if (isProj) {
+                          setSelectedEntryPath(entry.path);
                         } else if (entry.isVideo) {
                           onSelectVideoFile(entry);
                         }
@@ -717,7 +734,7 @@ export function MediaExplorerView({
           /* Grid / Preview Cards Mode */
           <div className="explorer-grid-container">
             {sortedAndFilteredEntries.map((entry) => {
-              const isSelected = selectedFilePath === entry.path;
+              const isSelected = selectedFilePath === entry.path || selectedEntryPath === entry.path;
               const isProj = isProjectFile(entry);
               const isAud = isAudioFile(entry);
               const isImg = isImageFile(entry);
@@ -731,8 +748,8 @@ export function MediaExplorerView({
                   onClick={() => {
                     if (entry.isDirectory) {
                       void loadDirectory(entry.path);
-                    } else if (isProj && onOpenProjectFile) {
-                      onOpenProjectFile(entry);
+                    } else if (isProj) {
+                      setSelectedEntryPath(entry.path);
                     } else if (entry.isVideo) {
                       onSelectVideoFile(entry);
                     }
@@ -741,7 +758,7 @@ export function MediaExplorerView({
                     if (entry.isDirectory) {
                       void loadDirectory(entry.path);
                     } else if (isProj && onOpenProjectFile) {
-                      onOpenProjectFile(entry);
+                      void onOpenProjectFile(entry);
                     } else if (entry.isVideo) {
                       onSelectVideoFile(entry);
                     }

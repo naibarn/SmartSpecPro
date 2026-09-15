@@ -5,6 +5,11 @@ Handles async image, video, and audio generation
 
 from app.core.celery_app import celery_app
 from app.core.database import AsyncSessionLocal
+from app.core.media_job_validators import (
+    MEDIA_PIPELINE_PERMANENT_MARKER,
+    MEDIA_REFERENCE_INVALID_MARKER,
+    MEDIA_REFERENCE_REQUIRES_UPLOAD_MARKER,
+)
 from app.models.media_task import MediaTask, TaskStatus, MediaType
 from app.models.user import User
 from app.services.media_callback_service import retry_due_callback_events
@@ -17,8 +22,10 @@ from app.services.library_indexing_service import (
 from app.services.library_backfill_service import run_library_backfill_batch
 from app.services.media_thumbnail_backfill_service import run_missing_media_thumbnail_backfill_batch
 from app.services.media_debug_trace import write_media_debug_event
+from app.services.job_control_plane import dispatch_python_task
 from app.services.kie_submission_rate_limiter import (
     KieSubmissionDeferred,
+    KieSubmissionRateLimitState,
     KieSubmissionRateLimiter,
 )
 from app.llm_proxy.gateway_unified import LLMGateway
@@ -43,6 +50,100 @@ import os
 import subprocess
 
 logger = structlog.get_logger()
+
+
+def _feature_186_postgres_pull_enabled() -> bool:
+    """Whether canonical recovery, rather than Celery/Redis, owns media jobs."""
+    return (
+        os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+        and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") == "true"
+    )
+
+
+def _feature_186_external_context() -> dict[str, str]:
+    """Persist the canonical identity needed by a later provider poll task."""
+    if not _feature_186_postgres_pull_enabled():
+        return {}
+    try:
+        from app.services.job_execution_context import current_canonical_job
+
+        current = current_canonical_job()
+    except Exception:
+        current = None
+    if current is None:
+        return {}
+    job_id, attempt_id = current
+    return {"canonicalJobId": job_id, "attemptId": attempt_id}
+
+
+def _feature_186_external_metadata(result_data: Any) -> dict[str, str] | None:
+    metadata = _coerce_json_dict(result_data).get("feature_186_external")
+    if not isinstance(metadata, dict):
+        return None
+    job_id = str(metadata.get("canonicalJobId") or "").strip()
+    attempt_id = str(metadata.get("attemptId") or "").strip()
+    return {"canonicalJobId": job_id, "attemptId": attempt_id} if job_id and attempt_id else None
+
+
+async def _settle_feature_186_external(
+    *,
+    db: Any,
+    task: MediaTask,
+    provider: str,
+    result_available: bool,
+    error: str | None = None,
+) -> None:
+    """Settle the canonical waiting job after the domain row is committed.
+
+    The MediaTask row remains the domain result source. The control-plane
+    reference deliberately points to that row, so provider URLs are not
+    promoted into canonical durable job data.
+    """
+    metadata = _feature_186_external_metadata(task.result_data)
+    if metadata is None:
+        return
+    from app.services.job_control_plane import JobControlPlaneClient
+
+    operation_key = (
+        f"provider:{metadata['canonicalJobId']}:{metadata['attemptId']}:{provider}:generate"
+    )
+    client = JobControlPlaneClient()
+    try:
+        if result_available:
+            completed = client.complete_external(
+                metadata["canonicalJobId"],
+                f"media-task:{task.id}",
+                operation_key,
+            )
+            if not completed:
+                logger.warning("feature_186_external_settlement_not_applied", task_id=task.id)
+            return
+        client.fail_external_wait(
+            metadata["canonicalJobId"],
+            (error or "provider_task_failed")[:500],
+            operator_review_required=False,
+            operation_key=operation_key,
+        )
+    except Exception as settlement_error:
+        # The domain result is already committed. Keep a durable marker for a
+        # later settlement sweep rather than turning a control-plane outage
+        # into a false provider failure or losing the completion evidence.
+        task.result_data = _merge_task_result_data(
+            task.result_data,
+            {
+                "feature_186_external_settlement": {
+                    "state": "pending",
+                    "canonicalJobId": metadata["canonicalJobId"],
+                    "operationKey": operation_key,
+                    "lastError": str(settlement_error)[:500],
+                },
+            },
+        )
+        try:
+            await db.commit()
+        except Exception:
+            logger.warning("feature_186_external_settlement_marker_failed", task_id=task.id)
+        logger.warning("feature_186_external_settlement_pending", task_id=task.id)
 
 
 def _run_async(coro):
@@ -483,11 +584,9 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
         "kie_reference_video_empty",
         "kie_reference_image_unsupported_type",
         "kie_reference_video_unsupported_type",
-        "has invalid image content",
-        "has invalid video content",
-        "has unsupported content type",
-        "exceeds the 10mb upload limit",
-        "exceeds the 100mb upload limit",
+        MEDIA_REFERENCE_REQUIRES_UPLOAD_MARKER.lower(),
+        MEDIA_REFERENCE_INVALID_MARKER.lower(),
+        MEDIA_PIPELINE_PERMANENT_MARKER.lower(),
         "kie_image_admission_timeout",
         "content policy",
         "safety policy",
@@ -518,6 +617,26 @@ def _is_non_retryable_media_error(error: Exception) -> bool:
     if any(marker in message for marker in permanent_markers):
         return True
     return ("we're so sorry" in message or "we are so sorry" in message) and "prompt" in message
+
+
+def _is_retryable_media_download_error(error: Exception) -> bool:
+    """Classify transient result/reference downloads without parsing provider prose."""
+    import httpx
+
+    if isinstance(error, (httpx.TimeoutException, httpx.RequestError)):
+        return True
+    if isinstance(error, httpx.HTTPStatusError):
+        status_code = error.response.status_code
+        return status_code in {408, 425, 429} or status_code >= 500
+    message = str(error).lower()
+    return any(
+        marker in message
+        for marker in (
+            "kie_reference_image_download_failed",
+            "kie_reference_video_download_failed",
+            "media_result_download_retryable",
+        )
+    )
 
 
 def _is_retryable_kie_image_fetch_failure(message: str) -> bool:
@@ -904,11 +1023,33 @@ def _get_wavespeed_requested_duration(
 
 
 def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
-    poll_wavespeed_video_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="wavespeed_ai")
+        return
+    dispatch_python_task(
+        poll_wavespeed_video_task.name,
+        args=[task_id],
+        countdown=max(0, int(delay_seconds)),
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"media:poll:wavespeed:{task_id}:{int(delay_seconds)}",
+        correlation_id=f"media:poll:wavespeed:{task_id}",
+        legacy_task=poll_wavespeed_video_task,
+    )
 
 
 def _enqueue_magnific_poll(task_id: str, delay_seconds: int) -> None:
-    poll_magnific_media_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="magnific")
+        return
+    dispatch_python_task(
+        poll_magnific_media_task.name,
+        args=[task_id],
+        countdown=max(0, int(delay_seconds)),
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"media:poll:magnific:{task_id}:{int(delay_seconds)}",
+        correlation_id=f"media:poll:magnific:{task_id}",
+        legacy_task=poll_magnific_media_task,
+    )
 
 
 KIE_IMAGE_MAX_IN_FLIGHT_PER_USER = max(
@@ -952,7 +1093,18 @@ _kie_image_poll_rate_limiter = KieSubmissionRateLimiter(
 
 
 def _enqueue_kie_image_poll(task_id: str, delay_seconds: int) -> None:
-    poll_kie_image_task.apply_async(args=[task_id], countdown=max(0, int(delay_seconds)))
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="kie_ai")
+        return
+    dispatch_python_task(
+        poll_kie_image_task.name,
+        args=[task_id],
+        countdown=max(0, int(delay_seconds)),
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"media:poll:kie:{task_id}:{int(delay_seconds)}",
+        correlation_id=f"media:poll:kie:{task_id}",
+        legacy_task=poll_kie_image_task,
+    )
 
 
 async def _release_kie_image_retry_claim_and_dispatch_async(
@@ -1014,9 +1166,17 @@ def _enqueue_kie_image_retry(
     retry_claim: str,
     delay_seconds: int,
 ) -> None:
-    dispatch_kie_image_retry.apply_async(
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        logger.info("feature_186_retry_schedule_deferred", task_id=task_id, provider="kie_ai")
+        return
+    dispatch_python_task(
+        dispatch_kie_image_retry.name,
         args=[task_id, user_id, retry_claim],
         countdown=max(1, int(delay_seconds)),
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"media:retry:kie:{task_id}:{retry_claim}",
+        correlation_id=f"media:retry:kie:{task_id}",
+        legacy_task=dispatch_kie_image_retry,
     )
 
 
@@ -1032,7 +1192,7 @@ async def _dispatch_pending_image_tasks_async(user_id: int | str) -> dict[str, A
     leaving different users independent. A pending row with a Celery ID is a
     durable claim, so another API/worker process cannot over-admit it.
     """
-    claimed: list[tuple[str, int | str, dict[str, Any], str]] = []
+    claimed: list[tuple[str, int | str, str | None, dict[str, Any], str]] = []
     available_slots = 0
     async with AsyncSessionLocal() as db:
         await db.execute(
@@ -1072,24 +1232,67 @@ async def _dispatch_pending_image_tasks_async(user_id: int | str) -> dict[str, A
                 celery_task_id = str(uuid4())
                 task.celery_task_id = celery_task_id
                 claimed.append(
-                    (task.id, task.user_id, _image_request_from_task(task), celery_task_id)
+                    (
+                        task.id,
+                        task.user_id,
+                        str(task.tenant_id).strip() if task.tenant_id else None,
+                        _image_request_from_task(task),
+                        celery_task_id,
+                    )
                 )
         await db.commit()
 
     dispatched: list[str] = []
-    for task_id, owner_id, request_data, celery_task_id in claimed:
+    for task_id, owner_id, tenant_id, request_data, celery_task_id in claimed:
         try:
-            generate_image_task.apply_async(
-                args=[task_id, owner_id, request_data],
-                task_id=celery_task_id,
-            )
+            if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+                tenant_id = str(tenant_id or "").strip()
+                if not tenant_id:
+                    raise RuntimeError("MEDIA_IMAGE_TENANT_REQUIRED")
+                dispatch_result = dispatch_python_task(
+                    generate_image_task.name,
+                    args=[task_id, owner_id, request_data],
+                    tenant_id=tenant_id,
+                    user_id=owner_id,
+                    idempotency_key=f"media:image:{tenant_id}:{task_id}",
+                    queue="media",
+                    legacy_task=generate_image_task,
+                )
+                async with AsyncSessionLocal() as db:
+                    published_result = await db.execute(
+                        select(MediaTask).where(MediaTask.id == task_id).with_for_update()
+                    )
+                    published_task = published_result.scalar_one_or_none()
+                    if (
+                        published_task is not None
+                        and published_task.status == TaskStatus.PENDING.value
+                        and published_task.celery_task_id == celery_task_id
+                    ):
+                        published_task.celery_task_id = dispatch_result.id
+                        await db.commit()
+                logger.info(
+                    "kie_image_user_task_dispatched",
+                    task_id=task_id,
+                    user_id=owner_id,
+                    canonical_job_id=dispatch_result.id,
+                )
+            else:
+                dispatch_python_task(
+                    generate_image_task.name,
+                    args=[task_id, owner_id, request_data],
+                    tenant_id=tenant_id,
+                    user_id=owner_id,
+                    idempotency_key=f"media:image:legacy:{celery_task_id}",
+                    correlation_id=f"media:image:{task_id}",
+                    legacy_task=generate_image_task,
+                )
+                logger.info(
+                    "kie_image_user_task_dispatched",
+                    task_id=task_id,
+                    user_id=owner_id,
+                    celery_task_id=celery_task_id,
+                )
             dispatched.append(task_id)
-            logger.info(
-                "kie_image_user_task_dispatched",
-                task_id=task_id,
-                user_id=owner_id,
-                celery_task_id=celery_task_id,
-            )
         except Exception as exc:
             logger.error(
                 "kie_image_user_task_dispatch_failed",
@@ -1246,7 +1449,19 @@ async def _poll_kie_image_task_async(
                 hard_timeout_seconds=KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS,
             )
 
-        poll_rate_state = await _kie_image_poll_rate_limiter.acquire(task_id=task_id)
+        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            # Hard cutover must not make canonical execution depend on Redis.
+            # The durable provider reservation/poll schedule is the admission
+            # guard for this compatibility path; this task performs one
+            # provider observation and never owns a long-lived worker lease.
+            poll_rate_state = KieSubmissionRateLimitState(
+                allowed=True,
+                remaining=0,
+                retry_after_seconds=0,
+                redis_available=False,
+            )
+        else:
+            poll_rate_state = await _kie_image_poll_rate_limiter.acquire(task_id=task_id)
         if not poll_rate_state.allowed:
             next_delay = max(
                 _next_kie_image_poll_delay(previous_delay),
@@ -1451,6 +1666,14 @@ async def _poll_kie_image_task_async(
                 "next_delay_seconds": next_delay,
             }
 
+    if terminal:
+        await _settle_feature_186_external(
+            db=db,
+            task=task,
+            provider="kie_ai",
+            result_available=result_payload.get("status") == "completed",
+            error=task.error_message,
+        )
     if terminal and owner_id is not None:
         if result_payload.get("status") == "failed" and not allow_failed_recovery:
             await _send_failure_notifications(
@@ -1543,6 +1766,13 @@ async def _poll_wavespeed_video_task_async(
                 remove_keys=("retry",),
             )
             await db.commit()
+            await _settle_feature_186_external(
+                db=db,
+                task=task,
+                provider="wavespeed_ai",
+                result_available=False,
+                error=task.error_message,
+            )
             return {"status": "failed", "task_id": task_id}
 
         age_seconds = _get_wavespeed_poll_age_seconds(task)
@@ -1572,6 +1802,13 @@ async def _poll_wavespeed_video_task_async(
                 remove_keys=("retry",),
             )
             await db.commit()
+            await _settle_feature_186_external(
+                db=db,
+                task=task,
+                provider="wavespeed_ai",
+                result_available=False,
+                error=task.error_message,
+            )
             return {"status": "failed", "task_id": task_id, "reason": "timeout"}
 
         provider_config = await get_media_provider_key("wavespeed_ai")
@@ -1720,6 +1957,12 @@ async def _poll_wavespeed_video_task_async(
                 remove_keys=("failure", "retry"),
             )
             await db.commit()
+            await _settle_feature_186_external(
+                db=db,
+                task=task,
+                provider="wavespeed_ai",
+                result_available=True,
+            )
             return {"status": "completed", "task_id": task_id, "result_url": poll_result.result_url}
 
         if poll_result.state == "failure":
@@ -1748,6 +1991,13 @@ async def _poll_wavespeed_video_task_async(
                 remove_keys=("retry",),
             )
             await db.commit()
+            await _settle_feature_186_external(
+                db=db,
+                task=task,
+                provider="wavespeed_ai",
+                result_available=False,
+                error=task.error_message,
+            )
             return {"status": "failed", "task_id": task_id}
 
         next_delay = WaveSpeedMediaProvider.calculate_next_poll_delay(previous_delay)
@@ -1964,6 +2214,37 @@ async def _poll_magnific_media_task_async(
                     media_type=media_type,
                 )
             except Exception as exc:
+                if _is_retryable_media_download_error(exc):
+                    next_delay = _next_magnific_poll_delay(model_id, previous_delay)
+                    task.status = TaskStatus.PROCESSING
+                    task.error_message = (
+                        "MEDIA_RESULT_DOWNLOAD_RETRYABLE: "
+                        f"{type(exc).__name__}"
+                    )
+                    task.result_data = _merge_task_result_data(
+                        result_data,
+                        {
+                            "polling": {
+                                "provider": "magnific",
+                                "state": "processing",
+                                "attempts": attempts + 1,
+                                "last_polled_at": now.isoformat(),
+                                "last_delay_seconds": previous_delay,
+                                "next_delay_seconds": next_delay,
+                                "last_error": task.error_message,
+                                "last_error_type": type(exc).__name__,
+                            },
+                        },
+                        remove_keys=("failure",),
+                    )
+                    await db.commit()
+                    if schedule_next_poll:
+                        _enqueue_magnific_poll(task.id, next_delay)
+                    return {
+                        "status": "processing",
+                        "task_id": task_id,
+                        "next_delay_seconds": next_delay,
+                    }
                 task.status = TaskStatus.FAILED
                 task.error_message = "Magnific result re-hosting failed"
                 task.completed_at = now
@@ -2564,6 +2845,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
                 }
             task.result_data = _make_json_safe({
                 "response": response.dict(),
+                **({"feature_186_external": _feature_186_external_context()} if _feature_186_external_context() else {}),
                 **({"submission": submission_record} if submission_record else {}),
                 **(
                     {
@@ -2882,6 +3164,7 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
                 )
 
             task.result_data = _make_json_safe({
+                **({"feature_186_external": _feature_186_external_context()} if _feature_186_external_context() else {}),
                 **({"submission": submission_record} if submission_record else {"submission": response.dict()}),
                 "response": response.dict(),
                 **(
@@ -3363,16 +3646,32 @@ async def _retry_failed_tasks_async():
                 # Re-submit to Celery based on media type
                 if task.media_type == MediaType.IMAGE:
                     # Re-arm through the same per-user dispatcher as new
-                    # requests. Direct `.delay()` bypasses the three-task
-                    # admission cap and can recreate the Kie rate-limit burst.
+                    # requests. The shared dispatch port preserves the
+                    # three-task admission cap and avoids a provider burst.
                     task.task_id = None
                     task.started_at = None
                     task.celery_task_id = None
                     image_user_ids.add(task.user_id)
                 elif task.media_type == MediaType.VIDEO:
-                    generate_video_task.delay(task.id, task.user_id, task.parameters or {})
+                    dispatch_python_task(
+                        generate_video_task.name,
+                        args=[task.id, task.user_id, task.parameters or {}],
+                        tenant_id=str(task.tenant_id or "").strip() or None,
+                        user_id=task.user_id,
+                        idempotency_key=f"media:retry:video:{task.id}",
+                        correlation_id=f"media:retry:video:{task.id}",
+                        legacy_task=generate_video_task,
+                    )
                 elif task.media_type == MediaType.AUDIO:
-                    generate_audio_task.delay(task.id, task.user_id, task.parameters or {})
+                    dispatch_python_task(
+                        generate_audio_task.name,
+                        args=[task.id, task.user_id, task.parameters or {}],
+                        tenant_id=str(task.tenant_id or "").strip() or None,
+                        user_id=task.user_id,
+                        idempotency_key=f"media:retry:audio:{task.id}",
+                        correlation_id=f"media:retry:audio:{task.id}",
+                        legacy_task=generate_audio_task,
+                    )
 
                 retried_count += 1
 
@@ -3575,6 +3874,13 @@ async def _recover_stuck_tasks_async():
     Find and recover tasks stuck in 'processing' status
     This handles tasks that were interrupted by worker restarts or timeouts
     """
+    if _feature_186_postgres_pull_enabled():
+        # The canonical lease/reconciler and the durable provider poller own
+        # this path in PostgreSQL-pull mode. Running the legacy janitor here
+        # would race the same MediaTask row and could poll or settle a
+        # provider operation outside the canonical lease fence.
+        logger.info("feature_186_media_recovery_deferred_to_control_plane")
+        return {"status": "skipped", "reason": "feature_186_postgres_pull"}
     async with AsyncSessionLocal() as db:
         try:
             from datetime import timezone
@@ -4175,8 +4481,14 @@ async def _recover_stuck_pending_tasks_async():
       same id only when the owner has no other processing image task. Unknown
       inspection states are never mutated.
     """
-    from celery.result import AsyncResult
+    if _feature_186_postgres_pull_enabled():
+        # Do not consult AsyncResult in hard PostgreSQL-pull mode. The
+        # canonical outbox/lease/reconciler owns pending recovery and a
+        # compatibility janitor must not race or mutate the same MediaTask.
+        logger.info("feature_186_media_pending_recovery_deferred_to_control_plane")
+        return {"status": "skipped", "reason": "feature_186_postgres_pull"}
     from datetime import timezone
+    from app.services.legacy_task_status import read_legacy_task_status
 
     async with AsyncSessionLocal() as db:
         try:
@@ -4278,7 +4590,7 @@ async def _recover_stuck_pending_tasks_async():
                 celery_state = "UNKNOWN"
                 celery_result_info = None
                 try:
-                    ar = AsyncResult(task.celery_task_id, app=celery_app)
+                    ar = read_legacy_task_status(task.celery_task_id, app=celery_app)
                     celery_state = ar.state  # PENDING, STARTED, RETRY, SUCCESS, FAILURE, REVOKED
                     if celery_state in ("SUCCESS", "FAILURE", "RETRY"):
                         celery_result_info = ar.result
@@ -4329,9 +4641,14 @@ async def _recover_stuck_pending_tasks_async():
                     # was lost after the DB claim. Re-publish the same Celery ID;
                     # the row/advisory guard in _generate_image_async makes the
                     # delivery idempotent if the original message still exists.
-                    generate_image_task.apply_async(
+                    dispatch_python_task(
+                        generate_image_task.name,
                         args=[task.id, task.user_id, _image_request_from_task(task)],
-                        task_id=task.celery_task_id,
+                        tenant_id=str(task.tenant_id or "").strip() or None,
+                        user_id=task.user_id,
+                        idempotency_key=f"media:recover:image:{task.celery_task_id}",
+                        correlation_id=f"media:recover:image:{task.id}",
+                        legacy_task=generate_image_task,
                     )
                     recovered += 1
                     logger.warning(

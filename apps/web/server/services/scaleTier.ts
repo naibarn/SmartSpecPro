@@ -29,7 +29,7 @@ export const SCALE_TIER_IDS = [
 ] as const;
 
 export type ScaleTierId = (typeof SCALE_TIER_IDS)[number];
-export type DeployMode = "localhost" | "cloudrun";
+export type DeployMode = "localhost" | "cloudflare";
 
 export interface ScaleTierConfig {
   id: ScaleTierId;
@@ -68,19 +68,19 @@ export interface ScaleTierConfig {
   celeryMediaConcurrency: number;
   celeryVideoConcurrency: number;
 
-  // Cloud Run scaling
-  cloudRunNodeMinInstances: number;
-  cloudRunNodeMaxInstances: number;
-  cloudRunNodeCpu: string;
-  cloudRunNodeMemory: string;
-  cloudRunNodeConcurrency: number;
-  cloudRunPythonMinInstances: number;
-  cloudRunPythonMaxInstances: number;
-  cloudRunPythonCpu: string;
-  cloudRunPythonMemory: string;
-  cloudRunPythonConcurrency: number;
-  cloudRunMediaQueueConcurrency: number;
-  cloudRunWorkflowQueueConcurrency: number;
+  // Cloudflare deployment budget hints
+  cloudflareNodeMinInstances: number;
+  cloudflareNodeMaxInstances: number;
+  cloudflareNodeCpu: string;
+  cloudflareNodeMemory: string;
+  cloudflareNodeConcurrency: number;
+  cloudflarePythonMinInstances: number;
+  cloudflarePythonMaxInstances: number;
+  cloudflarePythonCpu: string;
+  cloudflarePythonMemory: string;
+  cloudflarePythonConcurrency: number;
+  cloudflareMediaQueueConcurrency: number;
+  cloudflareWorkflowQueueConcurrency: number;
 }
 
 export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
@@ -110,18 +110,18 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     redisMaxmemoryMb: 128,
     celeryMediaConcurrency: 2,
     celeryVideoConcurrency: 1,
-    cloudRunNodeMinInstances: 0,
-    cloudRunNodeMaxInstances: 2,
-    cloudRunNodeCpu: "1",
-    cloudRunNodeMemory: "512Mi",
-    cloudRunNodeConcurrency: 80,
-    cloudRunPythonMinInstances: 0,
-    cloudRunPythonMaxInstances: 2,
-    cloudRunPythonCpu: "1",
-    cloudRunPythonMemory: "1Gi",
-    cloudRunPythonConcurrency: 40,
-    cloudRunMediaQueueConcurrency: 5,
-    cloudRunWorkflowQueueConcurrency: 10,
+    cloudflareNodeMinInstances: 0,
+    cloudflareNodeMaxInstances: 2,
+    cloudflareNodeCpu: "1",
+    cloudflareNodeMemory: "512Mi",
+    cloudflareNodeConcurrency: 80,
+    cloudflarePythonMinInstances: 0,
+    cloudflarePythonMaxInstances: 2,
+    cloudflarePythonCpu: "1",
+    cloudflarePythonMemory: "1Gi",
+    cloudflarePythonConcurrency: 40,
+    cloudflareMediaQueueConcurrency: 5,
+    cloudflareWorkflowQueueConcurrency: 10,
   },
   growth: {
     id: "growth",
@@ -149,18 +149,18 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     redisMaxmemoryMb: 256,
     celeryMediaConcurrency: 4,
     celeryVideoConcurrency: 2,
-    cloudRunNodeMinInstances: 1,
-    cloudRunNodeMaxInstances: 3,
-    cloudRunNodeCpu: "1",
-    cloudRunNodeMemory: "1Gi",
-    cloudRunNodeConcurrency: 80,
-    cloudRunPythonMinInstances: 1,
-    cloudRunPythonMaxInstances: 3,
-    cloudRunPythonCpu: "1",
-    cloudRunPythonMemory: "1Gi",
-    cloudRunPythonConcurrency: 40,
-    cloudRunMediaQueueConcurrency: 10,
-    cloudRunWorkflowQueueConcurrency: 15,
+    cloudflareNodeMinInstances: 1,
+    cloudflareNodeMaxInstances: 3,
+    cloudflareNodeCpu: "1",
+    cloudflareNodeMemory: "1Gi",
+    cloudflareNodeConcurrency: 80,
+    cloudflarePythonMinInstances: 1,
+    cloudflarePythonMaxInstances: 3,
+    cloudflarePythonCpu: "1",
+    cloudflarePythonMemory: "1Gi",
+    cloudflarePythonConcurrency: 40,
+    cloudflareMediaQueueConcurrency: 10,
+    cloudflareWorkflowQueueConcurrency: 15,
   },
   pro: {
     id: "pro",
@@ -188,18 +188,18 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     redisMaxmemoryMb: 512,
     celeryMediaConcurrency: 6,
     celeryVideoConcurrency: 3,
-    cloudRunNodeMinInstances: 1,
-    cloudRunNodeMaxInstances: 5,
-    cloudRunNodeCpu: "2",
-    cloudRunNodeMemory: "1Gi",
-    cloudRunNodeConcurrency: 100,
-    cloudRunPythonMinInstances: 1,
-    cloudRunPythonMaxInstances: 4,
-    cloudRunPythonCpu: "2",
-    cloudRunPythonMemory: "2Gi",
-    cloudRunPythonConcurrency: 50,
-    cloudRunMediaQueueConcurrency: 15,
-    cloudRunWorkflowQueueConcurrency: 20,
+    cloudflareNodeMinInstances: 1,
+    cloudflareNodeMaxInstances: 5,
+    cloudflareNodeCpu: "2",
+    cloudflareNodeMemory: "1Gi",
+    cloudflareNodeConcurrency: 100,
+    cloudflarePythonMinInstances: 1,
+    cloudflarePythonMaxInstances: 4,
+    cloudflarePythonCpu: "2",
+    cloudflarePythonMemory: "2Gi",
+    cloudflarePythonConcurrency: 50,
+    cloudflareMediaQueueConcurrency: 15,
+    cloudflareWorkflowQueueConcurrency: 20,
   },
   business: {
     id: "business",
@@ -227,18 +227,18 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     redisMaxmemoryMb: 1024,
     celeryMediaConcurrency: 8,
     celeryVideoConcurrency: 4,
-    cloudRunNodeMinInstances: 2,
-    cloudRunNodeMaxInstances: 8,
-    cloudRunNodeCpu: "2",
-    cloudRunNodeMemory: "2Gi",
-    cloudRunNodeConcurrency: 120,
-    cloudRunPythonMinInstances: 1,
-    cloudRunPythonMaxInstances: 6,
-    cloudRunPythonCpu: "2",
-    cloudRunPythonMemory: "2Gi",
-    cloudRunPythonConcurrency: 60,
-    cloudRunMediaQueueConcurrency: 20,
-    cloudRunWorkflowQueueConcurrency: 30,
+    cloudflareNodeMinInstances: 2,
+    cloudflareNodeMaxInstances: 8,
+    cloudflareNodeCpu: "2",
+    cloudflareNodeMemory: "2Gi",
+    cloudflareNodeConcurrency: 120,
+    cloudflarePythonMinInstances: 1,
+    cloudflarePythonMaxInstances: 6,
+    cloudflarePythonCpu: "2",
+    cloudflarePythonMemory: "2Gi",
+    cloudflarePythonConcurrency: 60,
+    cloudflareMediaQueueConcurrency: 20,
+    cloudflareWorkflowQueueConcurrency: 30,
   },
   enterprise: {
     id: "enterprise",
@@ -266,18 +266,18 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     redisMaxmemoryMb: 2048,
     celeryMediaConcurrency: 12,
     celeryVideoConcurrency: 6,
-    cloudRunNodeMinInstances: 3,
-    cloudRunNodeMaxInstances: 15,
-    cloudRunNodeCpu: "4",
-    cloudRunNodeMemory: "4Gi",
-    cloudRunNodeConcurrency: 150,
-    cloudRunPythonMinInstances: 2,
-    cloudRunPythonMaxInstances: 10,
-    cloudRunPythonCpu: "4",
-    cloudRunPythonMemory: "4Gi",
-    cloudRunPythonConcurrency: 80,
-    cloudRunMediaQueueConcurrency: 30,
-    cloudRunWorkflowQueueConcurrency: 50,
+    cloudflareNodeMinInstances: 3,
+    cloudflareNodeMaxInstances: 15,
+    cloudflareNodeCpu: "4",
+    cloudflareNodeMemory: "4Gi",
+    cloudflareNodeConcurrency: 150,
+    cloudflarePythonMinInstances: 2,
+    cloudflarePythonMaxInstances: 10,
+    cloudflarePythonCpu: "4",
+    cloudflarePythonMemory: "4Gi",
+    cloudflarePythonConcurrency: 80,
+    cloudflareMediaQueueConcurrency: 30,
+    cloudflareWorkflowQueueConcurrency: 50,
   },
 };
 
@@ -313,14 +313,14 @@ function validateTierConfig(tier: ScaleTierConfig): void {
     { value: tier.pythonRateLimitPerMin, min: 1, max: 10000, name: "pythonRateLimitPerMin" },
     { value: tier.celeryMediaConcurrency, min: 1, max: 32, name: "celeryMediaConcurrency" },
     { value: tier.celeryVideoConcurrency, min: 1, max: 16, name: "celeryVideoConcurrency" },
-    { value: tier.cloudRunNodeMaxInstances, min: 1, max: 100, name: "cloudRunNodeMaxInstances" },
-    { value: tier.cloudRunNodeMinInstances, min: 0, max: 50, name: "cloudRunNodeMinInstances" },
-    { value: tier.cloudRunNodeConcurrency, min: 1, max: 1000, name: "cloudRunNodeConcurrency" },
-    { value: tier.cloudRunPythonMaxInstances, min: 1, max: 100, name: "cloudRunPythonMaxInstances" },
-    { value: tier.cloudRunPythonMinInstances, min: 0, max: 50, name: "cloudRunPythonMinInstances" },
-    { value: tier.cloudRunPythonConcurrency, min: 1, max: 1000, name: "cloudRunPythonConcurrency" },
-    { value: tier.cloudRunMediaQueueConcurrency, min: 1, max: 500, name: "cloudRunMediaQueueConcurrency" },
-    { value: tier.cloudRunWorkflowQueueConcurrency, min: 1, max: 500, name: "cloudRunWorkflowQueueConcurrency" },
+    { value: tier.cloudflareNodeMaxInstances, min: 1, max: 100, name: "cloudflareNodeMaxInstances" },
+    { value: tier.cloudflareNodeMinInstances, min: 0, max: 50, name: "cloudflareNodeMinInstances" },
+    { value: tier.cloudflareNodeConcurrency, min: 1, max: 1000, name: "cloudflareNodeConcurrency" },
+    { value: tier.cloudflarePythonMaxInstances, min: 1, max: 100, name: "cloudflarePythonMaxInstances" },
+    { value: tier.cloudflarePythonMinInstances, min: 0, max: 50, name: "cloudflarePythonMinInstances" },
+    { value: tier.cloudflarePythonConcurrency, min: 1, max: 1000, name: "cloudflarePythonConcurrency" },
+    { value: tier.cloudflareMediaQueueConcurrency, min: 1, max: 500, name: "cloudflareMediaQueueConcurrency" },
+    { value: tier.cloudflareWorkflowQueueConcurrency, min: 1, max: 500, name: "cloudflareWorkflowQueueConcurrency" },
   ];
 
   for (const { value, min, max, name } of checks) {
@@ -391,13 +391,6 @@ async function writeEnvFile(filePath: string, env: { lines: string[] }) {
 // Deploy Mode Detection (Redis → DB → ENV → Default)
 // ============================================================
 
-interface GcpConfig {
-  projectId: string;
-  region: string;
-  nodeServiceName: string;
-  pythonServiceName: string;
-}
-
 export async function getDeployMode(): Promise<{
   mode: DeployMode;
   source: "redis" | "db" | "env" | "default";
@@ -407,7 +400,7 @@ export async function getDeployMode(): Promise<{
     const { getRedisClient } = await import("./redis");
     const redis = getRedisClient();
     const raw = await redis.get("feature-flag:DEPLOY_MODE");
-    if (raw === "localhost" || raw === "cloudrun") {
+    if (raw === "localhost" || raw === "cloudflare") {
       return { mode: raw, source: "redis" };
     }
   } catch { /* Redis unavailable */ }
@@ -429,7 +422,7 @@ export async function getDeployMode(): Promise<{
           ),
         )
         .limit(1);
-      if (row?.value === "localhost" || row?.value === "cloudrun") {
+      if (row?.value === "localhost" || row?.value === "cloudflare") {
         return { mode: row.value, source: "db" };
       }
     }
@@ -437,7 +430,7 @@ export async function getDeployMode(): Promise<{
 
   // Priority 3: ENV var
   const envVal = process.env.DEPLOY_MODE;
-  if (envVal === "localhost" || envVal === "cloudrun") {
+  if (envVal === "localhost" || envVal === "cloudflare") {
     return { mode: envVal, source: "env" };
   }
 
@@ -490,141 +483,10 @@ export async function setDeployMode(mode: DeployMode, userId?: number): Promise<
   }
 }
 
-// GCP input validation — prevents argument injection via execFileAsync
-const GCP_PROJECT_ID_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
-const GCP_REGION_RE = /^[a-z]+-[a-z]+\d+$/;
-const GCP_SERVICE_NAME_RE = /^[a-z][a-z0-9-]{0,62}$/;
-
-function validateGcpProjectId(v: string): void {
-  if (!GCP_PROJECT_ID_RE.test(v)) {
-    throw new Error(`Invalid GCP project ID format: "${v}". Must be 6-30 lowercase alphanumeric + hyphens.`);
-  }
-}
-function validateGcpRegion(v: string): void {
-  if (!GCP_REGION_RE.test(v)) {
-    throw new Error(`Invalid GCP region format: "${v}". Expected format like us-central1.`);
-  }
-}
-
-export async function resolveGcpConfig(): Promise<GcpConfig> {
-  let projectId = process.env.GCP_PROJECT_ID ?? "";
-  let region = process.env.GCP_REGION ?? "";
-
-  try {
-    const { getDb } = await import("../db");
-    const { systemSettings } = await import("../../drizzle/schema");
-    const { eq } = await import("drizzle-orm");
-    const db = await getDb();
-    if (db) {
-      const rows = await db.select().from(systemSettings).where(eq(systemSettings.category, "infrastructure"));
-      for (const row of rows) {
-        if (row.key === "gcp_project_id" && row.value) projectId = row.value;
-        if (row.key === "gcp_region" && row.value) region = row.value;
-      }
-    }
-  } catch { /* fallback to env */ }
-
-  if (!projectId) {
-    throw new Error("GCP configuration incomplete: gcp_project_id not set in Infrastructure Settings or GCP_PROJECT_ID env");
-  }
-  if (!region) {
-    throw new Error("GCP configuration incomplete: gcp_region not set in Infrastructure Settings or GCP_REGION env");
-  }
-
-  // Validate formats before using in CLI commands
-  validateGcpProjectId(projectId);
-  validateGcpRegion(region);
-
-  const nodeServiceName = "node-api";
-  const pythonServiceName = "python-orchestrator";
-
-  return { projectId, region, nodeServiceName, pythonServiceName };
-}
-
-// ============================================================
-// Cloud Run Helpers (via gcloud CLI)
-// ============================================================
-
 function formatError(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
 }
-
-async function ensureGcloudInstalled(): Promise<void> {
-  try {
-    await execFileAsync("gcloud", ["--version"], { timeout: 10_000 });
-  } catch (err: unknown) {
-    const msg = err instanceof Error && "code" in err && (err as NodeJS.ErrnoException).code === "ENOENT"
-      ? "gcloud CLI not found. Install Google Cloud SDK: https://cloud.google.com/sdk/docs/install"
-      : `gcloud CLI check failed: ${formatError(err)}`;
-    throw new Error(msg);
-  }
-}
-
-async function updateCloudRunService(
-  gcp: GcpConfig,
-  serviceName: string,
-  opts: {
-    maxInstances?: number;
-    minInstances?: number;
-    cpu?: string;
-    memory?: string;
-    concurrency?: number;
-    envVars?: Record<string, string | number>;
-  },
-): Promise<string> {
-  const args = [
-    "run", "services", "update", serviceName,
-    "--region", gcp.region,
-    "--project", gcp.projectId,
-    "--platform", "managed",
-    "--quiet",
-  ];
-
-  if (opts.maxInstances !== undefined) args.push("--max-instances", String(opts.maxInstances));
-  if (opts.minInstances !== undefined) args.push("--min-instances", String(opts.minInstances));
-  if (opts.cpu) args.push("--cpu", opts.cpu);
-  if (opts.memory) args.push("--memory", opts.memory);
-  if (opts.concurrency !== undefined) args.push("--concurrency", String(opts.concurrency));
-
-  if (opts.envVars && Object.keys(opts.envVars).length > 0) {
-    for (const [k, v] of Object.entries(opts.envVars)) {
-      validateEnvVarValue(k, v);
-    }
-    const envStr = Object.entries(opts.envVars)
-      .map(([k, v]) => `${k}=${v}`)
-      .join(",");
-    args.push("--update-env-vars", envStr);
-  }
-
-  const { stdout, stderr } = await execFileAsync("gcloud", args, { timeout: 120_000 });
-  if (stderr && stderr.includes("ERROR")) {
-    throw new Error(`gcloud error: ${stderr.trim()}`);
-  }
-  return stdout;
-}
-
-async function updateCloudTasksQueue(
-  gcp: GcpConfig,
-  queueName: string,
-  maxConcurrentDispatches: number,
-): Promise<string> {
-  const { stdout, stderr } = await execFileAsync("gcloud", [
-    "tasks", "queues", "update", queueName,
-    "--location", gcp.region,
-    "--project", gcp.projectId,
-    "--max-concurrent-dispatches", String(maxConcurrentDispatches),
-    "--quiet",
-  ], { timeout: 30_000 });
-  if (stderr && stderr.includes("ERROR")) {
-    throw new Error(`gcloud error: ${stderr.trim()}`);
-  }
-  return stdout;
-}
-
-// ============================================================
-// Apply Logic
-// ============================================================
 
 export interface ApplyStepResult {
   step: string;
@@ -634,19 +496,24 @@ export interface ApplyStepResult {
   command?: string;
 }
 
-// Concurrency lock — Redis-based distributed lock for multi-instance safety
+// Concurrency lock for local configuration changes. The lock is best-effort
+// when Redis is unavailable; localhost apply remains a single-process action.
 const APPLY_LOCK_KEY = "scale-tier:apply-lock";
-const APPLY_LOCK_TTL_SEC = 300; // 5 minutes max lock duration (auto-release on crash)
+const APPLY_LOCK_TTL_SEC = 300;
 
 async function acquireApplyLock(): Promise<boolean> {
   try {
     const { getRedisClient } = await import("./redis");
     const redis = getRedisClient();
-    // SET NX EX: only succeeds if key doesn't exist (atomic lock)
-    const result = await redis.set(APPLY_LOCK_KEY, Date.now().toString(), "EX", APPLY_LOCK_TTL_SEC, "NX");
+    const result = await redis.set(
+      APPLY_LOCK_KEY,
+      Date.now().toString(),
+      "EX",
+      APPLY_LOCK_TTL_SEC,
+      "NX",
+    );
     return result === "OK";
   } catch {
-    // Redis unavailable — fall through to allow operation (single-instance fallback)
     return true;
   }
 }
@@ -654,174 +521,46 @@ async function acquireApplyLock(): Promise<boolean> {
 async function releaseApplyLock(): Promise<void> {
   try {
     const { getRedisClient } = await import("./redis");
-    const redis = getRedisClient();
-    await redis.del(APPLY_LOCK_KEY);
+    await getRedisClient().del(APPLY_LOCK_KEY);
   } catch {
-    // Best-effort release; TTL ensures eventual cleanup
+    // TTL provides eventual cleanup when Redis is unavailable.
   }
 }
 
 /**
- * Validate env var values before passing to gcloud --update-env-vars.
- * Prevents shell metacharacters from being injected.
- */
-function validateEnvVarValue(key: string, value: string | number): void {
-  const str = String(value);
-  // Block shell metacharacters
-  if (/[;&|`$(){}[\]<>'"\\]/.test(str)) {
-    throw new Error(`Invalid env var value for ${key}: contains disallowed characters`);
-  }
-  // Block control characters (null bytes, newlines, carriage returns, etc.)
-  // eslint-disable-next-line no-control-regex
-  if (/[\x00-\x1f\x7f]/.test(str)) {
-    throw new Error(`Invalid env var value for ${key}: contains control characters`);
-  }
-  if (key === "NODE_OPTIONS" && !/^--max-old-space-size=\d+$/.test(str)) {
-    throw new Error(`Invalid NODE_OPTIONS format: ${str}`);
-  }
-}
-
-/**
- * Apply a scale tier configuration to all services.
- * Dispatches to localhost or Cloud Run apply logic based on deploy mode.
+ * Apply a scale tier through the selected deployment boundary.
  *
- * Uses execFileAsync (no shell) to prevent command injection.
- * Each step is independent — failures are logged but don't block others.
- * Concurrency lock prevents parallel apply operations.
+ * Cloudflare scaling is owned by the deployment pipeline; the web process
+ * reports that boundary without invoking retired Google Cloud tooling.
  */
 export async function applyScaleTier(
   tierId: ScaleTierId,
   modeOverride?: DeployMode,
 ): Promise<ApplyStepResult[]> {
+  const tier = SCALE_TIERS[tierId];
+  if (!tier) throw new Error(`Unknown tier: ${tierId}`);
+  validateTierConfig(tier);
+
+  const { mode } = modeOverride ? { mode: modeOverride } : await getDeployMode();
+  if (mode === "cloudflare") {
+    return [{
+      step: "cloudflare_deployment_pipeline",
+      status: "skipped",
+      mode,
+      message: `Cloudflare tier ${tier.id} is a deployment-pipeline budget hint; no local runtime mutation was performed`,
+    }];
+  }
+
   const acquired = await acquireApplyLock();
   if (!acquired) {
     throw new Error("Another scale tier apply operation is already in progress. Please wait.");
   }
 
   try {
-    const tier = SCALE_TIERS[tierId];
-    if (!tier) throw new Error(`Unknown tier: ${tierId}`);
-
-    validateTierConfig(tier);
-
-    const { mode } = modeOverride ? { mode: modeOverride } : await getDeployMode();
-
-    if (mode === "cloudrun") {
-      return await applyScaleTierCloudRun(tier);
-    }
     return await applyScaleTierLocalhost(tier);
   } finally {
     await releaseApplyLock();
   }
-}
-
-// ── Cloud Run Apply ─────────────────────────────────────────
-
-async function applyScaleTierCloudRun(tier: ScaleTierConfig): Promise<ApplyStepResult[]> {
-  const results: ApplyStepResult[] = [];
-
-  // Pre-check: gcloud CLI must be installed
-  try {
-    await ensureGcloudInstalled();
-  } catch (err: unknown) {
-    results.push({ step: "cloudrun_gcloud_check", status: "error", mode: "cloudrun", message: formatError(err) });
-    return results;
-  }
-
-  let gcp: GcpConfig;
-  try {
-    gcp = await resolveGcpConfig();
-    results.push({ step: "cloudrun_gcp_check", status: "ok", mode: "cloudrun", message: `GCP: project=${gcp.projectId}, region=${gcp.region}` });
-  } catch (err: unknown) {
-    results.push({ step: "cloudrun_gcp_check", status: "error", mode: "cloudrun", message: formatError(err) });
-    return results;
-  }
-
-  // Step 1+3: Update Node.js Cloud Run (env vars + scaling in single call)
-  try {
-    const nodeEnvKeys = "DB_POOL_SIZE,WEB_LLM_RPM,WEB_MCP_RPM,NODE_OPTIONS";
-    const cmd = `gcloud run services update ${gcp.nodeServiceName} --region=${gcp.region} --update-env-vars=${nodeEnvKeys} --max-instances=${tier.cloudRunNodeMaxInstances} --min-instances=${tier.cloudRunNodeMinInstances} --cpu=${tier.cloudRunNodeCpu} --memory=${tier.cloudRunNodeMemory} --concurrency=${tier.cloudRunNodeConcurrency}`;
-    await updateCloudRunService(gcp, gcp.nodeServiceName, {
-      maxInstances: tier.cloudRunNodeMaxInstances,
-      minInstances: tier.cloudRunNodeMinInstances,
-      cpu: tier.cloudRunNodeCpu,
-      memory: tier.cloudRunNodeMemory,
-      concurrency: tier.cloudRunNodeConcurrency,
-      envVars: {
-        DB_POOL_SIZE: tier.nodeDbPoolSize,
-        WEB_LLM_RPM: tier.nodeLlmRpm,
-        WEB_MCP_RPM: tier.nodeMcpRpm,
-        NODE_OPTIONS: `--max-old-space-size=${tier.nodeMaxOldSpaceMb}`,
-      },
-    });
-    results.push({
-      step: "cloudrun_node",
-      status: "ok",
-      mode: "cloudrun",
-      message: `${gcp.nodeServiceName}: instances=${tier.cloudRunNodeMinInstances}-${tier.cloudRunNodeMaxInstances}, cpu=${tier.cloudRunNodeCpu}, mem=${tier.cloudRunNodeMemory}, pool=${tier.nodeDbPoolSize}`,
-      command: cmd,
-    });
-  } catch (err: unknown) {
-    results.push({ step: "cloudrun_node", status: "error", mode: "cloudrun", message: formatError(err) });
-  }
-
-  // Step 2+4: Update Python Cloud Run (env vars + scaling in single call)
-  try {
-    const pyEnvKeys = "DB_POOL_SIZE,DB_MAX_OVERFLOW,REDIS_MAX_CONNECTIONS,RATE_LIMIT_PER_MINUTE,MAX_PARALLEL_WORKFLOWS";
-    const cmd = `gcloud run services update ${gcp.pythonServiceName} --region=${gcp.region} --update-env-vars=${pyEnvKeys} --max-instances=${tier.cloudRunPythonMaxInstances} --min-instances=${tier.cloudRunPythonMinInstances} --cpu=${tier.cloudRunPythonCpu} --memory=${tier.cloudRunPythonMemory} --concurrency=${tier.cloudRunPythonConcurrency}`;
-    await updateCloudRunService(gcp, gcp.pythonServiceName, {
-      maxInstances: tier.cloudRunPythonMaxInstances,
-      minInstances: tier.cloudRunPythonMinInstances,
-      cpu: tier.cloudRunPythonCpu,
-      memory: tier.cloudRunPythonMemory,
-      concurrency: tier.cloudRunPythonConcurrency,
-      envVars: {
-        DB_POOL_SIZE: tier.pythonDbPoolSize,
-        DB_MAX_OVERFLOW: tier.pythonDbMaxOverflow,
-        DATABASE_POOL_SIZE: tier.pythonDbPoolSize,
-        DATABASE_MAX_OVERFLOW: tier.pythonDbMaxOverflow,
-        REDIS_MAX_CONNECTIONS: tier.pythonRedisMaxConn,
-        RATE_LIMIT_PER_MINUTE: tier.pythonRateLimitPerMin,
-        RATE_LIMIT_BURST: tier.pythonRateLimitBurst,
-        RATE_LIMIT_GENERATION_PER_MINUTE: tier.pythonRateLimitGenPerMin,
-        MAX_PARALLEL_WORKFLOWS: tier.pythonMaxParallelWorkflows,
-      },
-    });
-    results.push({
-      step: "cloudrun_python",
-      status: "ok",
-      mode: "cloudrun",
-      message: `${gcp.pythonServiceName}: instances=${tier.cloudRunPythonMinInstances}-${tier.cloudRunPythonMaxInstances}, cpu=${tier.cloudRunPythonCpu}, pool=${tier.pythonDbPoolSize}`,
-      command: cmd,
-    });
-  } catch (err: unknown) {
-    results.push({ step: "cloudrun_python", status: "error", mode: "cloudrun", message: formatError(err) });
-  }
-
-  // Step 5: Redis — skip (Upstash is managed, memory per-plan)
-  results.push({
-    step: "cloudrun_redis",
-    status: "skipped",
-    mode: "cloudrun",
-    message: "Redis is Upstash (managed) — memory is per-plan, not configurable at runtime",
-  });
-
-  // Step 6: Update Cloud Tasks queue concurrency
-  const queues = [
-    { name: "media-jobs", concurrency: tier.cloudRunMediaQueueConcurrency },
-    { name: "workflow-tasks", concurrency: tier.cloudRunWorkflowQueueConcurrency },
-  ];
-  for (const q of queues) {
-    try {
-      const cmd = `gcloud tasks queues update ${q.name} --max-concurrent-dispatches=${q.concurrency}`;
-      await updateCloudTasksQueue(gcp, q.name, q.concurrency);
-      results.push({ step: `cloudrun_queue_${q.name}`, status: "ok", mode: "cloudrun", message: `Queue ${q.name}: max_concurrent=${q.concurrency}`, command: cmd });
-    } catch (err: unknown) {
-      results.push({ step: `cloudrun_queue_${q.name}`, status: "error", mode: "cloudrun", message: formatError(err) });
-    }
-  }
-
-  return results;
 }
 
 // ── Localhost Apply ──────────────────────────────────────────

@@ -12,7 +12,7 @@ Publish canonical job intents reliably while keeping BullMQ/Celery transport IDs
 
 ## Requirements
 
-Insert creation, event, and outbox intent atomically. Publisher claims with a short lease/fencing token, sends a minimal envelope (`jobId`, business attempt, optional attempt ID, contract version, outbox ID, dedupe key, bounded routing data), persists dispatch reference/event before local acknowledgement, and quarantines poison rows. Initial dispatch may omit `attemptId`; retry dispatch includes the created attempt. `publish` is idempotent by a deterministic/queryable dedupe key; adapters without that boundary quarantine ambiguous publication rather than blind republish. `inspect` is read-only. Authenticated callbacks are durably deduplicated before reconciliation. Broker events never decide business completion/retry.
+Insert creation, event, and outbox intent atomically. Publisher claims with a short lease/fencing token, sends a minimal envelope (`jobId`, business attempt, optional attempt ID, contract version, outbox ID, dedupe key, bounded routing data), persists dispatch reference/event before local acknowledgement, and quarantines poison rows. Initial dispatch may omit `attemptId`; retry dispatch includes the created attempt. `publish` is idempotent by a deterministic/queryable dedupe key; adapters without that boundary quarantine ambiguous publication rather than blind republish. `inspect` is read-only. Authenticated callbacks are durably deduplicated in `worker_job_callbacks` before reconciliation, and operator action keys are durably recorded in `worker_job_actions`. Broker events never decide business completion/retry.
 
 ## TDD acceptance
 

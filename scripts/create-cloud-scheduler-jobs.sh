@@ -3,6 +3,10 @@
 #
 # Usage: ./scripts/create-cloud-scheduler-jobs.sh <GCP_PROJECT_ID> <GCP_REGION> <PYTHON_SERVICE_URL> [NODE_SERVICE_URL]
 #
+# Retired: the production scheduler target is Cloudflare Cron.
+echo "ERROR: create-cloud-scheduler-jobs.sh is retired; use Cloudflare Cron/Worker deployment." >&2
+exit 1
+
 # Example:
 #   ./scripts/create-cloud-scheduler-jobs.sh smartspec-prod us-central1 https://python-orchestrator-xxxxx.run.app https://web-xxxxx.run.app
 #

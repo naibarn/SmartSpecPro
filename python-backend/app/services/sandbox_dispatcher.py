@@ -81,17 +81,19 @@ class SandboxDispatcher:
             idempotency_key=idempotency_key,
         )
 
-        # Step 5: Dispatch Celery task (with error handling for orphan prevention)
+        # Step 5: Dispatch through the canonical Python adapter (with error
+        # handling for orphan prevention). Legacy deployments still receive
+        # the same task through the compatibility branch in dispatch_python_task.
         try:
-            self._dispatch_celery_task(job_id)
+            self._dispatch_celery_task(job_id, tenant_id, user_id)
         except Exception as dispatch_err:
-            logger.error("sandbox_celery_dispatch_failed", job_id=job_id, error=str(dispatch_err))
+            logger.error("sandbox_job_dispatch_failed", job_id=job_id, error=str(dispatch_err))
             # Mark job as failed so it doesn't become an orphan
             from sqlalchemy import update as sa_update
 
             stmt = sa_update(SandboxJob).where(SandboxJob.id == job_id).values(
                 status="failed",
-                status_reason=f"Celery dispatch failed: {str(dispatch_err)[:200]}",
+                status_reason=f"Job dispatch failed: {str(dispatch_err)[:200]}",
             )
             await self.db.execute(stmt)
             await self.db.commit()
@@ -223,12 +225,18 @@ class SandboxDispatcher:
         await self.db.commit()
         return job_id
 
-    def _dispatch_celery_task(self, job_id: str) -> None:
-        """Send Celery task to sandbox queue."""
-        from app.core.celery_app import celery_app
+    def _dispatch_celery_task(self, job_id: str, tenant_id: str, user_id: int) -> None:
+        """Dispatch sandbox execution through the Feature 186 Python port."""
+        from app.services.job_control_plane import dispatch_python_task
+        from app.workers.sandbox_job_worker import execute_sandbox_job
 
-        celery_app.send_task(
-            "app.workers.sandbox_job_worker.execute_sandbox_job",
+        dispatch_python_task(
+            execute_sandbox_job.name,
             args=[job_id],
             queue="sandbox",
+            tenant_id=tenant_id,
+            user_id=user_id,
+            idempotency_key=f"sandbox:{job_id}",
+            correlation_id=f"sandbox:{job_id}",
+            legacy_task=execute_sandbox_job,
         )

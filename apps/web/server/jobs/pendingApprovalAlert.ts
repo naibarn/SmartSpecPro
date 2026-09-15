@@ -9,6 +9,7 @@
 import { eq, count } from "drizzle-orm";
 import { getDb } from "../db";
 import { skills, agencies, workflowTemplates, users } from "../../drizzle/schema";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const MS_PER_DAY = 86_400_000;
 
@@ -79,6 +80,10 @@ async function executePendingApprovalAlert(): Promise<void> {
  * Schedule the daily pending approval alert at 9 AM.
  */
 export async function initializePendingApprovalAlertJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializePendingApprovalAlertJob")) {
+    console.info("[approval-alert] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   if (intervalId) return;
 
   const now = new Date();

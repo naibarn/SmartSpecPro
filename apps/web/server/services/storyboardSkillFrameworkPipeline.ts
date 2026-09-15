@@ -105,6 +105,35 @@ const NARRATIVE_PATTERNS: Record<number, string[]> = {
   ],
 };
 
+const SHOT_VARIATION_DIRECTIONS: Record<string, string> = {
+  setup: "establish the stated activity and the characters' initial intention",
+  problem: "introduce a small visible obstacle or change that affects the stated activity",
+  reaction: "show a distinct emotional reaction while keeping the same story situation",
+  detail: "focus on a concrete hand, object, food, or environmental detail involved in the activity",
+  attempt: "show the characters trying a new step or a different part of the stated activity",
+  turning_point: "make a clear action change the direction of the story",
+  solution: "show the stated activity succeeding through an observable action",
+  result: "show the immediate visual result and a warm interaction",
+  ending: "close with a memorable, calm emotional interaction that completes the story",
+  resolution: "resolve the stated activity with an observable successful action",
+  aftermath: "show the consequence of the completed activity without changing the setting",
+  secondary_payoff: "add one small coherent payoff that grows from the completed activity",
+  final_cta: "end with a simple story-appropriate visual close rather than a text overlay",
+};
+
+export function buildStoryboardShotActivity(input: {
+  baseActivity: string;
+  beat: string;
+  shotNumber: number;
+  totalShots: number;
+}): string {
+  const baseActivity = input.baseActivity.trim() || "a natural child-safe activity";
+  const direction =
+    SHOT_VARIATION_DIRECTIONS[input.beat] ??
+    "continue the stated activity with a new observable action";
+  return `${baseActivity}. Shot ${input.shotNumber} of ${input.totalShots}: ${direction}. Do not repeat the previous shot's exact pose or action; preserve the same characters, setting, and story continuity.`;
+}
+
 export function planStoryboardShots(
   input: StoryboardGlobalInput
 ): StoryboardPlannedShot[] {
@@ -142,8 +171,14 @@ export function buildCuteChildPromptOnlyRequest(
   const result = buildCuteChildPrompt({
     ...skillInputs,
     idea: `${input.idea}\nShot ${shot.shotNumber} (${shot.beat}): ${shot.context}`,
+    custom_activity: buildStoryboardShotActivity({
+      baseActivity: String(skillInputs.custom_activity ?? ""),
+      beat: shot.beat,
+      shotNumber: shot.shotNumber,
+      totalShots: input.totalShots,
+    }),
     custom_notes:
-      `${String(skillInputs.custom_notes ?? "")} ${shot.continuity} ${shot.dialogueLines.length > 0 ? `Dialogue: ${shot.dialogueLines.map(line => `${line.speaker}: ${line.text}`).join(" | ")}` : "Mime/no spoken dialogue."}`.trim(),
+      `${String(skillInputs.custom_notes ?? "")} ${shot.continuity} Shot variation: ${SHOT_VARIATION_DIRECTIONS[shot.beat] ?? "continue with a new observable action"}. ${shot.dialogueLines.length > 0 ? `Dialogue: ${shot.dialogueLines.map(line => `${line.speaker}: ${line.text}`).join(" | ")}` : "Mime/no spoken dialogue."}`.trim(),
     character_reference_images: normalizedReferences,
     aspect_ratio: input.outputAspectRatio,
   });

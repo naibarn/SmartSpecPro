@@ -5,16 +5,17 @@ from __future__ import annotations
 import mimetypes
 from dataclasses import dataclass
 from typing import Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urljoin
 
 import httpx
 
-from app.core.media_job_validators import validate_uri_strict
+from app.core.media_job_validators import MEDIA_PIPELINE_PERMANENT_MARKER, validate_uri_strict
 
 
 ELEVENLABS_PROVIDER = "elevenlabs"
 ELEVENLABS_DEFAULT_BASE_URL = "https://api.elevenlabs.io"
 ELEVENLABS_MAX_SOURCE_BYTES = 100 * 1024 * 1024
+ELEVENLABS_MAX_SOURCE_REDIRECTS = 3
 
 
 class ElevenLabsMediaError(ValueError):
@@ -184,7 +185,25 @@ class ElevenLabsMediaProvider:
 
     async def _download_source(self, url: str) -> "_DownloadedSource":
         validate_uri_strict(url)
-        response = await self.client.get(url, headers={"Accept": "*/*"})
+        current_url = url
+        for _ in range(ELEVENLABS_MAX_SOURCE_REDIRECTS + 1):
+            response = await self.client.get(
+                current_url,
+                headers={"Accept": "*/*"},
+                follow_redirects=False,
+            )
+            if response.status_code not in {301, 302, 303, 307, 308}:
+                break
+            location = response.headers.get("location")
+            if not location:
+                break
+            next_url = urljoin(str(response.url), location)
+            validate_uri_strict(next_url)
+            current_url = next_url
+        else:
+            raise ElevenLabsMediaError(
+                f"{MEDIA_PIPELINE_PERMANENT_MARKER}: too many source redirects"
+            )
         response.raise_for_status()
         if len(response.content) > ELEVENLABS_MAX_SOURCE_BYTES:
             raise ElevenLabsMediaError("Source media exceeds the maximum supported size")

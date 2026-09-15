@@ -384,6 +384,29 @@ describe("MediaGenerationService retry behavior", () => {
     expect(payload).not.toHaveProperty("negative_prompt");
   });
 
+  it("runs the billing hook only after preflight and before provider submission", async () => {
+    const events: string[] = [];
+    fetchMock.mockImplementationOnce(async () => {
+      events.push("provider");
+      return new Response(JSON.stringify(taskPayload), { status: 200 });
+    });
+    const service = new MediaGenerationService("http://localhost:8000");
+    await service.generateImage(
+      {
+        prompt: "a safe storyboard image",
+        model: "google-banana-2",
+        onSubmissionReady: () => {
+          events.push("billing");
+        },
+        onSubmissionStarted: () => {
+          events.push("started");
+        },
+      },
+      "test-token",
+    );
+    expect(events).toEqual(["billing", "started", "provider"]);
+  });
+
   it("omits negative_prompt from async target character requests but preserves legacy mapping", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify(taskPayload), { status: 200 }),

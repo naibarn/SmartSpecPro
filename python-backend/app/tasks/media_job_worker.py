@@ -726,7 +726,7 @@ def report_progress(
     message: str = "",
     metrics: dict | None = None,
 ):
-    """Write progress to Redis and publish to real-time channel."""
+    """Write progress to the canonical ledger in hard cutover, else Redis."""
     status_data = {
         "jobId": job_id,
         "status": "running",
@@ -735,12 +735,22 @@ def report_progress(
         "message": message,
         "metrics": metrics or {},
     }
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, status_data)
+        return
     redis_client.set(f"media-job:{job_id}:status", json.dumps(status_data), ex=JOB_TTL)
     redis_client.publish(f"media-job-progress:{job_id}", json.dumps(status_data))
 
 
 def report_done(job_id: str, result: dict):
     """Report job completion. Skips writing if the job was already canceled."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, {"jobId": job_id, "status": "done", "progress": 1.0, "result": result})
+        return
     # Check if job was canceled — don't overwrite cancellation
     current_raw = redis_client.get(f"media-job:{job_id}:status")
     if current_raw:
@@ -758,6 +768,18 @@ def report_done(job_id: str, result: dict):
 
 def report_error(job_id: str, code: str, message: str, details: dict | None = None):
     """Report job failure."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, {
+            "jobId": job_id,
+            "status": "error",
+            "progress": 0,
+            "code": code,
+            "message": message,
+            "details": details or {},
+        })
+        return
     error_data = {"code": code, "message": message, "details": details or {}}
     redis_client.set(f"media-job:{job_id}:error", json.dumps(error_data), ex=JOB_TTL)
     error_status = {"jobId": job_id, "status": "error", "progress": 0, "message": message}
@@ -2605,15 +2627,17 @@ async def _persist_render_to_db(
 def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
     """Execute a media job based on the Media Job Spec v0.1 contract."""
 
-    # Skip jobs that were already canceled or errored (e.g., stale queue drain)
-    try:
-        current_raw = redis_client.get(f"media-job:{job_id}:status")
-        if current_raw:
-            current = json.loads(current_raw)
-            if current.get("status") in ("canceled", "error", "done"):
-                return {"skipped": True, "reason": f"Job already {current['status']}"}
-    except Exception:
-        pass  # If Redis check fails, proceed with the job
+    # The canonical claim/fence owns duplicate and cancellation decisions in
+    # hard cutover. Redis remains only a compatibility guard for legacy work.
+    if os.getenv("FEATURE_186_HARD_CUTOVER") != "true":
+        try:
+            current_raw = redis_client.get(f"media-job:{job_id}:status")
+            if current_raw:
+                current = json.loads(current_raw)
+                if current.get("status") in ("canceled", "error", "done"):
+                    return {"skipped": True, "reason": f"Job already {current['status']}"}
+        except Exception:
+            pass  # If Redis check fails, proceed with the job
 
     tmp_dir = tempfile.mkdtemp(prefix=f"mediajob_{job_id}_")
 

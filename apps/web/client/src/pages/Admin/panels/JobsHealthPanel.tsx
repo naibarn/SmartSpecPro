@@ -1,7 +1,7 @@
 /**
  * Jobs Health Panel
  *
- * Displays Cloud Tasks event metrics and recent failures.
+ * Displays canonical PostgreSQL job/outbox metrics and recent failures.
  */
 
 import { trpc } from "@/lib/trpc";

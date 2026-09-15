@@ -12,6 +12,7 @@ export function WorkerTopbar({
   loopRunning = false,
   selectedSeries,
   locale,
+  onLocaleChange,
   onNavigate,
   isSidebarCollapsed,
   onToggleSidebar,
@@ -24,6 +25,7 @@ export function WorkerTopbar({
   loopRunning?: boolean;
   selectedSeries?: string | null;
   locale?: WorkerLocale;
+  onLocaleChange?: (locale: WorkerLocale) => void;
   onNavigate?: (route: CanonicalWorkerRouteId) => void;
   isSidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
@@ -107,6 +109,14 @@ export function WorkerTopbar({
 
   return (
     <header className="worker-topbar compact-single-line" data-testid="worker-topbar">
+      {onLocaleChange && (
+        <select className="worker-locale-select" aria-label="Language / ภาษา" value={activeLocale} onChange={(event) => {
+          if (event.target.value === "th" || event.target.value === "en") onLocaleChange(event.target.value);
+        }}>
+          <option value="th">ไทย</option>
+          <option value="en">English</option>
+        </select>
+      )}
       <div className="worker-topbar-brand">
         {onToggleSidebar && (
           <button

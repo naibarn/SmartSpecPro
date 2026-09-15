@@ -65,8 +65,14 @@
  * (guarded so it only clears a pointer that still points at ITS OWN jobId).
  */
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { debugError } from "../_core/logger";
 import { classifyCreditFailure } from "./creditFailurePolicy";
 import {
@@ -768,9 +774,19 @@ export async function enqueueVerticalDramaStoryJob(
   }
   await deps.redis.del(recoverablePointerKey(payload.tenantId, payload.seriesId)).catch(() => {});
 
-  const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
   try {
-    await enqueueBullmqJob(jobId, dispatchId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.story",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId, dispatchId);
+    }
   } catch (error) {
     // Best-effort — mirrors `jobAutomationService.ts`'s own "queue
     // unavailable -> job stays queued until a worker comes up" degradation.
@@ -938,24 +954,63 @@ export async function recoverVerticalDramaStoryJob(
       dispatchId,
       updatedAt: new Date(deps.now()).toISOString(),
     };
-    await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
-    await deps.redis.set(
-      activePointerKey(record.tenantId, record.seriesId),
-      expectedJobId,
-      "EX",
-      ACTIVE_POINTER_TTL_SECONDS,
-    );
-    await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
-
-    const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
-    try {
-      await enqueueBullmqJob(expectedJobId, dispatchId);
-    } catch (error) {
-      debugError(
-        "verticalDramaStoryJobs",
-        `Failed to enqueue recovered BullMQ job for story job ${expectedJobId}`,
-        error,
+    if (isFeature186HardCutoverEnabled()) {
+      const checkpoint = record.checkpoint;
+      if (!checkpoint) {
+        throw new Error("STORY_CHECKPOINT_RECOVERY_EVIDENCE_MISSING");
+      }
+      const checkpointDigest = createHash("sha256")
+        .update(JSON.stringify(checkpoint), "utf8")
+        .digest("hex");
+      const actionId = `feature-186:story-checkpoint:${expectedJobId}:${recoveredRecord.recoveryAttempts}`;
+      const recovered = await createJobControlPlane().recoverCheckpoint(
+        expectedJobId,
+        actionId,
+        "story_checkpoint_recovery",
+        {
+          checkpointDigest,
+          completedEpisodeCount: checkpoint.completedEpisodeNumbers.length,
+        },
+        owner.userId,
+        {
+          tenantId: owner.tenantId,
+          requestedByUserId: owner.userId,
+          authorizationScope: "feature-186:vertical_drama.story:recover",
+        },
       );
+      if (!recovered) {
+        throw new Error("STORY_CHECKPOINT_RECOVERY_REJECTED");
+      }
+      // The durable CP transition is committed before the compatibility
+      // projection is reopened. If Redis is unavailable, the canonical
+      // outbox remains recoverable and the next worker attempt will fail
+      // closed instead of silently creating a second provider operation.
+      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
+      await deps.redis.set(
+        activePointerKey(record.tenantId, record.seriesId),
+        expectedJobId,
+        "EX",
+        ACTIVE_POINTER_TTL_SECONDS,
+      );
+      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
+    } else {
+      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
+      await deps.redis.set(
+        activePointerKey(record.tenantId, record.seriesId),
+        expectedJobId,
+        "EX",
+        ACTIVE_POINTER_TTL_SECONDS,
+      );
+      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
+      try {
+        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(expectedJobId, dispatchId);
+      } catch (error) {
+        debugError(
+          "verticalDramaStoryJobs",
+          `Failed to enqueue recovered BullMQ job for story job ${expectedJobId}`,
+          error,
+        );
+      }
     }
     return {
       started: true,
@@ -1812,7 +1867,8 @@ async function defaultEnqueueBullmqJob(jobId: string, dispatchId: string): Promi
   if (!queue) {
     throw new Error(`${VERTICAL_DRAMA_STORY_JOBS_QUEUE} queue is not initialized`);
   }
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId, dispatchId },
     {
@@ -1886,6 +1942,7 @@ export async function reconcileVerticalDramaStoryJobsQueueOnce(): Promise<{
  * `getActiveVerticalDramaStoryJob` from this file).
  */
 export async function initVerticalDramaStoryJobsQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   storyJobsDraining = false;
   try {

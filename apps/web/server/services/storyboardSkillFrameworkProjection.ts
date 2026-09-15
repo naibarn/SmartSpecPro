@@ -8,10 +8,14 @@ export type StoryboardFrameworkProjectionShot = {
   id: string;
   shotNumber: number;
   prompt: string;
-  imageUrl: string | null;
+  /** Canonical storyboard-review media field. */
+  url: string | null;
   videoPrompt: string | null;
   durationSeconds: number;
   mediaType: "image";
+  type: "image";
+  status: "completed" | "queued";
+  source: "generated";
   model: string;
   generationExtraParams: Record<string, unknown>;
   storyboardContext: Record<string, unknown>;
@@ -47,10 +51,13 @@ export function buildStoryboardReviewProjection(input: {
         id,
         shotNumber: shot.shotNumber,
         prompt: response.result.generation_request.prompt,
-        imageUrl,
+        url: imageUrl,
         videoPrompt,
         durationSeconds: input.global.shotDurationSec,
         mediaType: "image" as const,
+        type: "image" as const,
+        status: imageUrl ? "completed" as const : "queued" as const,
+        source: "generated" as const,
         model: input.global.imageModelSelection.modelId,
         generationExtraParams: {
           source: "skill_framework",

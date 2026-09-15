@@ -27,7 +27,12 @@ export const databaseBackupsRouter = router({
         mode: input.mode,
       });
       try {
-        await enqueueDatabaseBackup({ backupJobId: job.id, mode: input.mode });
+        await enqueueDatabaseBackup({
+          backupJobId: job.id,
+          mode: input.mode,
+          tenantId: ctx.tenantId ?? ctx.user.currentTenantId ?? undefined,
+          requestedByUserId: ctx.user.id,
+        });
       } catch (error) {
         await markDatabaseBackupFailed(
           job.id,

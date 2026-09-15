@@ -42,6 +42,7 @@ import {
 import { validateVerticalDramaMediaPublication } from "../services/verticalDramaMediaPublicationService";
 import { processVerticalDramaMediaIndexRecord } from "../services/verticalDramaMediaIndexWorker";
 import { resolveVerticalDramaWorkflow } from "../services/verticalDramaWorkflowResolver";
+import { analyzeVoiceGuidedImage } from "../services/voiceGuidedVisualAnalysis";
 
 function hashVerticalDramaMediaRequest(payload: unknown): string {
   const normalized = parseVerticalDramaMediaJobPayload(payload);
@@ -157,6 +158,35 @@ async function auth(req: Request, requiredScopes: string[], allowedTokenUses?: A
 
 export function registerWorkerSeriesControlPlaneRoutes(app: Express): void {
   const limiter = rateLimit("worker-series-control-plane", { rpm: 120 });
+
+  /** Fixed-purpose Media Workspace vision skill. The worker supplies image
+   * bytes, while tenant/user/provider scope remains server-derived. */
+  app.post("/api/workers/:workerId/media-workspace/visual-match/analyze-image", limiter, enforceJsonBodyMaxBytes(12 * 1024 * 1024), async (req, res) => {
+    try {
+      const claims = await auth(req, ["series:media:process"]);
+      if (claims.workerId !== req.params.workerId) return fail(res, req, 403, "WORKER_SCOPE_DENIED");
+      const imageDataUrl = typeof req.body?.imageDataUrl === "string" ? req.body.imageDataUrl.trim() : "";
+      const fingerprint = typeof req.body?.assetFingerprint === "string" ? req.body.assetFingerprint.trim().slice(0, 160) : "";
+      const contractVersion = typeof req.body?.contractVersion === "string" ? req.body.contractVersion.trim() : "";
+      if (contractVersion !== "voice-guided-visual-match.v1" || !fingerprint || !/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/i.test(imageDataUrl)) {
+        return fail(res, req, 400, "ACTION_NOT_ALLOWED");
+      }
+      const bytes = Buffer.byteLength(imageDataUrl.slice(imageDataUrl.indexOf(",") + 1), "base64");
+      if (bytes <= 0 || bytes > 8 * 1024 * 1024) return fail(res, req, 413, "ACTION_NOT_ALLOWED");
+      const db = getDb();
+      const [worker] = await db.select({ id: workers.id, registeredByUserId: workers.registeredByUserId })
+        .from(workers)
+        .where(and(eq(workers.id, claims.workerId), eq(workers.tenantId, claims.tenantId)))
+        .limit(1);
+      if (!worker?.registeredByUserId) return fail(res, req, 403, "SERIES_ACCESS_DENIED");
+      const analysis = await analyzeVoiceGuidedImage({ userId: worker.registeredByUserId, tenantId: claims.tenantId, imageDataUrl });
+      return res.status(200).json({ contractVersion, assetFingerprint: fingerprint, ...analysis });
+    } catch (error) {
+      if (error instanceof WorkerAuthError) return fail(res, req, error.statusCode, error.code === "worker_permission_denied" ? "WORKER_PERMISSION_DENIED" : "WORKER_AUTH_REQUIRED");
+      console.warn("[workerSeriesControlPlane] voice visual analysis failed", error instanceof Error ? error.message : "unknown_error");
+      return fail(res, req, 502, "ACTION_NOT_ALLOWED", true);
+    }
+  });
 
   /** Feature 179 — local Worker submission. The source remains on the bound
    * Worker root; the server stores only the validated relative path and job

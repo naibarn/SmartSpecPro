@@ -1,4 +1,9 @@
 import { randomUUID } from "node:crypto";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { getRedisClient } from "./redis";
 import {
   draftQualityQcProgressSchema,
@@ -498,7 +503,18 @@ export async function enqueueVerticalDramaDraftQualityQc(
     if (!persisted) {
       throw new Error("Draft ledger not found or not owned by this Series");
     }
-    await (dependencies.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(runId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId: runId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.draft_quality_qc",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await (dependencies.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(runId);
+    }
   } catch (error) {
     // Do not leave the wizard polling a job that was never admitted to a
     // worker. The creator gets a retryable, actionable terminal state and the
@@ -1001,7 +1017,8 @@ async function defaultEnqueueBullmqJob(runId: string): Promise<void> {
   // The QC loop performs its own bounded provider retries. Do not let BullMQ
   // replay a paid run after a partially charged failure; the terminal record
   // is retryable from the wizard, which starts a fresh idempotent run.
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { runId },
     {
@@ -1014,6 +1031,7 @@ async function defaultEnqueueBullmqJob(runId: string): Promise<void> {
 }
 
 export async function initVerticalDramaDraftQualityQcQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   try {
     const { Queue, Worker } = await import("bullmq");

@@ -499,7 +499,7 @@ export default function AdminQueueLLM() {
               <div>
                 <h3>Background Job Queues</h3>
                 <p>
-                  Cloud Tasks queues for async processing
+                  Cloudflare canonical queues backed by the PostgreSQL outbox
                 </p>
               </div>
               <div>

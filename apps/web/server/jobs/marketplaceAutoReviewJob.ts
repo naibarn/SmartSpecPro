@@ -23,6 +23,7 @@ import {
   type HyperframesWorkerRunResult,
 } from "../workers/hyperframesRenderWorker";
 import { startDetachedHyperframesRenderWorker } from "../services/backgroundWorkerProcess";
+import { isCloudflareHardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 const DEFAULT_INTERVAL_MS = 60_000;
 const DEFAULT_RUN_LIMIT = 12;
@@ -77,7 +78,7 @@ function shouldUseInProcessInterval(): boolean {
   const mode = getSchedulerMode();
   if (mode === "interval") return true;
   if (mode === "external") return false;
-  return process.env.USE_CLOUD_TASKS !== "true";
+  return !isCloudflareHardCutoverEnabled();
 }
 
 export function isMarketplaceAutoReviewAdvanceOutboxJobType(

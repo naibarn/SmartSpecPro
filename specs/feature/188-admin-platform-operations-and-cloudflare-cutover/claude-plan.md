@@ -57,7 +57,13 @@ responsibility must remain within these ownership boundaries:
 
 ~~~
 apps/web/drizzle/schema.ts
-apps/web/drizzle/0306_feature_188_platform_operations.sql
+apps/web/drizzle/0318_feature_188_platform_operations.sql
+
+Follow-up additive migrations are also required for the implemented fencing
+boundary: `0322_feature_188_promotion_binding.sql` binds activation controls
+to one promotion, and `0323_feature_188_promotion_batch_fencing.sql` adds
+checkpoint-runner lease/fencing fields. Neither migration deletes or rewrites
+existing data.
 apps/web/drizzle/feature188PlatformOperationsMigration.test.ts
 
 apps/web/server/services/platformOperations.ts
@@ -304,7 +310,7 @@ compete with worker_jobs. A platform action key is not a job idempotency key.
 ### 5.2 SQL migration
 
 Add the next repository migration after Feature 186's 0305 migration:
-apps/web/drizzle/0306_feature_188_platform_operations.sql. The migration must
+apps/web/drizzle/0318_feature_188_platform_operations.sql. The migration must
 be additive and idempotent where the repository convention requires it.
 
 Protect invariants at the database level:

@@ -23,7 +23,9 @@ permissions:
 
 jobs:
   staging-assurance-drill:
-    if: ${{ github.event.inputs.confirm == 'run-staging-assurance-evidence' }}
+    # Retired: staging assurance is owned by the Cloudflare target-account
+    # rehearsal and must not mutate Cloud Run resources.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:

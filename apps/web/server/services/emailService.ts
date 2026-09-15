@@ -10,6 +10,7 @@ import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { eq, and } from "drizzle-orm";
 import { decrypt } from "./crypto";
+import { escapeHtml } from "./accountAuthService";
 
 interface SmtpConfig {
   host: string;
@@ -196,6 +197,49 @@ export async function sendPasswordResetEmail(to: string, code: string, name?: st
     return true;
   } catch (err) {
     console.error(`[Email] Failed to send password reset email to ${maskEmail(to)}:`, err);
+    return false;
+  }
+}
+
+/** Send the single-use URL used to confirm an authenticated email change. */
+export async function sendEmailChangeVerificationEmail(
+  to: string,
+  verificationUrl: string,
+  name?: string,
+): Promise<boolean> {
+  const config = await getSmtpConfig();
+  const transporter = await createTransporter();
+
+  if (!transporter || !config) {
+    console.log(`[Email] SMTP not configured; email-change link was not sent to ${maskEmail(to)}`);
+    return false;
+  }
+
+  try {
+    const safeName = name ? escapeHtml(name) : "";
+    const safeUrl = escapeHtml(verificationUrl);
+    await transporter.sendMail({
+      from: `"${config.fromName}" <${config.fromEmail}>`,
+      to,
+      subject: "Confirm your new email — SmartAIHub",
+      html: `
+        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+          <h2 style="color: #0891b2;">Confirm your new email</h2>
+          <p>Hi${safeName ? ` ${safeName}` : ""},</p>
+          <p>Click the button below to confirm this email address for your SmartAIHub account.</p>
+          <p style="margin: 28px 0; text-align: center;">
+            <a href="${safeUrl}" style="background: #0891b2; color: #fff; padding: 12px 22px; border-radius: 8px; text-decoration: none;">Verify new email</a>
+          </p>
+          <p style="color: #666; font-size: 14px;">This link expires in 30 minutes and can be used only once. If you did not request this change, you can ignore this email.</p>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">SmartAIHub</p>
+        </div>
+      `,
+    });
+    console.log(`[Email] Email-change verification sent to ${maskEmail(to)}`);
+    return true;
+  } catch (err) {
+    console.error(`[Email] Failed to send email-change verification to ${maskEmail(to)}:`, err);
     return false;
   }
 }

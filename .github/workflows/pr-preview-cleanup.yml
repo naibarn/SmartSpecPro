@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   cleanup-preview:
+    # Retired: Google Cloud preview resources are no longer created.
+    if: ${{ false }}
     runs-on: ubuntu-latest
 
     steps:

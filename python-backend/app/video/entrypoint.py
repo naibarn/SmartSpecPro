@@ -1,4 +1,4 @@
-"""Cloud Run Job entrypoint for video rendering.
+"""Cloudflare Container entrypoint for video rendering.
 
 Reads the render specification from the RENDER_SPEC environment variable
 (JSON-encoded), executes the two-stage FFmpeg pipeline, uploads the result
@@ -22,7 +22,7 @@ logger = structlog.get_logger()
 
 
 def main(render_spec_dict: dict | None = None):
-    """Main entrypoint for the video-job-runner Cloud Run Job.
+    """Main entrypoint for the video-job-runner Cloudflare Container.
 
     Args:
         render_spec_dict: If provided, use this directly instead of reading

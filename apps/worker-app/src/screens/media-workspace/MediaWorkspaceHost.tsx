@@ -7,7 +7,7 @@ import { parseProjectDraft, saveNleProject, isProjectFilePath } from "./projectP
 import { MediaVideoEditorPlayer } from "./MediaVideoEditorPlayer";
 import { SpeakerAwareWorkflowPanel } from "./SpeakerAwareWorkflowPanel";
 import type { DeadAirRenderSelection } from "./mediaWorkspaceTimeline";
-import { resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "./sourcePath";
+import { normalizeDisplayPath, resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "./sourcePath";
 import type { SmartSpecProjectDraft, ProjectAsset } from "../../types/nleProject";
 import type { WireAdapterPolicy, WireAdapterId } from "./SpeakerAwareWorkflowPanel";
 
@@ -125,6 +125,7 @@ export function MediaWorkspaceHost({
   const [projectError, setProjectError] = useState<string | null>(null);
   const projectRequest = useRef(0);
   const workspacePath = useRef(workspace?.localPath);
+  const displayWorkspacePath = normalizeDisplayPath(workspace?.localPath);
   // Opening a project may ask the parent to switch to the project's recorded
   // workspace. That controlled path change must not clear the source we just
   // restored from the project; unrelated workspace changes still reset it.
@@ -598,15 +599,15 @@ export function MediaWorkspaceHost({
                 </span>
               </>
             ) : null}
-            {workspace?.localPath ? (
+            {displayWorkspacePath ? (
               <>
                 <span className="crumb-sep">›</span>
                 <span
                   className="crumb-file"
-                  title={`ตำแหน่ง Workspace บน Harddisk: ${workspace.localPath}`}
+                  title={`ตำแหน่ง Workspace บน Harddisk: ${displayWorkspacePath}`}
                   style={{ color: "#cbd5e1", background: "rgba(15, 23, 42, 0.7)", borderColor: "rgba(148, 163, 184, 0.3)" }}
                 >
-                  📂 Workspace: {workspace.localPath}
+                  📂 Workspace: {displayWorkspacePath}
                 </span>
               </>
             ) : null}
@@ -619,15 +620,15 @@ export function MediaWorkspaceHost({
             <span className="folder-icon">⌨️</span>
             <span className="folder-name">Space / M / F</span>
           </div>
-          {workspace?.localPath && (
-            <div className="studio-path-banner-inline" title={`ตำแหน่งโฟลเดอร์ Workspace บน Disk: ${workspace.localPath}`}>
+          {displayWorkspacePath && (
+            <div className="studio-path-banner-inline" title={`ตำแหน่งโฟลเดอร์ Workspace บน Disk: ${displayWorkspacePath}`}>
               <span className="path-label">📍 Path:</span>
-              <code className="path-text">{workspace.localPath}</code>
+              <code className="path-text">{displayWorkspacePath}</code>
               <button
                 type="button"
                 className="path-inline-btn"
                 onClick={async () => {
-                  if (workspace?.localPath) {
+                  if (displayWorkspacePath) {
                     try {
                       await invoke("worker_app_reveal_file", { path: workspace.localPath });
                     } catch (err) {
@@ -643,8 +644,8 @@ export function MediaWorkspaceHost({
                 type="button"
                 className="path-inline-btn"
                 onClick={() => {
-                  if (workspace?.localPath) {
-                    navigator.clipboard.writeText(workspace.localPath);
+                  if (displayWorkspacePath) {
+                    navigator.clipboard.writeText(displayWorkspacePath);
                     setCopiedPath(true);
                     setTimeout(() => setCopiedPath(false), 2000);
                   }
@@ -695,7 +696,7 @@ export function MediaWorkspaceHost({
               </div>
             ) : (
               <MediaExplorerView
-                initialPath={workspace?.localPath}
+                initialPath={displayWorkspacePath || undefined}
                 onSelectVideoFile={handleSelectVideo}
                 onOpenProjectFile={handleOpenProjectFile}
                 onImportMediaToProject={handleImportMedia}
@@ -756,7 +757,7 @@ export function MediaWorkspaceHost({
               onSelectVideoFile={handleSelectVideo}
               onOpenProjectFile={handleOpenProjectFile}
               seriesId={seriesId || loadedProjectDraft?.metadata?.seriesId}
-              workspacePath={workspace?.localPath}
+              workspacePath={displayWorkspacePath || undefined}
               onClose={handleNewProject}
               reframe9x16={reframe9x16}
               onReframe9x16Change={onReframe9x16Change}

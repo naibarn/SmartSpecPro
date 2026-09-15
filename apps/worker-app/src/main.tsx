@@ -17,16 +17,17 @@ import { CanonicalWorkerRouteScreen } from "./screens/CanonicalWorkerRouteScreen
 import { ComfyConnectionsScreen } from "./screens/ComfyConnectionsScreen";
 import { ComfyWorkflowsScreen } from "./screens/ComfyWorkflowsScreen";
 import { ComfyJobsScreen } from "./screens/ComfyJobsScreen";
+import { normalizeDisplayPath } from "./screens/media-workspace/sourcePath";
 import { WorkerPermissionsPanel } from "./screens/WorkerPermissionsPanel";
 import { LocalLlmSettingsScreen } from "./screens/LocalLlmSettingsScreen";
 import { AudioStudioSettingsCard } from "./screens/AudioStudioSettingsCard";
 import { SpeakerModelManagerCard } from "./screens/SpeakerModelManagerCard";
 import {
   fetchJsonWithTimeout,
+  buildWorkerAppDownloadUrl,
   buildWorkerAppLatestUrl,
   isNewerVersion,
   resolveWorkerAppUpdateTarget,
-  resolveSameOriginUrl,
   type RuntimeInstallResult,
   type RuntimeSetupStatus,
   type RuntimeUpdateCheck,
@@ -81,6 +82,20 @@ type DoctorSummary = {
   recommendedActions: string[];
   officialHyperframesRuntime?: boolean | null;
   runtimeKind?: string | null;
+};
+
+type MediaReadinessCheck = {
+  id: string;
+  status: "ok" | "error";
+  executable: string;
+  message: string;
+};
+
+type MediaRuntimeReadiness = {
+  status: "ready" | "blocked";
+  checkedAt: string;
+  ffmpeg: MediaReadinessCheck;
+  ffprobe: MediaReadinessCheck;
 };
 
 const REMOTION_REQUIRED_DOCTOR_CHECKS = [
@@ -295,6 +310,23 @@ const fallbackDoctor: DoctorSummary = {
       ? "Download the Worker App runtime, then run checks again."
       : "Prepare the Worker App runtime environment, then run checks again.",
   ],
+};
+
+const fallbackMediaReadiness: MediaRuntimeReadiness = {
+  status: "blocked",
+  checkedAt: "",
+  ffmpeg: {
+    id: "ffmpeg",
+    status: "error",
+    executable: "not checked",
+    message: "Run runtime checks to verify FFmpeg.",
+  },
+  ffprobe: {
+    id: "ffprobe",
+    status: "error",
+    executable: "not checked",
+    message: "Run runtime checks to verify ffprobe.",
+  },
 };
 
 const fallbackExecutor: ExecutorState = {
@@ -513,6 +545,8 @@ function App() {
   }, []);
   const [settings, setSettings] = useState<Settings>(fallbackSettings);
   const [doctor, setDoctor] = useState<DoctorSummary>(fallbackDoctor);
+  const [mediaReadiness, setMediaReadiness] =
+    useState<MediaRuntimeReadiness>(fallbackMediaReadiness);
   const [executor, setExecutor] = useState<ExecutorState>(fallbackExecutor);
   const [connectionState, setConnectionState] = useState<
     "not_connected" | "pending" | "connected" | "error"
@@ -605,7 +639,7 @@ function App() {
     const release = targetRelease || workerAppUpdate;
     if (!release) return;
 
-    const downloadUrl = resolveSameOriginUrl(settings.serverUrl, release.downloadUrl);
+    const downloadUrl = buildWorkerAppDownloadUrl(settings.serverUrl, workerAppUpdateTarget);
     if (!downloadUrl) return;
 
     setWorkerAppUpdateStatus("กำลังดาวน์โหลดและเปิดตัวติดตั้ง (Installer)...");
@@ -643,7 +677,11 @@ function App() {
   }, []);
 
   async function refresh(
-    options: { updateConnectionMessage?: boolean; fullDoctor?: boolean } = {},
+    options: {
+      updateConnectionMessage?: boolean;
+      fullDoctor?: boolean;
+      checkMediaRuntime?: boolean;
+    } = {},
   ) {
     // The status poll may overlap with startup, manual actions, or a slow WSL
     // doctor call. Overlapping refreshes used to restore the saved connection
@@ -654,6 +692,7 @@ function App() {
 
     try {
       const updateConnectionMessage = options.updateConnectionMessage ?? true;
+      const checkMediaRuntime = options.checkMediaRuntime ?? Boolean(options.fullDoctor);
       const doctorCommand = options.fullDoctor
         ? "worker_app_run_full_doctor"
         : "worker_app_run_doctor";
@@ -665,11 +704,18 @@ function App() {
           connection: null,
           error: formatInvokeError(error),
         }));
+      const mediaReadinessResult = checkMediaRuntime
+        ? safeInvoke<MediaRuntimeReadiness>(
+            "worker_app_check_media_runtime",
+            fallbackMediaReadiness,
+          )
+        : Promise.resolve(mediaReadiness);
       const [
         nextSettings,
         nextDoctor,
         nextExecutor,
         nextLoopStatus,
+        nextMediaReadiness,
         restoredConnection,
       ] = await Promise.all([
         safeInvoke<Settings>("worker_app_get_settings", fallbackSettings),
@@ -682,6 +728,7 @@ function App() {
           "worker_app_get_worker_loop_status",
           fallbackLoopStatus,
         ),
+        mediaReadinessResult,
         restoredConnectionResult,
       ]);
       setSettings(nextSettings);
@@ -689,6 +736,7 @@ function App() {
       setDoctor(nextDoctor);
       setExecutor(nextExecutor);
       setLoopStatus(nextLoopStatus);
+      setMediaReadiness(nextMediaReadiness);
 
       if (restoredConnection.error) {
         setSavedConnection(null);
@@ -720,7 +768,7 @@ function App() {
   }
 
   useEffect(() => {
-    void refresh();
+    void refresh({ checkMediaRuntime: true });
   }, []);
 
   useEffect(() => {
@@ -842,10 +890,7 @@ function App() {
           isNewerVersion(appVersion, release.version)
         ) {
           setWorkerAppUpdate(release);
-          const downloadUrl = resolveSameOriginUrl(
-            settings.serverUrl,
-            release.downloadUrl,
-          );
+          const downloadUrl = buildWorkerAppDownloadUrl(settings.serverUrl, workerAppUpdateTarget);
           if (downloadUrl) {
             const promptKey = `worker:${settings.serverUrl}:${release.version}`;
             if (updatePromptedRef.current !== promptKey) {
@@ -1070,7 +1115,7 @@ function App() {
   const openRuntimeSetupLog = async () => {
     try {
       const path = await invoke<string>("worker_app_open_managed_wsl_runtime_log");
-      setRuntimeLogMessage(`Opened setup log: ${path}`);
+      setRuntimeLogMessage(`Opened setup log: ${normalizeDisplayPath(path)}`);
     } catch (error) {
       setRuntimeLogMessage(`Unable to open setup log: ${formatInvokeError(error)}`);
     }
@@ -1309,6 +1354,24 @@ function App() {
           "Choose Update now in Runtime & agents to install the published runtime.",
       };
     }
+    if (mediaReadiness.checkedAt && mediaReadiness.status === "blocked") {
+      const failedTools = [mediaReadiness.ffmpeg, mediaReadiness.ffprobe]
+        .filter((check) => check.status !== "ok")
+        .map((check) => check.id)
+        .join(" and ");
+      return {
+        tone: "error",
+        label: `${failedTools || "Media runtime"} not ready`,
+        detail: "Run Runtime checks or repair the managed runtime before rendering.",
+      };
+    }
+    if (!mediaReadiness.checkedAt && startupUpdateCheckDone) {
+      return {
+        tone: "warning",
+        label: "Media runtime not checked",
+        detail: "Run Runtime checks before starting a render job.",
+      };
+    }
     if (runtimeUpdateCheckError) {
       return {
         tone: "warning",
@@ -1355,6 +1418,7 @@ function App() {
     runtimeInstallRequested,
     runtimeUpdateCheckError,
     runtimeVersionCheck,
+    mediaReadiness,
     startupUpdateCheckDone,
   ]);
 
@@ -1793,6 +1857,11 @@ function App() {
         fallbackDoctor,
       );
       setDoctor(nextDoctor);
+      const nextMediaReadiness = await safeInvoke<MediaRuntimeReadiness>(
+        "worker_app_check_media_runtime",
+        fallbackMediaReadiness,
+      );
+      setMediaReadiness(nextMediaReadiness);
 
       let appCheckSucceeded = false;
       let appUpdateRequired = Boolean(
@@ -2260,7 +2329,7 @@ function App() {
       {/* Tabbed layout (2026-07-31). One long scrolling grid mixed connection,
           render, Hermes and settings together, so nothing read as a coherent
           area of responsibility. Each tab is now one job the user came to do. */}
-      <WorkerAppShell routes={localizedWorkerRoutes(settings.locale)} activeRoute={activeRoute} onNavigate={navigateWorkerRoute} connected={Boolean(savedConnection && connectionHealth?.connected)} connectionStatus={{ ...localizedConnectionStatus, connected: Boolean(savedConnection && connectionHealth?.connected), expiresAt: connectionHealth?.expiresAt, hoursUntilExpiry: connectionHealth?.hoursUntilExpiry, checkedAt: connectionHealth?.checkedAt, stale: connectionHealthStale }} queueDepth={executor.queueDepth} runtimeStatus={doctor.status} loopRunning={loopStatus.running} locale={settings.locale}>
+      <WorkerAppShell routes={localizedWorkerRoutes(settings.locale)} activeRoute={activeRoute} onNavigate={navigateWorkerRoute} connected={Boolean(savedConnection && connectionHealth?.connected)} connectionStatus={{ ...localizedConnectionStatus, connected: Boolean(savedConnection && connectionHealth?.connected), expiresAt: connectionHealth?.expiresAt, hoursUntilExpiry: connectionHealth?.hoursUntilExpiry, checkedAt: connectionHealth?.checkedAt, stale: connectionHealthStale }} queueDepth={executor.queueDepth} runtimeStatus={doctor.status} loopRunning={loopStatus.running} locale={settings.locale} onLocaleChange={(locale) => { void saveSettings({ locale }); }}>
 
       {["overview", "queue"].includes(activeRoute) ? (
         <CanonicalWorkerRouteScreen
@@ -2745,9 +2814,25 @@ function App() {
                 Check result: <strong>{runtimeVersionCheck.reason}</strong>
                 {runtimeVersionCheck.latestRuntimeProfileHash && runtimeVersionCheck.currentRuntimeProfileHash && runtimeVersionCheck.latestRuntimeProfileHash !== runtimeVersionCheck.currentRuntimeProfileHash
                   ? " · Runtime profile changed"
-                  : ""}
+                : ""}
               </p>
             ) : null}
+            <div className="queue-summary" aria-label="Media runtime readiness">
+              {[mediaReadiness.ffmpeg, mediaReadiness.ffprobe].map((check) => (
+                <div key={check.id}>
+                  <span className="inline-status-label">
+                    <span className={`status-dot ${check.status}`} />
+                    {check.id}
+                  </span>
+                  <strong>{check.status === "ok" ? "Ready" : "Blocked"}</strong>
+                  <p className="field-help">{check.message}</p>
+                </div>
+              ))}
+            </div>
+            <p className="field-help">
+              Media readiness runs <code>ffmpeg -version</code> and <code>ffprobe -version</code>
+              against the exact runtime selected for rendering. Last checked: {mediaReadiness.checkedAt ? new Date(mediaReadiness.checkedAt).toLocaleString() : "not checked"}.
+            </p>
             <div className="button-row">
               <button
                 type="button"

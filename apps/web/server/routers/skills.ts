@@ -1655,7 +1655,7 @@ export async function convertImageUrlForLLM(url: string, publicUrl?: string | nu
  * Call LLM with vision support
  * @param maxTokens - Maximum tokens for response. Default 2000. For multi-prompt, use ~500 per prompt.
  */
-async function callLLMWithVision(
+export async function callLLMWithVision(
   systemPrompt: string,
   userPrompt: string,
   userId: number,

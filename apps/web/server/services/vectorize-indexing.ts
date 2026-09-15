@@ -13,8 +13,8 @@ import {
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
-  getVectorProviderConfigFromEnv,
 } from "./vectorProvider";
+import { toVectorizeSafeId } from "./vectorizeContract";
 
 const DOCS_INDEX =
   process.env.VECTORIZE_DOCS_INDEX || "docs-index-prod";
@@ -38,6 +38,11 @@ interface VectorEntry {
   metadata: VectorMetadata;
 }
 
+export interface VectorizeMutationEvidence {
+  mutationIds: string[];
+  vectorCount: number;
+}
+
 /**
  * Index a text document by chunking, embedding, and upserting to the active vector provider.
  */
@@ -48,7 +53,7 @@ export async function indexDocument(params: {
   title: string;
   type: string;
   sourceUrl: string;
-}) {
+}): Promise<VectorizeMutationEvidence> {
   const chunks = chunkDocument(params.text);
   const vectors: VectorEntry[] = [];
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
@@ -56,11 +61,13 @@ export async function indexDocument(params: {
   for (let i = 0; i < chunks.length; i++) {
     const embedding = await generateEmbedding(chunks[i]);
     vectors.push({
-      id: `${params.id}-chunk-${i}`,
+      id: toVectorizeSafeId(`${params.id}-chunk-${i}`),
       values: embedding,
       metadata: {
         tenantId: params.tenantId,
         type: params.type,
+        sourceId: params.id,
+        chunkIndex: i,
         createdAt: Date.now(),
         title: params.title,
         sourceUrl: params.sourceUrl,
@@ -69,14 +76,17 @@ export async function indexDocument(params: {
   }
 
   // Batch upsert
+  const mutationIds: string[] = [];
   for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
-    await dispatchVectorOperation({
+    const result = await dispatchVectorOperation({
       operation: "index",
       indexName: DOCS_INDEX,
       vectors: vectors.slice(i, i + BATCH_SIZE),
       providerConfig,
     });
+    if ("mutationId" in result && result.mutationId) mutationIds.push(result.mutationId);
   }
+  return { mutationIds, vectorCount: vectors.length };
 }
 
 /**
@@ -89,9 +99,9 @@ export async function indexImage(params: {
   filename: string;
   type?: string;
   metadata?: Record<string, string | number | boolean | undefined>;
-}) {
+}): Promise<VectorizeMutationEvidence> {
   const description = await generateImageDescription(params.imageUrl);
-  await indexImageDescription({
+  return indexImageDescription({
     id: params.id,
     description,
     imageUrl: params.imageUrl,
@@ -112,7 +122,7 @@ export async function indexImageBuffer(params: {
   metadata?: Record<string, string | number | boolean | undefined>;
 }) {
   const description = await generateImageDescriptionFromBuffer(params.imageBuffer);
-  await indexImageDescription({
+  return indexImageDescription({
     id: params.id,
     description,
     imageUrl: params.imageUrl,
@@ -143,17 +153,18 @@ async function indexImageDescription(params: {
   const embedding = await generateEmbedding(searchableText);
   const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
 
-  await dispatchVectorOperation({
+  const result = await dispatchVectorOperation({
     operation: "index",
     indexName: IMAGES_INDEX,
     vectors: [
       {
-        id: params.id,
+        id: toVectorizeSafeId(params.id),
         values: embedding,
         metadata: {
           ...params.metadata,
           tenantId: params.tenantId,
           type: params.type ?? "image",
+          sourceId: params.id,
           createdAt: Date.now(),
           title: params.filename,
           sourceUrl: params.imageUrl,
@@ -163,6 +174,10 @@ async function indexImageDescription(params: {
     ],
     providerConfig,
   });
+  return {
+    mutationIds: "mutationId" in result && result.mutationId ? [result.mutationId] : [],
+    vectorCount: 1,
+  };
 }
 
 /**
@@ -173,7 +188,7 @@ export async function removeVector(indexName: string, id: string) {
   await dispatchVectorOperation({
     operation: "delete",
     indexName,
-    ids: [id],
+    ids: [toVectorizeSafeId(id)],
     providerConfig,
   });
 }
@@ -183,7 +198,10 @@ export async function removeVector(indexName: string, id: string) {
  * Documents are stored as {id}-chunk-0, {id}-chunk-1, etc.
  */
 export async function removeDocument(id: string, maxChunks = 100) {
-  const chunkIds = Array.from({ length: maxChunks }, (_, i) => `${id}-chunk-${i}`);
+  const chunkIds = Array.from(
+    { length: maxChunks },
+    (_, i) => toVectorizeSafeId(`${id}-chunk-${i}`),
+  );
   const providerConfig = await getEffectiveVectorProviderConfig();
   await dispatchVectorOperation({
     operation: "delete",

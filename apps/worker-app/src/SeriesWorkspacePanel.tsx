@@ -4,6 +4,7 @@ import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import { useWorkerAppContext } from "./app/workerContext";
 import { MediaWorkspaceHost } from "./screens/media-workspace/MediaWorkspaceHost";
 import { SeriesSwitcherModal } from "./screens/media-workspace/SeriesSwitcherModal";
+import { normalizeDisplayPath } from "./screens/media-workspace/sourcePath";
 import { cameraMotionPlanFingerprint } from "@smartspec/shared";
 import type { CanonicalWorkerRouteId } from "./app/workerRoutes";
 import type { DeadAirRenderSelection } from "./screens/media-workspace/mediaWorkspaceTimeline";
@@ -150,7 +151,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const [nextSeriesCursor, setNextSeriesCursor] = useState<string | null>(null);
   const [rootPath, setRootPath] = useState<string>(() => {
     try {
-      return localStorage.getItem("smartspec_last_project_folder") || "";
+      return normalizeDisplayPath(localStorage.getItem("smartspec_last_project_folder"));
     } catch {
       return "";
     }
@@ -192,6 +193,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const focusNeedsVisionWorker = !isMedia && reframe9x16 && focusMode !== "manual_region";
+  const displayRootPath = normalizeDisplayPath(workspace?.localPath || rootPath);
 
   const loadSeries = useCallback(async (options: { append?: boolean; cursor?: string | null; query: string }) => {
     setBusy(true);
@@ -231,7 +233,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   useEffect(() => {
     const currentFolder = rootPath || (() => {
       try {
-        return localStorage.getItem("smartspec_last_project_folder") || "";
+        return normalizeDisplayPath(localStorage.getItem("smartspec_last_project_folder"));
       } catch {
         return "";
       }
@@ -243,7 +245,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         .then((value) => {
           setWorkspace(value);
           setSelectedRootId(value?.rootId ?? null);
-          setRootPath(value?.localPath || currentFolder);
+          setRootPath(normalizeDisplayPath(value?.localPath || currentFolder));
         })
         .catch(() => {});
       return;
@@ -254,9 +256,9 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         if (value?.localPath) {
           setWorkspace(value);
           setSelectedRootId(value.rootId ?? null);
-          setRootPath(value.localPath);
+          setRootPath(normalizeDisplayPath(value.localPath));
           try {
-            localStorage.setItem("smartspec_last_project_folder", value.localPath);
+            localStorage.setItem("smartspec_last_project_folder", normalizeDisplayPath(value.localPath));
           } catch {}
         } else if (currentFolder) {
           setRootPath(currentFolder);
@@ -309,7 +311,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
   const handleWorkspacePathChange = useCallback(
     (newPath: string) => {
       if (!newPath) return;
-      const clean = newPath.trim();
+      const clean = normalizeDisplayPath(newPath);
       if (!clean) return;
       setRootPath(clean);
       try {
@@ -354,9 +356,10 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       title: locale === "th" ? "เลือกโฟลเดอร์ทำงานของ Project" : "Choose the Project workspace folder",
     });
     if (typeof selectedPath === "string") {
-      setRootPath(selectedPath);
+      const cleanSelectedPath = normalizeDisplayPath(selectedPath);
+      setRootPath(cleanSelectedPath);
       try {
-        localStorage.setItem("smartspec_last_project_folder", selectedPath);
+        localStorage.setItem("smartspec_last_project_folder", cleanSelectedPath);
       } catch {}
       setBusy(true);
       setError("");
@@ -369,8 +372,8 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         setWorkspace(projection);
         setSelectedRootId(projection?.rootId ?? null);
         setMessage(locale === "th"
-          ? `${selected ? "ผูกโฟลเดอร์กับ Series" : "เลือกโฟลเดอร์วิดีโอ"} สำเร็จ: ${selectedPath}`
-          : `${selected ? "Folder bound to Series" : "Video folder selected"}: ${selectedPath}`);
+          ? `${selected ? "ผูกโฟลเดอร์กับ Series" : "เลือกโฟลเดอร์วิดีโอ"} สำเร็จ: ${cleanSelectedPath}`
+          : `${selected ? "Folder bound to Series" : "Video folder selected"}: ${cleanSelectedPath}`);
       } catch (caught) {
         setError(invokeError(caught));
       } finally {
@@ -852,12 +855,12 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                     >
                       <span className="pill-icon">📁</span>
                       <div>
-                        <strong>{workspace?.localPath || rootPath || "โฟลเดอร์โปรเจกต์"}</strong>
-                        {workspace?.localPath || rootPath ? (
+                        <strong>{displayRootPath || "โฟลเดอร์โปรเจกต์"}</strong>
+                        {displayRootPath ? (
                           <span className="pill-sub">
                             {workspace
                               ? `${workspace.fileCount} ไฟล์ · Root: ${workspace.rootId}`
-                              : `Path: ${rootPath}`}
+                              : `Path: ${displayRootPath}`}
                           </span>
                         ) : (
                           <span className="pill-sub">โฟลเดอร์ทำงานของโปรเจกต์</span>
@@ -931,14 +934,14 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
               <div className="project-full-path-banner">
                 <div className="path-banner-left">
                   <span className="path-title">📍 โฟลเดอร์ Project (Full Path):</span>
-                  <span className={`path-status-badge ${workspace?.localPath || rootPath ? "active" : ""}`}>
-                    {workspace?.localPath || rootPath ? "Active Workspace" : "Workspace"}
+                  <span className={`path-status-badge ${displayRootPath ? "active" : ""}`}>
+                    {displayRootPath ? "Active Workspace" : "Workspace"}
                   </span>
                 </div>
 
                 <div className="path-banner-middle">
-                  <code className="path-code-display" title={workspace?.localPath || rootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}>
-                    {workspace?.localPath || rootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}
+                  <code className="path-code-display" title={displayRootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}>
+                    {displayRootPath || "โฟลเดอร์ทำงานของโปรเจกต์"}
                   </code>
                 </div>
 
@@ -951,7 +954,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                   >
                     📂 เลือก / สลับโฟลเดอร์
                   </button>
-                  {(workspace?.localPath || rootPath) && (
+                  {displayRootPath && (
                     <>
                       <button
                         type="button"
@@ -1000,8 +1003,8 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
             <div className="button-row">
               <input
                 id="series-root-path"
-                value={rootPath}
-                onChange={(event) => setRootPath(event.target.value)}
+                value={normalizeDisplayPath(rootPath)}
+                onChange={(event) => setRootPath(normalizeDisplayPath(event.target.value))}
                 placeholder={copy.pathPlaceholder}
                 autoComplete="off"
               />
@@ -1056,7 +1059,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
             {workspace ? (
               <div className="workspace-status-card" role="status">
                 <strong>{workspace.status}</strong>
-                <span>{copy.folder}: {workspace.localPath}</span>
+                <span>{copy.folder}: {normalizeDisplayPath(workspace.localPath)}</span>
                 <span>Root ID: {workspace.rootId}</span>
                 <span>
                   {copy.files} {workspace.fileCount} · {copy.bytes}{" "}

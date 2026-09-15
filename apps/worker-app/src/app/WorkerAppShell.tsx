@@ -15,6 +15,7 @@ type WorkerAppShellProps = PropsWithChildren<{
   loopRunning?: boolean;
   selectedSeries?: string | null;
   locale?: WorkerLocale;
+  onLocaleChange?: (locale: WorkerLocale) => void;
 }>;
 
 function WorkerAppShellContent({
@@ -29,6 +30,7 @@ function WorkerAppShellContent({
   loopRunning = false,
   selectedSeries,
   locale = "en",
+  onLocaleChange,
 }: WorkerAppShellProps) {
   const { selectedSeriesId } = useWorkerAppContext();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -134,6 +136,7 @@ function WorkerAppShellContent({
           loopRunning={loopRunning}
           selectedSeries={selectedSeries ?? selectedSeriesId}
           locale={locale}
+          onLocaleChange={onLocaleChange}
           onNavigate={onNavigate}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebar={toggleSidebar}

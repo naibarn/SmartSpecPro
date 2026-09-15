@@ -1359,6 +1359,12 @@ export const DEFAULT_MODELS = {
 export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
+  /** Stable provider/media-task operation key supplied by a control-plane worker. */
+  controlPlaneOperationKey?: string;
+  /** Internal observability hook; called immediately before the provider request. */
+  onSubmissionStarted?: () => void;
+  /** Internal billing hook; runs after request preflight and before submission. */
+  onSubmissionReady?: () => Promise<void> | void;
   size?: string;
   aspectRatio?: string;
   negativePrompt?: string;
@@ -3025,7 +3031,12 @@ export class MediaGenerationService {
               getPythonMediaToken(params.request, params.userToken),
               params.endpoint,
               params.payload,
-            )
+            ),
+          {
+            userKey: typeof params.request.auditContext?.userId === "number"
+              ? `user:${params.request.auditContext.userId}`
+              : undefined,
+          },
         );
       } catch (error) {
         const enrichedError = enrichMediaSubmitError(error, params.endpoint);
@@ -3231,6 +3242,9 @@ export class MediaGenerationService {
     const payload: Record<string, unknown> = {
       prompt: normalizedPrompt,
       model: modelId,
+      ...(request.controlPlaneOperationKey
+        ? { control_plane_operation_key: request.controlPlaneOperationKey }
+        : {}),
       size: request.size,
       aspect_ratio: request.aspectRatio,
       n: request.numImages || 1,
@@ -3324,6 +3338,8 @@ export class MediaGenerationService {
         provider,
         "image" as RateLimiterMediaType,
         async () => {
+          await request.onSubmissionReady?.();
+          request.onSubmissionStarted?.();
           const { data, status } = await this.postJson(
             getPythonMediaToken(request, userToken),
             "/api/v1/media/image",
@@ -3340,7 +3356,12 @@ export class MediaGenerationService {
             responsePayload: data,
           });
           return this.mapResponse(data);
-        }
+        },
+        {
+          userKey: typeof request.auditContext?.userId === "number"
+            ? `user:${request.auditContext.userId}`
+            : undefined,
+        },
       );
 
       // Record successful usage
@@ -3530,7 +3551,12 @@ export class MediaGenerationService {
             responsePayload: data,
           });
           return this.mapResponse(data);
-        }
+        },
+        {
+          userKey: typeof request.auditContext?.userId === "number"
+            ? `user:${request.auditContext.userId}`
+            : undefined,
+        },
       );
 
       recordMediaUsage(
@@ -3661,7 +3687,12 @@ export class MediaGenerationService {
             responsePayload: data,
           });
           return this.mapResponse(data);
-        }
+        },
+        {
+          userKey: typeof request.auditContext?.userId === "number"
+            ? `user:${request.auditContext.userId}`
+            : undefined,
+        },
       );
 
       recordMediaUsage(

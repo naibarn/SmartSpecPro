@@ -44,6 +44,11 @@ def _run_async(coro) -> Any:
 
 
 def _set_status(task_id: str, status: dict) -> None:
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(task_id, status)
+        return
     try:
         r = _get_redis()
         r.set(f"automation:{task_id}", json.dumps(status, default=str), ex=RESULT_TTL)
@@ -51,8 +56,16 @@ def _set_status(task_id: str, status: dict) -> None:
         logger.error("automation_redis_set_failed", task_id=task_id, error=str(exc)[:200])
 
 
-def get_status(task_id: str) -> dict | None:
-    """Read automation task status from Redis."""
+def get_status(task_id: str, tenant_id: str | None = None, user_id: int | None = None) -> dict | None:
+    """Read automation status from the canonical ledger in hard cutover."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        return JobControlPlaneClient().legacy_status(
+            task_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+        )
     try:
         r = _get_redis()
         raw = r.get(f"automation:{task_id}")

@@ -181,8 +181,7 @@ fn open_inner(
         use std::os::windows::process::CommandExt;
         command.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
     }
-    let mut child = match command.spawn()
-    {
+    let mut child = match command.spawn() {
         Ok(child) => child,
         Err(_) => {
             SSH_TUNNEL_ACTIVE.store(false, Ordering::Release);

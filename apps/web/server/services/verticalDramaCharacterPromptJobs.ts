@@ -6,6 +6,11 @@
 import { randomUUID } from "node:crypto";
 import { debugError } from "../_core/logger";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 export const VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE =
   "vertical_drama_character_prompt_jobs";
@@ -323,7 +328,18 @@ export async function enqueueVerticalDramaCharacterPromptJob(
       continue;
 
     try {
-      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+      if (isFeature186HardCutoverEnabled()) {
+        await createFeature186VerticalDramaJob({
+          jobId,
+          tenantId: payload.tenantId,
+          userId: payload.userId,
+          jobType: "vertical_drama.character_prompt",
+          executionClass: "long",
+          payload: record as unknown as Record<string, unknown>,
+        });
+      } else {
+        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+      }
     } catch (error) {
       const failed = {
         ...record,
@@ -476,7 +492,8 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
       `${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE} queue is not initialized`
     );
   }
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     { jobId, attempts: 1, removeOnComplete: true, removeOnFail: { age: 86400 } }
@@ -493,7 +510,8 @@ async function defaultScheduleRetry(
       `${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE} queue is not initialized`,
     );
   }
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     {
@@ -507,6 +525,7 @@ async function defaultScheduleRetry(
 }
 
 export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   try {
     const { Queue, Worker } = await import("bullmq");

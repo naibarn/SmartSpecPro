@@ -22,6 +22,19 @@ cp "${ROOT}/scripts/tests/fixtures/celery-doctor-healthy.state" "${TEST_DIR}/sta
 run_doctor >/dev/null
 [[ ! -s "${TEST_DIR}/calls" ]]
 
+cp "${ROOT}/scripts/tests/fixtures/celery-doctor-stale-idle.state" "${TEST_DIR}/state"
+: > "${TEST_DIR}/calls"
+run_doctor >/dev/null
+grep -q -- '--force-recreate celery-media' "${TEST_DIR}/calls"
+
+cp "${ROOT}/scripts/tests/fixtures/celery-doctor-stale-busy.state" "${TEST_DIR}/state"
+: > "${TEST_DIR}/calls"
+run_doctor >/dev/null
+if grep -q -- '--force-recreate celery-media' "${TEST_DIR}/calls"; then
+    echo 'expected stale busy media worker to defer recreate' >&2
+    exit 1
+fi
+
 cp "${ROOT}/scripts/tests/fixtures/celery-doctor-repair.state" "${TEST_DIR}/state"
 : > "${TEST_DIR}/calls"
 FAKE_CELERY_DOCTOR_FAIL_NORMAL=1 run_doctor >/dev/null

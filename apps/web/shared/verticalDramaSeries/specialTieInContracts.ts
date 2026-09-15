@@ -228,6 +228,8 @@ export type SpecialEpisodeData = {
   modelSnapshots: { image: SpecialModelSnapshot; video: SpecialModelSnapshot };
   output?: {
     shotCount: number;
+    /** Optional episode-level story summary generated with the nine-shot plan. */
+    episodeSummary?: string;
     /** Materialized story-first beats used by the existing prompt consumers. */
     storySummaries?: Array<{
       shotNumber: number;

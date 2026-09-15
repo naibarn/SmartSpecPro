@@ -44,7 +44,7 @@ END_MANIFEST -->
 Canonical types, status transitions, trusted identity, deterministic definition hashing, redaction, and contract tests.
 
 ### section-02-persistence-migration
-Additive Drizzle schema/migration, lifecycle and transfer checkpoint companions, constraints/indexes, and safe dry-run/backfill tooling.
+Additive Drizzle schema/migration for lifecycle metadata, constraints/indexes, and safe dry-run/backfill tooling. Feature 189 owns transfer-specific plan/item/checkpoint schema.
 
 ### section-03-lifecycle-service
 Transactional create/claim/lease/reporter/retry/cancel/reconcile operations with fencing and event sequencing.
@@ -56,7 +56,7 @@ Transactional outbox publisher, dedupe/reclaim/quarantine behavior, and BullMQ/C
 Executor/reporter integration, external wait, provider callback boundary, scheduler occurrence handling, and the existing reconciler job entry point.
 
 ### section-06-monitor-security
-Canonical job monitor, cursor/timeline projection, guarded operator actions, tenant isolation, redaction, and explicit tenant-transfer workflow.
+Canonical job monitor, cursor/timeline projection, guarded operator actions, tenant isolation, redaction, and the execution boundary consumed by Feature 189 for tenant-transfer cancellation/fencing.
 
 ### section-07-python-celery-compatibility
 Python control-plane client, thin Celery wrappers/Beat intent helpers, and legacy reference migration inventory.

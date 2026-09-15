@@ -44,6 +44,7 @@ import { registerInternalSocialToolRoute } from "../routes/internalSocialTool";
 import { registerInternalSocialActionsRoute } from "../routes/internalSocialActions";
 import { registerInternalMetricsRoute } from "../routes/internalMetrics";
 import { renderAgentRegistryMetrics } from "../services/agentRegistryMetrics";
+import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
 
 import { createWebhookRouter } from "../routes/webhooks";
 import { createWebhookTriggerRouter } from "../routes/webhookTrigger";
@@ -110,7 +111,7 @@ import { initializeSkillRegistry } from "../services/skillRegistry";
 import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
 import { correlationIdMiddleware } from "../middleware/correlationId";
-// BullMQ scheduler/queue init removed — migrated to Cloud Tasks (Section 05)
+// BullMQ/Celery scheduler and queue init removed — production target is Cloudflare.
 import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
 import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
 import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services/webhookDispatchQueue";
@@ -118,8 +119,9 @@ import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purge
 import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
 import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
 import { initializeFinanceOcrRetentionJob, shutdownFinanceOcrRetentionJob } from "../jobs/financeOcrRetentionJob";
+import { initializeDatabaseBackupJob, shutdownDatabaseBackupJob } from "../jobs/databaseBackupJob";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
-import { initializeNotificationJobs } from "../jobs/notificationJobs";
+import { initializeNotificationJobs, shutdownNotificationJobs } from "../jobs/notificationJobs";
 import { initializeBillingJobs, shutdownBillingJobs } from "../jobs/billingJobs";
 import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
@@ -153,6 +155,10 @@ import {
   shutdownUnifiedJobControlPlaneReconcilerJob,
 } from "../jobs/unifiedJobControlPlaneReconcilerJob";
 import {
+  initializeUnifiedJobControlPlaneRuntime,
+  shutdownUnifiedJobControlPlaneRuntime,
+} from "../jobs/unifiedJobControlPlaneRuntime";
+import {
   initializeProductionExecutionReconciliationJob,
   shutdownProductionExecutionReconciliationJob,
 } from "../jobs/productionExecutionReconciliationJob";
@@ -174,7 +180,6 @@ import {
   normalizeManagedMediaKey,
   streamManagedMediaAccessToken,
 } from "../services/managedMediaAccessService";
-import { createTasksRouter } from "../routes/tasks";
 import { presentationImportCallbackHandler } from "../routes/presentationImportCallback";
 import { PostgresAdapter } from "../services/postgresAdapter";
 import { getUploadStaticHeaders } from "../services/uploadContentSafety";
@@ -477,7 +482,7 @@ app.get("/readyz", async (_req, res) => {
     allHealthy = false;
   }
 
-  // Check Redis connection (1 second timeout - aligns with Cloud Run probe timeout)
+  // Check Redis connection with a bounded health timeout.
   try {
     const redis = getRedisClient();
     const timeoutPromise = new Promise((_, reject) =>
@@ -490,6 +495,12 @@ app.get("/readyz", async (_req, res) => {
     checks.redis = error?.message === "timeout" ? "timeout" : "error";
     allHealthy = false;
   }
+
+  const feature186 = cloudflareRuntimeStatus();
+  checks.feature186 = feature186.hardCutover
+    ? (feature186.runtimeReady ? `ok:${feature186.runtimeMode}` : `error:${feature186.runtimeReason ?? "runtime_not_ready"}`)
+    : "disabled";
+  if (feature186.hardCutover && !feature186.runtimeReady) allHealthy = false;
 
   if (allHealthy) {
     res.json({ status: "ready", checks });
@@ -640,8 +651,8 @@ app.get("/uploads/*", async (req, res) => {
       return;
     }
     const tenantId = resolveTenantIdVarchar(
-      (req as any).tenantId || (req as any).tenant?.id,
       auth.tenantId || (auth as any).user?.currentTenantId,
+      null,
     ) ?? "";
     const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
     if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
@@ -704,8 +715,8 @@ app.get("/api/storage/files/*", async (req, res) => {
       return;
     }
     const tenantId = resolveTenantIdVarchar(
-      (req as any).tenantId || (req as any).tenant?.id,
       auth.tenantId || (auth as any).user?.currentTenantId,
+      null,
     ) ?? "";
     const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
     if (!tenantId || !Number.isInteger(userId) || userId <= 0 || !(await canReadManagedStorageKey(rawKey, {
@@ -873,10 +884,6 @@ app.use("/api/widget", express.json({ limit: "100kb" }), createWidgetInitRouter(
 
 app.use(express.json({ limit: "1mb" }), browserPolicyRouter);
 app.use(browserToolRouter);
-
-// Cloud Tasks handler routes (called by Cloud Tasks with OIDC auth)
-// Mounted at /_internal/tasks to avoid conflict with the frontend /tasks SPA route
-app.use("/_internal/tasks", createTasksRouter());
 
 // Public API documentation is intentionally registered before the authenticated
 // /v1 middleware chain. This keeps /v1/docs and /v1/openapi.json usable by the
@@ -1425,8 +1432,8 @@ app.post("/api/v1/vertical-drama/audio-score/approved-plan", async (req, res) =>
   const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
   if (!auth.ok) return res.status(401).json({ error: "Unauthorized" });
   const tenantId = resolveTenantIdVarchar(
-    (req as any).tenantId || (req as any).tenant?.id,
     auth.tenantId || (auth as any).user?.currentTenantId,
+    null,
   );
   const userId = Number(auth.userId ?? auth.sub);
   if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
@@ -1560,27 +1567,25 @@ app.post("/api/internal/agency/create", async (req, res) => {
       agencyAgents,
       agencyCommunicationFlows,
       agencyAgentTools,
+      users: usersTable,
     } = await import("../../drizzle/schema");
     const drizzleDb = await getDb();
     if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
-    const tenantReq = req as any;
-    // Prefer explicit tenantId from request body (passed by Celery task from the user's tRPC context),
-    // then fall back to tenant middleware, then user's currentTenantId
-    const tenantId: string = validatedBody.tenantId || tenantReq.tenant?.id || String(user.currentTenantId ?? "");
+    // The authenticated user's database binding is the only tenant authority.
+    // Keep the body field as a compatibility assertion for existing internal
+    // callers, never as a selector that can override the authenticated scope.
+    const [userTenantRow] = await drizzleDb
+      .select({ currentTenantId: usersTable.currentTenantId })
+      .from(usersTable)
+      .where(eq(usersTable.id, user.id))
+      .limit(1);
+    const tenantId = String(userTenantRow?.currentTenantId ?? user.currentTenantId ?? "").trim();
     if (!tenantId) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
 
-    // Verify user belongs to the specified tenant (prevents cross-tenant agency creation via internal token)
-    if (tenantId && (user as any).__internalAuth) {
-      const { sql } = await import("drizzle-orm");
-      const rawResult = await drizzleDb.execute(
-        sql`SELECT "currentTenantId"::text FROM users WHERE id = ${user.id} LIMIT 1`
-      );
-      const dbTenantId = (rawResult as any).rows?.[0]?.currentTenantId ?? (rawResult as any)?.[0]?.currentTenantId ?? null;
-      if (!dbTenantId || String(dbTenantId) !== String(tenantId)) {
-        return res.status(403).json({ error: "User does not belong to the specified tenant" });
-      }
+    if (validatedBody.tenantId && validatedBody.tenantId.trim() !== tenantId) {
+      return res.status(403).json({ error: "User does not belong to the specified tenant" });
     }
 
     const { name, description, objective, sharedInstructions, agents, communicationFlows } = validatedBody;
@@ -1944,7 +1949,7 @@ async function main() {
     console.error("[Startup] Failed to initialize skill registry:", error);
   }
 
-  // Scheduled messages now use Cloud Tasks (no BullMQ worker needed)
+  // Scheduled messages are owned by the canonical scheduler adapter.
   // History collection for in-memory queue stats (rate limiters, etc.)
   try {
     startHistoryCollection();
@@ -2209,9 +2214,9 @@ async function main() {
     console.error("[Startup] Failed to initialize provider health:", error);
   }
 
-  // LLM queues migrated to in-process + Cloud Tasks (no BullMQ workers needed)
+  // LLM queues use the canonical control-plane/runtime adapter.
   try {
-    console.log("[Startup] LLM queue processing: in-process (credits/usage), Cloud Tasks (skills)");
+    console.log("[Startup] LLM queue processing: in-process (credits/usage), Cloudflare target (skills)");
   } catch (error) {
     console.error("[Startup] Queue info log failed:", error);
   }
@@ -2279,6 +2284,12 @@ async function main() {
     await initializeGDriveCleanupJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize GDrive cleanup job:", error);
+  }
+
+  try {
+    await initializeDatabaseBackupJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize database backup job:", error);
   }
 
   // Initialize Finance OCR retention cleanup (every 6h)
@@ -2350,6 +2361,12 @@ async function main() {
     await initializeUnifiedJobControlPlaneReconcilerJob();
   } catch (error) {
     console.error("[Startup] Failed to initialize Feature 186 job reconciler:", error);
+  }
+
+  try {
+    await initializeUnifiedJobControlPlaneRuntime();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Feature 186 unified runtime:", error);
   }
 
   try {
@@ -2509,11 +2526,13 @@ process.on("SIGTERM", async () => {
 
   // 3. Shut down background workers
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownDatabaseBackupJob().catch(() => {});
   await shutdownFinanceOcrRetentionJob().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   shutdownFeedbackAutoCloseJob();
   await shutdownBillingJobs().catch(() => {});
+  await shutdownNotificationJobs().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
@@ -2535,6 +2554,7 @@ process.on("SIGTERM", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
+  await shutdownUnifiedJobControlPlaneRuntime().catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});
@@ -2589,10 +2609,12 @@ process.on("SIGINT", async () => {
 
   await auditLogger.shutdown().catch(() => {});
   await shutdownGDriveCleanupWorker().catch(() => {});
+  await shutdownDatabaseBackupJob().catch(() => {});
   await shutdownFinanceOcrRetentionJob().catch(() => {});
   await shutdownUploadPostCleanupWorker().catch(() => {});
   await shutdownTrashPurgeWorker().catch(() => {});
   await shutdownBillingJobs().catch(() => {});
+  await shutdownNotificationJobs().catch(() => {});
   await shutdownTelegramWorker().catch(() => {});
   await closeDeliveryQueue().catch(() => {});
   await closeWebhookDispatchQueue().catch(() => {});
@@ -2614,6 +2636,7 @@ process.on("SIGINT", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
+  await shutdownUnifiedJobControlPlaneRuntime().catch(() => {});
   await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
   await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});

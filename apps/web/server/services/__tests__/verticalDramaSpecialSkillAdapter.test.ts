@@ -145,6 +145,7 @@ describe("special skill output contract", () => {
   it("materializes a story-first summary from the skill's breakdown before prompts are consumed", () => {
     const normalized = normalizeSpecialSkillOutput({
       status: "ready",
+      episode_summary: "A complete beginning-middle-end tie-in story",
       aspect_ratio: "9:16",
       shot_duration_seconds: 10,
       shot_count: 1,
@@ -162,8 +163,14 @@ describe("special skill output contract", () => {
           sub_shots: [],
         },
       ],
-    }) as { shots: Array<{ story_summary?: string }> };
+    }) as {
+      episode_summary?: string;
+      shots: Array<{ story_summary?: string }>;
+    };
 
+    expect(normalized.episode_summary).toBe(
+      "A complete beginning-middle-end tie-in story"
+    );
     expect(normalized.shots[0]?.story_summary).toBe(
       "The selected character applies the reviewed product in the original scene"
     );

@@ -3,6 +3,7 @@ import { inArray } from "drizzle-orm";
 import { getDb } from "../db";
 import { workAutomationBrowserTaskClaims } from "../../drizzle/schema";
 import { reconcileBrowserAutomationTaskClaims } from "../services/workAutomationBrowserTaskService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const RECONCILE_INTERVAL_MS = 30_000;
 const MAX_TENANTS_PER_TICK = 50;
@@ -81,6 +82,10 @@ async function tick(): Promise<void> {
 }
 
 export async function initializeBrowserAutomationClaimReconcilerJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeBrowserAutomationClaimReconcilerJob")) {
+    console.info("[browser-automation-reconciler] in-process scheduler disabled; use Cloudflare Cron");
+    return;
+  }
   if (intervalId) return;
   await tick();
   intervalId = setInterval(() => {
@@ -94,4 +99,3 @@ export async function shutdownBrowserAutomationClaimReconcilerJob(): Promise<voi
     intervalId = null;
   }
 }
-

@@ -12,6 +12,9 @@ import { getDb } from "../db";
 import { messageChunks, scopedMemories } from "../../drizzle/schema";
 import { generateQueryEmbedding } from "./queryEmbeddingService";
 import { getRealtimeClient } from "./redisClients";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 export interface EmbeddingQueueJob {
   type: "scoped_memory" | "message_chunk";
@@ -20,6 +23,29 @@ export interface EmbeddingQueueJob {
 }
 
 const QUEUE_NAME = "memory-embedding";
+const FEATURE_186_EMBEDDING_JOB_TYPE = "embedding.generate";
+const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
+
+if (!defaultJobExecutorRegistry.has(FEATURE_186_EMBEDDING_JOB_TYPE, FEATURE_186_CONTRACT_VERSION)) {
+  defaultJobExecutorRegistry.register({
+    jobType: FEATURE_186_EMBEDDING_JOB_TYPE,
+    executionClass: "short",
+    contractVersions: new Set([FEATURE_186_CONTRACT_VERSION]),
+    executor: async ({ context }) => {
+      const job = context.input as unknown as EmbeddingQueueJob;
+      const embedding = await generateQueryEmbedding(job.text);
+      if (!embedding) return { output: { embedded: false } };
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+      if (job.type === "scoped_memory") {
+        await db.update(scopedMemories).set({ embedding }).where(eq(scopedMemories.id, job.recordId));
+      } else {
+        await db.update(messageChunks).set({ embedding }).where(eq(messageChunks.id, job.recordId));
+      }
+      return { output: { embedded: true, recordId: job.recordId } };
+    },
+  });
+}
 
 let queue: Queue<EmbeddingQueueJob> | null = null;
 let worker: Worker<EmbeddingQueueJob> | null = null;
@@ -73,9 +99,41 @@ function getEmbeddingWorker(): Worker<EmbeddingQueueJob> {
 }
 
 export async function enqueueEmbedding(job: EmbeddingQueueJob): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
+    const table = job.type === "scoped_memory" ? scopedMemories : messageChunks;
+    const [record] = await db.select({ tenantId: table.tenantId }).from(table).where(eq(table.id, job.recordId)).limit(1);
+    if (!record?.tenantId) throw new Error("Embedding record not found");
+    await createControlPlaneJob({
+      context: {
+        tenantId: record.tenantId,
+        actorType: "system",
+        authorizationScope: "system:embedding",
+        correlationId: `embedding:${job.type}:${job.recordId}`,
+        idempotencyKey: `embedding:${job.type}:${job.recordId}`,
+      },
+      definition: {
+        contractVersion: FEATURE_186_CONTRACT_VERSION,
+        jobType: FEATURE_186_EMBEDDING_JOB_TYPE,
+        executionClass: "short",
+        input: job as unknown as Record<string, unknown>,
+        retryPolicy: {
+          maxAttempts: 3,
+          baseDelayMs: 5_000,
+          maxDelayMs: 60_000,
+          jitter: "bounded",
+          deadlineMs: 15 * 60_000,
+          allowedErrorClasses: ["retryable", "TimeoutError", "AbortError", "ETIMEDOUT"],
+        },
+        timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 120_000 },
+      },
+    });
+    return;
+  }
   const embeddingQueue = getEmbeddingQueue();
   getEmbeddingWorker();
-  await embeddingQueue.add("embed", job, {
+  await publishLegacyBullMqJob(embeddingQueue, "embed", job, {
     jobId: `${job.type}:${job.recordId}`,
   });
 }

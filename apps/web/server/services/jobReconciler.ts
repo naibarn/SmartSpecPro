@@ -39,7 +39,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const expired = await db.select({ id: workerJobs.id })
     .from(workerJobs)
     .where(and(
-      inArray(workerJobs.status, ["running", "waiting_external"] as any),
+      inArray(workerJobs.status, ["leased", "running", "waiting_external"] as any),
       isNotNull(workerJobs.leaseExpiresAt),
       lte(workerJobs.leaseExpiresAt, now),
     ))

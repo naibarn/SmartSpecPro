@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
 import { MediaWorkspaceHost } from "../../src/screens/media-workspace/MediaWorkspaceHost";
 import { createDefaultProjectDraft } from "../../src/types/nleProject";
-import { resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "../../src/screens/media-workspace/sourcePath";
+import { normalizeDisplayPath, resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "../../src/screens/media-workspace/sourcePath";
 const state = vi.hoisted(() => ({ explorer: null as any, player: null as any, mounts: 0, unmounts: 0 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 vi.mock("../../src/app/workerContext", () => ({ useWorkerAppContext: () => ({locale: "th"}) }));
@@ -82,6 +82,12 @@ it("clears a stale queue source when opening a project without a source video", 
 it("normalizes Windows verbatim and file URL source paths", () => {
   expect(resolveWorkspaceRelativePath("D:\\Naibarn Money\\Cart\\C2139-เตียงนอน", "\\\\?\\D:\\Naibarn Money\\Cart\\C2139-เตียงนอน\\C3775.MP4")).toBe("C3775.MP4");
   expect(resolveWorkspaceRelativePath("D:\\Naibarn Money\\Cart\\C2139-เตียงนอน", "file:///D:/Naibarn%20Money/Cart/C2139-%E0%B9%80%E0%B8%95%E0%B8%B5%E0%B8%A2%E0%B8%87%E0%B8%99%E0%B8%AD%E0%B8%99/C3775.MP4")).toBe("C3775.MP4");
+});
+it("removes Windows verbatim prefixes from every user-facing path form", () => {
+  expect(normalizeDisplayPath(String.raw`\\?\D:\Naibarn Money\Cart\C2160-แซมพูเด็ก`)).toBe(String.raw`D:\Naibarn Money\Cart\C2160-แซมพูเด็ก`);
+  expect(normalizeDisplayPath(String.raw`\\?\UNC\server\share\clip.mp4`)).toBe(String.raw`\\server\share\clip.mp4`);
+  expect(normalizeDisplayPath("//?/D:/Naibarn Money/Cart/clip.mp4")).toBe("D:/Naibarn Money/Cart/clip.mp4");
+  expect(normalizeDisplayPath("D:/Naibarn Money/Cart/clip.mp4")).toBe("D:/Naibarn Money/Cart/clip.mp4");
 });
 it("resolves project-relative source paths for editor commands", () => {
   expect(resolveWorkspaceSourcePath("D:\\workspace", null, "clips\\C3775.MP4")).toBe("D:/workspace/clips/C3775.MP4");

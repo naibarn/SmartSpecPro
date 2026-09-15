@@ -9,39 +9,21 @@ Expose canonical state and safe control actions while preserving tenant isolatio
 - Extend `apps/web/server/services/jobControlPlaneMonitor.ts` for canonical admin
   projections/actions and preserve `workerJobMonitorService.ts` as the legacy
   user compatibility projection.
-- Add `apps/web/server/services/tenantDataTransferService.ts` for explicit
-  preview, approval, execution, pause/resume, and cancellation semantics.
 - Modify `apps/web/server/routers/workerJobs.ts` only for canonical projections/actions.
-- Add the existing account/tenant router boundary for transfer preview,
-  approval, resume, and cancel actions after impact review.
+- Use `worker_job_actions` for durable operator command idempotency and retain redacted callback evidence in `worker_job_callbacks`; an existing action key returns its durable outcome or a stable conflict.
 - Add admin/user monitor tests and browser-facing tests if the existing page is extended.
-- Add `apps/web/server/services/__tests__/tenantDataTransfer.test.ts` when the
-  separately planned tenant-transfer schema/handler wave is enabled; the
-  current control-plane slice does not expose transfer execution without
-  registered handlers.
 
 ## Requirements
 
 Provide cursor-paginated jobs, sequence-ordered event timeline, attempts/dispatch references, stale/outbox age, safe errors, and explicit PostgreSQL-versus-transport observations. Retry/requeue/cancel/force-fail are state-specific, authenticated, audited, reasoned, targeted by attempt/state, and idempotent through a durable action record. Redact credentials, signed URLs, raw provider payloads, arbitrary commands, and unbounded messages. Enforce tenant/elevated scope, CSRF/rate limits, callback replay protection, and callback correlation.
 
-Account tenant binding changes and data transfer are separate operations. A
-verified System Admin tenant move cancels/fences only that user's queueable
-canonical jobs and blocks on leased/running/waiting-external work; it never
-flushes a shared broker queue or infers a legacy job owner. A transfer is
-preview-first and same-tenant source-user to target-user only. It uses
-versioned allowlisted resource handlers, immutable full-snapshot fingerprints,
-explicit unsupported/conflict dispositions, and a canonical
-`tenant_data_transfer` worker job whose item tables are checkpoints only.
-Queueable jobs are cancelled with durable evidence, active jobs block approval,
-recoverable failures pause with operator review, and resume/cancel reuse the
-same canonical operation without duplicating paid/provider/artifact effects.
-
-The System Admin tenant-binding move is a separate guarded operation: it
-cancels/fences only verified queueable jobs before committing the new binding,
-blocks on active jobs with `ACTIVE_JOB_BLOCKED`, preserves partial cancellation
-evidence when the account update fails, and resumes remaining work through the
-same action idempotency key. It never flushes a shared queue or starts a data
-transfer implicitly.
+Feature 189 owns account tenant binding and data transfer. Feature 186 only
+exposes the canonical execution boundary that Feature 189 consumes: guarded
+queue cancellation, lease fencing, unpublished-outbox cancellation, retained
+events/dispatch references, and reconciler evidence. Feature 186 must not
+implement or expose transfer preview, approval, handlers, item execution, or
+transfer-specific UI. Any transfer request must be rejected until Feature 189's
+registered-handler and authorization gates are enabled.
 
 ## UI/UX Contract
 
@@ -58,9 +40,9 @@ visual system is introduced.
 ### Component Map
 
 Reuse the existing summary, filter, job-list, event-timeline, dispatch-detail,
-and guarded-action components or their current equivalents. The transfer
-preview/approval/result surface reuses the same authorization and redaction
-boundary.
+and guarded-action components or their current equivalents. Feature 189 owns
+the transfer preview/approval/result surface and consumes this canonical
+authorization, redaction, cancellation, and fencing boundary.
 
 ### State Matrix
 
@@ -94,7 +76,9 @@ canonical status.
 
 Cover tenant/admin scope, cursor tampering, redaction, durable action idempotency,
 illegal terminal actions, canonical-versus-transport projections, rate limits,
-callback authentication/replay, and browser state/accessibility cases. Cover transfer preview immutability, `PREVIEW_STALE`,
-`ACTIVE_JOB_BLOCKED`, queue cancellation/fencing, unsupported handlers,
-pause/resume checkpoints, operator cancellation, and preservation of already
-transferred items, and tenant-binding move failure/repeat behavior.
+callback authentication/replay, and browser state/accessibility cases. Feature
+189 owns tests for transfer preview immutability, `PREVIEW_STALE`,
+`ACTIVE_JOB_BLOCKED`, unsupported handlers, pause/resume checkpoints, operator
+cancellation, preservation of already transferred items, and tenant-binding
+move failure/repeat behavior. Feature 186 covers only the reusable queue
+cancellation/fencing and late-redelivery no-op contract.

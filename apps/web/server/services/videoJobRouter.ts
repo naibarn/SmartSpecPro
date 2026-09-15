@@ -1,7 +1,8 @@
 import type { VideoEditorProject } from "../../client/src/types/videoEditor";
 
 /**
- * Determine which Cloud Tasks queue to route a video render job to.
+ * Determine which Cloudflare Container capability profile to request for a
+ * video render job.
  *
  * Routing rules:
  * - video-jobs-short (2 vCPU, 8 GiB): total input duration < 2 minutes AND

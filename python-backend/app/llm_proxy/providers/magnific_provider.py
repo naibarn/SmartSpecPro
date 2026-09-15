@@ -13,7 +13,11 @@ from typing import Any, Optional
 
 import httpx
 
-from app.core.media_job_validators import validate_provider_result_uri, validate_uri_strict
+from app.core.media_job_validators import (
+    validate_provider_reference_url,
+    validate_provider_result_uri,
+    validate_uri_strict,
+)
 
 
 MAGNIFIC_PROVIDER = "magnific"
@@ -346,6 +350,24 @@ class MagnificProvider:
         return data
 
     def _clean_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        def validate_nested(key: str, value: Any) -> None:
+            normalized_key = str(key).replace("_", "").replace("-", "").lower()
+            if isinstance(value, str):
+                if (
+                    normalized_key.endswith("url")
+                    or normalized_key.endswith("urls")
+                    or normalized_key in {"image", "video", "audio", "file", "source"}
+                ):
+                    validate_provider_reference_url(value)
+                return
+            if isinstance(value, dict):
+                for nested_key, nested_value in value.items():
+                    validate_nested(str(nested_key), nested_value)
+                return
+            if isinstance(value, list):
+                for item in value:
+                    validate_nested(normalized_key, item)
+
         cleaned: dict[str, Any] = {}
         for key, value in payload.items():
             normalized = str(key).replace("_", "").replace("-", "").lower()
@@ -353,12 +375,12 @@ class MagnificProvider:
                 continue
             if value is None or value == "" or value == []:
                 continue
-            if isinstance(value, str) and (normalized.endswith("url") or normalized.endswith("urls")):
-                _assert_public_https_url(value, str(key))
-            if isinstance(value, list) and (normalized.endswith("urls") or normalized in {"imageurls", "videourls"}):
-                for item in value:
-                    if isinstance(item, str):
-                        _assert_public_https_url(item, str(key))
+            try:
+                validate_nested(str(key), value)
+            except ValueError as exc:
+                raise MagnificProviderError(
+                    str(exc), category="validation_error"
+                ) from exc
             cleaned[key] = value
         return cleaned
 

@@ -1,2 +1,2 @@
-smartspec-celery-media|running|other-project|healthy|celery-media
-smartspec-celery-beat|running|smartspecpro|healthy|celery-beat
+smartspec-celery-media|running|other-project|healthy|celery-media|{"sourceFingerprint": "foreign"}|foreign|idle
+smartspec-celery-beat|running|smartspecpro|healthy|celery-beat|{"sourceFingerprint": "beat"}|beat|idle

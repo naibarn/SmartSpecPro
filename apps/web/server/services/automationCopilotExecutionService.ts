@@ -1,6 +1,9 @@
 import { TRPCError } from "@trpc/server";
+import { and, desc, eq, sql } from "drizzle-orm";
 
-import { createCreditReservation, hasEnoughCredits, refundReservation } from "./creditService";
+import { db } from "../db";
+import { creditTransactions } from "../../drizzle/schema";
+import { createCreditReservation, hasEnoughCredits, refundCredits, refundReservation } from "./creditService";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { buildAutomationCopilotBrowserPolicyContext } from "./browserPolicyRuntime";
@@ -81,25 +84,91 @@ export interface AutomationCopilotTaskStatusResult {
   [key: string]: unknown;
 }
 
+async function findDurableAutomationReservation(taskId: string, tenantId?: string) {
+  const tenantPredicate = tenantId ? sql`AND job."tenantId" = ${tenantId}` : sql``;
+  const [transaction] = await db
+    .select({
+      id: creditTransactions.id,
+      userId: creditTransactions.userId,
+      amount: creditTransactions.amount,
+      tenantId: creditTransactions.tenantId,
+      metadata: creditTransactions.metadata,
+    })
+    .from(creditTransactions)
+    .where(and(
+      eq(creditTransactions.type, "usage"),
+      sql`${creditTransactions.amount} < 0`,
+      sql`${creditTransactions.metadata}->>'taskId' = ${taskId}`,
+      sql`${creditTransactions.metadata}->>'reservationId' IS NOT NULL`,
+      sql`EXISTS (
+        SELECT 1
+        FROM "worker_jobs" job
+        WHERE job."jobType" = 'python.legacy_task'
+          AND job."inputJson"->'args'->>0 = ${taskId}
+          ${tenantPredicate}
+      )`,
+    ))
+    .orderBy(desc(creditTransactions.createdAt), desc(creditTransactions.id))
+    .limit(1);
+  if (!transaction || !transaction.metadata || typeof transaction.metadata !== "object") return null;
+  const reservationId = (transaction.metadata as Record<string, unknown>).reservationId;
+  return typeof reservationId === "string" && reservationId
+    ? { ...transaction, reservationId }
+    : null;
+}
+
+/**
+ * Refund the fixed Automation Copilot reservation from the PostgreSQL credit
+ * ledger when the Redis reservation/map is unavailable. Automation Copilot
+ * does not draw incremental reservation amounts, so the original usage row is
+ * the complete refund basis. The reversal idempotency key makes concurrent
+ * status polls safe.
+ */
+async function refundDurableAutomationReservation(taskId: string, tenantId?: string): Promise<boolean> {
+  const reservation = await findDurableAutomationReservation(taskId, tenantId);
+  if (!reservation) return false;
+  await refundCredits({
+    userId: reservation.userId,
+    amount: Math.abs(reservation.amount),
+    description: `Automation Copilot reservation refund (${reservation.reservationId})`,
+    originalTransactionId: reservation.id,
+    idempotencyKey: `automation:reservation-refund:${reservation.reservationId}`,
+    tenantId: reservation.tenantId ?? undefined,
+    sourceType: "browser_automation",
+    metadata: { reservationId: reservation.reservationId, taskId, source: "feature-186-durable-fallback" },
+  });
+  return true;
+}
+
 export async function finalizeAutomationCopilotTaskReservation(
   taskId: string,
   status: string,
+  tenantId?: string,
 ): Promise<void> {
   const normalized = String(status ?? "").trim().toLowerCase();
   if (normalized !== "success" && normalized !== "failed" && normalized !== "cancelled" && normalized !== "canceled") {
     return;
   }
-  if (!isRedisAvailable()) {
-    return;
+  let reservationId: string | null = null;
+  let redis: ReturnType<typeof getRedisClient> | null = null;
+  if (isRedisAvailable()) {
+    redis = getRedisClient();
+    reservationId = await redis.get(`automation:task_reservation:${taskId}`);
   }
-  const redis = getRedisClient();
-  const resKey = `automation:task_reservation:${taskId}`;
-  const reservationId = await redis.get(resKey);
-  if (!reservationId) {
-    return;
+  if (reservationId) {
+    // Distinguish an expired/missing Redis reservation from a valid fully
+    // drawn reservation. A zero refund on a valid reservation is not evidence
+    // that the durable ledger should be refunded in full.
+    const redisReservation = await redis?.get(`credit:reservation:${reservationId}`);
+    const refunded = await refundReservation(reservationId);
+    if (refunded.refundedAmount > 0 || redisReservation) {
+      await redis?.del(`automation:task_reservation:${taskId}`);
+      return;
+    }
   }
-  await refundReservation(reservationId);
-  await redis.del(resKey);
+  if (await refundDurableAutomationReservation(taskId, tenantId)) {
+    if (redis) await redis.del(`automation:task_reservation:${taskId}`);
+  }
 }
 
 export async function executeAutomationCopilotTask(
@@ -136,6 +205,9 @@ export async function executeAutomationCopilotTask(
     CREDIT_RESERVE_AMOUNT,
     "browser_automation",
     { taskId: input.taskId, executionId: input.executionId },
+    `automation:reservation:${input.tenantId}:${input.taskId}`,
+    undefined,
+    { allowWithoutRedis: true },
   );
 
   const { allowedDomains, visionModel } = await loadLegacyAutomationSettings();
@@ -164,7 +236,7 @@ export async function executeAutomationCopilotTask(
   });
 
   if (!res.ok) {
-    await refundReservation(reservation.reservationId);
+    await refundReservation(reservation.reservationId, false, reservation);
     const msg = await readPythonError(res);
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
   }

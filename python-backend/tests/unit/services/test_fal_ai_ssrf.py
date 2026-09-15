@@ -33,8 +33,8 @@ class TestSSRFValidation:
             await provider._validate_urls({"image_url": "http://192.168.1.1/internal"})
 
     async def test_rejects_host_docker_internal(self, provider):
-        """fal.ai provider must reject host.docker.internal via validate_uri_strict."""
-        with pytest.raises(ValueError, match="internal"):
+        """fal.ai provider must not forward a protected internal reference."""
+        with pytest.raises(ValueError, match="MEDIA_REFERENCE_REQUIRES_UPLOAD"):
             await provider._validate_urls({"image_url": "http://host.docker.internal/uploads/img.png"})
 
     async def test_allows_public_url(self, provider):
@@ -128,13 +128,14 @@ class TestVideoFileSizeValidation:
         ):
             await provider._validate_urls({"video_url": "https://example.com/video.mp4"})
 
-    async def test_head_request_failure_allows_through(self, provider):
-        """HEAD request failure is best-effort — allow the request."""
+    async def test_head_request_connection_failure_is_fail_closed(self, provider):
+        """Connection failures cannot bypass the video size admission check."""
         with patch.object(
             provider.client, "head", new_callable=AsyncMock,
             side_effect=httpx.RequestError("Network error")
         ):
-            await provider._validate_urls({"video_url": "https://example.com/video.mp4"})
+            with pytest.raises(ValueError, match="Cannot verify video file size"):
+                await provider._validate_urls({"video_url": "https://example.com/video.mp4"})
 
     async def test_no_head_for_image_url(self, provider):
         """Only video_url should trigger HEAD check."""

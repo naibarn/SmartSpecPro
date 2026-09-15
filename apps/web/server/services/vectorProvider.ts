@@ -6,6 +6,14 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { systemSettings } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
+import {
+  VECTORIZE_API_VERSION,
+  VECTORIZE_MAX_TOP_K_WITH_METADATA,
+  validateVectorizeEntries,
+  validateVectorizeIds,
+  validateVectorizeIndexName,
+  validateVectorizeQuery,
+} from "./vectorizeContract";
 
 export type VectorProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
 export type VectorOperation = "index" | "delete" | "search";
@@ -33,6 +41,11 @@ export interface VectorSearchMatch {
   metadata: VectorMetadata;
 }
 
+export interface VectorProviderVectorRecord {
+  id: string;
+  metadata: VectorMetadata;
+}
+
 export interface VectorProviderCapabilities {
   provider: VectorProvider;
   minTopK: number;
@@ -55,18 +68,20 @@ export interface VectorProviderConfig {
   pgvectorConnectTimeout?: string;
   vectorizeAccountId?: string;
   vectorizeApiToken?: string;
+  vectorizeIndexName?: string;
 }
 
 export interface VectorProviderAdapter {
   capabilities: VectorProviderCapabilities;
-  index(params: { indexName: string; vectors: VectorEntry[] }): Promise<{ count: number }>;
-  delete(params: { indexName: string; ids: string[] }): Promise<{ count: number }>;
+  index(params: { indexName: string; vectors: VectorEntry[] }): Promise<{ count: number; mutationId?: string }>;
+  delete(params: { indexName: string; ids: string[] }): Promise<{ count: number; mutationId?: string }>;
   search(params: {
     indexName: string;
     vector: number[];
     topK: number;
     filter?: Record<string, string | number | boolean>;
   }): Promise<{ matches: VectorSearchMatch[] }>;
+  getByIds?(params: { indexName: string; ids: string[] }): Promise<VectorProviderVectorRecord[]>;
 }
 
 export interface VectorProviderResolution {
@@ -78,7 +93,7 @@ const PROVIDER_CAPABILITIES: Record<VectorProvider, VectorProviderCapabilities> 
   cloudflare_vectorize: {
     provider: "cloudflare_vectorize",
     minTopK: 1,
-    maxTopK: 100,
+    maxTopK: VECTORIZE_MAX_TOP_K_WITH_METADATA,
     supportsMetadataFilter: true,
     supportedDimensions: [768],
   },
@@ -123,6 +138,7 @@ const VECTORDB_SETTING_KEYS = [
   "pgvectorConnectTimeout",
   "vectorizeAccountId",
   "vectorizeApiToken",
+  "vectorizeIndexName",
 ] as const;
 const effectiveConfigCache = new Map<string, { expiresAt: number; value: VectorProviderConfig }>();
 
@@ -291,6 +307,7 @@ async function loadStoredVectorProviderConfig(params?: { tenantId?: string }): P
     pgvectorPassword: settingsMap.get("pgvectorPassword"),
     vectorizeAccountId: settingsMap.get("vectorizeAccountId"),
     vectorizeApiToken: settingsMap.get("vectorizeApiToken"),
+    vectorizeIndexName: settingsMap.get("vectorizeIndexName"),
   };
 
   try {
@@ -494,9 +511,10 @@ function cosineSimilarity(left: number[], right: number[]): number {
 }
 
 function requireCloudflareConfig(config?: VectorProviderConfig): { accountId: string; apiToken: string } {
-  const accountId = config?.vectorizeAccountId || process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken =
-    config?.vectorizeApiToken || process.env.VECTORIZE_API_TOKEN || process.env.CLOUDFLARE_AI_API_KEY;
+  const accountId = config?.vectorizeAccountId || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+  // Workers AI and Vectorize use different credentials. Never silently use
+  // the Workers AI key for a Vectorize data-plane operation.
+  const apiToken = config?.vectorizeApiToken || process.env.VECTORIZE_API_TOKEN;
 
   if (!accountId || !apiToken) {
     throw new VectorProviderError({
@@ -510,15 +528,55 @@ function requireCloudflareConfig(config?: VectorProviderConfig): { accountId: st
   return { accountId, apiToken };
 }
 
+function normalizeCloudflareMatches(
+  rawMatches: unknown,
+  filter?: VectorFilter,
+): VectorSearchMatch[] {
+  if (!Array.isArray(rawMatches)) {
+    throw new Error("Vectorize query returned an invalid match list");
+  }
+
+  return rawMatches.flatMap((rawMatch) => {
+    if (!rawMatch || typeof rawMatch !== "object") return [];
+    const match = rawMatch as Record<string, unknown>;
+    const id = typeof match.id === "string" ? match.id : "";
+    const score = typeof match.score === "number" ? match.score : Number(match.score);
+    const metadata = toVectorMetadata(match.metadata);
+    if (!id || !Number.isFinite(score) || !metadata.tenantId) return [];
+    if (filter?.tenantId !== undefined && String(metadata.tenantId) !== String(filter.tenantId)) {
+      throw new Error("Vectorize query returned a cross-tenant result");
+    }
+    return [{ id, score, metadata }];
+  });
+}
+
+function normalizeCloudflareVectors(rawVectors: unknown): VectorProviderVectorRecord[] {
+  if (!Array.isArray(rawVectors)) {
+    throw new Error("Vectorize get_by_ids returned an invalid vector list");
+  }
+
+  return rawVectors.map((rawVector) => {
+    if (!rawVector || typeof rawVector !== "object") {
+      throw new Error("Vectorize get_by_ids returned an invalid vector");
+    }
+    const vector = rawVector as Record<string, unknown>;
+    const id = typeof vector.id === "string" ? vector.id : "";
+    if (!id) throw new Error("Vectorize get_by_ids returned a vector without an ID");
+    return { id, metadata: toVectorMetadata(vector.metadata) };
+  });
+}
+
 function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): VectorProviderAdapter {
   return {
     capabilities: getProviderCapabilities("cloudflare_vectorize"),
 
     async index(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
-      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/indexes/${params.indexName}`;
+      validateVectorizeIndexName(params.indexName);
+      validateVectorizeEntries(params.vectors);
+      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
-        const ndjson = params.vectors.map((vector) => JSON.stringify(vector)).join("\n");
+        const ndjson = `${params.vectors.map((vector) => JSON.stringify(vector)).join("\n")}\n`;
         const response = await fetch(`${baseUrl}/upsert`, {
           method: "POST",
           headers: {
@@ -527,10 +585,18 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
           },
           body: ndjson,
         });
-        if (!response.ok) {
-          throw new Error(`Vectorize upsert failed: ${response.status}`);
+        if (!response.ok) throw new Error(`Vectorize upsert failed: ${response.status}`);
+        const data = (await response.json()) as { success?: boolean; result?: { mutationId?: string } };
+        if (data.success === false) throw new Error("Vectorize upsert rejected");
+        if (!data.result?.mutationId || typeof data.result.mutationId !== "string") {
+          throw new VectorProviderError({
+            provider: "cloudflare_vectorize",
+            code: "mutation_evidence_missing",
+            message: "Cloudflare Vectorize upsert mutation evidence is missing",
+            classification: "permanent",
+          });
         }
-        return { count: params.vectors.length };
+        return { count: params.vectors.length, mutationId: data.result.mutationId };
       } catch (error) {
         throw normalizeProviderError("cloudflare_vectorize", "index_failed", error);
       }
@@ -538,9 +604,11 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
 
     async delete(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
-      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/indexes/${params.indexName}`;
+      validateVectorizeIndexName(params.indexName);
+      validateVectorizeIds(params.ids);
+      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
-        const response = await fetch(`${baseUrl}/delete-by-ids`, {
+        const response = await fetch(`${baseUrl}/delete_by_ids`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${apiToken}`,
@@ -548,10 +616,18 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
           },
           body: JSON.stringify({ ids: params.ids }),
         });
-        if (!response.ok) {
-          throw new Error(`Vectorize delete failed: ${response.status}`);
+        if (!response.ok) throw new Error(`Vectorize delete failed: ${response.status}`);
+        const data = (await response.json()) as { success?: boolean; result?: { mutationId?: string } };
+        if (data.success === false) throw new Error("Vectorize delete rejected");
+        if (!data.result?.mutationId || typeof data.result.mutationId !== "string") {
+          throw new VectorProviderError({
+            provider: "cloudflare_vectorize",
+            code: "mutation_evidence_missing",
+            message: "Cloudflare Vectorize delete mutation evidence is missing",
+            classification: "permanent",
+          });
         }
-        return { count: params.ids.length };
+        return { count: params.ids.length, mutationId: data.result.mutationId };
       } catch (error) {
         throw normalizeProviderError("cloudflare_vectorize", "delete_failed", error);
       }
@@ -559,7 +635,9 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
 
     async search(params) {
       const { accountId, apiToken } = requireCloudflareConfig(config);
-      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/indexes/${params.indexName}`;
+      validateVectorizeIndexName(params.indexName);
+      validateVectorizeQuery(params);
+      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
       try {
         const response = await fetch(`${baseUrl}/query`, {
           method: "POST",
@@ -571,7 +649,7 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
             vector: params.vector,
             topK: params.topK,
             filter: params.filter,
-            returnMetadata: true,
+            returnMetadata: "all",
           }),
         });
         if (!response.ok) {
@@ -579,14 +657,47 @@ function createCloudflareVectorizeAdapter(config?: VectorProviderConfig): Vector
         }
 
         const data = (await response.json()) as {
+          success?: boolean;
           result?: {
             matches?: VectorSearchMatch[];
           };
         };
 
-        return { matches: data.result?.matches || [] };
+        if (data.success === false) throw new Error("Vectorize query rejected");
+        return { matches: normalizeCloudflareMatches(data.result?.matches, params.filter) };
       } catch (error) {
         throw normalizeProviderError("cloudflare_vectorize", "search_failed", error);
+      }
+    },
+
+    async getByIds(params) {
+      const { accountId, apiToken } = requireCloudflareConfig(config);
+      validateVectorizeIndexName(params.indexName);
+      validateVectorizeIds(params.ids);
+      const baseUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/vectorize/${VECTORIZE_API_VERSION}/indexes/${params.indexName}`;
+      try {
+        const response = await fetch(`${baseUrl}/get_by_ids`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ ids: params.ids }),
+        });
+        if (!response.ok) throw new Error(`Vectorize get_by_ids failed: ${response.status}`);
+        const data = (await response.json()) as {
+          success?: boolean;
+          result?: { vectors?: unknown[] } | unknown[];
+        };
+        if (data.success === false) throw new Error("Vectorize get_by_ids rejected");
+        const rawVectors = Array.isArray(data.result)
+          ? data.result
+          : data.result && typeof data.result === "object"
+            ? data.result.vectors
+            : undefined;
+        return normalizeCloudflareVectors(rawVectors);
+      } catch (error) {
+        throw normalizeProviderError("cloudflare_vectorize", "get_by_ids_failed", error);
       }
     },
   };
@@ -896,6 +1007,72 @@ export function createVectorProviderAdapter(
   return createDefaultAdapter(provider, config);
 }
 
+export async function verifyVectorizeVectorOwnership(params: {
+  indexName: string;
+  ids: string[];
+  tenantId: string;
+  itemId?: number;
+  providerConfig?: VectorProviderConfig;
+  allowMissing?: boolean;
+}): Promise<VectorProviderVectorRecord[]> {
+  const resolved = resolveVectorProvider("delete", params.providerConfig);
+  if (resolved.provider !== "cloudflare_vectorize" || params.ids.length === 0) return [];
+
+  validateVectorizeIndexName(params.indexName);
+  validateVectorizeIds(params.ids);
+  const adapter = getAdapter(resolved.provider, params.providerConfig);
+  if (!adapter.getByIds) {
+    throw new VectorProviderError({
+      provider: "cloudflare_vectorize",
+      code: "get_by_ids_unsupported",
+      message: "Cloudflare Vectorize ownership verification is unavailable",
+      classification: "permanent",
+    });
+  }
+
+  const records = await adapter.getByIds({ indexName: params.indexName, ids: params.ids });
+  if (params.allowMissing && records.length === 0) return [];
+  const requestedIds = new Set(params.ids);
+  const returnedIds = records.map((record) => record.id);
+  if (
+    records.length !== requestedIds.size
+    || new Set(returnedIds).size !== returnedIds.length
+    || new Set(returnedIds).size !== requestedIds.size
+    || returnedIds.some((id) => !requestedIds.has(id))
+  ) {
+    throw new VectorProviderError({
+      provider: "cloudflare_vectorize",
+      code: "vector_scope_invalid",
+      message: "Cloudflare Vectorize returned incomplete or unexpected vector ownership evidence",
+      classification: "permanent",
+    });
+  }
+
+  for (const record of records) {
+    if (String(record.metadata.tenantId) !== String(params.tenantId)) {
+      throw new VectorProviderError({
+        provider: "cloudflare_vectorize",
+        code: "vector_scope_invalid",
+        message: "Cloudflare Vectorize returned a cross-tenant vector",
+        classification: "permanent",
+      });
+    }
+    if (params.itemId !== undefined) {
+      const candidate = record.metadata.itemId;
+      if (candidate === undefined || Number(candidate) !== params.itemId) {
+        throw new VectorProviderError({
+          provider: "cloudflare_vectorize",
+          code: "vector_scope_invalid",
+          message: "Cloudflare Vectorize returned a vector for another item",
+          classification: "permanent",
+      });
+    }
+  }
+
+  return records;
+}
+}
+
 export async function dispatchVectorOperation(params:
   | {
       operation: "index";
@@ -917,11 +1094,12 @@ export async function dispatchVectorOperation(params:
       filter?: Record<string, string | number | boolean>;
       providerConfig?: VectorProviderConfig;
     },
-): Promise<{ count: number } | { matches: VectorSearchMatch[] }> {
+): Promise<{ count: number; mutationId?: string } | { matches: VectorSearchMatch[] }> {
   const resolved = resolveVectorProvider(params.operation, params.providerConfig);
   const adapter = getAdapter(resolved.provider, params.providerConfig);
 
   if (params.operation === "index") {
+    if (resolved.provider === "cloudflare_vectorize") validateVectorizeEntries(params.vectors);
     const dimension = params.vectors[0]?.values.length;
     validateProviderCapabilityRequest({
       capabilities: adapter.capabilities,
@@ -931,9 +1109,14 @@ export async function dispatchVectorOperation(params:
   }
 
   if (params.operation === "delete") {
+    if (resolved.provider === "cloudflare_vectorize") {
+      validateVectorizeIndexName(params.indexName);
+      validateVectorizeIds(params.ids);
+    }
     return adapter.delete({ indexName: params.indexName, ids: params.ids });
   }
 
+  if (resolved.provider === "cloudflare_vectorize") validateVectorizeQuery(params);
   validateProviderCapabilityRequest({
     capabilities: adapter.capabilities,
     request: {
@@ -964,8 +1147,9 @@ export function getVectorProviderConfigFromEnv(): VectorProviderConfig {
     pgvectorUser: process.env.PGVECTOR_USER,
     pgvectorPassword: process.env.PGVECTOR_PASSWORD,
     pgvectorConnectTimeout: process.env.PGVECTOR_CONNECT_TIMEOUT,
-    vectorizeAccountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-    vectorizeApiToken: process.env.VECTORIZE_API_TOKEN || process.env.CLOUDFLARE_AI_API_KEY,
+    vectorizeAccountId: process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID,
+    vectorizeApiToken: process.env.VECTORIZE_API_TOKEN,
+    vectorizeIndexName: process.env.VECTORIZE_INDEX_NAME || process.env.VECTORIZE_LIBRARY_INDEX,
   };
 }
 

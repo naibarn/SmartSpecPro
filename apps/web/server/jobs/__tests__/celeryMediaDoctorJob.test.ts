@@ -14,7 +14,7 @@ vi.mock("../../services/celeryMediaDoctorService", () => ({
 }));
 vi.mock("../../services/systemAutoReportService", () => ({ reportSystemFailure: mockReport }));
 
-import { runCeleryMediaDoctorMonitorOnce } from "../celeryMediaDoctorJob";
+import { initializeCeleryMediaDoctorJob, runCeleryMediaDoctorMonitorOnce } from "../celeryMediaDoctorJob";
 
 const healthyWorkers = {
   media: { status: "running", duplicate: false },
@@ -44,6 +44,16 @@ describe("celeryMediaDoctorJob monitor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockShouldInvokeSafeRepair.mockReturnValue(false);
+    delete process.env.FEATURE_186_HARD_CUTOVER;
+    delete process.env.FEATURE_186_CLOUDFLARE_HARD_CUTOVER;
+  });
+
+  it("does not initialize the retired Celery doctor during Cloudflare hard cutover", async () => {
+    process.env.FEATURE_186_HARD_CUTOVER = "true";
+
+    await initializeCeleryMediaDoctorJob();
+
+    expect(mockGetStatus).not.toHaveBeenCalled();
   });
 
   it("does not report a normal backlog when the user's three slots are occupied", async () => {

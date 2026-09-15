@@ -142,6 +142,11 @@ import {
 } from "@/lib/hermesErrorPresentation";
 import { isCharacterLockPolicyFailureMessage } from "@shared/verticalDramaSeries/characterLock";
 import { buildVerticalDramaUnifiedStoryboardData } from "@/lib/verticalDramaStoryboardData";
+import {
+  normalizeVerticalDramaEpisodeStoryPlanShots,
+  resolveVerticalDramaEpisodeStorySummary,
+  type VerticalDramaEpisodeStoryPlanView,
+} from "@/lib/verticalDramaEpisodeStoryPlan";
 import type { VerticalDramaProductionWizardState } from "@shared/verticalDramaSeries/productionWizard";
 import {
   buildSceneShotGroups,
@@ -3292,6 +3297,62 @@ function EpisodeWorkspaceShell({
     );
   const specialTieInSkillRun = specialTieInStatusQuery.data?.skillRun;
   const specialPromptReady = Boolean(specialTieInStatusQuery.data?.promptReady);
+  const episodeStoryPlan =
+    useMemo<VerticalDramaEpisodeStoryPlanView | null>(() => {
+      if (isSpecialTieInEpisode) {
+        const specialStatus = specialTieInStatusQuery.data?.skillRun?.status;
+        if (
+          specialStatus !== "succeeded" &&
+          specialStatus !== "needs_clarification"
+        ) {
+          return null;
+        }
+        const output = specialTieInStatusQuery.data?.output as
+          | {
+              episodeSummary?: unknown;
+              storySummaries?: unknown;
+            }
+          | null
+          | undefined;
+        const input = specialTieInStatusQuery.data?.input as
+          | Pick<SpecialTieInInput, "idea">
+          | null
+          | undefined;
+        const shots = normalizeVerticalDramaEpisodeStoryPlanShots(
+          output?.storySummaries
+        );
+        const summary = resolveVerticalDramaEpisodeStorySummary({
+          selectedIdea: input?.idea,
+          legacyEpisodeSummary: output?.episodeSummary,
+          shots,
+          shotLabel: lang === "th" ? "ช็อต" : "Shot",
+        });
+        if (shots.length === 0 && !summary) return null;
+        return {
+          summary,
+          shots,
+        };
+      }
+
+      const authoredShots = normalizeVerticalDramaEpisodeStoryPlanShots(
+        episodeDetailQuery.data?.episodePlan?.shotDrafts
+      );
+      const shots =
+        authoredShots.length > 0
+          ? authoredShots
+          : normalizeVerticalDramaEpisodeStoryPlanShots(
+              unifiedStoryboardData.canonicalShotDrafts
+            );
+      return shots.length > 0 ? { summary: null, shots } : null;
+    }, [
+      episodeDetailQuery.data?.episodePlan?.shotDrafts,
+      isSpecialTieInEpisode,
+      lang,
+      specialTieInStatusQuery.data?.skillRun?.status,
+      specialTieInStatusQuery.data?.input,
+      specialTieInStatusQuery.data?.output,
+      unifiedStoryboardData.canonicalShotDrafts,
+    ]);
   const retrySpecialTieInMutation =
     trpc.verticalDramaEpisodes.retrySpecialTieInEpisode.useMutation({
       onMutate: variables => {
@@ -10589,6 +10650,7 @@ function EpisodeWorkspaceShell({
               ? null
               : (episodeDetailQuery.data?.episodePlan ?? null)
           }
+          episodeStoryPlan={episodeStoryPlan}
           // Task #26 (data sanity — episode number beyond the planned season
           // size) — sourced from the SEPARATE `episodeBreakdownStatusQuery`
           // (not `episodeDetailQuery`, see that hook's own doc comment).

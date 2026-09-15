@@ -19,10 +19,11 @@
  * (`text-[10px] font-medium uppercase tracking-wide text-muted-foreground`).
  */
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { VerticalDramaLang } from "./verticalDramaCopy";
 import { vdCopy } from "./verticalDramaWorkspaceCopy";
+import type { VerticalDramaEpisodeStoryPlanView } from "@/lib/verticalDramaEpisodeStoryPlan";
 
 export interface VerticalDramaEpisodePlanSummaryView {
   workingTitle: string;
@@ -34,6 +35,8 @@ export interface VerticalDramaEpisodePlanSummaryView {
 export interface VerticalDramaEpisodePlanPanelProps {
   lang: VerticalDramaLang;
   episodePlan: VerticalDramaEpisodePlanSummaryView | null;
+  /** Normalized shot summaries for normal or Special Tie-in episodes. */
+  storyPlan?: VerticalDramaEpisodeStoryPlanView | null;
   className?: string;
 }
 
@@ -59,9 +62,13 @@ function PlanField({
 export function VerticalDramaEpisodePlanPanel({
   lang,
   episodePlan,
+  storyPlan = null,
   className,
 }: VerticalDramaEpisodePlanPanelProps) {
   const t = vdCopy(lang);
+  const [shotsExpanded, setShotsExpanded] = useState(false);
+  const shotSummaries = storyPlan?.shots ?? [];
+  const shotsRegionId = "vd-episode-plan-shot-summaries";
 
   return (
     <section
@@ -112,6 +119,18 @@ export function VerticalDramaEpisodePlanPanel({
             </PlanField>
           ) : null}
         </div>
+      ) : storyPlan?.summary ? (
+        <PlanField
+          label={t.episodePlanLoglineLabel}
+          testId="vd-episode-plan-logline"
+        >
+          <p
+            className="whitespace-pre-wrap text-muted-foreground"
+            data-testid="vd-episode-plan-story-summary"
+          >
+            {storyPlan.summary}
+          </p>
+        </PlanField>
       ) : (
         <p
           className="text-muted-foreground"
@@ -120,6 +139,58 @@ export function VerticalDramaEpisodePlanPanel({
           {t.episodePlanEmptyState}
         </p>
       )}
+
+      {shotSummaries.length > 0 ? (
+        <section
+          className="mt-4 border-t border-border pt-3"
+          data-testid="vd-episode-plan-shot-summary-section"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {t.episodePlanShotSummaryLabel} ({shotSummaries.length})
+            </p>
+            <button
+              type="button"
+              className="shrink-0 text-xs font-medium text-primary underline-offset-2 hover:underline"
+              aria-expanded={shotsExpanded}
+              aria-controls={shotsRegionId}
+              onClick={() => setShotsExpanded(value => !value)}
+              data-testid="vd-episode-plan-shot-summary-toggle"
+            >
+              {shotsExpanded
+                ? t.episodePlanShotSummaryCollapse
+                : t.episodePlanShotSummaryExpand}
+            </button>
+          </div>
+
+          {storyPlan?.summary && episodePlan ? (
+            <p
+              className="mt-2 whitespace-pre-wrap text-muted-foreground"
+              data-testid="vd-episode-plan-story-summary"
+            >
+              {storyPlan.summary}
+            </p>
+          ) : null}
+
+          {shotsExpanded ? (
+            <ol
+              id={shotsRegionId}
+              className="mt-3 flex list-decimal flex-col gap-2 pl-5 text-muted-foreground"
+              data-testid="vd-episode-plan-shot-summary-list"
+            >
+              {shotSummaries.map(shot => (
+                <li
+                  key={shot.shotNumber}
+                  className="whitespace-pre-wrap pl-1"
+                  data-testid={`vd-episode-plan-shot-${shot.shotNumber}`}
+                >
+                  {shot.summary}
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </section>
+      ) : null}
     </section>
   );
 }

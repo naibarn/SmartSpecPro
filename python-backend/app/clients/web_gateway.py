@@ -25,7 +25,18 @@ def _auth_headers(trace_id: str, user_token: Optional[str] = None) -> Dict[str, 
         # Also send as x-user-token for SmartSpecWeb to identify user
         h["x-user-token"] = user_token
     elif settings.SMARTSPEC_WEB_GATEWAY_TOKEN:
-        h["Authorization"] = f"Bearer {settings.SMARTSPEC_WEB_GATEWAY_TOKEN}"
+        # Durable jobs must not carry a user bearer token. Use the internal
+        # service boundary and bind credit accounting to the canonical job's
+        # requested user instead.
+        h["x-internal-token"] = settings.SMARTSPEC_WEB_GATEWAY_TOKEN
+        try:
+            from app.services.job_execution_context import current_user_id
+
+            user_id = current_user_id()
+            if user_id is not None:
+                h["x-user-id"] = str(user_id)
+        except ImportError:
+            pass
     
     return h
 

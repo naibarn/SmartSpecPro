@@ -33,6 +33,11 @@ function isPlaywrightBackedFlag(flagName: string): boolean {
  * Returns false by default — features are opt-in unless explicitly enabled.
  */
 export async function getFeatureFlag(flagName: string): Promise<boolean> {
+  if (flagName === "USE_CLOUD_TASKS") {
+    // This flag belonged to the retired Google runtime. Keep reads
+    // fail-closed so stale Redis/DB values cannot reactivate it.
+    return false;
+  }
   if (isPlaywrightBackedFlag(flagName) && isPlaywrightGloballyDisabled()) {
     return false;
   }
@@ -66,6 +71,9 @@ export async function setFeatureFlag(
   flagName: string,
   value: boolean,
 ): Promise<void> {
+  if (flagName === "USE_CLOUD_TASKS") {
+    throw new Error("GOOGLE_CLOUD_RUNTIME_RETIRED");
+  }
   const redis = getRedisClient();
   await redis.set(`feature-flag:${flagName}`, value ? "true" : "false");
 }

@@ -23,12 +23,50 @@ type OutboxResult = {
 
 export type JobAdapterResolver = (input: { runtimeType: string; executionClass: string; jobType: string }) => JobTransportAdapter | undefined;
 
+/**
+ * Cloudflare Queue publication has no queryable native message identity in
+ * the current target-account seam. A lost HTTP response is therefore an
+ * ambiguous remote side effect, not an ordinary retryable transport error.
+ */
+export function requiresCloudflarePublishQuarantine(adapterName: string): boolean {
+  return adapterName === "cloudflare-queues";
+}
+
 function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
 function backoff(attempts: number): number {
   return Math.min(15 * 60_000, 1000 * 2 ** Math.max(0, attempts - 1));
+}
+
+export function buildOperatorReviewPatch(reason: string): {
+  operatorReviewRequired: true;
+  operatorReviewReason: string;
+} {
+  return {
+    operatorReviewRequired: true,
+    operatorReviewReason: reason.slice(0, 500),
+  };
+}
+
+async function markJobOperatorReview(query: any, workerJobId: string, reason: string): Promise<void> {
+  await query.update(workerJobs).set(buildOperatorReviewPatch(reason)).where(eq(workerJobs.id, workerJobId));
+}
+
+export function buildDispatchEventPayload(input: {
+  adapter: string;
+  referenceNamespace: string;
+  dispatchId: string;
+  providerJobId?: string;
+  queueJobId?: string;
+  celeryTaskId?: string;
+  workflowInstanceId?: string;
+  containerInstanceId?: string;
+}): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  );
 }
 
 export async function publishJobOutboxRow(
@@ -99,6 +137,14 @@ export async function publishJobOutboxRow(
     reference = await adapter.publish(request);
   } catch (error) {
     const message = error instanceof Error ? error.message.slice(0, 2000) : "transport_publish_failed";
+    if (requiresCloudflarePublishQuarantine(adapter.name)) {
+      return quarantineOutbox(
+        outboxId,
+        publisherLeaseTokenHash,
+        `cloudflare_publish_ambiguous:${message}`,
+        now,
+      );
+    }
     return recordPublishFailure(outboxId, publisherLeaseTokenHash, message, claimed.publishAttempts, now);
   }
   if (
@@ -136,13 +182,16 @@ export async function publishJobOutboxRow(
       eventType: "DISPATCHED",
       attemptId: reference.attemptId,
       eventIdempotencyKey: `dispatched:${claimed.dedupeKey}`,
-      payloadJson: {
+      payloadJson: buildDispatchEventPayload({
         adapter: reference.adapter,
         referenceNamespace: reference.referenceNamespace,
         dispatchId: reference.dispatchId,
+        providerJobId: reference.providerJobId,
         queueJobId: reference.queueJobId,
         celeryTaskId: reference.celeryTaskId,
-      },
+        workflowInstanceId: reference.workflowInstanceId,
+        containerInstanceId: reference.containerInstanceId,
+      }),
     });
     const [published] = await query.update(workerJobOutbox).set({
       publishedAt: now,
@@ -152,7 +201,10 @@ export async function publishJobOutboxRow(
     }).where(and(
       eq(workerJobOutbox.id, claimed.id),
       eq(workerJobOutbox.publisherLeaseTokenHash, publisherLeaseTokenHash),
-      eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion + 1),
+      // The claim UPDATE already returned the incremented fencing version.
+      // Comparing with +1 here made every successful publish look stale after
+      // its dispatch/event were written, leaving publishedAt NULL forever.
+      eq(workerJobOutbox.publisherFencingVersion, claimed.publisherFencingVersion),
       isNull(workerJobOutbox.cancelledAt),
     )).returning({ id: workerJobOutbox.id });
     cancellationWon = !published;
@@ -181,11 +233,12 @@ async function recordPublishFailure(
   now: Date,
 ): Promise<OutboxResult> {
   const quarantined = attempts >= MAX_PUBLISH_ATTEMPTS;
+  let applied = false;
   await db.transaction(async tx => {
     const query = tx as any;
     const [row] = await query.select().from(workerJobOutbox).where(eq(workerJobOutbox.id, outboxId)).limit(1);
     if (!row) return;
-    await query.update(workerJobOutbox).set({
+    const [updated] = await query.update(workerJobOutbox).set({
       failedReason: message,
       quarantinedAt: quarantined ? now : null,
       operatorReviewReason: quarantined ? message : null,
@@ -193,7 +246,10 @@ async function recordPublishFailure(
       publisherLeaseTokenHash: null,
       publisherLeaseExpiresAt: null,
       updatedAt: now,
-    }).where(and(eq(workerJobOutbox.id, outboxId), eq(workerJobOutbox.publisherLeaseTokenHash, tokenHash)));
+    }).where(and(eq(workerJobOutbox.id, outboxId), eq(workerJobOutbox.publisherLeaseTokenHash, tokenHash))).returning({ id: workerJobOutbox.id });
+    if (!updated) return;
+    applied = true;
+    if (quarantined) await markJobOperatorReview(query, row.workerJobId, message);
     await appendJobEvent(query, {
       workerJobId: row.workerJobId,
       eventType: "DISPATCH_FAILED",
@@ -201,21 +257,25 @@ async function recordPublishFailure(
       payloadJson: { outboxId, reason: message, quarantined },
     });
   });
-  return { outboxId, state: quarantined ? "quarantined" : "retry_scheduled" };
+  return { outboxId, state: !applied ? "skipped" : quarantined ? "quarantined" : "retry_scheduled" };
 }
 
 async function quarantineOutbox(outboxId: string, tokenHash: string, reason: string, now: Date): Promise<OutboxResult> {
+  let applied = false;
   await db.transaction(async tx => {
     const query = tx as any;
     const [row] = await query.select().from(workerJobOutbox).where(eq(workerJobOutbox.id, outboxId)).limit(1);
-    await query.update(workerJobOutbox).set({
+    const [updated] = await query.update(workerJobOutbox).set({
       quarantinedAt: now,
       operatorReviewReason: reason,
       failedReason: reason,
       publisherLeaseTokenHash: null,
       publisherLeaseExpiresAt: null,
       updatedAt: now,
-    }).where(and(eq(workerJobOutbox.id, outboxId), eq(workerJobOutbox.publisherLeaseTokenHash, tokenHash)));
+    }).where(and(eq(workerJobOutbox.id, outboxId), eq(workerJobOutbox.publisherLeaseTokenHash, tokenHash))).returning({ id: workerJobOutbox.id });
+    if (!updated) return;
+    applied = true;
+    if (row) await markJobOperatorReview(query, row.workerJobId, reason);
     if (row) await appendJobEvent(query, {
       workerJobId: row.workerJobId,
       eventType: "DISPATCH_FAILED",
@@ -223,7 +283,7 @@ async function quarantineOutbox(outboxId: string, tokenHash: string, reason: str
       payloadJson: { outboxId, reason, quarantined: true },
     });
   });
-  return { outboxId, state: "quarantined" };
+  return { outboxId, state: applied ? "quarantined" : "skipped" };
 }
 
 async function quarantineUnclaimedOutbox(outboxId: string, reason: string, now: Date): Promise<OutboxResult> {
@@ -239,12 +299,15 @@ async function quarantineUnclaimedOutbox(outboxId: string, reason: string, now: 
       eq(workerJobOutbox.id, outboxId),
       isNull(workerJobOutbox.publishedAt),
     )).returning({ id: workerJobOutbox.id });
-    if (row && updated) await appendJobEvent(query, {
-      workerJobId: row.workerJobId,
-      eventType: "DISPATCH_FAILED",
-      eventIdempotencyKey: `dispatch-quarantined:${outboxId}:unclaimed`,
-      payloadJson: { outboxId, reason, quarantined: true },
-    });
+    if (row && updated) {
+      await markJobOperatorReview(query, row.workerJobId, reason);
+      await appendJobEvent(query, {
+        workerJobId: row.workerJobId,
+        eventType: "DISPATCH_FAILED",
+        eventIdempotencyKey: `dispatch-quarantined:${outboxId}:unclaimed`,
+        payloadJson: { outboxId, reason, quarantined: true },
+      });
+    }
   });
   return { outboxId, state: "quarantined" };
 }
@@ -270,7 +333,11 @@ export async function publishPendingJobOutbox(
   for (const row of rows) {
     const adapter = resolveAdapter?.(row) ?? adapters.get(row.runtimeType) ?? adapters.get("default");
     if (!adapter) {
-      results.push(await quarantineUnclaimedOutbox(row.id, "adapter_not_registered", now));
+      // Compatibility runtimes may be initialized in another process. A
+      // reconciler without that binding must not turn a valid unpublished
+      // intent into an irreversible quarantine; the outbox age/adapter
+      // metrics remain the operator signal until the owner is online.
+      results.push({ outboxId: row.id, state: "skipped" });
       continue;
     }
     results.push(await publishJobOutboxRow(row.id, adapter, now));

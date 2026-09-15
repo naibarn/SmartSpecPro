@@ -16,6 +16,8 @@ import httpx
 import structlog
 from PIL import Image
 
+from app.core.media_job_validators import MEDIA_PIPELINE_PERMANENT_MARKER
+
 logger = structlog.get_logger()
 
 # Thumbnail settings
@@ -54,7 +56,7 @@ async def download_media(
     try:
         validate_provider_result_uri(result_url)
     except ValueError as e:
-        raise MediaPipelineError(f"Blocked URL: {e}") from e
+        raise MediaPipelineError(f"{MEDIA_PIPELINE_PERMANENT_MARKER}: Blocked URL: {e}") from e
 
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(300.0, connect=10.0),
@@ -107,10 +109,14 @@ async def _get_with_validated_redirects(
         try:
             validate_provider_result_uri(next_url)
         except ValueError as exc:
-            raise MediaPipelineError(f"Blocked redirect URL: {exc}") from exc
+            raise MediaPipelineError(
+                f"{MEDIA_PIPELINE_PERMANENT_MARKER}: Blocked redirect URL: {exc}"
+            ) from exc
         current_url = next_url
 
-    raise MediaPipelineError("Too many redirects while downloading provider result")
+    raise MediaPipelineError(
+        f"{MEDIA_PIPELINE_PERMANENT_MARKER}: too many redirects while downloading provider result"
+    )
 
 
 async def generate_thumbnail(

@@ -24,3 +24,8 @@ export function useWorkerAppContext(): WorkerAppContextValue {
   if (!value) throw new Error("useWorkerAppContext must be used inside WorkerAppProvider");
   return value;
 }
+
+/** Standalone editor fixtures retain the original Thai copy. */
+export function useWorkerLocale(): WorkerLocale {
+  return useContext(WorkerAppContext)?.locale ?? "th";
+}

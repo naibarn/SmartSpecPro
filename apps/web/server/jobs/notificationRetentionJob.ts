@@ -9,6 +9,8 @@ import { Queue, Worker } from "bullmq";
 import { sql, eq, and, lt, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { userNotifications } from "../../drizzle/schema";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcDailyDue } from "./feature186SystemScheduler";
+import { upsertLegacyBullMqScheduler } from "../services/jobLegacyTransportAdapters";
 
 // ─── Constants ───
 
@@ -159,6 +161,20 @@ let retentionQueue: Queue | null = null;
 let retentionWorker: Worker | null = null;
 
 export async function initializeRetentionJob(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    startFeature186SystemSchedule({
+      scheduleId: "notification-retention",
+      jobType: "notification.retention",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: utcDailyDue(3, 0),
+      occurrenceKey: now => now.toISOString().slice(0, 10),
+      intervalMs: 60_000,
+    });
+    return;
+  }
   if (retentionQueue) return;
 
   const { getRealtimeClient } = await import("../services/redisClients");
@@ -173,7 +189,7 @@ export async function initializeRetentionJob(): Promise<void> {
   });
 
   // Register daily job at 03:00 UTC
-  await retentionQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(retentionQueue,
     "retention-cleanup",
     { pattern: "0 3 * * *" },
     { name: "retention-cleanup" }
@@ -200,6 +216,7 @@ export async function initializeRetentionJob(): Promise<void> {
 }
 
 export async function shutdownRetentionJob(): Promise<void> {
+  stopFeature186SystemSchedule("notification-retention");
   if (retentionWorker) {
     await retentionWorker.close();
     retentionWorker = null;

@@ -147,7 +147,7 @@ async def test_vectordb_health_uses_cloudflare_env_fallbacks(monkeypatch):
     monkeypatch.delenv("VECTORIZE_API_TOKEN", raising=False)
     monkeypatch.delenv("CF_VECTORIZE_API_TOKEN", raising=False)
     monkeypatch.setenv("CLOUDFLARE_ACCOUNT_ID", "cf-account-fallback")
-    monkeypatch.setenv("CLOUDFLARE_AI_API_KEY", "cf-token-fallback")
+    monkeypatch.setenv("CF_VECTORIZE_API_TOKEN", "cf-vectorize-token-fallback")
 
     result = await admin_api.get_vectordb_health(
         request=SimpleNamespace(),
@@ -157,5 +157,5 @@ async def test_vectordb_health_uses_cloudflare_env_fallbacks(monkeypatch):
     )
 
     config = result["provider_diagnostics"]["config_masked"]
-    assert config["account_id"] == "cf-account-fallback"
-    assert config["api_token"] == "cf-token-fallback"
+    assert config["account_id_configured"] is True
+    assert config["api_token_configured"] is True

@@ -15,6 +15,12 @@ from typing import Any, Optional
 
 import httpx
 import structlog
+from urllib.parse import urljoin
+
+from app.core.media_job_validators import (
+    validate_provider_reference_url,
+    validate_provider_result_uri,
+)
 
 logger = structlog.get_logger()
 
@@ -79,6 +85,7 @@ def _extract_audio_base64(payload: Any) -> Optional[str]:
 class OmniVoiceProvider:
     DEFAULT_TTS_PATH = "/tts"
     MAX_REFERENCE_AUDIO_BYTES = 10 * 1024 * 1024
+    MAX_RESULT_REDIRECTS = 3
     AUDIO_MODELS: frozenset[str] = frozenset({
         "omnivoice-tts",
         "omnivoice/multilingual-tts",
@@ -91,7 +98,7 @@ class OmniVoiceProvider:
 
         self.base_url = normalized_base_url
         self.tts_path = str(tts_path or self.DEFAULT_TTS_PATH).strip() or self.DEFAULT_TTS_PATH
-        self.client = httpx.AsyncClient(timeout=180.0, follow_redirects=True)
+        self.client = httpx.AsyncClient(timeout=180.0, follow_redirects=False)
         self._headers = {"Content-Type": "application/json"}
         if api_key and api_key.strip():
             self._headers["Authorization"] = f"Bearer {api_key.strip()}"
@@ -129,6 +136,7 @@ class OmniVoiceProvider:
                 raise ValueError("OmniVoice reference audio exceeds the 10 MB limit")
             payload["reference_audio_base64"] = reference_audio_base64
         if reference_audio_url:
+            validate_provider_reference_url(reference_audio_url)
             payload["reference_audio_url"] = reference_audio_url
         if reference_text:
             payload["reference_text"] = reference_text
@@ -151,8 +159,28 @@ class OmniVoiceProvider:
 
         audio_url = _extract_audio_url(payload_json)
         if audio_url:
-            audio_response = await self.client.get(audio_url, headers=self._headers)
-            audio_response.raise_for_status()
-            return audio_response.content
+            return await self._download_result_audio(audio_url)
 
         raise ValueError("OmniVoice provider returned neither audio bytes nor a resolvable audio URL")
+
+    async def _download_result_audio(self, url: str) -> bytes:
+        """Fetch provider output while validating every redirect target."""
+        validate_provider_result_uri(url)
+        current_url = url
+        for _ in range(self.MAX_RESULT_REDIRECTS + 1):
+            response = await self.client.get(
+                current_url,
+                headers=self._headers,
+                follow_redirects=False,
+            )
+            if response.status_code not in {301, 302, 303, 307, 308}:
+                response.raise_for_status()
+                return response.content
+            location = response.headers.get("location")
+            if not location:
+                response.raise_for_status()
+                return response.content
+            next_url = urljoin(str(response.url), location)
+            validate_provider_result_uri(next_url)
+            current_url = next_url
+        raise ValueError("MEDIA_PIPELINE_PERMANENT: too many OmniVoice result redirects")

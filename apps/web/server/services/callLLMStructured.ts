@@ -577,6 +577,11 @@ async function callLLMStructuredLegacy<T>(
   const fixedSkillRunId = typeof billingMetadata?.skillSlug === "string"
     ? String(billingMetadata.skillRunId ?? randomUUID())
     : undefined;
+  const genericIdempotencyKey =
+    typeof billingMetadata?.idempotencyKey === "string" &&
+    billingMetadata.idempotencyKey.trim().length > 0
+      ? billingMetadata.idempotencyKey.trim()
+      : undefined;
 
   const augmentedSystemPrompt = `${systemPrompt}
 
@@ -729,7 +734,7 @@ The JSON must strictly conform to the expected schema.`;
       tenantId,
       description: billingDescription,
       skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
-      idempotencyKey: fixedSkillRunId,
+      idempotencyKey: fixedSkillRunId ?? genericIdempotencyKey,
       metadata: {
         requestType: "structured_llm",
         structured: true,

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useWorkerLocale } from "../../app/workerContext";
 import type { NleClip } from "../../types/nleProject";
 
 interface StockSvgModalProps {
@@ -229,6 +230,8 @@ export function StockSvgModal({
   onAddSvgClip,
   currentTimeMs,
 }: StockSvgModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => (locale === "en" ? en : th);
   const [selectedCategory, setSelectedCategory] = useState<"all" | "social" | "sales" | "arrows" | "badges" | "ui">("all");
   const [selectedSvg, setSelectedSvg] = useState<StockSvgItem>(STOCK_SVGS[0]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -311,9 +314,9 @@ export function StockSvgModal({
         <div className="nle-modal-header">
           <div className="modal-header-title">
             <span className="modal-icon">⭐</span>
-            <h3>คลังสติกเกอร์ / เวกเตอร์กราฟิก (Stock SVG Library)</h3>
+            <h3>{t("คลังสติกเกอร์และเวกเตอร์", "Stock sticker and vector library")}</h3>
           </div>
-          <button type="button" className="modal-close-btn" onClick={onClose} title="ปิดหน้าต่าง (Esc)">
+          <button type="button" className="modal-close-btn" onClick={onClose} title={t("ปิดหน้าต่าง (Esc)", "Close dialog (Esc)")}>
             ✕
           </button>
         </div>
@@ -324,7 +327,7 @@ export function StockSvgModal({
             <input
               type="text"
               className="font-select-field"
-              placeholder="🔍 ค้นหาไอคอนเวกเตอร์ / สติกเกอร์..."
+              placeholder={t("🔍 ค้นหาไอคอนเวกเตอร์หรือสติกเกอร์...", "🔍 Search vector icons or stickers...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ width: "100%" }}
@@ -338,42 +341,42 @@ export function StockSvgModal({
               className={`svg-cat-btn ${selectedCategory === "all" ? "active" : ""}`}
               onClick={() => setSelectedCategory("all")}
             >
-              ทั้งหมด ({categoryCounts.all})
+              {t("ทั้งหมด", "All")} ({categoryCounts.all})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "social" ? "active" : ""}`}
               onClick={() => setSelectedCategory("social")}
             >
-              📱 โซเชียล ({categoryCounts.social})
+              📱 {t("โซเชียล", "Social")} ({categoryCounts.social})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "sales" ? "active" : ""}`}
               onClick={() => setSelectedCategory("sales")}
             >
-              🏷️ ขาย ({categoryCounts.sales})
+              🏷️ {t("ขาย", "Sales")} ({categoryCounts.sales})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "arrows" ? "active" : ""}`}
               onClick={() => setSelectedCategory("arrows")}
             >
-              🎯 ลูกศร ({categoryCounts.arrows})
+              🎯 {t("ลูกศร", "Arrows")} ({categoryCounts.arrows})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "badges" ? "active" : ""}`}
               onClick={() => setSelectedCategory("badges")}
             >
-              🛡️ ตรา ({categoryCounts.badges})
+              🛡️ {t("ตรา", "Badges")} ({categoryCounts.badges})
             </button>
             <button
               type="button"
               className={`svg-cat-btn ${selectedCategory === "ui" ? "active" : ""}`}
               onClick={() => setSelectedCategory("ui")}
             >
-              📹 กล้อง ({categoryCounts.ui})
+              📹 {t("กล้อง", "Camera")} ({categoryCounts.ui})
             </button>
           </div>
 
@@ -399,7 +402,7 @@ export function StockSvgModal({
             {/* Customization Sidebar & Live Preview */}
             <div className="svg-customizer-panel">
               <div className="svg-preview-box">
-                <div className="svg-preview-label">ตัวอย่างบนจอ (Preview):</div>
+                <div className="svg-preview-label">{t("ตัวอย่างบนจอ:", "On-screen preview:")}</div>
                 <div className="svg-preview-canvas">
                   <div
                     className={`svg-rendered-wrapper anim-svg-${animation}`}
@@ -416,7 +419,7 @@ export function StockSvgModal({
               </div>
 
               <div className="modal-form-group">
-                <label className="form-label">ขนาดแสดงผล: {size}px</label>
+                <label className="form-label">{t("ขนาดแสดงผล", "Display size")}: {size}px</label>
                 <input
                   type="range"
                   min={50}
@@ -428,22 +431,22 @@ export function StockSvgModal({
               </div>
 
               <div className="modal-form-group">
-                <label className="form-label">แอนิเมชันเคลื่อนไหว:</label>
+                <label className="form-label">{t("แอนิเมชันเคลื่อนไหว:", "Animation:")}</label>
                 <select
                   className="font-select-field"
                   value={animation}
                   onChange={(e) => setAnimation(e.target.value as any)}
                 >
-                  <option value="none">นิ่งคงที่ (Static)</option>
-                  <option value="bounce">🏀 เด้งดึ๋ง (Bounce Loop)</option>
-                  <option value="pulse">💓 ขยายหดจังหวะ (Pulse)</option>
-                  <option value="float">☁️ ลอยลื่นไหล (Float)</option>
-                  <option value="spin">🔄 หมุนรอบตัว (Spin)</option>
+                  <option value="none">{t("นิ่งคงที่", "Static")}</option>
+                  <option value="bounce">🏀 {t("เด้งดึ๋ง", "Bounce loop")}</option>
+                  <option value="pulse">💓 {t("ขยายหดจังหวะ", "Pulse")}</option>
+                  <option value="float">☁️ {t("ลอยลื่นไหล", "Float")}</option>
+                  <option value="spin">🔄 {t("หมุนรอบตัว", "Spin")}</option>
                 </select>
               </div>
 
               <div className="modal-form-group">
-                <label className="form-label">ความยาวเวลาแสดง: {durationSec.toFixed(1)} วินาที</label>
+                <label className="form-label">{t("ระยะเวลาแสดง", "Duration")}: {durationSec.toFixed(1)} {t("วินาที", "seconds")}</label>
                 <input
                   type="range"
                   min={1.0}
@@ -456,28 +459,28 @@ export function StockSvgModal({
               </div>
 
               <div className="modal-form-group">
-                <label className="form-label">ตำแหน่งแนวตั้ง:</label>
+                <label className="form-label">{t("ตำแหน่งแนวตั้ง:", "Vertical position:")}</label>
                 <div className="pos-preset-group">
                   <button
                     type="button"
                     className={`pos-chip ${posY <= 0.25 ? "active" : ""}`}
                     onClick={() => { setPosX(0.5); setPosY(0.18); }}
                   >
-                    บน
+                    {t("บน", "Top")}
                   </button>
                   <button
                     type="button"
                     className={`pos-chip ${posY > 0.25 && posY < 0.65 ? "active" : ""}`}
                     onClick={() => { setPosX(0.5); setPosY(0.45); }}
                   >
-                    กลาง
+                    {t("กลาง", "Center")}
                   </button>
                   <button
                     type="button"
                     className={`pos-chip ${posY >= 0.65 ? "active" : ""}`}
                     onClick={() => { setPosX(0.5); setPosY(0.78); }}
                   >
-                    ล่าง
+                    {t("ล่าง", "Bottom")}
                   </button>
                 </div>
               </div>
@@ -487,10 +490,10 @@ export function StockSvgModal({
 
         <div className="nle-modal-footer">
           <button type="button" className="modal-cancel-btn" onClick={onClose}>
-            ยกเลิก
+            {t("ยกเลิก", "Cancel")}
           </button>
           <button type="button" className="modal-confirm-btn" onClick={handleCreateClip}>
-            ➕ เพิ่มลงวิดีโอ (Track O1)
+            ➕ {t("เพิ่มลงวิดีโอ (Track O1)", "Add to video (Track O1)")}
           </button>
         </div>
       </div>

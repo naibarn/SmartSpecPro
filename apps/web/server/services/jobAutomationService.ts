@@ -3,9 +3,11 @@ import { eq, and, desc, count } from "drizzle-orm";
 import { db } from "../db";
 import { automationJobs } from "../../drizzle/schema";
 import type { AutomationJob, InsertAutomationJob } from "../../drizzle/schema";
-import { deductCredits, addCredits } from "./creditService";
+import { addCredits, addCreditsWithinTransaction, deductCredits } from "./creditService";
 import { getRedisClient } from "./redis";
 import { emitPublicApiEvent } from "./webhookDeliveryService";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -56,6 +58,34 @@ function estimateCredits(type: JobType, params: Record<string, unknown>): number
   }
   const maxCredits = params.max_credits as number | undefined;
   return maxCredits ?? CREDIT_ESTIMATES[type];
+}
+
+function canonicalizeComparable(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeComparable);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, item]) => item !== undefined)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => [key, canonicalizeComparable(item)]),
+    );
+  }
+  return value;
+}
+
+function automationIdempotencyMatches(
+  existing: Pick<AutomationJob, "type" | "params" | "callbackUrl" | "creditsReserved">,
+  input: { type: string; params: Record<string, unknown>; callbackUrl?: string; maxCredits?: number },
+): boolean {
+  const expectedCredits = input.maxCredits ?? estimateCredits(input.type as JobType, input.params);
+  return existing.type === input.type
+    && JSON.stringify(canonicalizeComparable(existing.params)) === JSON.stringify(canonicalizeComparable(input.params))
+    && (existing.callbackUrl ?? null) === (input.callbackUrl ?? null)
+    && existing.creditsReserved === expectedCredits;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "23505");
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +188,10 @@ let automationQueue: any = null;
 let automationWorker: any = null;
 
 export async function initAutomationJobsQueue(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    console.info("[automation-jobs] skipped; Feature 186 control-plane adapter is active");
+    return;
+  }
   try {
     // Lazy import to avoid crashing if BullMQ is not available in test env
     const { Queue, Worker } = await import("bullmq");
@@ -188,8 +222,29 @@ export async function closeAutomationJobsQueue(): Promise<void> {
 }
 
 async function enqueueJob(jobId: string, type: string, params: unknown, auth: any): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    await createControlPlaneJob({
+      context: {
+        tenantId: auth.tenantId,
+        actorType: "user",
+        actorId: auth.userId,
+        authorizationScope: "automation:execute",
+        correlationId: `automation:${jobId}`,
+        idempotencyKey: `automation:${auth.tenantId}:${jobId}`,
+      },
+      definition: {
+        contractVersion: "feature-186-v1",
+        jobType: "automation.execute",
+        executionClass: "long",
+        input: { jobId, type, params: params as Record<string, unknown> },
+        retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 120000, jitter: "bounded", deadlineMs: 3600000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
+        timeoutPolicy: { softTimeoutMs: 5 * 60_000, hardTimeoutMs: 30 * 60_000 },
+      },
+    });
+    return;
+  }
   if (automationQueue) {
-    await automationQueue.add("execute", { jobId, type, params, auth });
+    await publishLegacyBullMqJob(automationQueue, "execute", { jobId, type, params, auth });
   }
   // If queue not initialized, job stays in "pending" state until manually triggered
 }
@@ -284,6 +339,17 @@ export async function createJob(
       )
       .limit(1);
     if (existing.length > 0) {
+      if (!automationIdempotencyMatches(existing[0], { type, params, callbackUrl, maxCredits })) {
+        const conflict: any = new Error("Idempotency key was already used for a different automation job definition");
+        conflict.code = "idempotency_conflict";
+        throw conflict;
+      }
+      // If the original request committed the domain row but lost the
+      // control-plane response, replay the canonical enqueue idempotently.
+      // This closes the domain-row-without-outbox gap on client retries.
+      if (process.env.FEATURE_186_HARD_CUTOVER === "true" && existing[0].status === "pending") {
+        await enqueueJob(existing[0].id, existing[0].type, existing[0].params, auth);
+      }
       return existing[0];
     }
   }
@@ -294,8 +360,9 @@ export async function createJob(
     amount: estimated,
     sourceType: "api_job",
     description: `Job reservation: ${type}`,
+    tenantId: auth.tenantId,
     idempotencyKey,
-    metadata,
+    metadata: { ...metadata, automationJobType: type },
   });
 
   // Insert job record
@@ -319,10 +386,32 @@ export async function createJob(
     expiresAt,
   };
 
-  const inserted = await drizzle
-    .insert(automationJobs)
-    .values(insertData)
-    .returning();
+  let inserted: AutomationJob[];
+  try {
+    inserted = await drizzle
+      .insert(automationJobs)
+      .values(insertData)
+      .returning();
+  } catch (error) {
+    // A concurrent request may have won the tenant-scoped unique key race
+    // after the initial read. Reload the winner and apply the same definition
+    // check instead of creating a second job or returning a vague DB error.
+    if (!idempotencyKey || !isUniqueViolation(error)) throw error;
+    const winner = await drizzle
+      .select()
+      .from(automationJobs)
+      .where(and(eq(automationJobs.idempotencyKey, idempotencyKey), eq(automationJobs.tenantId, auth.tenantId)))
+      .limit(1);
+    if (!winner.length || !automationIdempotencyMatches(winner[0], { type, params, callbackUrl, maxCredits })) {
+      const conflict: any = new Error("Idempotency key was already used for a different automation job definition");
+      conflict.code = "idempotency_conflict";
+      throw conflict;
+    }
+    if (process.env.FEATURE_186_HARD_CUTOVER === "true" && winner[0].status === "pending") {
+      await enqueueJob(winner[0].id, winner[0].type, winner[0].params, auth);
+    }
+    return winner[0];
+  }
 
   const job = inserted[0];
 
@@ -345,15 +434,38 @@ export async function executeJob(jobId: string): Promise<void> {
     return;
   }
 
-  const job = rows[0];
+  const candidate = rows[0];
+  if (candidate.status !== "pending") {
+    if (candidate.status === "completed") return;
+    if (candidate.status === "failed") {
+      const alreadyFailed = new Error(`Automation job ${jobId} already failed`);
+      alreadyFailed.name = "AUTOMATION_DOMAIN_FAILURE";
+      (alreadyFailed as Error & { class?: string }).class = "permanent";
+      throw alreadyFailed;
+    }
+    if (candidate.status === "cancelled") {
+      const alreadyCancelled = new Error(`Automation job ${jobId} was cancelled`);
+      alreadyCancelled.name = "AUTOMATION_DOMAIN_CANCELLED";
+      (alreadyCancelled as Error & { class?: string }).class = "permanent";
+      throw alreadyCancelled;
+    }
+    const inProgress = new Error(`Automation job ${jobId} is already in progress`);
+    inProgress.name = "AutomationJobInProgress";
+    throw inProgress;
+  }
+
+  // Domain-level fencing protects against a compatibility delivery racing the
+  // canonical executor. The control-plane lease is still authoritative; this
+  // guard prevents the automation table from starting two business runs.
+  const claimedRows = await drizzle
+    .update(automationJobs)
+    .set({ status: "running", startedAt: new Date() })
+    .where(and(eq(automationJobs.id, jobId), eq(automationJobs.status, "pending")))
+    .returning();
+  const job = claimedRows[0];
+  if (!job) return;
 
   try {
-    // Mark running
-    await drizzle
-      .update(automationJobs)
-      .set({ status: "running", startedAt: new Date() })
-      .where(eq(automationJobs.id, jobId));
-
     // Emit progress: job started (step 0 of 2)
     emitPublicApiEvent(job.tenantId, "job.progress", {
       type: "job.progress",
@@ -385,22 +497,33 @@ export async function executeJob(jobId: string): Promise<void> {
     const creditsUsed = Math.min(job.creditsReserved, Math.ceil(job.creditsReserved * 0.8));
     const refundAmount = job.creditsReserved - creditsUsed;
 
+    let completionPersisted = false;
     await db.instance.transaction(async (tx) => {
-      await tx
+      const completedRows = await tx
         .update(automationJobs)
         .set({ status: "completed", result, creditsUsed, completedAt: new Date() })
-        .where(eq(automationJobs.id, jobId));
+        .where(and(eq(automationJobs.id, jobId), eq(automationJobs.status, "running")))
+        .returning({ id: automationJobs.id });
+      if (!completedRows.length) return;
+      completionPersisted = true;
 
       if (refundAmount > 0) {
-        await addCredits({
+        await addCreditsWithinTransaction(tx, {
           userId: job.userId,
           amount: refundAmount,
           type: "refund",
           description: `Job refund: ${jobId}`,
+          referenceId: jobId,
           sourceType: "api_job",
+          tenantId: job.tenantId,
+          idempotencyKey: `automation-job:${jobId}:completion-refund`,
+          metadata: { jobId, source: "automation-job-completion" },
         });
       }
     });
+    // A concurrent cancellation or recovery won the guarded update. Do not
+    // emit a completion event for a domain row that we did not finalize.
+    if (!completionPersisted) return;
 
     // Emit completion event — fans out to webhook endpoints AND SSE subscribers
     emitPublicApiEvent(job.tenantId, "job.completed", {
@@ -415,30 +538,44 @@ export async function executeJob(jobId: string): Promise<void> {
     });
   } catch (execErr: any) {
     // Atomically mark failed and refund reserved credits
-    await db.instance.transaction(async (tx) => {
-      await tx
-        .update(automationJobs)
-        .set({
-          status: "failed",
-          error: { message: execErr.message ?? "Unknown error" },
-          completedAt: new Date(),
-        })
-        .where(eq(automationJobs.id, jobId));
+    let failurePersisted = false;
+    try {
+      await db.instance.transaction(async (tx) => {
+        const failedRows = await tx
+          .update(automationJobs)
+          .set({
+            status: "failed",
+            error: { message: execErr.message ?? "Unknown error" },
+            completedAt: new Date(),
+          })
+          .where(and(eq(automationJobs.id, jobId), eq(automationJobs.status, "running")))
+          .returning({ id: automationJobs.id });
 
-      if (job.creditsReserved > 0) {
-        await addCredits({
-          userId: job.userId,
-          amount: job.creditsReserved,
-          type: "refund",
-          description: `Job failure refund: ${jobId}`,
-          sourceType: "api_job",
-        }).catch((e: Error) =>
-          console.error(`[JobAutomation] Refund failed for job ${jobId}:`, e.message),
-        );
-      }
-    }).catch((txErr: Error) =>
-      console.error(`[JobAutomation] Failure transaction error for job ${jobId}:`, txErr.message),
-    );
+        if (failedRows.length && job.creditsReserved > 0) {
+          failurePersisted = true;
+          await addCreditsWithinTransaction(tx, {
+            userId: job.userId,
+            amount: job.creditsReserved,
+            type: "refund",
+            description: `Job failure refund: ${jobId}`,
+            referenceId: jobId,
+            sourceType: "api_job",
+            tenantId: job.tenantId,
+            idempotencyKey: `automation-job:${jobId}:failure-refund`,
+            metadata: { jobId, source: "automation-job-failure" },
+          });
+        } else if (failedRows.length) {
+          failurePersisted = true;
+        }
+      });
+    } catch (txErr) {
+      // Keep the canonical execution from reporting success when the domain
+      // failure/refund transaction was not durable. The control plane will
+      // classify the storage error and retain the job for recovery/review.
+      console.error(`[JobAutomation] Failure transaction error for job ${jobId}:`, txErr instanceof Error ? txErr.message : "unknown_error");
+      throw txErr;
+    }
+    if (!failurePersisted) return;
 
     // Emit failure event — fans out to webhook endpoints AND SSE subscribers
     emitPublicApiEvent(job.tenantId, "job.failed", {
@@ -450,6 +587,11 @@ export async function executeJob(jobId: string): Promise<void> {
     }).catch(() => {
       // non-fatal
     });
+
+    const terminalError = execErr instanceof Error ? execErr : new Error("Automation job failed");
+    terminalError.name = "AUTOMATION_DOMAIN_FAILURE";
+    (terminalError as Error & { class?: string }).class = "permanent";
+    throw terminalError;
   }
 }
 

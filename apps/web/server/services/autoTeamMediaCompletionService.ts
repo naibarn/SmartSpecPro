@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 import { getDb } from "../db";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import {
   autoTeamFinalResults,
@@ -2698,6 +2699,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
       const submitted = await submitInternalMediaJob({
         spec,
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         requestId: `auto-team-final-compose:${pipeline.runId}`,
       });
       jobId = submitted.jobId;
@@ -2775,6 +2777,7 @@ async function advanceAutoTeamMediaPipelineInternal(runId: string): Promise<void
       const submitted = await submitInternalMediaJob({
         spec: probeSpec,
         userId: pipeline.userId,
+        tenantId: pipeline.tenantId,
         requestId: `auto-team-final-probe:${pipeline.runId}`,
       });
       jobId = submitted.jobId;
@@ -2936,6 +2939,10 @@ export async function recoverAutoTeamMediaPipelinesOnStartup(): Promise<void> {
 }
 
 export function startAutoTeamMediaPipelineSweeper(): void {
+  if (!shouldRunFeature192InProcessTimer("startAutoTeamMediaPipelineSweeper")) {
+    console.info("[auto-team-media] in-process sweeper disabled; use Cloudflare scheduler");
+    return;
+  }
   if (mediaPipelineSweeper) return;
   mediaPipelineSweeper = setInterval(() => {
     void recoverAutoTeamMediaPipelinesOnStartup().catch(error => {

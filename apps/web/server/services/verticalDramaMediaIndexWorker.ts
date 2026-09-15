@@ -2,14 +2,15 @@ import { and, eq, inArray, lt, sql } from "drizzle-orm";
 
 import { verticalDramaMediaAssets, verticalDramaMediaIndexRecords } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { getMultimodalEmbeddingProvider } from "./multimodalEmbeddingProvider";
-import { dispatchVectorOperation, getEffectiveVectorProviderConfig, type VectorEntry } from "./vectorProvider";
+import { CloudflareFallbackProvider, getMultimodalEmbeddingProvider } from "./multimodalEmbeddingProvider";
+import { dispatchVectorOperation, getEffectiveVectorProviderConfig, resolveVectorProvider, type VectorEntry } from "./vectorProvider";
+import { toVectorizeSafeId } from "./vectorizeContract";
 
-const MEDIA_VECTOR_INDEX = process.env.VECTORIZE_MEDIA_INDEX || process.env.VECTORIZE_DOCS_INDEX || "drama-media-index-prod";
+const MEDIA_VECTOR_INDEX = process.env.VECTORIZE_MEDIA_INDEX || "drama-media-index-prod";
 const MAX_ATTEMPTS = 5;
 
 function mediaVectorId(tenantId: string, seriesId: number, mediaAssetId: string, revision: string): string {
-  return `vdrama:${tenantId}:${seriesId}:${mediaAssetId}:${revision}`.slice(0, 240);
+  return toVectorizeSafeId(`vdrama:${tenantId}:${seriesId}:${mediaAssetId}:${revision}`);
 }
 
 export async function processVerticalDramaMediaIndexRecord(recordId: string): Promise<{ status: "indexed" | "retry"; recordId: string }> {
@@ -21,7 +22,10 @@ export async function processVerticalDramaMediaIndexRecord(recordId: string): Pr
   if (!claimed) return { status: "indexed", recordId };
 
   try {
-    const provider = await getMultimodalEmbeddingProvider();
+    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: claimed.tenantId });
+    const provider = resolveVectorProvider("index", providerConfig).provider === "cloudflare_vectorize"
+      ? new CloudflareFallbackProvider()
+      : await getMultimodalEmbeddingProvider();
     const values = await provider.embedText({ text: claimed.searchableText });
     const vectorId = mediaVectorId(claimed.tenantId, claimed.seriesId, claimed.mediaAssetId, claimed.artifactRevision);
     const entry: VectorEntry = {
@@ -40,7 +44,7 @@ export async function processVerticalDramaMediaIndexRecord(recordId: string): Pr
         tags: Array.isArray(claimed.tagsJson) ? claimed.tagsJson.join(",") : "",
       },
     };
-    await dispatchVectorOperation({ operation: "index", indexName: MEDIA_VECTOR_INDEX, vectors: [entry], providerConfig: await getEffectiveVectorProviderConfig({ tenantId: claimed.tenantId }) });
+    await dispatchVectorOperation({ operation: "index", indexName: MEDIA_VECTOR_INDEX, vectors: [entry], providerConfig });
     await db.update(verticalDramaMediaIndexRecords).set({ status: "indexed", embeddingRef: `${provider.getProviderName()}:${provider.getModelName()}:${vectorId}`, lastError: null, updatedAt: new Date() }).where(eq(verticalDramaMediaIndexRecords.id, claimed.id));
     await db.update(verticalDramaMediaAssets).set({ vectorIndexStatus: "indexed", updatedAt: new Date() }).where(and(eq(verticalDramaMediaAssets.id, claimed.mediaAssetId), eq(verticalDramaMediaAssets.tenantId, claimed.tenantId), eq(verticalDramaMediaAssets.seriesId, claimed.seriesId)));
     return { status: "indexed", recordId };

@@ -7,6 +7,11 @@
 import { randomUUID } from "node:crypto";
 import { debugError } from "../_core/logger";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { createSpecialTieInForensicRecorder } from "./verticalDramaSpecialTieInForensics";
 import { purgeExpiredSpecialTieInForensicEvents } from "./verticalDramaSpecialTieInForensics";
 import {
@@ -386,7 +391,18 @@ export async function enqueueVerticalDramaInteractiveJob(
   }
 
   try {
-    await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.interactive",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+    }
   } catch (error) {
     await specialForensicRecorder?.emit({
       eventType: "job_failed",
@@ -547,7 +563,8 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
       `${VERTICAL_DRAMA_INTERACTIVE_JOBS_QUEUE} queue is not initialized`
     );
   }
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     {
@@ -560,6 +577,7 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
 }
 
 export async function initVerticalDramaInteractiveJobsQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   if (!specialDebugCleanupTimer) {
     specialDebugCleanupTimer = setInterval(

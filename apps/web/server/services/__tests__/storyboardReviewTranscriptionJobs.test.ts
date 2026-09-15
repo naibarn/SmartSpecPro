@@ -8,10 +8,12 @@ const transcribeMocks = vi.hoisted(() => ({
 vi.mock("../redis", () => ({
   getRedisClient: () => ({
     get: vi.fn(async (key: string) => redisStore.get(key) ?? null),
-    set: vi.fn(async (key: string, value: string) => {
+    set: vi.fn(async (key: string, value: string, ...options: string[]) => {
+      if (options.includes("NX") && redisStore.has(key)) return null;
       redisStore.set(key, value);
       return "OK";
     }),
+    del: vi.fn(async (key: string) => Number(redisStore.delete(key))),
   }),
 }));
 
@@ -167,5 +169,48 @@ describe("storyboardReviewTranscriptionJobs", () => {
     const job = await getStoryboardReviewTranscribeJob("job_retry");
     expect(job?.status).toBe("completed");
     expect(transcribeMocks.transcribeHyperframesStoryboardShot).toHaveBeenCalledTimes(1);
+  });
+
+  it("deduplicates concurrent Cloud Tasks delivery before provider execution", async () => {
+    let releaseProvider!: () => void;
+    const providerGate = new Promise<void>(resolve => {
+      releaseProvider = resolve;
+    });
+    transcribeMocks.transcribeHyperframesStoryboardShot.mockImplementationOnce(async () => {
+      await providerGate;
+      return {
+        text: "เสียงทดสอบ",
+        cues: [{ index: 1, text: "เสียงทดสอบ", start: 0, end: 1 }],
+        vtt: "WEBVTT\n",
+        srt: "1\n",
+        model: "large-v3",
+        language: "th",
+      };
+    });
+    await setStoryboardReviewTranscribeJob({
+      jobId: "job_duplicate",
+      userId: "1",
+      status: "queued",
+      submittedAt: 1_000,
+      updatedAt: 1_000,
+      input: {
+        shotId: "shot_1",
+        sourceVideoUrl: "/api/storage/files/shot-1.mp4",
+        language: "th",
+      },
+    });
+
+    const first = runStoryboardReviewTranscribeJob("job_duplicate");
+    await new Promise(resolve => setImmediate(resolve));
+    const second = runStoryboardReviewTranscribeJob("job_duplicate");
+    await second;
+    expect(transcribeMocks.transcribeHyperframesStoryboardShot).toHaveBeenCalledTimes(1);
+    releaseProvider();
+    await first;
+  });
+
+  it("does not mask a missing job with a secondary error", async () => {
+    await expect(runStoryboardReviewTranscribeJob("missing-job")).resolves.toBeUndefined();
+    expect(transcribeMocks.transcribeHyperframesStoryboardShot).not.toHaveBeenCalled();
   });
 });

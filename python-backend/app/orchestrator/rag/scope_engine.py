@@ -302,7 +302,13 @@ async def propagate_scopes_to_vector_stores(
     # 3. Cloudflare Vectorize — delete + re-insert (no in-place metadata update)
     if cloudflare_store is not None:
         try:
-            existing = await cloudflare_store.get_by_ids(vector_ref_ids)
+            # Verify ownership before delete + re-insert. Vectorize is a
+            # rebuildable index, but an unverified ID must never become a
+            # cross-tenant metadata mutation.
+            existing = await cloudflare_store.get_by_ids(
+                vector_ref_ids,
+                expected_tenant_id=tenant_id,
+            )
             if existing:
                 await cloudflare_store.delete_by_ids(vector_ref_ids)
                 updated_vectors = []

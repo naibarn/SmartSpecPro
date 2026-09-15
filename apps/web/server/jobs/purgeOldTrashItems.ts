@@ -2,7 +2,8 @@
  * Trash Auto-Purge Background Job
  *
  * Permanently deletes library items that have been in trash for 90+ days.
- * Runs daily at 2 AM via setInterval (interim; Cloud Scheduler in Section 06).
+ * Runs daily at 2 AM through the Feature 186 scheduler during hard cutover;
+ * legacy deployments retain the existing timer until their migration wave.
  *
  * Deletion cascade uses shared cascadeDeleteLibraryItem() helper.
  * Storage files are cleaned up after DB deletion (best-effort).
@@ -19,6 +20,7 @@ import {
   collectLibraryVectorCleanupTargets,
 } from "../services/libraryService";
 import { storageDelete } from "../storage";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcDailyDue } from "./feature186SystemScheduler";
 
 const TRASH_RETENTION_DAYS = 90;
 const MS_PER_DAY = 86_400_000;
@@ -61,6 +63,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
     totalFound += batch.length;
     hasMore = batch.length === BATCH_SIZE;
 
+    let purgedInBatch = 0;
     for (const item of batch) {
       try {
         // Collect storage keys before cascade delete removes them
@@ -84,6 +87,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
           await cascadeDeleteLibraryItem(tx, item.id);
         });
         purgedCount++;
+        purgedInBatch++;
 
         // Best-effort storage cleanup after successful DB delete
         for (const { linkId } of uploadKeys) {
@@ -113,6 +117,12 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
         console.error(`[trash-purge] Failed to purge item ${item.id}:`, error instanceof Error ? error.message : error);
       }
     }
+
+    // A failed item remains eligible for the next query. Stop when the whole
+    // batch made no progress so one poisoned row cannot spin forever and starve
+    // the scheduler. The next scheduled run can retry it after the cause is
+    // repaired.
+    if (purgedInBatch === 0) hasMore = false;
   }
 
   return { purgedCount, totalFound, errors, storageDeleted };
@@ -120,10 +130,26 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
 
 /**
  * Schedule the daily trash purge.
- * Uses setInterval as interim; Cloud Scheduler (Section 06) will replace this.
+ * Uses the canonical Feature 186 scheduler in hard cutover. Legacy mode keeps
+ * the existing timer until the owning migration wave is retired.
  */
 export async function initializeTrashPurgeJob(): Promise<void> {
   if (intervalId) return;
+
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    startFeature186SystemSchedule({
+      scheduleId: "library-trash-purge",
+      jobType: "library.trash_purge",
+      executionClass: "long",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: utcDailyDue(2, 0),
+      occurrenceKey: (now) => `${now.toISOString().slice(0, 10)}:trash-purge`,
+      intervalMs: 60_000,
+    });
+    return;
+  }
 
   // Calculate delay until next 2 AM
   const now = new Date();
@@ -176,6 +202,9 @@ async function runPurge() {
  * Gracefully shut down.
  */
 export async function shutdownTrashPurgeWorker(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    stopFeature186SystemSchedule("library-trash-purge");
+  }
   if (initialTimeoutId) {
     clearTimeout(initialTimeoutId);
     initialTimeoutId = null;

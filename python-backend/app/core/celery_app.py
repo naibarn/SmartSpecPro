@@ -254,6 +254,19 @@ celery_app.conf.beat_schedule = beat_schedule
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.tasks", "app.workers"])
 
+# Record the source version loaded by this Celery master/Beat process. The
+# host-side doctor compares it with the bind-mounted source before deciding
+# whether an exact-service recreate is safe.
+from app.core.runtime_identity import write_runtime_identity
+
+_runtime_identity = write_runtime_identity()
+_celery_logger.info(
+    "Celery runtime identity: fingerprint=%s build_id=%s pid=%s",
+    _runtime_identity["sourceFingerprint"],
+    _runtime_identity["buildId"] or "unset",
+    _runtime_identity["pid"],
+)
+
 
 # ---------------------------------------------------------------------------
 # Worker lifecycle signals

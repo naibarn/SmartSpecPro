@@ -35,4 +35,37 @@ describe("Storyboard Framework Review projection", () => {
       projection.tasks[0].generationExtraParams.generationRequest
     ).toBeDefined();
   });
+
+  it("emits completed image tasks using the storyboard review URL contract", () => {
+    const global = normalizeStoryboardGlobalInput({
+      title: "Story",
+      idea: "A child helps a bird",
+      storyType: "mime",
+      totalShots: 2,
+      selectedSkillId: "cute_child_image_generator",
+      selectedSkillVersion: "3.0.0",
+      imageModelSelection: { modelId: "image" },
+      videoModelSelection: { modelId: "video" },
+    });
+    const shots = planStoryboardShots(global).map(shot => ({
+      shot,
+      response: buildCuteChildPromptOnlyRequest(global, shot),
+      imageUrl: `/api/storage/files/storyboard/${shot.shotNumber}.png`,
+    }));
+    const projection = buildStoryboardReviewProjection({
+      projectId: "p",
+      runId: "r",
+      projectName: "Story",
+      global,
+      shots,
+    });
+    expect(projection.tasks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "image",
+        status: "completed",
+        source: "generated",
+        url: "/api/storage/files/storyboard/1.png",
+      }),
+    ]));
+  });
 });

@@ -6,6 +6,7 @@
  */
 
 import { checkAndMarkStaleContent } from "../services/contentArtifactStore";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 let intervalId: NodeJS.Timeout | null = null;
@@ -22,6 +23,10 @@ export async function executeContentStalenessCheck(): Promise<{ markedStale: num
  * Initialize the content refresh job to run every 6 hours.
  */
 export async function initializeContentRefreshJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeContentRefreshJob")) {
+    console.info("[ContentRefresh] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   // Run once at startup (delayed 60s to let DB connections settle)
   setTimeout(async () => {
     try {

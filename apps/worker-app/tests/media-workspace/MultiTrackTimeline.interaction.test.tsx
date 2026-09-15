@@ -81,7 +81,13 @@ it("moves a clip between video lanes with pointer drag", () => {
   try {
     act(() => clipElement?.dispatchEvent(pointerEvent("pointerdown", { button: 0, pointerId: 7, clientX: 150, clientY: 20 })));
     act(() => window.dispatchEvent(pointerEvent("pointermove", { pointerId: 7, clientX: 450, clientY: 64 })));
+    const preview = container.querySelector<HTMLElement>('[data-testid="timeline-drag-preview"]');
+    expect(preview).not.toBeNull();
+    expect(preview?.parentElement).toBe(targetLane);
+    expect(preview?.style.left).toBe("40%");
+    expect(onUpdateProject).not.toHaveBeenCalled();
     act(() => window.dispatchEvent(pointerEvent("pointerup", { pointerId: 7, clientX: 450, clientY: 64 })));
+    expect(container.querySelector('[data-testid="timeline-drag-preview"]')).toBeNull();
   } finally {
     document.elementFromPoint = originalElementFromPoint;
   }

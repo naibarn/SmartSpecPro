@@ -33,10 +33,96 @@ configured billing/audit/rollback window before considering compaction.
 
 ## Wave procedure
 
-1. Keep the existing producer active while the new adapter runs in observation-only mode.
-2. Stop new work from the old producer for the selected job type, enable one side-effecting adapter, and verify canonical IDs in PostgreSQL.
-3. Watch lease freshness, outbox age, retry classifications, duplicate side effects, and domain settlement for the reconciliation window.
-4. Roll back new work to the old adapter if an SLO or correctness gate fails. Do not roll back committed canonical history.
+1. Complete Feature 186 contract/schema/lifecycle gates first. Then complete Feature 189 identity/transfer gates and Feature 187 environment/promotion rehearsal before Feature 188 activation.
+2. Keep the existing producer active while the new adapter runs in observation-only mode.
+3. Stop new work from the old producer for the selected job type, enable one side-effecting adapter, and verify canonical IDs in PostgreSQL.
+4. Watch lease freshness, outbox age, retry classifications, duplicate side effects, durable action/callback evidence, and domain settlement for the reconciliation window.
+5. Roll back new work to the old adapter if an SLO or correctness gate fails. Do not roll back committed canonical history.
+
+### Wave 1 hard-cutover activation
+
+For `webhook.dispatch`, `webhook.api_delivery`, and `embedding.generate`, set
+`FEATURE_186_HARD_CUTOVER=true`. The application starts the PostgreSQL outbox
+runner and `postgres-pull` adapter; Node execution is owned by the separately
+supervised PostgreSQL-pull worker. Both legacy webhook queue initializers
+and the embedding queue path return without opening Redis connections. Leave
+`FEATURE_186_UNIFIED_BULLMQ` unset unless a later wave explicitly needs the
+unified BullMQ transport. Verify the startup log, canonical outbox age, and
+the two hard-cutover test suites before accepting traffic.
+
+This is a bounded local/runtime wave, not a claim that all Redis/BullMQ/Celery
+producers are gone. The audit must still show the remaining unmigrated
+producers and the manifest must retain the production-complete gate.
+
+### Wave 3 Node-domain and media execution activation
+
+The following Node job types now use the same PostgreSQL outbox/direct
+executor when hard cutover is enabled: `capacity.assessment`,
+`channel.delivery`, `automation.execute`, and `database.backup`. Their legacy
+BullMQ initializers are skipped in hard mode; retention and reconciliation
+remain timer/reconciler work owned by the application.
+
+The daily capacity schedule uses UTC 03:15 and requires the existing tenant
+scope to be supplied as `FEATURE_186_SYSTEM_TENANT_ID`; without it the process
+logs a visible configuration gate and does not create an unscoped job.
+
+Python media generation uses the PostgreSQL-pull worker for the initial
+submission and keeps provider polling inside the same fenced execution. This
+path is intentionally bounded by `FEATURE_186_MEDIA_POLL_DEADLINE_SECONDS`.
+It is not production-approved until provider 429/5xx, callback, lease expiry,
+duplicate delivery, artifact settlement, and credit-side-effect evidence pass
+against the real deployment dependencies.
+
+Do not interpret the centralized legacy status adapter or the remaining static
+`.delay()`, `.apply_async()`, or `send_task()` compatibility boundary as
+canonical state. Direct producer and reader calls must remain absent from
+business/API/recovery modules. The adapter and its rollback retention window
+remain blockers for full Redis/BullMQ/Celery retirement; the current audit
+count and exact boundary locations must be copied into the rollout manifest
+for every release candidate.
+
+### Wave 2 Python PostgreSQL-pull activation
+
+Run a separate Python worker process from `python-backend`:
+
+```bash
+FEATURE_186_HARD_CUTOVER=true \
+FEATURE_186_POSTGRES_PYTHON_WORKER=true \
+uv run python -m app.workers.postgres_job_worker
+```
+
+For the full Compose deployment, start the same worker through the opt-in
+Feature 186 profile after setting the shared `SMARTSPEC_WEB_GATEWAY_TOKEN`:
+
+```bash
+FEATURE_186_HARD_CUTOVER=true \
+FEATURE_186_POSTGRES_PYTHON_WORKER=true \
+FEATURE_186_SYSTEM_TENANT_ID=<validated-system-tenant-id> \
+docker compose -f docker-compose.full.yml --profile feature186 up -d \
+  smartspec-python-job-worker
+```
+
+The profile is deliberate: it prevents a legacy Celery deployment from
+starting a worker that cannot claim canonical jobs. The two Feature 186 flags
+must still be true inside the worker container; otherwise it exits before
+polling.
+
+With both flags enabled, tenant-bound producers that call
+`dispatch_python_task` create `worker_jobs` first. The Node outbox publishes a
+`postgres-pull` dispatch record, and the Python worker polls the authenticated
+`/api/internal/job-control-plane/ready` endpoint before claiming a fenced lease.
+It does not connect to Redis or publish to Celery. The worker must have the
+Node control-plane URL and shared internal token configured, and the Node
+process must have the additive `0309_feature_186_python_job_runtime` migration
+applied.
+
+Do not enable this flag for any unverified legacy domain projection. The
+centralized compatibility status adapter is rollback-only and does not make
+legacy task state canonical. Tenant binding, status projection, retry
+semantics, and side-effect evidence must pass a separate wave. A failed
+control-plane connection must leave the
+canonical job queued/outbox-visible; it must not fall back to inline execution
+or create a second legacy task.
 
 ## Recovery rules
 

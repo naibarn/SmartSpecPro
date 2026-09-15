@@ -1,10 +1,29 @@
 # Feature 188 — Admin Platform Operations, Complete Data Promotion, and GCP/Cloudflare Cutover
 
-**Status:** PROPOSED — architecture, product, migration, and cutover specification; no runtime implementation, data migration, credential change, or production cutover is included in this document.
+**Status:** IMPLEMENTED LOCALLY / NOT ACTIVATED — additive platform-operation
+schema, gate/evidence service, promotion checkpoint ports, admin API/UI, and
+focused local contract tests are present; external target migration,
+Cloudflare connectivity, deployment, and production cutover evidence remain
+required.
+Local additive migrations are applied through `0318_feature_188_platform_operations.sql`,
+`0322_feature_188_promotion_binding.sql`, and
+`0323_feature_188_promotion_batch_fencing.sql`; these extend the same
+coordination schema and do not create a second job ledger.
 **Created:** 2026-09-13
-**Scope:** Admin infrastructure-screen redesign, GCP/Cloudflare platform selection, Feature 186 control-plane operations, complete Dev-to-Production data promotion, Cloudflare replacement readiness, GitHub release flow, one-time production cutover, and permanent Dev/Production separation.
+**Scope:** Admin infrastructure-screen redesign, GCP/Cloudflare platform selection, Feature 186 control-plane operational integration, final Dev-to-Production data-promotion orchestration, Cloudflare replacement readiness, GitHub release flow, one-time production cutover, and permanent Dev/Production separation.
 **Authority:** This specification defines the operational UI, platform-control semantics, data promotion evidence, cutover gates, repository decision, rollback boundary, and post-cutover environment contract for SmartAIHub.
-**Related features:** Feature 186 — Unified Job Control Plane Adapters; Feature 187 — Hybrid Cloudflare Migration, Environment Parity, and Dev-to-Production Promotion.
+**Related features:** Feature 186 — Unified Job Control Plane Adapters; Feature 187 — Hybrid Cloudflare Migration Preparation, Environment Parity, and Promotion Readiness; Feature 189 — Unified Tenant Identity and Data Transfer.
+
+## Feature order and ownership
+
+Feature 188 is the final operational layer in the four-feature dependency chain:
+
+0. **Feature 186** establishes the canonical job contract, persistence, lifecycle, adapters, lease/fencing, and recovery evidence.
+1. **Feature 189** establishes the authenticated tenant/authorization boundary and transfer semantics on that accepted job boundary.
+2. **Feature 187** prepares and rehearses the environment, data, release, and adapter boundaries, then hands over an immutable `CUTOVER_CANDIDATE` package.
+3. **Feature 188** consumes those handoffs, exposes the Admin Platform Operations control center, and is the sole owner of production activation, the maintenance-window cutover, rollback/forward repair, and legacy retirement.
+
+Feature 188 may build its read-only control-center shell and gate model while 187 is in preparation, but it must not expose an activation action until the 187 handoff and 189 tenant/authentication gates are accepted. The required gate keys `feature_187_cutover_candidate` and `feature_189_tenant_auth` represent those immutable handoffs and must both be passed before activation validation can succeed. Feature 188 does not reimplement Feature 186's job lifecycle, Feature 187's adapters, or Feature 189's identity/transfer handlers; it records and verifies their evidence through stable service ports.
 
 ## Outcome
 
@@ -56,9 +75,9 @@ The repository is currently:
 - Existing GCP/Cloud Tasks media paths: apps/web/server/routers/mediaJobs.ts and apps/web/server/routes/tasks.ts
 - Existing scheduled Cloud Tasks path: apps/web/server/services/scheduler.ts
 - Existing scale/deployment mutation path: apps/web/server/services/scaleTier.ts
-- Existing transport adapters: BullMQ, Celery, and in-memory adapters in apps/web/server/services/jobTransportAdapters.ts
+- Existing transport adapters: BullMQ, Celery, and in-memory adapters in apps/web/server/services/jobTransportAdapters.ts, plus the provider-neutral binding-injected Cloudflare contract in apps/web/server/services/cloudflareJobAdapters.ts
 
-The current repository already contains Cloudflare-related R2 and Vectorize integrations, but it is not yet a complete Cloudflare job runtime. Native Cloudflare Queues, Workflows, Containers, and Cron adapters remain implementation work under Feature 186 and this feature's migration plan.
+The current repository already contains Cloudflare-related R2 and Vectorize integrations and a provider-neutral, binding-injected contract for Queues, Workflows, Containers, Cron, and Worker App in `apps/web/server/services/cloudflareJobAdapters.ts`. It is not yet a target-account Cloudflare job runtime: native bindings, Hyperdrive connectivity, deployment, and recovery evidence remain external gates under Feature 186 and this feature's migration plan.
 
 The existing GCP paths are not cosmetic. They currently influence media/video dispatch, scheduled work, task handlers, deployment, and scale operations. They must therefore be replaced, retired, or retained only as an explicitly documented emergency rollback path.
 
@@ -95,12 +114,12 @@ A new repository is justified only if a separate legal owner, security boundary,
 
 - Replacement of the old Admin Infrastructure screen and its navigation model.
 - GCP/Cloudflare platform selection and readiness control.
-- Job Control Plane monitor and operational actions.
+- Job Control Plane monitor and operational actions over the Feature 186 service boundary.
 - Runner, capability, lease, heartbeat, and adapter observability.
 - Complete database data promotion from the current Dev Server source.
 - Continuous source-to-target synchronization and validation before cutover.
 - R2/object and Vectorize promotion evidence where those resources are part of production data.
-- Cloudflare Queues, Workflows, Containers, Cron, Worker App, Hyperdrive, R2, and Vectorize readiness.
+- Cloudflare Queues, Workflows, Containers, Cron, Worker App, Hyperdrive, R2, and Vectorize readiness based on Feature 187 adapter and environment evidence.
 - Legacy producer and hidden-fallback detection.
 - One-time maintenance-window cutover and explicit emergency rollback.
 - Permanent post-cutover Dev/Production separation.
@@ -633,42 +652,33 @@ An unexpected legacy call must fail closed, create a bounded security/operations
 - implement loading, stale, blocked, error, permission, and confirmation states
 - remove old controls from the primary navigation only after replacement APIs exist
 
-### Package 4 — Feature 186 completion
+### Package 4 — Feature 186 operational integration
 
-- finish control-plane schema and guarded transitions
-- finish adapter registry and executor/reporter ports
-- migrate job families
-- implement outbox, lease, heartbeat, reconciler, side-effect settlement, and recovery evidence
+- consume the accepted Feature 186 control-plane contract
+- expose canonical job, lease, settlement, and recovery evidence in the control center
+- verify that migrated job classes have one active producer and an explicit rollback flag
+- route any missing lifecycle capability back to Feature 186 as a dependency change; do not fork it here
 
 ### Package 5 — Cloudflare adapters
 
-- Queues
-- Workflows
-- Containers
-- Cron
-- Worker App
-- Hyperdrive/PostgreSQL access
-- R2 and Vectorize production paths
+- validate the Feature 187 adapter, binding, capability, and connectivity evidence
+- record readiness and blockers for Queues, Workflows, Containers, Cron, Worker App, Hyperdrive/PostgreSQL, R2, and Vectorize
+- own the activation gate and operational rollback boundary, not the adapter implementation
 
-### Package 6 — promotion engine
+### Package 6 — final promotion and cutover coordinator
 
-- full snapshot
-- continuous CDC or transaction-watermark delta
-- table/row disposition
-- row digest and checksum validation
-- R2/object manifest validation
-- Vectorize promotion/rebuild validation
-- final fence and final delta
-- sync shutdown and credential revocation
+- consume the Feature 187 source/target manifests and validated promotion machinery
+- coordinate the final write fence, final delta, validation, and target handoff during cutover
+- record the activation, sync shutdown, credential revocation, and post-cutover separation evidence
+- do not create a second promotion engine or data source of truth
 
-### Package 7 — GitHub release system
+### Package 7 — release governance and cutover evidence
 
-- GitHub Environments and reviewers
-- Cloudflare build/deploy workflow
-- provider-neutral release manifest
-- schema/data/adapter evidence artifacts
-- GCP rollback workflow
-- legacy workflow retirement gates
+- consume the immutable release manifest and evidence artifacts produced by Feature 187
+- configure GitHub Environment protection, required reviewers, and cutover approvals
+- link schema/data/adapter evidence to the platform control record
+- retain the GCP rollback workflow and legacy workflow retirement gates
+- do not create a second build or promotion pipeline
 
 ### Package 8 — rehearsal and production runbook
 
@@ -687,23 +697,23 @@ No runtime behavior changes. Produce call-site, data, storage, provider, job, wo
 
 ### Phase 1 — control center foundation
 
-Build readiness, release, promotion, audit, and platform-state contracts. Operate in observe-only mode first.
+Build environment-scoped control records, readiness/gate aggregation, audit, and platform-state contracts. Consume Feature 187 manifests rather than recreating its release or promotion machinery. Operate in observe-only mode first.
 
 ### Phase 2 — Admin redesign
 
 Introduce the new control center and migrate old infrastructure capabilities into it. Do not expose an activation action until the backend gates exist.
 
-### Phase 3 — adapter and replacement implementation
+### Phase 3 — adapter readiness and replacement acceptance
 
-Implement Feature 186 adapters and Cloudflare runtime replacements. Migrate job classes behind thin wrappers and prove recovery.
+Accept the Feature 187 adapter and runtime-replacement evidence, verify recovery and one-producer ownership, and register any remaining blockers. Adapter implementation and job-family migration remain in Feature 186/187.
 
-### Phase 4 — data promotion rehearsal
+### Phase 4 — integrated promotion and cutover rehearsal
 
-Run full promotion against representative data, continuous sync, validation, application tests, backup/restore, and rollback rehearsal.
+Run the Feature 187 promotion machinery through the Admin control records with representative data, continuous sync, validation, application tests, backup/restore, and rollback rehearsal. Do not switch production authority.
 
 ### Phase 5 — release candidate
 
-Promote one immutable GitHub artifact through staging and Cloudflare preflight. Resolve every blocker and publish the final manifest.
+Accept the immutable GitHub artifact and Feature 187 handoff through staging and Cloudflare preflight. Resolve every blocker and attach the final manifest to the cutover control record.
 
 ### Phase 6 — one-time production cutover
 

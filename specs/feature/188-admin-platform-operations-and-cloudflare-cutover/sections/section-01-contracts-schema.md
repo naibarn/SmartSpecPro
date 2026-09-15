@@ -49,7 +49,8 @@ reaches that target through Hyperdrive and never reaches the Dev Server database
 - packages/job-control-plane/src/ or the existing Feature 186 type module:
   environment, platform, gate, promotion, release, action, and adapter ports.
 - apps/web/drizzle/schema.ts: Drizzle table/enums/type definitions.
-- apps/web/drizzle/0306_feature_188_platform_operations.sql: additive SQL.
+- apps/web/drizzle/0318_feature_188_platform_operations.sql: additive SQL after the Feature 189 schema and backfill migrations.
+- apps/web/drizzle/0322_feature_188_promotion_binding.sql and `0323_feature_188_promotion_batch_fencing.sql`: additive activation binding and checkpoint lease/fencing follow-ups.
 - apps/web/drizzle/feature188PlatformOperationsMigration.test.ts:
   migration/schema contract tests.
 - apps/web/server/services/__tests__/feature188Contracts.test.ts:
@@ -104,7 +105,7 @@ between operation records and parent records, bounded text/JSON constraints,
 and indexes for active controls, unresolved gates, stale sync, pending batches,
 evidence timeline, and source/target identities.
 
-The migration must remain compatible with Feature 186 migrations 0303–0305 and
+The migration must remain compatible with Feature 186 migrations 0303–0315 and
 the existing schema's migration ordering. The implementation must use the
 repository's normal migration generator/runner and must not silently rewrite
 unrelated schema.

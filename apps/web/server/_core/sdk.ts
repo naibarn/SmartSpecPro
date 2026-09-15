@@ -46,6 +46,16 @@ export type SessionPayload = {
   jti?: string;
 };
 
+function isSessionRevoked(user: User, issuedAtSeconds: unknown): boolean {
+  if (!user.sessionRevokedAt) return false;
+  const issuedAt = typeof issuedAtSeconds === "number" && Number.isFinite(issuedAtSeconds)
+    ? issuedAtSeconds * 1000
+    : 0;
+  // Tokens without an issued-at claim cannot prove that they predate the
+  // revocation fence, so fail closed once a user has been fenced.
+  return issuedAt <= user.sessionRevokedAt.getTime();
+}
+
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
@@ -211,13 +221,14 @@ class SDKServer {
       jti: payload.jti ?? randomUUID(),
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+      .setIssuedAt(Math.floor(issuedAt / 1000))
       .setExpirationTime(expirationSeconds)
       .sign(secretKey);
   }
 
   async verifySession(
     cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string; jti?: string } | null> {
+  ): Promise<{ openId: string; appId: string; name: string; jti?: string; iat?: number } | null> {
     if (!cookieValue) {
       console.warn("[Auth] Missing session cookie");
       return null;
@@ -228,7 +239,7 @@ class SDKServer {
       const { payload } = await jwtVerify(cookieValue, secretKey, {
         algorithms: ["HS256"],
       });
-      const { openId, appId, name, jti, userId, role } = payload as Record<string, unknown>;
+      const { openId, appId, name, jti, iat, userId, role } = payload as Record<string, unknown>;
 
       // System user JWT uses userId + role instead of openId + appId
       if (userId === -1 && role === "system_agent") {
@@ -246,6 +257,7 @@ class SDKServer {
         appId,
         name: typeof name === "string" ? name : "",
         jti: typeof jti === "string" ? jti : undefined,
+        iat: typeof iat === "number" ? iat : undefined,
       };
     } catch (error) {
       console.warn("[Auth] Session verification failed", String(error));
@@ -315,6 +327,9 @@ class SDKServer {
 
     // If user exists in DB (local or OAuth), use it directly
     if (user) {
+      if (isSessionRevoked(user, session.iat)) {
+        throw ForbiddenError("Session revoked");
+      }
       // Update last signed-in timestamp (non-blocking, uses dedicated update function)
       await db.updateLastSignedIn(user.openId);
       return this.enforceActiveUser(user);
@@ -338,6 +353,10 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    if (isSessionRevoked(user, session.iat)) {
+      throw ForbiddenError("Session revoked");
     }
 
     return this.enforceActiveUser(user);
@@ -378,6 +397,10 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    if (isSessionRevoked(user, (claims as Record<string, unknown>).iat)) {
+      throw ForbiddenError("Token revoked");
     }
 
     await db.updateLastSignedIn(user.openId);

@@ -37,6 +37,7 @@ describe("Search Endpoints", () => {
             id: "doc-1-chunk-0",
             score: 0.92,
             metadata: {
+              sourceId: "doc-1",
               title: "Auth Guide",
               type: "article",
               sourceUrl: "/docs/auth",
@@ -48,6 +49,7 @@ describe("Search Endpoints", () => {
             id: "doc-2-chunk-0",
             score: 0.85,
             metadata: {
+              sourceId: "doc-2",
               title: "Login Flow",
               type: "article",
               sourceUrl: "/docs/login",
@@ -121,6 +123,17 @@ describe("Search Endpoints", () => {
       );
     });
 
+    it("caps provider topK at the Vectorize metadata-query limit", async () => {
+      mockQuery.mockResolvedValueOnce([]);
+
+      await searchDocs({ query: "test", tenantId: "t1", limit: 100 });
+
+      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
+        expect.objectContaining({ topK: 50 }),
+      );
+    });
+
     it("returns empty array for empty query", async () => {
       const results = await searchDocs({ query: "", tenantId: "t1", limit: 10 });
       expect(results).toEqual([]);
@@ -135,6 +148,7 @@ describe("Search Endpoints", () => {
             id: "img-1",
             score: 0.88,
             metadata: {
+              sourceId: "asset-1",
               title: "screenshot.png",
               type: "image",
               sourceUrl: "https://cdn.example.com/screenshot.png",
@@ -162,8 +176,9 @@ describe("Search Endpoints", () => {
         {
           id: "marketplace-asset_1",
           score: 0.91,
-          metadata: {
-            title: "product_main_01",
+            metadata: {
+              sourceId: "marketplace-asset_1",
+              title: "product_main_01",
             type: "marketplace_image",
             sourceUrl: "https://cdn.example.com/product.png",
             createdAt: Date.now(),

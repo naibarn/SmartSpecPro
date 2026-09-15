@@ -5,6 +5,7 @@ This service monitors Redis Streams and triggers workflows when messages arrive.
 Run as a background worker: python -m app.services.queue_consumer
 """
 import asyncio
+import os
 import signal
 import sys
 from datetime import datetime
@@ -114,11 +115,21 @@ class QueueConsumer:
                         count=len(message_list),
                     )
 
-                    # Trigger workflow via Celery
+                    # Persist/dispatch through the canonical control plane in
+                    # hard cutover; the stream ACK follows the durable create.
                     try:
-                        process_queue_message.delay(
-                            queue_name=queue_name,
-                            messages=message_list,
+                        from app.services.job_control_plane import dispatch_python_task
+
+                        dispatch_python_task(
+                            process_queue_message.name,
+                            kwargs={
+                                "queue_name": queue_name,
+                                "messages": message_list,
+                            },
+                            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+                            idempotency_key=f"workflow-queue:{queue_name}:{message_list[0]['id']}:{message_list[-1]['id']}",
+                            correlation_id=f"workflow-queue:{queue_name}",
+                            legacy_task=process_queue_message,
                         )
 
                         # ACK messages after successful queueing

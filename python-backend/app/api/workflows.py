@@ -1,5 +1,6 @@
 """Workflow API endpoints."""
 import asyncio
+import os
 import re
 import uuid
 from datetime import datetime, timezone
@@ -20,6 +21,7 @@ from app.models.workflow_execution import WorkflowExecution
 from app.models.workflow_dlq import WorkflowDeadLetterQueue
 from app.models.workflow_schedule import WorkflowSchedule
 from app.models.workflow_event_subscription import WorkflowEventSubscription
+from app.services.job_control_plane import dispatch_python_task
 from app.orchestrator.cost_estimator import CostEstimator
 from app.orchestrator.execution_registry import get_active_execution, register_execution, unregister_execution
 from app.orchestrator.langgraph_runtime import get_langgraph_runtime
@@ -256,17 +258,29 @@ async def generate_workflow(
 
     # Submit to Celery queue
     try:
-        generate_workflow_task.delay(
-            task_id=task_id,
-            prompt=body.prompt,
-            node_types=body.node_types,
-            model=body.model_id,
-            default_model=body.default_model,
-            user_token=user_token,
+        dispatch_python_task(
+            generate_workflow_task.name,
+            kwargs={
+                "task_id": task_id,
+                "prompt": body.prompt,
+                "node_types": body.node_types,
+                "model": body.model_id,
+                "default_model": body.default_model,
+                "user_token": user_token,
+                "user_id": current_user.id,
+            },
+            tenant_id=current_user.currentTenantId,
             user_id=current_user.id,
+            idempotency_key=f"workflow-generate:{current_user.currentTenantId}:{task_id}",
+            legacy_task=generate_workflow_task,
         )
     except Exception as exc:
         logger.error("workflow_gen_queue_submit_failed", error=str(exc))
+        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            raise HTTPException(
+                status_code=503,
+                detail="Job control plane unavailable; workflow generation was not executed.",
+            ) from exc
         # Fallback: run synchronously if Celery is not available
         logger.warning("workflow_gen_falling_back_to_sync", task_id=task_id)
         _set_status(task_id, {
@@ -329,7 +343,11 @@ async def get_generate_status(
         raise HTTPException(status_code=400, detail="Invalid task_id format")
 
     # H-01: Enforce ownership — returns None if user doesn't own this task
-    status_data = get_status(task_id, user_id=current_user.id)
+    status_data = get_status(
+        task_id,
+        user_id=current_user.id,
+        tenant_id=current_user.currentTenantId,
+    )
     if status_data is None:
         raise HTTPException(status_code=404, detail="Task not found or expired")
 
@@ -386,20 +404,32 @@ async def edit_workflow(
     })
 
     try:
-        edit_workflow_task.delay(
-            task_id=task_id,
-            current_workflow=body.current_workflow,
-            errors=body.errors,
-            warnings=body.warnings,
-            instructions=body.instructions,
-            node_types=body.node_types,
-            model=body.model_id,
-            default_model=body.default_model,
-            user_token=user_token,
+        dispatch_python_task(
+            edit_workflow_task.name,
+            kwargs={
+                "task_id": task_id,
+                "current_workflow": body.current_workflow,
+                "errors": body.errors,
+                "warnings": body.warnings,
+                "instructions": body.instructions,
+                "node_types": body.node_types,
+                "model": body.model_id,
+                "default_model": body.default_model,
+                "user_token": user_token,
+                "user_id": current_user.id,
+            },
+            tenant_id=current_user.currentTenantId,
             user_id=current_user.id,
+            idempotency_key=f"workflow-edit:{current_user.currentTenantId}:{task_id}",
+            legacy_task=edit_workflow_task,
         )
     except Exception as exc:
         logger.error("workflow_edit_queue_submit_failed", error=str(exc))
+        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            raise HTTPException(
+                status_code=503,
+                detail="Job control plane unavailable; workflow edit was not executed.",
+            ) from exc
         # Fallback: run synchronously if Celery is not available
         logger.warning("workflow_edit_falling_back_to_sync", task_id=task_id)
         _set_edit_status(task_id, {
@@ -460,7 +490,11 @@ async def get_edit_status(
     if not task_id.startswith("wfedit-") or len(task_id) != 19:
         raise HTTPException(status_code=400, detail="Invalid task_id format")
 
-    status_data = _get_edit_status(task_id, user_id=current_user.id)
+    status_data = _get_edit_status(
+        task_id,
+        user_id=current_user.id,
+        tenant_id=current_user.currentTenantId,
+    )
     if status_data is None:
         raise HTTPException(status_code=404, detail="Task not found or expired")
 
@@ -866,10 +900,17 @@ async def receive_webhook(
 
         # Execute workflow asynchronously via Celery
         from app.tasks.workflow_tasks import execute_webhook_workflow
-        task = execute_webhook_workflow.delay(
-            workflow_id=workflow_id,
-            node_id=node_id,
-            webhook_request=webhook_request,
+        task = dispatch_python_task(
+            execute_webhook_workflow.name,
+            kwargs={
+                "workflow_id": workflow_id,
+                "node_id": node_id,
+                "webhook_request": webhook_request,
+            },
+            tenant_id=workflow.tenantId,
+            user_id=workflow.userId,
+            idempotency_key=f"workflow-webhook:{workflow.tenantId}:{workflow_id}:{webhook_id}",
+            legacy_task=execute_webhook_workflow,
         )
 
         logger.info(
@@ -2266,10 +2307,17 @@ async def internal_webhook_trigger(
     node_id = webhook_node_id or "direct"
 
     from app.tasks.workflow_tasks import execute_webhook_workflow
-    task = execute_webhook_workflow.delay(
-        workflow_id=str(workflow_id),
-        node_id=node_id,
-        webhook_request=webhook_request,
+    task = dispatch_python_task(
+        execute_webhook_workflow.name,
+        kwargs={
+            "workflow_id": str(workflow_id),
+            "node_id": node_id,
+            "webhook_request": webhook_request,
+        },
+        tenant_id=workflow.tenantId,
+        user_id=workflow.userId,
+        idempotency_key=f"workflow-webhook-internal:{workflow.tenantId}:{workflow_id}:{body.webhook_trigger_id or 'internal'}",
+        legacy_task=execute_webhook_workflow,
     )
 
     logger.info(

@@ -239,6 +239,18 @@ class TestGoogleTokenService:
             assert result["email"] == "user@example.com"
             assert any("drive.readonly" in s for s in result["scopes"])
 
+    async def test_connection_email_falls_back_to_profile_for_google_subject(self):
+        """Login-only subject mappings still expose the verified profile email."""
+        from app.services.google_token_service import GoogleTokenService
+
+        conn = MagicMock(
+            provider_user_id="google-subject-123",
+            profile_data='{"email":"User@Example.com"}',
+        )
+        svc = GoogleTokenService(AsyncMock())
+
+        assert await svc._get_email_from_connection(conn) == "User@Example.com"
+
     async def test_disconnect_deletes_connection(self):
         """disconnect removes the oauth_connections row."""
         from app.services.google_token_service import GoogleTokenService

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { NleCanvas, PreviewAspectRatio, SmartSpecProjectDraft } from "../../types/nleProject";
+import { useWorkerLocale } from "../../app/workerContext";
 
 export interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -160,6 +161,8 @@ export function ProjectSettingsModal({
   boundSeriesId,
   onSaveSettings,
 }: ProjectSettingsModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [title, setTitle] = useState(project?.title || "Video Project");
   const [selectedRatio, setSelectedRatio] = useState<AspectRatioType>("9:16");
   const [selectedQuality, setSelectedQuality] = useState<ResolutionQuality>("1080p");
@@ -331,10 +334,10 @@ export function ProjectSettingsModal({
             <span className="modal-title-icon" style={{ fontSize: "1.4rem" }}>⚙️</span>
             <div>
               <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "#f8fafc" }}>
-                ตั้งค่าโปรเจกต์ (Project & Canvas Settings)
+                {t("ตั้งค่าโปรเจกต์ (Project & Canvas Settings)", "Project & canvas settings")}
               </h3>
               <p className="modal-subtitle" style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#94a3b8" }}>
-                กำหนดแพลตฟอร์มปลายทาง, สัดส่วนหน้าจอ (Aspect Ratio), ความละเอียด (Resolution) และอัตราเฟรม (FPS)
+                {t("กำหนดแพลตฟอร์มปลายทาง, สัดส่วนหน้าจอ (Aspect Ratio), ความละเอียด (Resolution) และอัตราเฟรม (FPS)", "Set the target platform, aspect ratio, resolution and frame rate (FPS)")}
               </p>
             </div>
           </div>
@@ -348,7 +351,7 @@ export function ProjectSettingsModal({
           {/* Project Title */}
           <div className="settings-field-group">
             <label className="field-label" htmlFor="project-title-input" style={{ fontWeight: 600, color: "#e2e8f0", fontSize: "0.85rem", marginBottom: "6px", display: "block" }}>
-              ชื่อโปรเจกต์ (Project Title)
+              {t("ชื่อโปรเจกต์ (Project Title)", "Project title")}
             </label>
             <input
               id="project-title-input"

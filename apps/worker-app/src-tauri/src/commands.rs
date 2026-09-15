@@ -49,8 +49,9 @@ use crate::local_llm_registry::{
 };
 use crate::media_pipeline::{
     analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
-    run_allowlisted_ffmpeg, run_interactive_media_render, LocalMediaAnalysis, LocalMediaEditPlan,
-    validate_camera_motion_plan, CameraMotionPlan, LocalMediaQc, MediaPlanOptions, MediaToolchain,
+    run_allowlisted_ffmpeg, run_interactive_media_render, validate_camera_motion_plan,
+    CameraMotionPlan, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
+    MediaRuntimeReadiness, MediaToolchain,
 };
 use crate::series_workspace::{
     clear_root_state, create_child_folder, import_files_into_root, load_root_state_for_series,
@@ -234,6 +235,14 @@ fn get_effective_runtime_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> 
     }
 
     Ok(app_data_dir)
+}
+
+fn ensure_media_tools_ready(tools: &MediaToolchain) -> Result<(), String> {
+    tools.readiness_error().map_or(Ok(()), |detail| {
+        Err(format!(
+            "{detail}; open Runtime and repair the managed runtime before analyzing or rendering media"
+        ))
+    })
 }
 
 #[tauri::command]
@@ -1889,6 +1898,7 @@ pub async fn worker_app_analyze_media_asset(
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
     analyze_media_file(&source, &tools)
 }
 
@@ -2219,6 +2229,81 @@ pub async fn worker_app_list_series(
     .await
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceGuidedVisualAnalysisResult {
+    pub contract_version: String,
+    pub asset_fingerprint: String,
+    pub caption: String,
+    pub subjects: Vec<String>,
+    pub actions: Vec<String>,
+    pub setting: Vec<String>,
+    pub objects: Vec<String>,
+    pub ocr_text: Vec<String>,
+    pub keywords: Vec<String>,
+    pub safety: Vec<String>,
+    pub confidence: f64,
+    pub analyzer: String,
+    pub model_revision: String,
+}
+
+#[tauri::command]
+pub async fn worker_app_analyze_visual_match_image(
+    app: tauri::AppHandle,
+    file_path: String,
+    asset_fingerprint: String,
+) -> Result<VoiceGuidedVisualAnalysisResult, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app_data_directory_unavailable: {error}"))?;
+    let connection = load_series_control_plane_connection(&app_data_dir)?;
+    let path = PathBuf::from(file_path.trim())
+        .canonicalize()
+        .map_err(|error| format!("image_file_not_found: {error}"))?;
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let mime = match extension.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "webp" => "image/webp",
+        _ => return Err("visual_match_unsupported_image_type".into()),
+    };
+    let bytes =
+        fs::read(&path).map_err(|error| format!("visual_match_image_read_failed: {error}"))?;
+    if bytes.is_empty() || bytes.len() > 8 * 1024 * 1024 {
+        return Err("visual_match_image_size_invalid".into());
+    }
+    let fingerprint = asset_fingerprint.trim();
+    if fingerprint.is_empty() || fingerprint.len() > 160 {
+        return Err("visual_match_asset_fingerprint_invalid".into());
+    }
+    let image_data_url = format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    );
+    let result = post_worker_json::<VoiceGuidedVisualAnalysisResult, _>(
+        &connection.server_url,
+        &format!(
+            "/api/workers/{}/media-workspace/visual-match/analyze-image",
+            connection.worker_id
+        ),
+        &connection.tokens.execution_token,
+        &serde_json::json!({
+            "contractVersion": "voice-guided-visual-match.v1",
+            "assetFingerprint": fingerprint,
+            "imageDataUrl": image_data_url,
+        }),
+        &connection.device_proof,
+    )
+    .await
+    .map_err(|error| format!("visual_match_analysis_failed: {error}"))?;
+    Ok(result)
+}
+
 /// Execute only the no-payload Series Quick Actions from the Worker shell.
 /// Actions that need a root, source selection, or QC payload stay in the
 /// Media Workspace so a toolbar click can never acknowledge unsafe work.
@@ -2542,7 +2627,9 @@ pub async fn worker_app_transcribe_audio(
         return Err("cloud_transcription_unavailable: no approved cloud ASR adapter is registered for this Worker".into());
     }
     if selected_engine == "whisper.cpp" && requested_diarization {
-        return Err("diarization_unavailable: whisper.cpp profile has no diarization adapter".into());
+        return Err(
+            "diarization_unavailable: whisper.cpp profile has no diarization adapter".into(),
+        );
     }
     // Keep each source revision in its own output directory. A shared
     // `transcript.json` would allow a failed/retried profile to accidentally
@@ -2569,7 +2656,9 @@ pub async fn worker_app_transcribe_audio(
         .map(|metadata| metadata.file_type().is_symlink())
         .unwrap_or(false)
     {
-        return Err("transcription_output_unavailable: transcription output directory is a symlink".into());
+        return Err(
+            "transcription_output_unavailable: transcription output directory is a symlink".into(),
+        );
     }
     std::fs::create_dir_all(&temp_dir)
         .map_err(|error| format!("failed to create temp dir: {error}"))?;
@@ -2589,6 +2678,7 @@ pub async fn worker_app_transcribe_audio(
     });
     let cli_path = runtime_root.join("hyperframes/node_modules/hyperframes/dist/cli.js");
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
     let duration_ms = probe_media_file(&source_path, &tools)
         .ok()
         .and_then(|probe| probe.duration_ms);
@@ -2615,10 +2705,12 @@ pub async fn worker_app_transcribe_audio(
         if mdl != transcription.model {
             return Err(format!("unsupported_transcription_model: {mdl}"));
         }
-        let whisper_path = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path)
-            .ok_or_else(|| "transcription_unavailable".to_string())?;
-        let model_path = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path)
-            .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let whisper_path =
+            crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path)
+                .ok_or_else(|| "transcription_unavailable".to_string())?;
+        let model_path =
+            crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path)
+                .ok_or_else(|| "transcription_unavailable".to_string())?;
         if !whisper_path.is_file() || !model_path.is_file() {
             return Err("transcription_unavailable".into());
         }
@@ -2633,11 +2725,21 @@ pub async fn worker_app_transcribe_audio(
             return Err("transcription_model_integrity_failed".into());
         }
         crate::worker_loop::execute_hyperframes_transcription_process(
-            settings.runtime_environment.is_managed_wsl(), settings.managed_wsl_root.clone(),
-            source_path.clone(), temp_dir.clone(), lang.clone(), mdl, whisper_path, node_path, cli_path,
+            settings.runtime_environment.is_managed_wsl(),
+            settings.managed_wsl_root.clone(),
+            source_path.clone(),
+            temp_dir.clone(),
+            lang.clone(),
+            mdl,
+            whisper_path,
+            node_path,
+            cli_path,
         )?
     } else {
-        let profile = manifest.transcription_profiles.iter().find(|item| item.engine == selected_engine)
+        let profile = manifest
+            .transcription_profiles
+            .iter()
+            .find(|item| item.engine == selected_engine)
             .ok_or_else(|| format!("unsupported_transcription_engine: {selected_engine}"))?;
         if requested_words && !profile.word_timestamps {
             return Err("word_timestamps_unavailable".into());
@@ -2645,13 +2747,23 @@ pub async fn worker_app_transcribe_audio(
         if requested_diarization && !profile.diarization {
             return Err("diarization_unavailable".into());
         }
-        if !profile.supported_languages.is_empty() && lang != "auto" && !profile.supported_languages.iter().any(|item| item == &lang) {
+        if !profile.supported_languages.is_empty()
+            && lang != "auto"
+            && !profile.supported_languages.iter().any(|item| item == &lang)
+        {
             return Err(format!("language_unavailable: {lang}"));
         }
         execute_transcription_profile_process(
-            settings.runtime_environment.is_managed_wsl(), settings.managed_wsl_root.clone(),
-            source_path.clone(), temp_dir.clone(), lang.clone(), model.as_deref(), profile,
-            requested_words, requested_diarization, &runtime_root,
+            settings.runtime_environment.is_managed_wsl(),
+            settings.managed_wsl_root.clone(),
+            source_path.clone(),
+            temp_dir.clone(),
+            lang.clone(),
+            model.as_deref(),
+            profile,
+            requested_words,
+            requested_diarization,
+            &runtime_root,
         )?
     };
 
@@ -2659,8 +2771,10 @@ pub async fn worker_app_transcribe_audio(
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!("Transcription failed: {}", stderr));
     }
-    let final_source_fingerprint = crate::runtime_manifest::file_sha256(&source_path)
-        .map_err(|_| "source_fingerprint_mismatch: source checksum unavailable after inference".to_string())?;
+    let final_source_fingerprint =
+        crate::runtime_manifest::file_sha256(&source_path).map_err(|_| {
+            "source_fingerprint_mismatch: source checksum unavailable after inference".to_string()
+        })?;
     if final_source_fingerprint != source_fingerprint {
         return Err("source_fingerprint_mismatch: source changed during transcription".into());
     }
@@ -2669,13 +2783,16 @@ pub async fn worker_app_transcribe_audio(
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or("transcript");
-    let json_path = [temp_dir.join(format!("{}.json", stem)), temp_dir.join("transcript.json")]
-        .into_iter()
-        .find(|path| {
-            fs::symlink_metadata(path)
-                .map(|metadata| metadata.file_type().is_file())
-                .unwrap_or(false)
-        });
+    let json_path = [
+        temp_dir.join(format!("{}.json", stem)),
+        temp_dir.join("transcript.json"),
+    ]
+    .into_iter()
+    .find(|path| {
+        fs::symlink_metadata(path)
+            .map(|metadata| metadata.file_type().is_file())
+            .unwrap_or(false)
+    });
 
     if let Some(json_path) = json_path {
         let content = std::fs::read_to_string(json_path)
@@ -2687,7 +2804,16 @@ pub async fn worker_app_transcribe_audio(
             &temp_dir,
             duration_ms,
         )?;
-        return canonicalize_transcript_output(normalized, &source_path, duration_ms, &lang, &selected_engine, &manifest, requested_words, requested_diarization);
+        return canonicalize_transcript_output(
+            normalized,
+            &source_path,
+            duration_ms,
+            &lang,
+            &selected_engine,
+            &manifest,
+            requested_words,
+            requested_diarization,
+        );
     }
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
@@ -2697,7 +2823,16 @@ pub async fn worker_app_transcribe_audio(
             &temp_dir,
             duration_ms,
         )?;
-        return canonicalize_transcript_output(normalized, &source_path, duration_ms, &lang, &selected_engine, &manifest, requested_words, requested_diarization);
+        return canonicalize_transcript_output(
+            normalized,
+            &source_path,
+            duration_ms,
+            &lang,
+            &selected_engine,
+            &manifest,
+            requested_words,
+            requested_diarization,
+        );
     }
 
     Err("Transcription completed but output transcript file was not found".to_string())
@@ -2716,17 +2851,49 @@ fn canonicalize_transcript_output(
     const TRANSCRIPT_NORMALIZER_REVISION: &str = "worker-normalizer-v2";
     let source_checksum = crate::runtime_manifest::file_sha256(source_path)
         .map_err(|_| "transcription_failed: source checksum unavailable".to_string())?;
-    let source_id = format!("local-audio-{}", source_checksum.chars().take(24).collect::<String>());
-    let model_revision = manifest.transcription.as_ref().filter(|_| engine == "whisper.cpp").map(|item| item.version.clone())
-        .or_else(|| manifest.transcription_profiles.iter().find(|item| item.engine == engine).map(|item| item.version.clone()))
+    let source_id = format!(
+        "local-audio-{}",
+        source_checksum.chars().take(24).collect::<String>()
+    );
+    let model_revision = manifest
+        .transcription
+        .as_ref()
+        .filter(|_| engine == "whisper.cpp")
+        .map(|item| item.version.clone())
+        .or_else(|| {
+            manifest
+                .transcription_profiles
+                .iter()
+                .find(|item| item.engine == engine)
+                .map(|item| item.version.clone())
+        })
         .unwrap_or_else(|| "unknown".into());
     let transcript_fingerprint = format!(
         "{:x}",
-        Sha256::digest(format!("{}:{}:{}:{}:{}", source_checksum, engine, model_revision, manifest.version, TRANSCRIPT_NORMALIZER_REVISION).as_bytes())
+        Sha256::digest(
+            format!(
+                "{}:{}:{}:{}:{}",
+                source_checksum,
+                engine,
+                model_revision,
+                manifest.version,
+                TRANSCRIPT_NORMALIZER_REVISION
+            )
+            .as_bytes()
+        )
     );
-    let transcript_id = format!("audio-transcript-{}", transcript_fingerprint.chars().take(24).collect::<String>());
-    let segments = normalized.get("segments").cloned().unwrap_or_else(|| json!([]));
-    let speaker_turns = normalized.get("speakerTurns").cloned().unwrap_or_else(|| json!([]));
+    let transcript_id = format!(
+        "audio-transcript-{}",
+        transcript_fingerprint.chars().take(24).collect::<String>()
+    );
+    let segments = normalized
+        .get("segments")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    let speaker_turns = normalized
+        .get("speakerTurns")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
     let provider_words = normalized
         .get("words")
         .and_then(Value::as_array)
@@ -2752,8 +2919,8 @@ fn canonicalize_transcript_output(
             }
         }
     }
-    let achieved_word_timing = canonical_word_count > 0
-        && canonical_timed_word_count == canonical_word_count;
+    let achieved_word_timing =
+        canonical_word_count > 0 && canonical_timed_word_count == canonical_word_count;
     let word_timing_coverage = if canonical_word_count == 0 {
         0.0
     } else {
@@ -2872,18 +3039,47 @@ fn execute_transcription_profile_process(
         return Err(format!("unsupported_transcription_model: {model}"));
     }
     let input = source_path.to_string_lossy().to_string();
-    let output = output_dir.join("transcript.json").to_string_lossy().to_string();
-    let input_arg = if managed_wsl { crate::worker_loop::windows_path_to_wsl(&source_path) } else { input.clone() };
-    let output_arg = if managed_wsl { crate::worker_loop::windows_path_to_wsl(&output_dir.join("transcript.json")) } else { output.clone() };
+    let output = output_dir
+        .join("transcript.json")
+        .to_string_lossy()
+        .to_string();
+    let input_arg = if managed_wsl {
+        crate::worker_loop::windows_path_to_wsl(&source_path)
+    } else {
+        input.clone()
+    };
+    let output_arg = if managed_wsl {
+        crate::worker_loop::windows_path_to_wsl(&output_dir.join("transcript.json"))
+    } else {
+        output.clone()
+    };
     let args = vec![
-        "--input", input_arg.as_str(), "--output", output_arg.as_str(), "--language", language.as_str(),
-        "--model", model, "--word-timestamps", if word_timestamps { "true" } else { "false" },
-        "--diarization", if diarization { "true" } else { "false" },
+        "--input",
+        input_arg.as_str(),
+        "--output",
+        output_arg.as_str(),
+        "--language",
+        language.as_str(),
+        "--model",
+        model,
+        "--word-timestamps",
+        if word_timestamps { "true" } else { "false" },
+        "--diarization",
+        if diarization { "true" } else { "false" },
     ];
     if managed_wsl {
         let root = command_managed_wsl_root_expr(&managed_wsl_root);
-        let runner_expr = format!("\"$ROOT\"/{}", command_shell_single_quote(&profile.runner_path));
-        let script = format!("set -eu\nROOT={root}\nexec {runner_expr} {}", args.iter().map(|arg| command_shell_single_quote(arg)).collect::<Vec<_>>().join(" "));
+        let runner_expr = format!(
+            "\"$ROOT\"/{}",
+            command_shell_single_quote(&profile.runner_path)
+        );
+        let script = format!(
+            "set -eu\nROOT={root}\nexec {runner_expr} {}",
+            args.iter()
+                .map(|arg| command_shell_single_quote(arg))
+                .collect::<Vec<_>>()
+                .join(" ")
+        );
         let mut command = std::process::Command::new("wsl.exe");
         command.args(["-e", "bash", "-lc", &script]);
         return run_transcription_command_with_timeout(command);
@@ -2914,7 +3110,9 @@ fn run_transcription_command_with_timeout(
             Ok(None) if started.elapsed() >= TRANSCRIPTION_PROCESS_TIMEOUT => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err("transcription_timeout: ASR runner exceeded its bounded runtime".into());
+                return Err(
+                    "transcription_timeout: ASR runner exceeded its bounded runtime".into(),
+                );
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(100)),
             Err(_) => {
@@ -2932,7 +3130,9 @@ fn command_shell_single_quote(value: &str) -> String {
 
 fn command_managed_wsl_root_expr(value: &str) -> String {
     let trimmed = value.trim();
-    if trimmed == "~" { return "\"$HOME\"".into(); }
+    if trimmed == "~" {
+        return "\"$HOME\"".into();
+    }
     if let Some(rest) = trimmed.strip_prefix("~/") {
         return format!("\"$HOME\"/{}", command_shell_single_quote(rest));
     }
@@ -2941,16 +3141,25 @@ fn command_managed_wsl_root_expr(value: &str) -> String {
 
 #[tauri::command]
 pub fn worker_app_transcription_capabilities(app: tauri::AppHandle) -> Result<Value, String> {
-    let resource_dir = app.path().resource_dir().map_err(|_| "runtime_unavailable".to_string())?;
-    let app_data_dir = app.path().app_data_dir().map_err(|_| "runtime_unavailable".to_string())?;
+    let resource_dir = app
+        .path()
+        .resource_dir()
+        .map_err(|_| "runtime_unavailable".to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|_| "runtime_unavailable".to_string())?;
     let effective_runtime_dir = get_effective_runtime_dir(&app)?;
     let (manifest_path, sidecar_root) = runtime_pack_paths(&resource_dir, &effective_runtime_dir);
-    let manifest = read_runtime_pack_manifest(&manifest_path).map_err(|_| "runtime_unavailable".to_string())?;
+    let manifest = read_runtime_pack_manifest(&manifest_path)
+        .map_err(|_| "runtime_unavailable".to_string())?;
     let runtime_root = crate::runtime_manifest::runtime_pack_root_for_sidecars(&sidecar_root);
     let mut capabilities = Vec::new();
     if let Some(transcription) = manifest.transcription.as_ref() {
-        let binary = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path);
-        let model = crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path);
+        let binary =
+            crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.binary_path);
+        let model =
+            crate::worker_loop::runtime_relative_path(&runtime_root, &transcription.model_path);
         let ready = binary.is_some_and(|path| {
             path.is_file()
                 && crate::runtime_manifest::file_sha256(&path)
@@ -2967,17 +3176,25 @@ pub fn worker_app_transcription_capabilities(app: tauri::AppHandle) -> Result<Va
     for profile in &manifest.transcription_profiles {
         let runner = crate::worker_loop::runtime_relative_path(&runtime_root, &profile.runner_path);
         let runner_ready = runner.is_some_and(|path| {
-            path.is_file() && profile.runner_sha256.as_deref().is_none_or(|expected| {
-                crate::runtime_manifest::file_sha256(&path).is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
-            })
+            path.is_file()
+                && profile.runner_sha256.as_deref().is_none_or(|expected| {
+                    crate::runtime_manifest::file_sha256(&path)
+                        .is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
+                })
         });
-        let model_ready = profile.model_path.as_deref().map(|path| {
-            crate::worker_loop::runtime_relative_path(&runtime_root, path).is_some_and(|item| {
-                item.is_file() && profile.model_sha256.as_deref().is_none_or(|expected| {
-                    crate::runtime_manifest::file_sha256(&item).is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
+        let model_ready = profile
+            .model_path
+            .as_deref()
+            .map(|path| {
+                crate::worker_loop::runtime_relative_path(&runtime_root, path).is_some_and(|item| {
+                    item.is_file()
+                        && profile.model_sha256.as_deref().is_none_or(|expected| {
+                            crate::runtime_manifest::file_sha256(&item)
+                                .is_ok_and(|actual| actual.eq_ignore_ascii_case(expected))
+                        })
                 })
             })
-        }).unwrap_or(true);
+            .unwrap_or(true);
         let ready = runner_ready && model_ready;
         capabilities.push(json!({ "engine": profile.engine, "version": profile.version, "status": if ready { "ready" } else { "unavailable" }, "wordTimestamps": profile.word_timestamps, "diarization": profile.diarization, "maxDurationMs": profile.max_duration_ms }));
     }
@@ -3169,6 +3386,7 @@ pub async fn worker_app_build_media_plan(
             .map_err(|_| "settings lock poisoned".to_string())?
             .clone();
         let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+        ensure_media_tools_ready(&tools)?;
         probe_media_file(&source, &tools)?
             .duration_ms
             .ok_or_else(|| "source_duration_unknown".to_string())?
@@ -3206,6 +3424,7 @@ pub async fn worker_app_process_media_asset(
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
     let output = run_allowlisted_ffmpeg(&root.root_path, &plan, &tools)?;
     qc_derived_output_with_probe(&root.root_path, &output, &tools)
 }
@@ -3238,11 +3457,14 @@ pub async fn worker_app_submit_media_job(
     if processing_mode != "manual_intent" && processing_mode != "automated_ai_editing" {
         return Err("media_processing_mode_invalid".into());
     }
-    // Automated AI editing is an intent mode, not a reason to reject the
-    // deterministic local pipeline. Auto subject tracking is still blocked
-    // below until a validated vision track exists; manual focus remains a
-    // valid user-controlled input for automated trimming/reframing.
-    if reframe_9x16 && !matches!(focus_mode.as_str(), "manual_region") {
+    // Automated editing may use the deterministic local renderer only when a
+    // validated camera plan or focus track accompanies the request. This
+    // preserves the manual path and prevents the worker from fabricating
+    // vision evidence when Quick/Full Scan is unavailable.
+    if reframe_9x16
+        && !matches!(focus_mode.as_str(), "manual_region")
+        && camera_motion_plan.is_none()
+    {
         return Err("focus_track_requires_ai_worker".into());
     }
     let app_data_dir = app
@@ -3255,6 +3477,7 @@ pub async fn worker_app_submit_media_job(
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
     let connection = load_series_control_plane_connection(&app_data_dir)?;
     let root = state
         .series_workspace
@@ -3365,26 +3588,66 @@ pub async fn worker_app_submit_speaker_aware_job(
             return Err("speaker_aware_source_or_binding_missing".into());
         }
     }
-    if !matches!(workflow_mode.as_str(), "subtitle_first" | "speaker_first" | "full_assisted" | "custom") {
+    if !matches!(
+        workflow_mode.as_str(),
+        "subtitle_first" | "speaker_first" | "full_assisted" | "custom"
+    ) {
         return Err("speaker_aware_workflow_invalid".into());
     }
-    let policy: crate::speaker_aware_adapters::AdapterPolicy = serde_json::from_value(adapter_policy.clone())
-        .map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
+    let policy: crate::speaker_aware_adapters::AdapterPolicy =
+        serde_json::from_value(adapter_policy.clone())
+            .map_err(|error| format!("invalid_contract: adapterPolicy invalid: {error}"))?;
     crate::speaker_aware_adapters::validate_policy(&policy)?;
     crate::speaker_model_manager::preflight(&app, &policy)?;
     crate::speaker_aware_adapters::probe_configured_runner()
         .map_err(|error| format!("speaker_aware_preflight_blocked: {error}"))?;
-    let app_data_dir = app.path().app_data_dir().map_err(|error| format!("app data directory unavailable: {error}"))?;
-    let root = state.series_workspace.lock().map_err(|_| "workspace lock poisoned".to_string())?.root.clone().ok_or_else(|| "local_root_not_selected".to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let root = state
+        .series_workspace
+        .lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?
+        .root
+        .clone()
+        .ok_or_else(|| "local_root_not_selected".to_string())?;
     match series_id.as_deref() {
-        Some(series_id_value) if root.series_id != series_id_value => return Err("local_root_series_mismatch".into()),
-        None if root.series_id != STANDALONE_WORKSPACE_ID => return Err("standalone_root_required".into()),
+        Some(series_id_value) if root.series_id != series_id_value => {
+            return Err("local_root_series_mismatch".into())
+        }
+        None if root.series_id != STANDALONE_WORKSPACE_ID => {
+            return Err("standalone_root_required".into())
+        }
         _ => {}
     }
-    let canonical_source = root.root_path.join(source_relative_name.trim()).canonicalize().map_err(|_| "media_source_missing".to_string())?;
-    if !canonical_source.starts_with(&root.root_path) || !canonical_source.is_file() { return Err("relative_path_escape".into()); }
-    let metadata = fs::metadata(&canonical_source).map_err(|_| "media_source_missing".to_string())?;
-    let fingerprint = format!("{:064x}", Sha256::digest(format!("{}:{}:{}", source_relative_name.trim(), metadata.len(), metadata.modified().ok().and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok()).map(|value| value.as_millis()).unwrap_or_default()).as_bytes()));
+    let canonical_source = root
+        .root_path
+        .join(source_relative_name.trim())
+        .canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !canonical_source.starts_with(&root.root_path) || !canonical_source.is_file() {
+        return Err("relative_path_escape".into());
+    }
+    let metadata =
+        fs::metadata(&canonical_source).map_err(|_| "media_source_missing".to_string())?;
+    let fingerprint = format!(
+        "{:064x}",
+        Sha256::digest(
+            format!(
+                "{}:{}:{}",
+                source_relative_name.trim(),
+                metadata.len(),
+                metadata
+                    .modified()
+                    .ok()
+                    .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|value| value.as_millis())
+                    .unwrap_or_default()
+            )
+            .as_bytes()
+        )
+    );
     let connection = load_series_control_plane_connection(&app_data_dir)?;
     let payload = json!({
         "kind": "speaker_aware_media_scan",
@@ -3402,10 +3665,23 @@ pub async fn worker_app_submit_speaker_aware_job(
         "approvalRequired": approval_required,
     });
     let mut payload = payload;
-    let policy_value = payload.get("adapterPolicy").cloned().ok_or_else(|| "invalid_contract: adapterPolicy missing".to_string())?;
+    let policy_value = payload
+        .get("adapterPolicy")
+        .cloned()
+        .ok_or_else(|| "invalid_contract: adapterPolicy missing".to_string())?;
     let policy_hash = crate::speaker_aware_adapters::hash_policy_value(&policy_value);
-    payload.as_object_mut().ok_or_else(|| "invalid_contract: payload must be an object".to_string())?.insert("adapterPolicyHash".into(), Value::String(policy_hash));
-    post_worker_json(&connection.server_url, &format!("/api/workers/{}/speaker-aware-jobs", connection.worker_id), &connection.tokens.execution_token, &json!({ "payload": payload }), &connection.device_proof).await
+    payload
+        .as_object_mut()
+        .ok_or_else(|| "invalid_contract: payload must be an object".to_string())?
+        .insert("adapterPolicyHash".into(), Value::String(policy_hash));
+    post_worker_json(
+        &connection.server_url,
+        &format!("/api/workers/{}/speaker-aware-jobs", connection.worker_id),
+        &connection.tokens.execution_token,
+        &json!({ "payload": payload }),
+        &connection.device_proof,
+    )
+    .await
 }
 
 #[tauri::command]
@@ -3623,6 +3899,24 @@ pub async fn worker_app_run_doctor(app: tauri::AppHandle) -> Result<DoctorSummar
 #[tauri::command]
 pub async fn worker_app_run_full_doctor(app: tauri::AppHandle) -> Result<DoctorSummary, String> {
     build_runtime_doctor(app, true)
+}
+
+#[tauri::command]
+pub async fn worker_app_check_media_runtime(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<MediaRuntimeReadiness, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map(|settings| settings.clone())
+        .map_err(|_| "settings lock poisoned".to_string())?;
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    Ok(tools.readiness_report())
 }
 
 #[tauri::command]
@@ -8714,9 +9008,8 @@ mod refresh_coalescing_tests {
 mod tests {
     use super::{
         build_comfy_upload_arguments, build_start_connect_registration_payload,
-        find_comfy_schema_section, is_allowed_comfy_output_path, is_windows_installer_payload,
-        is_mac_worker_app_update_url, is_worker_app_update_url,
-        normalize_machine_fingerprint_hash,
+        find_comfy_schema_section, is_allowed_comfy_output_path, is_mac_worker_app_update_url,
+        is_windows_installer_payload, is_worker_app_update_url, normalize_machine_fingerprint_hash,
         parse_managed_wsl_runtime_profile_hash, parse_managed_wsl_runtime_version, replace_dir,
         replace_runtime_directories, runtime_update_available, runtime_update_reason,
         runtime_update_required, same_url_origin, summarize_local_device_proof,
@@ -9475,6 +9768,7 @@ pub async fn worker_app_detect_silence_custom(
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
 
     let raw_source_path =
         crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(source_path.trim()));
@@ -9535,6 +9829,7 @@ pub async fn worker_app_process_media_interactive(
         .map_err(|_| "settings lock poisoned".to_string())?
         .clone();
     let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
 
     let raw_source_path =
         crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(request.source_path.trim()));

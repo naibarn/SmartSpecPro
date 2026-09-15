@@ -61,8 +61,8 @@ def test_build_submit_payload_maps_prompt_images_aspect_ratio_and_duration():
     payload = WaveSpeedMediaProvider.build_submit_payload(
         prompt="A cinematic waterfall",
         reference_image_urls=[
-            "https://cdn.example.com/1.png",
-            "https://cdn.example.com/2.png",
+            "https://1.1.1.1/1.png",
+            "https://1.1.1.1/2.png",
         ],
         aspect_ratio="16:9",
         duration=10,
@@ -71,8 +71,8 @@ def test_build_submit_payload_maps_prompt_images_aspect_ratio_and_duration():
     assert payload == {
         "prompt": "A cinematic waterfall",
         "images": [
-            "https://cdn.example.com/1.png",
-            "https://cdn.example.com/2.png",
+            "https://1.1.1.1/1.png",
+            "https://1.1.1.1/2.png",
         ],
         "aspect_ratio": "16:9",
         "duration": 10,
@@ -84,14 +84,24 @@ def test_build_submit_payload_rejects_more_than_four_images():
         WaveSpeedMediaProvider.build_submit_payload(
             prompt="A cinematic waterfall",
             reference_image_urls=[
-                "https://cdn.example.com/1.png",
-                "https://cdn.example.com/2.png",
-                "https://cdn.example.com/3.png",
-                "https://cdn.example.com/4.png",
-                "https://cdn.example.com/5.png",
+                "https://1.1.1.1/1.png",
+                "https://1.1.1.1/2.png",
+                "https://1.1.1.1/3.png",
+                "https://1.1.1.1/4.png",
+                "https://1.1.1.1/5.png",
             ],
             aspect_ratio="16:9",
             duration=10,
+        )
+
+
+def test_build_submit_payload_rejects_query_bearing_reference_without_upload_boundary():
+    with pytest.raises(ValueError, match="MEDIA_REFERENCE_REQUIRES_UPLOAD"):
+        WaveSpeedMediaProvider.build_submit_payload(
+            prompt="A cinematic waterfall",
+            reference_image_urls=["https://1.1.1.1/reference.png?signature=secret"],
+            aspect_ratio="16:9",
+            duration=5,
         )
 
 
@@ -127,9 +137,9 @@ def test_build_submit_payload_supports_extended_aspect_ratios_for_seedance_2_mod
 def test_minimax_h3_reference_to_video_uses_multimodal_reference_keys_and_limits():
     payload = WaveSpeedMediaProvider.build_submit_payload(
         prompt="Use <Picture 1> and <Video 1> with <Audio 1>",
-        reference_image_urls=["https://cdn.example.com/character.png"],
-        reference_video_urls=["https://cdn.example.com/motion.mp4"],
-        reference_audio_urls=["https://cdn.example.com/voice.mp3"],
+        reference_image_urls=["https://1.1.1.1/character.png"],
+        reference_video_urls=["https://1.1.1.1/motion.mp4"],
+        reference_audio_urls=["https://1.1.1.1/voice.mp3"],
         aspect_ratio="9:16",
         duration=5,
         resolution="768p",
@@ -138,9 +148,9 @@ def test_minimax_h3_reference_to_video_uses_multimodal_reference_keys_and_limits
 
     assert payload == {
         "prompt": "Use <Picture 1> and <Video 1> with <Audio 1>",
-        "reference_images": ["https://cdn.example.com/character.png"],
-        "reference_videos": ["https://cdn.example.com/motion.mp4"],
-        "reference_audios": ["https://cdn.example.com/voice.mp3"],
+        "reference_images": ["https://1.1.1.1/character.png"],
+        "reference_videos": ["https://1.1.1.1/motion.mp4"],
+        "reference_audios": ["https://1.1.1.1/voice.mp3"],
         "aspect_ratio": "9:16",
         "resolution": "768p",
         "duration": 5,
@@ -150,24 +160,24 @@ def test_minimax_h3_reference_to_video_uses_multimodal_reference_keys_and_limits
 def test_minimax_h3_image_and_lora_payloads_are_route_specific():
     image_payload = WaveSpeedMediaProvider.build_submit_payload(
         prompt="Animate the first frame",
-        reference_image_urls=["https://cdn.example.com/start.png"],
+        reference_image_urls=["https://1.1.1.1/start.png"],
         aspect_ratio="16:9",
         duration=5,
         resolution="480p",
         provider_model_id=WAVESPEED_MINIMAX_H3_MODEL_IDS["image_to_video_lora"],
         extra_params={
-            "last_image": "https://cdn.example.com/end.png",
-            "loras": [{"path": "https://cdn.example.com/style.safetensors", "scale": 0.8}],
+            "last_image": "https://1.1.1.1/end.png",
+            "loras": [{"path": "https://1.1.1.1/style.safetensors", "scale": 0.8}],
         },
     )
 
     assert image_payload == {
         "prompt": "Animate the first frame",
-        "image": "https://cdn.example.com/start.png",
-        "last_image": "https://cdn.example.com/end.png",
+        "image": "https://1.1.1.1/start.png",
+        "last_image": "https://1.1.1.1/end.png",
         "resolution": "480p",
         "duration": 5,
-        "loras": [{"path": "https://cdn.example.com/style.safetensors", "scale": 0.8}],
+        "loras": [{"path": "https://1.1.1.1/style.safetensors", "scale": 0.8}],
     }
 
     with pytest.raises(WaveSpeedError, match="at most 3 LoRA"):
@@ -203,7 +213,7 @@ def test_build_image_submit_payload_includes_required_wavespeed_parameters_witho
 
 
 def test_build_image_submit_payload_switches_to_edit_shape_and_caps_at_16_images():
-    references = [f"https://cdn.example.com/{index}.png" for index in range(20)]
+    references = [f"https://1.1.1.1/{index}.png" for index in range(20)]
     payload = WaveSpeedMediaProvider.build_image_submit_payload(
         prompt="Replace the background",
         reference_image_urls=references[:WAVESPEED_GPT_IMAGE_25_MAX_REFERENCE_IMAGES],
@@ -252,8 +262,8 @@ def test_build_submission_record_stores_sanitized_request_summary_only():
             provider_task_id="pred-123",
             prompt="Sensitive prompt text",
             reference_image_urls=[
-                "https://cdn.example.com/1.png",
-                "https://cdn.example.com/2.png",
+                "https://1.1.1.1/1.png",
+                "https://1.1.1.1/2.png",
             ],
             aspect_ratio="9:16",
             duration=15,
@@ -362,7 +372,7 @@ async def test_create_prediction_posts_to_normalized_submit_endpoint():
     try:
         await provider.create_prediction(
             prompt="A cinematic waterfall",
-            reference_image_urls=["https://cdn.example.com/1.png"],
+            reference_image_urls=["https://1.1.1.1/1.png"],
             aspect_ratio="16:9",
             duration=5,
         )
@@ -372,7 +382,7 @@ async def test_create_prediction_posts_to_normalized_submit_endpoint():
     called_url = provider.client.post.await_args.args[0]
     called_json = provider.client.post.await_args.kwargs["json"]
     assert called_url == "https://api.wavespeed.ai/api/v3/wavespeed-ai/cinematic-video-generator"
-    assert called_json["images"] == ["https://cdn.example.com/1.png"]
+    assert called_json["images"] == ["https://1.1.1.1/1.png"]
     assert called_json["duration"] == 5
 
 
@@ -419,7 +429,7 @@ async def test_create_prediction_uses_model_specific_endpoint_for_seedance_2_fas
     try:
         await provider.create_prediction(
             prompt="Animate this portrait",
-            reference_image_urls=["https://cdn.example.com/start.png"],
+            reference_image_urls=["https://1.1.1.1/start.png"],
             aspect_ratio="21:9",
             duration=5,
             resolution="720p",
@@ -432,7 +442,7 @@ async def test_create_prediction_uses_model_specific_endpoint_for_seedance_2_fas
     assert called_url == "https://api.wavespeed.ai/api/v3/bytedance/seedance-2.0-fast/image-to-video"
     assert called_json == {
         "prompt": "Animate this portrait",
-        "images": ["https://cdn.example.com/start.png"],
+        "images": ["https://1.1.1.1/start.png"],
         "aspect_ratio": "21:9",
         "duration": 5,
         "resolution": "720p",

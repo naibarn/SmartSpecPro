@@ -1,9 +1,9 @@
-# Feature 187 — Hybrid Cloudflare Migration, Environment Parity, and Dev-to-Production Promotion
+# Feature 187 — Hybrid Cloudflare Migration Preparation, Environment Parity, and Promotion Readiness
 
-**Status:** PROPOSED — migration-preparation and one-time production-cutover specification; no runtime implementation or production migration is included in this document.
+**Status:** IN PROGRESS — provider-neutral local adapter/Worker contract and evidence-only target preflight are implemented; `ops/feature-187/local-readiness-manifest.yaml` records local readiness, while no target-account runtime or production cutover is included in this document.
 **Created:** 2026-09-13
-**Scope:** Existing mini-server development environment, Cloudflare production target, PostgreSQL migration preparation, R2/object migration preparation, asynchronous runtime migration preparation, one-time production cutover, and repeatable dev-to-production code/data promotion.
-**Authority:** This specification defines the environment contract, preparation phases, one-time cutover runbook, promotion model, rollback gates, and operational evidence required to move SmartAIHub to Cloudflare without abandoning the current mini server.
+**Scope:** Existing mini-server development environment, Cloudflare production target, PostgreSQL/R2/object/search preparation, asynchronous runtime migration preparation, staging rehearsal, and repeatable dev-to-production artifact/data promotion readiness.
+**Authority:** This specification defines the environment contract, preparation phases, promotion model, staging evidence, and handoff package required before Feature 188 can execute a production cutover. It does not own production activation, cutover, or legacy retirement.
 **Continuation:** Builds on Feature 186. `worker_jobs` and `worker_job_events` remain the canonical Unified Job Control Plane; this feature does not create a second job ledger.
 
 ## Outcome
@@ -12,7 +12,7 @@ SmartAIHub can continue to run reliably on the existing mini server as an isolat
 
 The two environments share contracts, migrations, adapter interfaces, build inputs, and test fixtures, but never share mutable production credentials, queues, secrets, or accidental data writes.
 
-The eventual migration is performed once, inside an approved maintenance window of 24–72 hours, by promoting one tested immutable release artifact from development/CI to staging and then to production. Preparation may be phased and tested independently, but production traffic, database authority, storage authority, and side-effecting job producers are switched as one coordinated cutover. Code, schema migrations, environment configuration, object storage, vector indexes, jobs, and secrets have separate synchronization rules. “Sync dev to production” therefore means promoting the exact code/build and applying reviewed forward-only migrations, not copying the dev database or queue blindly over production.
+Promotion readiness is established by promoting one tested immutable release artifact from development/CI to staging and by rehearsing the data, adapter, recovery, and rollback boundaries. Production traffic, database authority, storage authority, schedules, and side-effecting job producers remain unchanged in this feature. The actual one-time production cutover is owned by Feature 188. “Sync dev to production” therefore means preparing an evidenced artifact/data handoff, not copying the dev database or queue blindly over production.
 
 The target production architecture is:
 
@@ -39,7 +39,20 @@ The mini server remains the default local development environment and may host b
 
 ## Relationship to Feature 186
 
-Feature 186 remains the source-of-truth and runtime-neutral adapter contract. Its adapter-by-adapter language applies to implementation, compatibility wrapping, testing, and staging preparation. Feature 187 adds the production scheduling decision: all approved adapters and job classes are built, migrated in code, tested, and rehearsed independently before the cutover, but production traffic, database/storage authority, schedules, and side-effecting producers are activated together in the single Phase 9 maintenance window. Existing adapters remain available as rollback paths until the post-cutover observation and reconciliation window closes.
+Feature 186 remains the source-of-truth and runtime-neutral adapter contract. Its adapter-by-adapter language applies to implementation, compatibility wrapping, testing, and staging preparation. Feature 187 prepares and proves the environment and adapter boundaries; it does not activate production or retire legacy paths.
+
+## Feature order and ownership
+
+The four related features are delivered through one dependency chain:
+
+| Order | Feature | Owns | Required handoff |
+|---|---|---|---|
+| 0 | Feature 186 | Canonical job contract, persistence, lifecycle, outbox, adapters, lease/fencing, and recovery evidence | Accepted runtime-neutral control-plane ports and migration manifest |
+| 1 | Feature 189 | Authenticated tenant context, authorization, tenant moves, transfer handlers, previews, checkpoints, and transfer UI | Stable `currentTenantId`, tenant authorization, transfer fences, and tested transfer job integration |
+| 2 | Feature 187 | Dev/staging parity, release artifacts, target data boundaries, Cloudflare adapter preparation, migration manifests, and staging rehearsal | `CUTOVER_CANDIDATE` package with immutable artifact, schema/data/adapter manifests, and evidence |
+| 3 | Feature 188 | Admin Platform Operations, readiness aggregation, production activation, cutover certificate, rollback command, and legacy retirement | Guarded one-time production cutover and post-cutover separation |
+
+Inventory work in Features 187 and 188 may begin in parallel with Feature 189. However, Feature 187 may not freeze or promote tenant-owned data until Feature 189's tenant ownership rules are stable, and Feature 188 may not enable activation until both handoffs pass. Feature 189 consumes Feature 186 ports and must not implement Cloudflare, Hyperdrive, or generic adapter work.
 
 ## Goals
 
@@ -74,7 +87,7 @@ Feature 186 supplies the canonical contract and most of the required persistence
 
 - The primary web runtime is still Express/Node in a Docker image, with the client build and server process coupled in the existing deployment path.
 - Existing code still contains BullMQ, Celery, Celery Beat, Cloud Tasks, in-process schedulers, and direct queue call sites. They remain compatibility paths until their migration wave is complete.
-- The current job transport implementation includes BullMQ, Celery, and in-memory adapters; native Cloudflare Queues, Workflows, and Containers adapters are future deliverables.
+- The current job transport implementation includes BullMQ, Celery, in-memory adapters, and a provider-neutral binding-injected contract for Cloudflare Queues, Workflows, Containers, Cron, and Worker App; native target bindings remain external deliverables.
 - The current startup path and outbox/reconciler must be proven to publish through the selected adapter registry before any new control-plane job class is enabled.
 - Worker runtime claim/report paths must use the Feature 186 lease and fencing contract before the worker class is migrated.
 - Database access currently uses application connection configuration directly; Hyperdrive binding and target-database transaction/locking compatibility must be proven separately.
@@ -101,7 +114,7 @@ The environment selector is server-side configuration. A client cannot choose a 
 | Concern | Canonical owner | Development implementation | Cloudflare target | Migration rule |
 |---|---|---|---|---|
 | Web assets | Web release artifact | Vite/static server on mini server | Web Worker + Static Assets | Prepare and rehearse first; switch production delivery during the one-time cutover |
-| HTTP/API | API contract | Express/Node API | API Worker and service bindings | Validate endpoint families behind stable auth/response contracts; switch approved routes together in the cutover window |
+| HTTP/API | API contract | Express/Node API | API Worker and service bindings | Validate endpoint families behind stable auth/response contracts; provide evidence for Feature 188's coordinated cutover |
 | Job identity/lifecycle | PostgreSQL + Feature 186 | Existing Drizzle/PostgreSQL control plane | Same PostgreSQL through approved connection path | Never create a parallel `jobs` table |
 | Single-step async | Job Control Plane | BullMQ/Celery adapter | Cloudflare Queues adapter | Build and test per job class; activate production producers together at cutover; queue is transport only |
 | Long/multi-step work | Job Control Plane + workflow adapter | Celery/task orchestration | Cloudflare Workflows | Rehearse persisted step references and idempotency before the one-time production switch |
@@ -257,45 +270,11 @@ Every preparation release follows this order and does not change production auth
 7. Record the release as `CUTOVER_CANDIDATE` only when every required component, migration, binding, secret, adapter, and runbook gate is complete.
 8. Keep the current `legacy-prod` runtime authoritative. No production route, database, storage, schedule, or side-effecting job producer is switched during preparation.
 
-### One-time production migration window
+### Handoff to Feature 188
 
-The actual production migration is a separate approved operation with a declared 24–72 hour maintenance window. All components that have reached `CUTOVER_CANDIDATE` are switched as one coordinated release; partial production migration is not allowed.
+Feature 187 ends with a `CUTOVER_CANDIDATE` handoff. The handoff must contain the exact artifact digests, migration checksums, binding/secret manifest, source/target data manifests, unresolved-job inventory, adapter ownership map, backup/restore evidence, rollback artifacts, and staging rehearsal results. It must explicitly state that `legacy-prod` remains authoritative and that no production route, database, storage, schedule, or side-effecting producer has been switched.
 
-Before the window, the release manager must confirm:
-
-- the exact artifact digests, migration checksums, binding manifest, secrets checklist, and rollback artifacts;
-- a tested backup and restore point for the current production database and authoritative objects;
-- final source/target row counts, checksums, object manifests, Vectorize build state, and unresolved-job inventory;
-- the job freeze policy, maintenance page, support/incident channel, operator roster, and decision times;
-- the maximum acceptable downtime and the exact point after which rollback becomes a forward repair rather than a database reversal.
-
-During the window:
-
-1. Announce maintenance and block new user writes, provider submissions, billing mutations, email sends, webhooks, schedules, and side-effecting queue publication.
-2. Stop or place the old production server into read-only/maintenance mode. The mini server remains dev-only and is not promoted as a production substitute.
-3. Let safe in-flight jobs finish where possible; fence leases and record/reconcile jobs that cannot finish. Do not discard canonical rows or copy queue contents.
-4. Take the final database/object backup and execute the final migration/replication delta under the declared write fence.
-5. Apply production schema/data migrations, switch the approved database connection path, and validate canonical jobs, events, attempts, dispatches, settlements, and domain projections.
-6. Activate production R2, Vectorize, Queues, Workflows, Containers, Cron, Runner Gateway, Web, API, MCP, Webhooks, Search, and Email bindings from the approved manifest.
-7. Deploy the exact tested Worker bundles and container image digests. Do not rebuild during the window.
-8. Run synthetic health/readiness, authentication, tenant isolation, database transaction, outbox, lease, object, search, queue, workflow, runner, email, webhook, and representative business-flow tests.
-9. Open production traffic only after all mandatory gates pass. Resume schedules and side-effecting publication in the declared order, then monitor the full reconciliation window.
-10. Record the cutover outcome, evidence, unresolved items, and rollback/forward-repair decision.
-
-If any mandatory gate fails, keep the system in maintenance or execute the tested rollback path. A failure must not be hidden by reopening traffic with an unverified mixture of old and new authorities.
-
-### Rollback sequence
-
-Rollback is selected by failure domain:
-
-- application regression: route HTTP or job class to the previous artifact;
-- adapter regression: restore the previous adapter flag while keeping canonical IDs and events;
-- schema regression: use the backward-compatible previous application while repairing forward-only schema state;
-- provider/storage regression: stop new side-effecting work for the affected class, preserve queued canonical rows, and reconcile by operation key;
-- database cutover regression before production writes resume: restore the old connection path only after consistency and write-fence rules are satisfied;
-- database cutover regression after new production writes resume: stop traffic and use the approved forward-repair/reconciliation procedure unless a tested reversal proves that no new authoritative state can be lost.
-
-No rollback copies dev data over production, deletes queue history, resets business attempts, or recreates provider operations with a fresh idempotency key.
+Feature 188 owns the 24–72 hour maintenance window, final write fence and delta, production activation, traffic opening, rollback/forward-repair decision, zero-legacy verification, and post-cutover separation. Feature 187 supplies evidence to those gates but does not repeat or execute them.
 
 ## Database migration strategy
 
@@ -308,8 +287,8 @@ Database migration is separate from application deployment and has its own runbo
 3. **Backfill.** Backfill `contractVersion`, definition hashes, timeout policies, event sequences/keys, attempts, dispatch references, and other Feature 186 fields in bounded idempotent batches. Record counts, failures, and resume cursors.
 4. **Validate.** Compare row counts, key distributions, checksums for selected immutable columns, orphan counts, duplicate constraints, event ordering, tenant ownership, and sampled business projections.
 5. **Connection shadow.** In staging, run representative control-plane transactions through the target connection path. Before the cutover window, legacy production remains authoritative; production shadow reads may be used only if they are isolated, read-only, tenant-safe, and explicitly approved. Shadow writes must never become a second source of truth.
-6. **Prepare and rehearse the cutover.** In staging, execute the write-fence, final replication/validation, connection switch, and resume procedure. In production, perform those actions only inside the one-time migration window while the old server is frozen and new writes are blocked.
-7. **Post-cutover reconciliation.** Verify new creates, idempotent duplicate creates, leases, retries, event append, outbox publication, external references, settlements, and representative domain projections.
+6. **Prepare and rehearse Feature 188's cutover inputs.** In staging, execute the write-fence, final replication/validation, connection switch, and resume procedure as a rehearsal. Production actions belong only to Feature 188's approved maintenance window.
+7. **Record pre-activation reconciliation evidence.** Verify new creates, idempotent duplicate creates, leases, retries, event append, outbox publication, external references, settlements, and representative domain projections before handoff.
 8. **Contract cleanup.** Remove old connection paths and compatibility fields only after the rollback window, reader migration, and audit evidence are complete.
 
 ### Database migration safety
@@ -363,7 +342,7 @@ Cloudflare Queues are at-least-once by default, so every consumer must be duplic
 
 ## Phased migration plan
 
-Each phase has an entry gate, deliverables, exit gate, and rollback boundary. Phases 0–8 are preparation, compatibility, and staging-rehearsal work only. The current `legacy-prod` runtime remains authoritative throughout those phases. Phase 9 is the single production migration window; no earlier phase may silently switch production authority or traffic.
+Each phase has an entry gate, deliverables, exit gate, and rollback boundary. Phases 0–9 are preparation, compatibility, and staging-rehearsal work only. The current `legacy-prod` runtime remains authoritative throughout all phases. Production activation and the maintenance window belong exclusively to Feature 188.
 
 ### Phase 0 — Inventory, baseline, and migration manifest
 
@@ -477,7 +456,7 @@ Deliverables:
 
 - API Worker routes for low-risk read/write endpoints;
 - stable auth, tenant, billing, idempotency, error, and request-correlation contracts;
-- route flags by endpoint and environment for staging/rehearsal; production route activation is reserved for Phase 9;
+- route flags by endpoint and environment for staging/rehearsal; production route activation is reserved for Feature 188;
 - API latency/error/load evidence compared with the mini-server baseline;
 - explicit origin fallback for unmigrated endpoints.
 
@@ -487,7 +466,7 @@ Rollback: route the affected endpoint family to the prior origin artifact.
 
 ### Phase 7 — Queue, Workflow, and Scheduler migration
 
-**Purpose:** Implement and validate all approved transport/scheduling adapters before the one-time production switch.
+**Purpose:** Implement and validate all approved transport/scheduling adapters before the Feature 188 production cutover.
 
 Deliverables:
 
@@ -495,7 +474,7 @@ Deliverables:
 - Workflows adapter for one long/multi-step class with persisted step/reference mapping;
 - Cron/scheduler adapter that creates deterministic schedule occurrences only;
 - duplicate delivery, lost publish, provider ambiguity, workflow pause/resume, and rollback tests;
-- per-job-family producer ownership plan, drain procedure, and cutover ordering; no production producer switch occurs before Phase 9;
+- per-job-family producer ownership plan, drain procedure, and cutover ordering; no production producer switch occurs before Feature 188's cutover;
 - legacy BullMQ/Celery/Beat/Cloud Tasks compatibility shims and retirement evidence.
 
 Exit gate: staging has one active side-effecting producer per class, canonical ID is preserved, outbox age is within SLO, business attempt count is unchanged by transport retries, the full cutover is rehearsed, and rollback/forward-repair decisions are tested.
@@ -504,7 +483,7 @@ Rollback: return new work to the previous adapter while preserving canonical job
 
 ### Phase 8 — Heavy workloads, external runners, email, and webhooks
 
-**Purpose:** Build and validate all heavy-workload, external-runner, email, and webhook targets before the one-time production switch.
+**Purpose:** Build and validate all heavy-workload, external-runner, email, and webhook targets before the Feature 188 production cutover.
 
 Deliverables:
 
@@ -514,33 +493,31 @@ Deliverables:
 - explicit policy for user-code sandboxing; OpenSandbox is not assumed to be part of the baseline target;
 - Email Dispatcher → Queue → Email Worker path with provider idempotency;
 - Webhooks Worker with signature validation, replay protection, tenant correlation, and delivery evidence;
-- removal or isolation plan for SMTP/Dramatiq/legacy delivery paths; actual production removal occurs in Phase 9.
+- removal or isolation plan for SMTP/Dramatiq/legacy delivery paths; actual production removal occurs during Feature 188's cutover.
 
 Exit gate: staging and rehearsal jobs survive worker/container restart, heartbeat loss, provider ambiguity, and retry without duplicate credits, provider submissions, artifacts, notifications, or webhooks; production bindings and rollback artifacts are ready.
 
 Rollback: keep the previous runner or delivery adapter for new work; never dispatch the same side-effecting operation to both runtimes.
 
-### Phase 9 — One-time production cutover and decommissioning
+### Phase 9 — Cutover-candidate handoff to Feature 188
 
-**Purpose:** Perform the actual production migration once, inside the approved 24–72 hour maintenance window, only after every preparation gate passes.
+**Purpose:** Freeze the tested preparation package and hand it to Feature 188 without changing production authority.
 
 Deliverables:
 
-- one coordinated DNS/route, database, storage, schedule, adapter, runner, and application cutover;
-- maintenance mode, job freeze, final backup, final data/object synchronization, target activation, validation, and traffic-open runbook;
-- production recovery drills and operator runbooks;
-- Cloudflare observability parity and cost/performance report;
-- final in-flight legacy drain and canonical reconciliation;
-- decommission checklist for Cloud Run, Cloud Tasks, Celery Beat, BullMQ/Celery, Redis queues, local authoritative storage, and unused providers;
-- post-migration retention and audit archive confirmation.
+- immutable release, schema, data, adapter, binding, and rollback manifests;
+- complete staging cutover/rollback rehearsal with production-shaped data and job classes;
+- unresolved-job, tenant-ownership, side-effect-settlement, and legacy-producer inventory;
+- named owners and evidence links for every Feature 188 activation gate;
+- explicit handoff approval while `legacy-prod` remains authoritative.
 
-Exit gate: every production class has an accepted Cloudflare or external-runner target, no unknown direct producer remains, final data/object reconciliation passes, dashboards are equivalent, recovery SLOs are met, production traffic is open on the target architecture, and the rollback/forward-repair decision is recorded.
+Exit gate: every enabled target has passed staging and recovery evidence, the handoff package is immutable and complete, no required producer or tenant mapping is unknown, and Feature 188 accepts the package for cutover planning.
 
-Rollback: if a mandatory gate fails before traffic opens, keep maintenance mode and execute the tested rollback. If failure occurs after target writes begin, stop traffic and use the approved forward-repair/reconciliation path. Retire the legacy runtime only after the decommission gate and configured post-cutover observation window.
+Rollback: correct the preparation artifact, manifest, adapter, or staging environment while production remains on `legacy-prod`.
 
 ## Performance and efficiency requirements
 
-Performance targets are initially baseline-relative and must be recorded per workload class before the one-time production migration window. Staging canaries and rehearsals are allowed; production canaries or partial production cutovers are not part of the preparation phases.
+Performance targets are initially baseline-relative and must be recorded per workload class before Feature 188's one-time production migration window. Staging canaries and rehearsals are allowed; production canaries or partial production cutovers are not part of the preparation phases.
 
 ### Required measurements
 
@@ -567,7 +544,7 @@ Performance targets are initially baseline-relative and must be recorded per wor
 - Use Durable Objects only when live coordination or WebSocket state materially benefits; polling must remain a supported correctness path.
 - Scale by job class and tenant admission limit before increasing global concurrency.
 
-Suggested initial staging/rehearsal gates, to be calibrated against baseline, are zero duplicate paid side effects, zero cross-tenant results, zero job rows without outbox intent, no unexplained stale completion, bounded outbox/recovery SLOs, and no material regression in p95 latency or cost per successful job. The same gates become mandatory production-open gates during Phase 9.
+Suggested initial staging/rehearsal gates, to be calibrated against baseline, are zero duplicate paid side effects, zero cross-tenant results, zero job rows without outbox intent, no unexplained stale completion, bounded outbox/recovery SLOs, and no material regression in p95 latency or cost per successful job. The same gates become mandatory production-open gates during Feature 188's cutover.
 
 ## Security and data safety
 
@@ -636,7 +613,7 @@ An HTTP 200 health endpoint proves only liveness. Readiness must verify the envi
 
 - The target PostgreSQL/Hyperdrive path passes transaction, locking, unique-constraint, tenant-isolation, and failure-injection tests.
 - Feature 186 canonical job ID and append-only event invariants survive database migration.
-- Expand/backfill/validate/cutover/cleanup steps are resumable, idempotent, and evidenced.
+- Expand/backfill/validate/handoff/cleanup steps are resumable, idempotent, and evidenced.
 - No job is created, completed, billed, or recovered solely from a queue/provider record.
 - No second generic `jobs` table or competing lifecycle status is introduced.
 
@@ -649,17 +626,16 @@ An HTTP 200 health endpoint proves only liveness. Readiness must verify the envi
 - A Container-like restart preserves lease/recovery and artifact reporting.
 - Webhook and email delivery are authenticated, deduplicated, rate-limited, and auditable.
 
-### Cutover readiness
+### Handoff readiness
 
-- Phases 0–8 are complete and every enabled production component has a passed staging/rehearsal gate.
-- A single 24–72 hour maintenance window has an owner, schedule, maintenance mode, job freeze, support roster, rollback/forward-repair decision point, and maximum downtime.
-- All approved production routes, database authority, storage authority, schedules, runners, and side-effecting producers are switched by one coordinated cutover; no partial production canary is used.
-- Each job class has one active producer after cutover, a drain plan, a rollback flag, and a reconciliation window.
-- Final database/object backups, data checksums, object manifests, Vectorize state, unresolved-job inventory, and restore evidence are complete before the window.
-- No direct legacy producer remains unowned; intentionally unmigrated paths are listed in the manifest.
-- Recovery drills cover database loss, broker loss, publisher loss, worker loss, provider ambiguity, container restart, stale callback, and deployment rollback.
-- Performance, cost, error, and recovery metrics meet the approved baseline-relative gates.
-- Legacy infrastructure is retired only after the accepted alternative, dashboards, runbooks, backups, and rollback window are complete.
+- Phases 0–9 are complete and every enabled target has a passed staging/rehearsal gate.
+- The immutable `CUTOVER_CANDIDATE` package contains release, schema, data, adapter, binding, secret, backup, rollback, and evidence manifests.
+- Each job class has one active side-effecting producer in staging, a drain plan, a rollback flag, and a reconciliation window.
+- Data checksums, object manifests, Vectorize state, unresolved-job inventory, tenant ownership, and restore evidence are complete for handoff.
+- No direct legacy producer remains unowned; intentionally unmigrated paths and their owners are listed in the manifest.
+- Recovery drills cover database loss, broker loss, publisher loss, worker loss, provider ambiguity, container restart, stale callback, and adapter rollback.
+- Performance, cost, error, and recovery metrics meet the approved preparation gates.
+- Feature 188 has a named owner for every activation gate and has accepted the handoff; production remains on `legacy-prod` until Feature 188 executes its cutover.
 
 ## Verification plan
 
@@ -672,7 +648,7 @@ An HTTP 200 health endpoint proves only liveness. Readiness must verify the envi
 7. Staging end-to-end tests using the exact release artifact intended for promotion.
 8. Browser/API tests for authentication, tenant boundaries, admin monitor, job timeline, redaction, route flags, and truthful readiness state.
 9. Load and cost tests by execution class with bounded concurrency and representative payload/object sizes.
-10. Production migration-window evidence separately records release identity, schema state, adapter flags, worker connectivity, final data/object synchronization, representative business flow, recovery result, traffic-open decision, and rollback/forward-repair decision.
+10. The handoff evidence separately records release identity, schema state, adapter flags, worker connectivity, staging data/object synchronization, representative business flow, recovery result, and the Feature 188 cutover gate mapping; it must not be presented as production cutover proof.
 
 ## Risks and trade-offs
 
@@ -689,7 +665,7 @@ An HTTP 200 health endpoint proves only liveness. Readiness must verify the envi
 
 ## Explicit non-goals
 
-- No one-shot production migration before all preparation, staging, data-validation, performance, and rollback gates pass.
+- No production cutover, traffic switch, or legacy retirement in Feature 187.
 - No new parallel generic `jobs` table.
 - No automatic copying of dev PostgreSQL, Redis, queue, R2, secrets, or provider state into production.
 - No production dependency on the mini server after a component is declared Cloudflare-owned.

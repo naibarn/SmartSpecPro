@@ -30,6 +30,33 @@ export function buildWorkerAppLatestUrl(
   return url.toString();
 }
 
+/**
+ * Build the installer URL from the configured server origin instead of
+ * resolving a server-provided relative path against a possibly pathful
+ * serverUrl. Older release payloads used a relative downloadUrl, which could
+ * produce `/api/desktop-releases/worker-app/desktop-releases/...` when the
+ * saved server URL already contained an API path.
+ */
+export function buildWorkerAppDownloadUrl(
+  baseUrl: string,
+  target: WorkerAppUpdateTarget,
+): string | null {
+  try {
+    const base = new URL(baseUrl);
+    const url = new URL("/api/desktop-releases/worker-app/download", base.origin);
+    if (target.platform === "macos") {
+      url.searchParams.set("platform", "macos");
+      url.searchParams.set("architecture", "arm64");
+    } else {
+      url.searchParams.set("platform", "windows");
+      url.searchParams.set("architecture", "x64");
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export type RuntimeUpdateCheck = {
   runtimeId: string;
   channel: "stable" | "preview" | string;

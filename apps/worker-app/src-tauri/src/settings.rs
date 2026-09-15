@@ -349,12 +349,14 @@ mod tests {
         let mut settings = WorkerAppSettings::default();
         settings.worker_label = "Office GPU worker".into();
         settings.accept_jobs = false;
+        settings.locale = "en".into();
 
         save_settings(temp.path(), &settings).unwrap();
         let loaded = load_settings(temp.path());
 
         assert_eq!(loaded.worker_label, "Office GPU worker");
         assert!(!loaded.accept_jobs);
+        assert_eq!(loaded.locale, "en");
     }
 
     #[test]

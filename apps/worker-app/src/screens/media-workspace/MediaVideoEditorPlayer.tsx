@@ -4,7 +4,10 @@ import { open as openFolderDialog } from "@tauri-apps/plugin-dialog";
 import {
   createCameraMotionPlan,
   evaluateCameraMotionPlan,
+  reduceCameraMotionTrackPoints,
   type CameraMotionPlan,
+  type CameraMotionTrackPoint,
+  type CameraMotionActivityInterval,
 } from "@smartspec/shared";
 import type { Detection, FaceDetector as MediaPipeFaceDetector } from "@mediapipe/tasks-vision";
 import type { DirectoryEntry } from "./MediaExplorerView";
@@ -16,6 +19,7 @@ import { parseProjectDraft, saveNleProject, saveCapCutDraft, isProjectFilePath, 
 import { MultiTrackTimeline } from "./MultiTrackTimeline";
 import { SandboxedOverlayViewer } from "./SandboxedOverlayViewer";
 import { AutoSubtitleModal } from "./AutoSubtitleModal";
+import { VoiceGuidedVisualMatchModal } from "./VoiceGuidedVisualMatchModal";
 import { CodeOverlayModal } from "./CodeOverlayModal";
 import { AssetDrawerPanel } from "./AssetDrawerPanel";
 import { AutoAudioScoringModal } from "./AutoAudioScoringModal";
@@ -30,6 +34,16 @@ import { StockSvgModal } from "./StockSvgModal";
 import { BlurOverlayModal } from "./BlurOverlayModal";
 import { VoiceoverRecordModal } from "./VoiceoverRecordModal";
 import { AiMediaStudioModal } from "./AiMediaStudioModal";
+import {
+  buildDominantFaceTrack,
+  selectTrackedFaceCandidate,
+  stableFaceCenter,
+  type TimedFaceDetectionFrame,
+  type TrackedFaceCandidate,
+} from "./cameraTracking";
+import { useWorkerLocale } from "../../app/workerContext";
+import { applyVoiceGuidedVisualPlan } from "./voiceGuidedVisualMatch";
+import { normalizeDisplayPath } from "./sourcePath";
 import {
   advancePlayableTimeMs,
   chooseAudioTrackIndex,
@@ -289,6 +303,8 @@ export function MediaVideoEditorPlayer({
   onTimelineProjectChange,
   importedAsset,
 }: MediaVideoEditorPlayerProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoViewportRef = useRef<HTMLDivElement>(null);
   const skipSeekTargetRef = useRef<number | null>(null);
@@ -353,7 +369,7 @@ export function MediaVideoEditorPlayer({
   const [focusX, setFocusX] = useState<number>(() => {
     if (propsFocusX !== undefined) return propsFocusX;
     try {
-      const key = videoFile ? `smartspec_person_focus_${videoFile.name}` : null;
+      const key = videoFile ? `smartspec_person_focus_v2_${videoFile.name}` : null;
       if (key) {
         const saved = localStorage.getItem(key);
         if (saved) {
@@ -367,7 +383,7 @@ export function MediaVideoEditorPlayer({
   const [focusY, setFocusY] = useState<number>(() => {
     if (propsFocusY !== undefined) return propsFocusY;
     try {
-      const key = videoFile ? `smartspec_person_focus_${videoFile.name}` : null;
+      const key = videoFile ? `smartspec_person_focus_v2_${videoFile.name}` : null;
       if (key) {
         const saved = localStorage.getItem(key);
         if (saved) {
@@ -391,6 +407,11 @@ export function MediaVideoEditorPlayer({
     baseWidth: number;
   } | null>(null);
   const personAnchorRef = useRef<{ x: number; y: number } | null>(null);
+  const trackedFaceCandidateRef = useRef<TrackedFaceCandidate | null>(null);
+  // A source change starts a fresh composition. Keep this separate from the
+  // persisted focus value: a saved anchor must not make the first detector
+  // result use the normal safe-zone deadband before the face reaches center.
+  const startupPersonLockRef = useRef(true);
   const focusXRef = useRef(focusX);
   const focusYRef = useRef(focusY);
   const videoFileNameRef = useRef(videoFile?.name);
@@ -414,14 +435,14 @@ export function MediaVideoEditorPlayer({
           ? "🔴"
           : "⚪";
   const faceDetectorStatusLabel = faceDetectorStatus === "tracking"
-    ? "กำลังติดตามใบหน้า"
+    ? t("กำลังติดตามใบหน้า", "Tracking face")
     : faceDetectorStatus === "loading"
-      ? "กำลังโหลดตัวตรวจจับ"
+      ? t("กำลังโหลดตัวตรวจจับ", "Loading detector")
       : faceDetectorStatus === "not_found"
-        ? "ยังไม่พบใบหน้า"
+        ? t("ยังไม่พบใบหน้า", "Face not found")
         : faceDetectorStatus === "error"
-          ? "ตัวตรวจจับขัดข้อง"
-          : "พร้อมตรวจจับ";
+          ? t("ตัวตรวจจับขัดข้อง", "Detector error")
+          : t("พร้อมตรวจจับ", "Ready to detect");
 
   useEffect(() => {
     focusXRef.current = focusX;
@@ -434,13 +455,15 @@ export function MediaVideoEditorPlayer({
   useEffect(() => {
     videoFileNameRef.current = videoFile?.name;
     personAnchorRef.current = null;
+    trackedFaceCandidateRef.current = null;
+    startupPersonLockRef.current = true;
     mediaPipeLastTimestampRef.current = -1;
     if (mediaPipeFaceDetectorRef.current) setFaceDetectorStatus("ready");
-  }, [videoFile?.name]);
+  }, [videoFile?.name, videoFile?.path]);
 
   // Apply the detected anchor atomically. Detection resolves asynchronously,
   // so refs keep the tracking source current between React renders.
-  const applyPersonAnchor = useCallback((targetX: number, targetY: number, immediate: boolean) => {
+  const applyPersonAnchor = useCallback((targetX: number, targetY: number, immediate: boolean, centerTarget = false) => {
     const safeX = Math.max(0.05, Math.min(0.95, targetX));
     const safeY = Math.max(0.05, Math.min(0.95, targetY));
     const current = personAnchorRef.current ?? {
@@ -448,11 +471,16 @@ export function MediaVideoEditorPlayer({
       y: focusYRef.current ?? 0.5,
     };
 
-    // Keep the face still inside the camera's safe zone. When it really
-    // reaches an edge, move only a small amount per sample so the camera
+    // The first detection is a startup lock: bring the subject into the
+    // opening frame immediately. Once an anchor exists, keep the face inside
+    // the safe zone and move only a small amount per sample so the camera
     // glides toward the face instead of oscillating around it.
-    const maxStep = immediate && personAnchorRef.current === null ? 0.045 : 0.035;
-    const deadband = 0.018;
+    const isStartupLock = immediate && startupPersonLockRef.current;
+    const maxStep = isStartupLock || centerTarget ? 1 : 0.035;
+    // During playback, detector noise and small natural head motion must not
+    // create visible camera oscillation. Keep the current frame until the
+    // face has materially left centre; startup still uses the full target.
+    const deadband = centerTarget ? 0.035 : 0.018;
     const nextX = Math.abs(safeX - current.x) <= deadband
       ? current.x
       : current.x + Math.max(-maxStep, Math.min(maxStep, safeX - current.x));
@@ -462,6 +490,7 @@ export function MediaVideoEditorPlayer({
 
     const next = { x: nextX, y: nextY };
     personAnchorRef.current = next;
+    if (isStartupLock) startupPersonLockRef.current = false;
     focusXRef.current = nextX;
     focusYRef.current = nextY;
     setFocusX(nextX);
@@ -472,7 +501,7 @@ export function MediaVideoEditorPlayer({
     try {
       if (videoFileNameRef.current) {
         localStorage.setItem(
-          `smartspec_person_focus_${videoFileNameRef.current}`,
+          `smartspec_person_focus_v2_${videoFileNameRef.current}`,
           JSON.stringify(next)
         );
       }
@@ -547,7 +576,7 @@ export function MediaVideoEditorPlayer({
   useEffect(() => {
     if (!videoFile?.name) return;
     try {
-      const saved = localStorage.getItem(`smartspec_person_focus_${videoFile.name}`);
+      const saved = localStorage.getItem(`smartspec_person_focus_v2_${videoFile.name}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed?.x === "number") {
@@ -708,6 +737,18 @@ export function MediaVideoEditorPlayer({
   // analysis source instead of continuing to probe the old V1/videoFile path.
   const analysisSourcePath = selectedAnalysisSource?.path || videoFile?.path || "";
 
+  // A project entry can still be carried as `videoFile` while its real source
+  // lives on the NLE timeline. Native FFmpeg/ffprobe must receive the resolved
+  // media path, never the project JSON path. Keep the normal selected source
+  // as the first choice, then fall back to the timeline analysis source for
+  // project-only openings.
+  const renderSourcePath = useMemo(() => {
+    const selectedPath = videoFile?.path?.trim();
+    if (selectedPath && !isProjectFilePath(selectedPath)) return selectedPath;
+    const timelinePath = analysisSourcePath.trim();
+    return timelinePath && !isProjectFilePath(timelinePath) ? timelinePath : "";
+  }, [analysisSourcePath, videoFile?.path]);
+
   const displayedWaveformBins = useMemo(
     () => waveformBins.length > 0
       ? normalizeWaveformBinsForDisplay(waveformBins, 200, getNoiseThresholdDb(volumeThreshold))
@@ -735,6 +776,8 @@ export function MediaVideoEditorPlayer({
     setAnalysisError(null);
   }, [analysisSourcePath]);
   const [isAutoSubModalOpen, setIsAutoSubModalOpen] = useState(false);
+  const [isVoiceGuidedVisualMatchOpen, setIsVoiceGuidedVisualMatchOpen] = useState(false);
+  const [visualMatchUndoProject, setVisualMatchUndoProject] = useState<SmartSpecProjectDraft | null>(null);
   const lastAutoSubtitleRequestRef = useRef(openAutoSubtitleRequest ?? 0);
   const [isCodeOverlayModalOpen, setIsCodeOverlayModalOpen] = useState(false);
   const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
@@ -762,9 +805,9 @@ export function MediaVideoEditorPlayer({
     if (videoFile && !isProjectFilePath(videoFile.path)) {
       setIsAutoSubModalOpen(true);
     } else {
-      setProjectStatusMsg("กรุณาเปิด source video ก่อนสร้าง Subtitle");
+      setProjectStatusMsg(t("กรุณาเปิด source video ก่อนสร้าง Subtitle", "Open a source video before creating subtitles."));
     }
-  }, [openAutoSubtitleRequest, videoFile]);
+  }, [openAutoSubtitleRequest, videoFile, locale]);
 
   useEffect(() => {
     setIsRenderPanelCollapsed(true);
@@ -777,7 +820,31 @@ export function MediaVideoEditorPlayer({
   }, [videoFile]);
 
   // Smart AI Director & Dynamic Camera Motion states
-  const [smartDirectorMode, setSmartDirectorMode] = useState<"off" | "auto" | "product_focus" | "face_focus">("off");
+  const [smartDirectorMode, setSmartDirectorMode] = useState<"off" | "auto" | "product_focus" | "face_focus" | "face_activity">("off");
+  const smartDirectorModeRef = useRef(smartDirectorMode);
+  useEffect(() => {
+    smartDirectorModeRef.current = smartDirectorMode;
+  }, [smartDirectorMode]);
+  const [cameraAnalysisMode, setCameraAnalysisMode] = useState<"quick" | "full_scan">("quick");
+  const [cameraScanStatus, setCameraScanStatus] = useState<"idle" | "quick" | "scanning" | "approved" | "degraded" | "stale">("idle");
+  const [cameraTrackPoints, setCameraTrackPoints] = useState<CameraMotionTrackPoint[]>([]);
+  const [cameraActivityIntervals, setCameraActivityIntervals] = useState<CameraMotionActivityInterval[]>([]);
+  const cameraScanPromiseRef = useRef<Promise<CameraMotionTrackPoint[]> | null>(null);
+  const cameraAnalysisModeRef = useRef(cameraAnalysisMode);
+  const cameraScanStatusRef = useRef(cameraScanStatus);
+  useEffect(() => {
+    cameraAnalysisModeRef.current = cameraAnalysisMode;
+    cameraScanStatusRef.current = cameraScanStatus;
+  }, [cameraAnalysisMode, cameraScanStatus]);
+  const cameraMarkRevisionStorageKey = videoFile ? `smartspec_camera_mark_revision_v1_${videoFile.path}` : null;
+  const [cameraMarkRevision, setCameraMarkRevision] = useState(() => {
+    try {
+      const stored = cameraMarkRevisionStorageKey ? Number(localStorage.getItem(cameraMarkRevisionStorageKey)) : 0;
+      return Number.isSafeInteger(stored) && stored >= 0 ? stored : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   // Keyframed Mark Pins (Supports 2 points for Smooth Pan & Zoom with pixel coordinates and auto-freeze)
   const [productPins, setProductPins] = useState<VideoMarkPin[]>(() => {
@@ -807,6 +874,18 @@ export function MediaVideoEditorPlayer({
       return [];
     }
   });
+
+  const productPinsFingerprint = useMemo(
+    () => JSON.stringify(productPins.map((pin) => ({
+      id: pin.id,
+      time: pin.time,
+      x: pin.x,
+      y: pin.y,
+      scale: pin.scale,
+    }))),
+    [productPins],
+  );
+  const cameraMarkRevisionRef = useRef(productPinsFingerprint);
 
   const productPin = useMemo(() => {
     return productPins[0] ? { x: productPins[0].x, y: productPins[0].y } : null;
@@ -850,9 +929,10 @@ export function MediaVideoEditorPlayer({
 
   const cameraMotionPlan = useMemo<CameraMotionPlan | null>(() => {
     if (smartDirectorMode === "off" || aspectRatio === "source" || effectiveDuration <= 0) return null;
+    const plannerMode = smartDirectorMode === "auto" ? "face_activity" : smartDirectorMode;
     return createCameraMotionPlan({
       durationMs: Math.round(effectiveDuration * 1000),
-      mode: smartDirectorMode,
+      mode: plannerMode,
       focusX,
       focusY,
       baseScale: smartDirectorMode === "face_focus"
@@ -861,8 +941,23 @@ export function MediaVideoEditorPlayer({
           ? Math.max(1, manualScale || 1.18)
           : 1.16,
       marks: productPins,
+      analysisMode: cameraAnalysisMode,
+      trackPoints: cameraTrackPoints,
+      activityIntervals: cameraActivityIntervals,
+      evidence: {
+        analysisMode: cameraAnalysisMode,
+        status: cameraScanStatus === "approved" ? "approved" : cameraAnalysisMode === "full_scan" ? "degraded" : "provisional",
+        sourceFingerprint: videoFile ? `${videoFile.name}:${videoFile.sizeBytes}:${videoFile.modifiedUnixMs}` : undefined,
+        markRevision: cameraMarkRevision,
+        policyFingerprint: `${aspectRatio}:${manualScale.toFixed(3)}`,
+        capabilityProfileFingerprint: "mediapipe-face-quick",
+      },
+      outputAspectRatio: renderAspectRatio ?? undefined,
+      sourceAspectRatio: videoDimensions.width > 0 && videoDimensions.height > 0
+        ? videoDimensions.width / videoDimensions.height
+        : undefined,
     });
-  }, [aspectRatio, effectiveDuration, focusX, focusY, manualScale, productPins, smartDirectorMode]);
+  }, [aspectRatio, cameraActivityIntervals, cameraAnalysisMode, cameraMarkRevision, cameraScanStatus, cameraTrackPoints, effectiveDuration, focusX, focusY, manualScale, productPins, renderAspectRatio, smartDirectorMode, videoDimensions.height, videoDimensions.width, videoFile]);
 
   useEffect(() => {
     if (!cameraMotionPlan) return;
@@ -880,6 +975,36 @@ export function MediaVideoEditorPlayer({
       };
     });
   }, [cameraMotionPlan, setNleProject]);
+
+  useEffect(() => {
+    if (cameraMarkRevisionRef.current === productPinsFingerprint) return;
+    cameraMarkRevisionRef.current = productPinsFingerprint;
+    setCameraMarkRevision((revision) => {
+      const nextRevision = revision + 1;
+      if (cameraMarkRevisionStorageKey) {
+        try {
+          localStorage.setItem(cameraMarkRevisionStorageKey, String(nextRevision));
+        } catch {
+          // Local persistence is best effort; the in-memory revision still fences this session.
+        }
+      }
+      return nextRevision;
+    });
+    setCameraScanStatus((status) => status === "approved" ? "stale" : status);
+  }, [productPinsFingerprint]);
+
+  useEffect(() => {
+    setCameraTrackPoints([]);
+    setCameraActivityIntervals([]);
+    setCameraScanStatus("idle");
+    try {
+      const stored = cameraMarkRevisionStorageKey ? Number(localStorage.getItem(cameraMarkRevisionStorageKey)) : 0;
+      setCameraMarkRevision(Number.isSafeInteger(stored) && stored >= 0 ? stored : 0);
+    } catch {
+      setCameraMarkRevision(0);
+    }
+    cameraMarkRevisionRef.current = productPinsFingerprint;
+  }, [cameraMarkRevisionStorageKey, videoFile?.path]);
 
   useEffect(() => {
     faceTrackingConfigRef.current = { aspectRatio, scale: manualScale, targetRatio: renderAspectRatio };
@@ -914,12 +1039,12 @@ export function MediaVideoEditorPlayer({
   const [overrideVideoSrc, setOverrideVideoSrc] = useState<string | null>(null);
 
   const previewFrameLabel = useMemo(() => {
-    if (aspectRatio === "source") return "ต้นฉบับ";
+    if (aspectRatio === "source") return t("ต้นฉบับ", "Original");
     const profile = getPreviewCanvasProfile(aspectRatio);
     const width = nleProject?.canvas?.width || profile.width;
     const height = nleProject?.canvas?.height || profile.height;
     return `${aspectRatio} · ${width}×${height}`;
-  }, [aspectRatio, nleProject?.canvas?.height, nleProject?.canvas?.width]);
+  }, [aspectRatio, locale, nleProject?.canvas?.height, nleProject?.canvas?.width]);
 
   // Render duration & cut calculation helpers
   const cutCount = silenceSegments.length;
@@ -1208,7 +1333,7 @@ export function MediaVideoEditorPlayer({
       const draftDir = await open({ directory: true, multiple: false });
       if (typeof draftDir !== "string") return;
       const filePath = await saveCapCutDraft(nleProject, draftDir);
-      setProjectStatusMsg(`🎬 ส่งออก CapCut Draft สำเร็จ: ${filePath}`);
+      setProjectStatusMsg(`🎬 ส่งออก CapCut Draft สำเร็จ: ${normalizeDisplayPath(filePath)}`);
       setTimeout(() => setProjectStatusMsg(null), 6000);
     } catch (err: unknown) {
       setProjectStatusMsg(`❌ ส่งออก CapCut ล้มเหลว: ${err instanceof Error ? err.message : String(err)}`);
@@ -1507,11 +1632,11 @@ export function MediaVideoEditorPlayer({
 
   const activeOverlayClips = useMemo(() => {
     if (!nleProject) return [];
-    const curMs = currentTime * 1000;
+    const curMs = Math.round(currentTime * 1000);
     const clips: NleClip[] = [];
     const overlayTrackIds = new Set(["track_o1", "track_t1", "track_v2"]);
     for (const track of nleProject.tracks) {
-      if (track.muted || !overlayTrackIds.has(track.id)) continue;
+      if (track.muted || !(overlayTrackIds.has(track.id) || track.type === "text_subtitle" || track.type === "code_overlay" || track.type === "video_broll")) continue;
       for (const clip of track.clips) {
         if (curMs >= clip.timelineStartMs && curMs <= clip.timelineStartMs + clip.durationMs) {
           clips.push(clip);
@@ -1799,6 +1924,19 @@ export function MediaVideoEditorPlayer({
   const detectPersonCenter = useCallback((immediate: boolean = false) => {
     const video = videoRef.current;
     if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
+    // Face + Activity uses either a fixed centre in Quick mode or the
+    // dominant track from an explicit Full Scan. Feeding per-frame quick
+    // detections into this mode made playback jump to one false detection and
+    // then persisted that bad crop for render.
+    if (smartDirectorModeRef.current === "face_activity" || smartDirectorModeRef.current === "auto") return;
+    // Once a full scan has produced the render plan, the live quick detector
+    // must not append a second stream of observations. Mixing those points
+    // rebuilds the plan while playback/render is active and can reintroduce a
+    // slow pan from detector noise after the scan already settled composition.
+    if (
+      cameraAnalysisModeRef.current === "full_scan"
+      && (cameraScanStatusRef.current === "approved" || cameraScanStatusRef.current === "degraded")
+    ) return;
 
     if (video.readyState < 2) {
       const onReady = () => detectPersonCenter(immediate);
@@ -1823,46 +1961,37 @@ export function MediaVideoEditorPlayer({
         };
 
         const candidates = result.detections
-          .map((detection: Detection) => {
+          .map((detection: Detection): TrackedFaceCandidate | null => {
             const box = detection.boundingBox;
             if (!box || box.width <= 0 || box.height <= 0) return null;
 
             const keypoints = detection.keypoints.filter(
               (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
             );
-            const keypointCenter = keypoints.length > 0
-              ? keypoints.reduce(
-                (sum, point) => ({ x: sum.x + point.x, y: sum.y + point.y }),
-                { x: 0, y: 0 },
-              )
-              : null;
-            const x = keypointCenter
-              ? keypointCenter.x / keypoints.length
-              : (box.originX + box.width / 2) / video.videoWidth;
-            const y = keypointCenter
-              ? keypointCenter.y / keypoints.length
-              : (box.originY + box.height / 2) / video.videoHeight;
-            const confidence = detection.categories[0]?.score ?? 0;
-            const area = (box.width * box.height) / (video.videoWidth * video.videoHeight);
-            const continuity = Math.exp(-Math.pow(Math.hypot(x - current.x, y - current.y) / 0.35, 2));
-            const sizeScore = Math.min(1, area * 35);
-            const rank = confidence * 0.6 + continuity * 0.25 + sizeScore * 0.15;
+            const boxCenter = {
+              x: (box.originX + box.width / 2) / video.videoWidth,
+              y: (box.originY + box.height / 2) / video.videoHeight,
+            };
+            // MediaPipe keypoints are already normalized to image dimensions;
+            // dividing them by videoWidth/videoHeight would collapse every
+            // tracked face toward (0, 0) and make native render framing miss.
+            const center = stableFaceCenter(keypoints, boxCenter);
             return {
-              x,
-              y,
-              rank,
-              halfWidth: (box.width / video.videoWidth) / 2,
-              halfHeight: (box.height / video.videoHeight) / 2,
+              x: center.x,
+              y: center.y,
+              width: box.width / video.videoWidth,
+              height: box.height / video.videoHeight,
+              confidence: detection.categories[0]?.score ?? 0,
             };
           })
-          .filter((candidate): candidate is { x: number; y: number; rank: number; halfWidth: number; halfHeight: number } => Boolean(candidate))
-          .sort((left, right) => right.rank - left.rank);
+          .filter((candidate): candidate is TrackedFaceCandidate => Boolean(candidate));
 
-        const primary = candidates[0];
-        if (!primary || primary.rank < 0.3) {
+        const primary = selectTrackedFaceCandidate(candidates, trackedFaceCandidateRef.current);
+        if (!primary) {
           setFaceDetectorStatus("not_found");
           return;
         }
+        trackedFaceCandidateRef.current = primary;
 
         const trackingConfig = faceTrackingConfigRef.current;
         let cropWidth = 1;
@@ -1886,28 +2015,50 @@ export function MediaVideoEditorPlayer({
           cropHeight = Math.min(1, cropHeight / scale);
         }
 
-        // Hold the current composition while the face remains inside the
-        // inner safe zone. Only request enough pan to bring the face back from
-        // the edge; never jump the camera to the face centre on every sample.
-        const normalizedFaceHalfWidth = primary.halfWidth;
-        const normalizedFaceHalfHeight = primary.halfHeight;
+        // Hold the current composition after startup while the face remains
+        // inside the inner safe zone. Only request enough pan to bring the
+        // face back from the edge; startup is the one intentional fast lock.
+        const normalizedFaceHalfWidth = primary.width / 2;
+        const normalizedFaceHalfHeight = primary.height / 2;
         const safeMarginX = Math.max(0.018, Math.min(0.06, cropWidth * 0.12));
         const safeMarginY = Math.max(0.018, Math.min(0.06, cropHeight * 0.12));
         const availableHalfX = Math.max(0.01, cropWidth / 2 - normalizedFaceHalfWidth - safeMarginX);
         const availableHalfY = Math.max(0.01, cropHeight / 2 - normalizedFaceHalfHeight - safeMarginY);
-        const targetX = cropWidth >= 0.98
-          ? current.x
-          : Math.max(primary.x - availableHalfX, Math.min(primary.x + availableHalfX, current.x));
-        const targetY = cropHeight >= 0.98
-          ? current.y
-          : Math.max(primary.y - availableHalfY, Math.min(primary.y + availableHalfY, current.y));
+        const isStartupLock = immediate && startupPersonLockRef.current;
+        const startupTargetX = Math.max(cropWidth / 2, Math.min(1 - cropWidth / 2, primary.x));
+        const startupTargetY = Math.max(cropHeight / 2, Math.min(1 - cropHeight / 2, primary.y));
+        const targetX = isStartupLock
+          ? startupTargetX
+          : cropWidth >= 0.98
+            ? current.x
+            : Math.max(primary.x - availableHalfX, Math.min(primary.x + availableHalfX, current.x));
+        const targetY = isStartupLock
+          ? startupTargetY
+          : cropHeight >= 0.98
+            ? current.y
+            : Math.max(primary.y - availableHalfY, Math.min(primary.y + availableHalfY, current.y));
 
         setFaceDetectorStatus("tracking");
         if (videoRef.current === video) {
+          setCameraTrackPoints((previous) => {
+            const nextPoint: CameraMotionTrackPoint = {
+              timeMs: Math.max(0, Math.round(video.currentTime * 1000)),
+              x: Math.max(0, Math.min(1, primary.x)),
+              y: Math.max(0, Math.min(1, primary.y)),
+              width: Math.max(0, Math.min(1, primary.width)),
+              height: Math.max(0, Math.min(1, primary.height)),
+              confidence: Math.max(0, Math.min(1, primary.confidence)),
+              kind: "face",
+              trackId: "quick-face",
+            };
+            const withoutNearby = previous.filter((point) => Math.abs(point.timeMs - nextPoint.timeMs) > 120);
+            return [...withoutNearby, nextPoint].sort((a, b) => a.timeMs - b.timeMs).slice(-256);
+          });
           applyPersonAnchor(
             Math.max(0.05, Math.min(0.95, targetX)),
             Math.max(0.05, Math.min(0.95, targetY)),
             immediate,
+            false,
           );
         }
       } catch (error) {
@@ -1916,6 +2067,164 @@ export function MediaVideoEditorPlayer({
       }
     })();
   }, [applyPersonAnchor, initializeMediaPipeFaceDetector]);
+
+  const scanFullVideoForCameraPlan = useCallback(async (): Promise<CameraMotionTrackPoint[]> => {
+    const activeScan = cameraScanPromiseRef.current;
+    if (activeScan) return activeScan;
+
+    const scanPromise = (async (): Promise<CameraMotionTrackPoint[]> => {
+    setCameraAnalysisMode("full_scan");
+    const video = videoRef.current;
+    if (!video || video.videoWidth <= 0 || video.duration <= 0) {
+      setCameraScanStatus("degraded");
+      return [];
+    }
+    const detector = await initializeMediaPipeFaceDetector();
+    if (!detector || videoRef.current !== video) {
+      setCameraScanStatus("degraded");
+      return [];
+    }
+    const wasPlaying = !video.paused;
+    const originalTime = video.currentTime;
+    const durationMs = Math.round(video.duration * 1000);
+    const stepMs = Math.max(250, Math.ceil(durationMs / 120));
+    const points: CameraMotionTrackPoint[] = [];
+    const faceFrames: TimedFaceDetectionFrame[] = [];
+    const waitForDecodedFrame = () => new Promise<void>((resolve) => {
+      // `seeked` can fire before the next decoded frame is available to
+      // MediaPipe. Align the evidence with the frame that was actually
+      // presented so render does not follow mis-timed detector samples.
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        settled = true;
+        resolve();
+      }, 80);
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        resolve();
+      };
+      const requestFrame = (video as HTMLVideoElement & {
+        requestVideoFrameCallback?: (callback: () => void) => number;
+      }).requestVideoFrameCallback;
+      if (typeof requestFrame === "function") {
+        requestFrame.call(video, finish);
+        return;
+      }
+      window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+    });
+    const seek = (time: number) => new Promise<void>((resolve) => {
+      let timeout: number | undefined;
+      const onSeeked = () => {
+        if (timeout !== undefined) window.clearTimeout(timeout);
+        void waitForDecodedFrame().then(resolve);
+      };
+      video.addEventListener("seeked", onSeeked, { once: true });
+      video.currentTime = Math.min(video.duration, Math.max(0, time / 1000));
+      timeout = window.setTimeout(() => {
+        video.removeEventListener("seeked", onSeeked);
+        void waitForDecodedFrame().then(resolve);
+      }, 500);
+    });
+    try {
+      video.pause();
+      // Do not carry a timestamp from an earlier live playback scan into this
+      // source-timeline pass. The detector clock must restart at the first
+      // decoded frame while remaining monotonic within this scan.
+      mediaPipeLastTimestampRef.current = 0;
+      let sampleIndex = 0;
+      for (let timeMs = 0; timeMs <= durationMs && faceFrames.length < 256; timeMs += stepMs) {
+        await seek(timeMs);
+        sampleIndex += 1;
+        if (sampleIndex === 1 || sampleIndex % 5 === 0) {
+          const percent = Math.min(99, Math.round((timeMs / Math.max(1, durationMs)) * 100));
+          setProjectStatusMsg(t(
+            `กำลังสแกนทั้งคลิปเพื่อวางแผนกล้อง… ${percent}%`,
+            `Scanning the full clip for camera planning… ${percent}%`,
+          ));
+        }
+        const observedTimeMs = Math.max(0, Math.round(video.currentTime * 1000));
+        const timestamp = Math.max(observedTimeMs, mediaPipeLastTimestampRef.current + 1);
+        mediaPipeLastTimestampRef.current = timestamp;
+        const result = detector.detectForVideo(video, timestamp);
+        const faceCandidates = result.detections
+          .map((detection): TrackedFaceCandidate | null => {
+            const box = detection.boundingBox;
+            if (!box || box.width <= 0 || box.height <= 0) return null;
+            const boxCenter = {
+              x: (box.originX + box.width / 2) / video.videoWidth,
+              y: (box.originY + box.height / 2) / video.videoHeight,
+            };
+            const center = stableFaceCenter(
+              detection.keypoints?.filter(
+                (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+              ) ?? [],
+              boxCenter,
+            );
+            return {
+              x: center.x,
+              y: center.y,
+              width: Math.max(0, Math.min(1, box.width / video.videoWidth)),
+              height: Math.max(0, Math.min(1, box.height / video.videoHeight)),
+              confidence: Math.max(0, Math.min(1, detection.categories[0]?.score ?? 0)),
+            };
+          })
+          .filter((candidate): candidate is TrackedFaceCandidate => Boolean(candidate));
+        faceFrames.push({ timeMs: observedTimeMs, candidates: faceCandidates });
+      }
+      const dominantTrack = buildDominantFaceTrack(faceFrames);
+      points.push(...dominantTrack.map((primary) => ({
+        // A timeout can leave the previous decoded frame on screen. Label
+        // the point with its actual source time rather than the requested
+        // seek time; otherwise FFmpeg receives a camera path that appears
+        // to move several seconds after the face moved in playback.
+        timeMs: primary.timeMs,
+        x: primary.x,
+        y: primary.y,
+        width: primary.width,
+        height: primary.height,
+        confidence: primary.confidence,
+        kind: "face" as const,
+        trackId: "full-scan-dominant-face",
+      })));
+      const reducedPoints = reduceCameraMotionTrackPoints(points);
+      setCameraTrackPoints(reducedPoints);
+      const intervals: CameraMotionActivityInterval[] = [];
+      for (let index = 1; index < reducedPoints.length; index += 1) {
+        const previous = reducedPoints[index - 1];
+        const current = reducedPoints[index];
+        const movement = Math.hypot(current.x - previous.x, current.y - previous.y);
+        if (movement >= 0.02) {
+          intervals.push({ startMs: previous.timeMs, endMs: current.timeMs, score: Math.min(1, movement * 8), kind: "camera_motion" });
+        }
+      }
+      setCameraActivityIntervals(intervals.slice(0, 256));
+      // This local scanner currently provides face and motion evidence only;
+      // it has no object/hand model, so it must never claim an approved
+      // Face + Activity plan. Full Scan remains visibly degraded until a
+      // capability-gated object/interaction detector supplies evidence.
+      setCameraScanStatus("degraded");
+      setProjectStatusMsg(points.length > 0
+        ? t("สแกนทั้งคลิปเสร็จแล้ว แต่ยังไม่มีตัวตรวจจับวัตถุ จึงเป็นแผนแบบลดความสามารถ", "Full video scan completed with face-only evidence; object detection is unavailable, so the plan is degraded.")
+        : t("ไม่พบหลักฐานใบหน้า ใช้จุดมาร์กหรือกรอบคงที่แทน", "No face evidence found; using Marks or a fixed frame."));
+      return reducedPoints;
+    } catch (error) {
+      console.warn("Full camera scan failed:", error);
+      setCameraScanStatus("degraded");
+      return [];
+    } finally {
+      await seek(originalTime * 1000);
+      if (wasPlaying) void video.play().catch(() => undefined);
+    }
+    })();
+    cameraScanPromiseRef.current = scanPromise;
+    try {
+      return await scanPromise;
+    } finally {
+      if (cameraScanPromiseRef.current === scanPromise) cameraScanPromiseRef.current = null;
+    }
+  }, [initializeMediaPipeFaceDetector, t]);
 
   // Run Custom Silence Detection
   const runCustomSilenceDetection = async (
@@ -2088,7 +2397,15 @@ export function MediaVideoEditorPlayer({
       );
       if (!fallbackSucceeded && requestId === analysisRequestIdRef.current) {
         setWaveformBins([]);
-        setAnalysisError(`วิเคราะห์ Audio Track ไม่สำเร็จ: ${String(err)}`);
+        const errorText = String(err);
+        setAnalysisError(
+          errorText.includes("ffmpeg_unavailable") || errorText.includes("media_runtime_not_ready")
+            ? t(
+              "ยังไม่พร้อมวิเคราะห์เสียง: Runtime ของ FFmpeg/ffprobe ยังไม่พร้อม กรุณาเปิด Runtime แล้วกด Repair ก่อนลองอีกครั้ง",
+              "Audio analysis is not ready: the FFmpeg/ffprobe runtime is unavailable. Open Runtime and choose Repair, then try again.",
+            )
+            : `วิเคราะห์ Audio Track ไม่สำเร็จ: ${errorText}`,
+        );
       }
     } finally {
       if (requestId === analysisRequestIdRef.current) setIsAnalyzing(false);
@@ -2096,6 +2413,7 @@ export function MediaVideoEditorPlayer({
   };
 
   // Reset states when video file changes
+  const hasLoadedProjectDraft = Boolean(loadedProjectDraft);
   useEffect(() => {
     if (videoFile) {
       setCurrentTime(0);
@@ -2110,14 +2428,25 @@ export function MediaVideoEditorPlayer({
       setSelectedAudioStreamIndex(null);
       setWaveformBins([]);
       setSilenceSegments([]);
+      setCameraTrackPoints([]);
+      setCameraActivityIntervals([]);
+      setCameraAnalysisMode("quick");
+      setCameraScanStatus("idle");
       deadAirAnalysisBaseProjectRef.current = null;
       deadAirAnalysisBaseVideoPathRef.current = null;
       setUploadResult(null);
       setUploadError(null);
       setCustomTitle(videoFile.name.replace(/\.[^/.]+$/, ""));
-      void runCustomSilenceDetection(undefined, undefined, undefined, null);
+      // A saved project already contains its edited timeline and may point to
+      // a long source video. Running the full native silence scan during
+      // project open decodes the entire audio stream into memory and can kill
+      // the desktop WebView/native process before the editor is usable. Keep
+      // project opening lightweight; users can still run Analyze explicitly.
+      if (!hasLoadedProjectDraft) {
+        void runCustomSilenceDetection(undefined, undefined, undefined, null);
+      }
     }
-  }, [videoFile?.path]);
+  }, [videoFile?.path, hasLoadedProjectDraft]);
 
   // Auto-run person/product centering with early burst scan to lock target immediately
   useEffect(() => {
@@ -2199,7 +2528,9 @@ export function MediaVideoEditorPlayer({
       }
       setCurrentTime(cur);
       if (focusMode === "auto_person") {
-        const shouldTrackPerson = smartDirectorMode !== "product_focus" || productPins.length === 0;
+        const shouldTrackPerson = smartDirectorMode !== "face_activity"
+          && smartDirectorMode !== "auto"
+          && (smartDirectorMode !== "product_focus" || productPins.length === 0);
         if (shouldTrackPerson) {
           const nowMs = performance.now();
           if (nowMs - lastTrackTimeRef.current > 850) {
@@ -2707,18 +3038,102 @@ export function MediaVideoEditorPlayer({
 
   // Process Video with FFmpeg
   const handleProcessVideo = async (removeDeadAir: boolean = true) => {
-    if (!videoFile || isProcessing) return;
+    if ((!videoFile && !nleProject) || isProcessing) return;
+    if (!renderSourcePath) {
+      setProcessError(t(
+        "ไม่พบ source video ที่ใช้ Render ใน Timeline",
+        "No renderable source video was found in the timeline.",
+      ));
+      return;
+    }
     setIsProcessing(true);
     setProcessError(null);
     setProcessResult(null);
     setLastRenderHadDeadAirCut(removeDeadAir);
+    setProjectStatusMsg(removeDeadAir
+      ? t("กำลังเตรียม Render ตัด Dead Air…", "Preparing dead-air render…")
+      : t("กำลังเตรียม Render…", "Preparing render…"));
 
     try {
       const { confirm } = await import("@tauri-apps/plugin-dialog");
-      if (nleProject && !await confirm("Render นี้ประมวลผลเฉพาะวิดีโอต้นฉบับตาม Trim / Reframe / Dead Air ไม่รวมการแก้ไขแทร็ก เสียง ข้อความ หรือ Blur บน NLE Timeline ต้องการส่งออกเฉพาะต้นฉบับหรือไม่?", { title: "ส่งออกวิดีโอต้นฉบับ", kind: "warning" })) return;
-      const res = await invoke<InteractiveProcessResult>("worker_app_process_media_interactive", {
+      if (nleProject) {
+        setProjectStatusMsg(t(
+          "กำลังรอการยืนยัน Render วิดีโอต้นฉบับ…",
+          "Waiting for source-video render confirmation…",
+        ));
+        const confirmed = await confirm("Render นี้ประมวลผลเฉพาะวิดีโอต้นฉบับตาม Trim / Reframe / Dead Air ไม่รวมการแก้ไขแทร็ก เสียง ข้อความ หรือ Blur บน NLE Timeline ต้องการส่งออกเฉพาะต้นฉบับหรือไม่?", { title: "ส่งออกวิดีโอต้นฉบับ", kind: "warning" });
+        if (!confirmed) {
+          setProjectStatusMsg(t("ยกเลิกการ Render แล้ว", "Render cancelled."));
+          return;
+        }
+      }
+    // Quick tracking is intentionally lightweight, but a render must not
+    // depend on whether the user happened to play every frame first. When no
+    // face evidence exists, scan once and build the plan locally for this
+    // render so React state timing cannot send a stale fallback focus to Rust.
+    let renderCameraMotionPlan = cameraMotionPlan;
+    const sortedCameraEvidence = [...cameraTrackPoints].sort((left, right) => left.timeMs - right.timeMs);
+    const evidenceSpanMs = sortedCameraEvidence.length > 1
+      ? sortedCameraEvidence[sortedCameraEvidence.length - 1].timeMs - sortedCameraEvidence[0].timeMs
+      : 0;
+    const requiredEvidenceSpanMs = Math.min(
+      15_000,
+      Math.max(1_000, Math.round(effectiveDuration * 1000 * 0.45)),
+    );
+    const hasCompletedFullScan = cameraAnalysisMode === "full_scan"
+      && (cameraScanStatus === "approved" || cameraScanStatus === "degraded");
+    const hasRenderCoverage = hasCompletedFullScan
+      && (sortedCameraEvidence.length === 0 || (sortedCameraEvidence.length >= 5 && evidenceSpanMs >= requiredEvidenceSpanMs));
+    if (
+      (smartDirectorMode === "face_activity" || smartDirectorMode === "face_focus" || smartDirectorMode === "auto")
+      && !hasRenderCoverage
+      && videoRef.current
+    ) {
+      setProjectStatusMsg(t("กำลังสแกนทั้งคลิปเพื่อวางแผนกล้องก่อน Render…", "Scanning the full clip before rendering…"));
+      const scannedPoints = await scanFullVideoForCameraPlan();
+      if (scannedPoints.length > 0) {
+        const scannedPlan = createCameraMotionPlan({
+          durationMs: Math.round(effectiveDuration * 1000),
+          mode: smartDirectorMode === "face_focus" ? "face_focus" : "face_activity",
+          focusX,
+          focusY,
+          baseScale: 1.16,
+          marks: productPins,
+          analysisMode: "full_scan",
+          trackPoints: scannedPoints,
+          activityIntervals: [],
+          evidence: {
+            analysisMode: "full_scan",
+            status: "degraded",
+            sourceFingerprint: videoFile ? `${videoFile.name}:${videoFile.sizeBytes}:${videoFile.modifiedUnixMs}` : undefined,
+            markRevision: cameraMarkRevision,
+            policyFingerprint: `${aspectRatio}:${manualScale.toFixed(3)}`,
+            capabilityProfileFingerprint: "mediapipe-face-full-scan",
+          },
+          outputAspectRatio: renderAspectRatio ?? undefined,
+          sourceAspectRatio: videoDimensions.width > 0 && videoDimensions.height > 0
+            ? videoDimensions.width / videoDimensions.height
+            : undefined,
+        });
+        renderCameraMotionPlan = scannedPlan;
+        // Persist the exact full-scan plan before invoking Rust. The render
+        // request uses the local value above, while this write makes the
+        // captured camera positions available to playback and the next
+        // render even if React has not committed the state update yet.
+        setNleProject((previous) => previous
+          ? {
+            ...previous,
+            updatedAt: new Date().toISOString(),
+            metadata: { ...previous.metadata, cameraMotionPlan: scannedPlan },
+          }
+          : previous);
+      }
+    }
+
+    setProjectStatusMsg(t("กำลังส่งคำสั่ง FFmpeg และตัด Dead Air…", "Sending FFmpeg render command…"));
+    const res = await invoke<InteractiveProcessResult>("worker_app_process_media_interactive", {
         request: {
-          sourcePath: videoFile.path,
+          sourcePath: renderSourcePath,
           trimStartMs: Math.round(trimStart * 1000),
           trimEndMs: Math.round(trimEnd * 1000),
           removeDeadAir,
@@ -2735,7 +3150,7 @@ export function MediaVideoEditorPlayer({
             : smartDirectorMode === "product_focus"
               ? Math.max(1.0, manualScale || 1.18)
               : Math.max(1.0, manualScale || 1.0),
-          cameraMotionPlan,
+          cameraMotionPlan: renderCameraMotionPlan,
           seriesId: seriesId || null,
           volumeThresholdPct: volumeThreshold,
           minDurationSec: minDuration,
@@ -2778,8 +3193,18 @@ export function MediaVideoEditorPlayer({
       } catch (e) {
         console.warn("Save history failed:", e);
       }
+      setProjectStatusMsg(t(`Render เสร็จแล้ว: ${res.fileName}`, `Render complete: ${res.fileName}`));
     } catch (err) {
-      setProcessError(String(err));
+      const errorText = String(err);
+      setProjectStatusMsg(t(`Render ไม่สำเร็จ: ${errorText}`, `Render failed: ${errorText}`));
+      setProcessError(
+        errorText.includes("ffmpeg_unavailable") || errorText.includes("media_runtime_not_ready")
+          ? t(
+            "ยังไม่พร้อม Render: Runtime ของ FFmpeg/ffprobe ยังไม่พร้อม กรุณาเปิด Runtime แล้วกด Repair ก่อนลองอีกครั้ง",
+            "Rendering is not ready: the FFmpeg/ffprobe runtime is unavailable. Open Runtime and choose Repair, then try again.",
+          )
+          : errorText,
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -2798,7 +3223,7 @@ export function MediaVideoEditorPlayer({
           sourcePath: processResult.outputPath,
           destinationPath: chosen,
         });
-        setProjectStatusMsg(`💾 บันทึกไฟล์ไปยัง "${chosen}" สำเร็จแล้ว`);
+        setProjectStatusMsg(`💾 บันทึกไฟล์ไปยัง "${normalizeDisplayPath(chosen)}" สำเร็จแล้ว`);
         setTimeout(() => setProjectStatusMsg(null), 4000);
       }
     } catch {
@@ -3410,13 +3835,37 @@ export function MediaVideoEditorPlayer({
     const effectivePanX = (directorState.panX ?? focusX ?? 0.5) * 100;
     const effectivePanY = (directorState.panY ?? focusY ?? 0.5) * 100;
 
+    // `focusX/Y` are focal-point coordinates, while CSS object-position is
+    // an alignment percentage over the image overflow. With a narrow 9:16
+    // crop these values differ substantially; passing the focal point
+    // directly makes the crop stop short of the face even when the planner
+    // has reached its target. Convert the requested focal point to the CSS
+    // alignment space so the preview matches the native crop filter.
+    const sourceRatio = (videoDimensions.width || 1920) / (videoDimensions.height || 1080);
+    let visibleWidth = 1;
+    let visibleHeight = 1;
+    if (renderAspectRatio < sourceRatio) {
+      visibleWidth = renderAspectRatio / sourceRatio;
+    } else if (renderAspectRatio > sourceRatio) {
+      visibleHeight = sourceRatio / renderAspectRatio;
+    }
+    visibleWidth = Math.min(1, visibleWidth / effectiveScale);
+    visibleHeight = Math.min(1, visibleHeight / effectiveScale);
+    const toObjectPosition = (focalPercent: number, visibleFraction: number) => {
+      if (visibleFraction >= 0.999) return 50;
+      const focal = focalPercent / 100;
+      return Math.max(0, Math.min(100, ((focal - visibleFraction / 2) / (1 - visibleFraction)) * 100));
+    };
+    const objectPositionX = toObjectPosition(effectivePanX, visibleWidth);
+    const objectPositionY = toObjectPosition(effectivePanY, visibleHeight);
+
     return {
       width: "100%",
       height: "100%",
       maxWidth: "100%",
       maxHeight: "100%",
       objectFit: "cover",
-      objectPosition: `${effectivePanX.toFixed(2)}% ${effectivePanY.toFixed(2)}%`,
+      objectPosition: `${objectPositionX.toFixed(2)}% ${objectPositionY.toFixed(2)}%`,
       transform: effectiveScale !== 1.0 ? `scale(${effectiveScale})` : undefined,
       transformOrigin: `${effectivePanX.toFixed(2)}% ${effectivePanY.toFixed(2)}%`,
       transition: isDraggingCrop || smartDirectorMode !== "off"
@@ -3518,9 +3967,9 @@ export function MediaVideoEditorPlayer({
               <span>🎬 Smart AI Hub Media Studio</span>
             </div>
 
-            <h2 className="welcome-title">ยินดีต้อนรับสู่ระบบตัดต่อวิดีโอ & Media Studio</h2>
+            <h2 className="welcome-title">{t("ยินดีต้อนรับสู่ระบบตัดต่อวิดีโอ & Media Studio", "Welcome to Video Editor & Media Studio")}</h2>
             <p className="welcome-subtitle">
-              เริ่มต้นสร้างโปรเจกต์ใหม่ หรือเลือกเปิดไฟล์สื่อจาก Explorer ทางด้านซ้ายเพื่อเริ่มทำงาน
+              {t("เริ่มต้นสร้างโปรเจกต์ใหม่ หรือเลือกเปิดไฟล์สื่อจาก Explorer ทางด้านซ้ายเพื่อเริ่มทำงาน", "Create a new project or open media from Explorer on the left to begin.")}
             </p>
 
             <div className="welcome-actions-grid">
@@ -3533,8 +3982,8 @@ export function MediaVideoEditorPlayer({
               >
                 <div className="action-icon">✨</div>
                 <div className="action-content">
-                  <h3>สร้างโปรเจกต์ใหม่ (New Project)</h3>
-                  <p>สร้างไฟล์โปรเจกต์ .videoproject.json ใน Workspace และบันทึกบนดิสก์</p>
+                  <h3>{t("สร้างโปรเจกต์ใหม่", "New Project")}</h3>
+                  <p>{t("สร้างไฟล์โปรเจกต์ .videoproject.json ใน Workspace และบันทึกบนดิสก์", "Create a .videoproject.json project file in the workspace and save it to disk.")}</p>
                 </div>
               </button>
 
@@ -3546,7 +3995,7 @@ export function MediaVideoEditorPlayer({
                     const selected = await openFolderDialog({
                       directory: false,
                       multiple: false,
-                      title: "เลือกไฟล์โปรเจกต์ (.videoproject.json หรือ .ssproj)",
+                      title: t("เลือกไฟล์โปรเจกต์ (.videoproject.json หรือ .ssproj)", "Choose a project file (.videoproject.json or .ssproj)"),
                       filters: [{ name: "SmartSpec Project", extensions: ["videoproject.json", "ssproj", "json"] }],
                     });
                     if (selected && typeof selected === "string") {
@@ -3577,8 +4026,8 @@ export function MediaVideoEditorPlayer({
               >
                 <div className="action-icon">📁</div>
                 <div className="action-content">
-                  <h3>เปิดไฟล์โปรเจกต์เดิม (Open Project File)</h3>
-                  <p>เลือกไฟล์โปรเจกต์ .videoproject.json หรือ .ssproj เดิมที่เคยบันทึกไว้ในเครื่อง</p>
+                  <h3>{t("เปิดไฟล์โปรเจกต์เดิม", "Open Project File")}</h3>
+                  <p>{t("เลือกไฟล์โปรเจกต์ .videoproject.json หรือ .ssproj เดิมที่เคยบันทึกไว้ในเครื่อง", "Choose a previously saved .videoproject.json or .ssproj file.")}</p>
                 </div>
               </button>
             </div>
@@ -3586,7 +4035,7 @@ export function MediaVideoEditorPlayer({
             <div className="welcome-tip-banner">
               <span className="tip-icon">💡</span>
               <span>
-                <strong>คำแนะนำ:</strong> เลือกโฟลเดอร์ Workspace ทางด้านซ้าย แล้วดับเบิลคลิกไฟล์วิดีโอ หรือกดปุ่ม <strong>"+ โปรเจกต์ใหม่"</strong> เพื่อเริ่มต้น
+                <strong>{t("คำแนะนำ:", "Tip:")}</strong> {t("เลือกโฟลเดอร์ Workspace ทางด้านซ้าย แล้วดับเบิลคลิกไฟล์วิดีโอ หรือกดปุ่ม", "Choose a workspace folder on the left, then double-click a video or select")} <strong>"+ {t("โปรเจกต์ใหม่", "New Project")}"</strong> {t("เพื่อเริ่มต้น", "to begin.")}
               </span>
             </div>
           </div>
@@ -3602,24 +4051,24 @@ export function MediaVideoEditorPlayer({
         <div className="window-title">
           <span className="window-icon">🎙️</span>
           <span>Silence Detection & NLE Studio</span>
-          <span className="window-subfilename">— {videoFile?.name || nleProject?.title || "โปรเจกต์ใหม่"}</span>
+          <span className="window-subfilename">— {videoFile?.name || nleProject?.title || t("โปรเจกต์ใหม่", "New Project")}</span>
         </div>
         <div className="window-actions">
           <button
             type="button"
             className="btn-manual-save-header"
             onClick={() => void handleSaveProject(false)}
-            title="บันทึกโปรเจกต์ลงไฟล์ทันที (Ctrl+S / Cmd+S)"
+            title={t("บันทึกโปรเจกต์ลงไฟล์ทันที (Ctrl+S / Cmd+S)", "Save project to a file now (Ctrl+S / Cmd+S)")}
           >
-            💾 บันทึก Project
+            💾 {t("บันทึก Project", "Save Project")}
           </button>
           <button
             type="button"
             className="btn-header-project-settings"
             onClick={() => setIsProjectSettingsOpen(true)}
-            title="คลิกเพื่อตั้งค่าสัดส่วนหน้าจอ ความละเอียด (Resolution) และอัตราเฟรม (FPS) ของโปรเจกต์"
+            title={t("คลิกเพื่อตั้งค่าสัดส่วนหน้าจอ ความละเอียด (Resolution) และอัตราเฟรม (FPS) ของโปรเจกต์", "Set the project's aspect ratio, resolution, and frame rate (FPS)")}
           >
-            ⚙️ ตั้งค่า Project:{" "}
+            ⚙️ {t("ตั้งค่า Project:", "Project settings:")}{" "}
             <span className="project-settings-pill">
               {nleProject?.canvas
                 ? `${nleProject.canvas.aspectRatio} (${nleProject.canvas.width}×${nleProject.canvas.height})`
@@ -3634,13 +4083,13 @@ export function MediaVideoEditorPlayer({
             type="button"
             className={`window-settings-toggle ${showSettingsPanel ? "active" : ""}`}
             onClick={() => setShowSettingsPanel(!showSettingsPanel)}
-            title={showSettingsPanel ? "ซ่อนแผงตั้งค่าเพื่อขยายพื้นที่วิดีโอ" : "แสดงแผงตั้งค่าตรวจจับเสียงเงียบ"}
+            title={showSettingsPanel ? t("ซ่อนแผงตั้งค่าเพื่อขยายพื้นที่วิดีโอ", "Hide settings to enlarge the video area") : t("แสดงแผงตั้งค่าตรวจจับเสียงเงียบ", "Show silence-detection settings")}
           >
-            {showSettingsPanel ? "⚙️ ซ่อนตั้งค่า" : "⚙️ แสดงตั้งค่า"}
+            {showSettingsPanel ? `⚙️ ${t("ซ่อนตั้งค่า", "Hide settings")}` : `⚙️ ${t("แสดงตั้งค่า", "Show settings")}`}
           </button>
           <span className="window-badge">{videoFile ? formatBytes(videoFile.sizeBytes) : "Project Draft"}</span>
           {onClose && (
-            <button type="button" className="window-close-btn" onClick={onClose} title="ปิดหน้าต่าง">
+            <button type="button" className="window-close-btn" onClick={onClose} title={t("ปิดหน้าต่าง", "Close window")}>
               ✕
             </button>
           )}
@@ -3658,13 +4107,13 @@ export function MediaVideoEditorPlayer({
           <div className="canvas-header-bar">
             {/* Cluster 1: Aspect Ratio */}
             <div className="canvas-toolbar-cluster">
-              <span className="cluster-label">📐 สัดส่วน:</span>
+              <span className="cluster-label">📐 {t("สัดส่วน:", "Aspect ratio:")}</span>
               <div className="cluster-buttons">
                 <button
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "9:16" ? "active" : ""}`}
                   onClick={() => handleAspectRatioChange("9:16")}
-                  title="📱 สัดส่วน 9:16 แนวตั้ง (TikTok, Reels, Shorts)"
+                  title={t("📱 สัดส่วน 9:16 แนวตั้ง (TikTok, Reels, Shorts)", "📱 9:16 vertical (TikTok, Reels, Shorts)")}
                 >
                   📱 9:16
                 </button>
@@ -3672,7 +4121,7 @@ export function MediaVideoEditorPlayer({
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "16:9" ? "active" : ""}`}
                   onClick={() => handleAspectRatioChange("16:9")}
-                  title="🖥️ สัดส่วน 16:9 แนวนอน (YouTube, Widescreen)"
+                  title={t("🖥️ สัดส่วน 16:9 แนวนอน (YouTube, Widescreen)", "🖥️ 16:9 horizontal (YouTube, Widescreen)")}
                 >
                   🖥️ 16:9
                 </button>
@@ -3680,7 +4129,7 @@ export function MediaVideoEditorPlayer({
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "1:1" ? "active" : ""}`}
                   onClick={() => handleAspectRatioChange("1:1")}
-                  title="⏹️ สัดส่วน 1:1 จัตุรัส (Instagram Feed)"
+                  title={t("⏹️ สัดส่วน 1:1 จัตุรัส (Instagram Feed)", "⏹️ 1:1 square (Instagram Feed)")}
                 >
                   ⏹️ 1:1
                 </button>
@@ -3688,9 +4137,9 @@ export function MediaVideoEditorPlayer({
                   type="button"
                   className={`toolbar-pill-btn ${aspectRatio === "source" ? "active" : ""}`}
                   onClick={() => handleAspectRatioChange("source")}
-                  title="⬛ ต้นฉบับ (Original Aspect Ratio)"
+                  title={t("⬛ ต้นฉบับ (Original Aspect Ratio)", "⬛ Original aspect ratio")}
                 >
-                  ⬛ ต้นฉบับ
+                  ⬛ {t("ต้นฉบับ", "Original")}
                 </button>
               </div>
             </div>
@@ -3701,19 +4150,19 @@ export function MediaVideoEditorPlayer({
             {aspectRatio !== "source" && (
               <>
                 <div className="canvas-toolbar-cluster zoom-cluster">
-                  <span className="cluster-label">🔍 ซูมภาพ:</span>
+                  <span className="cluster-label">🔍 {t("ซูมภาพ:", "Zoom:")}</span>
                   <div className="cluster-buttons">
                     <button
                       type="button"
                       className="toolbar-pill-btn zoom-btn"
                       onClick={() => setManualScale((prev) => Math.max(1.0, +(prev - 0.05).toFixed(2)))}
-                      title="ลดการซูม (Zoom Out 5%)"
+                      title={t("ลดการซูม (Zoom Out 5%)", "Zoom out (5%)")}
                     >
                       🔍-
                     </button>
                     <span
                       className="toolbar-pill-btn zoom-value-display active"
-                      title="ระดับซูมปัจจุบัน (หมุน Scroll Wheel หรือกดปุ่ม 🔍 เพื่อปรับ)"
+                      title={t("ระดับซูมปัจจุบัน (หมุน Scroll Wheel หรือกดปุ่ม 🔍 เพื่อปรับ)", "Current zoom level (use mouse wheel or 🔍 buttons to adjust)")}
                     >
                       {manualScale.toFixed(2)}x
                     </span>
@@ -3721,7 +4170,7 @@ export function MediaVideoEditorPlayer({
                       type="button"
                       className="toolbar-pill-btn zoom-btn"
                       onClick={() => setManualScale((prev) => Math.min(2.5, +(prev + 0.05).toFixed(2)))}
-                      title="เพิ่มการซูม (Zoom In 5%)"
+                      title={t("เพิ่มการซูม (Zoom In 5%)", "Zoom in (5%)")}
                     >
                       🔍+
                     </button>
@@ -3730,7 +4179,7 @@ export function MediaVideoEditorPlayer({
                         type="button"
                         className="toolbar-pill-btn zoom-reset-btn"
                         onClick={() => setManualScale(1.0)}
-                        title="รีเซ็ตการซูมกลับเป็น 1.0x (เต็มสัดส่วนปกติ)"
+                        title={t("รีเซ็ตการซูมกลับเป็น 1.0x (เต็มสัดส่วนปกติ)", "Reset zoom to 1.0x")}
                       >
                         1.0x
                       </button>
@@ -3742,7 +4191,7 @@ export function MediaVideoEditorPlayer({
 
                 {/* Cluster 3: AI Focus Tracking & Manual Drag */}
                 <div className="canvas-toolbar-cluster">
-                  <span className="cluster-label">🎯 การเล็งภาพ:</span>
+                  <span className="cluster-label">🎯 {t("การเล็งภาพ:", "Focus:")}</span>
                   <div className="cluster-buttons">
                     <button
                       type="button"
@@ -3750,14 +4199,15 @@ export function MediaVideoEditorPlayer({
                       onClick={() => {
                         setFocusMode("auto_person");
                         personAnchorRef.current = null;
+                        startupPersonLockRef.current = true;
                         onFocusModeChange?.("auto_person");
                         detectPersonCenter(true);
-                        setProjectStatusMsg("👤 โหมดโฟกัสคน: AI ติดตามใบหน้าผู้พูดอัตโนมัติ");
+                        setProjectStatusMsg(t("👤 โหมดโฟกัสคน: AI ติดตามใบหน้าผู้พูดอัตโนมัติ", "👤 Person focus: AI automatically tracks the speaker's face."));
                         setTimeout(() => setProjectStatusMsg(null), 2500);
                       }}
-                      title={`👤 Auto Track หน้าคนด้วย MediaPipe Face Detector: ${faceDetectorStatusLabel}`}
+                      title={`👤 ${t("ติดตามใบหน้าด้วย MediaPipe Face Detector", "Track faces with MediaPipe Face Detector")}: ${faceDetectorStatusLabel}`}
                     >
-                      👤 โฟกัสคน {focusMode === "auto_person" ? faceDetectorStatusIcon : ""}
+                      👤 {t("โฟกัสคน", "Person focus")} {focusMode === "auto_person" ? faceDetectorStatusIcon : ""}
                     </button>
                     <button
                       type="button"
@@ -3766,12 +4216,12 @@ export function MediaVideoEditorPlayer({
                         setFocusMode("manual_region");
                         onFocusModeChange?.("manual_region");
                         setSmartDirectorMode("off");
-                        setProjectStatusMsg("✋ โหมดลากเอง: ปิด Auto Pan/Zoom อัตโนมัติ กล้องนิ่งตามตำแหน่งที่คุณลาก");
+                        setProjectStatusMsg(t("✋ โหมดลากเอง: ปิด Auto Pan/Zoom อัตโนมัติ กล้องนิ่งตามตำแหน่งที่คุณลาก", "✋ Manual drag: automatic pan/zoom is off; the camera stays where you place it."));
                         setTimeout(() => setProjectStatusMsg(null), 3000);
                       }}
-                      title="✋ ลากเอง: คลิกลากกรอบบนภาพได้อย่างอิสระ (ปิด Auto Pan/Zoom ให้นิ่ง 100%)"
+                      title={t("✋ ลากเอง: คลิกลากกรอบบนภาพได้อย่างอิสระ (ปิด Auto Pan/Zoom ให้นิ่ง 100%)", "✋ Manual drag: freely move the frame (Auto Pan/Zoom is off)")}
                     >
-                      ✋ ลากเอง {focusMode === "manual_region" ? "✓" : ""}
+                      ✋ {t("ลากเอง", "Manual drag")} {focusMode === "manual_region" ? "✓" : ""}
                     </button>
                   </div>
                 </div>
@@ -3787,40 +4237,95 @@ export function MediaVideoEditorPlayer({
                       className={`toolbar-pill-btn ${smartDirectorMode === "off" ? "active" : ""}`}
                       onClick={() => {
                         setSmartDirectorMode("off");
-                        setProjectStatusMsg("✕ ปิด Auto Pan & Zoom: กล้องจะนิ่งคงที่ตามจุดที่คุณจัด");
+                        setProjectStatusMsg(t("✕ ปิด Auto Pan & Zoom: กล้องจะนิ่งคงที่ตามจุดที่คุณจัด", "✕ Auto Pan & Zoom off: the camera stays fixed where you set it."));
                         setTimeout(() => setProjectStatusMsg(null), 2500);
                       }}
-                      title="✕ ปิด Auto Pan/Zoom: กล้องนิ่งคงที่ไม่เคลื่อนไหวอัตโนมัติ"
+                      title={t("✕ ปิด Auto Pan/Zoom: กล้องนิ่งคงที่ไม่เคลื่อนไหวอัตโนมัติ", "✕ Turn off Auto Pan/Zoom: keep the camera still")}
                     >
-                      ✕ ปิด (นิ่ง)
+                      ✕ {t("ปิด (นิ่ง)", "Off (still)")}
                     </button>
                     <button
                       type="button"
                       className={`toolbar-pill-btn ${smartDirectorMode === "product_focus" ? "active" : ""}`}
                       onClick={() => {
                         setSmartDirectorMode("product_focus");
-                        setProjectStatusMsg("📍 เปิด Auto Pan/Zoom: เคลื่อนกล้องนุ่มนวลระหว่างจุดมาร์กที่ปักไว้");
+                        setProjectStatusMsg(t("📍 เปิด Auto Pan/Zoom: เคลื่อนกล้องนุ่มนวลระหว่างจุดมาร์กที่ปักไว้", "📍 Auto Pan/Zoom on: smoothly move between marked points."));
                         setTimeout(() => setProjectStatusMsg(null), 3000);
                       }}
-                      title="📍 Pan/Zoom ตามจุดมาร์ก: เคลื่อนกล้อง Pan และ Zoom อย่างนุ่มนวลตามลำดับจุดมาร์ก"
+                      title={t("📍 Pan/Zoom ตามจุดมาร์ก: เคลื่อนกล้อง Pan และ Zoom อย่างนุ่มนวลตามลำดับจุดมาร์ก", "📍 Pan/Zoom by marks: smoothly move between marks")}
                     >
-                      📍 ตามจุดมาร์ก {smartDirectorMode === "product_focus" ? "🟢" : ""}
+                      📍 {t("ตามจุดมาร์ก", "By marks")} {smartDirectorMode === "product_focus" ? "🟢" : ""}
                     </button>
                     <button
                       type="button"
-                      className={`toolbar-pill-btn ${smartDirectorMode === "auto" ? "active" : ""}`}
-                      onClick={() => setSmartDirectorMode("auto")}
-                      title="⚡ ออโต้ AI: สลับมุมกว้าง -> ซูมเข้าหาคนหรือสินค้าเป็นระยะอย่างเป็นธรรมชาติ"
+                      className={`toolbar-pill-btn ${smartDirectorMode === "auto" || smartDirectorMode === "face_activity" ? "active" : ""}`}
+                      onClick={() => {
+                        smartDirectorModeRef.current = "face_activity";
+                        setSmartDirectorMode("face_activity");
+                        setCameraAnalysisMode("quick");
+                        setCameraScanStatus("quick");
+                        setCameraTrackPoints([]);
+                        setCameraActivityIntervals([]);
+                        trackedFaceCandidateRef.current = null;
+                        personAnchorRef.current = { x: 0.5, y: 0.5 };
+                        focusXRef.current = 0.5;
+                        focusYRef.current = 0.5;
+                        setFocusX(0.5);
+                        setFocusY(0.5);
+                        onFocusXChange?.(0.5);
+                        onFocusYChange?.(0.5);
+                        setProjectStatusMsg(t("⚡ Face + Activity แบบด่วน: ล็อกกรอบกลางนิ่ง กดสแกนทั้งคลิปเพื่อเปิดการติดตาม", "⚡ Face + Activity Quick: fixed centre frame; run Full Scan to enable tracking."));
+                      }}
+                      title={t("⚡ Face + Activity: ใช้ใบหน้า คน มือ วัตถุ และกิจกรรมเมื่อมีตัวตรวจจับที่รองรับ", "⚡ Face + Activity: use face, person, hand, object and activity evidence when capabilities are available")}
                     >
-                      ⚡ ออโต้ AI {smartDirectorMode === "auto" ? "🟢" : ""}
+                      ⚡ {t("Face + Activity", "Face + Activity")} {smartDirectorMode === "auto" || smartDirectorMode === "face_activity" ? "🟢" : ""}
                     </button>
+                    {smartDirectorMode === "face_activity" && (
+                      <>
+                        <button
+                          type="button"
+                          className={`toolbar-pill-btn ${cameraAnalysisMode === "quick" ? "active" : ""}`}
+                          onClick={() => {
+                            setCameraAnalysisMode("quick");
+                            setCameraScanStatus("quick");
+                            setCameraTrackPoints([]);
+                            setCameraActivityIntervals([]);
+                            trackedFaceCandidateRef.current = null;
+                            personAnchorRef.current = { x: 0.5, y: 0.5 };
+                            focusXRef.current = 0.5;
+                            focusYRef.current = 0.5;
+                            setFocusX(0.5);
+                            setFocusY(0.5);
+                            onFocusXChange?.(0.5);
+                            onFocusYChange?.(0.5);
+                            setProjectStatusMsg(t("กล้องล็อกกลางนิ่งจนกว่าจะสแกนทั้งคลิป", "Camera locked at centre until Full Scan."));
+                          }}
+                          title={t("ล็อกกรอบกลางนิ่งโดยไม่ใช้ตัวตรวจจับระหว่าง Play", "Lock a fixed centre frame without live detection during playback")}
+                        >
+                          ⚡ {t("ด่วน", "Quick")}
+                        </button>
+                        <button
+                          type="button"
+                          className={`toolbar-pill-btn ${cameraAnalysisMode === "full_scan" ? "active" : ""}`}
+                          onClick={() => {
+                            setCameraAnalysisMode("full_scan");
+                            setCameraScanStatus("scanning");
+                            setProjectStatusMsg(t("กำลังสแกนทั้งวิดีโอเพื่อวางแผนกล้อง…", "Scanning the full video to plan camera motion…"));
+                            void scanFullVideoForCameraPlan();
+                          }}
+                          title={t("สแกนทั้งวิดีโอก่อนวางแผน pan/zoom", "Scan the full video before planning pan/zoom")}
+                        >
+                          🔎 {t("สแกนทั้งคลิป", "Full Scan")}
+                        </button>
+                      </>
+                    )}
                     <button
                       type="button"
                       className={`toolbar-pill-btn ${smartDirectorMode === "face_focus" ? "active" : ""}`}
                       onClick={() => setSmartDirectorMode("face_focus")}
-                      title="👤 ซูมหาใบหน้า: ซูมเน้นใบหน้าผู้พูดเป็นระยะ"
+                      title={t("👤 ซูมหาใบหน้า: ซูมเน้นใบหน้าผู้พูดเป็นระยะ", "👤 Face zoom: periodically focus on the speaker's face")}
                     >
-                      👤 ซูมหน้า {smartDirectorMode === "face_focus" ? "🟢" : ""}
+                      👤 {t("ซูมหน้า", "Face zoom")} {smartDirectorMode === "face_focus" ? "🟢" : ""}
                     </button>
                   </div>
                 </div>
@@ -4366,7 +4871,8 @@ export function MediaVideoEditorPlayer({
               {nleProject && (
                 <SandboxedOverlayViewer
                   activeClips={activeOverlayClips}
-                  currentTimeMs={currentTime * 1000}
+                  frameStyle={previewMode === "crop_guide" ? cropBoxStyle ?? undefined : undefined}
+                  currentTimeMs={Math.round(currentTime * 1000)}
                   width={nleProject.canvas.width}
                   height={nleProject.canvas.height}
                   focusX={focusX}
@@ -4506,6 +5012,8 @@ export function MediaVideoEditorPlayer({
                           if (next === "manual_region") {
                             setSmartDirectorMode("off");
                           } else {
+                            personAnchorRef.current = null;
+                            startupPersonLockRef.current = true;
                             detectPersonCenter(true);
                           }
                         }}
@@ -4893,11 +5401,11 @@ export function MediaVideoEditorPlayer({
       <div
         className="workspace-vertical-splitter"
         onMouseDown={handleSplitterMouseDown}
-        title="คลิกลากขึ้น-ลงเพื่อปรับขนาดพื้นที่วิดีโอกับไทม์ไลน์"
+        title={t("คลิกลากขึ้น-ลงเพื่อปรับขนาดพื้นที่วิดีโอกับไทม์ไลน์", "Drag up or down to resize the video and timeline areas")}
       >
         <div className="splitter-handle-pill">
           <span className="splitter-grip">⋯</span>
-          <span className="splitter-label">พื้นที่วิดีโอ {stageHeightPercent}%</span>
+          <span className="splitter-label">{t("พื้นที่วิดีโอ", "Video area")} {stageHeightPercent}%</span>
         </div>
         <div className="splitter-preset-buttons" onMouseDown={(e) => e.stopPropagation()}>
           <button
@@ -4907,9 +5415,9 @@ export function MediaVideoEditorPlayer({
               setStageHeightPercent(75);
               try { localStorage.setItem("smartspec_stage_height_pct", "75"); } catch {}
             }}
-            title="ขยายพื้นที่วิดีโอใหญ่สุด 75%"
+            title={t("ขยายพื้นที่วิดีโอใหญ่สุด 75%", "Expand video area to 75%")}
           >
-            🔼 วิดีโอใหญ่ (75%)
+            🔼 {t("วิดีโอใหญ่", "Large video")} (75%)
           </button>
           <button
             type="button"
@@ -4918,9 +5426,9 @@ export function MediaVideoEditorPlayer({
               setStageHeightPercent(60);
               try { localStorage.setItem("smartspec_stage_height_pct", "60"); } catch {}
             }}
-            title="มุมมองสมดุล (วิดีโอ 60% / ไทม์ไลน์ 40%)"
+            title={t("มุมมองสมดุล (วิดีโอ 60% / ไทม์ไลน์ 40%)", "Balanced view (video 60% / timeline 40%)")}
           >
-            ⚖️ สมดุล (60%)
+            ⚖️ {t("สมดุล", "Balanced")} (60%)
           </button>
           <button
             type="button"
@@ -4929,9 +5437,9 @@ export function MediaVideoEditorPlayer({
               setStageHeightPercent(45);
               try { localStorage.setItem("smartspec_stage_height_pct", "45"); } catch {}
             }}
-            title="ขยายพื้นที่ไทม์ไลน์ เพื่อดูหลายแทร็กสะดวก"
+            title={t("ขยายพื้นที่ไทม์ไลน์ เพื่อดูหลายแทร็กสะดวก", "Expand timeline area to view more tracks")}
           >
-            🔽 ไทม์ไลน์ใหญ่ (45%)
+            🔽 {t("ไทม์ไลน์ใหญ่", "Large timeline")} (45%)
           </button>
         </div>
       </div>
@@ -4964,9 +5472,9 @@ export function MediaVideoEditorPlayer({
               className="analyze-inline-btn"
               onClick={() => void runCustomSilenceDetection()}
               disabled={isAnalyzing}
-              title="กดเพื่อวิเคราะห์ตัดช่วงเสียงเงียบ (Dead Air) ตามพารามิเตอร์ที่เลือก"
+              title={t("กดเพื่อวิเคราะห์ตัดช่วงเสียงเงียบ (Dead Air) ตามพารามิเตอร์ที่เลือก", "Analyze silent sections (Dead Air) using the selected settings")}
             >
-              {isAnalyzing ? "⏳ วิเคราะห์..." : "⚡ Analyze"}
+              {isAnalyzing ? `⏳ ${t("วิเคราะห์...", "Analyzing...")}` : "⚡ Analyze"}
             </button>
 
             {/* Presets */}
@@ -4975,15 +5483,15 @@ export function MediaVideoEditorPlayer({
                 type="button"
                 className={`inline-preset-pill ${volumeThreshold === 25 && minDuration === 0.5 && softeningBuffer === 0.2 ? "active" : ""}`}
                 onClick={() => applyPreset(25, 0.5, 0.2)}
-                title="ธรรมชาติ / บทสนทนาทั่วไป (25% / 0.5s / 0.2s)"
+                title={t("ธรรมชาติ / บทสนทนาทั่วไป (25% / 0.5s / 0.2s)", "Natural / general conversation (25% / 0.5s / 0.2s)")}
               >
-                🟢 ธรรมชาติ
+                🟢 {t("ธรรมชาติ", "Natural")}
               </button>
               <button
                 type="button"
                 className={`inline-preset-pill ${volumeThreshold === 30 && minDuration === 0.35 && softeningBuffer === 0.1 ? "active" : ""}`}
                 onClick={() => applyPreset(30, 0.35, 0.1)}
-                title="TikTok / Shorts พูดเร็ว กระชับ (30% / 0.35s / 0.1s)"
+                title={t("TikTok / Shorts พูดเร็ว กระชับ (30% / 0.35s / 0.1s)", "TikTok / Shorts, quick and concise (30% / 0.35s / 0.1s)")}
               >
                 ⚡ Shorts
               </button>
@@ -4991,7 +5499,7 @@ export function MediaVideoEditorPlayer({
                 type="button"
                 className={`inline-preset-pill ${volumeThreshold === 35 && minDuration === 0.25 && softeningBuffer === 0.08 ? "active" : ""}`}
                 onClick={() => applyPreset(35, 0.25, 0.08)}
-                title="ตัดกระชับพิเศษ / Jump Cut ไวสุด (35% / 0.25s / 0.08s)"
+                title={t("ตัดกระชับพิเศษ / Jump Cut ไวสุด (35% / 0.25s / 0.08s)", "Extra concise / fastest Jump Cut (35% / 0.25s / 0.08s)")}
               >
                 🔥 Jump Cut
               </button>
@@ -4999,9 +5507,9 @@ export function MediaVideoEditorPlayer({
                 type="button"
                 className={`inline-preset-pill ${volumeThreshold === 20 && minDuration === 0.8 && softeningBuffer === 0.25 ? "active" : ""}`}
                 onClick={() => applyPreset(20, 0.8, 0.25)}
-                title="พอดแคสต์ / บรรยายแบบชิลล์ (20% / 0.8s / 0.25s)"
+                title={t("พอดแคสต์ / บรรยายแบบชิลล์ (20% / 0.8s / 0.25s)", "Podcast / relaxed narration (20% / 0.8s / 0.25s)")}
               >
-                🎙️ พอดแคสต์
+                🎙️ {t("พอดแคสต์", "Podcast")}
               </button>
             </div>
 
@@ -5040,17 +5548,17 @@ export function MediaVideoEditorPlayer({
               type="button"
               className="inline-add-cut-btn"
               onClick={() => handleAddManualCut()}
-              title="✂️ เพิ่มจุดตัด 1 วินาทีที่ตำแหน่ง Playhead หรือใช้การลากบนกราฟเพื่อเลือกช่วงเอง"
+              title={t("✂️ เพิ่มจุดตัด 1 วินาทีที่ตำแหน่ง Playhead หรือใช้การลากบนกราฟเพื่อเลือกช่วงเอง", "✂️ Add a 1-second cut at the playhead or drag on the graph to select a range")}
             >
-              ✂️ + มาร์กจุดตัด
+              ✂️ + {t("มาร์กจุดตัด", "Mark cut")}
             </button>
 
             {/* Cut Count & Saved Stats */}
             <div
               className="inline-stats-badge"
-              title={`ตัด Dead Air ทั้งหมด ${cutCount} ช่วง ประหยัดเวลาได้ ${(timeSavedMs / 1000).toFixed(1)} วินาที`}
+              title={t(`ตัด Dead Air ทั้งหมด ${cutCount} ช่วง ประหยัดเวลาได้ ${(timeSavedMs / 1000).toFixed(1)} วินาที`, `${cutCount} Dead Air sections cut; ${(timeSavedMs / 1000).toFixed(1)} seconds saved`)}
             >
-              <span>✂️ {cutCount} ช่วง</span>
+              <span>✂️ {cutCount} {t("ช่วง", "sections")}</span>
               <span className="stats-saved">(-{(timeSavedMs / 1000).toFixed(1)}s)</span>
             </div>
           </div>
@@ -5071,13 +5579,14 @@ export function MediaVideoEditorPlayer({
       {editorMode === "multitrack" && nleProject ? (
         <MultiTrackTimeline
           project={nleProject}
-          currentTimeMs={currentTime * 1000}
+          currentTimeMs={Math.round(currentTime * 1000)}
           durationMs={Math.max(1000, effectiveDuration * 1000)}
           isPlaying={isPlaying}
           onSeek={(ms) => handleSeek(ms / 1000)}
           onTogglePlay={togglePlay}
           onUpdateProject={(updated) => setNleProject(updated)}
           onOpenAutoSubtitles={() => setIsAutoSubModalOpen(true)}
+          onOpenVoiceGuidedVisualMatch={() => setIsVoiceGuidedVisualMatchOpen(true)}
           onOpenCodeOverlayModal={() => setIsCodeOverlayModalOpen(true)}
           onOpenAssetDrawer={handleOpenAssetDrawer}
           isMediaBinOpen={isMediaBinOpen}
@@ -5264,11 +5773,11 @@ export function MediaVideoEditorPlayer({
               ) : analysisVideoSources.length === 1 ? (
                 <span className="audio-track-selected">{analysisVideoSources[0].trackName} · {analysisVideoSources[0].name}</span>
               ) : (
-                <span className="audio-track-selected muted">{videoFile?.name || "ยังไม่มี Video source"}</span>
+                <span className="audio-track-selected muted">{videoFile?.name || t("ยังไม่มี Video source", "No video source")}</span>
               )}
             </div>
             <div className="audio-track-selector-row" role="group" aria-label="Audio track selection">
-              <label htmlFor="dead-air-audio-track">🎚️ Audio Track ที่ใช้ตัด Dead Air:</label>
+              <label htmlFor="dead-air-audio-track">🎚️ {t("Audio Track ที่ใช้ตัด Dead Air:", "Audio track for Dead Air cuts:")}</label>
               {audioTracks.length > 1 ? (
                 <select
                   id="dead-air-audio-track"
@@ -5289,7 +5798,7 @@ export function MediaVideoEditorPlayer({
               ) : audioTracks.length === 1 ? (
                 <span className="audio-track-selected">{getAudioTrackLabel(audioTracks[0])}</span>
               ) : (
-                <span className="audio-track-selected muted">{isAnalyzing ? "กำลังค้นหา Audio Track..." : "ยังไม่พบ Audio Track"}</span>
+                <span className="audio-track-selected muted">{isAnalyzing ? t("กำลังค้นหา Audio Track...", "Finding audio tracks...") : t("ยังไม่พบ Audio Track", "No audio track found")}</span>
               )}
               {analysisError && <span className="audio-track-error" role="alert">{analysisError}</span>}
             </div>
@@ -5309,7 +5818,7 @@ export function MediaVideoEditorPlayer({
                 const pct = Math.max(0, Math.min(1, clickX / rect.width));
                 handleAddManualCut(pct * duration);
               }}
-              title="ลากบนกราฟเสียงเพื่อเลือกช่วงตัดเอง • ดับเบิลคลิกเพื่อเพิ่มจุดตัด 1 วินาที • คลิก ✕ เพื่อยกเลิก"
+              title={t("ลากบนกราฟเสียงเพื่อเลือกช่วงตัดเอง • ดับเบิลคลิกเพื่อเพิ่มจุดตัด 1 วินาที • คลิก ✕ เพื่อยกเลิก", "Drag on the waveform to choose a cut range • double-click to add a 1-second cut • click ✕ to cancel")}
             >
               <div className="waveform-bars">
                 {displayedWaveformBins.length > 0 ? (
@@ -5325,7 +5834,7 @@ export function MediaVideoEditorPlayer({
                   ))
                 ) : (
                   <div className="waveform-empty-hint">
-                    {isAnalyzing ? "กำลังประมวลผล Waveform..." : "กด Analyze เพื่อสร้าง Audio Waveform"}
+                    {isAnalyzing ? t("กำลังประมวลผล Waveform...", "Processing waveform...") : t("กด Analyze เพื่อสร้าง Audio Waveform", "Click Analyze to create an audio waveform")}
                   </div>
                 )}
               </div>
@@ -5351,7 +5860,7 @@ export function MediaVideoEditorPlayer({
                     width: `${(Math.abs(manualCutDraft.endMs - manualCutDraft.startMs) / 1000 / duration) * 100}%`,
                   }}
                 >
-                  ✂️ ลากเลือก {formatSeconds(Math.abs(manualCutDraft.endMs - manualCutDraft.startMs) / 1000)}
+                  ✂️ {t("ลากเลือก", "Selected")} {formatSeconds(Math.abs(manualCutDraft.endMs - manualCutDraft.startMs) / 1000)}
                 </div>
               )}
 
@@ -5423,11 +5932,11 @@ export function MediaVideoEditorPlayer({
         <div
           className="export-controls-bar-header"
           onClick={() => setIsRenderPanelCollapsed((prev) => !prev)}
-          title={isRenderPanelCollapsed ? "คลิกเพื่อขยายแผงควบคุม Render & Export" : "คลิกเพื่อยุบแผงควบคุม"}
+          title={isRenderPanelCollapsed ? t("คลิกเพื่อขยายแผงควบคุม Render & Export", "Click to expand Render & Export controls") : t("คลิกเพื่อยุบแผงควบคุม", "Click to collapse controls")}
         >
           <div className="bar-header-title">
             <span className="bar-header-icon">🎬</span>
-            <span>แผงควบคุม Render & ส่งออก</span>
+            <span>{t("แผงควบคุม Render & ส่งออก", "Render & Export controls")}</span>
             <span className="bar-res-badge">
               {nleProject?.canvas?.aspectRatio || aspectRatio} · {nleProject?.canvas?.width || 1080}×{nleProject?.canvas?.height || 1920}
             </span>
@@ -5451,12 +5960,12 @@ export function MediaVideoEditorPlayer({
             )}
             {plan && (
               <span className="bar-plan-pill" title={`Plan ID: ${plan.planId}`}>
-                ⚡ แผน AI {plan.planId.slice(-6)} · {Math.round(plan.trimEndMs / 1000)}s
+                ⚡ {t("แผน AI", "AI plan")} {plan.planId.slice(-6)} · {Math.round(plan.trimEndMs / 1000)}s
               </span>
             )}
             {isProcessing && (
               <span className="bar-rendering-pill">
-                ⚙️ กำลัง Render...
+                ⚙️ {t("กำลัง Render...", "Rendering...")}
               </span>
             )}
           </div>
@@ -5749,6 +6258,33 @@ export function MediaVideoEditorPlayer({
         sourceVideoFile={videoFile}
         onApplySubtitles={handleApplySubtitles}
       />
+
+      {nleProject && (
+        <VoiceGuidedVisualMatchModal
+          isOpen={isVoiceGuidedVisualMatchOpen}
+          onClose={() => setIsVoiceGuidedVisualMatchOpen(false)}
+          project={nleProject}
+          onApplyPlan={(plan, mode) => {
+            try {
+              setVisualMatchUndoProject(nleProject);
+              setNleProject(applyVoiceGuidedVisualPlan(nleProject, plan, mode));
+              setIsVoiceGuidedVisualMatchOpen(false);
+              setProjectStatusMsg(t("จับคู่ภาพกับเสียงเรียบร้อยแล้ว สามารถ Undo ได้", "Visual match applied. You can undo it."));
+            } catch (error) {
+              setProjectStatusMsg(error instanceof Error && error.message === "VISUAL_MATCH_PREVIEW_STALE"
+                ? t("Preview นี้เก่าแล้ว กรุณาวิเคราะห์ใหม่ก่อนยืนยัน", "This preview is stale. Analyze again before applying.")
+                : t("ใช้ผลจับคู่ภาพไม่สำเร็จ", "Could not apply the visual match."));
+            }
+          }}
+          undoProject={visualMatchUndoProject}
+          onUndo={() => {
+            if (!visualMatchUndoProject) return;
+            setNleProject(visualMatchUndoProject);
+            setVisualMatchUndoProject(null);
+            setProjectStatusMsg(t("ยกเลิกการจับคู่ภาพแล้ว", "Visual match undone."));
+          }}
+        />
+      )}
 
       <CodeOverlayModal
         isOpen={isCodeOverlayModalOpen}

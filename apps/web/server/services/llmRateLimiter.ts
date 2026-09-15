@@ -18,9 +18,14 @@ import { getRedisClient, isRedisAvailable } from './redis';
 // Provider-specific rate limit configurations
 export interface ProviderLimitConfig {
   maxConcurrent: number;      // Max concurrent requests
+  /** Optional per-user submit concurrency; not a provider running-task count. */
+  perUserMaxConcurrent?: number;
   minTime: number;            // Min time between requests (ms)
   reservoir?: number;         // Max requests per interval
   reservoirRefreshInterval?: number; // Refresh interval (ms)
+  /** Optional provider account daily quota metadata. */
+  dailyReservoir?: number;
+  dailyRefreshInterval?: number;
   freeModelMultiplier: number; // Delay multiplier for free models
   timeout?: number;           // Max wait time for slot (ms)
 }
@@ -70,9 +75,15 @@ export const PROVIDER_LIMITS: Record<string, ProviderLimitConfig> = {
   },
   'openrouter': {
     maxConcurrent: 10,
-    minTime: 50,
-    reservoir: 100,
-    reservoirRefreshInterval: 60000, // 100 per minute
+    perUserMaxConcurrent: 3,
+    // Provider account policy: 20 requests/minute. Keep the limiter below
+    // the provider ceiling rather than treating the UI/request limit as the
+    // provider queue. Canonical jobs may still wait in PostgreSQL.
+    minTime: 3000,
+    reservoir: 20,
+    reservoirRefreshInterval: 60000, // 20 per minute
+    dailyReservoir: 1000,
+    dailyRefreshInterval: 24 * 60 * 60 * 1000,
     freeModelMultiplier: 1.5,
     timeout: 30000,
   },
@@ -124,6 +135,8 @@ export type MediaType = 'image' | 'video' | 'audio';
 
 export interface MediaProviderLimitConfig {
   maxConcurrent: number;      // Max concurrent requests
+  /** Per-user submission cap; provider task lifecycle must be tracked separately. */
+  perUserMaxConcurrent?: number;
   minTime: number;            // Min time between requests (ms)
   reservoir?: number;         // Max requests per interval
   reservoirRefreshInterval?: number; // Refresh interval (ms)
@@ -135,14 +148,30 @@ export interface MediaProviderLimitConfig {
 
 export const MEDIA_PROVIDER_LIMITS: Record<string, MediaProviderLimitConfig> = {
   'kie.ai': {
-    // Kie AI rate limit: 20 requests per 10 seconds, ~100+ concurrent tasks
-    maxConcurrent: 50,        // Kie AI supports 100+ concurrent, use 50 for safety
-    minTime: 200,             // 200ms between requests — kie.ai rate limit is generous
-    reservoir: 20,
-    reservoirRefreshInterval: 10000, // 20 per 10 seconds (per Kie AI spec)
+    // Safe submission policy below Kie's documented 20 new generation
+    // requests/10 seconds account limit. The remaining work stays in the
+    // application queue; it must not be rejected as provider capacity.
+    // Kie allows substantially more running tasks; this is the process-side
+    // submission concurrency, not the per-user in-flight policy.
+    maxConcurrent: 50,
+    perUserMaxConcurrent: 3,
+    minTime: 555,
+    reservoir: 18,
+    reservoirRefreshInterval: 10000, // refreshes the safe 18-per-10-second bucket
     timeout: 300000,          // 5 min max wait (image gen can take 2-3+ min)
     videoMultiplier: 2,       // Video still needs more spacing
     audioMultiplier: 1.5,     // Audio is moderate
+  },
+  'wavespeed_ai': {
+    // Safe provider policy: 5 predictions/minute and 2 concurrent tasks.
+    maxConcurrent: 2,
+    perUserMaxConcurrent: 3,
+    minTime: 12000,
+    reservoir: 5,
+    reservoirRefreshInterval: 60000,
+    timeout: 300000,
+    videoMultiplier: 1,
+    audioMultiplier: 1,
   },
   'replicate': {
     maxConcurrent: 5,
@@ -237,6 +266,11 @@ export interface LimiterStats {
 }
 
 const limiterStats: Map<string, LimiterStats> = new Map();
+
+export type LimiterScheduleOptions = {
+  /** Stable server-derived user scope; never accept this from a provider payload. */
+  userKey?: string;
+};
 
 // Model-level usage tracking
 export interface ModelUsageStats {
@@ -426,7 +460,11 @@ export function getProviderLimitConfig(providerName: string): ProviderLimitConfi
 export function getMediaProviderLimitConfig(providerName: string): MediaProviderLimitConfig {
   const key = providerName.toLowerCase();
   const normalized = key.replace(/_/g, ".");
-  return MEDIA_PROVIDER_LIMITS[key] ?? MEDIA_PROVIDER_LIMITS[normalized] ?? MEDIA_PROVIDER_LIMITS['default-media'];
+  const underscoreNormalized = key.replace(/[.-]/g, "_");
+  return MEDIA_PROVIDER_LIMITS[key]
+    ?? MEDIA_PROVIDER_LIMITS[normalized]
+    ?? MEDIA_PROVIDER_LIMITS[underscoreNormalized]
+    ?? MEDIA_PROVIDER_LIMITS['default-media'];
 }
 
 export function getDocumentOcrProviderLimitConfig(providerName: string) {
@@ -506,13 +544,58 @@ export function getProviderLimiter(providerName: string): Bottleneck {
 }
 
 /**
+ * Apply an optional provider account daily quota in addition to the shorter
+ * request window. This is intentionally a second limiter: a minute bucket
+ * cannot represent a daily quota. The limiter is process-local; a durable
+ * provider scheduler remains required for multi-worker/account enforcement.
+ */
+function getProviderDailyLimiter(providerName: string): Bottleneck | null {
+  const key = `daily:${providerName.toLowerCase()}`;
+  const existing = limiters.get(key);
+  if (existing) return existing;
+
+  const config = getProviderLimitConfig(providerName);
+  if (!config.dailyReservoir || !config.dailyRefreshInterval) return null;
+
+  const limiter = new Bottleneck({
+    maxConcurrent: config.maxConcurrent,
+    reservoir: config.dailyReservoir,
+    reservoirRefreshAmount: config.dailyReservoir,
+    reservoirRefreshInterval: config.dailyRefreshInterval,
+    timeout: config.timeout,
+  });
+  limiters.set(key, limiter);
+  return limiter;
+}
+
+function getProviderUserLimiter(
+  providerName: string,
+  userKey: string,
+  config: { perUserMaxConcurrent?: number; timeout?: number },
+): Bottleneck | null {
+  if (!config.perUserMaxConcurrent) return null;
+  const scope = crypto.createHash("sha256").update(userKey).digest("hex").slice(0, 24);
+  const key = `user:${providerName.toLowerCase()}:${scope}`;
+  const existing = limiters.get(key);
+  if (existing) return existing;
+
+  const limiter = new Bottleneck({
+    maxConcurrent: config.perUserMaxConcurrent,
+    timeout: config.timeout,
+  });
+  limiters.set(key, limiter);
+  return limiter;
+}
+
+/**
  * Schedule a job with the rate limiter
  * Handles priority based on model type (free models get lower priority)
  */
 export async function scheduleWithLimiter<T>(
   providerName: string,
   isFreeModel: boolean,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  options: LimiterScheduleOptions = {},
 ): Promise<T> {
   const limiter = getProviderLimiter(providerName);
   const config = getProviderLimitConfig(providerName);
@@ -530,11 +613,9 @@ export async function scheduleWithLimiter<T>(
   const startTime = Date.now();
 
   try {
-    const result = await limiter.schedule(
-      {
-        priority,
-        id: `${providerName}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`,
-      },
+    const jobId = `${providerName}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
+    const scheduleRequest = () => limiter.schedule(
+      { priority, id: jobId },
       async () => {
         // Apply extra delay for free models
         if (isFreeModel && config.freeModelMultiplier > 1) {
@@ -545,8 +626,18 @@ export async function scheduleWithLimiter<T>(
         }
 
         return fn();
-      }
+      },
     );
+    const dailyLimiter = getProviderDailyLimiter(providerName);
+    const userLimiter = options.userKey
+      ? getProviderUserLimiter(providerName, options.userKey, config)
+      : null;
+    const scheduleAccountRequest = () => dailyLimiter
+      ? dailyLimiter.schedule({ priority, id: `daily-${jobId}` }, scheduleRequest)
+      : scheduleRequest();
+    const result = await (userLimiter
+      ? userLimiter.schedule({ priority, id: `user-${jobId}` }, scheduleAccountRequest)
+      : scheduleAccountRequest());
 
     // Track wait time
     const waitTime = Date.now() - startTime;
@@ -649,7 +740,8 @@ export function getMediaProviderLimiter(providerName: string): Bottleneck {
 export async function scheduleMediaWithLimiter<T>(
   providerName: string,
   mediaType: MediaType,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
+  options: LimiterScheduleOptions = {},
 ): Promise<T> {
   const limiter = getMediaProviderLimiter(providerName);
   const config = getMediaProviderLimitConfig(providerName);
@@ -677,11 +769,9 @@ export async function scheduleMediaWithLimiter<T>(
   const key = `media:${providerName.toLowerCase()}`;
 
   try {
-    const result = await limiter.schedule(
-      {
-        priority,
-        id: `media-${providerName}-${mediaType}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`,
-      },
+    const jobId = `media-${providerName}-${mediaType}-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`;
+    const scheduleProviderRequest = () => limiter.schedule(
+      { priority, id: jobId },
       async () => {
         // Apply extra delay for video/audio if needed
         if (multiplier > 1) {
@@ -692,8 +782,14 @@ export async function scheduleMediaWithLimiter<T>(
         }
 
         return fn();
-      }
+      },
     );
+    const userLimiter = options.userKey
+      ? getProviderUserLimiter(providerName, options.userKey, config)
+      : null;
+    const result = await (userLimiter
+      ? userLimiter.schedule({ priority, id: `user-${jobId}` }, scheduleProviderRequest)
+      : scheduleProviderRequest());
 
     // Track wait time
     const waitTime = Date.now() - startTime;

@@ -114,7 +114,9 @@ def _interval_label(seconds: float) -> str:
 
 @router.get("/schedule", dependencies=[Depends(_verify_internal_token)])
 async def get_beat_schedule():
-    """Return all Celery Beat scheduled tasks with their schedule configuration."""
+    """Return compatibility schedule data without consulting Celery after cutover."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        return {"runtime": "cloudflare", "retired": "celery-beat", "tasks": [], "total": 0}
     from app.core.celery_app import celery_app
 
     schedule = celery_app.conf.beat_schedule or {}

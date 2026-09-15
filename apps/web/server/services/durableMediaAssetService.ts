@@ -30,6 +30,7 @@ export type DurableMediaSourceType =
   | "presentation_export"
   | "video_editor_render"
   | "chat_generated"
+  | "storyboard_skill_generated"
   | "chat_attachment"
   | "vertical_drama_reference";
 

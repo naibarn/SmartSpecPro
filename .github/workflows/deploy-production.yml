@@ -20,7 +20,9 @@ permissions:
 
 jobs:
   build-and-deploy:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Retired: production runtime is Cloudflare-only. Keep this workflow
+    # visible for audit history, but make accidental GCP deployment impossible.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     # Production deployment requires environment approval
     # Configure 'production' environment in GitHub repo settings with required reviewers

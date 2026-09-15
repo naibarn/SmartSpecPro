@@ -3,6 +3,10 @@
 # Validates that all GCP bootstrap resources are correctly provisioned.
 # Usage: ./scripts/validate-gcp-setup.sh [PROJECT_ID] [REGION]
 # Returns: exit 0 if all checks pass, exit 1 with a list of missing/misconfigured resources.
+# Retired: the production deployment target is Cloudflare.
+echo "ERROR: validate-gcp-setup.sh is retired; validate the Cloudflare target account instead." >&2
+exit 1
+
 
 set -euo pipefail
 

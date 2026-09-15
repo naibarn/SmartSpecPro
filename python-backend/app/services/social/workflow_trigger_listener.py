@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import datetime
 from typing import Any
 
@@ -85,10 +86,19 @@ class SocialTriggerListener:
                         payload = {str(key): str(value) for key, value in message_data.items()}
                         social_message_id = payload.get("message_id")
                         if social_message_id:
-                            process_social_workflow_message.delay(
-                                message_id=int(social_message_id),
-                                page_id=page_id,
-                                trigger_mode="realtime",
+                            from app.services.job_control_plane import dispatch_python_task
+
+                            dispatch_python_task(
+                                process_social_workflow_message.name,
+                                kwargs={
+                                    "message_id": int(social_message_id),
+                                    "page_id": page_id,
+                                    "trigger_mode": "realtime",
+                                },
+                                tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+                                idempotency_key=f"social-workflow:realtime:{page_id}:{social_message_id}",
+                                correlation_id=f"social-workflow:realtime:{page_id}",
+                                legacy_task=process_social_workflow_message,
                             )
                             ack_ids.append(message_id)
 

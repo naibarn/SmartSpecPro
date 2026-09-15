@@ -502,6 +502,13 @@ h2 {
   line-height: 1.45;
 }
 
+.inline-status-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  text-transform: uppercase;
+}
+
 .settings-grid input,
 .settings-grid select {
   border: 1px solid #cbd5e1;
@@ -790,6 +797,17 @@ h2 {
   gap: 18px;
   justify-content: space-between;
   padding: 12px 16px;
+}
+
+.worker-locale-select {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #0f172a;
+  cursor: pointer;
+  font-size: 0.82rem;
+  min-height: 32px;
+  padding: 4px 8px;
 }
 
 .worker-topbar-status {

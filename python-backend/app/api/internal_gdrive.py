@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.auth import get_current_user_optional
+from app.services.job_control_plane import dispatch_python_task
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +103,14 @@ async def start_sync(
 
     from app.tasks.google_drive_tasks import initial_drive_sync
 
-    result = initial_drive_sync.delay(request.user_id, request.tenant_id)
+    result = dispatch_python_task(
+        initial_drive_sync.name,
+        args=(request.user_id, request.tenant_id),
+        tenant_id=request.tenant_id,
+        user_id=request.user_id,
+        idempotency_key=f"gdrive:initial:{request.tenant_id}:{request.user_id}",
+        legacy_task=initial_drive_sync,
+    )
     logger.info(
         "initial_drive_sync enqueued user_id=%d tenant_id=%s task_id=%s",
         request.user_id, request.tenant_id, result.id,
@@ -120,7 +128,14 @@ async def trigger_process_changes(
 
     from app.tasks.google_drive_tasks import process_drive_changes
 
-    result = process_drive_changes.delay(request.user_id, request.tenant_id)
+    result = dispatch_python_task(
+        process_drive_changes.name,
+        args=(request.user_id, request.tenant_id),
+        tenant_id=request.tenant_id,
+        user_id=request.user_id,
+        idempotency_key=f"gdrive:changes:{request.tenant_id}:{request.user_id}",
+        legacy_task=process_drive_changes,
+    )
     logger.info(
         "process_drive_changes enqueued user_id=%d tenant_id=%s task_id=%s",
         request.user_id, request.tenant_id, result.id,
@@ -156,7 +171,14 @@ async def disconnect_drive(
 
     from app.tasks.google_drive_tasks import disconnect_google_drive_cleanup
 
-    result = disconnect_google_drive_cleanup.delay(request.user_id, request.tenant_id)
+    result = dispatch_python_task(
+        disconnect_google_drive_cleanup.name,
+        args=(request.user_id, request.tenant_id),
+        tenant_id=request.tenant_id,
+        user_id=request.user_id,
+        idempotency_key=f"gdrive:disconnect:{request.tenant_id}:{request.user_id}",
+        legacy_task=disconnect_google_drive_cleanup,
+    )
     logger.info(
         "disconnect_google_drive_cleanup enqueued user_id=%d tenant_id=%s task_id=%s",
         request.user_id, request.tenant_id, result.id,
@@ -553,20 +575,41 @@ async def cleanup_drive_vectors(
     if not row:
         raise HTTPException(status_code=404, detail="Library item not found")
 
-    try:
+    from app.services.library_indexing_service import (
+        delete_cloudflare_vector_ids,
+        resolve_library_vector_provider,
+    )
+
+    active_provider, provider_config = resolve_library_vector_provider()
+    vector_rows = await db.execute(
+        sa_text("""SELECT vector_ref_id FROM library_chunks
+                   WHERE library_item_id = :item_id AND tenant_id = :tenant_id"""),
+        {"item_id": request.library_item_id, "tenant_id": request.tenant_id},
+    )
+    vector_ids = [str(vector_row[0]) for vector_row in vector_rows.fetchall() if vector_row[0]]
+
+    if active_provider == "cloudflare_vectorize":
+        # Vectorize deletion is read-before-delete and fail-closed. Do not
+        # silently fall back to Chroma when the active provider is Vectorize.
+        await delete_cloudflare_vector_ids(
+            tenant_id=request.tenant_id,
+            item_id=request.library_item_id,
+            vector_ids=vector_ids,
+            vectorize_config=provider_config,
+        )
+    elif active_provider == "pgvector":
+        from app.services.library_pgvector_service import delete_library_chunk_vectors
+
+        await delete_library_chunk_vectors(
+            db,
+            tenant_id=request.tenant_id,
+            item_id=request.library_item_id,
+        )
+        await db.commit()
+    else:
         from app.core.vectordb import VectorCollection
-        collection_name = f"library_tenant_{request.tenant_id}"
-        collection = VectorCollection(collection_name)
-        # Delete vectors with gdrive prefix for this item
-        # Try to find and delete vectors by metadata filter
-        try:
-            collection.delete(where={"item_id": request.library_item_id})
-        except Exception:
-            logger.warning(
-                "Vector cleanup by metadata failed for item %d, trying by prefix",
-                request.library_item_id,
-            )
-    except Exception as e:
-        logger.warning("Vector cleanup failed for item %d: %s", request.library_item_id, e)
+
+        collection = VectorCollection(f"library_tenant_{request.tenant_id}")
+        collection.delete(where={"item_id": request.library_item_id})
 
     return {"status": "cleanup_done", "library_item_id": request.library_item_id}

@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { createHash } from "node:crypto";
 import {
   synthesizeVerticalDramaPreset,
@@ -392,7 +397,18 @@ export async function enqueueVerticalDramaDraftComposition(
     // recoverable boundary. A process or Redis failure between these calls
     // must not leave a permanent queued row that blocks the next retry.
     await writeRecord(record, input);
-    await (input.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.draft_composition",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await (input.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+    }
   } catch (error) {
     const admissionError =
       error instanceof Error
@@ -845,7 +861,8 @@ let queue: any = null;
 let worker: any = null;
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   if (!queue) throw new Error("Draft composition queue is not initialized");
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     { attempts: 1, removeOnComplete: true, removeOnFail: { age: 24 * 60 * 60 } }
@@ -853,6 +870,7 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
 }
 
 export async function initVerticalDramaDraftCompositionQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   try {
     const { Queue, Worker } = await import("bullmq");

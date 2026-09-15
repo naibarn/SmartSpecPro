@@ -3184,6 +3184,8 @@ function normalizeLegacyStoryboardReviewTask(
     ?? asLegacyReviewValue(task.aspect_ratio)
     ?? "16:9";
   const url = asLegacyReviewValue(task.url)
+    ?? asLegacyReviewValue(task.imageUrl)
+    ?? asLegacyReviewValue(task.image_url)
     ?? asLegacyReviewValue(task.resultUrl)
     ?? asLegacyReviewValue(task.videoUrl);
   const rawType = asLegacyReviewValue(task.type)?.toLowerCase();
@@ -3194,7 +3196,7 @@ function normalizeLegacyStoryboardReviewTask(
       ? Math.max(Math.trunc(asNumberValue(task.index) ?? asNumberValue(task.order) ?? index), 0)
       : index,
     status: normalizeLegacyStoryboardTaskStatus(task.status),
-    type: (rawType === "image" || rawType === "img" || isProbablyImageUrl(url ?? "") || Boolean(asLegacyImageUrl(task.thumbnailUrl)))
+    type: (rawType === "image" || rawType === "img" || isProbablyImageUrl(url ?? "") || Boolean(asLegacyImageUrl(task.imageUrl)) || Boolean(asLegacyImageUrl(task.thumbnailUrl)))
       ? "image"
       : "video",
     prompt,
@@ -10412,11 +10414,11 @@ export default function StoryboardReviewPage() {
               ) : (
                 <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
               )}
-              {locale === "th" ? "New Project" : "New Project"}
+              {locale === "th" ? "สร้างโปรเจกต์เปล่า" : "Create blank project"}
             </Button>
             <Button type="button" size="sm" variant="outline" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
               <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-              {locale === "th" ? "Skill Framework" : "Skill Framework"}
+              {locale === "th" ? "สร้างด้วย Skill Framework" : "Create with Skill Framework"}
             </Button>
             <Button variant="outline" size="sm" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/media-studio")}>
               {t("mediaStudio.title")}
@@ -13882,11 +13884,11 @@ export default function StoryboardReviewPage() {
                     ) : (
                       <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    {locale === "th" ? "New Project" : "New Project"}
+                    {locale === "th" ? "สร้างโปรเจกต์เปล่า" : "Create blank project"}
                   </Button>
                   <Button type="button" size="sm" variant="outline" className="h-8 w-full max-w-full shrink-0 whitespace-nowrap px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
                     <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    {locale === "th" ? "Skill Framework" : "Skill Framework"}
+                    {locale === "th" ? "สร้างด้วย Skill Framework" : "Create with Skill Framework"}
                   </Button>
                 </div>
                 <div className="relative mt-3">

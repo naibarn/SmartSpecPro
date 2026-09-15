@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { buildOverlayDocument } from "./overlayDocument";
 import type { NleClip } from "../../types/nleProject";
+import { useWorkerLocale } from "../../app/workerContext";
 
 export interface CodeOverlayModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export function CodeOverlayModal({
   currentTimeMs,
   onAddCodeOverlay,
 }: CodeOverlayModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [prompt, setPrompt] = useState("");
   const [engine, setEngine] = useState<"react_css" | "three_js">("react_css");
   const [componentCode, setComponentCode] = useState(
@@ -93,8 +96,8 @@ export function CodeOverlayModal({
           <div className="modal-title-group">
             <span className="modal-title-icon">🎨</span>
             <div>
-              <h3>สั่งสร้าง React / CSS / Three.js Overlay</h3>
-              <p className="modal-subtitle">สร้างจากเทมเพลตบนเครื่อง หรือแก้ HTML / CSS เพื่อดูตัวอย่างแบบแยก sandbox</p>
+              <h3>{t("สั่งสร้าง React / CSS / Three.js Overlay", "Create a React / CSS / Three.js overlay")}</h3>
+              <p className="modal-subtitle">{t("สร้างจากเทมเพลตบนเครื่อง หรือแก้ HTML / CSS เพื่อดูตัวอย่างแบบแยก sandbox", "Use a local template or edit HTML / CSS in an isolated sandbox preview")}</p>
             </div>
           </div>
           <button type="button" className="modal-close-button" onClick={onClose} title="ปิดหน้าต่าง (Esc)">✕</button>
@@ -102,7 +105,7 @@ export function CodeOverlayModal({
 
         <div className="media-intent-modal-body">
           <div className="modal-field-block">
-            <label className="field-label">สั่ง AI สร้าง Overlay ด้วย Prompt (ภาษาไทย หรือ อังกฤษ)</label>
+            <label className="field-label">{t("สั่ง AI สร้าง Overlay ด้วย Prompt (ภาษาไทย หรือ อังกฤษ)", "Generate an overlay with a Thai or English prompt")}</label>
             <div className="button-row">
               <input
                 value={prompt}

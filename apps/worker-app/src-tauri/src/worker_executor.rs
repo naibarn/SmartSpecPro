@@ -166,11 +166,26 @@ pub const EDITOR_MEDIA_OPERATION_CAPABILITIES: &[(&str, &str)] = &[
     ("media.waveform", "editor-media-operation-media-waveform"),
     ("media.thumbnail", "editor-media-operation-media-thumbnail"),
     ("media.analysis", "editor-media-operation-media-analysis"),
-    ("media.silence_detect", "editor-media-operation-media-silence_detect"),
-    ("media.audio_extract", "editor-media-operation-media-audio_extract"),
-    ("media.audio_export", "editor-media-operation-media-audio_export"),
-    ("media.recording_normalize", "editor-media-operation-media-recording_normalize"),
-    ("video.render_still", "editor-media-operation-video-render_still"),
+    (
+        "media.silence_detect",
+        "editor-media-operation-media-silence_detect",
+    ),
+    (
+        "media.audio_extract",
+        "editor-media-operation-media-audio_extract",
+    ),
+    (
+        "media.audio_export",
+        "editor-media-operation-media-audio_export",
+    ),
+    (
+        "media.recording_normalize",
+        "editor-media-operation-media-recording_normalize",
+    ),
+    (
+        "video.render_still",
+        "editor-media-operation-video-render_still",
+    ),
     ("video.render", "editor-media-operation-video-render"),
 ];
 
@@ -308,8 +323,13 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         | VERTICAL_DRAMA_MUSIC3_GENERATION_JOB_TYPE
         | VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE => WorkerJobKind::VerticalDramaAudioScoring,
         VERTICAL_DRAMA_SPEAKER_AWARE_SCAN_JOB_TYPE
-        | VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE => WorkerJobKind::VerticalDramaSpeakerAware,
-        UNIFIED_AUDIO_TTS_JOB_TYPE | UNIFIED_AUDIO_TRAINING_JOB_TYPE | UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE | UNIFIED_AUDIO_ALIGN_JOB_TYPE => WorkerJobKind::UnifiedAudio,
+        | VERTICAL_DRAMA_SPEAKER_AWARE_EDIT_PLAN_JOB_TYPE => {
+            WorkerJobKind::VerticalDramaSpeakerAware
+        }
+        UNIFIED_AUDIO_TTS_JOB_TYPE
+        | UNIFIED_AUDIO_TRAINING_JOB_TYPE
+        | UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE
+        | UNIFIED_AUDIO_ALIGN_JOB_TYPE => WorkerJobKind::UnifiedAudio,
         HERMES_MEDIA_IMAGE_JOB_TYPE => WorkerJobKind::HermesMediaImage,
         HERMES_MEDIA_VIDEO_JOB_TYPE => WorkerJobKind::HermesMediaVideo,
         HERMES_CONNECTION_AUTHORIZE_JOB_TYPE => WorkerJobKind::HermesConnectionAuthorize,
@@ -1897,8 +1917,14 @@ mod tests {
             classify_job_type(VERTICAL_DRAMA_SCORE_MIX_JOB_TYPE),
             WorkerJobKind::VerticalDramaAudioScoring
         );
-        assert_eq!(classify_job_type(UNIFIED_AUDIO_TTS_JOB_TYPE), WorkerJobKind::UnifiedAudio);
-        assert_eq!(classify_job_type(UNIFIED_AUDIO_TRAINING_JOB_TYPE), WorkerJobKind::UnifiedAudio);
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TTS_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
+        assert_eq!(
+            classify_job_type(UNIFIED_AUDIO_TRAINING_JOB_TYPE),
+            WorkerJobKind::UnifiedAudio
+        );
         assert_eq!(
             classify_job_type(UNIFIED_AUDIO_TRANSCRIBE_JOB_TYPE),
             WorkerJobKind::UnifiedAudio

@@ -31,6 +31,20 @@ MAX_DIMENSION: int = 7680
 MAX_VIDEO_BITRATE_KBPS: int = 50000
 MAX_AUDIO_BITRATE_KBPS: int = 320
 
+# Provider input references are allowed to bypass the upload boundary only
+# when they are short, public HTTPS URLs without a query/fragment. Providers
+# that do not expose an upload API must fail closed for all other references.
+MEDIA_REFERENCE_MAX_DIRECT_URL_LENGTH: int = 2048
+MEDIA_REFERENCE_REQUIRES_UPLOAD_MARKER = "MEDIA_REFERENCE_REQUIRES_UPLOAD"
+MEDIA_REFERENCE_INVALID_MARKER = "MEDIA_REFERENCE_INVALID"
+MEDIA_PIPELINE_PERMANENT_MARKER = "MEDIA_PIPELINE_PERMANENT"
+
+_MANAGED_REFERENCE_PATH_MARKERS = (
+    "/api/mcp/downloads/",
+    "/api/storage/files/",
+    "/uploads/",
+)
+
 # Shell metacharacters that must not appear in URIs or paths
 SHELL_METACHARACTERS = set(";|&`$(){}><")
 
@@ -177,6 +191,38 @@ def validate_provider_result_uri(uri: str) -> str:
         allow_docker_internal=False,
         allow_query_metacharacters=True,
     )
+
+
+def validate_provider_reference_url(uri: str) -> str:
+    """Validate a URL that will be sent to a provider as a direct input.
+
+    A provider may fetch this URL outside our network boundary, so direct
+    forwarding is intentionally stricter than downloading a provider result.
+    Protected/managed URLs, data URLs, private hosts, long URLs, and URLs with
+    query/fragment components must use a provider upload boundary instead.
+    """
+    if not isinstance(uri, str) or not uri.strip():
+        raise ValueError(f"{MEDIA_REFERENCE_INVALID_MARKER}: empty reference URL")
+
+    value = uri.strip()
+    parsed = urlparse(value)
+    path = parsed.path.lower()
+    if (
+        parsed.scheme.lower() != "https"
+        or len(value) > MEDIA_REFERENCE_MAX_DIRECT_URL_LENGTH
+        or bool(parsed.query or parsed.fragment)
+        or any(marker in path for marker in _MANAGED_REFERENCE_PATH_MARKERS)
+    ):
+        raise ValueError(
+            f"{MEDIA_REFERENCE_REQUIRES_UPLOAD_MARKER}: reference requires provider upload"
+        )
+
+    try:
+        validate_uri_strict(value)
+    except ValueError as exc:
+        reason = "internal/private reference URL" if "private" in str(exc).lower() or "internal" in str(exc).lower() else "unsafe reference URL"
+        raise ValueError(f"{MEDIA_REFERENCE_INVALID_MARKER}: {reason}") from exc
+    return value
 
 
 # ========================================

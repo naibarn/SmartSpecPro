@@ -66,6 +66,32 @@ async def test_generate_text_to_dialogue_sends_all_supported_convert_parameters(
 
 
 @pytest.mark.asyncio
+async def test_source_redirect_target_is_validated_before_multipart_upload():
+    calls: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        if len(calls) == 1:
+            return httpx.Response(
+                302,
+                headers={"location": "http://169.254.169.254/latest/meta-data/"},
+                request=request,
+            )
+        return httpx.Response(200, content=b"audio", headers={"content-type": "audio/mpeg"}, request=request)
+
+    provider = ElevenLabsMediaProvider(api_key="secret-key")
+    await provider.client.aclose()
+    provider.client = _client(handler)
+    try:
+        with pytest.raises(ValueError):
+            await provider.convert_voice({"voice_id": "voice-1", "audio": "https://1.1.1.1/source.mp3"})
+    finally:
+        await provider.aclose()
+
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
 async def test_generate_text_to_dialogue_can_build_single_input_from_text_and_voice_id():
     async def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content.decode("utf-8"))

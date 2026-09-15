@@ -86,6 +86,7 @@ from app.api import (
     live_browser,  # Live browser runtime API
     vision,  # Vision analysis pipeline (multimodal memory)
     team_orchestrator_api,  # Team orchestrator internal API
+    internal_job_control_plane,  # Feature 186 canonical Python transport adapter
  )
 from app.api.v1 import (
     skills,
@@ -445,9 +446,10 @@ app.include_router(
 from app.api.v1 import media_jobs as media_jobs_api
 app.include_router(media_jobs_api.router, prefix="/api/v1", tags=["Media Jobs"])
 
-# Cloud Tasks handler endpoints (replaces Celery tasks)
-from app.api.v1 import task_handlers as cloud_tasks_api
-app.include_router(cloud_tasks_api.router, tags=["Cloud Tasks"])
+# The former provider-specific task-handler router is intentionally not
+# mounted. Cloudflare consumers deliver canonical worker_jobs envelopes;
+# legacy /tasks/* requests must fail closed rather than reactivating a Google
+# runtime path.
 
 # Kie AI webhook handler (public endpoint, HMAC-authenticated)
 from app.api.v1 import kie_webhooks
@@ -493,6 +495,7 @@ app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot
 app.include_router(live_browser.router)
 app.include_router(vision.router)
 app.include_router(team_orchestrator_api.router, tags=["Team Orchestrator"])
+app.include_router(internal_job_control_plane.router)
 
 @app.get("/")
 async def root():

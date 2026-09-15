@@ -1,6 +1,7 @@
 import { reconcileRoleRoutineRuns, executeRoleRoutineRun } from "../services/roleExecutionService";
 import { runRoleGovernanceMaintenance } from "../services/rolePersistence";
 import { tickRoleRoutineScheduler } from "../services/roleRoutineSchedulerService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const DEFAULT_TICK_MS = 60_000;
 const DEFAULT_GOVERNANCE_TICK_INTERVAL = 15;
@@ -64,6 +65,10 @@ async function tickRoleSchedulerJob(): Promise<void> {
 }
 
 export async function initializeRoleRoutineSchedulerJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeRoleRoutineSchedulerJob")) {
+    console.info("[role-routine-scheduler] in-process scheduler disabled; use Cloudflare Cron");
+    return;
+  }
   if (process.env.ROLE_ROUTINE_SCHEDULER_JOB_ENABLED === "false") {
     console.log("[role-routine-scheduler] disabled by env");
     return;
@@ -83,4 +88,3 @@ export async function shutdownRoleRoutineSchedulerJob(): Promise<void> {
   running = false;
   governanceCounter = 0;
 }
-

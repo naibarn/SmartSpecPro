@@ -11,6 +11,7 @@ import {
 import { analyzeSkillForMaintenance } from "./skillMaintenanceAnalyzer";
 import { persistSkillMaintenanceAnalysis } from "./skillUpgradePlanner";
 import { computeNextRun, validateCronStrict, validateTimeZone } from "../routers/scheduleDraftTool";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 
 type DbLike = any;
 
@@ -391,6 +392,10 @@ export async function runDueSkillMaintenanceSchedules(now = new Date()): Promise
 }
 
 export async function initializeSkillMaintenanceScheduler(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeSkillMaintenanceScheduleJob")) {
+    console.info("[SkillMaintenanceScheduler] in-process scheduler disabled; use Cloudflare Cron");
+    return;
+  }
   if (intervalId || initialTimeoutId) {
     return;
   }

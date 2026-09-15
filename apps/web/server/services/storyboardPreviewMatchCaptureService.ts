@@ -235,41 +235,15 @@ async function dispatchPreviewMatchCaptureJob(input: {
   captureJobId: string;
   tenantId: string;
 }): Promise<void> {
-  let dispatchedToCloudTasks = false;
-  try {
-    const { enqueueTask, getCloudTasksConfigStatus } = await import("./cloudTasks");
-    const config = getCloudTasksConfigStatus("node");
-    if (config.configured) {
-      await enqueueTask({
-        queueName: "media-jobs",
-        handlerPath: "/_internal/tasks/storyboard-preview-match-capture",
-        targetService: "node",
-        payload: {
-          captureJobId: input.captureJobId,
-          tenantId: input.tenantId,
-        },
-        taskId: `storyboard-preview-match-capture-${input.captureJobId}`,
-      });
-      dispatchedToCloudTasks = true;
-    } else {
-      console.warn(
-        `[PreviewMatchCapture] Node Cloud Tasks config is incomplete; starting detached capture worker. Missing: ${config.missingKeys.join(", ")}`
-      );
-    }
-  } catch (error) {
-    console.warn("[PreviewMatchCapture] Failed to enqueue Cloud Task; starting detached worker.", error);
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    throw new Error("CLOUDFLARE_CANONICAL_JOB_REQUIRED");
   }
-
-  if (!dispatchedToCloudTasks) {
-    const { startDetachedStoryboardPreviewMatchCaptureWorker } = await import("./backgroundWorkerProcess");
-    const worker = startDetachedStoryboardPreviewMatchCaptureWorker({
-      captureJobId: input.captureJobId,
-    });
-    console.info("[PreviewMatchCapture] Started detached capture worker.", {
-      captureJobId: input.captureJobId,
-      pid: worker.pid,
-    });
-  }
+  const { startDetachedStoryboardPreviewMatchCaptureWorker } = await import("./backgroundWorkerProcess");
+  const worker = startDetachedStoryboardPreviewMatchCaptureWorker({ captureJobId: input.captureJobId });
+  console.info("[PreviewMatchCapture] Started local compatibility worker.", {
+    captureJobId: input.captureJobId,
+    pid: worker.pid,
+  });
 }
 
 const defaultRepo: StoryboardPreviewMatchCaptureRepository = {

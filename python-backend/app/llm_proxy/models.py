@@ -28,6 +28,13 @@ class ImageGenerationRequest(BaseModel):
     """Image generation request model with support for both camelCase and snake_case field names"""
     model: str
     prompt: str
+    # Stable server-side operation identity used to deduplicate a retried
+    # control-plane request before another provider task is created.
+    control_plane_operation_key: Optional[str] = Field(
+        default=None,
+        alias="controlPlaneOperationKey",
+        max_length=255,
+    )
     size: Optional[str] = None  # e.g., "1024x1024"
     quality: Optional[Literal["standard", "hd"]] = None
     style: Optional[str] = None

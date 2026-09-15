@@ -1,97 +1,20 @@
-/**
- * Tests for the Cloud Tasks enqueue module (Node.js).
- */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 
-// Mock the @google-cloud/tasks module
-const mockCreateTask = vi.fn().mockResolvedValue([{ name: "projects/test/locations/us/queues/media-jobs/tasks/123" }]);
-
-vi.mock("@google-cloud/tasks", () => ({
-  CloudTasksClient: vi.fn().mockImplementation(() => ({
-    queuePath: vi.fn().mockReturnValue("projects/test/locations/us/queues/media-jobs"),
-    taskPath: vi.fn().mockReturnValue("projects/test/locations/us/queues/media-jobs/tasks/test-id"),
-    createTask: mockCreateTask,
-  })),
-}));
-
-describe("enqueueTask", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.clearAllMocks();
-    process.env.GCP_PROJECT_ID = "test-project";
-    process.env.GCP_REGION = "us-central1";
-    process.env.CLOUD_RUN_PYTHON_URL = "https://python-service.run.app";
-    process.env.CLOUD_RUN_SA_EMAIL = "cloud-run-api@test-project.iam.gserviceaccount.com";
-    delete process.env.CLOUD_RUN_NODE_URL;
-  });
-
-  it("reports missing Cloud Tasks configuration before creating a client", async () => {
-    delete process.env.CLOUD_RUN_PYTHON_URL;
+describe("retired Google runtime boundary", () => {
+  it("reports the provider-specific queue as retired", async () => {
     const { getCloudTasksConfigStatus } = await import("../cloudTasks");
-
-    const status = getCloudTasksConfigStatus("python");
-
-    expect(status.configured).toBe(false);
-    expect(status.missingKeys).toContain("CLOUD_RUN_PYTHON_URL");
-  });
-
-  it("throws a clear configuration error when required env vars are missing", async () => {
-    delete process.env.GCP_PROJECT_ID;
-    const { enqueueTask } = await import("../cloudTasks");
-
-    await expect(
-      enqueueTask({
-        queueName: "media-jobs",
-        handlerPath: "/_internal/tasks/process-media",
-        payload: { job_id: "test-123" },
-      }),
-    ).rejects.toThrow("Cloud Tasks configuration is incomplete");
-    expect(mockCreateTask).not.toHaveBeenCalled();
-  });
-
-  it("creates a task with correct HTTP target URL", async () => {
-    const { enqueueTask } = await import("../cloudTasks");
-
-    await enqueueTask({
-      queueName: "media-jobs",
-      handlerPath: "/_internal/tasks/process-media",
-      payload: { job_id: "test-123" },
+    expect(getCloudTasksConfigStatus()).toMatchObject({
+      configured: false,
+      missingKeys: ["GOOGLE_CLOUD_RUNTIME_RETIRED"],
     });
-
-    expect(mockCreateTask).toHaveBeenCalledOnce();
-    const [request] = mockCreateTask.mock.calls[0];
-    expect(request.task.httpRequest.url).toBe(
-      "https://python-service.run.app/_internal/tasks/process-media"
-    );
   });
 
-  it("passes payload as JSON body in the task", async () => {
+  it("fails closed instead of publishing to a retired runtime", async () => {
     const { enqueueTask } = await import("../cloudTasks");
-
-    const payload = { job_id: "test-123", user_id: "user-456" };
-    await enqueueTask({
+    await expect(enqueueTask({
       queueName: "media-jobs",
-      handlerPath: "/_internal/tasks/process-media",
-      payload,
-    });
-
-    const [request] = mockCreateTask.mock.calls[0];
-    const body = Buffer.from(request.task.httpRequest.body, "base64").toString();
-    expect(JSON.parse(body)).toEqual(payload);
-  });
-
-  it("applies delay via scheduleTime when delaySeconds is provided", async () => {
-    const { enqueueTask } = await import("../cloudTasks");
-
-    await enqueueTask({
-      queueName: "media-jobs",
-      handlerPath: "/_internal/tasks/process-media",
-      payload: { job_id: "test-123" },
-      delaySeconds: 120,
-    });
-
-    const [request] = mockCreateTask.mock.calls[0];
-    expect(request.task.scheduleTime).toBeDefined();
-    expect(request.task.scheduleTime.seconds).toBeGreaterThan(0);
+      handlerPath: "/tasks/process-media",
+      payload: { job_id: "canonical-1" },
+    })).rejects.toThrow("GOOGLE_CLOUD_RUNTIME_RETIRED");
   });
 });

@@ -1,5 +1,6 @@
 import { reconcileDispatchedWorkpackRuns, runDueWorkpackSchedules } from "../services/workpackLaunchService";
 import { runWorkpackGovernanceMaintenance } from "../services/workpackPersistence";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const DEFAULT_TICK_MS = 60_000;
 const DEFAULT_GOVERNANCE_TICK_INTERVAL = 15;
@@ -55,6 +56,10 @@ async function tickWorkpackSchedules(): Promise<void> {
 }
 
 export async function initializeWorkpackScheduleJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeWorkpackScheduleJob")) {
+    console.info("[workpack-schedule] in-process scheduler disabled; use Cloudflare Cron");
+    return;
+  }
   if (process.env.WORKPACK_SCHEDULE_JOB_ENABLED === "false") {
     console.log("[workpack-schedule] disabled by env");
     return;

@@ -4,6 +4,7 @@ import {
   shouldInvokeSafeRepair,
 } from "../services/celeryMediaDoctorService";
 import { reportSystemFailure } from "../services/systemAutoReportService";
+import { isCloudflareHardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 const INTERVAL_MS = 60_000;
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -60,6 +61,11 @@ export async function runCeleryMediaDoctorMonitorOnce() {
 }
 
 export async function initializeCeleryMediaDoctorJob() {
+  // Media Doctor observes the retired Celery runtime. It must not initialize,
+  // repair, or report that runtime as an active production path after the
+  // Cloudflare hard cutover. The historical monitor remains available for
+  // compatibility-drain/rollback observation when hard cutover is disabled.
+  if (isCloudflareHardCutoverEnabled()) return;
   if (intervalId) return;
   await runCeleryMediaDoctorMonitorOnce().catch((error) => {
     console.error("[CeleryMediaDoctor] initial monitor failed:", error);

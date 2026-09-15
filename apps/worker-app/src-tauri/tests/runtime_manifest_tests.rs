@@ -51,7 +51,8 @@ fn legacy_manifest_defaults_optional_transcription_profiles() {
     let object = value.as_object().cloned().unwrap();
     let mut legacy = object;
     legacy.remove("transcriptionProfiles");
-    let parsed: RuntimePackManifest = serde_json::from_value(serde_json::Value::Object(legacy)).unwrap();
+    let parsed: RuntimePackManifest =
+        serde_json::from_value(serde_json::Value::Object(legacy)).unwrap();
     assert!(parsed.transcription_profiles.is_empty());
 }
 

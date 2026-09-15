@@ -16,6 +16,7 @@ import { getBillingRuntimeConfig } from "../services/billing/runtimeConfig";
 import { releasePromptPayReservationForPayment } from "../services/billing/promptpayDirectService";
 import { reconcileTerminalSkillSandboxJobs } from "../services/skillBillingReconciler";
 import { backfillFreePlanAssignments, runFreePlanMonthlyGrant } from "../services/freePlanService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const RECONCILIATION_INTERVAL_MS = 15 * 60 * 1000;
 const OVERDUE_INTERVAL_MS = 60 * 60 * 1000;
@@ -462,6 +463,10 @@ export async function runFreePlanMaintenanceJob(options: { backfill?: boolean } 
 }
 
 export async function initializeBillingJobs() {
+  if (!shouldRunFeature192InProcessTimer("initializeBillingJobs")) {
+    console.info("[BillingJobs] in-process scheduler disabled; use the Cloudflare canonical scheduler");
+    return;
+  }
   shutdownBillingJobs();
 
   startupTimeoutId = setTimeout(async () => {

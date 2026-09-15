@@ -6,6 +6,7 @@ Mirrors the Google Drive indexing pipeline: extract → chunk → embed → vect
 
 import asyncio
 import hashlib
+import inspect
 import json
 import logging
 from contextlib import contextmanager
@@ -192,7 +193,15 @@ async def _process_changes_async(task, user_id: int, tenant_id: str):
         sync_state = await _get_sync_state(db, user_id)
         if not sync_state or not sync_state.get("delta_link"):
             logger.info("No delta link for user %d, running initial sync", user_id)
-            initial_onedrive_sync.delay(user_id, tenant_id)
+            from app.services.job_control_plane import dispatch_python_task
+            dispatch_python_task(
+                initial_onedrive_sync.name,
+                args=(user_id, tenant_id),
+                tenant_id=tenant_id,
+                user_id=user_id,
+                idempotency_key=f"onedrive:initial:{tenant_id}:{user_id}",
+                legacy_task=initial_onedrive_sync,
+            )
             return
 
         try:
@@ -223,7 +232,15 @@ async def _process_changes_async(task, user_id: int, tenant_id: str):
                     if resp.status_code == 410:
                         logger.info("Delta token expired for user %d, triggering full resync", user_id)
                         await _update_sync_state(db, user_id, delta_link=None)
-                        initial_onedrive_sync.delay(user_id, tenant_id)
+                        from app.services.job_control_plane import dispatch_python_task
+                        dispatch_python_task(
+                            initial_onedrive_sync.name,
+                            args=(user_id, tenant_id),
+                            tenant_id=tenant_id,
+                            user_id=user_id,
+                            idempotency_key=f"onedrive:initial:{tenant_id}:{user_id}",
+                            legacy_task=initial_onedrive_sync,
+                        )
                         return
 
                     if resp.status_code != 200:
@@ -296,8 +313,17 @@ async def process_onedrive_index_job(
     """
     from sqlalchemy import select, delete, and_
     from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
-    from app.services.embedding_service import get_embedding_service
-    from app.services.library_indexing_service import chunk_text_content
+    from app.services.library_indexing_service import (
+        chunk_text_content,
+        _cloudflare_library_vector_id,
+        delete_cloudflare_vector_ids,
+        delete_stale_cloudflare_vectors,
+        get_vector_upsert_fn,
+        resolve_library_embedding_service,
+        resolve_library_vector_provider,
+        validate_cloudflare_embeddings,
+        validate_cloudflare_vector_upsert_result,
+    )
     from app.services.credit_billing_client import charge_credits_post_deduct
 
     job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
@@ -388,9 +414,15 @@ async def process_onedrive_index_job(
         if not chunks:
             raise ValueError("Chunking produced no content")
 
-        # Generate embeddings
-        embedder = embedding_service or get_embedding_service()
+        resolved_provider, resolved_provider_config = resolve_library_vector_provider()
+        embedder = resolve_library_embedding_service(
+            embedding_service,
+            provider=resolved_provider,
+            config=resolved_provider_config,
+        )
         embeddings = embedder.embed_batch([chunk["content"] for chunk in chunks])
+        if resolved_provider == "cloudflare_vectorize":
+            validate_cloudflare_embeddings(embeddings, expected_count=len(chunks))
 
         # Build vector IDs with onedrive: prefix
         tenant_id = job.tenant_id
@@ -401,15 +433,49 @@ async def process_onedrive_index_job(
 
         # Compute allowed_scopes from parent item
         item_scopes = item.allowed_scopes or []
+        vectorize_mutation_ids: list[str] = []
+        old_vector_ids: list[str] = []
+        if resolved_provider == "cloudflare_vectorize":
+            existing_vector_rows = (
+                await db.execute(
+                    select(LibraryChunk.vector_ref_id).where(
+                        and_(
+                            LibraryChunk.library_item_id == item.id,
+                            LibraryChunk.tenant_id == tenant_id,
+                        )
+                    )
+                )
+            ).all()
+            old_vector_ids = [str(row[0]) for row in existing_vector_rows if row[0]]
 
         # Upsert to vector store
-        if vector_upsert_fn:
-            vector_upsert_fn(
+        active_upsert_fn = vector_upsert_fn
+        if active_upsert_fn is None and resolved_provider == "cloudflare_vectorize":
+            active_upsert_fn = get_vector_upsert_fn(resolved_provider, config=resolved_provider_config)
+        if active_upsert_fn:
+            upsert_result = active_upsert_fn(
                 tenant_id=tenant_id,
                 item_id=job.library_item_id,
-                chunks=chunks,
+                chunks=[{**chunk, "allowed_scopes": list(item_scopes)} for chunk in chunks],
                 embeddings=embeddings,
             )
+            if inspect.isawaitable(upsert_result):
+                upsert_result = await upsert_result
+            if resolved_provider == "cloudflare_vectorize":
+                vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
+                    upsert_result,
+                    expected_ids=[
+                        _cloudflare_library_vector_id(tenant_id, job.library_item_id, int(chunk["chunk_index"]))
+                        for chunk in chunks
+                    ],
+                )
+                await delete_stale_cloudflare_vectors(
+                    tenant_id=tenant_id,
+                    item_id=job.library_item_id,
+                    old_vector_ids=old_vector_ids,
+                    new_vector_ids=vector_ids,
+                    vectorize_config=resolved_provider_config,
+                )
         else:
             from app.core.vectordb import VectorCollection
             collection_name = f"library_tenant_{tenant_id}"
@@ -440,7 +506,14 @@ async def process_onedrive_index_job(
             )
 
         # Delete existing chunks and insert new ones
-        await db.execute(delete(LibraryChunk).where(LibraryChunk.library_item_id == item.id))
+        await db.execute(
+            delete(LibraryChunk).where(
+                and_(
+                    LibraryChunk.library_item_id == item.id,
+                    LibraryChunk.tenant_id == tenant_id,
+                )
+            )
+        )
 
         created_at = datetime.utcnow()
         for chunk, vector_id in zip(chunks, vector_ids):
@@ -461,6 +534,7 @@ async def process_onedrive_index_job(
                         "job_id": job.id,
                         "user_id": item.owner_user_id,
                         "item_id": item.id,
+                        **({"vectorizeMutationIds": vectorize_mutation_ids} if vectorize_mutation_ids else {}),
                     },
                     created_at=created_at,
                 )
@@ -719,6 +793,10 @@ def disconnect_onedrive_cleanup(user_id: int, tenant_id: str = ""):
 async def _disconnect_cleanup_async(user_id: int, tenant_id: str = ""):
     from app.core.database import AsyncSessionLocal
     from app.services.microsoft_token_service import MicrosoftTokenService
+    from app.services.library_indexing_service import (
+        delete_cloudflare_vector_ids,
+        resolve_library_vector_provider,
+    )
     from sqlalchemy import text
 
     async with AsyncSessionLocal() as db:
@@ -750,18 +828,34 @@ async def _disconnect_cleanup_async(user_id: int, tenant_id: str = ""):
         )
         items_to_clean = items_result.fetchall()
 
+        active_provider, provider_config = resolve_library_vector_provider()
         for row in items_to_clean:
-            item_id, tenant_id, drive_item_id = row
+            item_id, item_tenant_id, drive_item_id = row
+            vector_rows = await db.execute(
+                text("SELECT vector_ref_id FROM library_chunks WHERE library_item_id = :item_id"),
+                {"item_id": item_id},
+            )
+            vector_ids = [str(vector_row[0]) for vector_row in vector_rows.fetchall() if vector_row[0]]
+
+            # Vectorize cleanup is verified before local rows are deleted. It
+            # intentionally does not fall back to Chroma when Vectorize is active.
+            if active_provider == "cloudflare_vectorize":
+                await delete_cloudflare_vector_ids(
+                    tenant_id=str(item_tenant_id),
+                    item_id=int(item_id),
+                    vector_ids=vector_ids,
+                    vectorize_config=provider_config,
+                )
             # Delete chunks
             await db.execute(
                 text("DELETE FROM library_chunks WHERE library_item_id = :item_id"),
                 {"item_id": item_id},
             )
             # Delete vectors
-            if tenant_id and drive_item_id:
+            if active_provider != "cloudflare_vectorize" and item_tenant_id and drive_item_id:
                 try:
                     from app.core.vectordb import VectorCollection
-                    collection = VectorCollection(f"library_tenant_{tenant_id}")
+                    collection = VectorCollection(f"library_tenant_{item_tenant_id}")
                     # Delete all vectors for this item
                     collection.delete(where={"item_id": item_id, "source": "onedrive"})
                 except Exception as e:
@@ -1070,7 +1164,14 @@ def _enqueue_onedrive_index_job(tenant_id: str, item_id: int):
             # Context manager auto-commits on success
 
             if row:
-                process_onedrive_index_job_task.delay(row[0])
+                from app.services.job_control_plane import dispatch_python_task
+                dispatch_python_task(
+                    process_onedrive_index_job_task.name,
+                    args=(row[0],),
+                    tenant_id=tenant_id,
+                    idempotency_key=f"onedrive:index:{tenant_id}:{row[0]}",
+                    legacy_task=process_onedrive_index_job_task,
+                )
                 logger.info("Enqueued OneDrive index job %d for item %d", row[0], item_id)
 
     except Exception as e:
@@ -1080,6 +1181,10 @@ def _enqueue_onedrive_index_job(tenant_id: str, item_id: int):
 async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: str):
     """Remove a library item and its chunks sourced from OneDrive."""
     from sqlalchemy import text
+    from app.services.library_indexing_service import (
+        delete_cloudflare_vector_ids,
+        resolve_library_vector_provider,
+    )
 
     # Find the item (filter by tenant_id for multi-tenant safety)
     tenant_filter = "AND tenant_id = :tenant_id" if tenant_id else ""
@@ -1098,6 +1203,21 @@ async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: 
         return
 
     item_id, item_tenant_id = row
+
+    vector_rows = await db.execute(
+        text("SELECT vector_ref_id FROM library_chunks WHERE library_item_id = :item_id"),
+        {"item_id": item_id},
+    )
+    vector_ids = [str(vector_row[0]) for vector_row in vector_rows.fetchall() if vector_row[0]]
+    active_provider, provider_config = resolve_library_vector_provider()
+
+    if active_provider == "cloudflare_vectorize":
+        await delete_cloudflare_vector_ids(
+            tenant_id=str(item_tenant_id),
+            item_id=int(item_id),
+            vector_ids=vector_ids,
+            vectorize_config=provider_config,
+        )
 
     # Delete chunks
     await db.execute(
@@ -1118,8 +1238,8 @@ async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: 
     )
     await db.commit()
 
-    # Delete vectors
-    if item_tenant_id:
+    # Delete legacy vectors only when the legacy provider is active.
+    if active_provider != "cloudflare_vectorize" and item_tenant_id:
         try:
             from app.core.vectordb import VectorCollection
             collection = VectorCollection(f"library_tenant_{item_tenant_id}")
@@ -1146,7 +1266,15 @@ def poll_onedrive_changes_task():
             ).fetchall()
         for row in rows:
             try:
-                process_onedrive_changes.delay(row[0], row[1])
+                from app.services.job_control_plane import dispatch_python_task
+                dispatch_python_task(
+                    process_onedrive_changes.name,
+                    args=(row[0], row[1]),
+                    tenant_id=row[1],
+                    user_id=row[0],
+                    idempotency_key=f"onedrive:changes:{row[1]}:{row[0]}",
+                    legacy_task=process_onedrive_changes,
+                )
             except Exception as e:
                 logger.warning("Failed to enqueue OneDrive poll for user %d: %s", row[0], e)
         if rows:

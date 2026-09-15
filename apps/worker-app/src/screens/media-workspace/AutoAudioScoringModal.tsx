@@ -6,6 +6,7 @@ import { resolveMusicCueAudio } from "../../services/audioScoring/audioProviderR
 import { applySoundPlanToProjectTimeline } from "../../services/audioScoring/audioPlacementEngine";
 import { runAudioQualityControl } from "../../services/audioScoring/audioQcEngine";
 import { AudioScoringError } from "../../services/audioScoring/smartAiHubSkillClient";
+import { useWorkerLocale } from "../../app/workerContext";
 
 export interface AutoAudioScoringModalProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export function AutoAudioScoringModal({
   workspacePath,
   approvedPlan,
 }: AutoAudioScoringModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [runtimeStatus, setRuntimeStatus] = useState("กำลังตรวจสอบ MiniMax Music 3 Runtime...");
   const [isRuntimeReady, setIsRuntimeReady] = useState(false);
   const [isScoring, setIsScoring] = useState(false);
@@ -201,7 +204,7 @@ export function AutoAudioScoringModal({
         </div>
 
         <div className="nle-modal-footer">
-          <button type="button" className="nle-tool-btn" onClick={onClose} disabled={isScoring}>ยกเลิก</button>
+          <button type="button" className="nle-tool-btn" onClick={onClose} disabled={isScoring}>{t("ยกเลิก", "Cancel")}</button>
           {!scoredProject ? (
             <button type="button" className="nle-tool-btn highlight-btn" onClick={handleRunScoring} disabled={isScoring || !approvedPlan || !isRuntimeReady || Boolean(activeQueueJob)}>
               {isScoring ? "⏳ กำลังตรวจและสร้าง..." : activeQueueJob ? "Worker กำลังทำงานใน queue" : "เริ่มสร้างด้วย MiniMax Music 3"}

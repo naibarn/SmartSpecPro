@@ -66,6 +66,18 @@ describe("job canonicalization", () => {
     expect(() => validateJobDefinition({ ...baseDefinition, input: [] as unknown as Record<string, unknown> })).toThrow("input must be a JSON object");
     expect(() => validateJobDefinition({ ...baseDefinition, schedule: { scheduleId: "daily", occurrenceKey: "2026-09-13" } })).toThrow("complete schedule definition");
     expect(() => validateJobDefinition({ ...baseDefinition, schedule: { scheduleId: "daily", occurrenceKey: "2026-09-13", scheduleVersion: "v1", timezone: "Asia/Bangkok", missedOccurrencePolicy: "coalesce" } })).not.toThrow();
+    expect(() => validateJobDefinition({ ...baseDefinition, idempotencyKey: "   " })).toThrow("idempotencyKey is empty or too long");
+  });
+
+  it("rejects circular and oversized durable definitions before hashing", () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(() => validateJobDefinition({ ...baseDefinition, input: circular })).toThrow("circular value");
+
+    const oversizedInput = Object.fromEntries(
+      Array.from({ length: 50 }, (_, index) => [`value${index}`, "x".repeat(24_000)]),
+    );
+    expect(() => validateJobDefinition({ ...baseDefinition, input: oversizedInput })).toThrow("payload is too large");
   });
 
   it("redacts secret-like keys without changing safe values", () => {

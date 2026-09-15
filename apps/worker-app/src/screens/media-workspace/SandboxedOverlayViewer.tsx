@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { safeConvertFileSrc } from "./projectPersistence";
 import { buildOverlayDocument } from "./overlayDocument";
 import type { NleClip } from "../../types/nleProject";
@@ -73,6 +73,7 @@ function BRollVideoItem({
 
 export interface SandboxedOverlayViewerProps {
   activeClips: NleClip[];
+  frameStyle?: CSSProperties;
   currentTimeMs: number;
   width: number;
   height: number;
@@ -86,6 +87,7 @@ export interface SandboxedOverlayViewerProps {
 
 export function SandboxedOverlayViewer({
   activeClips,
+  frameStyle,
   currentTimeMs,
   width: _width,
   height: _height,
@@ -96,6 +98,21 @@ export function SandboxedOverlayViewer({
   volume = 1.0,
   isMuted = false,
 }: SandboxedOverlayViewerProps) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [textScale, setTextScale] = useState(1);
+  useLayoutEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const measure = () => {
+      if (frame.clientWidth > 0 && _width > 0) setTextScale(frame.clientWidth / _width);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [_width, activeClips.length, frameStyle]);
+
   const threeCanvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number | null>(null);
 
@@ -165,6 +182,8 @@ export function SandboxedOverlayViewer({
     };
   }, [activeThreeClip, currentTimeMs]);
 
+  currentTimeMs = Math.round(currentTimeMs);
+
   // Filter clips currently in time window
   const visibleClips = activeClips.filter(
     (c) =>
@@ -175,7 +194,7 @@ export function SandboxedOverlayViewer({
   if (visibleClips.length === 0) return null;
 
   return (
-    <div className="nle-sandboxed-overlay-container" style={{ pointerEvents: "none" }}>
+    <div ref={frameRef} className="nle-sandboxed-overlay-container" style={{ pointerEvents: "none", ...frameStyle, zIndex: 81 }}>
       {visibleClips.map((clip) => {
         // 1. Blur & Privacy Censor Overlays (with Auto Tracking)
         if (clip.isBlurOverlay) {
@@ -298,30 +317,33 @@ export function SandboxedOverlayViewer({
           return (
             <div
               key={clip.id}
-              className={`overlay-text-item preset-${clip.stylePreset || "viral_word_highlight"} ${animClass}`}
+              className={`overlay-text-item preset-${clip.stylePreset || "viral_word_highlight"}`}
               style={{
                 position: "absolute",
                 left: `${posX * 100}%`,
                 top: `${posY * 100}%`,
                 transform: "translate(-50%, -50%)",
                 fontFamily: clip.fontFamily || undefined,
-                fontSize: clip.fontSize ? `${clip.fontSize}px` : undefined,
+                fontWeight: clip.fontWeight ?? 400,
+                fontStyle: clip.fontStyle ?? "normal",
+                fontSize: clip.fontSize ? `${clip.fontSize * textScale}px` : undefined,
                 color: clip.fontColor || undefined,
                 backgroundColor: clip.backgroundColor && clip.backgroundColor !== "transparent"
                   ? clip.backgroundColor
                   : undefined,
                 padding: clip.backgroundColor && clip.backgroundColor !== "transparent"
-                  ? "8px 20px"
+                  ? `${8 * textScale}px ${20 * textScale}px`
                   : undefined,
                 borderRadius: clip.backgroundColor && clip.backgroundColor !== "transparent"
-                  ? "14px"
+                  ? `${14 * textScale}px`
                   : undefined,
+                paintOrder: "stroke fill",
                 WebkitTextStroke: clip.strokeWidth && clip.strokeWidth > 0
-                  ? `${clip.strokeWidth}px ${clip.strokeColor || "#000000"}`
+                  ? `${clip.strokeWidth * textScale}px ${clip.strokeColor || "#000000"}`
                   : undefined,
                 textShadow:
                   clip.shadowBlur || clip.shadowOffsetX || clip.shadowOffsetY
-                    ? `${clip.shadowOffsetX || 0}px ${clip.shadowOffsetY || 0}px ${clip.shadowBlur || 0}px ${clip.shadowColor || "rgba(0,0,0,0.8)"}`
+                    ? `${(clip.shadowOffsetX || 0) * textScale}px ${(clip.shadowOffsetY || 0) * textScale}px ${(clip.shadowBlur || 0) * textScale}px ${clip.shadowColor || "rgba(0,0,0,0.8)"}`
                     : undefined,
                 textAlign: clip.textAlign || "center",
                 lineHeight: 1.35,
@@ -347,7 +369,7 @@ export function SandboxedOverlayViewer({
                   })}
                 </div>
               ) : (
-                <span>{clip.text}</span>
+                <span className={animClass} style={{ display: "inline-block" }}>{clip.text}</span>
               )}
             </div>
           );

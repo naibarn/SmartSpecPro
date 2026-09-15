@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Any
 
 import structlog
@@ -332,7 +333,17 @@ def _handle_social_webhook_failure(task_self, raw_event_id: int, exc: Exception)
     logger.exception("social_webhook_processing_failed", raw_event_id=raw_event_id)
     if task_self.request.retries >= task_self.max_retries:
         _run_async(_mark_raw_event_status_with_new_session(raw_event_id, "failed", str(exc)))
-        process_social_webhook_event.apply_async(args=[raw_event_id], queue="social_dlq")
+        from app.services.job_control_plane import dispatch_python_task
+
+        dispatch_python_task(
+            process_social_webhook_event.name,
+            args=[raw_event_id],
+            queue="social_dlq",
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+            idempotency_key=f"social-webhook:dlq:{raw_event_id}",
+            correlation_id=f"social-webhook:dlq:{raw_event_id}",
+            legacy_task=process_social_webhook_event,
+        )
         return {"status": "sent_to_dlq", "raw_event_id": raw_event_id}
     countdown = min(2 ** task_self.request.retries, 300)
     raise task_self.retry(exc=exc, countdown=countdown)

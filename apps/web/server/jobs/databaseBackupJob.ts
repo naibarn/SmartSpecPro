@@ -16,10 +16,15 @@ import {
   reconcileStaleDatabaseBackupJobs,
 } from "../services/databaseBackupService";
 import { createDatabaseBackupArtifacts } from "../services/databaseBackupExportService";
+import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { upsertLegacyBullMqScheduler, publishLegacyBullMqJob } from "../services/jobLegacyTransportAdapters";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcMinuteOccurrence } from "./feature186SystemScheduler";
 
 type DatabaseBackupJobData = {
   backupJobId: string;
   mode: DatabaseBackupMode;
+  tenantId?: string;
+  requestedByUserId?: number;
 };
 
 let queue: Queue<DatabaseBackupJobData> | null = null;
@@ -42,6 +47,28 @@ function ensureQueue(): Queue<DatabaseBackupJobData> {
 export async function enqueueDatabaseBackup(
   input: DatabaseBackupJobData
 ): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    if (!input.tenantId) throw new Error("Backup control-plane tenant is required");
+    await createControlPlaneJob({
+      context: {
+        tenantId: input.tenantId,
+        actorType: "admin",
+        actorId: input.requestedByUserId,
+        authorizationScope: "admin:database-backup",
+        correlationId: `database-backup:${input.backupJobId}`,
+        idempotencyKey: `database-backup:${input.tenantId}:${input.backupJobId}`,
+      },
+      definition: {
+        contractVersion: "feature-186-v1",
+        jobType: "database.backup",
+        executionClass: "long",
+        input: { backupJobId: input.backupJobId, mode: input.mode },
+        retryPolicy: { maxAttempts: 2, baseDelayMs: 5000, maxDelayMs: 120000, jitter: "bounded", deadlineMs: 8 * 60 * 60 * 1000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
+        timeoutPolicy: { softTimeoutMs: 30 * 60_000, hardTimeoutMs: 2 * 60 * 60_000 },
+      },
+    });
+    return;
+  }
   if (!worker) {
     throw new Error("Backup worker is unavailable");
   }
@@ -57,10 +84,10 @@ export async function enqueueDatabaseBackup(
       }`
     );
   }
-  await ensureQueue().add("create-database-backup", input);
+  await publishLegacyBullMqJob(ensureQueue(), "create-database-backup", input);
 }
 
-async function runDatabaseBackupJob(
+export async function runDatabaseBackupJob(
   data: DatabaseBackupJobData
 ): Promise<void> {
   const row = await getDatabaseBackupJob(data.backupJobId);
@@ -102,12 +129,27 @@ async function runDatabaseBackupJob(
 
 export async function initializeDatabaseBackupJob(): Promise<void> {
   if (worker) return;
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    startFeature186SystemSchedule({
+      scheduleId: "database-backup-maintenance",
+      jobType: "database.backup.maintenance",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: now => now.getUTCMinutes() % 15 === 0,
+      occurrenceKey: now => utcMinuteOccurrence(now, 15),
+      intervalMs: 60_000,
+    });
+    console.info("[DatabaseBackup] BullMQ skipped; control-plane maintenance schedule active");
+    return;
+  }
   workerFailure = null;
   await reconcileStaleDatabaseBackupJobs();
   await cleanupExpiredDatabaseBackups();
   const redis = getRealtimeClient();
   const backupQueue = ensureQueue();
-  await backupQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(backupQueue,
     "database-backup-retention",
     { pattern: "*/15 * * * *" },
     {
@@ -146,6 +188,7 @@ export async function initializeDatabaseBackupJob(): Promise<void> {
 }
 
 export async function shutdownDatabaseBackupJob(): Promise<void> {
+  stopFeature186SystemSchedule("database-backup-maintenance");
   if (worker) {
     await worker.close();
     worker = null;

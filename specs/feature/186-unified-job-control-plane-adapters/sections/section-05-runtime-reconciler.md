@@ -7,13 +7,15 @@ Connect worker execution and scheduled intent creation to the central contract w
 ## Files
 
 - Add `apps/web/server/services/jobExecutor.ts` and `jobReporter.ts`; extend `jobReconciler.ts` and the existing `apps/web/server/jobs/unifiedJobControlPlaneReconcilerJob.ts` entry point.
-- Add scheduler/worker route compatibility helpers where existing route contracts permit.
+- Add `apps/web/server/services/jobScheduler.ts` and route compatibility helpers where existing route contracts permit. The scheduler helper validates server-derived tenant, schedule version/timezone/window/missed-occurrence policy and produces a deterministic occurrence identity; it creates job intent only and never executes domain logic.
 - Add focused runtime/reconciler tests.
 
 The executor/reporter ports are thin wrappers around the control-plane service.
-Runtime startup must register a real adapter map before enabling
-`FEATURE_186_RECONCILER`; foundation-only startup intentionally leaves
-publication disabled when no adapter resolver is supplied.
+Runtime startup must register a real adapter map before starting recovery. A
+hard cutover starts the reconciler automatically; `FEATURE_186_RECONCILER=true`
+also permits observe/recovery startup in a foundation or compatibility
+environment. This prevents a hard-cutover deployment from accidentally
+running without lease-expiry, due-retry, and settlement recovery.
 
 ## Requirements
 

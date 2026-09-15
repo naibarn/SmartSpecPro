@@ -2,10 +2,10 @@ import { and, eq, ilike, inArray, or } from "drizzle-orm";
 
 import { verticalDramaMediaAssets, verticalDramaMediaIndexRecords } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { getMultimodalEmbeddingProvider } from "./multimodalEmbeddingProvider";
-import { dispatchVectorOperation, getEffectiveVectorProviderConfig } from "./vectorProvider";
+import { CloudflareFallbackProvider, getMultimodalEmbeddingProvider } from "./multimodalEmbeddingProvider";
+import { dispatchVectorOperation, getEffectiveVectorProviderConfig, resolveVectorProvider } from "./vectorProvider";
 
-const MEDIA_VECTOR_INDEX = process.env.VECTORIZE_MEDIA_INDEX || process.env.VECTORIZE_DOCS_INDEX || "drama-media-index-prod";
+const MEDIA_VECTOR_INDEX = process.env.VECTORIZE_MEDIA_INDEX || "drama-media-index-prod";
 
 export type VerticalDramaMediaEvidence = {
   mediaAssetId: string;
@@ -69,7 +69,10 @@ export async function retrieveVerticalDramaMediaEvidence(input: { tenantId: stri
   const limit = Math.max(1, Math.min(input.limit ?? 8, 32));
   let ranked: Array<{ mediaAssetId: string; score: number }> = [];
   try {
-    const provider = await getMultimodalEmbeddingProvider();
+    const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: input.tenantId });
+    const provider = resolveVectorProvider("search", providerConfig).provider === "cloudflare_vectorize"
+      ? new CloudflareFallbackProvider()
+      : await getMultimodalEmbeddingProvider();
     const vector = await provider.embedText({ text: query });
     const result = await dispatchVectorOperation({
       operation: "search",
@@ -77,7 +80,7 @@ export async function retrieveVerticalDramaMediaEvidence(input: { tenantId: stri
       vector,
       topK: limit,
       filter: { tenantId: input.tenantId, seriesId, type: "vertical_drama_media" },
-      providerConfig: await getEffectiveVectorProviderConfig({ tenantId: input.tenantId }),
+      providerConfig,
     });
     ranked = (result as { matches: Array<{ score: number; metadata: Record<string, unknown> }> }).matches
       .map(match => ({ mediaAssetId: String(match.metadata.mediaAssetId ?? "").trim(), score: Number(match.score) || 0 }))

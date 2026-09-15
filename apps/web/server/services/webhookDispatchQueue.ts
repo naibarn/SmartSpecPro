@@ -22,6 +22,10 @@ import { buildAgencyTaskMetadata } from "./agencyEscalation";
 import { stripSecrets } from "./webhookTriggerService";
 import { auditLogger } from "./auditLogger";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "./appRuntimeConfig";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
+import { publishLegacyWebhookDispatch } from "./jobLegacyTransportAdapters";
+import { sanitizePayload } from "./webhookDeliveryService";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -54,6 +58,22 @@ export interface WebhookDispatchJob {
 
 let dispatchQueue: Queue<WebhookDispatchJob> | null = null;
 let dispatchWorker: Worker<WebhookDispatchJob> | null = null;
+
+const FEATURE_186_WEBHOOK_JOB_TYPE = "webhook.dispatch";
+const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
+
+if (!defaultJobExecutorRegistry.has(FEATURE_186_WEBHOOK_JOB_TYPE, FEATURE_186_CONTRACT_VERSION)) {
+  defaultJobExecutorRegistry.register({
+    jobType: FEATURE_186_WEBHOOK_JOB_TYPE,
+    executionClass: "short",
+    contractVersions: new Set([FEATURE_186_CONTRACT_VERSION]),
+    executor: async ({ context }) => {
+      const job = context.input as unknown as WebhookDispatchJob;
+      await processWebhookDispatch({ id: context.jobId, data: job, attemptsMade: 0 } as Job<WebhookDispatchJob>);
+      return { output: { triggerId: job.triggerId } };
+    },
+  });
+}
 
 // ── Worker processor ─────────────────────────────────────────────────────
 
@@ -214,6 +234,10 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
 // ── Initialization ────────────────────────────────────────────────────────
 
 export async function initWebhookDispatchQueue(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    console.log("[WebhookDispatchQueue] Legacy queue disabled; Feature 186 gateway is active");
+    return;
+  }
   const redis = getRealtimeClient();
 
   dispatchQueue = new Queue<WebhookDispatchJob>(QUEUE_NAME, {
@@ -276,6 +300,39 @@ export async function initWebhookDispatchQueue(): Promise<void> {
 // ── Enqueue ───────────────────────────────────────────────────────────────
 
 export async function enqueueWebhookDispatch(job: WebhookDispatchJob): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    const safeJob: WebhookDispatchJob = {
+      ...job,
+      payload: sanitizePayload(job.payload),
+      parsedBody: stripSecrets(job.parsedBody),
+      requestHeadersSafe: { ...job.requestHeadersSafe },
+    };
+    await createControlPlaneJob({
+      context: {
+        tenantId: job.tenantId,
+        actorType: "system",
+        authorizationScope: "system:webhook-dispatch",
+        correlationId: `webhook:${job.triggerId}:${job.startTime}`,
+        idempotencyKey: `webhook-dispatch:${job.triggerId}:${job.requestBodyHash}:${job.startTime}`,
+      },
+      definition: {
+        contractVersion: FEATURE_186_CONTRACT_VERSION,
+        jobType: FEATURE_186_WEBHOOK_JOB_TYPE,
+        executionClass: "short",
+        input: safeJob as unknown as Record<string, unknown>,
+        retryPolicy: {
+          maxAttempts: MAX_ATTEMPTS,
+          baseDelayMs: 3_000,
+          maxDelayMs: 60_000,
+          jitter: "bounded",
+          deadlineMs: 15 * 60_000,
+          allowedErrorClasses: ["timeout", "connection_reset", "provider_5xx"],
+        },
+        timeoutPolicy: { softTimeoutMs: 10_000, hardTimeoutMs: 60_000 },
+      },
+    });
+    return;
+  }
   if (!dispatchQueue) {
     // Graceful fallback if queue not initialized (e.g. Redis unavailable at startup)
     console.warn("[WebhookDispatchQueue] Not initialized — running inline (no retry)");
@@ -289,8 +346,7 @@ export async function enqueueWebhookDispatch(job: WebhookDispatchJob): Promise<v
   }
 
   // Deterministic jobId prevents duplicate enqueue on transient 200+enqueue failure
-  const jobId = `wh-${job.triggerId}-${job.requestBodyHash}-${job.startTime}`;
-  await dispatchQueue.add("dispatch", job, { jobId });
+  await publishLegacyWebhookDispatch(dispatchQueue, job);
 }
 
 // ── Shutdown ──────────────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ export const CANONICAL_JOB_COMMANDS = [
   "request_cancel",
   "cancel",
   "retry_due",
+  "recover_checkpoint",
   "force_fail",
   "reconcile",
 ] as const;
@@ -89,6 +90,15 @@ export type ProgressUpdate = {
   measured?: Record<string, number | string | boolean>;
 };
 
+export interface JobReporter {
+  heartbeat(lease: LeaseContext): Promise<void>;
+  progress(lease: LeaseContext, input: ProgressUpdate): Promise<void>;
+  waitForExternal(lease: LeaseContext, input: ExternalWait): Promise<void>;
+  complete(lease: LeaseContext, result: JobResult): Promise<void>;
+  fail(lease: LeaseContext, error: ClassifiedJobError): Promise<void>;
+  assertActive(lease: LeaseContext): Promise<void>;
+}
+
 export type JobStart = {
   startedAt?: string;
 };
@@ -102,6 +112,8 @@ export type ExternalWait = {
 export type JobResult = {
   resultRef?: string;
   output?: Record<string, unknown>;
+  /** The executor deliberately released its lease and must be resumed later. */
+  deferred?: boolean;
 };
 
 export type ClassifiedJobError = {
@@ -156,7 +168,34 @@ export type JobEventType =
   | "COMPLETED"
   | "CANCEL_REQUESTED"
   | "CANCELLED"
-  | "EXPIRED";
+  | "EXPIRED"
+  | "CALLBACK_ACCEPTED"
+  | "CALLBACK_REJECTED"
+  | "SETTLEMENT_RECORDED"
+  | "PROJECTION_REPAIRED";
+
+export type OperatorJobAction = {
+  actionId: string;
+  jobId: string;
+  command: "cancel" | "requeue" | "recover_checkpoint" | "force_fail";
+  actorId?: number;
+  reason: string;
+  expectedStatus: string;
+  expectedAttempt: number;
+  expectedFencingVersion: number;
+  authorizationScope?: string;
+};
+
+export type AuthenticatedJobCallback = {
+  adapterNamespace: string;
+  providerEventId?: string;
+  replayKey?: string;
+  occurredAt: string;
+  tenantId?: string;
+  jobId?: string;
+  signatureVerified: boolean;
+  payload: Record<string, unknown>;
+};
 
 export class JobControlPlaneError extends Error {
   constructor(

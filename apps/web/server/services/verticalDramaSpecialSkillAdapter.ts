@@ -75,6 +75,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const specialSkillOutputSchema = z
   .object({
     status: z.enum(["ready", "assumptions_used", "needs_clarification"]),
+    episode_summary: z.string().trim().min(8).max(4_000).optional(),
     aspect_ratio: z.literal("9:16"),
     shot_duration_seconds: z.union([
       z.literal(8),
@@ -512,6 +513,7 @@ export function normalizeSpecialSkillOutput(value: unknown): unknown {
   ) {
     return {
       status: value.status ?? "ready",
+      episode_summary: value.episode_summary,
       aspect_ratio: value.aspect_ratio,
       shot_duration_seconds: value.shot_duration_seconds,
       shot_count: value.shot_count ?? shots.length,
@@ -1607,7 +1609,7 @@ export async function generateSpecialSkillOutput(input: {
             ? async event => { await input.forensics?.retryDecisionObserver?.(event); }
             : undefined,
           schemaRetryContract:
-            "SPECIAL TIE-IN OUTPUT REQUIREMENT: return exactly 9 story-only shots, with shot_count=9 and shot_number values 1 through 9 in order. Every shot must include story_summary, continuity_in, continuity_out, continuity_anchor, tie_in_stage, and tie_in_action. Every shot must include its required dialogue turns. Do not generate image_prompt or video_prompt in this planning pass; omit them or return empty strings. Never return 5 shots or pad a shorter result. For product references, include preparation, demonstration, hands_on_use, and result stages, with concrete observable actions rather than passive placement.",
+            "SPECIAL TIE-IN OUTPUT REQUIREMENT: return exactly 9 story-only shots, with shot_count=9 and shot_number values 1 through 9 in order. Also return one concise episode_summary describing the complete beginning-middle-end story; it must be derived only from these nine shots and the reviewed special-episode input. Every shot must include story_summary, continuity_in, continuity_out, continuity_anchor, tie_in_stage, and tie_in_action. Every shot must include its required dialogue turns. Do not generate image_prompt or video_prompt in this planning pass; omit them or return empty strings. Never return 5 shots or pad a shorter result. For product references, include preparation, demonstration, hands_on_use, and result stages, with concrete observable actions rather than passive placement.",
         });
         candidate = planning.data;
         effectiveModel = planning.model;
@@ -2302,6 +2304,9 @@ export async function executeSpecialTieInSkill(
     },
     output: {
       shotCount: output.shot_count,
+      ...(output.episode_summary?.trim()
+        ? { episodeSummary: output.episode_summary.trim().slice(0, 2_000) }
+        : {}),
       shotDialogues: output.shots.map(shot => ({
         shotNumber: shot.shot_number,
         lines: shot.speaking_turns.map(turn => {

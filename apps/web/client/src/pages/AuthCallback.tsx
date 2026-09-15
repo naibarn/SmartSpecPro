@@ -51,6 +51,7 @@ export default function AuthCallback() {
   };
 
   useEffect(() => {
+    const isAccountLinkFlow = sessionStorage.getItem('oauth_account_link') === 'google';
     const handleCallback = async () => {
       try {
         // Get the authorization code from URL
@@ -67,6 +68,10 @@ export default function AuthCallback() {
         }
 
         const provider = params?.provider;
+        if (isAccountLinkFlow && provider !== 'google') {
+          sessionStorage.removeItem('oauth_account_link');
+          throw new Error('Invalid Google account linking callback');
+        }
         // Retrieve CSRF state token
         const savedState = sessionStorage.getItem('oauth_state');
         const urlState = urlParams.get('state');
@@ -75,6 +80,24 @@ export default function AuthCallback() {
 
         if (provider === 'meta') {
           metaCompleteOAuth.mutate({ code, state });
+          return;
+        }
+
+        if (isAccountLinkFlow && provider === 'google') {
+          const linkResponse = await fetch(getSmartSpecWebEndpoint('/trpc/auth.completeGoogleOnlyLink'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ json: { code, state } }),
+          });
+          const linkData = await linkResponse.json().catch(() => null);
+          if (!linkResponse.ok) {
+            throw new Error(linkData?.error?.json?.message || 'Google account linking failed');
+          }
+          sessionStorage.removeItem('oauth_account_link');
+          setStatus('success');
+          setMessage('Google sign-in is now enabled for this account. Redirecting...');
+          setTimeout(() => setLocation('/settings?section=profile'), 1500);
           return;
         }
 
@@ -157,13 +180,14 @@ export default function AuthCallback() {
         }, 1500);
       } catch (error) {
         console.error('Auth callback error:', error);
+        sessionStorage.removeItem('oauth_account_link');
         clearPendingOAuthTwoFactor();
         setStatus('error');
         setMessage(error instanceof Error ? error.message : t('callback.error'));
         
         // Redirect to login after delay
         setTimeout(() => {
-          setLocation('/login');
+          setLocation(isAccountLinkFlow ? '/settings?section=profile' : '/login');
         }, 3000);
       }
     };

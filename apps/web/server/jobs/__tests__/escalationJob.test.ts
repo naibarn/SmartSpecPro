@@ -17,13 +17,13 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
   }),
 }));
 vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
+  Queue: vi.fn(function QueueMock() { return {
     upsertJobScheduler: vi.fn().mockResolvedValue({}),
     close: vi.fn().mockResolvedValue(undefined),
-  })),
-  Worker: vi.fn().mockImplementation(() => ({
+  }; }),
+  Worker: vi.fn(function WorkerMock() { return {
     close: vi.fn().mockResolvedValue(undefined),
-  })),
+  }; }),
 }));
 
 import { getDb } from "../../db";

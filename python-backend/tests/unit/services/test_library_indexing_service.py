@@ -15,6 +15,8 @@ from app.models.user import User
 from app.services import library_indexing_service
 from app.services.library_indexing_service import (
     build_library_job_dedupe_key,
+    delete_cloudflare_vector_ids,
+    delete_stale_cloudflare_vectors,
     delete_library_item_vectors,
     enqueue_library_index_job,
     extract_library_item_text,
@@ -22,6 +24,8 @@ from app.services.library_indexing_service import (
     process_library_index_job,
     resolve_library_vector_provider,
     retry_due_library_index_jobs,
+    validate_cloudflare_embeddings,
+    validate_cloudflare_vector_upsert_result,
 )
 from app.services.library_observability import (
     get_metric_count,
@@ -168,6 +172,68 @@ async def _create_library_item(db: AsyncSessionAdapter, tenant_id: str, title: s
 
 @pytest.mark.unit
 class TestLibraryIndexingService:
+    def test_cloudflare_embedding_contract_rejects_injected_non_768_vectors(self):
+        with pytest.raises(RuntimeError, match="cloudflare_vectorize_embedding_dimension_mismatch"):
+            validate_cloudflare_embeddings([[0.1, 0.2]])
+
+    def test_cloudflare_upsert_contract_requires_deterministic_ids_and_mutation_evidence(self):
+        result = library_indexing_service.VectorUpsertIds(["lib:expected"], ["mutation-1"])
+        assert validate_cloudflare_vector_upsert_result(
+            result,
+            expected_ids=["lib:expected"],
+        ) == (["lib:expected"], ["mutation-1"])
+        with pytest.raises(RuntimeError, match="cloudflare_vectorize_mutation_evidence_missing"):
+            validate_cloudflare_vector_upsert_result(["lib:expected"], expected_ids=["lib:expected"])
+
+    @pytest.mark.asyncio
+    async def test_cloudflare_stale_cleanup_verifies_item_and_deletes_only_old_ids(self, monkeypatch):
+        class FakeVectorizeStore:
+            def __init__(self):
+                self.get_calls = []
+                self.delete_calls = []
+
+            async def get_by_ids(self, ids, expected_tenant_id=None, expected_item_id=None):
+                self.get_calls.append((ids, expected_tenant_id, expected_item_id))
+                return [{"id": value} for value in ids]
+
+            async def delete_by_ids(self, ids):
+                self.delete_calls.append(ids)
+
+        store = FakeVectorizeStore()
+        monkeypatch.setattr(library_indexing_service, "_cloudflare_vectorize_store", lambda _config: store)
+
+        removed = await delete_stale_cloudflare_vectors(
+            tenant_id="tenant-301",
+            item_id=10,
+            old_vector_ids=["old-a", "old-b", "legacy-id-that-is-not-used"],
+            new_vector_ids=["old-b", "new-c"],
+            vectorize_config={"vectorizeAccountId": "a", "vectorizeApiToken": "t"},
+        )
+
+        assert removed == 2
+        assert store.get_calls == [(["legacy-id-that-is-not-used", "old-a"], "tenant-301", 10)]
+        assert store.delete_calls == [["legacy-id-that-is-not-used", "old-a"]]
+
+    @pytest.mark.asyncio
+    async def test_cloudflare_delete_does_not_fall_back_to_legacy_store(self, monkeypatch):
+        class FakeVectorizeStore:
+            async def get_by_ids(self, ids, expected_tenant_id=None, expected_item_id=None):
+                assert expected_tenant_id == "tenant-302"
+                assert expected_item_id == 11
+                return [{"id": ids[0]}]
+
+            async def delete_by_ids(self, ids):
+                assert ids == ["cf-vector"]
+
+        monkeypatch.setattr(library_indexing_service, "_cloudflare_vectorize_store", lambda _config: FakeVectorizeStore())
+
+        assert await delete_cloudflare_vector_ids(
+            tenant_id="tenant-302",
+            item_id=11,
+            vector_ids=["cf-vector"],
+            vectorize_config={"vectorizeAccountId": "a", "vectorizeApiToken": "t"},
+        ) == 1
+
     def test_extract_library_item_text_normalizes_media_task_prompt_fields(self):
         item = LibraryItem(
             tenant_id="tenant-300",

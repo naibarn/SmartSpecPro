@@ -8,7 +8,7 @@ import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -35,6 +35,7 @@ from app.services.media_callback_service import (
     process_kie_callback_payload,
 )
 from app.services.media_task_service import MediaTaskService
+from app.services.job_control_plane import dispatch_python_task
 
 # Import Celery tasks
 try:
@@ -686,6 +687,36 @@ async def generate_image_endpoint(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     try:
+        # A control-plane retry may arrive after the first request created a
+        # media task or provider operation but before the HTTP response was
+        # observed. Reuse a completed result; fail closed for an in-flight
+        # operation so this request cannot create a second provider task.
+        operation_key = (request.control_plane_operation_key or "").strip()
+        if operation_key:
+            existing_result = await db.execute(
+                select(MediaTask)
+                .where(
+                    MediaTask.user_id == current_user.id,
+                    MediaTask.tenant_id == current_user.currentTenantId,
+                    MediaTask.media_type == MediaType.IMAGE.value,
+                    MediaTask.parameters["control_plane_operation_key"].as_string() == operation_key,
+                )
+                .order_by(MediaTask.created_at.desc())
+                .limit(1)
+            )
+            existing_task = existing_result.scalar_one_or_none()
+            if existing_task:
+                if existing_task.status == TaskStatus.COMPLETED.value:
+                    stored = existing_task.result_data if isinstance(existing_task.result_data, dict) else {}
+                    stored_response = stored.get("response") if isinstance(stored.get("response"), dict) else None
+                    if stored_response:
+                        response = ImageGenerationResponse(**stored_response)
+                        response.task_id = existing_task.id
+                        return response
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="MEDIA_OPERATION_ALREADY_IN_PROGRESS",
+                )
         # Create task record before generation
         task = await MediaTaskService.create_task(
             db,
@@ -1412,141 +1443,27 @@ async def fetch_task_result(
         )
 
 
-# ==================== Video Render Pipeline (Cloud Run Job) ====================
+# ==================== Retired legacy video dispatch ====================
 
 
 class VideoRenderRequest(BaseModel):
-    """Request model for video render task from Cloud Tasks."""
+    """Compatibility request model retained for schema imports only."""
     render_spec: dict
     queue_name: Optional[str] = None
 
 
 @router.post("/tasks/process-video")
 async def process_video_task(request: Request):
-    """Handle video render task from Cloud Tasks.
+    """Reject the removed provider-specific task endpoint.
 
-    Launches a Cloud Run Job execution with the render spec
-    passed as an environment variable.
-
-    This endpoint is protected by OIDC validation middleware
-    (see Section 04).
+    Video execution now starts from a canonical ``worker_jobs`` envelope and
+    is admitted to the Cloudflare Containers/Worker App target. This endpoint
+    must not become an accidental inline or legacy cloud fallback.
     """
-    try:
-        body = await request.json()
-        render_spec = body.get("render_spec") or body.get("renderSpec")
-        if not render_spec:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing render_spec in request body",
-            )
-
-        # Validate required fields
-        render_hash = render_spec.get("renderHash")
-        profile = render_spec.get("profile", "standard")
-        if not render_hash:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Missing renderHash in render spec",
-            )
-        if profile not in ("preview", "standard", "high"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid profile: {profile}. Must be preview, standard, or high.",
-            )
-
-        queue_name = body.get("queue_name", "video-jobs-short")
-
-        # Determine CPU/memory based on queue
-        if queue_name == "video-jobs-long":
-            cpu = "4"
-            memory = "16Gi"
-            timeout = "1800s"
-        else:
-            cpu = "2"
-            memory = "8Gi"
-            timeout = "600s"
-
-        logger.info(
-            "process_video_task_received",
-            render_hash=render_hash,
-            profile=profile,
-            queue=queue_name,
-            cpu=cpu,
-            memory=memory,
-        )
-
-        # In production, this would launch a Cloud Run Job execution.
-        # For now, we execute the pipeline inline using the entrypoint logic.
-        try:
-            gcp_project = os.environ.get("GCP_PROJECT_ID")
-            gcp_region = os.environ.get("GCP_REGION", "us-central1")
-
-            if gcp_project:
-                # Cloud Run Jobs API - launch async execution
-                from google.cloud import run_v2
-
-                client = run_v2.JobsClient()
-                job_name = f"projects/{gcp_project}/locations/{gcp_region}/jobs/video-job-runner"
-
-                execution = client.run_job(
-                    request=run_v2.RunJobRequest(
-                        name=job_name,
-                        overrides=run_v2.RunJobRequest.Overrides(
-                            container_overrides=[
-                                run_v2.RunJobRequest.Overrides.ContainerOverride(
-                                    env=[
-                                        run_v2.EnvVar(
-                                            name="RENDER_SPEC",
-                                            value=json.dumps(render_spec),
-                                        ),
-                                    ],
-                                ),
-                            ],
-                            timeout=timeout,
-                        ),
-                    ),
-                )
-                logger.info(
-                    "cloud_run_job_launched",
-                    render_hash=render_hash,
-                    execution_name=execution.metadata.name if hasattr(execution, 'metadata') else "unknown",
-                )
-            else:
-                logger.info(
-                    "cloud_run_not_configured_inline_render",
-                    render_hash=render_hash,
-                )
-                # Fallback: call entrypoint directly with spec as argument
-                import threading
-
-                from app.video.entrypoint import main as render_main
-                spec_copy = dict(render_spec)
-                thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
-                thread.start()
-
-        except ImportError:
-            logger.warning("google_cloud_run_sdk_not_available", render_hash=render_hash)
-            # Fallback to inline execution
-            import threading
-
-            from app.video.entrypoint import main as render_main
-            spec_copy = dict(render_spec)
-            thread = threading.Thread(target=render_main, args=(spec_copy,), daemon=True)
-            thread.start()
-
-        return JSONResponse(
-            status_code=200,
-            content={"success": True, "render_hash": render_hash, "profile": profile},
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("process_video_task_error", error=str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process video task: {str(e)}",
-        )
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="LEGACY_VIDEO_RUNTIME_RETIRED_USE_CANONICAL_CLOUDFLARE_JOB",
+    )
 
 
 # ==================== Batch Generation ====================
@@ -1894,7 +1811,7 @@ async def serve_audio_extract_file(
     return _serve_media_file("audio_extracts", user_id, job_id, filename, current_user)
 
 
-# ==================== Async Endpoints with Celery ====================
+# ==================== Async Endpoints through the canonical job boundary ====================
 
 @router.post("/async/image", response_model=TaskResponse)
 async def generate_image_async(
@@ -1904,7 +1821,7 @@ async def generate_image_async(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Submit image generation to Celery queue (async processing).
+    Submit image generation to the canonical job boundary (async processing).
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
@@ -1913,7 +1830,8 @@ async def generate_image_async(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
+    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /image endpoint instead."
@@ -1922,7 +1840,7 @@ async def generate_image_async(
     # Check before creating the durable task row. The Node caller may have a
     # short-lived credit reservation at this point, but its existing exception
     # path refunds that reservation when this 503 is returned.
-    if CELERY_ENABLED and not _has_responsive_celery_worker():
+    if not hard_cutover and CELERY_ENABLED and not _has_responsive_celery_worker():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async media worker unavailable. Start a Celery worker for the media queue.",
@@ -1955,9 +1873,36 @@ async def generate_image_async(
     # admission path. Once Celery is available, always enqueue through the
     # per-user dispatcher so the three-image cap also holds during worker
     # restarts or a transient inspect/ping failure.
-    should_use_celery = CELERY_ENABLED
+    should_use_celery = CELERY_ENABLED and not hard_cutover
 
-    if should_use_celery:
+    if hard_cutover:
+        try:
+            dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
+            await db.refresh(task)
+            if task.id not in dispatch_result["dispatched_task_ids"]:
+                raise RuntimeError("Control-plane image admission did not dispatch the task")
+            logger.info(
+                "async_image_task_admitted_control_plane",
+                task_id=task.id,
+                canonical_job_id=task.celery_task_id,
+                user_id=current_user.id,
+            )
+        except Exception as exc:
+            task.status = TaskStatus.FAILED.value
+            task.error_message = "Failed to dispatch task to the job control plane"
+            task.completed_at = datetime.now(timezone.utc)
+            await db.commit()
+            logger.error(
+                "async_image_task_control_plane_dispatch_failed",
+                task_id=task.id,
+                user_id=current_user.id,
+                error_type=type(exc).__name__,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Job control plane unavailable. The task was not submitted to the provider.",
+            ) from exc
+    elif should_use_celery:
         try:
             dispatch_result = await _dispatch_pending_image_tasks_async(current_user.id)
             await db.refresh(task)
@@ -2012,11 +1957,12 @@ async def generate_video_async(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Submit video generation to Celery queue (async processing).
+    Submit video generation to the canonical job boundary (async processing).
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
+    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /video endpoint instead."
@@ -2045,13 +1991,26 @@ async def generate_video_async(
             reference_audio_count=len(getattr(request, "reference_audio_urls", None) or []),
         )
 
-    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
+    should_use_control_plane = hard_cutover
+    should_use_celery = (
+        CELERY_ENABLED
+        and not should_use_control_plane
+        and _has_responsive_celery_worker()
+    )
 
     try:
-        if should_use_celery:
-            celery_task = generate_video_task.delay(task.id, current_user.id, request_payload)
+        if should_use_control_plane or should_use_celery:
+            celery_task = dispatch_python_task(
+                generate_video_task.name,
+                args=(task.id, current_user.id, request_payload),
+                tenant_id=task.tenant_id,
+                user_id=current_user.id,
+                idempotency_key=f"media:video:{task.tenant_id}:{task.id}",
+                queue="video",
+                legacy_task=generate_video_task,
+            )
             task.celery_task_id = celery_task.id
-            logger.info("async_video_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+            logger.info("async_video_task_submitted", task_id=task.id, canonical_job_id=celery_task.id, user_id=current_user.id)
         elif _is_inline_media_fallback_enabled() and _generate_video_async is not None:
             background_tasks.add_task(_generate_video_async, task.id, current_user.id, request_payload)
             logger.warning(
@@ -2077,7 +2036,7 @@ async def generate_video_async(
         task.status = TaskStatus.FAILED
         task.error_message = f"Failed to submit task to queue: {str(e)}"
         await db.commit()
-        logger.error("celery_task_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
+        logger.error("canonical_video_job_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit task to queue: {str(e)}"
@@ -2094,11 +2053,12 @@ async def generate_audio_async(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Submit audio generation to Celery queue (async processing).
+    Submit audio generation to the canonical job boundary (async processing).
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    if not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
+    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Async processing not available. Use /audio endpoint instead."
@@ -2114,13 +2074,26 @@ async def generate_audio_async(
     )
 
     request_payload = request.dict()
-    should_use_celery = CELERY_ENABLED and _has_responsive_celery_worker()
+    should_use_control_plane = hard_cutover
+    should_use_celery = (
+        CELERY_ENABLED
+        and not should_use_control_plane
+        and _has_responsive_celery_worker()
+    )
 
     try:
-        if should_use_celery:
-            celery_task = generate_audio_task.delay(task.id, current_user.id, request_payload)
+        if should_use_control_plane or should_use_celery:
+            celery_task = dispatch_python_task(
+                generate_audio_task.name,
+                args=(task.id, current_user.id, request_payload),
+                tenant_id=task.tenant_id,
+                user_id=current_user.id,
+                idempotency_key=f"media:audio:{task.tenant_id}:{task.id}",
+                queue="audio",
+                legacy_task=generate_audio_task,
+            )
             task.celery_task_id = celery_task.id
-            logger.info("async_audio_task_submitted", task_id=task.id, celery_task_id=celery_task.id, user_id=current_user.id)
+            logger.info("async_audio_task_submitted", task_id=task.id, canonical_job_id=celery_task.id, user_id=current_user.id)
         elif _is_inline_media_fallback_enabled() and _generate_audio_async is not None:
             background_tasks.add_task(_generate_audio_async, task.id, current_user.id, request_payload)
             logger.warning(
@@ -2145,7 +2118,7 @@ async def generate_audio_async(
         task.status = TaskStatus.FAILED
         task.error_message = f"Failed to submit task to queue: {str(e)}"
         await db.commit()
-        logger.error("celery_audio_task_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
+        logger.error("canonical_audio_job_submission_failed", task_id=task.id, error=str(e), error_type=type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to submit task to queue: {str(e)}"

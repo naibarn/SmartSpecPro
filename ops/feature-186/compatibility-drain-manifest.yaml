@@ -1,0 +1,22 @@
+# Compatibility remains explicit until production drain/recovery evidence is
+# accepted. Removing these boundaries before then would remove rollback safety.
+manifest_version: feature-186-compatibility-drain-v1
+canonical_source_of_truth: postgresql
+legacy_transport_boundary:
+  file: apps/web/server/services/jobLegacyTransportAdapters.ts
+  approved_operations:
+    - publishLegacyWebhookDispatch
+    - publishLegacyBullMqJob
+    - upsertLegacyBullMqScheduler
+  active_side_effecting_producers: one_per_allowlisted_family
+  retirement_condition: zero_new_legacy_work_and_reconciled_in_flight_references
+legacy_status_boundary:
+  file: python-backend/app/services/legacy_task_status.py
+  observed_call_sites: 7
+  retirement_condition: canonical_status_and_result_reader_evidence_for_each_call_site
+  forbidden: promote_legacy_result_backend_to_canonical_state
+fail_closed_rules:
+  - no_new_unallowlisted_direct_transport_call
+  - no_unbounded_legacy_retry
+  - no_legacy_status_reader_for_canonical_job_without_postgresql_lookup
+  - preserve_dispatch_and_callback_evidence_until_rollback_window_ends

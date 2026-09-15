@@ -2,6 +2,10 @@
 # Build all Docker images for Cloud Run deployment.
 # Usage: ./scripts/docker-build.sh [--push] [--tag TAG]
 #
+# Retired: the production container target is Cloudflare Containers.
+echo "ERROR: docker-build.sh is retired for the Google Cloud runtime; use the Cloudflare Container deployment pipeline." >&2
+exit 1
+
 # Options:
 #   --push    Push to Artifact Registry after building
 #   --tag     Image tag (default: latest)

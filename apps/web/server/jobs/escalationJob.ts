@@ -17,6 +17,8 @@ import {
 } from "../../drizzle/schema";
 import { createNotification } from "../services/notificationService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcMinuteOccurrence } from "./feature186SystemScheduler";
+import { upsertLegacyBullMqScheduler } from "../services/jobLegacyTransportAdapters";
 
 const QUEUE_NAME = "notification-escalation";
 
@@ -219,6 +221,20 @@ export async function executeEscalationCheck(): Promise<void> {
  * Idempotent — safe to call multiple times.
  */
 export async function initializeEscalationJob(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    startFeature186SystemSchedule({
+      scheduleId: "notification-escalation",
+      jobType: "notification.escalation",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: () => true,
+      occurrenceKey: now => utcMinuteOccurrence(now, 5),
+      intervalMs: 60_000,
+    });
+    return;
+  }
   if (escalationQueue) return;
 
   const redis = getRealtimeClient();
@@ -232,7 +248,7 @@ export async function initializeEscalationJob(): Promise<void> {
   });
 
   // Register repeatable job (every 5 minutes)
-  await escalationQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(escalationQueue,
     "escalation-check",
     { every: 5 * 60 * 1000 },
     { name: "escalation-check" }
@@ -256,6 +272,7 @@ export async function initializeEscalationJob(): Promise<void> {
  * Gracefully shut down the escalation queue and worker.
  */
 export async function shutdownEscalationJob(): Promise<void> {
+  stopFeature186SystemSchedule("notification-escalation");
   if (escalationWorker) {
     await escalationWorker.close();
     escalationWorker = null;

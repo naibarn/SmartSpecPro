@@ -4,7 +4,7 @@
  * Provides admin endpoints for operational health monitoring:
  * - Traffic & Auth stats
  * - API Health metrics
- * - Jobs Health (Cloud Tasks)
+ * - Jobs Health (canonical PostgreSQL control plane)
  * - Kie AI Health (media callbacks)
  * - Storage Stats (R2)
  * - Security Stats (rate limiting)
@@ -24,14 +24,6 @@ function isProviderUsageLogUnavailableError(error: unknown): boolean {
     (message.includes("provider_usage_log") && message.includes("does not exist")) ||
     (message.includes("provider_usage_log") && message.includes("no such table")) ||
     (message.includes("relation") && message.includes("does not exist"))
-  );
-}
-
-function isCloudTaskEventsMissingError(error: unknown): boolean {
-  const message = getErrorMessage(error).toLowerCase();
-  return (
-    (message.includes("cloud_task_events") && message.includes("does not exist")) ||
-    (message.includes("cloud_task_events") && message.includes("no such table"))
   );
 }
 
@@ -212,7 +204,7 @@ export const adminOpsRouter = router({
     }),
 
   /**
-   * Jobs Health Panel - Cloud Tasks event metrics
+   * Jobs Health Panel - canonical worker_jobs metrics
    */
   jobsHealth: domainAdminProcedure
     .query(async () => {
@@ -227,36 +219,41 @@ export const adminOpsRouter = router({
         };
       }
 
-      const { cloudTaskEvents } = await import('../../drizzle/schema');
-      const { sql, count, desc } = await import('drizzle-orm');
+      const { workerJobs, workerJobOutbox } = await import('../../drizzle/schema');
+      const { sql, count, desc, inArray } = await import('drizzle-orm');
 
       try {
-        // Counts by status
+        // PostgreSQL canonical state is authoritative; broker/legacy event
+        // tables are intentionally not consulted by the admin view.
         const statusCounts = await db.select({
-          status: cloudTaskEvents.status,
-          count: count(cloudTaskEvents.id).as('count'),
+          status: workerJobs.status,
+          count: count(workerJobs.id).as('count'),
         })
-          .from(cloudTaskEvents)
-          .groupBy(cloudTaskEvents.status);
+          .from(workerJobs)
+          .groupBy(workerJobs.status);
 
         const countsByStatus: Record<string, number> = {};
         for (const row of statusCounts) {
           if (row.status) countsByStatus[row.status] = Number(row.count);
         }
 
-        // Recent failures with error messages
+        // Recent terminal/review failures with canonical retry evidence.
         const recentFailures = await db.select({
-          id: cloudTaskEvents.id,
-          taskId: cloudTaskEvents.taskId,
-          queueName: cloudTaskEvents.queueName,
-          errorMessage: cloudTaskEvents.errorMessage,
-          attemptCount: cloudTaskEvents.attemptCount,
-          createdAt: cloudTaskEvents.createdAt,
+          id: workerJobs.id,
+          taskId: workerJobs.id,
+          queueName: workerJobs.jobType,
+          errorMessage: workerJobs.errorMessage,
+          attemptCount: workerJobs.attempt,
+          createdAt: workerJobs.createdAt,
         })
-          .from(cloudTaskEvents)
-          .where(sql`${cloudTaskEvents.status} IN ('failed', 'dead_letter')`)
-          .orderBy(desc(cloudTaskEvents.createdAt))
+          .from(workerJobs)
+          .where(inArray(workerJobs.status, ['failed', 'expired'] as any))
+          .orderBy(desc(workerJobs.createdAt))
           .limit(20);
+
+        const [unpublished] = await db.select({ count: count(workerJobOutbox.id).as('count') })
+          .from(workerJobOutbox)
+          .where(sql`${workerJobOutbox.publishedAt} IS NULL AND ${workerJobOutbox.cancelledAt} IS NULL AND ${workerJobOutbox.quarantinedAt} IS NULL`);
 
         return {
           countsByStatus,
@@ -268,20 +265,20 @@ export const adminOpsRouter = router({
             attempts: f.attemptCount,
             createdAt: f.createdAt?.toISOString(),
           })),
+          unpublishedOutbox: Number(unpublished?.count ?? 0),
           degraded: false,
           reason: null as string | null,
         };
       } catch (error) {
-        const missingTable = isCloudTaskEventsMissingError(error);
         console.warn('[adminOps.jobsHealth] falling back to empty metrics', {
-          reason: missingTable ? 'cloud_task_events_table_missing' : 'query_failed',
+          reason: 'query_failed',
           error: getErrorMessage(error),
         });
         return {
           countsByStatus: {},
           recentFailures: [],
           degraded: true,
-          reason: missingTable ? 'cloud_task_events_table_missing' : 'query_failed',
+          reason: 'query_failed',
         };
       }
     }),

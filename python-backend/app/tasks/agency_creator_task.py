@@ -66,6 +66,11 @@ def _run_async(coro) -> Any:
 
 
 def _set_status(task_id: str, status: dict) -> None:
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(task_id, status)
+        return
     try:
         r = _get_redis()
         r.set(f"agency-creator:{task_id}", json.dumps(status, default=str), ex=RESULT_TTL)
@@ -73,11 +78,19 @@ def _set_status(task_id: str, status: dict) -> None:
         logger.error("agency_creator_redis_set_failed", task_id=task_id, error=str(exc)[:200])
 
 
-def get_status(task_id: str, user_id: int | None = None) -> dict | None:
-    """Read agency creator task status from Redis.
+def get_status(
+    task_id: str,
+    user_id: int | None = None,
+    tenant_id: str | None = None,
+) -> dict | None:
+    """Read agency creator status from the canonical ledger in hard cutover.
 
     Enforces ownership check if user_id provided.
     """
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        return JobControlPlaneClient().legacy_status(task_id, tenant_id=tenant_id, user_id=user_id)
     r = _get_redis()
     raw = r.get(f"agency-creator:{task_id}")
     if raw is None:
@@ -91,11 +104,18 @@ def get_status(task_id: str, user_id: int | None = None) -> dict | None:
 
 def store_answers(task_id: str, answers: dict[str, str]) -> None:
     """Store interview answers in Redis so design task can read them."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        # Hard-cutover design dispatch carries the answers in the new
+        # canonical job input. Keeping a second Redis hand-off would make the
+        # interview state non-durable and create a split source of truth.
+        return
     r = _get_redis()
     r.set(f"agency-creator:{task_id}:ans", json.dumps(answers), ex=RESULT_TTL)
 
 
 def get_answers(task_id: str) -> dict[str, str]:
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        return {}
     r = _get_redis()
     raw = r.get(f"agency-creator:{task_id}:ans")
     return json.loads(raw) if raw else {}
@@ -103,6 +123,9 @@ def get_answers(task_id: str) -> dict[str, str]:
 
 def store_suggestions(task_id: str, suggestions: list[dict]) -> None:
     """Store improvement suggestions in a separate Redis key (F09 isolation)."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        # Suggestions are included in the final canonical output projection.
+        return
     try:
         r = _get_redis()
         r.set(f"agency-creator:{task_id}:suggestions", json.dumps(suggestions, default=str), ex=RESULT_TTL)
@@ -110,8 +133,14 @@ def store_suggestions(task_id: str, suggestions: list[dict]) -> None:
         logger.error("agency_creator_store_suggestions_failed", task_id=task_id, error=str(exc)[:200])
 
 
-def get_suggestions(task_id: str) -> list[dict]:
-    """Read improvement suggestions from Redis."""
+def get_suggestions(task_id: str, tenant_id: str | None = None) -> list[dict]:
+    """Read improvement suggestions from the canonical output in hard cutover."""
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        from app.services.job_control_plane import JobControlPlaneClient
+
+        data = JobControlPlaneClient().legacy_status(task_id, tenant_id=tenant_id)
+        suggestions = data.get("suggestions") if isinstance(data, dict) else None
+        return suggestions if isinstance(suggestions, list) else []
     try:
         r = _get_redis()
         raw = r.get(f"agency-creator:{task_id}:suggestions")
@@ -377,10 +406,18 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
             "message": "Designing agency architecture...",
             "_user_id": user_id,
         })
-        create_agency_design_task.delay(
-            task_id=task_id,
+        from app.services.job_control_plane import dispatch_python_task
+        dispatch_python_task(
+            create_agency_design_task.name,
+            kwargs={
+                "task_id": task_id,
+                "user_id": user_id,
+                "payload": {**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
+            },
+            tenant_id=payload.get("tenantId"),
             user_id=user_id,
-            payload={**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
+            idempotency_key=f"agency-creator:design:{payload.get('tenantId')}:{task_id}",
+            legacy_task=create_agency_design_task,
         )
         return {"status": "dispatched"}
 
@@ -388,10 +425,18 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
     questions = _filter_goal_questions(intent.get("questions", []))
     if not questions:
         # No goal questions remain → go straight to design
-        create_agency_design_task.delay(
-            task_id=task_id,
+        from app.services.job_control_plane import dispatch_python_task
+        dispatch_python_task(
+            create_agency_design_task.name,
+            kwargs={
+                "task_id": task_id,
+                "user_id": user_id,
+                "payload": {**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
+            },
+            tenant_id=payload.get("tenantId"),
             user_id=user_id,
-            payload={**payload, "intent": intent, "answers": {}, "discover_analysis": discover_analysis},
+            idempotency_key=f"agency-creator:design:{payload.get('tenantId')}:{task_id}",
+            legacy_task=create_agency_design_task,
         )
         return {"status": "dispatched"}
 
@@ -407,7 +452,17 @@ async def _discover_async(task_id: str, user_id: int, payload: dict) -> dict:
         "_discover_analysis": discover_analysis,
         # _user_jwt intentionally omitted — never persist bearer tokens at rest in Redis
     })
-    return {"status": "awaiting_answers", "questions": questions}
+    # Keep the continuation context in the canonical terminal output. The
+    # public API strips private keys, while the authenticated answer handler
+    # can resume without a Redis-only hand-off.
+    return {
+        "status": "awaiting_answers",
+        "questions": questions,
+        "_payload": payload,
+        "_intent": intent,
+        "_model": model,
+        "_discover_analysis": discover_analysis,
+    }
 
 
 # ─── Task 2: DESIGN → DOCUMENT ───────────────────────────────────────────────
@@ -617,6 +672,7 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         "previewJson": spec,
         "guide": guide,
         "hasSuggestions": len(suggestions) > 0,
+        "suggestions": suggestions,
         "_user_id": user_id,
     })
     logger.info(
@@ -624,7 +680,18 @@ async def _design_async(task_id: str, user_id: int, payload: dict) -> dict:
         task_id=task_id, agency_id=agency_id, llm_calls=llm_call_count,
         suggestions_count=len(suggestions),
     )
-    return {"status": "completed", "agencyId": agency_id}
+    # Keep the public projection in the canonical result as well as in the
+    # legacy progress bridge. The control-plane terminal write replaces the
+    # progress projection, so returning only agencyId would silently discard
+    # the guide and review data on a hard-cutover completion.
+    return {
+        "status": "completed",
+        "agencyId": agency_id,
+        "previewJson": spec,
+        "guide": guide,
+        "hasSuggestions": len(suggestions) > 0,
+        "suggestions": suggestions,
+    }
 
 
 # ─── LLM helpers ─────────────────────────────────────────────────────────────

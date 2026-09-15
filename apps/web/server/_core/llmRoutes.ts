@@ -103,6 +103,7 @@ import { isRedisAvailable } from "../services/redis";
 interface ProviderQueueConfig {
   minDelayMs: number;
   maxConcurrent: number;
+  perUserMaxConcurrent?: number;
   freeModelMultiplier: number;
 }
 
@@ -111,6 +112,7 @@ interface ProviderRateLimiter {
   activeRequests: number;
   waitingCount: number;
   config: ProviderQueueConfig;
+  userActiveRequests: Map<string, number>;
 }
 
 const providerRateLimiters: Map<string, ProviderRateLimiter> = new Map();
@@ -118,7 +120,9 @@ const providerRateLimiters: Map<string, ProviderRateLimiter> = new Map();
 const PROVIDER_QUEUE_CONFIGS: Record<string, ProviderQueueConfig> = {
   'opencode-zen': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
   'opencode': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
-  'openrouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
+  // OpenRouter account policy: 20 requests/minute. The queue remains
+  // accepting; this delay only controls when the upstream request is sent.
+  'openrouter': { minDelayMs: 3000, maxConcurrent: 10, perUserMaxConcurrent: 3, freeModelMultiplier: 1.5 },
   'krouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
   'default': { minDelayMs: 200, maxConcurrent: 5, freeModelMultiplier: 1.5 },
 };
@@ -129,7 +133,7 @@ function getInMemoryRateLimiter(providerName: string): ProviderRateLimiter {
 
   if (!limiter) {
     const config = PROVIDER_QUEUE_CONFIGS[key] ?? PROVIDER_QUEUE_CONFIGS['default'];
-    limiter = { lastRequestTime: 0, activeRequests: 0, waitingCount: 0, config };
+    limiter = { lastRequestTime: 0, activeRequests: 0, waitingCount: 0, config, userActiveRequests: new Map() };
     providerRateLimiters.set(key, limiter);
   }
 
@@ -140,7 +144,7 @@ function getInMemoryRateLimiter(providerName: string): ProviderRateLimiter {
  * Acquire a slot in the provider queue
  * Uses Bottleneck with Redis when available, falls back to in-memory
  */
-async function acquireProviderSlot(providerName: string, isFreeModel: boolean = false): Promise<{ queuePosition: number }> {
+async function acquireProviderSlot(providerName: string, isFreeModel: boolean = false, userKey?: string): Promise<{ queuePosition: number }> {
   // Try to use Bottleneck if available (has Redis)
   // Note: For streaming, we still need the slot pattern since we can't wrap
   // the entire stream in scheduleWithLimiter
@@ -149,7 +153,11 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
   const queuePosition = limiter.waitingCount + limiter.activeRequests;
 
   // Wait for concurrency slot
-  while (limiter.activeRequests >= limiter.config.maxConcurrent) {
+  while (
+    limiter.activeRequests >= limiter.config.maxConcurrent
+    || Boolean(userKey && limiter.config.perUserMaxConcurrent
+      && (limiter.userActiveRequests.get(userKey) ?? 0) >= limiter.config.perUserMaxConcurrent)
+  ) {
     debugLog("LLM", `Waiting for slot: ${providerName} (active: ${limiter.activeRequests}/${limiter.config.maxConcurrent})`);
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -171,6 +179,9 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
 
   limiter.lastRequestTime = Date.now();
   limiter.activeRequests++;
+  if (userKey) {
+    limiter.userActiveRequests.set(userKey, (limiter.userActiveRequests.get(userKey) ?? 0) + 1);
+  }
   limiter.waitingCount--;
 
   return { queuePosition };
@@ -179,9 +190,14 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
 /**
  * Release a slot in the provider queue
  */
-function releaseProviderSlot(providerName: string): void {
+function releaseProviderSlot(providerName: string, userKey?: string): void {
   const limiter = getInMemoryRateLimiter(providerName);
   limiter.activeRequests = Math.max(0, limiter.activeRequests - 1);
+  if (userKey) {
+    const active = Math.max(0, (limiter.userActiveRequests.get(userKey) ?? 0) - 1);
+    if (active === 0) limiter.userActiveRequests.delete(userKey);
+    else limiter.userActiveRequests.set(userKey, active);
+  }
 }
 
 /**
@@ -2593,7 +2609,8 @@ async function proxyChatWithCredits(
   // Apply provider-specific rate limiting with queue system to avoid API rate limit errors
   const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
   const queueWaitStartedAt = Date.now();
-  const slot = await acquireProviderSlot(provider.providerName, isFreeModel);
+  const providerUserKey = `user:${userId}`;
+  const slot = await acquireProviderSlot(provider.providerName, isFreeModel, providerUserKey);
   timing.queueWaitMs = Date.now() - queueWaitStartedAt;
   queuePosition = slot.queuePosition;
 
@@ -2608,7 +2625,7 @@ async function proxyChatWithCredits(
     });
   } catch (fetchError: any) {
     // Release slot on fetch error (network issues, etc.)
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
     // Record failed request
     recordModelUsage(provider.providerName, requestedModelId, false);
     const parsedError = parseProviderError(fetchError?.message || "Network error", provider.providerName);
@@ -2621,7 +2638,7 @@ async function proxyChatWithCredits(
 
   if (!upstream.ok) {
     // Release slot on upstream error
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
     // Record failed request
     recordModelUsage(provider.providerName, requestedModelId, false);
     const message = await upstream.text().catch(() => upstream.statusText);
@@ -2633,7 +2650,7 @@ async function proxyChatWithCredits(
   }
 
   if (bridgeResponsesForChat && stream) {
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     const text = await upstream.text();
     let rawData: any;
@@ -2854,7 +2871,7 @@ async function proxyChatWithCredits(
   if (!stream) {
     // Non-streaming: parse response, deduct credits, return
     // Release slot immediately since we have the response
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     const text = await upstream.text();
     let rawData: any;
@@ -3124,7 +3141,7 @@ async function proxyChatWithCredits(
     } catch {}
 
     // Release provider slot after streaming completes
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     // Try to extract usage from the accumulated SSE transcript.
     let inputTokens = 0;

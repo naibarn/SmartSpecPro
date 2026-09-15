@@ -15,6 +15,8 @@ import { getDb } from "../db";
 import { getRealtimeClient } from "../services/redisClients";
 import { cleanupExpiredArchives } from "../services/memoryArchiveService";
 import { enqueueEmbedding } from "../services/embeddingQueue";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcDailyDue } from "./feature186SystemScheduler";
+import { upsertLegacyBullMqScheduler } from "../services/jobLegacyTransportAdapters";
 
 const QUEUE_NAME = "memory-maintenance";
 const RETENTION_CATEGORY = "chat_memory_retention";
@@ -583,6 +585,28 @@ async function runMaintenanceJob(jobName: string): Promise<void> {
 }
 
 export async function initializeMemoryMaintenanceJobs(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    const schedules = [
+      ["memory-archive-cleanup", "memory.archive_cleanup", utcDailyDue(3, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:archive`] as const,
+      ["memory-chunk-cleanup", "memory.chunk_cleanup", utcDailyDue(3, 30), (now: Date) => `${now.toISOString().slice(0, 10)}:chunk`] as const,
+      ["memory-embedding-reconciliation", "memory.embedding_reconciliation", utcDailyDue(4, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:embedding`] as const,
+      ["memory-eviction", "memory.eviction", utcDailyDue(5, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:eviction`] as const,
+    ];
+    for (const [scheduleId, jobType, isDue, occurrenceKey] of schedules) {
+      startFeature186SystemSchedule({
+        scheduleId,
+        jobType,
+        executionClass: jobType === "memory.archive_cleanup" || jobType === "memory.chunk_cleanup" ? "short" : "long",
+        scheduleVersion: "1",
+        timezone: "UTC",
+        missedOccurrencePolicy: "coalesce",
+        isDue,
+        occurrenceKey,
+        intervalMs: 60_000,
+      });
+    }
+    return;
+  }
   if (maintenanceQueue) return;
 
   const redis = getRealtimeClient();
@@ -595,22 +619,22 @@ export async function initializeMemoryMaintenanceJobs(): Promise<void> {
     },
   });
 
-  await maintenanceQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(maintenanceQueue,
     "memory-archive-cleanup",
     { pattern: "0 3 * * *" },
     { name: "archive-cleanup" },
   );
-  await maintenanceQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(maintenanceQueue,
     "memory-chunk-cleanup",
     { pattern: "30 3 * * *" },
     { name: "chunk-cleanup" },
   );
-  await maintenanceQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(maintenanceQueue,
     "memory-embedding-reconciliation",
     { pattern: "0 4 * * *" },
     { name: "embedding-reconciliation" },
   );
-  await maintenanceQueue.upsertJobScheduler(
+  await upsertLegacyBullMqScheduler(maintenanceQueue,
     "memory-eviction",
     { pattern: "0 5 * * *" },
     { name: "eviction" },
@@ -631,6 +655,12 @@ export async function initializeMemoryMaintenanceJobs(): Promise<void> {
 }
 
 export async function shutdownMemoryMaintenanceJobs(): Promise<void> {
+  for (const scheduleId of [
+    "memory-archive-cleanup",
+    "memory-chunk-cleanup",
+    "memory-embedding-reconciliation",
+    "memory-eviction",
+  ]) stopFeature186SystemSchedule(scheduleId);
   if (maintenanceWorker) {
     await maintenanceWorker.close();
     maintenanceWorker = null;

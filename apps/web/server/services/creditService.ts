@@ -653,7 +653,8 @@ function buildTransactionHistoryConditions(params: TransactionHistoryParams) {
   // Keep legacy user-owned rows visible while preventing a user who changes
   // tenant context from reading another tenant's attributed ledger rows.
   if (params.tenantId) {
-    conditions.push(or(eq(creditTransactions.tenantId, params.tenantId), isNull(creditTransactions.tenantId)));
+    const tenantCondition = or(eq(creditTransactions.tenantId, params.tenantId), isNull(creditTransactions.tenantId));
+    if (tenantCondition) conditions.push(tenantCondition);
   }
 
   if (params.type) {
@@ -1171,15 +1172,28 @@ export interface CreditReservationBillingContext {
   contextRef?: CreditContextRef;
 }
 
+export interface CreditReservationOptions {
+  /**
+   * Allow a hard-cutover caller to keep the durable ledger reservation when
+   * Redis is unavailable. The caller must have a PostgreSQL recovery path for
+   * refund/settlement; ordinary Redis-backed reservations remain fail-closed.
+   */
+  allowWithoutRedis?: boolean;
+}
+
 export async function createCreditReservation(
   userId: number,
   amount: number,
   sourceType: CreditSourceType,
   metadata?: Record<string, any>,
   idempotencyKey?: string,
-  billing?: CreditReservationBillingContext
+  billing?: CreditReservationBillingContext,
+  options?: CreditReservationOptions,
 ): Promise<CreditReservation> {
-  if (!isRedisAvailable()) {
+  const allowWithoutRedis =
+    options?.allowWithoutRedis === true &&
+    process.env.FEATURE_186_HARD_CUTOVER === "true";
+  if (!isRedisAvailable() && !allowWithoutRedis) {
     throw new Error("Redis unavailable — cannot create credit reservation");
   }
 
@@ -1227,14 +1241,19 @@ export async function createCreditReservation(
     expiresAt: expiresAt.toISOString(),
   };
 
-  // Store in Redis with TTL
-  const redis = getRedisClient();
-  await redis.set(
-    `credit:reservation:${reservationId}`,
-    JSON.stringify(reservation),
-    "EX",
-    RESERVATION_TTL_SECONDS
-  );
+  // Store in Redis with TTL when available. Hard-cutover callers that opt into
+  // the durable-only path retain the credit transaction as the recovery
+  // record; they must settle/refund from that ledger rather than assuming this
+  // cache exists.
+  if (isRedisAvailable()) {
+    const redis = getRedisClient();
+    await redis.set(
+      `credit:reservation:${reservationId}`,
+      JSON.stringify(reservation),
+      "EX",
+      RESERVATION_TTL_SECONDS
+    );
+  }
 
   return reservation;
 }
@@ -1310,18 +1329,26 @@ export async function drawFromReservation(
 export async function refundReservation(
   reservationId: string,
   forceFixedSkillRefund = false,
+  reservationSnapshot?: CreditReservation,
 ): Promise<{ refundedAmount: number }> {
-  if (!isRedisAvailable()) {
+  if (!isRedisAvailable() && !reservationSnapshot) {
     return { refundedAmount: 0 };
   }
 
-  const redis = getRedisClient();
-  const raw = await redis.get(`credit:reservation:${reservationId}`);
-  if (!raw) {
+  const redis = isRedisAvailable() ? getRedisClient() : null;
+  const raw = redis ? await redis.get(`credit:reservation:${reservationId}`) : null;
+  if (!raw && !reservationSnapshot) {
     return { refundedAmount: 0 };
   }
 
-  const reservation: CreditReservation = JSON.parse(raw);
+  // A freshly-created hard-cutover reservation is allowed to use its immutable
+  // caller snapshot when Redis is unavailable. No draw can occur in that
+  // condition, so the snapshot is the safe refund basis. Callers that do not
+  // have a snapshot remain fail-closed rather than guessing from the ledger.
+  const reservation: CreditReservation = raw ? JSON.parse(raw) : reservationSnapshot!;
+  if (reservation.reservationId !== reservationId) {
+    throw new Error("Reservation snapshot does not match reservation id");
+  }
   const unused = reservation.reservedAmount - reservation.drawnAmount;
   const refundAmount =
     forceFixedSkillRefund && reservation.sourceType === "skill"
@@ -1329,21 +1356,22 @@ export async function refundReservation(
       : unused;
 
   if (refundAmount > 0) {
-    await refundCredits({
-      userId: reservation.userId,
-      amount: refundAmount,
-      description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
-      originalTransactionId: reservation.transactionId,
-      tenantId: reservation.tenantId,
-      sourceType: reservation.sourceType,
-      skillSlug: reservation.skillSlug,
-      skillRunId: reservation.skillRunId,
-      contextRef: reservation.contextRef,
-      metadata: { reservationId },
+      await refundCredits({
+        userId: reservation.userId,
+        amount: refundAmount,
+        description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
+        originalTransactionId: reservation.transactionId,
+        idempotencyKey: `reservation:${reservationId}:refund`,
+        tenantId: reservation.tenantId,
+        sourceType: reservation.sourceType,
+        skillSlug: reservation.skillSlug,
+        skillRunId: reservation.skillRunId,
+        contextRef: reservation.contextRef,
+        metadata: { reservationId },
     });
   }
 
-  await redis.del(`credit:reservation:${reservationId}`);
+  if (redis) await redis.del(`credit:reservation:${reservationId}`);
   return { refundedAmount: refundAmount };
 }
 

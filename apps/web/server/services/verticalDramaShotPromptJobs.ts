@@ -10,6 +10,11 @@ import type {
 } from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import { debugError } from "../_core/logger";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 export const VERTICAL_DRAMA_SHOT_PROMPT_JOBS_QUEUE =
   "vertical_drama_shot_prompt_jobs";
@@ -338,7 +343,18 @@ export async function enqueueVerticalDramaShotPromptJob(
           RECORD_TTL_SECONDS,
         );
       }
-      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+      if (isFeature186HardCutoverEnabled()) {
+        await createFeature186VerticalDramaJob({
+          jobId,
+          tenantId: payload.tenantId,
+          userId: payload.userId,
+          jobType: "vertical_drama.shot_prompt",
+          executionClass: "long",
+          payload: record as unknown as Record<string, unknown>,
+        });
+      } else {
+        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId);
+      }
     } catch (error) {
       const failed: VerticalDramaShotPromptJobRecord = {
         ...record,
@@ -436,7 +452,8 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
   if (!queue) {
     throw new Error(`${VERTICAL_DRAMA_SHOT_PROMPT_JOBS_QUEUE} queue is not initialized`);
   }
-  await queue.add(
+  await publishLegacyBullMqJob(
+    queue,
     "run",
     { jobId },
     {
@@ -449,6 +466,7 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
 }
 
 export async function initVerticalDramaShotPromptJobsQueue(): Promise<void> {
+  if (isFeature186HardCutoverEnabled()) return;
   if (queue) return;
   try {
     const { Queue, Worker } = await import("bullmq");

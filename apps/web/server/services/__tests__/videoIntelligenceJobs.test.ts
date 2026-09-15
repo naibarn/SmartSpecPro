@@ -979,4 +979,21 @@ describe("initVideoIntelligenceJobsQueue", () => {
     expect(sweep).toHaveBeenCalledTimes(1);
     expect(laneARenderSweep).toHaveBeenCalledTimes(1);
   });
+
+  it("does not arm the Redis orphan requeue sweep during hard cutover", async () => {
+    const previous = process.env.FEATURE_186_HARD_CUTOVER;
+    process.env.FEATURE_186_HARD_CUTOVER = "true";
+    try {
+      const sweep = vi.fn().mockResolvedValue(undefined);
+      const laneARenderSweep = vi.fn().mockResolvedValue(undefined);
+      await initVideoIntelligenceJobsQueue({ sweep, laneARenderSweep });
+      await Promise.resolve();
+
+      expect(sweep).not.toHaveBeenCalled();
+      expect(laneARenderSweep).toHaveBeenCalledTimes(1);
+    } finally {
+      if (previous === undefined) delete process.env.FEATURE_186_HARD_CUTOVER;
+      else process.env.FEATURE_186_HARD_CUTOVER = previous;
+    }
+  });
 });

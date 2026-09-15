@@ -6,13 +6,14 @@ GET  /api/v1/presentations/export/{id}     — poll task status
 """
 
 import json
+import hashlib
 import mimetypes
 import os
+import asyncio
 from datetime import datetime, timezone
 from typing import Any, Optional, Self
 
 import structlog
-from celery.result import AsyncResult
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import FileResponse
 from jose import JWTError, jwt
@@ -25,19 +26,24 @@ from app.models.user import User
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
-# Import Celery task with graceful fallback (section-07 may not be implemented yet).
-# CELERY_ENABLED is patched in tests that exercise the task-dispatch path.
-try:
-    from app.tasks.presentation_render import render_presentation
+# Keep the task import lazy in PostgreSQL-pull mode. The import-path identity
+# is sufficient for the dedicated worker and avoids making Celery a dispatch
+# dependency of the API process.
+render_presentation = None  # type: ignore[assignment]
+POSTGRES_PULL_ENABLED = os.getenv("FEATURE_186_HARD_CUTOVER") == "true" and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") == "true"
+CELERY_ENABLED = POSTGRES_PULL_ENABLED
+if not CELERY_ENABLED:
+    try:
+        from app.tasks.presentation_render import render_presentation
 
-    CELERY_ENABLED = True
-except ImportError:
-    render_presentation = None  # type: ignore[assignment]
-    CELERY_ENABLED = False
-    logger.warning(
-        "presentation_render_task_not_available",
-        message="presentation_render Celery task not available; POST /export will return 503",
-    )
+        CELERY_ENABLED = True
+    except ImportError:
+        logger.warning(
+            "presentation_render_task_not_available",
+            message="presentation_render task not available; POST /export will return 503",
+        )
+
+PRESENTATION_RENDER_TASK_NAME = "app.tasks.presentation_render.render_presentation"
 
 # Maximum allowed size for the serialized render_spec payload (64 KB)
 _RENDER_SPEC_MAX_BYTES = 65_536
@@ -214,7 +220,34 @@ async def create_export_job(
             # the original 3-argument task signature during rolling deploys.
             task_render_spec["__presentation_render_auth"] = render_auth.model_dump()
 
-        task = render_presentation.delay(task_render_spec, request.quality, request.format)
+        from app.services.job_control_plane import dispatch_python_task
+
+        tenant_id = render_auth.tenant_id if render_auth is not None else str(current_user.currentTenantId or "").strip()
+        task = dispatch_python_task(
+            getattr(render_presentation, "name", PRESENTATION_RENDER_TASK_NAME),
+            args=[task_render_spec, request.quality, request.format],
+            tenant_id=tenant_id,
+            user_id=current_user.id,
+            idempotency_key=(
+                "presentation-export:"
+                + hashlib.sha256(
+                    json.dumps(
+                        {
+                            "tenant_id": tenant_id,
+                            "user_id": current_user.id,
+                            "render_spec": task_render_spec,
+                            "quality": request.quality,
+                            "format": request.format,
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    ).encode("utf-8")
+                ).hexdigest()[:32]
+            ),
+            correlation_id=f"presentation-export:{current_user.id}",
+            legacy_task=render_presentation,
+        )
     except HTTPException:
         raise
     except Exception as exc:
@@ -248,6 +281,20 @@ async def cancel_presentation_export(
     Node.js is expected to mark the DB row as cancelled independently.
     """
     try:
+        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            from app.services.job_control_plane import JobControlPlaneClient
+
+            await asyncio.to_thread(
+                JobControlPlaneClient().cancel,
+                task_id,
+                action_id=f"presentation-export-cancel:{task_id}:{current_user.id}",
+                actor_id=int(current_user.id),
+                tenant_id=str(current_user.currentTenantId or "").strip() or None,
+                requested_by_user_id=int(current_user.id),
+            )
+            logger.info("presentation_export_cancel_requested", task_id=task_id, user_id=current_user.id, adapter="postgres-pull")
+            return {"success": True, "task_id": task_id, "message": "Task cancellation recorded"}
+
         from app.core.celery_app import celery_app
 
         celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
@@ -318,7 +365,42 @@ async def get_export_status(
     Note: Task IDs are random UUIDs — ownership is enforced by UUID entropy, not by a DB lookup.
     """
     try:
-        result = AsyncResult(celery_task_id)
+        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            from app.services.job_control_plane import JobControlPlaneClient
+
+            snapshot = await asyncio.to_thread(
+                JobControlPlaneClient().status,
+                celery_task_id,
+                tenant_id=str(current_user.currentTenantId or "").strip() or None,
+                requested_by_user_id=int(current_user.id),
+            )
+            canonical_status = str(snapshot.get("status") or "queued")
+            progress = snapshot.get("progress") if isinstance(snapshot.get("progress"), dict) else {}
+            output = snapshot.get("output") if isinstance(snapshot.get("output"), dict) else {}
+            if canonical_status == "succeeded":
+                return PresentationExportStatusResponse(
+                    celery_task_id=celery_task_id,
+                    state="done",
+                    percent=100,
+                    output_url=output.get("output_url"),
+                    output_storage_key=output.get("output_storage_key"),
+                )
+            if canonical_status in {"failed", "expired", "cancelled"}:
+                return PresentationExportStatusResponse(
+                    celery_task_id=celery_task_id,
+                    state="error",
+                    percent=0,
+                    error_message=str(snapshot.get("errorMessage") or canonical_status)[:2000],
+                )
+            return PresentationExportStatusResponse(
+                celery_task_id=celery_task_id,
+                state="processing" if canonical_status in {"leased", "running", "waiting_external"} else "queued",
+                percent=max(0, min(100, int(progress.get("progress") or 0))),
+                stage=progress.get("stage") if isinstance(progress.get("stage"), str) else None,
+            )
+
+        from app.services.legacy_task_status import read_legacy_task_status
+        result = read_legacy_task_status(celery_task_id)
         state = result.state  # lazy Redis read — can raise on broker outage
 
         if state == "SUCCESS":

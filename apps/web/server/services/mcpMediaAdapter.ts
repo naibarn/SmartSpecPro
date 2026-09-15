@@ -17,6 +17,7 @@ import {
 import { decrypt } from "./crypto";
 import { assertR2StorageActive, storagePut } from "../storage";
 import { normalizeMcpProviderModelIdForProvider } from "./mcpProviderModelAliases";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 
 export interface McpMediaGenerationRequest {
   tenantId: string;
@@ -2205,6 +2206,10 @@ export async function reconcileStaleMcpMediaTasks(): Promise<{
 let mcpStaleTaskReconcilerTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startMcpStaleMediaTaskReconciler(): void {
+  if (!shouldRunFeature192InProcessTimer("startMcpStaleMediaTaskReconciler")) {
+    console.info("[mcp-media] in-process reconciler disabled; use Cloudflare scheduler");
+    return;
+  }
   if (mcpStaleTaskReconcilerTimer) return;
   mcpStaleTaskReconcilerTimer = setInterval(() => {
     void reconcileStaleMcpMediaTasks().catch(error => {

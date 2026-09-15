@@ -1,4 +1,4 @@
-import { isRetryableError } from "./jobControlPlane";
+import { classifyJobError } from "./jobControlPlane";
 import type { JobControlPlane } from "./jobControlPlane";
 import { createJobReporter } from "./jobReporter";
 import type { JobResult, LeaseContext } from "./jobControlPlaneTypes";
@@ -8,15 +8,17 @@ export type JobExecutor = (input: {
   context: JobExecutorContext;
   lease: LeaseContext;
   reporter: ReturnType<typeof createJobReporter>;
+  controlPlane: JobControlPlane;
 }) => Promise<JobResult>;
 
 export type CanonicalExecutionResult =
   | { state: "ignored"; jobId: string }
-  | { state: "succeeded"; jobId: string; attemptId: string };
+  | { state: "succeeded"; jobId: string; attemptId: string }
+  | { state: "deferred"; jobId: string; attemptId: string };
 
 /** Claims one canonical delivery and delegates all lifecycle writes to the shared reporter. */
 export async function executeCanonicalJob(
-  input: { jobId: string; runnerId: string; adapter: string },
+  input: { jobId: string; runnerId: string; adapter: string; attemptId?: string },
   dependencies: { controlPlane: JobControlPlane; executor: JobExecutor },
 ): Promise<CanonicalExecutionResult> {
   const lease = await dependencies.controlPlane.claim(input);
@@ -27,14 +29,18 @@ export async function executeCanonicalJob(
   await dependencies.controlPlane.start(lease);
   try {
     await reporter.assertActive(lease);
-    const result = await dependencies.executor({ context, lease, reporter });
+    const result = await dependencies.executor({ context, lease, reporter, controlPlane: dependencies.controlPlane });
+    if (result.deferred) {
+      return { state: "deferred", jobId: input.jobId, attemptId: lease.attemptId };
+    }
     await reporter.complete(lease, result);
   } catch (error) {
+    const errorClass = classifyJobError(error);
     await reporter.fail(lease, {
       code: error instanceof Error ? error.name.slice(0, 100) : "JOB_EXECUTOR_ERROR",
       message: error instanceof Error ? error.message.slice(0, 2000) : "Job executor failed",
-      class: isRetryableError(error) ? "retryable" : "unknown",
-      operatorReviewRequired: !isRetryableError(error),
+      class: errorClass,
+      operatorReviewRequired: errorClass === "unknown",
     });
     throw error;
   }

@@ -7,6 +7,43 @@ export const STORYBOARD_DEFAULT_SHOTS = 9;
 export const STORYBOARD_SHOT_DURATION_SEC = 10;
 export const STORYBOARD_ASPECT_RATIO = "9:16" as const;
 
+export const storyboardIdeaExpansionSchema = z
+  .object({
+    projectTitle: z.string().trim().min(1).max(256),
+    videoIdea: z.string().trim().min(1).max(12000),
+    sceneDetail: z.string().trim().min(1).max(12000),
+    customActivity: z.string().trim().min(1).max(12000),
+    customNotes: z.string().trim().min(1).max(16000),
+  })
+  .strict();
+export type StoryboardIdeaExpansion = z.infer<
+  typeof storyboardIdeaExpansionSchema
+>;
+
+export const STORYBOARD_IDEA_EXPANSION_FIELD_MAP = {
+  sceneDetail: "scene_detail",
+  customActivity: "custom_activity",
+  customNotes: "custom_notes",
+} as const;
+
+export function mapStoryboardIdeaExpansionToSkillInputs(
+  expansion: StoryboardIdeaExpansion,
+  skillProperties: Record<string, unknown>,
+  currentSkillInputs: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const next = { ...currentSkillInputs };
+  for (const [sourceKey, skillKey] of Object.entries(
+    STORYBOARD_IDEA_EXPANSION_FIELD_MAP,
+  ) as Array<
+    [keyof typeof STORYBOARD_IDEA_EXPANSION_FIELD_MAP, string]
+  >) {
+    if (skillProperties[skillKey] !== undefined) {
+      next[skillKey] = expansion[sourceKey];
+    }
+  }
+  return next;
+}
+
 export const storyboardStoryTypeSchema = z.enum(["mime", "dialogue", "hybrid"]);
 export type StoryboardStoryType = z.infer<typeof storyboardStoryTypeSchema>;
 
@@ -132,6 +169,11 @@ export const STORYBOARD_TERMINAL_RUN_STATUSES = [
   "failed",
   "cancelled",
 ] as const;
+/** Terminal runs that must not be presented as resumable/unfinished work. */
+export const STORYBOARD_RECOVERY_INDEX_EXCLUDED_STATUSES = [
+  "succeeded",
+  "cancelled",
+] as const;
 export type StoryboardRunStatus =
   | "awaiting_confirmation"
   | "queued"
@@ -139,6 +181,7 @@ export type StoryboardRunStatus =
   | "partial"
   | "succeeded"
   | "failed"
+  | "paused"
   | "cancel_requested"
   | "cancelled";
 
@@ -162,8 +205,140 @@ export function isTerminalStoryboardRunStatus(
   );
 }
 
+export function isStoryboardExecutionStopped(status: string): boolean {
+  return status === "paused" || status === "cancel_requested" || status === "cancelled";
+}
+
+/** A successful durable image is reusable and must never be submitted again. */
+export function isReusableStoryboardImage(input: {
+  status: string;
+  imageAssetId?: unknown;
+  suppressedResult?: unknown;
+}): boolean {
+  const assetId = Number(input.imageAssetId);
+  return input.status === "succeeded"
+    && Number.isSafeInteger(assetId)
+    && assetId > 0
+    && input.suppressedResult !== true;
+}
+
 export function isRetryableStoryboardShotStatus(status: string): boolean {
   return status === "failed" || status === "partial";
+}
+
+export function isRepairableStoryboardShot(
+  status: string,
+  _error: unknown,
+): boolean {
+  if (!isRetryableStoryboardShotStatus(status)) return false;
+  // This predicate is for an explicit user repair action. Unknown provider
+  // outcomes are not safe for automatic retry, but they must remain
+  // recoverable instead of becoming an unrepairable dead end.
+  return true;
+}
+
+export type StoryboardGenerationFailureClass = "policy" | "transient" | "permanent" | "unknown";
+
+function sanitizeStoryboardFailureDetail(value: string): string {
+  return value
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/(bearer\s+)[^\s,;]+/gi, "$1[redacted]")
+    .replace(/((?:token|secret|authorization|api[_-]?key)\s*[=:]\s*)[^\s,;]+/gi, "$1[redacted]")
+    .slice(0, 500);
+}
+
+export function classifyStoryboardGenerationError(error: unknown): {
+  class: StoryboardGenerationFailureClass;
+  code: string;
+  message: string;
+  detail: string;
+  statusCode?: number;
+} {
+  const rawMessage = (error instanceof Error ? error.message : String(error ?? "Unknown provider error"))
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 2000) || "Unknown provider error";
+  const detail = sanitizeStoryboardFailureDetail(rawMessage);
+  const lower = rawMessage.toLowerCase();
+  const statusCode = error && typeof error === "object" && !Array.isArray(error)
+    ? Number((error as Record<string, unknown>).statusCode)
+    : Number.NaN;
+  const classified = <T extends { class: StoryboardGenerationFailureClass; code: string; message: string }>(
+    result: T,
+  ): T & { detail: string; statusCode?: number } => ({
+    ...result,
+    detail,
+    ...(Number.isFinite(statusCode) ? { statusCode } : {}),
+  });
+  if (statusCode === 429 || (statusCode >= 500 && statusCode <= 599)) {
+    return classified({ class: "transient", code: "IMAGE_PROVIDER_TRANSIENT", message: "The image provider is temporarily unavailable." });
+  }
+  if (statusCode >= 400 && statusCode < 500 && statusCode !== 409) {
+    return classified({ class: "permanent", code: "IMAGE_PROVIDER_PERMANENT", message: "The image provider rejected the request." });
+  }
+  if (/(insufficient|not enough|no enough).*(credit|point)|credit.*(required|balance|exhausted)/.test(lower)) {
+    return classified({ class: "permanent", code: "STORYBOARD_INSUFFICIENT_CREDITS", message: "There are not enough credits to generate this image." });
+  }
+  if (/storyboard_reference|reference (asset|image).*(not found|missing|invalid)|asset.*not found/.test(lower)) {
+    return classified({ class: "permanent", code: "STORYBOARD_REFERENCE_INVALID", message: "A storyboard reference image is missing or invalid." });
+  }
+  if (/(model|image model).*(not found|unavailable|unsupported)|selected model/.test(lower)) {
+    return classified({ class: "permanent", code: "STORYBOARD_MODEL_UNAVAILABLE", message: "The selected image model is unavailable." });
+  }
+  if (/(database unavailable|database not available|credit_ledger_write_failed|deadlock|could not serialize)/.test(lower)) {
+    return classified({ class: "transient", code: "STORYBOARD_DEPENDENCY_TRANSIENT", message: "A required service was temporarily unavailable." });
+  }
+  if (/(content|safety|policy|moderation|prompt|provider).*(invalid|blocked|violation|reject)|invalid prompt|safety filter/.test(lower)) {
+    return classified({ class: "policy", code: "IMAGE_PROMPT_CONSTRAINT", message: "The provider rejected the image prompt for a content or safety constraint." });
+  }
+  if (/(429|rate limit|502|503|504)/.test(lower)) {
+    return classified({ class: "transient", code: "IMAGE_PROVIDER_TRANSIENT", message: "The image provider is temporarily unavailable." });
+  }
+  // A network failure after submission can mean the provider accepted the
+  // operation but the response was lost. Keep these cases fail-closed until
+  // the deterministic operation key/reference is reconciled.
+  if (/(timeout|timed out|deadline|socket hang up|econnreset|connection reset|temporar(?:ily)? unavailable)/.test(lower)) {
+    return classified({ class: "unknown", code: "IMAGE_OPERATION_AMBIGUOUS", message: "The provider operation could not be verified and requires review." });
+  }
+  if (/(400|unsupported|invalid model|bad request|permission|unauthorized|forbidden)/.test(lower)) {
+    return classified({ class: "permanent", code: "IMAGE_PROVIDER_PERMANENT", message: "The image provider rejected the request." });
+  }
+  return classified({ class: "unknown", code: "IMAGE_PROVIDER_UNKNOWN", message: "The image provider returned an unclassified error and requires review." });
+}
+
+export function escalateStoryboardProviderFailure(input: {
+  failure: ReturnType<typeof classifyStoryboardGenerationError>;
+  providerSubmissionStarted: boolean;
+  creditSettled: boolean;
+}): ReturnType<typeof classifyStoryboardGenerationError> {
+  if (
+    (input.providerSubmissionStarted || input.creditSettled) &&
+    (input.failure.class === "transient" || input.failure.class === "unknown")
+  ) {
+    return {
+      ...input.failure,
+      class: "unknown",
+      code: "STORYBOARD_PROVIDER_OPERATION_AMBIGUOUS",
+      message: "The provider request may have started, so automatic retry is blocked until the operation is reconciled.",
+    };
+  }
+  return input.failure;
+}
+
+/**
+ * Conservative, deterministic repair used only after a policy/constraint
+ * rejection. It preserves the authored story and adds an auditable repair
+ * instruction instead of silently rewriting the creative idea.
+ */
+export function optimizeStoryboardPromptForConstraint(
+  prompt: string,
+  failureCode: string,
+): string {
+  const repair = failureCode === "IMAGE_PROMPT_CONSTRAINT"
+    ? "Constraint repair: keep the scene family-friendly, non-graphic, non-sexual, and free of logos, copyrighted characters, readable text, and unsafe instructions."
+    : "Constraint repair: simplify the visual description while preserving the same character, action, setting, and camera intent."
+  const normalized = prompt.trim();
+  return `${normalized}\n\n${repair}`.slice(0, 100000);
 }
 
 export const storyboardGenerationRequestSchema = z
@@ -259,6 +434,35 @@ export function redactStoryboardValue(value: unknown, depth = 0): unknown {
     }
   }
   return output;
+}
+
+/**
+ * Normalize the two reference shapes accepted by the Storyboard UI while
+ * keeping raw storage keys scoped to the authenticated owner. Numeric values
+ * are media-asset IDs and are resolved against PostgreSQL by the worker.
+ */
+export function normalizeStoryboardReferenceValue(
+  value: string,
+  tenantId: string,
+  userId: number,
+): string | null {
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (
+    normalized.startsWith("/api/storage/files/") ||
+    normalized.startsWith("/uploads/") ||
+    normalized.startsWith("http://") ||
+    normalized.startsWith("https://")
+  ) {
+    return normalized;
+  }
+  const ownedPrefixes = [
+    "chat/uploads/" + tenantId + "/" + userId + "/",
+    "chat/uploads/" + userId + "/",
+  ];
+  return ownedPrefixes.some(prefix => normalized.startsWith(prefix))
+    ? "/api/storage/files/" + encodeURIComponent(normalized)
+    : null;
 }
 
 export function assertCanonicalGenerationRequest(

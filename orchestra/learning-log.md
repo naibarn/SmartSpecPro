@@ -74,3 +74,40 @@ Learning:
   retry classification must use stable machine markers, not environment-dependent human-readable limit text.
   public direct URLs remain an intentional narrow optimization; protected/managed/query/data/private/long references must use the canonical upload boundary.
   baseline tests must be reported separately rather than repaired by weakening tenant or media safety rules.
+## Learning entry - 2026-09-15T01:14:02Z
+
+Outcome:
+  stop_reason: success_with_external_gates_deferred
+  requested_goal: Recheck implementation against Feature 186/192 at least ten times and repair gaps.
+  completed_scope: Ten conductor-led review rounds plus one repair round and fresh focused gates.
+  skipped_or_deferred: Target-account, deployment, provider recovery/PITR, Vectorize target, and legacy drain evidence require external state.
+
+Loop counters:
+  iterations_used: 10/12
+  tool_call_batches_used: 15/30 manual conservative count
+  dispatch_waves_used: 0/6
+  repair_rounds_used: 1/5
+  timed_out_subagents: none
+  estimated_cost_usd: negligible-low/0.50
+
+Evidence quality:
+  data_first_debug_applied: false
+  evidence_sources: [test-output, server-log]
+  evidence_gap: target-account and production recovery evidence unavailable locally
+  ui_guessing_prevented: true
+
+Verification:
+  commands_run: [verify:feature-192:focused, verify:feature-186, verify:cloudflare-runtime-target, verify:cloudflare-local-readiness, verify:cloudflare-target-readiness -- --mode local, targeted vitest suites, git diff --check]
+  commands_skipped: [npm run typecheck - repository RAM restriction; target-account deployment/PITR - external gate]
+  stale_gates_rerun: [Feature 192 focused verifier, Feature 186 verifier, Cloudflare target/readiness verifiers, admin/control-plane tests]
+  must_do_now_gaps_fixed: [stale admin procedure-count assertion]
+  should_offer_next: [target-account binding and recovery rehearsal]
+  safely_deferred: [external Cloudflare and production recovery gates - cannot be proven by local mocks]
+  residual_risk: Production readiness is not claimed until external gates pass.
+
+Next improvement signals:
+  routing_miss: none
+  missing_agent_or_gate: none; SocratiCode and callable subagents were unavailable, so shell/verifier fallback was used.
+  repeated_failure_pattern: brittle exact-count test assertions can fail when admin surfaces expand.
+  context_pressure: medium
+  suggested_policy_change: Prefer required-member assertions for extensible admin routers.

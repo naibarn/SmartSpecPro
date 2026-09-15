@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { createRecordingClock } from "./recordingClock";
 import type { NleClip } from "../../types/nleProject";
 import { invoke } from "@tauri-apps/api/core";
+import { useWorkerLocale } from "../../app/workerContext";
 
 interface VoiceoverRecordModalProps {
   isOpen: boolean;
@@ -35,6 +36,8 @@ export function VoiceoverRecordModal({
   onSyncPlayVideo,
   workspacePath,
 }: VoiceoverRecordModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [devices, setDevices] = useState<AudioInputDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const [isRecording, setIsRecording] = useState(false);
@@ -321,9 +324,9 @@ export function VoiceoverRecordModal({
           <div className="modal-header-title">
             <span className="modal-icon">🎙️</span>
             <div>
-              <h3>ห้องบันทึกเสียงบรรยายสด (Voiceover Studio)</h3>
+              <h3>{t("ห้องบันทึกเสียงบรรยายสด (Voiceover Studio)", "Voiceover studio")}</h3>
               <p className="modal-subtext" style={{ fontSize: "0.75rem", color: "#94a3b8", margin: 0 }}>
-                บันทึกเสียงสดพร้อมเล่นวิดีโอคู่ขนาน เพื่อการพากย์ที่แม่นยำตรงจังหวะ
+                {t("บันทึกเสียงสดพร้อมเล่นวิดีโอคู่ขนาน เพื่อการพากย์ที่แม่นยำตรงจังหวะ", "Record while previewing the video for accurate timing")}
               </p>
             </div>
           </div>
@@ -336,8 +339,8 @@ export function VoiceoverRecordModal({
           {/* Device Selection & Status */}
           <div className="modal-form-group">
             <label className="form-label" style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>เลือกไมโครโฟน / สัญญาณเสียงเข้า (Audio Input Device):</span>
-              <span style={{ color: "#38bdf8", fontWeight: 600 }}>{devices.length} อุปกรณ์ที่พบ</span>
+              <span>{t("เลือกไมโครโฟน / สัญญาณเสียงเข้า (Audio Input Device):", "Microphone / audio input device:")}</span>
+              <span style={{ color: "#38bdf8", fontWeight: 600 }}>{devices.length} {t("อุปกรณ์ที่พบ", "devices found")}</span>
             </label>
             <select
               className="font-select-field"

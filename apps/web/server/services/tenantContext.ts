@@ -84,3 +84,20 @@ export function resolveTenantIdVarchar(
 
   return null;
 }
+
+/**
+ * Resolve the tenant for request context construction.
+ *
+ * Authenticated requests must use the account binding and must fail closed
+ * when it is absent; the public hostname tenant is only a branding/discovery
+ * context for unauthenticated requests.
+ */
+export function resolveRequestTenantId(input: {
+  authenticated: boolean;
+  accountTenantId: unknown;
+  publicTenantId: unknown;
+}): string | null {
+  return normalizeTenantIdVarchar(
+    input.authenticated ? input.accountTenantId : input.publicTenantId,
+  );
+}

@@ -5,13 +5,16 @@
  * document chunking, and image description via vision model.
  */
 
-const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5"; // 768 dimensions
+import { VECTORIZE_EMBEDDING_DIMENSIONS } from "./vectorizeContract";
+
+const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5";
 const VISION_MODEL = "@cf/llava-hf/llava-1.5-7b-hf";
 const CHUNK_SIZE = 2000; // ~500 tokens
 const CHUNK_OVERLAP = 200;
 
 function getWorkersAiUrl(model: string): string {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID;
+  if (!accountId) throw new Error("CLOUDFLARE_ACCOUNT_ID not set");
   return `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`;
 }
 
@@ -56,10 +59,20 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   }
 
   const data = (await response.json()) as {
-    result: { data: number[][] };
+    result?: { data?: unknown };
     success: boolean;
   };
-  return data.result.data[0];
+  const vectors = data.result?.data;
+  if (
+    data.success === false
+    || !Array.isArray(vectors)
+    || !Array.isArray(vectors[0])
+    || vectors[0].length !== VECTORIZE_EMBEDDING_DIMENSIONS
+    || vectors[0].some((value) => typeof value !== "number" || !Number.isFinite(value))
+  ) {
+    throw new Error("Workers AI embedding returned an invalid 768-dimensional vector");
+  }
+  return vectors[0] as number[];
 }
 
 /**
@@ -95,9 +108,12 @@ export async function generateImageDescription(
   }
 
   const data = (await response.json()) as {
-    result: { description: string };
+    result?: { description?: unknown };
     success: boolean;
   };
+  if (data.success === false || typeof data.result?.description !== "string") {
+    throw new Error("Workers AI vision returned an invalid description");
+  }
   return data.result.description;
 }
 
@@ -127,8 +143,11 @@ export async function generateImageDescriptionFromBuffer(
   }
 
   const data = (await response.json()) as {
-    result: { description: string };
+    result?: { description?: unknown };
     success: boolean;
   };
+  if (data.success === false || typeof data.result?.description !== "string") {
+    throw new Error("Workers AI vision returned an invalid description");
+  }
   return data.result.description;
 }

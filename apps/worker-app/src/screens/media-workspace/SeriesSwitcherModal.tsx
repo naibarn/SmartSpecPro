@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useWorkerLocale } from "../../app/workerContext";
 
 export interface SeriesSwitcherModalProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export function SeriesSwitcherModal({
   currentSeriesId,
   onSelectSeries,
 }: SeriesSwitcherModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => locale === "th" ? th : en;
   const [query, setQuery] = useState<string>("");
   const [seriesList, setSeriesList] = useState<SeriesItem[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -92,10 +95,10 @@ export function SeriesSwitcherModal({
             <span className="modal-title-icon" style={{ fontSize: "1.4rem" }}>📺</span>
             <div>
               <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "#f8fafc" }}>
-                เลือก / สลับซีรีส์ (Series Selection)
+                {t("เลือก / สลับซีรีส์ (Series Selection)", "Select / switch series")}
               </h3>
               <p className="modal-subtitle" style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#94a3b8" }}>
-                ดึงข้อมูล Series จริงจาก Server (smartaihub.app) เพื่อผูกข้อมูลช็อตและ Spec 176/177
+                {t("ดึงข้อมูล Series จริงจาก Server (smartaihub.app) เพื่อผูกข้อมูลช็อตและ Spec 176/177", "Load series data from the server to link shots and Specs 176/177")}
               </p>
             </div>
           </div>

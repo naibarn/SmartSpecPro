@@ -16,6 +16,8 @@ import {
 import { and, eq, gt, desc, isNotNull } from "drizzle-orm";
 import { getRedisClient } from "../services/redis";
 import { sendNotificationDigest } from "../services/notificationEmailService";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule } from "./feature186SystemScheduler";
+import { publishLegacyBullMqJob } from "../services/jobLegacyTransportAdapters";
 
 const QUEUE_NAME = "notification-digest";
 const DIGEST_LIMIT = 20;
@@ -186,6 +188,20 @@ export async function executeDigestRun(): Promise<void> {
 // ─── BullMQ Initialization ───────────────────────────────────────────────────
 
 export async function initializeDigestJob(): Promise<void> {
+  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+    startFeature186SystemSchedule({
+      scheduleId: "notification-digest",
+      jobType: "notification.digest",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: () => true,
+      occurrenceKey: now => now.toISOString().slice(0, 13),
+      intervalMs: 60_000,
+    });
+    return;
+  }
   if (queue) return; // Already initialized
 
   const redis = getRedisClient();
@@ -200,7 +216,7 @@ export async function initializeDigestJob(): Promise<void> {
   queue = new Queue(QUEUE_NAME, { connection: connection as any });
 
   // Add repeatable job: every hour (3600000ms)
-  await queue.add(
+  await publishLegacyBullMqJob(queue,
     "digest-run",
     {},
     {
@@ -229,6 +245,7 @@ export async function initializeDigestJob(): Promise<void> {
 }
 
 export async function shutdownDigestJob(): Promise<void> {
+  stopFeature186SystemSchedule("notification-digest");
   if (worker) {
     await worker.close();
     worker = null;

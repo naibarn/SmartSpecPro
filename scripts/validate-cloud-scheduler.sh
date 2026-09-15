@@ -3,6 +3,10 @@
 #
 # Usage: ./scripts/validate-cloud-scheduler.sh <GCP_PROJECT_ID> <GCP_REGION>
 # Exit 0 if all jobs exist and are correctly configured, non-zero otherwise.
+# Retired: the production scheduler target is Cloudflare Cron.
+echo "ERROR: validate-cloud-scheduler.sh is retired; validate Cloudflare Cron in the target account." >&2
+exit 1
+
 #
 # Checks for each job:
 #   - Job exists in Cloud Scheduler

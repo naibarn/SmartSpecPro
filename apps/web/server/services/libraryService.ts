@@ -80,10 +80,13 @@ import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import { getTraceId } from "./traceContext";
 import {
   dispatchVectorOperation,
+  verifyVectorizeVectorOwnership,
+  type VectorSearchMatch,
   getEffectiveVectorProviderConfig,
   getVectorProviderConfigFromEnv,
   resolveVectorProvider,
 } from "./vectorProvider";
+import { generateEmbedding } from "./vectorize";
 import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
 
 export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
@@ -531,6 +534,45 @@ async function fetchPgvectorLibraryScores(params: {
       return null;
     }
     console.warn("[library.search] pgvector native search error:", error);
+    return null;
+  }
+}
+
+async function fetchCloudflareLibraryScores(params: {
+  tenantId: string;
+  query: string;
+  itemIds: number[];
+  indexName: string;
+  providerConfig: Awaited<ReturnType<typeof getEffectiveVectorProviderConfig>>;
+}): Promise<Map<number, number> | null> {
+  if (!params.query.trim() || params.itemIds.length === 0) {
+    return new Map();
+  }
+
+  try {
+    const queryEmbedding = await generateEmbedding(params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH));
+    const result = await dispatchVectorOperation({
+      operation: "search",
+      indexName: params.indexName,
+      vector: queryEmbedding,
+      topK: Math.min(50, Math.max(1, params.itemIds.length)),
+      filter: { tenantId: params.tenantId, type: "library_chunk" },
+      providerConfig: params.providerConfig,
+    });
+    const candidateIds = new Set(params.itemIds);
+    const scores = new Map<number, number>();
+    for (const match of (result as { matches: VectorSearchMatch[] }).matches || []) {
+      const metadata = match.metadata || {};
+      const rawItemId = metadata.itemId ?? metadata.item_id;
+      const itemId = Number(rawItemId);
+      if (!Number.isSafeInteger(itemId) || !candidateIds.has(itemId)) continue;
+      const score = Number(match.score);
+      if (!Number.isFinite(score)) continue;
+      scores.set(itemId, Math.max(scores.get(itemId) ?? 0, score));
+    }
+    return scores;
+  } catch (error) {
+    console.warn("[library.search] Cloudflare Vectorize search failed:", error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -1327,7 +1369,7 @@ export function resolveLibraryVectorIndexName(): string {
   const candidates = [
     process.env.LIBRARY_VECTOR_INDEX_NAME,
     process.env.VECTORIZE_LIBRARY_INDEX,
-    process.env.VECTORIZE_DOCS_INDEX,
+    process.env.VECTORIZE_INDEX_NAME,
     "library-index",
   ];
 
@@ -1617,18 +1659,42 @@ export async function cleanupLibraryVectorArtifacts(
       tenantId: normalizeLibraryTenantId(params.tenantId),
     });
   } catch {
-    // Fall back to env-based config for best-effort cleanup.
+    // Fall back to env-based config so the provider selection remains explicit.
   }
 
-  for (const indexName of candidateIndexNames) {
+  const resolvedProvider = resolveVectorProvider("delete", providerConfig).provider;
+  const safeVectorRefIds = resolvedProvider === "cloudflare_vectorize"
+    ? vectorRefIds.filter((value) => new TextEncoder().encode(value).byteLength <= 64)
+    : vectorRefIds;
+  if (resolvedProvider === "cloudflare_vectorize" && safeVectorRefIds.length === 0) {
+    return;
+  }
+  const effectiveIndexNames = resolvedProvider === "cloudflare_vectorize"
+    ? (explicitIndexNames.length > 0 ? explicitIndexNames : [resolveLibraryVectorIndexName()])
+    : candidateIndexNames;
+
+  for (const indexName of effectiveIndexNames) {
     try {
+      if (resolvedProvider === "cloudflare_vectorize") {
+        const verified = await verifyVectorizeVectorOwnership({
+          indexName,
+          ids: safeVectorRefIds,
+          tenantId: normalizeLibraryTenantId(params.tenantId),
+          providerConfig,
+          allowMissing: true,
+        });
+        if (verified.length === 0) continue;
+      }
       await dispatchVectorOperation({
         operation: "delete",
         indexName,
-        ids: vectorRefIds,
+        ids: safeVectorRefIds,
         providerConfig,
       });
     } catch (error) {
+      if (resolvedProvider === "cloudflare_vectorize") {
+        throw error;
+      }
       console.warn(
         `[library.delete] Vector cleanup failed for index ${indexName}:`,
         error instanceof Error ? error.message : String(error),
@@ -5547,8 +5613,10 @@ export async function searchLibraryItems(
     query.length > 0 &&
     resolvedProvider.provider === "pgvector" &&
     Boolean((await getAppRuntimeConfig()).proxyToken);
+  const shouldTryCloudflareVectorize = query.length > 0 && resolvedProvider.provider === "cloudflare_vectorize";
 
   let pgvectorScores: Map<number, number> | null = null;
+  let cloudflareScores: Map<number, number> | null = null;
   let chunkRows: Array<{ libraryItemId: number; content: string; vectorRefId: string | null }> = [];
 
   if (query.length > 0) {
@@ -5560,7 +5628,17 @@ export async function searchLibraryItems(
       });
     }
 
-    if (!shouldTryNativePgvector || pgvectorScores === null) {
+    if (shouldTryCloudflareVectorize) {
+      cloudflareScores = await fetchCloudflareLibraryScores({
+        tenantId: actorTenantId,
+        query,
+        itemIds: visibleItemIds,
+        indexName: providerConfig.vectorizeIndexName || resolveLibraryVectorIndexName(),
+        providerConfig,
+      });
+    }
+
+    if ((!shouldTryNativePgvector || pgvectorScores === null) && (!shouldTryCloudflareVectorize || cloudflareScores === null)) {
       const chunkCandidateIds = shouldTryNativePgvector ? pgvectorCandidateIds : visibleItemIds;
       if (chunkCandidateIds.length > 0) {
         chunkRows = await db
@@ -5617,6 +5695,8 @@ export async function searchLibraryItems(
       const vectorScore = query
         ? pgvectorScores
           ? (pgvectorScores.get(item.id) ?? 0)
+          : cloudflareScores
+            ? (cloudflareScores.get(item.id) ?? 0)
           : fallbackVectorScore
         : 0;
 
@@ -6172,11 +6252,17 @@ export async function permanentDeleteLibraryItem(
           eq(libraryLinks.linkType, "upload_key"),
         ),
       ),
-    collectLibraryVectorCleanupTargets(itemId, actorTenantId, db).catch(() => ({
-      vectorRefIds: [],
-      indexNames: [],
-    })),
+    collectLibraryVectorCleanupTargets(itemId, actorTenantId, db),
   ]);
+
+  // Vectorize deletion is verified and completed before the authoritative
+  // rows are removed. A failed ownership/provider check must preserve the
+  // rows so reconciliation can retry without losing the vector references.
+  await cleanupLibraryVectorArtifacts({
+    tenantId: actorTenantId,
+    vectorRefIds: vectorCleanupTargets.vectorRefIds,
+    indexNames: vectorCleanupTargets.indexNames,
+  });
 
   await db.transaction(async (tx) => {
     await cascadeDeleteLibraryItem(tx, itemId);
@@ -6192,19 +6278,6 @@ export async function permanentDeleteLibraryItem(
         err instanceof Error ? err.message : err,
       );
     }
-  }
-
-  try {
-    await cleanupLibraryVectorArtifacts({
-      tenantId: actorTenantId,
-      vectorRefIds: vectorCleanupTargets.vectorRefIds,
-      indexNames: vectorCleanupTargets.indexNames,
-    });
-  } catch (err) {
-    console.error(
-      `[permanent-delete] Vector cleanup failed for item ${itemId}:`,
-      err instanceof Error ? err.message : err,
-    );
   }
 
   return { daysInTrash };
@@ -6238,10 +6311,13 @@ export async function removeGoogleDriveData(
     return { itemsDeleted: 0, chunksDeleted: 0, linksDeleted: 0 };
   }
 
-  const vectorCleanupTargets = await collectLibraryVectorCleanupTargets(itemIds, tenantId, db).catch(() => ({
-    vectorRefIds: [],
-    indexNames: [],
-  }));
+  const vectorCleanupTargets = await collectLibraryVectorCleanupTargets(itemIds, tenantId, db);
+
+  await cleanupLibraryVectorArtifacts({
+    tenantId,
+    vectorRefIds: vectorCleanupTargets.vectorRefIds,
+    indexNames: vectorCleanupTargets.indexNames,
+  });
 
   // Count chunks and links before cascade delete (for audit)
   const [chunkRow] = await db
@@ -6263,17 +6339,6 @@ export async function removeGoogleDriveData(
     const batch = itemIds.slice(i, i + BATCH_SIZE);
     await db.delete(libraryItems).where(inArray(libraryItems.id, batch));
   }
-
-  await cleanupLibraryVectorArtifacts({
-    tenantId,
-    vectorRefIds: vectorCleanupTargets.vectorRefIds,
-    indexNames: vectorCleanupTargets.indexNames,
-  }).catch((err) => {
-    console.error(
-      `[google-drive-cleanup] Vector cleanup failed for tenant ${tenantId}:`,
-      err instanceof Error ? err.message : err,
-    );
-  });
 
   return { itemsDeleted: itemIds.length, chunksDeleted, linksDeleted };
 }

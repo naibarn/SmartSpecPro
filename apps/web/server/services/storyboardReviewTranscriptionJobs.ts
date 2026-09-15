@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   transcribeHyperframesStoryboardShot,
 } from "./hyperframesTranscriptionService";
@@ -32,8 +34,13 @@ export type StoryboardReviewTranscribeJob = {
 };
 
 const STORYBOARD_REVIEW_TRANSCRIBE_JOB_TTL_SECONDS = 60 * 60;
+const STORYBOARD_REVIEW_TRANSCRIBE_CLAIM_TTL_SECONDS = 60 * 60;
 const STORYBOARD_REVIEW_TRANSCRIBE_RUNNING_STALE_MS = 30 * 60 * 1000;
 const STORYBOARD_REVIEW_TRANSCRIBE_ORPHANED_RUNNING_STALE_MS = 5 * 60 * 1000;
+
+function transcribeClaimKey(jobId: string): string {
+  return `storyboard-review-transcribe-claim:${jobId}`;
+}
 
 function isProcessAlive(pid: number): boolean {
   if (!Number.isFinite(pid) || pid <= 0) return false;
@@ -96,24 +103,36 @@ export async function attachStoryboardReviewTranscribeWorkerPid(input: {
 }
 
 export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<void> {
-  const current = await getStoryboardReviewTranscribeJob(jobId);
-  if (!current) {
-    throw new Error(`Storyboard Review transcribe job ${jobId} was not found.`);
-  }
-  if (current.status === "completed" || current.status === "running") {
-    return;
-  }
-  const startedAt = Date.now();
-  await setStoryboardReviewTranscribeJob({
-    ...current,
-    status: "running",
-    updatedAt: startedAt,
-    startedAt,
-    heartbeatAt: startedAt,
-    workerPid: process.pid,
-    errorMessage: undefined,
-  });
+  const redis = getRedisClient();
+  const claimToken = randomUUID();
+  const claimKey = transcribeClaimKey(jobId);
+  const claimed = await redis.set(
+    claimKey,
+    claimToken,
+    "EX",
+    STORYBOARD_REVIEW_TRANSCRIBE_CLAIM_TTL_SECONDS,
+    "NX",
+  );
+  if (claimed !== "OK") return;
+  let current: StoryboardReviewTranscribeJob | null = null;
   try {
+    current = await getStoryboardReviewTranscribeJob(jobId);
+    if (!current) {
+      throw new Error(`Storyboard Review transcribe job ${jobId} was not found.`);
+    }
+    if (current.status === "completed" || current.status === "running") {
+      return;
+    }
+    const startedAt = Date.now();
+    await setStoryboardReviewTranscribeJob({
+      ...current,
+      status: "running",
+      updatedAt: startedAt,
+      startedAt,
+      heartbeatAt: startedAt,
+      workerPid: process.pid,
+      errorMessage: undefined,
+    });
     const result = await transcribeHyperframesStoryboardShot({
       sourceVideoUrl: current.input.sourceVideoUrl,
       mediaStartSec: current.input.mediaStartSec,
@@ -135,6 +154,9 @@ export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<v
       errorMessage: undefined,
     });
   } catch (error) {
+    // A missing Redis job has no durable status row to update. Avoid masking
+    // the original lookup error with a second ReferenceError in this path.
+    if (!current) return;
     await setStoryboardReviewTranscribeJob({
       ...current,
       status: "failed",
@@ -143,5 +165,8 @@ export async function runStoryboardReviewTranscribeJob(jobId: string): Promise<v
       workerPid: process.pid,
       errorMessage: error instanceof Error ? error.message : "HyperFrames transcribe failed.",
     });
+  } finally {
+    const owner = await redis.get(claimKey);
+    if (owner === claimToken) await redis.del(claimKey);
   }
 }

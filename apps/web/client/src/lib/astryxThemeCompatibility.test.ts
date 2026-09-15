@@ -7,8 +7,8 @@ describe("resolveAstryxColorTokens", () => {
     const light = resolveAstryxColorTokens(neutralTheme, "light");
     const dark = resolveAstryxColorTokens(neutralTheme, "dark");
 
-    expect(light["--color-text-primary"]).toBe("#171717");
-    expect(dark["--color-text-primary"]).toBe("#fafafa");
+    expect(light["--color-text-primary"]).toBe("#000000");
+    expect(dark["--color-text-primary"]).toBe("#ffffff");
     expect(light["--color-text-primary"]).not.toContain("light-dark(");
     expect(dark["--color-text-primary"]).not.toContain("light-dark(");
   });

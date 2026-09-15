@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: 'Type deploy-staging to confirm this GCP deployment.'
+        description: 'Retired: staging is deployed by the Cloudflare pipeline.'
         required: true
         type: string
 
@@ -14,7 +14,8 @@ permissions:
 
 jobs:
   build-and-deploy:
-    if: ${{ github.event.inputs.confirm == 'deploy-staging' }}
+    # Retired: staging/runtime promotion is owned by the Cloudflare pipeline.
+    if: ${{ false }}
     runs-on: ubuntu-latest
 
     steps:

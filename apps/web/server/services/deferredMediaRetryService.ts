@@ -9,6 +9,7 @@ import type {
 import { mediaGenerationService } from "./mediaGenerationService";
 import { refundCredits } from "./creditService";
 import { getRedisClient } from "./redis";
+import { shouldRunFeature192InProcessTimer } from "../jobs/feature192TimerPolicy";
 
 type DeferredMediaType = "video";
 
@@ -479,5 +480,9 @@ export async function listDeferredMediaTasks(
 }
 
 export function startDeferredMediaRetryWorker(): void {
+  if (!shouldRunFeature192InProcessTimer("startDeferredMediaRetryWorker")) {
+    console.info("[deferred-media-retry] in-process worker disabled; awaiting canonical scheduler");
+    return;
+  }
   scheduleWorker(1000);
 }

@@ -1601,7 +1601,10 @@ export const videoEditorProjectsRouter = router({
           reviewData: nextReviewData,
           updatedAt: new Date(),
         })
-        .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId));
+        .where(and(
+          eq(mediaStudioStoryboardReviews.id, input.storyboardReviewId),
+          eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+        ));
       return {
         ...result,
         prompt: resultPrompt,
@@ -1676,7 +1679,10 @@ export const videoEditorProjectsRouter = router({
             reviewData: merged.reviewData,
             updatedAt: now,
           })
-          .where(eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId));
+          .where(and(
+            eq(mediaStudioStoryboardReviews.id, input.storyboardReviewProjectId),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ));
 
         return {
           state: merged.state,
@@ -1871,41 +1877,15 @@ export const videoEditorProjectsRouter = router({
         },
       });
 
-      let dispatchedToCloudTasks = false;
-      try {
-        const { enqueueTask, getCloudTasksConfigStatus } = await import("../services/cloudTasks");
-        const config = getCloudTasksConfigStatus("node");
-        if (config.configured) {
-          await enqueueTask({
-            queueName: "media-jobs",
-            handlerPath: "/_internal/tasks/storyboard-review-transcribe",
-            targetService: "node",
-            payload: {
-              jobId,
-            },
-            taskId: `storyboard-review-transcribe-${jobId}`,
-          });
-          dispatchedToCloudTasks = true;
-        } else {
-          console.warn(
-            `[StoryboardReview] Node Cloud Tasks config is incomplete; starting detached transcribe worker. Missing: ${config.missingKeys.join(", ")}`
-          );
-        }
-      } catch (error) {
-        console.warn("[StoryboardReview] Failed to enqueue transcribe Cloud Task; starting detached worker.", error);
-      }
-
-      if (!dispatchedToCloudTasks) {
-        const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
-        await attachStoryboardReviewTranscribeWorkerPid({
-          jobId,
-          workerPid: worker.pid,
-        });
-        console.info("[StoryboardReview] Started detached transcribe worker.", {
-          jobId,
-          pid: worker.pid,
+      if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Cloudflare canonical transcription job is required during hard cutover",
         });
       }
+      const worker = startDetachedStoryboardReviewTranscribeWorker({ jobId });
+      await attachStoryboardReviewTranscribeWorkerPid({ jobId, workerPid: worker.pid });
+      console.info("[StoryboardReview] Started local compatibility transcribe worker.", { jobId, pid: worker.pid });
 
       return {
         jobId,
@@ -2009,7 +1989,10 @@ export const videoEditorProjectsRouter = router({
             status: "active",
             updatedAt: now,
           })
-          .where(eq(mediaStudioStoryboardReviews.id, input.id));
+          .where(and(
+            eq(mediaStudioStoryboardReviews.id, input.id),
+            eq(mediaStudioStoryboardReviews.userId, ctx.user.id),
+          ));
 
         return { id: input.id, reviewData };
       }

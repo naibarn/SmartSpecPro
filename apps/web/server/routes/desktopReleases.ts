@@ -445,6 +445,53 @@ function sendPublicDashboardRelease(res: any, release: PublicDashboardRelease): 
   fs.createReadStream(release.filePath).pipe(res);
 }
 
+async function sendStoredDesktopRelease(req: any, res: any, release: DesktopReleaseAsset): Promise<boolean> {
+  const stored = await getDesktopReleaseStorageInfo(release.id);
+  if (!stored) {
+    return false;
+  }
+
+  // The Worker App native updater deliberately does not follow redirects.
+  // Stream the catalog asset through this same-origin endpoint so a release
+  // uploaded to object storage is still downloadable by the updater.
+  const result = await storageStreamFile(stored.storageKey, determineRangeHeader(req));
+  if (!result) {
+    return false;
+  }
+
+  res.setHeader("Content-Disposition", buildDownloadDisposition(stored.fileName));
+  res.setHeader("Content-Type", stored.contentType || result.contentType);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Accept-Ranges", "bytes");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  if (result.isPartial && result.rangeStart !== undefined && result.rangeEnd !== undefined) {
+    res.status(206);
+    res.setHeader("Content-Range", `bytes ${result.rangeStart}-${result.rangeEnd}/${result.totalLength ?? "*"}`);
+    if (result.contentLength !== undefined) {
+      res.setHeader("Content-Length", String(result.contentLength));
+    }
+  } else if (result.contentLength !== undefined) {
+    res.setHeader("Content-Length", String(result.contentLength));
+  }
+
+  const stream = result.stream as any;
+  if (typeof stream.pipe === "function") {
+    stream.pipe(res);
+  } else {
+    const reader = stream.getReader();
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        res.end();
+        break;
+      }
+      res.write(value);
+    }
+  }
+  return true;
+}
+
 export function createDesktopReleaseRouter(): Router {
   const router = Router();
 
@@ -583,7 +630,9 @@ export function createDesktopReleaseRouter(): Router {
       }
 
       if (isStoredDesktopRelease(release)) {
-        res.redirect(release.downloadUrl);
+        if (!(await sendStoredDesktopRelease(req, res, release))) {
+          res.status(503).json({ error: "desktop_release_download_unavailable" });
+        }
         return;
       }
 

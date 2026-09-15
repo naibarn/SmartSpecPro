@@ -23,6 +23,7 @@ print_usage() {
     echo -e "${YELLOW}Available Services:${NC}"
     echo "  backend        - Python FastAPI Backend"
     echo "  web            - SmartSpec Web Application"
+    echo "  node-worker    - Feature 186 PostgreSQL Node Job Worker"
     echo "  db             - PostgreSQL Database"
     echo "  redis          - Redis Cache"
     echo "  chroma         - ChromaDB Vector Store"
@@ -53,6 +54,7 @@ fi
 case "$SERVICE" in
     backend) TARGET="python-backend" ;;
     web) TARGET="smartspec-web" ;;
+    node-worker|worker) TARGET="smartspec-node-worker" ;;
     db|postgres) TARGET="postgres" ;;
     redis) TARGET="redis" ;;
     chroma|chromadb) TARGET="chromadb" ;;
@@ -67,7 +69,13 @@ if [ -z "$TARGET" ]; then
     $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart
 else
     log_step "Restarting service: $TARGET..."
-    $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart $TARGET
+    if [ "$TARGET" == "smartspec-node-worker" ]; then
+        # This service may not exist in an older deployment, so restart alone
+        # cannot create it after the Feature 186 wiring is installed.
+        $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" up -d --build "$TARGET"
+    else
+        $DOCKER_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" restart $TARGET
+    fi
 fi
 
 echo "--------------------------------------------------"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useWorkerLocale } from "../../app/workerContext";
 import type { NleClip } from "../../types/nleProject";
 
 interface TextOverlayModalProps {
@@ -130,14 +131,55 @@ export const TEXT_PRESETS = [
   },
 ];
 
+const PRESET_LABELS: Record<string, { th: string; en: string }> = {
+  tiktok_viral: { th: "⚡ TikTok สะดุดตา", en: "⚡ TikTok Punchy" },
+  youtube_hook: { th: "🔴 YouTube Hook", en: "🔴 YouTube Hook" },
+  cyber_neon: { th: "💎 ไซเบอร์นีออน", en: "💎 Cyber Neon" },
+  minimal_luxury: { th: "👑 มินิมอลโกลด์", en: "👑 Minimal Gold" },
+  glass_pill: { th: "🏷️ กลาสมอร์ฟิซึม", en: "🏷️ Glassmorphism" },
+  retro_arcade: { th: "👾 เรโทรอาร์เคด", en: "👾 Retro Arcade" },
+};
+
+const PRESET_DESCRIPTIONS: Record<string, { th: string; en: string }> = {
+  tiktok_viral: { th: "เหลืองขอบดำ หนา มีมิติ", en: "Bold yellow text with a black outline" },
+  youtube_hook: { th: "ขาวบนกล่องแดง โดดเด่น", en: "White text on a standout red panel" },
+  cyber_neon: { th: "ฟ้านีออน เรืองแสง", en: "Glowing neon blue" },
+  minimal_luxury: { th: "ทองเรียบหรู ละมุนตา", en: "Elegant, refined gold" },
+  glass_pill: { th: "กล่องดำมน โปร่งแสงหรู", en: "Polished translucent dark pill" },
+  retro_arcade: { th: "ชมพูเรโทร ตัวหนา", en: "Bold retro pink" },
+};
+
+const getPresetLabel = (id: string, locale: string) =>
+  (PRESET_LABELS[id] ?? { th: id, en: id })[locale === "en" ? "en" : "th"];
+
+const getPresetDescription = (id: string, locale: string) =>
+  (PRESET_DESCRIPTIONS[id] ?? { th: "", en: "" })[locale === "en" ? "en" : "th"];
+
+const getGoogleFontLabel = (label: string, locale: string) => {
+  if (locale === "en") {
+    return {
+      "Kanit (โมเดิร์น ยอดนิยมไทย)": "Kanit (modern Thai favorite)",
+      "Prompt (เรียบหรู ทันสมัย)": "Prompt (clean and contemporary)",
+      "Sarabun (ทางการ อ่านง่าย)": "Sarabun (formal and readable)",
+      "Mitr (โค้งมน สดใส)": "Mitr (rounded and lively)",
+      "Chonburi (ตัวหนา คลาสสิก)": "Chonburi (bold and classic)",
+    }[label] ?? label;
+  }
+  return label;
+};
+
 export function TextOverlayModal({
   isOpen,
   onClose,
   onAddTextClip,
   currentTimeMs,
 }: TextOverlayModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => (locale === "en" ? en : th);
   const [text, setText] = useState("หัวข้อข้อความโดนใจ (Text Hook)");
   const [fontFamily, setFontFamily] = useState("'Kanit', sans-serif");
+  const [fontWeight, setFontWeight] = useState(400);
+  const [fontStyle, setFontStyle] = useState<"normal" | "italic">("normal");
   const [fontSize, setFontSize] = useState(48);
   const [fontColor, setFontColor] = useState("#facc15");
   const [backgroundColor, setBackgroundColor] = useState("transparent");
@@ -206,6 +248,8 @@ export function TextOverlayModal({
       sourceType: "text",
       text,
       fontFamily,
+      fontWeight,
+      fontStyle,
       fontSize,
       fontColor,
       backgroundColor,
@@ -234,7 +278,7 @@ export function TextOverlayModal({
         <div className="nle-modal-header">
           <div className="modal-header-title">
             <span className="modal-icon">✍️</span>
-            <h3>เพิ่มข้อความบนจอ (Text & Title Hook)</h3>
+            <h3>{t("เพิ่มข้อความบนจอ", "Add on-screen text")}</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose}>
             ✕
@@ -244,16 +288,19 @@ export function TextOverlayModal({
         <div className="nle-modal-body">
           {/* Live Preview Box */}
           <div className="text-preview-stage">
-            <div className="text-preview-label">👁️ ตัวอย่างผลลัพธ์ (Live Preview):</div>
+            <div className="text-preview-label">👁️ {t("ตัวอย่างผลลัพธ์:", "Live preview:")}</div>
             <div className="text-preview-canvas">
               <div
                 className={`preview-text-rendered anim-${animationEffect}`}
                 style={{
                   fontFamily,
+                  fontWeight,
+                  fontStyle,
                   fontSize: `${Math.round(fontSize * 0.75)}px`,
                   color: fontColor,
                   backgroundColor: backgroundColor !== "transparent" ? backgroundColor : undefined,
-                  WebkitTextStroke: strokeWidth > 0 ? `${strokeWidth}px ${strokeColor}` : undefined,
+                  paintOrder: "stroke fill",
+                WebkitTextStroke: strokeWidth > 0 ? `${strokeWidth}px ${strokeColor}` : undefined,
                   textShadow: shadowBlur > 0 || shadowOffsetX !== 0 || shadowOffsetY !== 0
                     ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${shadowColor}`
                     : undefined,
@@ -261,26 +308,26 @@ export function TextOverlayModal({
                   borderRadius: backgroundColor !== "transparent" ? "12px" : undefined,
                 }}
               >
-                {text || "ตัวอย่างข้อความ"}
+                {text || t("ตัวอย่างข้อความ", "Preview text")}
               </div>
             </div>
           </div>
 
           {/* Text Input */}
           <div className="modal-form-group">
-            <label className="form-label">ข้อความที่ต้องการแสดง:</label>
+            <label className="form-label">{t("ข้อความที่ต้องการแสดง:", "Text to display:")}</label>
             <textarea
               className="text-input-field"
               rows={2}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="พิมพ์ข้อความ เช่น 'เทคนิคเด็ดที่คุณต้องรู้!'"
+              placeholder={t("พิมพ์ข้อความ เช่น 'เทคนิคเด็ดที่คุณต้องรู้!'", "Type text, e.g. 'A tip you need to know!'")}
             />
           </div>
 
           {/* Presets Row */}
           <div className="modal-form-group">
-            <label className="form-label">สไตล์ยอดนิยม (Presets):</label>
+            <label className="form-label">{t("สไตล์ยอดนิยม:", "Popular styles:")}</label>
             <div className="text-presets-grid">
               {TEXT_PRESETS.map((p) => (
                 <button
@@ -289,8 +336,8 @@ export function TextOverlayModal({
                   className="preset-card-btn"
                   onClick={() => handleApplyPreset(p)}
                 >
-                  <span className="preset-card-name">{p.name}</span>
-                  <span className="preset-card-desc">{p.desc}</span>
+                  <span className="preset-card-name">{getPresetLabel(p.id, locale)}</span>
+                  <span className="preset-card-desc">{getPresetDescription(p.id, locale)}</span>
                 </button>
               ))}
             </div>
@@ -299,20 +346,20 @@ export function TextOverlayModal({
           {/* Font Selection & Size */}
           <div className="modal-form-row">
             <div className="form-col">
-              <label className="form-label">ฟอนต์ (Font Family):</label>
+              <label className="form-label">{t("ฟอนต์:", "Font family:")}</label>
               <select
                 className="font-select-field"
                 value={fontFamily}
                 onChange={(e) => setFontFamily(e.target.value)}
               >
-                <optgroup label="🌐 Google Fonts (ไทย & สากลยอดนิยม)">
+                <optgroup label={t("🌐 Google Fonts (ไทยและสากลยอดนิยม)", "🌐 Google Fonts (Thai and international favorites)")}>
                   {GOOGLE_FONTS.map((f) => (
                     <option key={f.value} value={f.value}>
-                      {f.label}
+                      {getGoogleFontLabel(f.label, locale)}
                     </option>
                   ))}
                 </optgroup>
-                <optgroup label="💻 ฟอนต์ในเครื่อง (System Fonts)">
+                <optgroup label={t("💻 ฟอนต์ในเครื่อง", "💻 System fonts")}>
                   {SYSTEM_FONTS.map((f) => (
                     <option key={f.value} value={f.value}>
                       {f.label}
@@ -320,9 +367,23 @@ export function TextOverlayModal({
                   ))}
                 </optgroup>
               </select>
+              <label className="form-label" htmlFor="text-font-weight">{t("น้ำหนักตัวอักษร", "Font weight")}</label>
+              <select id="text-font-weight" className="font-select-field" value={fontWeight} onChange={(e) => setFontWeight(Number(e.target.value))}>
+                <option value={400}>{t("Regular (ปกติ)", "Regular")}</option>
+                <option value={500}>Medium</option>
+                <option value={600}>Semi-bold</option>
+                <option value={700}>{t("Bold (หนา)", "Bold")}</option>
+                <option value={800}>Extra-bold</option>
+                <option value={900}>Black</option>
+              </select>
+              <label className="form-label" htmlFor="text-font-style">{t("รูปแบบตัวอักษร", "Font style")}</label>
+              <select id="text-font-style" className="font-select-field" value={fontStyle} onChange={(e) => setFontStyle(e.target.value as "normal" | "italic")}>
+                <option value="normal">{t("Normal (ตรง)", "Normal")}</option>
+                <option value="italic">{t("Italic (เอียง)", "Italic")}</option>
+              </select>
             </div>
             <div className="form-col">
-              <label className="form-label">ขนาดตัวอักษร: {fontSize}px</label>
+              <label className="form-label">{t("ขนาดตัวอักษร", "Font size")}: {fontSize}px</label>
               <input
                 type="range"
                 min={20}
@@ -337,7 +398,7 @@ export function TextOverlayModal({
           {/* Colors, Stroke & Shadow */}
           <div className="modal-form-row">
             <div className="form-col">
-              <label className="form-label">สีตัวอักษร:</label>
+              <label className="form-label">{t("สีตัวอักษร:", "Text color:")}</label>
               <div className="color-picker-row">
                 <input
                   type="color"
@@ -349,14 +410,14 @@ export function TextOverlayModal({
               </div>
             </div>
             <div className="form-col">
-              <label className="form-label">สีพื้นหลังข้อความ:</label>
+              <label className="form-label">{t("สีพื้นหลังข้อความ:", "Text background:")}</label>
               <div className="color-picker-row">
                 <button
                   type="button"
                   className={`bg-toggle-pill ${backgroundColor === "transparent" ? "active" : ""}`}
                   onClick={() => setBackgroundColor("transparent")}
                 >
-                  ไม่มี
+                  {t("ไม่มี", "None")}
                 </button>
                 <input
                   type="color"
@@ -367,7 +428,7 @@ export function TextOverlayModal({
               </div>
             </div>
             <div className="form-col">
-              <label className="form-label">ขอบตัวอักษร (Stroke): {strokeWidth}px</label>
+              <label className="form-label">{t("ขอบตัวอักษร", "Text outline")}: {strokeWidth}px</label>
               <div className="color-picker-row">
                 <input
                   type="color"
@@ -391,49 +452,49 @@ export function TextOverlayModal({
           {/* Shadow & Animation Effects */}
           <div className="modal-form-row">
             <div className="form-col">
-              <label className="form-label">เอฟเฟกต์แอนิเมชัน (Animation):</label>
+              <label className="form-label">{t("เอฟเฟกต์แอนิเมชัน:", "Animation:")}</label>
               <select
                 className="font-select-field"
                 value={animationEffect}
                 onChange={(e) => setAnimationEffect(e.target.value as any)}
               >
-                <option value="none">นิ่ง (Static)</option>
-                <option value="fade">✨ ค่อยๆ ปรากฏ (Fade In)</option>
-                <option value="pop">💥 เด้งขยายขึ้น (Pop Scale)</option>
-                <option value="slide_up">⬆️ เลื่อนขึ้นจากล่าง (Slide Up)</option>
-                <option value="typewriter">⌨️ พิมพ์ดีด (Typewriter)</option>
-                <option value="glow_pulse">🌟 เรืองแสงกระพริบ (Glow Pulse)</option>
-                <option value="bounce">🏀 ดึ๋งต่อเนื่อง (Bounce Loop)</option>
+                <option value="none">{t("นิ่ง", "Static")}</option>
+                <option value="fade">✨ {t("ค่อยๆ ปรากฏ", "Fade in")}</option>
+                <option value="pop">💥 {t("เด้งขยายขึ้น", "Pop scale")}</option>
+                <option value="slide_up">⬆️ {t("เลื่อนขึ้นจากล่าง", "Slide up")}</option>
+                <option value="typewriter">⌨️ {t("พิมพ์ดีด", "Typewriter")}</option>
+                <option value="glow_pulse">🌟 {t("เรืองแสงกระพริบ", "Glow pulse")}</option>
+                <option value="bounce">🏀 {t("ดึ๋งต่อเนื่อง", "Bounce loop")}</option>
               </select>
             </div>
             <div className="form-col">
-              <label className="form-label">ตำแหน่งข้อความ (Position):</label>
+              <label className="form-label">{t("ตำแหน่งข้อความ:", "Text position:")}</label>
               <div className="pos-preset-group">
                 <button
                   type="button"
                   className={`pos-chip ${positionPreset === "top" ? "active" : ""}`}
                   onClick={() => handlePositionPreset("top")}
                 >
-                  พาดหัวบน
+                  {t("พาดหัวบน", "Top")}
                 </button>
                 <button
                   type="button"
                   className={`pos-chip ${positionPreset === "center" ? "active" : ""}`}
                   onClick={() => handlePositionPreset("center")}
                 >
-                  กึ่งกลาง
+                  {t("กึ่งกลาง", "Center")}
                 </button>
                 <button
                   type="button"
                   className={`pos-chip ${positionPreset === "lower_third" ? "active" : ""}`}
                   onClick={() => handlePositionPreset("lower_third")}
                 >
-                  แถบล่าง
+                  {t("แถบล่าง", "Lower third")}
                 </button>
               </div>
             </div>
             <div className="form-col">
-              <label className="form-label">ระยะเวลาแสดงผล: {durationSec.toFixed(1)} วินาที</label>
+              <label className="form-label">{t("ระยะเวลาแสดงผล", "Duration")}: {durationSec.toFixed(1)} {t("วินาที", "seconds")}</label>
               <input
                 type="range"
                 min={1.0}
@@ -449,10 +510,10 @@ export function TextOverlayModal({
 
         <div className="nle-modal-footer">
           <button type="button" className="modal-cancel-btn" onClick={onClose}>
-            ยกเลิก
+            {t("ยกเลิก", "Cancel")}
           </button>
           <button type="button" className="modal-confirm-btn" onClick={handleCreateClip}>
-            ➕ เพิ่มข้อความลงวิดีโอ (Track T1)
+            ➕ {t("เพิ่มข้อความลงวิดีโอ (Track T1)", "Add text to video (Track T1)")}
           </button>
         </div>
       </div>

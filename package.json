@@ -22,7 +22,7 @@
     "mcp:smoke": "npm --workspace apps/web run mcp:smoke",
     "mcp:failure-harness": "npm --workspace apps/web run mcp:failure-harness",
     "mcp:readiness": "npm --workspace apps/web run mcp:readiness",
-    "astryx": "node node_modules/@astryxdesign/cli/bin/astryx.mjs"
+    "astryx": "node node_modules/@astryxdesign/cli/clients/cli/bin/astryx.mjs"
   },
   "engines": {
     "node": ">=22.22.0 <23"

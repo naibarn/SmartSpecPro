@@ -2052,6 +2052,160 @@
       "when": 1789152000003,
       "tag": "0306_feature_186_outbox_cancellation",
       "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1789152000004,
+      "tag": "0307_feature_186_action_callback_evidence",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1789152000005,
+      "tag": "0308_feature_186_operator_review_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1789152000006,
+      "tag": "0309_feature_186_python_job_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1789152000007,
+      "tag": "0310_feature_186_error_and_evidence_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1789152000008,
+      "tag": "0311_feature_186_capacity_schedule_occurrence",
+      "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1789152000009,
+      "tag": "0312_feature_185_storyboard_background_run",
+      "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1789152000010,
+      "tag": "0313_feature_186_node_job_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1789152000011,
+      "tag": "0314_feature_186_admission_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1789152000012,
+      "tag": "0315_feature_186_callback_timestamp",
+      "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1789347877707,
+      "tag": "0316_feature_189_tenant_identity_and_data_transfer",
+      "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1789348439089,
+      "tag": "0317_feature_189_tenant_identity_backfill_completion",
+      "breakpoints": true
+    },
+    {
+      "idx": 304,
+      "version": "7",
+      "when": 1789349000000,
+      "tag": "0318_feature_188_platform_operations",
+      "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1789349100000,
+      "tag": "0319_feature_189_session_revocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 306,
+      "version": "7",
+      "when": 1789349200000,
+      "tag": "0320_profile_email_google_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1789349300000,
+      "tag": "0321_oauth_provider_identity_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1789349400000,
+      "tag": "0322_feature_188_promotion_binding",
+      "breakpoints": true
+    },
+    {
+      "idx": 309,
+      "version": "7",
+      "when": 1789349500000,
+      "tag": "0323_feature_188_promotion_batch_fencing",
+      "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1789350000000,
+      "tag": "0324_creator_ownership_profile",
+      "breakpoints": true
+    },
+    {
+      "idx": 311,
+      "version": "7",
+      "when": 1789350600000,
+      "tag": "0325_feature_186_provider_admission_polling",
+      "breakpoints": true
+    },
+    {
+      "idx": 312,
+      "version": "7",
+      "when": 1789351200000,
+      "tag": "0326_feature_186_provider_attempt_windows",
+      "breakpoints": true
+    },
+    {
+      "idx": 313,
+      "version": "7",
+      "when": 1789351300000,
+      "tag": "0327_feature_186_provider_attempt_backfill_repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 314,
+      "version": "7",
+      "when": 1789351400000,
+      "tag": "0328_feature_185_storyboard_active_run_fk",
+      "breakpoints": true
     }
   ]
 }

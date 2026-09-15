@@ -25,6 +25,43 @@ afterEach(() => {
 });
 
 describe("Storyboard Review video segment state", () => {
+  it("maps Skill Framework imageUrl projections into completed storyboard image slots", () => {
+    const draft = normalizeStoryboardReviewDraft({
+      version: 1,
+      reviewId: 152,
+      updatedAt: 123_456,
+      taskIds: ["skill-run-shot-1"],
+      selectedTaskIds: ["skill-run-shot-1"],
+      tasks: [{
+        id: "skill-run-shot-1",
+        shotNumber: 1,
+        prompt: "A child helps a bird",
+        imageUrl: "/api/storage/files/durable-media/shot-1.png",
+        mediaType: "image",
+      } as any],
+    });
+
+    expect(draft?.tasks[0]).toMatchObject({
+      type: "image",
+      status: "completed",
+      url: "/api/storage/files/durable-media/shot-1.png",
+    });
+  });
+
+  it("normalizes missing legacy media reference arrays before regeneration", () => {
+    const context = getStoryboardTaskEffectiveGenerationContext({
+      id: "legacy-task-1",
+      model: "veo3/generate-veo-3-video-lite",
+      storyboardContext: {
+        aspectRatio: "9:16",
+        model: "veo3/generate-veo-3-video-lite",
+      },
+    } as any);
+
+    expect(context?.referenceImages).toEqual([]);
+    expect(context?.referenceVideos).toEqual([]);
+  });
+
   it("clamps imported media duration before synthesizing video segment plans", () => {
     const draft = normalizeStoryboardReviewDraft({
       version: 1,

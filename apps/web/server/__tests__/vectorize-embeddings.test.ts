@@ -88,4 +88,22 @@ describe("Embedding Generation", () => {
 
     await expect(generateEmbedding("test")).rejects.toThrow();
   });
+
+  it("rejects a successful provider response with the wrong vector contract", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        result: { data: [[0.1, 0.2]] },
+        success: true,
+      }),
+    });
+
+    await expect(generateEmbedding("wrong dimension")).rejects.toThrow(/768-dimensional/);
+  });
+
+  it("rejects Workers AI responses when the account is not configured", async () => {
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
+    vi.stubEnv("CF_ACCOUNT_ID", "");
+    await expect(generateEmbedding("missing account")).rejects.toThrow(/CLOUDFLARE_ACCOUNT_ID/);
+  });
 });

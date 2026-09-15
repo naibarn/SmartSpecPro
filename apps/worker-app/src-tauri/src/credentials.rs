@@ -351,10 +351,7 @@ fn resolve_powershell_binary() -> Result<String, String> {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-        if command
-            .status()
-            .is_ok_and(|status| status.success())
-        {
+        if command.status().is_ok_and(|status| status.success()) {
             return Ok(name.into());
         }
     }

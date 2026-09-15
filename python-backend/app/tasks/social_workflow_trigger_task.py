@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -356,7 +357,16 @@ async def _poll_social_workflow_triggers_async() -> dict[str, Any]:
     for row in rows:
         message_id = int(_row_value(row, "id", 0))
         page_id = int(_row_value(row, "pageId", 1))
-        process_social_workflow_message.delay(message_id=message_id, page_id=page_id, trigger_mode="batch")
+        from app.services.job_control_plane import dispatch_python_task
+
+        dispatch_python_task(
+            process_social_workflow_message.name,
+            kwargs={"message_id": message_id, "page_id": page_id, "trigger_mode": "batch"},
+            tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+            idempotency_key=f"social-workflow:batch:{message_id}",
+            correlation_id="social-workflow:batch",
+            legacy_task=process_social_workflow_message,
+        )
         processed += 1
         enqueued += 1
 

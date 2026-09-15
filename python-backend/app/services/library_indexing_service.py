@@ -4,8 +4,11 @@ from __future__ import annotations
 
 import os
 import re
+import hashlib
+import inspect
+import math
 from datetime import datetime, timedelta
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Awaitable, Callable, Optional, Protocol
 from urllib.parse import unquote, urlparse
 
 import structlog
@@ -15,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.vectordb import VectorCollection
 from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
 from app.orchestrator.rag.chunker import SmartChunker, ChunkConfig
-from app.services.embedding_service import EmbeddingService, get_embedding_service
+from app.services.embedding_service import (
+    EmbeddingService,
+    get_cloudflare_workers_ai_embedding_service,
+    get_embedding_service,
+)
 from app.services.library_observability import emit_metric, log_observability_event
 from app.services.credit_billing_client import charge_credits_post_deduct
 from app.services.library_vector_observability_service import (
@@ -36,6 +43,7 @@ RETRY_PENDING_STATUS = "retry_pending"
 COMPLETED_STATUS = "completed"
 FAILED_STATUS = "failed"
 SUPPORTED_VECTOR_PROVIDERS = {"chroma", "pgvector", "cloudflare_vectorize"}
+CLOUDFLARE_VECTORIZE_DIMENSIONS = 768
 TRANSIENT_ERROR_MARKERS = (
     "timeout",
     "temporarily",
@@ -68,7 +76,59 @@ class VectorUpsertFn(Protocol):
         item_id: int,
         chunks: list[dict[str, Any]],
         embeddings: list[list[float]],
-    ) -> list[str]: ...
+    ) -> list[str] | Awaitable[list[str]]: ...
+
+
+class VectorUpsertIds(list[str]):
+    """Vector IDs plus provider mutation evidence from an async upsert."""
+
+    def __init__(self, values: list[str], mutation_ids: list[str] | None = None):
+        super().__init__(values)
+        self.mutation_ids = list(mutation_ids or [])
+
+
+def validate_cloudflare_embeddings(
+    embeddings: list[list[float]],
+    *,
+    expected_count: int | None = None,
+) -> None:
+    """Fail closed before an injected adapter can write incompatible vectors."""
+    if expected_count is not None and len(embeddings) != expected_count:
+        raise RuntimeError("cloudflare_vectorize_embedding_count_mismatch")
+    if any(
+        not isinstance(vector, (list, tuple))
+        or len(vector) != CLOUDFLARE_VECTORIZE_DIMENSIONS
+        or any(
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            for value in vector
+        )
+        for vector in embeddings
+    ):
+        raise RuntimeError("cloudflare_vectorize_embedding_dimension_mismatch")
+
+
+def validate_cloudflare_vector_upsert_result(
+    result: Any,
+    *,
+    expected_ids: list[str],
+) -> tuple[list[str], list[str]]:
+    """Require deterministic IDs and async mutation evidence from a CF write."""
+    if not isinstance(result, list) or len(result) != len(expected_ids):
+        raise RuntimeError("cloudflare_vectorize_vector_id_count_mismatch")
+    actual_ids = [value if isinstance(value, str) else "" for value in result]
+    if actual_ids != expected_ids or len(set(actual_ids)) != len(actual_ids):
+        raise RuntimeError("cloudflare_vectorize_vector_id_mismatch")
+
+    raw_mutation_ids = getattr(result, "mutation_ids", None)
+    if (
+        not isinstance(raw_mutation_ids, list)
+        or not raw_mutation_ids
+        or any(not isinstance(value, str) or not value.strip() for value in raw_mutation_ids)
+    ):
+        raise RuntimeError("cloudflare_vectorize_mutation_evidence_missing")
+    return actual_ids, [value.strip() for value in raw_mutation_ids]
 
 
 def _safe_record_vector_audit_event(**kwargs: Any) -> None:
@@ -387,7 +447,13 @@ def _pgvector_vector_upsert(
         raise
 
 
-def _cloudflare_vector_upsert(
+def _cloudflare_library_vector_id(tenant_id: str, item_id: int, chunk_index: int) -> str:
+    """Return a deterministic Vectorize-safe ID (Vectorize allows 64 UTF-8 bytes)."""
+    source = f"{tenant_id}:{item_id}:{chunk_index}".encode("utf-8")
+    return f"lib:{hashlib.sha256(source).hexdigest()[:56]}"
+
+
+async def _cloudflare_vector_upsert(
     *,
     tenant_id: str,
     item_id: int,
@@ -396,7 +462,6 @@ def _cloudflare_vector_upsert(
     vectorize_config: dict[str, str] | None = None,
 ) -> list[str]:
     """Store chunk embeddings via Cloudflare Vectorize and return vector IDs."""
-    import asyncio
     from app.orchestrator.vector_store.cloudflare_vectorize_store import (
         CloudflareVectorizeStore,
         VectorizeConfig,
@@ -408,7 +473,7 @@ def _cloudflare_vector_upsert(
     cfg = vectorize_config or {}
     account_id = cfg.get("vectorizeAccountId", "")
     api_token = cfg.get("vectorizeApiToken", "")
-    index_name = cfg.get("vectorizeIndexName", "smartspec-library")
+    index_name = cfg.get("vectorizeIndexName", "library-index")
 
     if not account_id or not api_token:
         raise RuntimeError("Cloudflare Vectorize credentials not configured")
@@ -421,30 +486,119 @@ def _cloudflare_vector_upsert(
         )
     )
 
-    vector_ids = [f"lib:{tenant_id}:{item_id}:{chunk['chunk_index']}" for chunk in chunks]
+    vector_ids = [
+        _cloudflare_library_vector_id(tenant_id, item_id, int(chunk["chunk_index"]))
+        for chunk in chunks
+    ]
 
     vectors = [
         {
             "id": vid,
             "values": emb,
             "metadata": {
+                # camelCase is the cross-runtime Vectorize contract. The
+                # snake_case aliases keep the existing Python RAG readers
+                # compatible during the index rebuild window.
+                "tenantId": tenant_id,
                 "tenant_id": tenant_id,
+                "type": "library_chunk",
+                "itemId": item_id,
                 "item_id": item_id,
+                "chunkIndex": chunk["chunk_index"],
                 "chunk_index": chunk["chunk_index"],
+                "contentType": chunk.get("content_type") or "text",
                 "content_type": chunk.get("content_type") or "text",
+                "allowed_scopes": chunk.get("allowed_scopes") or [],
             },
         }
         for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
     ]
 
-    # Run async upsert from sync context (Celery worker)
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(store.upsert(vectors))
-    finally:
-        loop.close()
+    mutation_result = await store.upsert(vectors)
+    mutation_ids: list[str] = []
+    if isinstance(mutation_result, dict):
+        if mutation_result.get("mutationId"):
+            mutation_ids.append(str(mutation_result["mutationId"]))
+        mutation_ids.extend(
+            str(value)
+            for value in mutation_result.get("mutationIds", [])
+            if value
+        )
 
-    return vector_ids
+    return VectorUpsertIds(vector_ids, mutation_ids)
+
+
+def _is_vectorize_safe_id(value: Any) -> bool:
+    return isinstance(value, str) and bool(value) and len(value.encode("utf-8")) <= 64
+
+
+def _cloudflare_vectorize_store(vectorize_config: dict[str, str] | None = None):
+    from app.orchestrator.vector_store.cloudflare_vectorize_store import (
+        CloudflareVectorizeStore,
+        VectorizeConfig,
+    )
+
+    cfg = vectorize_config or {}
+    account_id = cfg.get("vectorizeAccountId", "")
+    api_token = cfg.get("vectorizeApiToken", "")
+    index_name = cfg.get("vectorizeIndexName", "library-index")
+    if not account_id or not api_token:
+        raise RuntimeError("Cloudflare Vectorize credentials not configured")
+    return CloudflareVectorizeStore(
+        VectorizeConfig(account_id=account_id, api_token=api_token, index_name=index_name)
+    )
+
+
+async def delete_cloudflare_vector_ids(
+    *,
+    tenant_id: str,
+    vector_ids: list[str],
+    vectorize_config: dict[str, str] | None = None,
+    item_id: int | None = None,
+) -> int:
+    """Verify ownership and delete Vectorize IDs; never fall back to Chroma."""
+    ids = sorted({value for value in vector_ids if _is_vectorize_safe_id(value)})
+    if not ids:
+        return 0
+
+    store = _cloudflare_vectorize_store(vectorize_config)
+    verified = await store.get_by_ids(
+        ids,
+        expected_tenant_id=tenant_id,
+        expected_item_id=item_id,
+    )
+    verified_ids = [str(vector["id"]) for vector in verified]
+    if not verified_ids:
+        return 0
+    await store.delete_by_ids(verified_ids)
+    return len(verified_ids)
+
+
+async def delete_stale_cloudflare_vectors(
+    *,
+    tenant_id: str,
+    item_id: int,
+    old_vector_ids: list[str],
+    new_vector_ids: list[str],
+    vectorize_config: dict[str, str] | None = None,
+) -> int:
+    """Remove old item vectors after a successful replacement upsert.
+
+    Reindexing is intentionally upsert-then-delete. If ownership or provider
+    visibility is ambiguous, this raises and leaves the database chunk rows
+    untouched so a retry can reconcile the same deterministic IDs.
+    """
+    old_ids = {value for value in old_vector_ids if _is_vectorize_safe_id(value)}
+    new_ids = {value for value in new_vector_ids if _is_vectorize_safe_id(value)}
+    stale_ids = sorted(old_ids - new_ids)
+    if not stale_ids:
+        return 0
+    return await delete_cloudflare_vector_ids(
+        tenant_id=tenant_id,
+        item_id=item_id,
+        vector_ids=stale_ids,
+        vectorize_config=vectorize_config,
+    )
 
 
 def get_vector_upsert_fn(
@@ -465,11 +619,11 @@ def get_vector_upsert_fn(
         return pgvector_fn
 
     if provider == "cloudflare_vectorize":
-        def vectorize_fn(
+        async def vectorize_fn(
             *, tenant_id: str, item_id: int,
             chunks: list[dict[str, Any]], embeddings: list[list[float]],
         ) -> list[str]:
-            return _cloudflare_vector_upsert(
+            return await _cloudflare_vector_upsert(
                 tenant_id=tenant_id, item_id=item_id,
                 chunks=chunks, embeddings=embeddings,
                 vectorize_config=config,
@@ -497,6 +651,19 @@ def _vector_provider_config_from_env() -> dict[str, str]:
         value = os.getenv(env_key)
         if value:
             config[config_key] = value
+
+    if "vectorizeAccountId" not in config:
+        account_id = os.getenv("CLOUDFLARE_ACCOUNT_ID") or os.getenv("CF_ACCOUNT_ID")
+        if account_id:
+            config["vectorizeAccountId"] = account_id
+    if "vectorizeApiToken" not in config:
+        token = os.getenv("CF_VECTORIZE_API_TOKEN")
+        if token:
+            config["vectorizeApiToken"] = token
+    if "vectorizeIndexName" not in config:
+        index_name = os.getenv("VECTORIZE_LIBRARY_INDEX") or os.getenv("LIBRARY_VECTOR_INDEX_NAME")
+        if index_name:
+            config["vectorizeIndexName"] = index_name
 
     database_url = os.getenv("DATABASE_URL", "").strip()
     if database_url.startswith("postgresql"):
@@ -538,6 +705,29 @@ def _resolve_vector_upsert_fn(explicit: Optional[VectorUpsertFn]) -> VectorUpser
 
     provider, config = resolve_library_vector_provider()
     return get_vector_upsert_fn(provider, config=config)
+
+
+def resolve_library_embedding_service(
+    explicit: Optional[EmbeddingService] = None,
+    *,
+    provider: Optional[str] = None,
+    config: Optional[dict[str, str]] = None,
+) -> EmbeddingService:
+    """Resolve an embedder whose dimensions match the active library store."""
+    if explicit is not None:
+        return explicit
+
+    resolved_provider = provider
+    resolved_config = config
+    if resolved_provider is None or resolved_config is None:
+        resolved_provider, resolved_config = resolve_library_vector_provider()
+
+    if resolved_provider == "cloudflare_vectorize":
+        return get_cloudflare_workers_ai_embedding_service(
+            account_id=resolved_config.get("vectorizeAccountId"),
+            api_token=os.getenv("CLOUDFLARE_AI_API_KEY"),
+        )
+    return get_embedding_service()
 
 
 def _is_transient_indexing_error(exc: Exception) -> bool:
@@ -715,6 +905,7 @@ async def delete_library_item_vectors(
             "removed_chunks": 0,
             "removed_vector_refs": 0,
             "removed_pgvector_rows": 0,
+            "removed_cloudflare_vectors": 0,
             "soft_delete_item": soft_delete_item,
             "not_found": True,
         }
@@ -735,6 +926,7 @@ async def delete_library_item_vectors(
     removed_chunks = len(chunk_rows)
     removed_vector_refs = len([row for row in chunk_rows if row.vector_ref_id])
     removed_pgvector_rows = 0
+    removed_cloudflare_vectors = 0
 
     provider, _provider_config = resolve_library_vector_provider()
     if provider == "pgvector":
@@ -742,6 +934,14 @@ async def delete_library_item_vectors(
             db,
             tenant_id=tenant_id,
             item_id=library_item_id,
+        )
+    elif provider == "cloudflare_vectorize" and removed_vector_refs:
+        vector_ids = [row.vector_ref_id for row in chunk_rows if row.vector_ref_id]
+        removed_cloudflare_vectors = await delete_cloudflare_vector_ids(
+            tenant_id=tenant_id,
+            item_id=library_item_id,
+            vector_ids=vector_ids,
+            vectorize_config=_provider_config,
         )
 
     await db.execute(
@@ -771,6 +971,7 @@ async def delete_library_item_vectors(
         removed_chunks=removed_chunks,
         removed_vector_refs=removed_vector_refs,
         removed_pgvector_rows=removed_pgvector_rows,
+        removed_cloudflare_vectors=removed_cloudflare_vectors,
         soft_delete_item=soft_delete_item,
     )
     _safe_record_vector_audit_event(
@@ -785,6 +986,7 @@ async def delete_library_item_vectors(
             "removed_chunks": removed_chunks,
             "removed_vector_refs": removed_vector_refs,
             "removed_pgvector_rows": removed_pgvector_rows,
+            "removed_cloudflare_vectors": removed_cloudflare_vectors,
             "soft_delete_item": soft_delete_item,
         },
     )
@@ -795,6 +997,7 @@ async def delete_library_item_vectors(
         "removed_chunks": removed_chunks,
         "removed_vector_refs": removed_vector_refs,
         "removed_pgvector_rows": removed_pgvector_rows,
+        "removed_cloudflare_vectors": removed_cloudflare_vectors,
         "soft_delete_item": soft_delete_item,
         "not_found": False,
     }
@@ -1090,8 +1293,15 @@ async def process_library_index_job(
         parent_chunks = [c for c in all_chunks if c.is_parent]
 
         # Only embed and upsert child chunks (parents stored for context only)
-        embedder = embedding_service or get_embedding_service()
+        resolved_provider, resolved_provider_config = resolve_library_vector_provider()
+        embedder = resolve_library_embedding_service(
+            embedding_service,
+            provider=resolved_provider,
+            config=resolved_provider_config,
+        )
         embeddings = embedder.embed_batch([c.content for c in child_chunks])
+        if resolved_provider == "cloudflare_vectorize":
+            validate_cloudflare_embeddings(embeddings, expected_count=len(child_chunks))
 
         upsert = _resolve_vector_upsert_fn(vector_upsert_fn)
         chunks_for_upsert = [
@@ -1105,15 +1315,48 @@ async def process_library_index_job(
             }
             for c in child_chunks
         ]
-        vector_ids = upsert(
+        old_vector_ids: list[str] = []
+        if resolved_provider == "cloudflare_vectorize":
+            existing_vector_rows = (
+                await db.execute(
+                    select(LibraryChunk.vector_ref_id).where(
+                        and_(
+                            LibraryChunk.library_item_id == item.id,
+                            LibraryChunk.tenant_id == job.tenant_id,
+                            LibraryChunk.content_type != "markdown_source",
+                        )
+                    )
+                )
+            ).all()
+            old_vector_ids = [str(row[0]) for row in existing_vector_rows if row[0]]
+        upsert_result = upsert(
             tenant_id=job.tenant_id,
             item_id=job.library_item_id,
             chunks=chunks_for_upsert,
             embeddings=embeddings,
         )
-
-        if len(vector_ids) != len(child_chunks):
+        vector_ids = await upsert_result if inspect.isawaitable(upsert_result) else upsert_result
+        vectorize_mutation_ids: list[str] = []
+        if resolved_provider == "cloudflare_vectorize":
+            expected_vector_ids = [
+                _cloudflare_library_vector_id(job.tenant_id, job.library_item_id, child.index)
+                for child in child_chunks
+            ]
+            vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
+                vector_ids,
+                expected_ids=expected_vector_ids,
+            )
+        elif not isinstance(vector_ids, list) or len(vector_ids) != len(child_chunks):
             raise RuntimeError("vector_id_count_mismatch")
+
+        if resolved_provider == "cloudflare_vectorize":
+            await delete_stale_cloudflare_vectors(
+                tenant_id=job.tenant_id,
+                item_id=job.library_item_id,
+                old_vector_ids=old_vector_ids,
+                new_vector_ids=[str(vector_id) for vector_id in vector_ids],
+                vectorize_config=resolved_provider_config,
+            )
 
         # ── Step 2: Delete ONLY non-markdown_source chunks ───────────────────────
         # IMPORTANT: We ALWAYS preserve markdown_source regardless of what we
@@ -1189,6 +1432,15 @@ async def process_library_index_job(
 
         # Store child chunks with vector references
         for child, vector_id in zip(child_chunks, vector_ids):
+            child_metadata = {
+                "section_heading": child.section_heading,
+                "start_char": child.start_char,
+                "end_char": child.end_char,
+                "strategy": child.metadata.get("strategy", "recursive"),
+                "job_id": job.id,
+            }
+            if vectorize_mutation_ids:
+                child_metadata["vectorizeMutationIds"] = vectorize_mutation_ids
             db.add(
                 LibraryChunk(
                     tenant_id=job.tenant_id,
@@ -1201,13 +1453,7 @@ async def process_library_index_job(
                     is_parent=False,
                     parent_chunk_id=child.parent_chunk_id,
                     allowed_scopes=child.allowed_scopes,
-                    metadata={
-                        "section_heading": child.section_heading,
-                        "start_char": child.start_char,
-                        "end_char": child.end_char,
-                        "strategy": child.metadata.get("strategy", "recursive"),
-                        "job_id": job.id,
-                    },
+                    metadata=child_metadata,
                     created_at=created_at,
                 )
             )
@@ -1396,8 +1642,12 @@ async def retry_due_library_index_jobs(
 ) -> dict[str, int]:
     """Retry and process index jobs due for execution."""
     now = datetime.utcnow()
-    provider_name, _provider_config = resolve_library_vector_provider()
-    effective_embedding_service = embedding_service or get_embedding_service()
+    provider_name, provider_config = resolve_library_vector_provider()
+    effective_embedding_service = resolve_library_embedding_service(
+        embedding_service,
+        provider=provider_name,
+        config=provider_config,
+    )
     if provider_name == "pgvector":
         table_dimension = await get_pgvector_table_dimension(db)
         embedder_dimension = int(getattr(effective_embedding_service, "dimension", 0) or 0)

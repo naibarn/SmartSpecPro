@@ -876,7 +876,12 @@ export class VerticalDramaAssemblyService {
               reviewData: { ...reviewData, assemblyManifestId, assemblyEpisodeId: String(owner.episodeId) },
               updatedAt: new Date(),
             })
-            .where(eq(mediaStudioStoryboardReviews.id, reviewId));
+            .where(
+              and(
+                eq(mediaStudioStoryboardReviews.id, reviewId),
+                eq(mediaStudioStoryboardReviews.userId, owner.userId),
+              ),
+            );
           storyboardReviewLinked = true;
         }
       }

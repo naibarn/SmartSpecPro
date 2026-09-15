@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "../db";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 export const FEEDBACK_AUTO_CLOSE_AFTER_MS = 5 * 24 * 60 * 60 * 1000;
 const FEEDBACK_AUTO_CLOSE_INTERVAL_MS = 60 * 60 * 1000;
@@ -41,6 +42,10 @@ async function runAutoClose(source: string): Promise<void> {
 }
 
 export async function initializeFeedbackAutoCloseJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeFeedbackAutoCloseJob")) {
+    console.info("[FeedbackAutoCloseJob] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   shutdownFeedbackAutoCloseJob();
   startupTimeoutId = setTimeout(() => void runAutoClose("initial"), 120_000);
   intervalId = setInterval(

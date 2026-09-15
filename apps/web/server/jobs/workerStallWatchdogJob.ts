@@ -6,6 +6,7 @@ import {
   requeueStalledWorkerJobs,
   WORKER_STALL_WATCHDOG_JOB_TYPES,
 } from "../services/workerStallWatchdogService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const WATCHDOG_INTERVAL_MS = 5 * 60 * 1000;
 const ACTIVE_WORKER_JOB_STATUSES = [
@@ -57,6 +58,10 @@ export async function runWorkerStallWatchdogOnce(now = new Date()) {
 }
 
 export async function initializeWorkerStallWatchdogJob() {
+  if (!shouldRunFeature192InProcessTimer("initializeWorkerStallWatchdogJob")) {
+    console.info("[WorkerStallWatchdog] in-process scheduler disabled; canonical reconciler owns leases");
+    return;
+  }
   if (intervalId) {
     return;
   }
