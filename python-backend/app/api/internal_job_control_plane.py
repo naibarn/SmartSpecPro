@@ -44,6 +44,15 @@ def publish_unified_job(
     mode; that mode claims the durable outbox publication directly.
     """
     _verify_token(x_internal_token)
+
+    # Hard cutover has one accepted Python execution path.  A deployment that
+    # enables the cutover flag without the PostgreSQL-pull worker must fail
+    # closed instead of falling back to Celery for an already-created job.
+    # This keeps the local compatibility endpoint from becoming an accidental
+    # production runtime target while the Cloudflare account is being prepared.
+    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true" and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") != "true":
+        raise HTTPException(status_code=503, detail="POSTGRES_PULL_REQUIRED")
+
     from app.tasks.unified_job_task import execute_unified_job, run_unified_job
 
     if os.getenv("FEATURE_186_HARD_CUTOVER") == "true" and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") == "true":

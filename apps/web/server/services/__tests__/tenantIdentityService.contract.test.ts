@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildTenantMoveTargetHash, TENANT_MOVE_CONFIRMATION } from "../tenantIdentityService";
 
 const tenantTransferSource = readFileSync(new URL("../tenantDataTransfer.ts", import.meta.url), "utf8");
+const tenantTransferRouterSource = readFileSync(new URL("../../routers/tenantDataTransfer.ts", import.meta.url), "utf8");
 
 describe("Feature 189 tenant move command identity", () => {
   it("is stable for retries and changes when the target changes", () => {
@@ -22,5 +23,12 @@ describe("Feature 189 tenant move command identity", () => {
     expect(tenantTransferSource).toContain("admissionAlreadyChecked: true");
     expect(tenantTransferSource).toContain('expectedOperationStatus: "previewed"');
     expect(tenantTransferSource).not.toContain("tx.insert(workerJobs)");
+  });
+
+  it("keeps transfer routes fail-closed until the rollout flag is explicitly enabled", () => {
+    expect(tenantTransferRouterSource).toContain("FEATURE_189_TRANSFER_ENABLED");
+    expect(tenantTransferRouterSource).toContain('code: "PRECONDITION_FAILED"');
+    expect(tenantTransferRouterSource).toContain("rateLimitedTransferDomainAdminProcedure");
+    expect(tenantTransferRouterSource).toContain("transferDomainAdminProcedure");
   });
 });

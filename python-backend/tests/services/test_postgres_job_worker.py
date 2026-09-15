@@ -1,7 +1,17 @@
+import pytest
+
 from unittest.mock import Mock
 
 from app.services.job_control_plane import ReadyJob
 from app.workers import postgres_job_worker
+
+
+def test_postgres_worker_requires_both_hard_cutover_flags(monkeypatch):
+    monkeypatch.setenv("FEATURE_186_HARD_CUTOVER", "true")
+    monkeypatch.delenv("FEATURE_186_POSTGRES_PYTHON_WORKER", raising=False)
+
+    with pytest.raises(RuntimeError, match="FEATURE_186_HARD_CUTOVER and FEATURE_186_POSTGRES_PYTHON_WORKER"):
+        postgres_job_worker.main()
 
 
 def test_postgres_worker_claims_the_ready_attempt(monkeypatch):

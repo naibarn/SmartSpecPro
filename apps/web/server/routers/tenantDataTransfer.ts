@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { domainAdminProcedure, rateLimitedDomainAdminProcedure, router } from "../_core/trpc";
+import { domainAdminProcedure, middleware, rateLimitedDomainAdminProcedure, router } from "../_core/trpc";
 import {
   approveTenantTransfer,
   cancelTenantTransfer,
@@ -24,6 +24,19 @@ const previewIdSchema = z.string().trim().min(1).max(36);
 const operationIdSchema = z.string().trim().min(1).max(36);
 const actionIdSchema = z.string().trim().min(1).max(128);
 
+const transferFeatureGate = middleware(async ({ next }) => {
+  if (process.env.FEATURE_189_TRANSFER_ENABLED !== "true") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Tenant transfer is not enabled",
+    });
+  }
+  return next();
+});
+
+const transferDomainAdminProcedure = domainAdminProcedure.use(transferFeatureGate);
+const rateLimitedTransferDomainAdminProcedure = rateLimitedDomainAdminProcedure.use(transferFeatureGate);
+
 function transferActor(ctx: { user: { id: number; currentTenantId?: string | number | null } }): TransferServiceActor {
   const tenantId = String(ctx.user.currentTenantId ?? "").trim();
   if (!tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant is required" });
@@ -45,7 +58,7 @@ function toTrpcError(error: unknown): never {
 }
 
 export const tenantDataTransferRouter = router({
-  preview: rateLimitedDomainAdminProcedure
+  preview: rateLimitedTransferDomainAdminProcedure
     .input(z.object({
       sourceUserId: z.number().int().positive(),
       targetUserId: z.number().int().positive(),
@@ -60,7 +73,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  listPreviewItems: rateLimitedDomainAdminProcedure
+  listPreviewItems: rateLimitedTransferDomainAdminProcedure
     .input(z.object({
       previewId: previewIdSchema,
       cursor: z.string().max(1_500).nullable().optional(),
@@ -75,7 +88,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  approve: rateLimitedDomainAdminProcedure
+  approve: rateLimitedTransferDomainAdminProcedure
     .input(z.object({
       previewId: previewIdSchema,
       snapshotFingerprint: z.string().regex(/^[a-f0-9]{64}$/i),
@@ -92,7 +105,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  getOperation: domainAdminProcedure
+  getOperation: transferDomainAdminProcedure
     .input(z.object({ operationId: operationIdSchema }).strict())
     .query(async ({ ctx, input }) => {
       try {
@@ -102,7 +115,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  listItems: domainAdminProcedure
+  listItems: transferDomainAdminProcedure
     .input(z.object({
       operationId: operationIdSchema,
       cursor: z.string().max(1_500).nullable().optional(),
@@ -117,7 +130,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  resume: rateLimitedDomainAdminProcedure
+  resume: rateLimitedTransferDomainAdminProcedure
     .input(z.object({ operationId: operationIdSchema, actionId: actionIdSchema }).strict())
     .mutation(async ({ ctx, input }) => {
       try {
@@ -127,7 +140,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  resolveItem: rateLimitedDomainAdminProcedure
+  resolveItem: rateLimitedTransferDomainAdminProcedure
     .input(z.object({ operationId: operationIdSchema, itemId: previewIdSchema, resolution: z.enum(["retry", "skip"]), actionId: actionIdSchema }).strict())
     .mutation(async ({ ctx, input }) => {
       try {
@@ -137,7 +150,7 @@ export const tenantDataTransferRouter = router({
       }
     }),
 
-  cancel: rateLimitedDomainAdminProcedure
+  cancel: rateLimitedTransferDomainAdminProcedure
     .input(z.object({ operationId: operationIdSchema, actionId: actionIdSchema }).strict())
     .mutation(async ({ ctx, input }) => {
       try {

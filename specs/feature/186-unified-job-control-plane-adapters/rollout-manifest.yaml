@@ -369,6 +369,11 @@ tenant_data_transfer_boundary:
   canonical_job_type: tenant_data_transfer
   implementation_gate: separate_registered-handler-schema-and-authz-wave
   rule: do-not-expose-preview-approval-or-execution-routes-until-the-transfer-plan-item-schema-handlers-and-queue-cancellation-tests-are-live
+  exposure_gate:
+    flag: FEATURE_189_TRANSFER_ENABLED
+    default: false
+    behavior_when_disabled: fail_closed_precondition_failed
+    evidence: apps/web/server/routers/tenantDataTransfer.ts
 schema:
   migrations:
     - 0303_feature_186_unified_job_control_plane

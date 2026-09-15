@@ -20,3 +20,13 @@ fail_closed_rules:
   - no_unbounded_legacy_retry
   - no_legacy_status_reader_for_canonical_job_without_postgresql_lookup
   - preserve_dispatch_and_callback_evidence_until_rollback_window_ends
+hard_cutover_runtime_guards:
+  status: verified-local
+  rule: FEATURE_186_HARD_CUTOVER=true cannot fall back to Celery or Redis media recovery when the PostgreSQL-pull worker is unavailable
+  evidence:
+    - python-backend/app/api/internal_job_control_plane.py
+    - python-backend/app/tasks/unified_job_task.py
+    - python-backend/app/tasks/media_tasks.py
+    - python-backend/tests/services/test_job_control_plane.py
+    - python-backend/tests/services/test_postgres_job_worker.py
+  production_account_proof_required: true

@@ -40,6 +40,10 @@ def _postgres_pull_enabled() -> bool:
     )
 
 
+def _hard_cutover_enabled() -> bool:
+    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+
+
 async def _execute_hard_media_task(task_name: str, args: list[Any]) -> dict[str, Any]:
     from app.tasks import media_tasks
 
@@ -81,6 +85,8 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
     ``self.request.id`` remains deterministic during migration.
     """
     input_data = context.get("input") if isinstance(context.get("input"), dict) else {}
+    if _hard_cutover_enabled() and not _postgres_pull_enabled():
+        raise RuntimeError("HARD_CUTOVER_PYTHON_WORKER_REQUIRED")
     task_name = input_data.get("taskName")
     if not isinstance(task_name, str) or not task_name:
         raise ValueError("LEGACY_TASK_NAME_MISSING")
@@ -230,6 +236,9 @@ def run_unified_job(
     adapter: str = "postgres-pull",
     attempt_id: str | None = None,
 ) -> dict[str, Any]:
+    if _hard_cutover_enabled() and not _postgres_pull_enabled():
+        raise RuntimeError("HARD_CUTOVER_PYTHON_WORKER_REQUIRED")
+
     client = JobControlPlaneClient()
     lease = client.claim(job_id, runner_id or os.getenv("HOSTNAME", "python-job-worker"), adapter, attempt_id)
     if lease is None:
@@ -335,12 +344,14 @@ def execute_unified_job(
     attempt_id: str | None = None,
 ) -> dict[str, Any]:
     """Shared execution entry point, optionally decorated for legacy Celery."""
+    if _hard_cutover_enabled() and not _postgres_pull_enabled():
+        raise RuntimeError("HARD_CUTOVER_PYTHON_WORKER_REQUIRED")
     postgres_pull_enabled = _postgres_pull_enabled()
     adapter = "postgres-pull" if postgres_pull_enabled else "celery"
     return run_unified_job(job_id, runner_id, adapter, attempt_id)
 
 
-if not _postgres_pull_enabled():
+if not _hard_cutover_enabled():
     from app.core.celery_app import celery_app
 
     execute_unified_job = celery_app.task(

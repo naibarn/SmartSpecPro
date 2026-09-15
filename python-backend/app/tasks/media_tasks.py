@@ -60,6 +60,11 @@ def _feature_186_postgres_pull_enabled() -> bool:
     )
 
 
+def _feature_186_hard_cutover_enabled() -> bool:
+    """Whether canonical control-plane recovery owns media jobs."""
+    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+
+
 def _feature_186_external_context() -> dict[str, str]:
     """Persist the canonical identity needed by a later provider poll task."""
     if not _feature_186_postgres_pull_enabled():
@@ -3874,13 +3879,13 @@ async def _recover_stuck_tasks_async():
     Find and recover tasks stuck in 'processing' status
     This handles tasks that were interrupted by worker restarts or timeouts
     """
-    if _feature_186_postgres_pull_enabled():
+    if _feature_186_hard_cutover_enabled():
         # The canonical lease/reconciler and the durable provider poller own
         # this path in PostgreSQL-pull mode. Running the legacy janitor here
         # would race the same MediaTask row and could poll or settle a
         # provider operation outside the canonical lease fence.
         logger.info("feature_186_media_recovery_deferred_to_control_plane")
-        return {"status": "skipped", "reason": "feature_186_postgres_pull"}
+        return {"status": "skipped", "reason": "feature_186_hard_cutover"}
     async with AsyncSessionLocal() as db:
         try:
             from datetime import timezone
@@ -4481,12 +4486,12 @@ async def _recover_stuck_pending_tasks_async():
       same id only when the owner has no other processing image task. Unknown
       inspection states are never mutated.
     """
-    if _feature_186_postgres_pull_enabled():
+    if _feature_186_hard_cutover_enabled():
         # Do not consult AsyncResult in hard PostgreSQL-pull mode. The
         # canonical outbox/lease/reconciler owns pending recovery and a
         # compatibility janitor must not race or mutate the same MediaTask.
         logger.info("feature_186_media_pending_recovery_deferred_to_control_plane")
-        return {"status": "skipped", "reason": "feature_186_postgres_pull"}
+        return {"status": "skipped", "reason": "feature_186_hard_cutover"}
     from datetime import timezone
     from app.services.legacy_task_status import read_legacy_task_status
 
@@ -4710,6 +4715,10 @@ async def _recover_stuck_pending_tasks_async():
 
 async def _recover_unclaimed_pending_image_tasks_async() -> dict[str, Any]:
     """Re-arm durable pending rows left before a Celery claim was published."""
+    if _feature_186_hard_cutover_enabled():
+        logger.info("feature_186_media_unclaimed_recovery_deferred_to_control_plane")
+        return {"status": "skipped", "reason": "feature_186_hard_cutover"}
+
     cutoff = datetime.now(timezone.utc) - timedelta(seconds=10)
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -4741,6 +4750,10 @@ def recover_stuck_tasks():
     left tasks in a non-terminal state.
     Runs every minute (see celery beat schedule)
     """
+    if _feature_186_hard_cutover_enabled():
+        logger.info("feature_186_media_recovery_deferred_to_control_plane")
+        return {"status": "skipped", "reason": "feature_186_hard_cutover"}
+
     logger.info("recover_stuck_tasks_started")
     result: dict[str, Any] = {"status": "success"}
     phase_errors: list[str] = []

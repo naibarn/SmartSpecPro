@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -5,6 +6,64 @@ import httpx
 import pytest
 
 from app.services.job_control_plane import JobControlPlaneClient, JobControlPlaneError, LeaseContext, ReadyJob, dispatch_python_task
+
+
+def test_hard_cutover_publish_endpoint_fails_closed_without_postgres_worker(monkeypatch):
+    from fastapi import HTTPException
+
+    from app.api import internal_job_control_plane
+
+    monkeypatch.setenv("FEATURE_186_HARD_CUTOVER", "true")
+    monkeypatch.delenv("FEATURE_186_POSTGRES_PYTHON_WORKER", raising=False)
+    monkeypatch.setattr(internal_job_control_plane, "_verify_token", lambda token: None)
+
+    with pytest.raises(HTTPException) as error:
+        internal_job_control_plane.publish_unified_job(
+            internal_job_control_plane.PublishRequest(job_id="job-1", task_id="outbox-1"),
+            "token",
+        )
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "POSTGRES_PULL_REQUIRED"
+
+
+def test_hard_cutover_media_recovery_is_deferred_to_control_plane(monkeypatch):
+    from app.tasks import media_tasks
+
+    monkeypatch.setenv("FEATURE_186_HARD_CUTOVER", "true")
+    monkeypatch.delenv("FEATURE_186_POSTGRES_PYTHON_WORKER", raising=False)
+
+    assert asyncio.run(media_tasks._recover_stuck_tasks_async()) == {
+        "status": "skipped",
+        "reason": "feature_186_hard_cutover",
+    }
+    assert asyncio.run(media_tasks._recover_stuck_pending_tasks_async()) == {
+        "status": "skipped",
+        "reason": "feature_186_hard_cutover",
+    }
+    assert asyncio.run(media_tasks._recover_unclaimed_pending_image_tasks_async()) == {
+        "status": "skipped",
+        "reason": "feature_186_hard_cutover",
+    }
+    assert media_tasks.recover_stuck_tasks.run() == {
+        "status": "skipped",
+        "reason": "feature_186_hard_cutover",
+    }
+
+
+def test_hard_cutover_direct_execution_fails_before_claim(monkeypatch):
+    from app.tasks import unified_job_task
+
+    monkeypatch.setenv("FEATURE_186_HARD_CUTOVER", "true")
+    monkeypatch.delenv("FEATURE_186_POSTGRES_PYTHON_WORKER", raising=False)
+
+    client = Mock()
+    monkeypatch.setattr(unified_job_task, "JobControlPlaneClient", lambda: client)
+
+    with pytest.raises(RuntimeError, match="HARD_CUTOVER_PYTHON_WORKER_REQUIRED"):
+        unified_job_task.run_unified_job("job-1")
+
+    client.claim.assert_not_called()
 
 
 def test_python_port_sends_only_canonical_identity_and_fence():
