@@ -31,7 +31,105 @@ export const CANONICAL_JOB_COMMANDS = [
 
 export type CanonicalJobStatus = (typeof CANONICAL_JOB_STATUSES)[number];
 export type CanonicalJobCommand = (typeof CANONICAL_JOB_COMMANDS)[number];
-export type ExecutionClass = "short" | "long" | "external" | "cpu" | "gpu" | "scheduled";
+
+/**
+ * The only lifecycle transition table shared by adapters and projections.
+ * Commands may be retried, but a terminal Job can never be reopened.
+ */
+export const CANONICAL_JOB_TRANSITIONS: Readonly<
+  Record<CanonicalJobStatus, readonly CanonicalJobStatus[]>
+> = {
+  pending: ["queued", "cancelled", "expired"],
+  queued: [
+    "leased",
+    "waiting_external",
+    "retry_scheduled",
+    "failed",
+    "cancelled",
+    "expired",
+  ],
+  leased: [
+    "running",
+    "queued",
+    "waiting_external",
+    "failed",
+    "cancelled",
+    "expired",
+  ],
+  running: [
+    "waiting_external",
+    "retry_scheduled",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "expired",
+  ],
+  waiting_external: ["queued", "running", "failed", "cancelled", "expired"],
+  retry_scheduled: [
+    "queued",
+    "waiting_external",
+    "failed",
+    "cancelled",
+    "expired",
+  ],
+  succeeded: [],
+  failed: [],
+  cancelled: [],
+  expired: [],
+};
+
+export function canTransitionJobStatus(
+  from: string,
+  to: string
+): to is CanonicalJobStatus {
+  if (!CANONICAL_JOB_STATUSES.includes(from as CanonicalJobStatus))
+    return false;
+  return CANONICAL_JOB_TRANSITIONS[from as CanonicalJobStatus].includes(
+    to as CanonicalJobStatus
+  );
+}
+
+export function assertCanonicalJobTransition(from: string, to: string): void {
+  if (!canTransitionJobStatus(from, to)) {
+    throw new JobControlPlaneError(
+      "JOB_TRANSITION_INVALID",
+      `Job cannot transition from ${from} to ${to}`,
+      {
+        from,
+        to,
+        terminal:
+          CANONICAL_JOB_STATUSES.includes(from as CanonicalJobStatus) &&
+          CANONICAL_JOB_TRANSITIONS[from as CanonicalJobStatus].length === 0,
+      }
+    );
+  }
+}
+
+export function assertCanonicalLeaseFence(input: {
+  expectedAttemptId: string;
+  actualAttemptId: string | null | undefined;
+  expectedFencingVersion: number;
+  actualFencingVersion: number | null | undefined;
+}): void {
+  if (
+    input.expectedAttemptId !== input.actualAttemptId ||
+    input.expectedFencingVersion !== input.actualFencingVersion
+  ) {
+    throw new JobControlPlaneError(
+      "JOB_LEASE_STALE",
+      "Job attempt lease is no longer active",
+      {
+        expectedAttemptId: input.expectedAttemptId,
+        actualAttemptId: input.actualAttemptId ?? null,
+        expectedFencingVersion: input.expectedFencingVersion,
+        actualFencingVersion: input.actualFencingVersion ?? null,
+      }
+    );
+  }
+}
+
+export type ExecutionClass =
+  "short" | "long" | "external" | "cpu" | "gpu" | "scheduled";
 export type JitterPolicy = "none" | "bounded" | "recorded";
 
 export type RetryPolicy = {
@@ -202,7 +300,7 @@ export class JobControlPlaneError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly details?: Record<string, unknown>,
+    public readonly details?: Record<string, unknown>
   ) {
     super(message);
     this.name = "JobControlPlaneError";

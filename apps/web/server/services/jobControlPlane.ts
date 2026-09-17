@@ -27,6 +27,8 @@ import {
 } from "./jobCanonicalization";
 import {
   JobControlPlaneError,
+  assertCanonicalJobTransition,
+  assertCanonicalLeaseFence,
   type ClassifiedJobError,
   type JobDefinition,
   type JobRef,
@@ -2618,6 +2620,7 @@ async function guardedLeaseUpdate(
   values: Record<string, unknown> = {},
   settlement?: { settlementKey: string; settlementType: string },
 ): Promise<void> {
+  assertCanonicalJobTransition(expectedStatus, nextStatus);
   await repository.transaction(async repo => {
     const job = await repo.findJob(lease.jobId);
     await assertLeaseAttempt(repo, lease, job);
@@ -2665,9 +2668,13 @@ async function assertLeaseAttempt(
 ): Promise<void> {
   if (!job) throw new JobControlPlaneError("JOB_LEASE_STALE", "Job lease is no longer active");
   const attempt = await repo.findAttempt(job.id, job.attempt);
-  if (!attempt || attempt.id !== lease.attemptId || attempt.leaseGeneration !== lease.fencingVersion) {
-    throw new JobControlPlaneError("JOB_LEASE_STALE", "Job attempt lease is no longer active");
-  }
+  if (!attempt) throw new JobControlPlaneError("JOB_LEASE_STALE", "Job attempt lease is no longer active");
+  assertCanonicalLeaseFence({
+    expectedAttemptId: lease.attemptId,
+    actualAttemptId: attempt.id,
+    expectedFencingVersion: lease.fencingVersion,
+    actualFencingVersion: attempt.leaseGeneration,
+  });
 }
 
 export function isRetryableError(error: unknown): boolean {
