@@ -47,11 +47,11 @@ use crate::hermes_runtime::{
 use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::media_pipeline::{
     analyze_media_file, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
-    execute_editor_media_operation, probe_media_file, qc_derived_output_with_probe,
-    run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments, run_editor_nle_render,
-    run_episode_score_export, run_episode_score_mix, write_checkpoint_atomic, CameraMotionPlan,
-    LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc, MediaCheckpoint, MediaFocusKeyframe,
-    MediaPlanOptions, MediaToolchain,
+    editor_render_handoff_metadata, execute_editor_media_operation, probe_media_file,
+    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
+    run_editor_nle_render, run_episode_score_export, run_episode_score_mix,
+    write_checkpoint_atomic, CameraMotionPlan, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc,
+    MediaCheckpoint, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
 };
 use crate::runtime_manifest::{
     doctor_from_manifest_path, read_runtime_pack_manifest, runtime_pack_paths,
@@ -2262,7 +2262,17 @@ async fn execute_editor_media_job(
         }
         let project = project.ok_or_else(|| "editor_project_missing".to_string())?;
         let output = workspace_root.join("render.mp4");
-        let qc = run_editor_nle_render(&project, &staged_paths, &output, &tools)?;
+        let qc = run_editor_nle_render(
+            &project,
+            job.input_json.get("options").unwrap_or(&Value::Null),
+            &staged_paths,
+            &output,
+            &tools,
+        )?;
+        let render_handoff = editor_render_handoff_metadata(
+            &project,
+            job.input_json.get("options").unwrap_or(&Value::Null),
+        );
         if cancel.load(Ordering::Relaxed) {
             let _ = fs::remove_file(&output);
             return Err("editor_job_canceled".to_string());
@@ -2272,7 +2282,7 @@ async fn execute_editor_media_job(
             sequence_number: render_sequence + 1,
             lease_owner_token: job.lease_owner_token.clone(),
             assignment_attempt: job.assignment_attempt.clone(),
-            payload_json: json!({ "stage": "verify_outputs", "percent": 80, "qc": qc.clone() }),
+            payload_json: json!({ "stage": "verify_outputs", "percent": 80, "qc": qc.clone(), "renderHandoff": render_handoff.clone() }),
         }).await?;
         let uploaded = upload_worker_artifact_file_with_refresh(
             app_data_dir,
@@ -2284,14 +2294,14 @@ async fn execute_editor_media_job(
             "video/mp4",
             &job.lease_owner_token,
             &job.assignment_attempt,
-            json!({ "operation": operation, "qc": qc.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
+            json!({ "operation": operation, "qc": qc.clone(), "renderHandoff": render_handoff.clone(), "projectId": job.input_json.get("projectId"), "revisionId": job.input_json.get("revisionId") }),
         ).await?;
         send_event_with_refresh(app_data_dir, connection, &job.id, WorkerEventPlan {
             event_type: "job.completed".into(),
             sequence_number: render_sequence + 2,
             lease_owner_token: job.lease_owner_token.clone(),
             assignment_attempt: job.assignment_attempt.clone(),
-            payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "qc": qc }),
+            payload_json: json!({ "status": "completed", "stage": "publish_artifacts", "artifacts": [uploaded.artifact], "qc": qc, "renderHandoff": render_handoff }),
         }).await?;
         Ok(())
     }.await;

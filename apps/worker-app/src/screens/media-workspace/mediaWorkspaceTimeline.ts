@@ -1,5 +1,5 @@
 import type { NleClip, NleTrack, ProjectAsset } from "../../types/nleProject";
-import type { CameraMotionPlan } from "@smartspec/shared";
+import { normalizeSilenceRanges as normalizeSharedSilenceRanges, type CameraMotionPlan } from "@smartspec/shared";
 
 export interface SilenceRange {
   startMs: number;
@@ -324,23 +324,13 @@ export function normalizeSilenceRanges(
   durationMs: number,
 ): Array<{ startMs: number; endMs: number }> {
   const boundedDuration = Math.max(0, Math.round(durationMs));
-  const sorted = ranges
-    .map((range) => ({
-      startMs: Math.max(0, Math.min(boundedDuration, Math.round(range.startMs))),
-      endMs: Math.max(0, Math.min(boundedDuration, Math.round(range.endMs ?? boundedDuration))),
-    }))
-    .filter((range) => range.endMs > range.startMs)
-    .sort((left, right) => left.startMs - right.startMs);
-
-  return sorted.reduce<Array<{ startMs: number; endMs: number }>>((merged, range) => {
-    const previous = merged[merged.length - 1];
-    if (previous && range.startMs <= previous.endMs + 50) {
-      previous.endMs = Math.max(previous.endMs, range.endMs);
-    } else {
-      merged.push({ ...range });
-    }
-    return merged;
-  }, []);
+  return normalizeSharedSilenceRanges(
+    ranges.map((range) => ({
+      startMs: range.startMs,
+      endMs: range.endMs ?? boundedDuration,
+    })),
+    boundedDuration,
+  );
 }
 
 /** Jump a seek/playhead destination out of a dead-air range. */

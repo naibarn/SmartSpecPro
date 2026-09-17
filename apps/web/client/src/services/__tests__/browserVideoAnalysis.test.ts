@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   mapMediaPipeKeypoints,
+  analysisWindowDurationMs,
   probeBrowserVideoAnalysis,
   resolveAnalysisWindow,
 } from "../browserVideoAnalysis";
@@ -35,5 +36,9 @@ describe("browser video analysis contract", () => {
       startTimeMs: 0,
       endTimeMs: 30_000,
     });
+  });
+
+  it("keeps camera-plan duration in the same source-relative coordinate as evidence", () => {
+    expect(analysisWindowDurationMs({ startTimeMs: 4_000, endTimeMs: 10_000 })).toBe(6_000);
   });
 });

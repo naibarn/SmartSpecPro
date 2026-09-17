@@ -2007,6 +2007,7 @@ pub fn run_allowlisted_ffmpeg(
 /// it never accepts a URL or a host path from the untrusted project payload.
 pub fn run_editor_nle_render(
     project: &Value,
+    options: &Value,
     asset_paths: &HashMap<String, PathBuf>,
     output: &Path,
     tools: &MediaToolchain,
@@ -2029,8 +2030,44 @@ pub fn run_editor_nle_render(
         .get("tracks")
         .and_then(Value::as_array)
         .ok_or_else(|| "editor_project_tracks_missing".to_string())?;
-    let mut video_clips: Vec<(u64, u64, u64, PathBuf)> = Vec::new();
-    let mut audio_clips: Vec<(u64, u64, u64, f64, bool, PathBuf)> = Vec::new();
+
+    let project_silence_map = project
+        .get("migration")
+        .and_then(Value::as_object)
+        .and_then(|migration| migration.get("preservedUnknown"))
+        .and_then(Value::as_object)
+        .and_then(|unknown| unknown.get("silenceCutMap"));
+    let option_silence_map = options.get("silenceCutMap");
+    validate_editor_silence_cut_map(option_silence_map.or(project_silence_map))?;
+
+    #[derive(Debug, Clone)]
+    struct EditorVideoClip {
+        timeline_start_ms: u64,
+        source_in_ms: u64,
+        source_out_ms: u64,
+        playback_rate: f64,
+        volume: f64,
+        muted: bool,
+        source: PathBuf,
+        source_dimensions: Option<(u32, u32)>,
+        has_audio: bool,
+        camera_motion_plan: Option<CameraMotionPlan>,
+    }
+
+    #[derive(Debug, Clone)]
+    struct EditorAudioClip {
+        timeline_start_ms: u64,
+        source_in_ms: u64,
+        source_out_ms: u64,
+        playback_rate: f64,
+        volume: f64,
+        muted: bool,
+        source: PathBuf,
+        has_audio: bool,
+    }
+
+    let mut video_clips: Vec<EditorVideoClip> = Vec::new();
+    let mut audio_clips: Vec<EditorAudioClip> = Vec::new();
     for track in tracks {
         let track_kind = track.get("kind").and_then(Value::as_str).unwrap_or("");
         if track_kind != "video" && track_kind != "audio" {
@@ -2069,28 +2106,51 @@ pub fn run_editor_nle_render(
                 return Err("editor_clip_duration_invalid".into());
             }
             let timeline_start_ms = clip.get("startMs").and_then(Value::as_u64).unwrap_or(0);
+            let playback_rate = clip
+                .get("playbackRate")
+                .and_then(Value::as_f64)
+                .unwrap_or(1.0)
+                .clamp(0.25, 4.0);
+            let volume = clip
+                .get("volume")
+                .and_then(Value::as_f64)
+                .unwrap_or(1.0)
+                .clamp(0.0, 1.0);
+            let muted = clip.get("muted").and_then(Value::as_bool).unwrap_or(false);
+            let probe = probe_media_file(source, tools).ok();
+            let source_dimensions = probe
+                .as_ref()
+                .and_then(|value| value.width.zip(value.height));
+            let has_audio = probe.as_ref().map(|value| value.has_audio).unwrap_or(false);
             if track_kind == "video" {
-                video_clips.push((timeline_start_ms, start_ms, end_ms, source.clone()));
-            } else {
-                let volume = clip
-                    .get("volume")
-                    .and_then(Value::as_f64)
-                    .unwrap_or(1.0)
-                    .clamp(0.0, 1.0);
-                let muted = clip.get("muted").and_then(Value::as_bool).unwrap_or(false);
-                audio_clips.push((
+                video_clips.push(EditorVideoClip {
                     timeline_start_ms,
-                    start_ms,
-                    end_ms,
+                    source_in_ms: start_ms,
+                    source_out_ms: end_ms,
+                    playback_rate,
                     volume,
                     muted,
-                    source.clone(),
-                ));
+                    source: source.clone(),
+                    source_dimensions,
+                    has_audio,
+                    camera_motion_plan: parse_editor_camera_motion_plan(clip, options)?,
+                });
+            } else {
+                audio_clips.push(EditorAudioClip {
+                    timeline_start_ms,
+                    source_in_ms: start_ms,
+                    source_out_ms: end_ms,
+                    playback_rate,
+                    volume,
+                    muted,
+                    source: source.clone(),
+                    has_audio,
+                });
             }
         }
     }
-    video_clips.sort_by_key(|(timeline_start_ms, _, _, _)| *timeline_start_ms);
-    audio_clips.sort_by_key(|(timeline_start_ms, _, _, _, _, _)| *timeline_start_ms);
+    video_clips.sort_by_key(|clip| clip.timeline_start_ms);
+    audio_clips.sort_by_key(|clip| clip.timeline_start_ms);
     if video_clips.is_empty() || video_clips.len() > 64 || audio_clips.len() > 64 {
         return Err("editor_video_track_empty_or_too_large".into());
     }
@@ -2104,10 +2164,9 @@ pub fn run_editor_nle_render(
         literal("error"),
         literal("-y"),
     ];
-    let mut filters = Vec::with_capacity(video_clips.len() + audio_clips.len() + 2);
-    for (index, (_, start_ms, end_ms, source)) in video_clips.iter().enumerate() {
+    for clip in &video_clips {
         let is_image = matches!(
-            source
+            clip.source
                 .extension()
                 .and_then(|value| value.to_str())
                 .map(|value| value.to_ascii_lowercase())
@@ -2119,77 +2178,112 @@ pub fn run_editor_nle_render(
             args.push(literal("1"));
         }
         args.push(literal("-ss"));
-        args.push(literal(format!("{:.3}", *start_ms as f64 / 1000.0)));
+        args.push(literal(format!("{:.3}", clip.source_in_ms as f64 / 1000.0)));
         args.push(literal("-t"));
         args.push(literal(format!(
             "{:.3}",
-            (*end_ms - *start_ms) as f64 / 1000.0
+            (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0
         )));
         args.push(literal("-i"));
-        args.push(media_path(source));
+        args.push(media_path(&clip.source));
+    }
+    for clip in &audio_clips {
+        args.push(literal("-ss"));
+        args.push(literal(format!("{:.3}", clip.source_in_ms as f64 / 1000.0)));
+        args.push(literal("-t"));
+        args.push(literal(format!(
+            "{:.3}",
+            (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0
+        )));
+        args.push(literal("-i"));
+        args.push(media_path(&clip.source));
+    }
+
+    let mut filters = Vec::with_capacity(video_clips.len() * 2 + audio_clips.len() + 3);
+    for (index, clip) in video_clips.iter().enumerate() {
+        let source_duration_s = (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0;
+        let speed_suffix = if (clip.playback_rate - 1.0).abs() >= 0.001 {
+            format!(",setpts=PTS/{:.6}", clip.playback_rate)
+        } else {
+            String::new()
+        };
+        let video_filter = if let Some(plan) = clip.camera_motion_plan.as_ref() {
+            build_interactive_crop_filter(
+                width,
+                height,
+                clip.source_dimensions,
+                0.5,
+                0.5,
+                true,
+                &plan.mode,
+                None,
+                Some(plan),
+                0,
+                "",
+            )
+            .ok_or_else(|| "camera_motion_filter_failed".to_string())?
+        } else {
+            format!("scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1")
+        };
         filters.push(format!(
-            "[{index}:v]trim=duration={:.3},setpts=PTS-STARTPTS,scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1[v{index}]",
-            (*end_ms - *start_ms) as f64 / 1000.0
+            "[{index}:v]trim=duration={source_duration_s:.3},setpts=PTS-STARTPTS,{video_filter}{speed_suffix}[v{index}]"
         ));
+        let audio_filter = build_atempo_filter(clip.playback_rate);
+        if clip.has_audio && !clip.muted && clip.volume > 0.0 {
+            filters.push(format!(
+                "[{index}:a]atrim=duration={source_duration_s:.3},asetpts=PTS-STARTPTS,{audio_filter},volume={:.4}[va{index}]",
+                clip.volume
+            ));
+        } else {
+            filters.push(format!(
+                "anullsrc=r=48000:cl=stereo,atrim=duration={:.3},asetpts=PTS-STARTPTS[va{index}]",
+                source_duration_s / clip.playback_rate
+            ));
+        }
     }
     let concat_inputs = (0..video_clips.len())
-        .map(|index| format!("[v{index}]"))
+        .map(|index| format!("[v{index}][va{index}]"))
         .collect::<String>();
     filters.push(format!(
-        "{concat_inputs}concat=n={}:v=1:a=0[vout]",
+        "{concat_inputs}concat=n={}:v=1:a=1[vout][basea]",
         video_clips.len()
     ));
     let audio_input_offset = video_clips.len();
-    for (index, (_, start_ms, end_ms, volume, muted, _)) in audio_clips.iter().enumerate() {
+    let mut audio_mix_inputs = vec!["[basea]".to_string()];
+    for (index, clip) in audio_clips.iter().enumerate() {
         let input_index = audio_input_offset + index;
-        let delay = audio_clips[index].0;
-        filters.push(format!(
-            "[{input_index}:a]atrim=duration={:.3},asetpts=PTS-STARTPTS,volume={:.4},adelay={delay}|{delay}[a{index}]",
-            (*end_ms - *start_ms) as f64 / 1000.0,
-            if *muted { 0.0 } else { *volume },
-        ));
-    }
-    let (audio_map, extra_audio_input) = if audio_clips.is_empty() {
-        let silence_index = video_clips.len();
-        (format!("{silence_index}:a:0"), true)
-    } else {
-        let audio_inputs = (0..audio_clips.len())
-            .map(|index| format!("[a{index}]"))
-            .collect::<String>();
-        filters.push(format!(
-            "{audio_inputs}amix=inputs={}:duration=longest:dropout_transition=0[aout]",
-            audio_clips.len()
-        ));
-        ("[aout]".to_string(), false)
-    };
-    if extra_audio_input {
-        args.extend([
-            literal("-f"),
-            literal("lavfi"),
-            literal("-i"),
-            literal("anullsrc=channel_layout=stereo:sample_rate=48000"),
-        ]);
-    }
-    if !audio_clips.is_empty() {
-        for (_, start_ms, end_ms, _, _, source) in audio_clips.iter() {
-            args.push(literal("-ss"));
-            args.push(literal(format!("{:.3}", *start_ms as f64 / 1000.0)));
-            args.push(literal("-t"));
-            args.push(literal(format!(
-                "{:.3}",
-                (*end_ms - *start_ms) as f64 / 1000.0
-            )));
-            args.push(literal("-i"));
-            args.push(media_path(source));
+        let duration_s = (clip.source_out_ms - clip.source_in_ms) as f64 / 1000.0;
+        let label = format!("extraa{index}");
+        if clip.has_audio && !clip.muted && clip.volume > 0.0 {
+            filters.push(format!(
+                "[{input_index}:a]atrim=duration={duration_s:.3},asetpts=PTS-STARTPTS,{},volume={:.4},adelay={}|{}[{label}]",
+                build_atempo_filter(clip.playback_rate),
+                clip.volume,
+                clip.timeline_start_ms,
+                clip.timeline_start_ms,
+            ));
+        } else {
+            filters.push(format!(
+                "anullsrc=r=48000:cl=stereo,atrim=duration={:.3},asetpts=PTS-STARTPTS,adelay={}|{}[{label}]",
+                duration_s / clip.playback_rate,
+                clip.timeline_start_ms,
+                clip.timeline_start_ms,
+            ));
         }
+        audio_mix_inputs.push(format!("[{label}]"));
     }
+    filters.push(format!(
+        "{}amix=inputs={}:duration=longest:dropout_transition=0[aout]",
+        audio_mix_inputs.join(""),
+        audio_mix_inputs.len()
+    ));
     args.extend([
         literal("-filter_complex"),
         literal(filters.join(";")),
         literal("-map"),
         literal("[vout]"),
         literal("-map"),
-        literal(audio_map),
+        literal("[aout]"),
         literal("-r"),
         literal("30"),
         literal("-c:v"),
@@ -2727,6 +2821,135 @@ fn resolve_render_source_dimensions(
     requested_dimensions: Option<(u32, u32)>,
 ) -> Option<(u32, u32)> {
     probed_dimensions.or(requested_dimensions)
+}
+
+fn parse_editor_camera_motion_plan(
+    clip: &Value,
+    options: &Value,
+) -> Result<Option<CameraMotionPlan>, String> {
+    let from_clip = clip
+        .get("cameraMotionPlan")
+        .filter(|value| !value.is_null());
+    let from_options = clip
+        .get("id")
+        .and_then(Value::as_str)
+        .and_then(|clip_id| {
+            options
+                .get("cameraMotionPlans")
+                .and_then(Value::as_object)
+                .and_then(|plans| plans.get(clip_id))
+        })
+        .filter(|value| !value.is_null());
+    let Some(candidate) = from_clip.or(from_options) else {
+        return Ok(None);
+    };
+    let plan = serde_json::from_value::<CameraMotionPlan>(candidate.clone())
+        .map_err(|_| "camera_motion_plan_invalid".to_string())?;
+    validate_camera_motion_plan(&plan).map(|_| Some(plan))
+}
+
+fn validate_editor_silence_cut_map(value: Option<&Value>) -> Result<(), String> {
+    let Some(value) = value.filter(|candidate| !candidate.is_null()) else {
+        return Ok(());
+    };
+    let object = value
+        .as_object()
+        .ok_or_else(|| "editor_silence_cut_map_invalid".to_string())?;
+    if object.get("version").and_then(Value::as_str) != Some("silence.cut-map.v1")
+        || object
+            .get("sourceDurationMs")
+            .and_then(Value::as_u64)
+            .is_none()
+        || object
+            .get("editedDurationMs")
+            .and_then(Value::as_u64)
+            .is_none()
+        || object
+            .get("sourceFingerprint")
+            .and_then(Value::as_str)
+            .is_none()
+        || object.get("revisionId").and_then(Value::as_str).is_none()
+        || object
+            .get("detectionFingerprint")
+            .and_then(Value::as_str)
+            .is_none()
+        || object.get("fingerprint").and_then(Value::as_str).is_none()
+    {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    let source_duration = object
+        .get("sourceDurationMs")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    let edited_duration = object
+        .get("editedDurationMs")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    let ranges = object
+        .get("ranges")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "editor_silence_cut_map_invalid".to_string())?;
+    if ranges.len() > 256 {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    let mut removed = 0u64;
+    let mut previous_end = 0u64;
+    for range in ranges {
+        let start = range.get("startMs").and_then(Value::as_u64);
+        let end = range.get("endMs").and_then(Value::as_u64);
+        let (Some(start), Some(end)) = (start, end) else {
+            return Err("editor_silence_cut_map_invalid".into());
+        };
+        if start >= end || end > source_duration || start < previous_end {
+            return Err("editor_silence_cut_map_invalid".into());
+        }
+        removed = removed.saturating_add(end - start);
+        previous_end = end;
+    }
+    if source_duration.saturating_sub(removed) != edited_duration {
+        return Err("editor_silence_cut_map_invalid".into());
+    }
+    Ok(())
+}
+
+pub fn editor_render_handoff_metadata(project: &Value, options: &Value) -> Value {
+    let project_plan_count = project
+        .get("tracks")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flat_map(|tracks| tracks.iter())
+        .flat_map(|track| {
+            track
+                .get("clips")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+        })
+        .filter(|clip| clip.get("cameraMotionPlan").is_some())
+        .count();
+    let option_plan_count = options
+        .get("cameraMotionPlans")
+        .and_then(Value::as_object)
+        .map(|plans| plans.len())
+        .unwrap_or(0);
+    let silence_cut_map = options.get("silenceCutMap").or_else(|| {
+        project
+            .get("migration")
+            .and_then(Value::as_object)
+            .and_then(|migration| migration.get("preservedUnknown"))
+            .and_then(Value::as_object)
+            .and_then(|unknown| unknown.get("silenceCutMap"))
+    });
+    json!({
+        "handoffVersion": options.get("handoffVersion").cloned().unwrap_or(Value::Null),
+        "cameraMotionPlanCount": option_plan_count.max(project_plan_count),
+        "silenceCutMapFingerprint": silence_cut_map
+            .and_then(|map| map.get("fingerprint"))
+            .cloned()
+            .unwrap_or(Value::Null),
+        "silenceCutMapApplied": false,
+        "silenceTimelineSourceOfTruth": "canonical_project_timeline"
+    })
 }
 
 /// A camera plan is an explicit request for animated framing. Keep the native
@@ -4201,7 +4424,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(debug.get("cameraPlanKeyframes"), Some(&json!(2)));
-        assert_eq!(debug.get("sourceDimensions"), Some(&json!({"width": 1920, "height": 1080})));
+        assert_eq!(
+            debug.get("sourceDimensions"),
+            Some(&json!({"width": 1920, "height": 1080}))
+        );
         assert!(debug
             .get("filters")
             .and_then(Value::as_array)
@@ -4427,6 +4653,98 @@ mod tests {
     }
 
     #[test]
+    fn canonical_editor_render_consumes_web_handoff_and_produces_qc_output() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("canonical-source.mp4");
+        let output = dir.path().join("canonical-render.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=640x360:rate=30",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let plan = json!({
+            "version": "camera.motion.v2",
+            "mode": "face_activity",
+            "durationMs": 2000,
+            "keyframes": [
+                {"timeMs": 0, "x": 0.4, "y": 0.5, "scale": 1.0, "source": "auto"},
+                {"timeMs": 2000, "x": 0.6, "y": 0.5, "scale": 1.1, "source": "auto"}
+            ],
+            "analysisMode": "quick"
+        });
+        let project = json!({
+            "canvas": {"width": 1080, "height": 1920},
+            "tracks": [{
+                "kind": "video",
+                "clips": [{
+                    "id": "clip-1",
+                    "asset": {"namespace": "media_asset", "id": 1},
+                    "startMs": 0,
+                    "sourceInMs": 0,
+                    "sourceOutMs": 2000,
+                    "playbackRate": 1.25,
+                    "volume": 0.8,
+                    "muted": false,
+                    "cameraMotionPlan": plan
+                }]
+            }]
+        });
+        let options = json!({
+            "handoffVersion": "web-editor-render-handoff.v1",
+            "cameraMotionPlans": {"clip-1": plan}
+        });
+        let mut asset_paths = HashMap::new();
+        asset_paths.insert("1".to_string(), source);
+
+        let qc = run_editor_nle_render(
+            &project,
+            &options,
+            &asset_paths,
+            &output,
+            &MediaToolchain::native("ffmpeg", "ffprobe"),
+        )
+        .expect("canonical editor render should produce output");
+
+        assert!(qc.passed);
+        assert!(qc.has_audio.unwrap_or(false));
+        assert_eq!(qc.width, Some(1080));
+        assert_eq!(qc.height, Some(1920));
+        assert!(qc.duration_ms.unwrap_or(0) >= 1_400);
+        assert!(output.is_file());
+    }
+
+    #[test]
     fn custom_silence_detection_result_serializes_and_computes_cuts() {
         let result = CustomSilenceDetectionResult {
             duration_ms: 10_000,
@@ -4494,5 +4812,56 @@ mod tests {
         assert!((pct - (15.0 / 35.0 * 100.0)).abs() < f64::EPSILON);
         assert_eq!(silence_threshold_percent_from_db(-80.0), 1.0);
         assert_eq!(silence_threshold_percent_from_db(0.0), 100.0);
+    }
+
+    #[test]
+    fn canonical_editor_render_reads_camera_plan_and_validates_silence_handoff() {
+        let plan = json!({
+            "version": "camera.motion.v2",
+            "mode": "face_activity",
+            "durationMs": 4000,
+            "keyframes": [{"timeMs": 0, "x": 0.5, "y": 0.5, "scale": 1.1, "source": "auto"}]
+        });
+        let clip = json!({"id": "clip-1", "cameraMotionPlan": plan});
+        let options = json!({"cameraMotionPlans": {"clip-1": plan}});
+
+        let resolved = parse_editor_camera_motion_plan(&clip, &options)
+            .expect("canonical camera plan should parse")
+            .expect("camera plan should be present");
+        assert_eq!(resolved.mode, "face_activity");
+
+        let map = json!({
+            "version": "silence.cut-map.v1",
+            "sourceDurationMs": 4000,
+            "ranges": [{"startMs": 1000, "endMs": 1500}],
+            "editedDurationMs": 3500,
+            "sourceFingerprint": "asset-1:4",
+            "revisionId": "revision-1",
+            "audioStreamIndex": 0,
+            "detectionFingerprint": "browser-audio-v1",
+            "fingerprint": "map-fingerprint"
+        });
+        validate_editor_silence_cut_map(Some(&map)).expect("silence map should validate");
+        assert_eq!(
+            validate_editor_silence_cut_map(Some(&json!({}))).unwrap_err(),
+            "editor_silence_cut_map_invalid"
+        );
+    }
+
+    #[test]
+    fn canonical_editor_render_rejects_invalid_camera_plan_before_ffmpeg() {
+        let clip = json!({
+            "id": "clip-1",
+            "cameraMotionPlan": {
+                "version": "camera.motion.v2",
+                "mode": "face_activity",
+                "durationMs": 1000,
+                "keyframes": [{"timeMs": 0, "x": 2.0, "y": 0.5, "scale": 1.1, "source": "auto"}]
+            }
+        });
+        assert_eq!(
+            parse_editor_camera_motion_plan(&clip, &json!({})).unwrap_err(),
+            "camera_motion_plan_value_invalid"
+        );
     }
 }

@@ -1,3 +1,5 @@
+import { validateCameraMotionPlan, type CameraMotionPlan } from './cameraMotion';
+
 export type ManagedAssetRef =
   | { namespace: "media_asset"; id: number | string }
   | { namespace: "library_item"; id: number }
@@ -35,6 +37,8 @@ export interface CanonicalNleClip {
   playbackRate: number;
   volume: number;
   muted: boolean;
+  /** Shared face/activity camera trajectory consumed by browser and Worker render. */
+  cameraMotionPlan?: CameraMotionPlan;
   transform?: CanonicalClipTransform;
   text?: { value: string; style?: Record<string, unknown> };
 }
@@ -125,6 +129,7 @@ export function assertCanonicalProject(value: unknown): asserts value is Canonic
           return values.some((value) => typeof value !== "number" || !Number.isFinite(value)) || item.time < 0 || item.time > 1 || (item.easing !== undefined && !["linear", "ease-in", "ease-out", "ease-in-out"].includes(item.easing));
         }))) throw new Error("PROJECT_CLIP_INVALID");
       }
+      if (clip.cameraMotionPlan !== undefined && validateCameraMotionPlan(clip.cameraMotionPlan).length > 0) throw new Error("PROJECT_CAMERA_MOTION_PLAN_INVALID");
       if (clip.text !== undefined && (!clip.text || typeof clip.text.value !== "string" || (clip.text.style !== undefined && (typeof clip.text.style !== "object" || clip.text.style === null || Array.isArray(clip.text.style))))) throw new Error("PROJECT_CLIP_INVALID");
     }
   }

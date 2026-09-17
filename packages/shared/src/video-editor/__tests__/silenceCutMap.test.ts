@@ -31,4 +31,16 @@ describe("silence cut map", () => {
     expect(sourceToEditedTime(map, 400)).toBe(200);
     expect(editedToSourceTime(map, 200)).toBe(400);
   });
+
+  it("uses the same 50ms merge tolerance as Worker playback", () => {
+    expect(
+      normalizeSilenceRanges(
+        [
+          { startMs: 100, endMs: 300 },
+          { startMs: 320, endMs: 500 },
+        ],
+        1000,
+      ),
+    ).toEqual([{ startMs: 100, endMs: 500 }]);
+  });
 });

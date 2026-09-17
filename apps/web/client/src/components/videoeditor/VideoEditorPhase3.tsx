@@ -75,7 +75,8 @@ import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './
 import { isTextClipRolloutEnabled } from './textRollout';
 import { WebAssetResolver } from '../../services/webAssetResolver';
 import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from './workerEditorProject';
-import { analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
+import { buildWorkerRenderOptions } from './workerRenderHandoff';
+import { analysisWindowDurationMs, analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
 import {
   presentationSlideContentSchema,
   type PresentationSlideContent,
@@ -979,16 +980,10 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         throw new Error('กล้องอัจฉริยะหมดอายุหลังแก้ไขไทม์ไลน์ กรุณา Quick ใหม่หรือโปรโมต Full Scan ก่อน render');
       }
       const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
-      const renderCameraPlans = operation === 'video.render'
-        ? Object.fromEntries(projectSnapshot.timeline.tracks.flatMap((track) => track.clips)
-          .filter((clip) => clip.smartCamera?.plan && clip.smartCamera.analysisStatus !== 'stale')
-          .map((clip) => [clip.id, clip.smartCamera?.plan]))
-        : undefined;
       const operationOptions = operation === 'video.render'
         ? {
             ...options,
-            ...(Object.keys(renderCameraPlans ?? {}).length > 0 ? { cameraMotionPlans: renderCameraPlans } : {}),
-            ...(projectSnapshot.metadata?.silenceCutMap ? { silenceCutMap: projectSnapshot.metadata.silenceCutMap } : {}),
+            ...buildWorkerRenderOptions(projectSnapshot),
           }
         : options;
       const outputRoles: Record<MediaOperation, string[]> = {
@@ -2198,7 +2193,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       const firstFace = result.points[0];
       const focusX = firstFace ? firstFace.roi.x + firstFace.roi.width / 2 : 0.5;
       const focusY = firstFace ? firstFace.roi.y + firstFace.roi.height / 2 : 0.5;
-      const plan = createCameraMotionPlan({ durationMs: Math.round((target.clip.duration || video.duration || 0) * 1000), mode, focusX, focusY, baseScale: target.clip.smartCamera?.autoZoom === false ? 1 : 1.18, analysisMode: 'quick', trackPoints: [...facePoints, ...activityPoints], evidence: { analysisMode: 'quick', status: result.status === 'browser_ready' ? 'approved' : 'degraded', sourceFingerprint, markRevision: target.clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, fivePointFace: firstFace, activityEvidence: result.activity } });
+      const plan = createCameraMotionPlan({ durationMs: analysisWindowDurationMs(trimRange), mode, focusX, focusY, baseScale: target.clip.smartCamera?.autoZoom === false ? 1 : 1.18, analysisMode: 'quick', trackPoints: [...facePoints, ...activityPoints], evidence: { analysisMode: 'quick', status: result.status === 'browser_ready' ? 'approved' : 'degraded', sourceFingerprint, markRevision: target.clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, fivePointFace: firstFace, activityEvidence: result.activity } });
       setProject(prevProject => {
         const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
         const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
@@ -2316,6 +2311,8 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${unresolved.slice(0, 3).join(', ')}`);
       }
 
+      const renderOptions = buildWorkerRenderOptions(projectSnapshot);
+
       let persistedProjectId = currentProjectId;
       if (!persistedProjectId || isDirty) {
         const clipCount = projectSnapshot.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
@@ -2348,6 +2345,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         revisionId,
         timelineVersion: 1,
         operation: 'video.render',
+        options: renderOptions,
         inputs: {
           assets: Object.values(refs),
           project: built.project,

@@ -78,6 +78,9 @@ function mapClip(clip: Clip, track: Track, refs: Record<string, ManagedAssetRef>
     playbackRate: Number.isFinite(clip.speed) && clip.speed > 0 ? clip.speed : 1,
     volume: effectiveVolume,
     muted: effectiveVolume <= 0,
+    ...(clip.smartCamera?.plan && clip.smartCamera.analysisStatus !== 'stale'
+      ? { cameraMotionPlan: clip.smartCamera.plan }
+      : {}),
     ...(mapTransform(clip) ? { transform: mapTransform(clip) } : {}),
     ...(clip.textConfig ? {
       text: {
@@ -154,6 +157,7 @@ export function buildCanonicalWorkerProject(
             }
           : {}),
         audioMixing: source.audioMixing,
+        ...(source.metadata?.silenceCutMap ? { silenceCutMap: source.metadata.silenceCutMap } : {}),
       },
     },
   };

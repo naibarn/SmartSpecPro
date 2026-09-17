@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { buildSilenceCutMap } from '@smartspec/shared';
 import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from '../workerEditorProject';
 import { createEmptyProject, addClipToTrack } from '../../../types/videoEditor';
 
@@ -18,11 +19,30 @@ describe('worker editor project mapping', () => {
     };
     source.assets[asset.id] = asset;
     const clip = addClipToTrack(videoTrack, asset, 1);
-    clip.smartCamera = { mode: 'auto_face', autoZoom: true, autoPan: true, intensity: 70, safeMargin: 12 };
+    clip.smartCamera = {
+      mode: 'auto_face', autoZoom: true, autoPan: true, intensity: 70, safeMargin: 12,
+      analysisStatus: 'browser_ready',
+      plan: {
+        version: 'camera.motion.v2', mode: 'face_focus', durationMs: 4000,
+        keyframes: [{ timeMs: 0, x: 0.5, y: 0.5, scale: 1.1, source: 'auto' }],
+      },
+    };
+    source.metadata = {
+      silenceCutMap: buildSilenceCutMap({
+        sourceDurationMs: 4000,
+        ranges: [{ startMs: 1000, endMs: 1500 }],
+        sourceFingerprint: 'asset-1:4',
+        revisionId: 'revision-1',
+        audioStreamIndex: 0,
+        detectionFingerprint: 'test',
+      }),
+    };
 
     const built = buildCanonicalWorkerProject(source, { refs: { [asset.id]: { namespace: 'media_asset', id: 42 } }, unresolved: [] }, 'video-project-1');
     expect(built.project.tracks.find((track) => track.kind === 'video')?.clips[0]).toMatchObject({ startMs: 1000, sourceOutMs: 4000 });
+    expect(built.project.tracks.find((track) => track.kind === 'video')?.clips[0]?.cameraMotionPlan).toEqual(clip.smartCamera.plan);
     expect(built.project.migration.preservedUnknown).toHaveProperty('smartCamera');
+    expect(built.project.migration.preservedUnknown).toHaveProperty('silenceCutMap', source.metadata.silenceCutMap);
     expect(JSON.stringify(built.project)).not.toContain('api/storage');
   });
 

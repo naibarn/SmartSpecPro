@@ -1,4 +1,5 @@
 export const SILENCE_CUT_MAP_VERSION = "silence.cut-map.v1" as const;
+export const SILENCE_RANGE_MERGE_TOLERANCE_MS = 50;
 
 export type SilenceCutRange = { startMs: number; endMs: number };
 export type SilenceCutMap = {
@@ -34,7 +35,7 @@ export function normalizeSilenceRanges(
   const merged: SilenceCutRange[] = [];
   for (const range of sorted) {
     const last = merged[merged.length - 1];
-    if (last && range.startMs <= last.endMs)
+    if (last && range.startMs <= last.endMs + SILENCE_RANGE_MERGE_TOLERANCE_MS)
       last.endMs = Math.max(last.endMs, range.endMs);
     else merged.push({ ...range });
   }

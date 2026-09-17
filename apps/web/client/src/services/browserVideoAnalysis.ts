@@ -231,6 +231,10 @@ export function resolveAnalysisWindow(
   return { startTimeMs: start, endTimeMs: Math.max(start, boundedEnd) };
 }
 
+export function analysisWindowDurationMs(window: { startTimeMs: number; endTimeMs: number }): number {
+  return Math.max(0, Math.round(window.endTimeMs) - Math.round(window.startTimeMs));
+}
+
 export async function analyzeFaceFrame(
   video: HTMLVideoElement,
   options: {
