@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/195/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/195/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts",
+    "section-02-persistence",
+    "section-03-publication-and-capacity",
+    "section-04-lifecycle-and-control",
+    "section-05-monitoring-and-integrations",
+    "section-06-migration-and-release-gates"
+  ],
+  "sections_state": {
+    "section-01-contracts": {
+      "status": "complete",
+      "commit_hash": "5356915d9"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-17T15:02:41.804574+00:00"
+}
