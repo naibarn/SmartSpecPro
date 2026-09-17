@@ -22,11 +22,9 @@ import { registerMcpPublicRoutes } from "./mcpPublicServer";
 import { registerMcpOAuthServerRoutes } from "./mcpOAuthServer";
 import { registerMediaJobRoutes } from "../routers/mediaJobs";
 import { registerFeedbackUploadRoutes } from "../routers/feedback";
-import { registerAgencyStreamRoutes } from "./agencyStreamProxy";
 import { registerLiveBrowserStreamRoutes } from "./liveBrowserStreamProxy";
 import { registerWorkerRuntimeRoutes } from "../routes/workerRuntime";
 import { registerWorkerRuntimeReleaseRoutes } from "../routes/workerRuntimeReleases";
-import { registerWorkflowNodeTypesRoute } from "../routes/workflowNodeTypes";
 import { registerWorkflowWorkerRuntimeRoutes } from "../routes/workflowWorkerRuntime";
 import { registerWorkerSeriesControlPlaneRoutes } from "../routes/workerSeriesControlPlane";
 import { registerJobControlPlaneRoutes } from "../routes/jobControlPlane";
@@ -60,8 +58,15 @@ import {
 } from "../services/appRuntimeConfig";
 import { refreshMcpRuntimeConfigCache } from "../services/mcpRuntimeConfig";
 import { processBeamWebhookEvent } from "../services/billing/paymentProcessing";
-import { createVoiceSessionRouter, handleVoiceUpgrade, shutdownVoiceGateway } from "../routes/voiceGateway";
-import { createWidgetInitRouter, handleWidgetUpgrade } from "../routes/widgetGateway";
+import {
+  createVoiceSessionRouter,
+  handleVoiceUpgrade,
+  shutdownVoiceGateway,
+} from "../routes/voiceGateway";
+import {
+  createWidgetInitRouter,
+  handleWidgetUpgrade,
+} from "../routes/widgetGateway";
 import browserPolicyRouter from "../routes/browserPolicy";
 import browserToolRouter from "../routes/browserTool";
 import "../services/telegramLinkService"; // Register /start link handler
@@ -75,7 +80,6 @@ import { createSlideRenderRouter } from "../routes/slideRender";
 import { createStoryboardFinalCaptureRouter } from "../routes/storyboardFinalCapture";
 import { createPublicGalleryMediaRouter } from "../routes/publicGalleryMedia";
 import { createGuardianSSERouter } from "../routes/guardianSSE";
-import agencyStreamRouter from "../routes/agencyStream";
 import orchestratorStreamRouter from "../routes/orchestratorStream";
 import notificationStreamRouter from "../routes/notificationStream";
 import contentComposerStreamRouter from "../routes/contentComposerStream";
@@ -112,18 +116,51 @@ import { initAuditLogger, auditLogger } from "../services/auditLogger";
 import { auditMiddleware } from "../middleware/auditMiddleware";
 import { correlationIdMiddleware } from "../middleware/correlationId";
 // BullMQ/Celery scheduler and queue init removed — production target is Cloudflare.
-import { initializeTelegramQueue, shutdownTelegramWorker } from "../services/telegramService";
-import { initDeliveryQueue, closeDeliveryQueue } from "../services/deliveryQueue";
-import { initWebhookDispatchQueue, closeWebhookDispatchQueue } from "../services/webhookDispatchQueue";
-import { initializeTrashPurgeJob, shutdownTrashPurgeWorker } from "../jobs/purgeOldTrashItems";
-import { initializeGDriveCleanupJob, shutdownGDriveCleanupWorker } from "../jobs/gdriveSessionCleanup";
-import { initializeUploadPostCleanupJob, shutdownUploadPostCleanupWorker } from "../jobs/uploadPostCleanup";
-import { initializeFinanceOcrRetentionJob, shutdownFinanceOcrRetentionJob } from "../jobs/financeOcrRetentionJob";
-import { initializeDatabaseBackupJob, shutdownDatabaseBackupJob } from "../jobs/databaseBackupJob";
+import {
+  initializeTelegramQueue,
+  shutdownTelegramWorker,
+} from "../services/telegramService";
+import {
+  initDeliveryQueue,
+  closeDeliveryQueue,
+} from "../services/deliveryQueue";
+import {
+  initWebhookDispatchQueue,
+  closeWebhookDispatchQueue,
+} from "../services/webhookDispatchQueue";
+import {
+  initializeTrashPurgeJob,
+  shutdownTrashPurgeWorker,
+} from "../jobs/purgeOldTrashItems";
+import {
+  initializeGDriveCleanupJob,
+  shutdownGDriveCleanupWorker,
+} from "../jobs/gdriveSessionCleanup";
+import {
+  initializeUploadPostCleanupJob,
+  shutdownUploadPostCleanupWorker,
+} from "../jobs/uploadPostCleanup";
+import {
+  initializeFinanceOcrRetentionJob,
+  shutdownFinanceOcrRetentionJob,
+} from "../jobs/financeOcrRetentionJob";
+import {
+  initializeDatabaseBackupJob,
+  shutdownDatabaseBackupJob,
+} from "../jobs/databaseBackupJob";
 import { initializePendingApprovalAlertJob } from "../jobs/pendingApprovalAlert";
-import { initializeNotificationJobs, shutdownNotificationJobs } from "../jobs/notificationJobs";
-import { initializeBillingJobs, shutdownBillingJobs } from "../jobs/billingJobs";
-import { initializeMemoryMaintenanceJobs, shutdownMemoryMaintenanceJobs } from "../jobs/memoryMaintenanceJobs";
+import {
+  initializeNotificationJobs,
+  shutdownNotificationJobs,
+} from "../jobs/notificationJobs";
+import {
+  initializeBillingJobs,
+  shutdownBillingJobs,
+} from "../jobs/billingJobs";
+import {
+  initializeMemoryMaintenanceJobs,
+  shutdownMemoryMaintenanceJobs,
+} from "../jobs/memoryMaintenanceJobs";
 import { initializeContentRefreshJob } from "../jobs/contentRefreshJob";
 import { initializeInactiveUserJob } from "../jobs/inactiveUserJob";
 import {
@@ -135,14 +172,6 @@ import {
   shutdownSkillMaintenanceScheduleJob,
 } from "../jobs/skillMaintenanceSchedule";
 import {
-  initializeWorkpackScheduleJob,
-  shutdownWorkpackScheduleJob,
-} from "../jobs/workpackScheduleJob";
-import {
-  initializeRoleRoutineSchedulerJob,
-  shutdownRoleRoutineSchedulerJob,
-} from "../jobs/roleRoutineSchedulerJob";
-import {
   initializeBrowserAutomationClaimReconcilerJob,
   shutdownBrowserAutomationClaimReconcilerJob,
 } from "../jobs/browserAutomationClaimReconciler";
@@ -150,6 +179,10 @@ import {
   initializeWorkerStallWatchdogJob,
   shutdownWorkerStallWatchdogJob,
 } from "../jobs/workerStallWatchdogJob";
+import {
+  initializeWorkerHeartbeatRetentionJob,
+  shutdownWorkerHeartbeatRetentionJob,
+} from "../jobs/workerHeartbeatRetentionJob";
 import {
   initializeUnifiedJobControlPlaneReconcilerJob,
   shutdownUnifiedJobControlPlaneReconcilerJob,
@@ -166,8 +199,10 @@ import {
   initializeMarketplaceAutoReviewJob,
   shutdownMarketplaceAutoReviewJob,
 } from "../jobs/marketplaceAutoReviewJob";
-import { initializeCeleryMediaDoctorJob, shutdownCeleryMediaDoctorJob } from "../jobs/celeryMediaDoctorJob";
-import { initFromDb, startPeriodicPersistence } from "../services/providerHealth";
+import {
+  initFromDb,
+  startPeriodicPersistence,
+} from "../services/providerHealth";
 import { startHistoryCollection } from "../services/llmQueue";
 import { recoverActiveRunsOnStartup } from "../services/runEngine";
 import {
@@ -183,7 +218,10 @@ import {
 import { presentationImportCallbackHandler } from "../routes/presentationImportCallback";
 import { PostgresAdapter } from "../services/postgresAdapter";
 import { getUploadStaticHeaders } from "../services/uploadContentSafety";
-import { ImageProxySafetyError, proxyImageFromUrl } from "../services/imageProxySafety";
+import {
+  ImageProxySafetyError,
+  proxyImageFromUrl,
+} from "../services/imageProxySafety";
 import { getDb } from "../db";
 import { getRedisClient } from "../services/redis";
 import { sql, eq, and } from "drizzle-orm";
@@ -198,7 +236,10 @@ import { createPublicVideoRouter } from "../routes/publicVideoApi";
 import { createPublicMediaRouter } from "../routes/publicMediaApi";
 import { createPublicJobsRouter } from "../routes/publicJobsApi";
 import { createPublicKnowledgeRouter } from "../routes/publicKnowledgeApi";
-import { initAutomationJobsQueue, closeAutomationJobsQueue } from "../services/jobAutomationService";
+import {
+  initAutomationJobsQueue,
+  closeAutomationJobsQueue,
+} from "../services/jobAutomationService";
 import {
   initVerticalDramaStoryJobsQueue,
   closeVerticalDramaStoryJobsQueue,
@@ -238,15 +279,20 @@ import {
 } from "../services/verticalDramaEpisodeStageJobs";
 import { createPublicWebhooksRouter } from "../routes/publicWebhooksApi";
 import { createPublicEventsRouter } from "../routes/publicEventsApi";
-import { initWebhookApiDeliveryQueue, closeWebhookApiDeliveryQueue } from "../services/webhookDeliveryService";
+import {
+  initWebhookApiDeliveryQueue,
+  closeWebhookApiDeliveryQueue,
+} from "../services/webhookDeliveryService";
 import { closeEmbeddingQueue } from "../services/embeddingQueue";
 import { registerPublicDocsRoutes } from "../routes/publicDocsApi";
 import { registerPublicSitemapRoutes } from "../routers/publicSitemap";
-import { createAgencyToolsApiRouter } from "../routes/agencyToolsApi";
 import { apiKeyAuthMiddleware } from "../middleware/apiKeyAuth";
 import { assertHmacSecretConfigured } from "../services/apiKeyService";
 import { publicApiAuditMiddleware } from "../middleware/publicApiAudit";
-import { isMcpPreflightRequest, publicApiCorsMiddleware } from "../middleware/publicApiCors";
+import {
+  isMcpPreflightRequest,
+  publicApiCorsMiddleware,
+} from "../middleware/publicApiCors";
 import { publicApiFeatureGuard } from "../middleware/publicApiFeatureGuard";
 import { publicApiHeadersMiddleware } from "../middleware/publicApiHeaders";
 import { rateLimitMiddleware } from "../services/apiKeyRateLimiter";
@@ -264,6 +310,34 @@ app.disable("x-powered-by");
 void refreshAppRuntimeConfigCache().catch(() => {});
 void refreshMcpRuntimeConfigCache().catch(() => {});
 
+// Hard-stop retired HTTP surfaces. Keep this before route registration so a
+// stale client cannot reach legacy Agency, Work OS/workpack, or workflow APIs.
+app.use((req, res, next) => {
+  const path = req.path;
+  const retired =
+    path === "/api/agency" ||
+    path.startsWith("/api/agency/") ||
+    path === "/api/internal/agency" ||
+    path.startsWith("/api/internal/agency/") ||
+    path === "/api/internal/agency/create" ||
+    path === "/api/internal/credits/agency-markup" ||
+    path === "/api/internal/credits/creator-fee-settle" ||
+    path === "/v1/agencies" ||
+    path.startsWith("/v1/agencies/") ||
+    path === "/api/v1/workflows" ||
+    path.startsWith("/api/v1/workflows/") ||
+    path === "/api/internal/sandbox" ||
+    path.startsWith("/api/internal/sandbox/");
+  if (retired) {
+    return res.status(410).json({
+      error: "retired_system",
+      message:
+        "This legacy system has been retired and is no longer available.",
+    });
+  }
+  return next();
+});
+
 // Sentry: expressIntegration() (registered in initSentry) handles request instrumentation automatically in v10+
 
 // Correlation ID middleware — generates or propagates X-Request-ID
@@ -274,55 +348,73 @@ app.use(correlationIdMiddleware);
 // "1" means Express uses only the last XFF entry (appended by Nginx). (M-14 fix)
 app.set("trust proxy", 1);
 
-
 // Trusted origin check (shared between CORS and CSRF middleware)
 const configuredBrowserOrigins = [
   ...(process.env.SMARTSPEC_ALLOWED_ORIGINS ?? "").split(","),
   process.env.APP_URL ?? "",
   process.env.PUBLIC_APP_URL ?? "",
-].map((origin) => origin.trim().replace(/\/+$/, "")).filter(Boolean);
-const ALLOWED_SUFFIXES = configuredBrowserOrigins.length > 0 && process.env.NODE_ENV === 'production'
-  ? []
-  : [
-      '.smartaihub.app',
-      '.smartspec.pro',
-      ...(process.env.NODE_ENV !== 'production' ? ['.smartspec.local', '.localhost'] : []),
-    ];
+]
+  .map(origin => origin.trim().replace(/\/+$/, ""))
+  .filter(Boolean);
+const ALLOWED_SUFFIXES =
+  configuredBrowserOrigins.length > 0 && process.env.NODE_ENV === "production"
+    ? []
+    : [
+        ".smartaihub.app",
+        ".smartspec.pro",
+        ...(process.env.NODE_ENV !== "production"
+          ? [".smartspec.local", ".localhost"]
+          : []),
+      ];
 const ALLOWED_EXACT = [
-  'tauri://localhost',
-  'http://tauri.localhost',
-  'https://tauri.localhost',
+  "tauri://localhost",
+  "http://tauri.localhost",
+  "https://tauri.localhost",
   ...configuredBrowserOrigins,
 ];
 
 function isAllowedOrigin(origin: string | undefined): boolean {
   if (!origin) return false;
-  let originHost = '';
-  try { originHost = new URL(origin).hostname; } catch { return false; }
+  let originHost = "";
+  try {
+    originHost = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
   return (
     ALLOWED_EXACT.includes(origin) ||
-    originHost === 'localhost' ||
+    originHost === "localhost" ||
     // Allow IP addresses only in non-production (development/testing)
-    (process.env.NODE_ENV !== 'production' && /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost)) ||
-    ALLOWED_SUFFIXES.some(suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix))
+    (process.env.NODE_ENV !== "production" &&
+      /^(\d{1,3}\.){3}\d{1,3}$/.test(originHost)) ||
+    ALLOWED_SUFFIXES.some(
+      suffix => originHost === suffix.slice(1) || originHost.endsWith(suffix)
+    )
   );
 }
 
 // CORS for cross-domain access (Docker Status, etc.)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const isMarketplaceCaptureRequest = req.originalUrl.startsWith("/api/marketplace-captures");
-  const allowOrigin = isAllowedOrigin(origin) || (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin));
+  const isMarketplaceCaptureRequest = req.originalUrl.startsWith(
+    "/api/marketplace-captures"
+  );
+  const allowOrigin =
+    isAllowedOrigin(origin) ||
+    (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin));
   if (allowOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', origin!);
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Api-Key, Idempotency-Key, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name, x-private-vault-token, x-protected-surface-token, X-Marketplace-Device-Id, X-Marketplace-Extension-Origin');
+    res.setHeader("Access-Control-Allow-Origin", origin!);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, X-Api-Key, Idempotency-Key, Mcp-Session-Id, MCP-Protocol-Version, Mcp-Method, Mcp-Name, x-private-vault-token, x-protected-surface-token, X-Marketplace-Device-Id, X-Marketplace-Extension-Origin"
+    );
   }
 
   // Handle preflight requests
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     // Let the MCP-specific middleware apply its allow-list and header policy.
     // Returning the generic 200 here drops Access-Control-Allow-* headers and
     // prevents hosted MCP clients from completing the preflight.
@@ -338,15 +430,27 @@ app.use((_req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Referrer-Policy", "no-referrer");
-  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  res.setHeader("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none';");
+  res.setHeader(
+    "Strict-Transport-Security",
+    "max-age=31536000; includeSubDomains"
+  );
+  res.setHeader(
+    "Permissions-Policy",
+    "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=()"
+  );
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https:; font-src 'self' data: https://fonts.gstatic.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com; frame-ancestors 'none';"
+  );
   next();
 });
 
 // Beam payment webhook ingress must run before the global JSON parser so
 // request-local verify can capture the original body bytes for HMAC verification.
-app.use("/api/payments", createBeamWebhookRouter({ processEvent: processBeamWebhookEvent }));
+app.use(
+  "/api/payments",
+  createBeamWebhookRouter({ processEvent: processBeamWebhookEvent })
+);
 app.use("/api/payments", createBeamPaymentMethodSetupRouter());
 
 // ElevenLabs ElevenAgents callbacks must capture raw body for HMAC validation
@@ -359,7 +463,7 @@ app.use(
       req.rawBody = buf;
     },
   }),
-  createVoiceAgentsElevenLabsCallbackRouter(),
+  createVoiceAgentsElevenLabsCallbackRouter()
 );
 
 // Generated full-slide presentation imports can carry provider-returned data URLs
@@ -372,7 +476,7 @@ app.use("/trpc/presentation.addSlide", express.json({ limit: "50mb" }));
 // rejected by the 10MB default below before reaching the procedure.
 app.use(
   "/trpc/verticalDramaSeries.uploadSeriesWatermarkImage",
-  express.json({ limit: "16mb" }),
+  express.json({ limit: "16mb" })
 );
 
 // Same base64 inflation for the staged auto-review final-render image overlay
@@ -382,7 +486,7 @@ app.use(
 // size/extension/magic-byte validation ever ran.
 app.use(
   "/trpc/marketplaceCapture.uploadStagedAutoReviewOverlayImage",
-  express.json({ limit: "16mb" }),
+  express.json({ limit: "16mb" })
 );
 
 // Keep the legacy Base64 Library procedures large enough for their 50 MiB
@@ -400,16 +504,19 @@ app.use((err: any, req: any, res: any, next: any) => {
     debugError("Request Body", `Payload too large for ${req.url}`, err);
     return res.status(413).json({
       error: {
-        message: "Request body too large. Generated presentation media should be saved as storage URLs before importing slides.",
+        message:
+          "Request body too large. Generated presentation media should be saved as storage URLs before importing slides.",
         code: "REQUEST_BODY_TOO_LARGE",
       },
     });
   }
 
   // Catch JSON parse errors (SyntaxError from body-parser)
-  if (err instanceof SyntaxError && 'body' in err) {
+  if (err instanceof SyntaxError && "body" in err) {
     debugError("JSON Parse", `Failed to parse JSON body for ${req.url}`, err);
-    return res.status(400).json({ error: { message: "Invalid JSON in request body" } });
+    return res
+      .status(400)
+      .json({ error: { message: "Invalid JSON in request body" } });
   }
   next(err);
 });
@@ -433,7 +540,8 @@ app.get("/healthz", (_req, res) => {
 
 app.get("/api/virtual-admin/health", async (_req, res) => {
   try {
-    const { getGuardianHealthFull } = await import("../services/virtualAdmin/guardianScheduler");
+    const { getGuardianHealthFull } =
+      await import("../services/virtualAdmin/guardianScheduler");
     const health = await getGuardianHealthFull();
     res.json(health);
   } catch {
@@ -498,7 +606,9 @@ app.get("/readyz", async (_req, res) => {
 
   const feature186 = cloudflareRuntimeStatus();
   checks.feature186 = feature186.hardCutover
-    ? (feature186.runtimeReady ? `ok:${feature186.runtimeMode}` : `error:${feature186.runtimeReason ?? "runtime_not_ready"}`)
+    ? feature186.runtimeReady
+      ? `ok:${feature186.runtimeMode}`
+      : `error:${feature186.runtimeReason ?? "runtime_not_ready"}`
     : "disabled";
   if (feature186.hardCutover && !feature186.runtimeReady) allHealthy = false;
 
@@ -551,19 +661,27 @@ const csrfCheck = (req: any, res: any, next: any) => {
   }
 
   const origin = req.headers.origin;
-  const isMarketplaceCaptureRequest = req.originalUrl.startsWith("/api/marketplace-captures");
+  const isMarketplaceCaptureRequest = req.originalUrl.startsWith(
+    "/api/marketplace-captures"
+  );
 
   // Requests with no Origin header: allow if using Bearer token (server-to-server),
   // reject if using cookie auth (browser CSRF risk in production)
   if (!origin) {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ") && authHeader.length > 7) {
+    if (
+      authHeader &&
+      authHeader.startsWith("Bearer ") &&
+      authHeader.length > 7
+    ) {
       return next();
     }
     // In production, cookie-authenticated POST without Origin is a CSRF risk.
     // In development, allow for easier testing (curl, Postman).
     if (process.env.NODE_ENV === "production" && req.cookies?.[COOKIE_NAME]) {
-      res.status(403).json({ error: { message: "Forbidden: missing Origin header" } });
+      res
+        .status(403)
+        .json({ error: { message: "Forbidden: missing Origin header" } });
       return;
     }
     return next();
@@ -571,7 +689,11 @@ const csrfCheck = (req: any, res: any, next: any) => {
 
   if (isMarketplaceCaptureRequest && isAllowedMarketplaceOrigin(origin)) {
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ") && authHeader.length > 7) {
+    if (
+      authHeader &&
+      authHeader.startsWith("Bearer ") &&
+      authHeader.length > 7
+    ) {
       return next();
     }
   }
@@ -602,12 +724,13 @@ app.use("/trpc/chat.executeSkill", (req, res, next) => {
     }
   })();
   const dynamicParams = (req.body as any)?.json?.dynamicParams;
-  const dynamicParamSummary = dynamicParams && typeof dynamicParams === "object"
-    ? {
-        topKeys: Object.keys(dynamicParams).slice(0, 30),
-        byteLength: Buffer.byteLength(JSON.stringify(dynamicParams)),
-      }
-    : null;
+  const dynamicParamSummary =
+    dynamicParams && typeof dynamicParams === "object"
+      ? {
+          topKeys: Object.keys(dynamicParams).slice(0, 30),
+          byteLength: Buffer.byteLength(JSON.stringify(dynamicParams)),
+        }
+      : null;
 
   console.info("[tRPC Debug] chat.executeSkill request", {
     method: req.method,
@@ -645,25 +768,33 @@ app.get("/uploads/*", async (req, res) => {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+    const auth = await authorizeRequest(req, {
+      allowBearer: true,
+      allowSession: true,
+    });
     if (!auth.ok) {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const tenantId = resolveTenantIdVarchar(
-      auth.tenantId || (auth as any).user?.currentTenantId,
-      null,
-    ) ?? "";
-    const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
+    const tenantId =
+      resolveTenantIdVarchar(
+        auth.tenantId || (auth as any).user?.currentTenantId,
+        null
+      ) ?? "";
+    const userId = Number(
+      (auth as any).userId || (auth as any).user?.id || auth.sub
+    );
     if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    if (!(await canReadManagedStorageKey(rawKey, {
-      tenantId,
-      userId,
-      role: (auth as any).user?.role,
-    }))) {
+    if (
+      !(await canReadManagedStorageKey(rawKey, {
+        tenantId,
+        userId,
+        role: (auth as any).user?.role,
+      }))
+    ) {
       res.status(404).json({ error: "File not found" });
       return;
     }
@@ -682,13 +813,17 @@ app.get("/uploads/*", async (req, res) => {
     res.setHeader("Vary", PROTECTED_MEDIA_VARY);
     res.setHeader("ETag", etag);
     res.setHeader("Last-Modified", fileStat.mtime.toUTCString());
-    for (const [key, value] of Object.entries(extraHeaders)) res.setHeader(key, value);
+    for (const [key, value] of Object.entries(extraHeaders))
+      res.setHeader(key, value);
     if (matchesIfNoneMatch(req.headers["if-none-match"], etag)) {
       res.status(304).end();
       return;
     }
-    res.sendFile(filePath, (error) => {
-      if (error && !res.headersSent) res.status((error as { statusCode?: number }).statusCode || 404).json({ error: "File not found" });
+    res.sendFile(filePath, error => {
+      if (error && !res.headersSent)
+        res
+          .status((error as { statusCode?: number }).statusCode || 404)
+          .json({ error: "File not found" });
     });
   } catch {
     if (!res.headersSent) res.status(404).json({ error: "File not found" });
@@ -709,21 +844,32 @@ app.get("/api/storage/files/*", async (req, res) => {
       return;
     }
 
-    const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+    const auth = await authorizeRequest(req, {
+      allowBearer: true,
+      allowSession: true,
+    });
     if (!auth.ok) {
       res.status(404).json({ error: "File not found" });
       return;
     }
-    const tenantId = resolveTenantIdVarchar(
-      auth.tenantId || (auth as any).user?.currentTenantId,
-      null,
-    ) ?? "";
-    const userId = Number((auth as any).userId || (auth as any).user?.id || auth.sub);
-    if (!tenantId || !Number.isInteger(userId) || userId <= 0 || !(await canReadManagedStorageKey(rawKey, {
-      tenantId,
-      userId,
-      role: (auth as any).user?.role,
-    }))) {
+    const tenantId =
+      resolveTenantIdVarchar(
+        auth.tenantId || (auth as any).user?.currentTenantId,
+        null
+      ) ?? "";
+    const userId = Number(
+      (auth as any).userId || (auth as any).user?.id || auth.sub
+    );
+    if (
+      !tenantId ||
+      !Number.isInteger(userId) ||
+      userId <= 0 ||
+      !(await canReadManagedStorageKey(rawKey, {
+        tenantId,
+        userId,
+        role: (auth as any).user?.role,
+      }))
+    ) {
       res.status(404).json({ error: "File not found" });
       return;
     }
@@ -746,7 +892,10 @@ app.get("/api/storage/files/*", async (req, res) => {
           res.setHeader("Vary", PROTECTED_MEDIA_VARY);
           res.setHeader("ETag", headEtag);
           if (headResult.lastModified) {
-            res.setHeader("Last-Modified", headResult.lastModified.toUTCString());
+            res.setHeader(
+              "Last-Modified",
+              headResult.lastModified.toUTCString()
+            );
           }
           if (matchesIfNoneMatch(requestedEtag, headEtag)) {
             res.status(304).end();
@@ -768,7 +917,9 @@ app.get("/api/storage/files/*", async (req, res) => {
       }
     }
     if (!result) {
-      res.status(404).json({ error: "File not found or storage not configured" });
+      res
+        .status(404)
+        .json({ error: "File not found or storage not configured" });
       return;
     }
 
@@ -779,12 +930,18 @@ app.get("/api/storage/files/*", async (req, res) => {
     if (result.lastModified) {
       res.setHeader("Last-Modified", result.lastModified.toUTCString());
     }
-    if (!result.isPartial && matchesIfNoneMatch(req.headers["if-none-match"], etag)) {
+    if (
+      !result.isPartial &&
+      matchesIfNoneMatch(req.headers["if-none-match"], etag)
+    ) {
       res.status(304).end();
       return;
     }
 
-    if (isJpgConversion || (key.endsWith(".jpg") && result.contentType.includes("webp"))) {
+    if (
+      isJpgConversion ||
+      (key.endsWith(".jpg") && result.contentType.includes("webp"))
+    ) {
       const sharp = (await import("sharp")).default;
       res.setHeader("Content-Type", "image/jpeg");
       res.setHeader("Accept-Ranges", "bytes");
@@ -803,13 +960,22 @@ app.get("/api/storage/files/*", async (req, res) => {
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("X-Content-Type-Options", "nosniff");
 
-    if (result.isPartial && result.rangeStart !== undefined && result.rangeEnd !== undefined) {
+    if (
+      result.isPartial &&
+      result.rangeStart !== undefined &&
+      result.rangeEnd !== undefined
+    ) {
       res.status(206);
       const total = result.totalLength ?? "*";
-      res.setHeader("Content-Range", `bytes ${result.rangeStart}-${result.rangeEnd}/${total}`);
-      if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
+      res.setHeader(
+        "Content-Range",
+        `bytes ${result.rangeStart}-${result.rangeEnd}/${total}`
+      );
+      if (result.contentLength)
+        res.setHeader("Content-Length", result.contentLength);
     } else {
-      if (result.contentLength) res.setHeader("Content-Length", result.contentLength);
+      if (result.contentLength)
+        res.setHeader("Content-Length", result.contentLength);
     }
 
     const nodeStream = result.stream as NodeJS.ReadableStream;
@@ -819,7 +985,10 @@ app.get("/api/storage/files/*", async (req, res) => {
       const reader = (result.stream as ReadableStream).getReader();
       while (true) {
         const { done, value } = await reader.read();
-        if (done) { res.end(); break; }
+        if (done) {
+          res.end();
+          break;
+        }
         res.write(value);
       }
     }
@@ -855,7 +1024,11 @@ app.use("/api/webhooks", createWebhookRouter());
 
 // Inbound webhook trigger endpoints (external services → SmartAIHub conversations/agencies/workflows)
 // Must be before CSRF middleware — these are server-to-server requests with their own auth
-app.use("/api/webhooks/trigger", express.json({ limit: "1mb" }), createWebhookTriggerRouter());
+app.use(
+  "/api/webhooks/trigger",
+  express.json({ limit: "1mb" }),
+  createWebhookTriggerRouter()
+);
 
 // Generalized channel webhook router (all adapters: WhatsApp, Slack, Discord, LINE, etc.)
 // Must be registered BEFORE the legacy Telegram route so /webhooks/:channelType/:connectionId
@@ -869,18 +1042,26 @@ app.use(
       req.rawBody = buf;
     },
   }),
-  createChannelWebhookRouter(),
+  createChannelWebhookRouter()
 );
 
 // Telegram Bot API webhook (legacy route — kept for backward compat with existing bot webhook URLs)
 // Tighter body limit than global 10MB — Telegram updates are small JSON payloads
-app.use("/webhooks/telegram", express.json({ limit: "1mb" }), createTelegramWebhookRouter());
+app.use(
+  "/webhooks/telegram",
+  express.json({ limit: "1mb" }),
+  createTelegramWebhookRouter()
+);
 
 // Voice gateway: session token + consent endpoints
 app.use("/api/voice", createVoiceSessionRouter());
 
 // Widget gateway: init token endpoint
-app.use("/api/widget", express.json({ limit: "100kb" }), createWidgetInitRouter());
+app.use(
+  "/api/widget",
+  express.json({ limit: "100kb" }),
+  createWidgetInitRouter()
+);
 
 app.use(express.json({ limit: "1mb" }), browserPolicyRouter);
 app.use(browserToolRouter);
@@ -902,7 +1083,7 @@ app.use(
   rateLimitMiddleware(),
   quotaMiddleware(),
   idempotencyMiddleware(),
-  publicApiAuditMiddleware,
+  publicApiAuditMiddleware
 );
 app.use("/v1/skills", createPublicSkillsRouter());
 app.use("/v1/presentations", createPresentationPublicRouter());
@@ -912,8 +1093,6 @@ app.use("/v1/jobs", createPublicJobsRouter());
 app.use("/v1/knowledge", createPublicKnowledgeRouter());
 app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
-app.use("/v1/agency-tools", createAgencyToolsApiRouter());
-
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);
@@ -924,7 +1103,6 @@ registerFeedbackUploadRoutes(app);
 // Published Gallery media is public by design. Keep it on its own route so
 // visitors do not need the session-bound /api/storage/files proxy.
 app.use("/api/gallery/media", createPublicGalleryMediaRouter());
-registerAgencyStreamRoutes(app);
 registerLiveBrowserStreamRoutes(app);
 registerWorkerRuntimeRoutes(app);
 registerWorkerRuntimeReleaseRoutes(app);
@@ -932,7 +1110,6 @@ registerWorkerSeriesControlPlaneRoutes(app);
 registerJobControlPlaneRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
-registerWorkflowNodeTypesRoute(app);
 registerWorkflowWorkerRuntimeRoutes(app);
 registerContentAutomationRoutes(app);
 registerContentManifestImportRoutes(app);
@@ -945,7 +1122,6 @@ registerInternalSocialToolRoute(app);
 registerInternalSocialActionsRoute(app);
 registerInternalMetricsRoute(app);
 app.use("/api/virtual-admin/events", createGuardianSSERouter());
-app.use(agencyStreamRouter);
 app.use(orchestratorStreamRouter);
 app.use(notificationStreamRouter);
 app.use(contentComposerStreamRouter);
@@ -983,7 +1159,8 @@ function verifyInternalBearerToken(authHeader: string): boolean {
 
 // Helper: derive sourceType from service tag when not explicitly provided
 function deriveSourceTypeFromService(service: string): string {
-  if (service.startsWith("library.") || service.startsWith("gdrive.index")) return "indexing";
+  if (service.startsWith("library.") || service.startsWith("gdrive.index"))
+    return "indexing";
   if (service.startsWith("rag.")) return "rag";
   if (service.startsWith("gdrive.mcp")) return "indexing";
   return "other";
@@ -997,21 +1174,49 @@ app.post("/api/internal/credits/charge", async (req, res) => {
   }
 
   try {
-    const { userId, amount, chunkCount, service, idempotencyKey, metadata, sourceType } = req.body;
+    const {
+      userId,
+      amount,
+      chunkCount,
+      service,
+      idempotencyKey,
+      metadata,
+      sourceType,
+    } = req.body;
     if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
-      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+      return res
+        .status(400)
+        .json({ success: false, error: "userId must be a positive number" });
     }
     if (typeof service !== "string" || !service) {
-      return res.status(400).json({ success: false, error: "service is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "service is required" });
     }
-    if (amount != null && (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)) {
-      return res.status(400).json({ success: false, error: "amount must be a positive number" });
+    if (
+      amount != null &&
+      (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0)
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, error: "amount must be a positive number" });
     }
-    if (chunkCount != null && (typeof chunkCount !== "number" || !Number.isFinite(chunkCount) || chunkCount < 0)) {
-      return res.status(400).json({ success: false, error: "chunkCount must be a non-negative number" });
+    if (
+      chunkCount != null &&
+      (typeof chunkCount !== "number" ||
+        !Number.isFinite(chunkCount) ||
+        chunkCount < 0)
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "chunkCount must be a non-negative number",
+        });
     }
 
-    const { chargeForIndexing, chargeForRagQuery, deductCredits } = await import("../services/creditService");
+    const { chargeForIndexing, chargeForRagQuery, deductCredits } =
+      await import("../services/creditService");
     type IndexingService = import("../services/creditService").IndexingService;
 
     if (chunkCount != null) {
@@ -1031,13 +1236,24 @@ app.post("/api/internal/credits/charge", async (req, res) => {
         amount,
         description: `Service charge (${service})`,
         idempotencyKey,
-        sourceType: (VALID_SOURCE_TYPES.has(sourceType) ? sourceType : null) || deriveSourceTypeFromService(service),
+        sourceType:
+          (VALID_SOURCE_TYPES.has(sourceType) ? sourceType : null) ||
+          deriveSourceTypeFromService(service),
         metadata: { ...metadata, service },
       });
-      return res.json({ success: true, creditsUsed: result.creditsUsed, transactionId: result.transactionId });
+      return res.json({
+        success: true,
+        creditsUsed: result.creditsUsed,
+        transactionId: result.transactionId,
+      });
     }
 
-    return res.status(400).json({ success: false, error: "Either amount or chunkCount is required" });
+    return res
+      .status(400)
+      .json({
+        success: false,
+        error: "Either amount or chunkCount is required",
+      });
   } catch (err: any) {
     const status = err.message?.includes("Insufficient credits") ? 402 : 500;
     return res.status(status).json({ success: false, error: err.message });
@@ -1054,13 +1270,26 @@ app.post("/api/internal/credits/agency-markup", async (req, res) => {
     const { userId, agencyId, markupAmount, sourceType } = req.body;
 
     if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
-      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+      return res
+        .status(400)
+        .json({ success: false, error: "userId must be a positive number" });
     }
     if (typeof agencyId !== "string" || !agencyId) {
-      return res.status(400).json({ success: false, error: "agencyId is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "agencyId is required" });
     }
-    if (typeof markupAmount !== "number" || !Number.isFinite(markupAmount) || markupAmount <= 0) {
-      return res.status(400).json({ success: false, error: "markupAmount must be a positive number" });
+    if (
+      typeof markupAmount !== "number" ||
+      !Number.isFinite(markupAmount) ||
+      markupAmount <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "markupAmount must be a positive number",
+        });
     }
 
     const { deductCredits } = await import("../services/creditService");
@@ -1097,31 +1326,73 @@ app.post("/api/internal/credits/creator-fee-settle", async (req, res) => {
   }
 
   try {
-    const { runId, agencyId, userId, creatorId, creatorFeeCredits, platformSharePct, tenantId } = req.body;
+    const {
+      runId,
+      agencyId,
+      userId,
+      creatorId,
+      creatorFeeCredits,
+      platformSharePct,
+      tenantId,
+    } = req.body;
 
     if (typeof runId !== "string" || !runId) {
-      return res.status(400).json({ success: false, error: "runId is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "runId is required" });
     }
     if (typeof agencyId !== "string" || !agencyId) {
-      return res.status(400).json({ success: false, error: "agencyId is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "agencyId is required" });
     }
     if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
-      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+      return res
+        .status(400)
+        .json({ success: false, error: "userId must be a positive number" });
     }
-    if (typeof creatorId !== "number" || !Number.isFinite(creatorId) || creatorId <= 0) {
-      return res.status(400).json({ success: false, error: "creatorId must be a positive number" });
+    if (
+      typeof creatorId !== "number" ||
+      !Number.isFinite(creatorId) ||
+      creatorId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, error: "creatorId must be a positive number" });
     }
-    if (typeof creatorFeeCredits !== "number" || !Number.isFinite(creatorFeeCredits) || creatorFeeCredits < 0) {
-      return res.status(400).json({ success: false, error: "creatorFeeCredits must be a non-negative number" });
+    if (
+      typeof creatorFeeCredits !== "number" ||
+      !Number.isFinite(creatorFeeCredits) ||
+      creatorFeeCredits < 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "creatorFeeCredits must be a non-negative number",
+        });
     }
-    if (typeof platformSharePct !== "number" || !Number.isFinite(platformSharePct) || platformSharePct < 0 || platformSharePct > 100) {
-      return res.status(400).json({ success: false, error: "platformSharePct must be between 0 and 100" });
+    if (
+      typeof platformSharePct !== "number" ||
+      !Number.isFinite(platformSharePct) ||
+      platformSharePct < 0 ||
+      platformSharePct > 100
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          error: "platformSharePct must be between 0 and 100",
+        });
     }
     if (typeof tenantId !== "string" || !tenantId) {
-      return res.status(400).json({ success: false, error: "tenantId is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "tenantId is required" });
     }
 
-    const { settleCreatorFee } = await import("../services/creatorRevenueService");
+    const { settleCreatorFee } =
+      await import("../services/creatorRevenueService");
 
     const result = await settleCreatorFee({
       runId,
@@ -1152,30 +1423,42 @@ app.post("/api/internal/google-drive/cleanup", async (req, res) => {
   try {
     const { userId, tenantId } = req.body;
     if (typeof userId !== "number" || !Number.isFinite(userId) || userId <= 0) {
-      return res.status(400).json({ success: false, error: "userId must be a positive number" });
+      return res
+        .status(400)
+        .json({ success: false, error: "userId must be a positive number" });
     }
     if (typeof tenantId !== "string" || !tenantId) {
-      return res.status(400).json({ success: false, error: "tenantId is required" });
+      return res
+        .status(400)
+        .json({ success: false, error: "tenantId is required" });
     }
 
-    const { removeGoogleDriveData } = await import("../services/libraryService");
-    const { googleDriveEditSessions, googleDriveSyncState } = await import("../../drizzle/schema");
+    const { removeGoogleDriveData } =
+      await import("../services/libraryService");
+    const { googleDriveEditSessions, googleDriveSyncState } =
+      await import("../../drizzle/schema");
     const { eq, and } = await import("drizzle-orm");
     const db = await getDb();
     if (!db) {
-      return res.status(500).json({ success: false, error: "Database not available" });
+      return res
+        .status(500)
+        .json({ success: false, error: "Database not available" });
     }
 
     // Delete edit sessions for this user
-    await db.delete(googleDriveEditSessions).where(eq(googleDriveEditSessions.userId, userId));
+    await db
+      .delete(googleDriveEditSessions)
+      .where(eq(googleDriveEditSessions.userId, userId));
 
     // Delete sync state for this user + tenant
-    await db.delete(googleDriveSyncState).where(
-      and(
-        eq(googleDriveSyncState.userId, userId),
-        eq(googleDriveSyncState.tenantId, tenantId),
-      ),
-    );
+    await db
+      .delete(googleDriveSyncState)
+      .where(
+        and(
+          eq(googleDriveSyncState.userId, userId),
+          eq(googleDriveSyncState.tenantId, tenantId)
+        )
+      );
 
     // Remove library items + cascaded chunks/links
     const result = await removeGoogleDriveData(userId, tenantId);
@@ -1214,38 +1497,76 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
 
   // Rate limit: max 20 requests per minute
   if (!adminBroadcastRateLimit()) {
-    return res.status(429).json({ success: false, error: "Rate limit exceeded (max 20/min)" });
+    return res
+      .status(429)
+      .json({ success: false, error: "Rate limit exceeded (max 20/min)" });
   }
 
   try {
     // Validate metadata with Zod schema to prevent arbitrary content injection
     const { z } = await import("zod");
-    const metadataSchema = z.object({
-      eventId: z.string().max(100).optional(),
-      source: z.string().max(200).optional(),
-      errorDetails: z.object({
-        errorCode: z.string().max(50).optional(),
-        errorMessage: z.string().max(500).optional(),
-      }).optional(),
-      metrics: z.object({
-        durationMs: z.number().optional(),
-        costUsd: z.number().optional(),
-        itemCount: z.number().optional(),
-      }).optional(),
-      retryInfo: z.object({
-        retryCount: z.number().optional(),
-        maxRetries: z.number().optional(),
-        nextRetryAt: z.string().max(50).optional(),
-      }).optional(),
-      relatedItems: z.record(z.string().max(200)).optional(),
-    }).strict().optional();
+    const metadataSchema = z
+      .object({
+        eventId: z.string().max(100).optional(),
+        source: z.string().max(200).optional(),
+        errorDetails: z
+          .object({
+            errorCode: z.string().max(50).optional(),
+            errorMessage: z.string().max(500).optional(),
+          })
+          .optional(),
+        metrics: z
+          .object({
+            durationMs: z.number().optional(),
+            costUsd: z.number().optional(),
+            itemCount: z.number().optional(),
+          })
+          .optional(),
+        retryInfo: z
+          .object({
+            retryCount: z.number().optional(),
+            maxRetries: z.number().optional(),
+            nextRetryAt: z.string().max(50).optional(),
+          })
+          .optional(),
+        relatedItems: z.record(z.string().max(200)).optional(),
+      })
+      .strict()
+      .optional();
 
     const broadcastBodySchema = z.object({
-      type: z.enum(["scheduled_message", "follow_request", "alert", "system", "direct_message", "urgent_message"]).default("alert"),
+      type: z
+        .enum([
+          "scheduled_message",
+          "follow_request",
+          "alert",
+          "system",
+          "direct_message",
+          "urgent_message",
+        ])
+        .default("alert"),
       title: z.string().min(1).max(255),
       content: z.string().max(2000).default(""),
       priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
-      relatedResourceType: z.enum(["media_job", "credits", "workflow", "skill", "feedback", "agency", "approval", "team_run", "room", "user", "conversation", "scheduled_message", "system_health", "security", "incident"]).optional(),
+      relatedResourceType: z
+        .enum([
+          "media_job",
+          "credits",
+          "workflow",
+          "skill",
+          "feedback",
+          "agency",
+          "approval",
+          "team_run",
+          "room",
+          "user",
+          "conversation",
+          "scheduled_message",
+          "system_health",
+          "security",
+          "incident",
+        ])
+        .optional(),
       actionUrl: z.string().max(2000).optional(),
       actionLabel: z.string().max(100).optional(),
       groupKey: z.string().max(200).optional(),
@@ -1257,15 +1578,27 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Invalid request body",
-        details: bodyResult.error.issues.map((i) => i.message),
+        details: bodyResult.error.issues.map(i => i.message),
       });
     }
 
-    const { type, title, content, priority, relatedResourceType, actionUrl, actionLabel, groupKey, metadata } = bodyResult.data;
+    const {
+      type,
+      title,
+      content,
+      priority,
+      relatedResourceType,
+      actionUrl,
+      actionLabel,
+      groupKey,
+      metadata,
+    } = bodyResult.data;
 
     const db = await getDb();
     if (!db) {
-      return res.status(500).json({ success: false, error: "Database not available" });
+      return res
+        .status(500)
+        .json({ success: false, error: "Database not available" });
     }
 
     const { users } = await import("../../drizzle/schema");
@@ -1281,7 +1614,8 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       return res.json({ success: true, notified: 0 });
     }
 
-    const { createNotification } = await import("../services/notificationService");
+    const { createNotification } =
+      await import("../services/notificationService");
     let notified = 0;
 
     for (const admin of admins) {
@@ -1297,7 +1631,8 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
           actionUrl: actionUrl || undefined,
           actionLabel: actionLabel || undefined,
           metadata: metadata || undefined,
-          groupKey: typeof groupKey === "string" ? groupKey.slice(0, 200) : undefined,
+          groupKey:
+            typeof groupKey === "string" ? groupKey.slice(0, 200) : undefined,
         });
         notified++;
       } catch (err) {
@@ -1305,14 +1640,18 @@ app.post("/api/internal/notifications/admin-broadcast", async (req, res) => {
       }
     }
 
-    const { recordBroadcastRequest } = await import("../services/notificationHealthChecks");
+    const { recordBroadcastRequest } =
+      await import("../services/notificationHealthChecks");
     recordBroadcastRequest(true);
     return res.json({ success: true, notified });
   } catch (err: any) {
     debugError("AdminBroadcast", "Internal broadcast failed", err);
-    const { recordBroadcastRequest } = await import("../services/notificationHealthChecks");
+    const { recordBroadcastRequest } =
+      await import("../services/notificationHealthChecks");
     recordBroadcastRequest(false);
-    return res.status(500).json({ success: false, error: "Internal broadcast failed" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal broadcast failed" });
   }
 });
 
@@ -1342,7 +1681,9 @@ app.post("/api/internal/feedback/auto-report", async (req, res) => {
 
   // Rate limit: max 20 requests per minute
   if (!autoReportRateLimit()) {
-    return res.status(429).json({ success: false, error: "Rate limit exceeded (max 20/min)" });
+    return res
+      .status(429)
+      .json({ success: false, error: "Rate limit exceeded (max 20/min)" });
   }
 
   try {
@@ -1358,13 +1699,20 @@ app.post("/api/internal/feedback/auto-report", async (req, res) => {
       jobId: z.string().max(200).optional(),
       traceId: z.string().max(200).optional(),
       priority: z.enum(["high", "critical"]).optional(),
-      creditContext: z.object({
-        source: z.enum(["user", "provider", "unknown"]).optional(),
-        modelKind: z.enum(["llm", "media", "unknown"]).optional(),
-        requestedCredits: z.number().finite().nonnegative().nullable().optional(),
-        provider: z.string().max(100).nullable().optional(),
-        reason: z.string().max(500).nullable().optional(),
-      }).optional(),
+      creditContext: z
+        .object({
+          source: z.enum(["user", "provider", "unknown"]).optional(),
+          modelKind: z.enum(["llm", "media", "unknown"]).optional(),
+          requestedCredits: z
+            .number()
+            .finite()
+            .nonnegative()
+            .nullable()
+            .optional(),
+          provider: z.string().max(100).nullable().optional(),
+          reason: z.string().max(500).nullable().optional(),
+        })
+        .optional(),
       extra: z.record(z.unknown()).optional(),
     });
 
@@ -1373,22 +1721,28 @@ app.post("/api/internal/feedback/auto-report", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Invalid request body",
-        details: bodyResult.error.issues.map((i) => i.message),
+        details: bodyResult.error.issues.map(i => i.message),
       });
     }
 
-    const { reportSystemFailure } = await import("../services/systemAutoReportService");
+    const { reportSystemFailure } =
+      await import("../services/systemAutoReportService");
     await reportSystemFailure(bodyResult.data);
 
     return res.json({ ok: true });
   } catch (err: any) {
     debugError("SystemAutoReport", "Internal auto-report endpoint failed", err);
-    return res.status(500).json({ success: false, error: "Internal auto-report failed" });
+    return res
+      .status(500)
+      .json({ success: false, error: "Internal auto-report failed" });
   }
 });
 
 // Internal presentation import callback (Python backend -> Node.js)
-app.post("/api/internal/presentation-import/callback", presentationImportCallbackHandler);
+app.post(
+  "/api/internal/presentation-import/callback",
+  presentationImportCallbackHandler
+);
 
 // Internal agency creation endpoint (Python AI Creator task -> Node.js)
 // Auth: X-Internal-Token + X-User-Id (service-to-service), or Bearer JWT (legacy)
@@ -1402,24 +1756,30 @@ app.get("/api/internal/models/resolve", async (req, res) => {
   try {
     const requirementsParam = req.query.requirements as string;
     if (!requirementsParam) {
-      return res.status(400).json({ error: "requirements query param required" });
+      return res
+        .status(400)
+        .json({ error: "requirements query param required" });
     }
     const requirements = JSON.parse(requirementsParam);
-    const { loadEnabledLlmModelRows } = await import("../services/enabledLlmModels");
-    const { selectBestLlmModel } = await import("../services/intelligentModelSelector");
+    const { loadEnabledLlmModelRows } =
+      await import("../services/enabledLlmModels");
+    const { selectBestLlmModel } =
+      await import("../services/intelligentModelSelector");
     const rows = await loadEnabledLlmModelRows();
     const modelId = selectBestLlmModel(requirements, rows);
     if (!modelId) {
       return res.json({ modelId: null, error: "No matching model found" });
     }
-    const matched = rows.find((r) => r.modelId === modelId);
+    const matched = rows.find(r => r.modelId === modelId);
     return res.json({
       modelId,
       modelName: matched?.providerModelId ?? modelId,
       provider: matched?.providerName ?? "unknown",
     });
   } catch (e: any) {
-    return res.status(400).json({ error: e.message?.slice(0, 200) ?? "Invalid request" });
+    return res
+      .status(400)
+      .json({ error: e.message?.slice(0, 200) ?? "Invalid request" });
   }
 });
 
@@ -1428,61 +1788,98 @@ app.get("/api/internal/models/resolve", async (req, res) => {
  * intentionally read-only: it never analyzes subtitles, invents cues, spends
  * credits, or accepts a caller-supplied plan as authoritative.
  */
-app.post("/api/v1/vertical-drama/audio-score/approved-plan", async (req, res) => {
-  const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
-  if (!auth.ok) return res.status(401).json({ error: "Unauthorized" });
-  const tenantId = resolveTenantIdVarchar(
-    auth.tenantId || (auth as any).user?.currentTenantId,
-    null,
-  );
-  const userId = Number(auth.userId ?? auth.sub);
-  if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
-    return res.status(403).json({ error: "Tenant and user context are required" });
-  }
+app.post(
+  "/api/v1/vertical-drama/audio-score/approved-plan",
+  async (req, res) => {
+    const auth = await authorizeRequest(req, {
+      allowBearer: true,
+      allowSession: true,
+    });
+    if (!auth.ok) return res.status(401).json({ error: "Unauthorized" });
+    const tenantId = resolveTenantIdVarchar(
+      auth.tenantId || (auth as any).user?.currentTenantId,
+      null
+    );
+    const userId = Number(auth.userId ?? auth.sub);
+    if (!tenantId || !Number.isInteger(userId) || userId <= 0) {
+      return res
+        .status(403)
+        .json({ error: "Tenant and user context are required" });
+    }
 
-  const { z } = await import("zod");
-  const body = z.object({
-    plan: z.unknown(),
-    expectedSkillId: z.literal("vertical-drama-emotion-score-director"),
-    expectedSkillVersion: z.string().trim().min(1).max(64),
-  }).safeParse(req.body);
-  if (!body.success) return res.status(400).json({ error: "Invalid approved-plan request" });
+    const { z } = await import("zod");
+    const body = z
+      .object({
+        plan: z.unknown(),
+        expectedSkillId: z.literal("vertical-drama-emotion-score-director"),
+        expectedSkillVersion: z.string().trim().min(1).max(64),
+      })
+      .safeParse(req.body);
+    if (!body.success)
+      return res.status(400).json({ error: "Invalid approved-plan request" });
 
-  const candidate = body.data.plan && typeof body.data.plan === "object"
-    ? body.data.plan as Record<string, unknown>
-    : {};
-  const authority = candidate.authority && typeof candidate.authority === "object"
-    ? candidate.authority as Record<string, unknown>
-    : null;
-  const planId = typeof candidate.planId === "string"
-    ? candidate.planId
-    : typeof authority?.planId === "string" ? authority.planId : "";
-  if (!z.string().uuid().safeParse(planId).success) {
-    return res.status(400).json({ error: "Approved plan id is required" });
-  }
+    const candidate =
+      body.data.plan && typeof body.data.plan === "object"
+        ? (body.data.plan as Record<string, unknown>)
+        : {};
+    const authority =
+      candidate.authority && typeof candidate.authority === "object"
+        ? (candidate.authority as Record<string, unknown>)
+        : null;
+    const planId =
+      typeof candidate.planId === "string"
+        ? candidate.planId
+        : typeof authority?.planId === "string"
+          ? authority.planId
+          : "";
+    if (!z.string().uuid().safeParse(planId).success) {
+      return res.status(400).json({ error: "Approved plan id is required" });
+    }
 
-  const drizzleDb = await getDb();
-  if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
-  const { verticalDramaEmotionPlans } = await import("../../drizzle/schema");
-  const [row] = await drizzleDb.select().from(verticalDramaEmotionPlans).where(and(
-    eq(verticalDramaEmotionPlans.id, planId),
-    eq(verticalDramaEmotionPlans.tenantId, tenantId),
-    eq(verticalDramaEmotionPlans.userId, userId),
-  )).limit(1);
-  if (!row) return res.status(404).json({ error: "Approved plan not found" });
-  if (row.status !== "approved" || row.rightsStatus !== "approved_for_project") {
-    return res.status(409).json({ error: "Plan approval and project rights are required" });
+    const drizzleDb = await getDb();
+    if (!drizzleDb)
+      return res.status(503).json({ error: "Database unavailable" });
+    const { verticalDramaEmotionPlans } = await import("../../drizzle/schema");
+    const [row] = await drizzleDb
+      .select()
+      .from(verticalDramaEmotionPlans)
+      .where(
+        and(
+          eq(verticalDramaEmotionPlans.id, planId),
+          eq(verticalDramaEmotionPlans.tenantId, tenantId),
+          eq(verticalDramaEmotionPlans.userId, userId)
+        )
+      )
+      .limit(1);
+    if (!row) return res.status(404).json({ error: "Approved plan not found" });
+    if (
+      row.status !== "approved" ||
+      row.rightsStatus !== "approved_for_project"
+    ) {
+      return res
+        .status(409)
+        .json({ error: "Plan approval and project rights are required" });
+    }
+    const { validateApprovedMusicScorePlan } =
+      await import("../../shared/verticalDramaSeries/musicScoringContracts");
+    const parsed = validateApprovedMusicScorePlan(row.planJson);
+    if (
+      !parsed.success ||
+      parsed.data.status !== "approved" ||
+      parsed.data.skill.skillId !== body.data.expectedSkillId ||
+      parsed.data.skill.skillVersion !== body.data.expectedSkillVersion
+    ) {
+      return res
+        .status(409)
+        .json({
+          error: "Approved plan provenance does not match the requested skill",
+        });
+    }
+    return res.json(parsed.data);
   }
-  const { validateApprovedMusicScorePlan } = await import("../../shared/verticalDramaSeries/musicScoringContracts");
-  const parsed = validateApprovedMusicScorePlan(row.planJson);
-  if (!parsed.success || parsed.data.status !== "approved" || parsed.data.skill.skillId !== body.data.expectedSkillId || parsed.data.skill.skillVersion !== body.data.expectedSkillVersion) {
-    return res.status(409).json({ error: "Approved plan provenance does not match the requested skill" });
-  }
-  return res.json(parsed.data);
-});
+);
 
 app.post("/api/internal/agency/create", async (req, res) => {
-
   let user: Awaited<ReturnType<typeof sdk.authenticateRequest>> | null = null;
 
   // Primary: X-Internal-Token auth (service-to-service from Python/Celery)
@@ -1507,7 +1904,9 @@ app.post("/api/internal/agency/create", async (req, res) => {
         req.headers.cookie = `app_session_id=${token}`;
         try {
           user = await sdk.authenticateRequest(req);
-        } catch { /* still unauthorized */ }
+        } catch {
+          /* still unauthorized */
+        }
       }
     }
   }
@@ -1521,43 +1920,60 @@ app.post("/api/internal/agency/create", async (req, res) => {
     objective: z.string().max(2000).optional(),
     sharedInstructions: z.string().max(10000).optional(),
     tenantId: z.string().max(100).optional().default(""),
-    agents: z.array(z.object({
-      id: z.string(),
-      name: z.string().min(1).max(200),
-      description: z.string().max(2000).optional().default(""),
-      instructions: z.string().max(10000).optional().default(""),
-      model: z.string().max(100).optional().default("gpt-4o"),
-      nodeType: z.string().max(50).optional().default("agent"),
-      nodeConfig: z.record(z.unknown()).optional().default({}),
-      isEntryPoint: z.boolean().optional().default(false),
-      isOptional: z.boolean().optional().default(false),
-      position: z.object({ x: z.number(), y: z.number() }).optional(),
-      toolIds: z.array(z.string().max(100)).optional().default([]),
-      toolConfigs: z.record(z.record(z.unknown())).optional().default({}),
-      modelRequirements: z.object({
-        strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
-        supportsVision: z.boolean().optional(),
-        supportsThinking: z.boolean().optional(),
-        supportsFunctionTools: z.boolean().optional(),
-        supportsStructuredOutputs: z.boolean().optional(),
-        supportsJsonMode: z.boolean().optional(),
-        supportsStrictToolSchema: z.boolean().optional(),
-        supportsWebSearch: z.boolean().optional(),
-        supportsCodeExecution: z.boolean().optional(),
-        supportsComputerUse: z.boolean().optional(),
-      }).optional(),
-    })).min(1).max(20),
-    communicationFlows: z.array(z.object({
-      id: z.string().optional(),
-      fromAgentId: z.string(),
-      toAgentId: z.string(),
-      flowType: z.string().max(50).optional().default("delegation"),
-    })).optional().default([]),
+    agents: z
+      .array(
+        z.object({
+          id: z.string(),
+          name: z.string().min(1).max(200),
+          description: z.string().max(2000).optional().default(""),
+          instructions: z.string().max(10000).optional().default(""),
+          model: z.string().max(100).optional().default("gpt-4o"),
+          nodeType: z.string().max(50).optional().default("agent"),
+          nodeConfig: z.record(z.unknown()).optional().default({}),
+          isEntryPoint: z.boolean().optional().default(false),
+          isOptional: z.boolean().optional().default(false),
+          position: z.object({ x: z.number(), y: z.number() }).optional(),
+          toolIds: z.array(z.string().max(100)).optional().default([]),
+          toolConfigs: z.record(z.record(z.unknown())).optional().default({}),
+          modelRequirements: z
+            .object({
+              strategy: z.enum(["cheapest", "balanced", "best"]).optional(),
+              supportsVision: z.boolean().optional(),
+              supportsThinking: z.boolean().optional(),
+              supportsFunctionTools: z.boolean().optional(),
+              supportsStructuredOutputs: z.boolean().optional(),
+              supportsJsonMode: z.boolean().optional(),
+              supportsStrictToolSchema: z.boolean().optional(),
+              supportsWebSearch: z.boolean().optional(),
+              supportsCodeExecution: z.boolean().optional(),
+              supportsComputerUse: z.boolean().optional(),
+            })
+            .optional(),
+        })
+      )
+      .min(1)
+      .max(20),
+    communicationFlows: z
+      .array(
+        z.object({
+          id: z.string().optional(),
+          fromAgentId: z.string(),
+          toAgentId: z.string(),
+          flowType: z.string().max(50).optional().default("delegation"),
+        })
+      )
+      .optional()
+      .default([]),
   });
 
   const bodyParse = agencyCreateSchema.safeParse(req.body);
   if (!bodyParse.success) {
-    return res.status(400).json({ error: "Invalid request body", details: bodyParse.error.issues.map(i => i.message).join(", ") });
+    return res
+      .status(400)
+      .json({
+        error: "Invalid request body",
+        details: bodyParse.error.issues.map(i => i.message).join(", "),
+      });
   }
   const validatedBody = bodyParse.data;
 
@@ -1570,7 +1986,8 @@ app.post("/api/internal/agency/create", async (req, res) => {
       users: usersTable,
     } = await import("../../drizzle/schema");
     const drizzleDb = await getDb();
-    if (!drizzleDb) return res.status(503).json({ error: "Database unavailable" });
+    if (!drizzleDb)
+      return res.status(503).json({ error: "Database unavailable" });
     // The authenticated user's database binding is the only tenant authority.
     // Keep the body field as a compatibility assertion for existing internal
     // callers, never as a selector that can override the authenticated scope.
@@ -1579,16 +1996,27 @@ app.post("/api/internal/agency/create", async (req, res) => {
       .from(usersTable)
       .where(eq(usersTable.id, user.id))
       .limit(1);
-    const tenantId = String(userTenantRow?.currentTenantId ?? user.currentTenantId ?? "").trim();
+    const tenantId = String(
+      userTenantRow?.currentTenantId ?? user.currentTenantId ?? ""
+    ).trim();
     if (!tenantId) {
       return res.status(400).json({ error: "Tenant ID is required" });
     }
 
     if (validatedBody.tenantId && validatedBody.tenantId.trim() !== tenantId) {
-      return res.status(403).json({ error: "User does not belong to the specified tenant" });
+      return res
+        .status(403)
+        .json({ error: "User does not belong to the specified tenant" });
     }
 
-    const { name, description, objective, sharedInstructions, agents, communicationFlows } = validatedBody;
+    const {
+      name,
+      description,
+      objective,
+      sharedInstructions,
+      agents,
+      communicationFlows,
+    } = validatedBody;
 
     if (!name?.trim()) {
       return res.status(400).json({ error: "name is required" });
@@ -1608,7 +2036,9 @@ app.post("/api/internal/agency/create", async (req, res) => {
         agencyId,
         name: String(a.name || "Agent").slice(0, 100),
         description: a.description ? String(a.description).slice(0, 500) : null,
-        instructions: a.instructions ? String(a.instructions).slice(0, 50000) : null,
+        instructions: a.instructions
+          ? String(a.instructions).slice(0, 50000)
+          : null,
         model: a.model ? String(a.model).slice(0, 100) : null,
         nodeType: (a.nodeType ?? "agent") as any,
         nodeConfig: (a.nodeConfig ?? {}) as any,
@@ -1619,13 +2049,14 @@ app.post("/api/internal/agency/create", async (req, res) => {
       };
     });
 
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "")
-      .slice(0, 100) || `agency-${Date.now()}`;
+    const slug =
+      name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 100) || `agency-${Date.now()}`;
 
-    await drizzleDb.transaction(async (tx) => {
+    await drizzleDb.transaction(async tx => {
       await tx.insert(agenciesTable).values({
         id: agencyId,
         tenantId,
@@ -1633,7 +2064,9 @@ app.post("/api/internal/agency/create", async (req, res) => {
         name: String(name).slice(0, 255),
         description: description ? String(description).slice(0, 500) : null,
         objective: objective ? objective.slice(0, 2000) : null,
-        sharedInstructions: sharedInstructions ? sharedInstructions.slice(0, 10000) : null,
+        sharedInstructions: sharedInstructions
+          ? sharedInstructions.slice(0, 10000)
+          : null,
         creditMultiplier: "1",
         maxAgents: 20,
         maxRunTimeSeconds: 600,
@@ -1648,14 +2081,14 @@ app.post("/api/internal/agency/create", async (req, res) => {
       }
 
       const flowRows = communicationFlows
-        .map((f) => ({
+        .map(f => ({
           id: crypto.randomUUID(),
           agencyId,
           fromAgentId: specIdToDbId[f.fromAgentId] ?? null,
           toAgentId: specIdToDbId[f.toAgentId] ?? null,
           flowType: (f.flowType ?? "delegation") as any,
         }))
-        .filter((f) => f.fromAgentId && f.toAgentId);
+        .filter(f => f.fromAgentId && f.toAgentId);
 
       if (flowRows.length > 0) {
         await tx.insert(agencyCommunicationFlows).values(flowRows);
@@ -1688,7 +2121,9 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
     return res.status(201).json({ id: agencyId });
   } catch (err: any) {
-    debugError("internal_agency_create", "Agency creation failed", { message: String(err?.message ?? "").slice(0, 200) });
+    debugError("internal_agency_create", "Agency creation failed", {
+      message: String(err?.message ?? "").slice(0, 200),
+    });
     return res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -1741,11 +2176,14 @@ app.all("/api/v1/*", async (req, res) => {
   } else {
     try {
       const user = await sdk.authenticateRequest(req);
-      const token = signBearerToken({
-        sub: String(user.id),
-        type: "access",
-        scopes: ["media:generate"],
-      }, "15m");
+      const token = signBearerToken(
+        {
+          sub: String(user.id),
+          type: "access",
+          scopes: ["media:generate"],
+        },
+        "15m"
+      );
       headers["authorization"] = `Bearer ${token}`;
     } catch {
       // No valid session — forward without auth (Python will return 401)
@@ -1760,7 +2198,7 @@ app.all("/api/v1/*", async (req, res) => {
       method: req.method,
       headers,
     },
-    (proxyRes) => {
+    proxyRes => {
       const resHeaders: Record<string, string | string[]> = {};
       for (const [k, v] of Object.entries(proxyRes.headers)) {
         if (v && !["transfer-encoding", "connection"].includes(k)) {
@@ -1769,7 +2207,7 @@ app.all("/api/v1/*", async (req, res) => {
       }
       res.writeHead(proxyRes.statusCode || 502, resHeaders);
       proxyRes.pipe(res, { end: true });
-    },
+    }
   );
 
   proxyReq.on("error", () => {
@@ -1817,6 +2255,23 @@ app.use("/trpc", (req, res, next) => {
   next();
 });
 
+// Legacy user-facing systems are retired. Reject stale clients and deep API
+// calls before they can load the old routers or start an LLM/sandbox run.
+app.use("/trpc", (req, res, next) => {
+  const retiredRoots = new Set(["agency", "workflow", "workpack", "sandbox"]);
+  const requestedPaths = req.path
+    .split(",")
+    .map(path => path.replace(/^\//, "").split(".", 1)[0]);
+  if (requestedPaths.some(path => retiredRoots.has(path))) {
+    return res.status(410).json({
+      error: "retired_system",
+      message:
+        "This legacy system has been retired and is no longer available.",
+    });
+  }
+  return next();
+});
+
 app.use(
   "/trpc",
   createExpressMiddleware({
@@ -1832,13 +2287,14 @@ app.use(
       if (
         !isStorageCapacityError(error.message) &&
         (error.code === "INTERNAL_SERVER_ERROR" ||
-        error.code === "TIMEOUT" ||
-        isCreditFailureMessage(error.message))
+          error.code === "TIMEOUT" ||
+          isCreditFailureMessage(error.message))
       ) {
         void (async () => {
           try {
             const { getTraceId } = await import("../services/traceContext");
-            const { reportSystemFailure } = await import("../services/systemAutoReportService");
+            const { reportSystemFailure } =
+              await import("../services/systemAutoReportService");
             await reportSystemFailure({
               source: "trpc",
               userId: ctx?.user?.id ?? null,
@@ -1888,7 +2344,9 @@ async function main() {
     } else {
       await Promise.race([
         db.execute(sql`SELECT 1`),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 5000)
+        ),
       ]);
     }
   } catch (err: any) {
@@ -1906,23 +2364,27 @@ async function main() {
     try {
       await Promise.race([
         redis.ping(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 2000)),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("timeout")), 2000)
+        ),
       ]);
       redisReady = true;
     } catch (err: any) {
       lastRedisError = err?.message || "unknown";
       if (attempt < 10) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
   }
   if (!redisReady) {
-    preflightErrors.push(`Redis check failed after 10 attempts: ${lastRedisError}`);
+    preflightErrors.push(
+      `Redis check failed after 10 attempts: ${lastRedisError}`
+    );
   }
 
   if (preflightErrors.length > 0) {
     console.error("[Startup] FATAL: Pre-flight checks failed:");
-    preflightErrors.forEach((e) => console.error(`  - ${e}`));
+    preflightErrors.forEach(e => console.error(`  - ${e}`));
     process.exit(1);
   }
 
@@ -1960,7 +2422,10 @@ async function main() {
   try {
     startDeferredMediaRetryWorker();
   } catch (error) {
-    console.error("[Startup] Failed to start deferred media retry worker:", error);
+    console.error(
+      "[Startup] Failed to start deferred media retry worker:",
+      error
+    );
   }
 
   // Vertical Drama Render Queue plan §4.4 — start the in-server ffmpeg
@@ -1968,13 +2433,19 @@ async function main() {
   // `await import(...)` so a failure to load either module never blocks
   // the rest of startup.
   try {
-    const { getWebProcessRenderWorkerEnabled } = await import("../services/renderWorkerSettings");
+    const { getWebProcessRenderWorkerEnabled } =
+      await import("../services/renderWorkerSettings");
     if (await getWebProcessRenderWorkerEnabled()) {
-      const { startInlineRenderWorker } = await import("../services/inlineRenderWorker");
+      const { startInlineRenderWorker } =
+        await import("../services/inlineRenderWorker");
       startInlineRenderWorker();
-      console.log("[Startup] Inline ffmpeg render worker started (admin flag ON)");
+      console.log(
+        "[Startup] Inline ffmpeg render worker started (admin flag ON)"
+      );
     } else {
-      console.log("[Startup] Inline ffmpeg render worker NOT started (admin flag OFF — default)");
+      console.log(
+        "[Startup] Inline ffmpeg render worker NOT started (admin flag OFF — default)"
+      );
     }
   } catch (error) {
     console.error("[Startup] Failed to start inline render worker:", error);
@@ -1988,17 +2459,26 @@ async function main() {
   // startup. Settles terminal-but-unsettled hermes connection/media jobs
   // that nobody polled (e.g. the user closed the tab mid-authorize).
   try {
-    const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
+    const { getHermesWorkerSettings } =
+      await import("../services/hermesWorkerSettings");
     const settings = await getHermesWorkerSettings();
     if (settings.enabled) {
-      const { startHermesConnectionJobSweep } = await import("../services/hermesConnectionJobs");
+      const { startHermesConnectionJobSweep } =
+        await import("../services/hermesConnectionJobs");
       startHermesConnectionJobSweep();
-      console.log("[Startup] Hermes connection-control job sweep started (admin flag ON)");
+      console.log(
+        "[Startup] Hermes connection-control job sweep started (admin flag ON)"
+      );
     } else {
-      console.log("[Startup] Hermes connection-control job sweep NOT started (admin flag OFF — default)");
+      console.log(
+        "[Startup] Hermes connection-control job sweep NOT started (admin flag OFF — default)"
+      );
     }
   } catch (error) {
-    console.error("[Startup] Failed to start Hermes connection-control job sweep:", error);
+    console.error(
+      "[Startup] Failed to start Hermes connection-control job sweep:",
+      error
+    );
   }
 
   // Feature 135 section 07 — DEV-ONLY in-web-process Hermes drainer, behind
@@ -2008,17 +2488,26 @@ async function main() {
   // Mirrors the inline render worker / connection-job-sweep blocks above:
   // lazy `await import(...)` + flag-guard + try/catch.
   try {
-    const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
+    const { getHermesWorkerSettings } =
+      await import("../services/hermesWorkerSettings");
     const settings = await getHermesWorkerSettings();
     if (settings.webProcessWorkerEnabled) {
-      const { startHermesWorkerDevDrainer } = await import("../services/hermesWorkerDevDrainer");
+      const { startHermesWorkerDevDrainer } =
+        await import("../services/hermesWorkerDevDrainer");
       startHermesWorkerDevDrainer();
-      console.log("[Startup] Hermes dev-only in-web drainer started (admin flag ON — DEV ONLY, never in production)");
+      console.log(
+        "[Startup] Hermes dev-only in-web drainer started (admin flag ON — DEV ONLY, never in production)"
+      );
     } else {
-      console.log("[Startup] Hermes dev-only in-web drainer NOT started (admin flag OFF — default)");
+      console.log(
+        "[Startup] Hermes dev-only in-web drainer NOT started (admin flag OFF — default)"
+      );
     }
   } catch (error) {
-    console.error("[Startup] Failed to start the Hermes dev-only in-web drainer:", error);
+    console.error(
+      "[Startup] Failed to start the Hermes dev-only in-web drainer:",
+      error
+    );
   }
 
   // Initialize Telegram notification queue
@@ -2042,11 +2531,14 @@ async function main() {
     console.error("[Startup] Failed to initialize delivery queue:", error);
   }
 
-  // Initialize Webhook Dispatch queue (BullMQ — retry-safe agency/chat/workflow dispatch)
+  // Initialize Webhook Dispatch queue through the canonical worker control plane.
   try {
     await initWebhookDispatchQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize webhook dispatch queue:", error);
+    console.error(
+      "[Startup] Failed to initialize webhook dispatch queue:",
+      error
+    );
   }
 
   // Assert HMAC secret is configured for public API key authentication
@@ -2056,7 +2548,10 @@ async function main() {
   try {
     await initAutomationJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize automation jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize automation jobs queue:",
+      error
+    );
   }
 
   // Initialize Vertical Drama Story Jobs queue (BullMQ — async story LLM
@@ -2064,7 +2559,10 @@ async function main() {
   try {
     await initVerticalDramaStoryJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama story jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama story jobs queue:",
+      error
+    );
   }
 
   // Initialize the shared Vertical Drama interactive LLM queue used by
@@ -2072,7 +2570,10 @@ async function main() {
   try {
     await initVerticalDramaInteractiveJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama interactive jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama interactive jobs queue:",
+      error
+    );
   }
 
   // Pre-create Draft QC queue — skill-first premise quality checks before a
@@ -2080,7 +2581,10 @@ async function main() {
   try {
     await initVerticalDramaDraftQualityQcQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama draft QC queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama draft QC queue:",
+      error
+    );
   }
 
   // Pre-create Draft Composition queue — completes all required story
@@ -2088,7 +2592,10 @@ async function main() {
   try {
     await initVerticalDramaDraftCompositionQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama draft composition queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama draft composition queue:",
+      error
+    );
   }
 
   // Per-shot start-frame prompt jobs. These must be real background work so
@@ -2096,7 +2603,10 @@ async function main() {
   try {
     await initVerticalDramaShotPromptJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama shot prompt jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama shot prompt jobs queue:",
+      error
+    );
   }
 
   // Character prompt previews are also long-running LLM work. They must be
@@ -2104,7 +2614,10 @@ async function main() {
   try {
     await initVerticalDramaCharacterPromptJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama character prompt jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama character prompt jobs queue:",
+      error
+    );
   }
 
   // Per-shot video-prompt jobs. Admission is intentionally separate from the
@@ -2113,7 +2626,10 @@ async function main() {
   try {
     await initVerticalDramaShotVideoPromptJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama shot video prompt jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama shot video prompt jobs queue:",
+      error
+    );
   }
 
   // Initialize Video Intelligence Jobs queue (BullMQ — Video Studio's async
@@ -2124,7 +2640,10 @@ async function main() {
   try {
     await initVideoIntelligenceJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize video intelligence jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize video intelligence jobs queue:",
+      error
+    );
   }
 
   // Initialize Vertical Drama Episode Stage Jobs queue (BullMQ — async
@@ -2134,22 +2653,29 @@ async function main() {
   try {
     await initVerticalDramaEpisodeStageJobsQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize vertical drama episode stage jobs queue:", error);
+    console.error(
+      "[Startup] Failed to initialize vertical drama episode stage jobs queue:",
+      error
+    );
   }
 
   // Initialize Webhook API Delivery queue (BullMQ — outbound delivery to external webhook endpoints)
   try {
     await initWebhookApiDeliveryQueue();
   } catch (error) {
-    console.error("[Startup] Failed to initialize webhook API delivery queue:", error);
+    console.error(
+      "[Startup] Failed to initialize webhook API delivery queue:",
+      error
+    );
   }
 
   // Initialize channel adapters (call optional initialize() hook on each)
   try {
     await Promise.all(
-      adapterRegistry.getAll()
-        .filter((a) => typeof a.initialize === "function")
-        .map((a) => a.initialize!()),
+      adapterRegistry
+        .getAll()
+        .filter(a => typeof a.initialize === "function")
+        .map(a => a.initialize!())
     );
   } catch (error) {
     console.error("[Startup] Failed to initialize channel adapters:", error);
@@ -2172,8 +2698,8 @@ async function main() {
               and(
                 eq(channelConnections.channelType, "discord"),
                 eq(channelConnections.externalUserId, guildId),
-                eq(channelConnections.status, "active"),
-              ),
+                eq(channelConnections.status, "active")
+              )
             )
             .limit(1);
 
@@ -2202,7 +2728,7 @@ async function main() {
             metadata: { channelType: "discord", guildId, error: String(err) },
           });
         }
-      },
+      }
     );
   }
 
@@ -2216,7 +2742,9 @@ async function main() {
 
   // LLM queues use the canonical control-plane/runtime adapter.
   try {
-    console.log("[Startup] LLM queue processing: in-process (credits/usage), Cloudflare target (skills)");
+    console.log(
+      "[Startup] LLM queue processing: in-process (credits/usage), Cloudflare target (skills)"
+    );
   } catch (error) {
     console.error("[Startup] Queue info log failed:", error);
   }
@@ -2232,7 +2760,10 @@ async function main() {
     await recoverAutoTeamMediaPipelinesOnStartup();
     startAutoTeamMediaPipelineSweeper();
   } catch (error) {
-    console.error("[Startup] Failed to recover auto-team media pipelines:", error);
+    console.error(
+      "[Startup] Failed to recover auto-team media pipelines:",
+      error
+    );
   }
 
   // Reconcile MCP media tasks (Higgsfield/Magnific/etc.) stuck in
@@ -2242,7 +2773,10 @@ async function main() {
   try {
     startMcpStaleMediaTaskReconciler();
   } catch (error) {
-    console.error("[Startup] Failed to start MCP stale media task reconciler:", error);
+    console.error(
+      "[Startup] Failed to start MCP stale media task reconciler:",
+      error
+    );
   }
 
   // Initialize trash auto-purge job (daily at 2 AM)
@@ -2276,7 +2810,10 @@ async function main() {
   try {
     await initializeMemoryMaintenanceJobs();
   } catch (error) {
-    console.error("[Startup] Failed to initialize memory maintenance jobs:", error);
+    console.error(
+      "[Startup] Failed to initialize memory maintenance jobs:",
+      error
+    );
   }
 
   // Initialize Google Drive edit session cleanup (every 6h)
@@ -2296,14 +2833,20 @@ async function main() {
   try {
     await initializeFinanceOcrRetentionJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize Finance OCR retention job:", error);
+    console.error(
+      "[Startup] Failed to initialize Finance OCR retention job:",
+      error
+    );
   }
 
   // Initialize Upload-Post retention cleanup (every 6h)
   try {
     await initializeUploadPostCleanupJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize Upload-Post cleanup job:", error);
+    console.error(
+      "[Startup] Failed to initialize Upload-Post cleanup job:",
+      error
+    );
   }
 
   // Initialize content staleness checker (every 6h) — Spec 038
@@ -2323,72 +2866,88 @@ async function main() {
   try {
     await initializeFeedbackAutoCloseJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize feedback auto-close job:", error);
+    console.error(
+      "[Startup] Failed to initialize feedback auto-close job:",
+      error
+    );
   }
 
   // Initialize skill maintenance scheduler (every 15m)
   try {
     await initializeSkillMaintenanceScheduleJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize skill maintenance scheduler:", error);
-  }
-
-  try {
-    await initializeWorkpackScheduleJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize workpack schedule job:", error);
-  }
-
-  try {
-    await initializeRoleRoutineSchedulerJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize role routine scheduler job:", error);
+    console.error(
+      "[Startup] Failed to initialize skill maintenance scheduler:",
+      error
+    );
   }
 
   try {
     await initializeBrowserAutomationClaimReconcilerJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize browser automation claim reconciler job:", error);
+    console.error(
+      "[Startup] Failed to initialize browser automation claim reconciler job:",
+      error
+    );
   }
 
   try {
     await initializeWorkerStallWatchdogJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize worker stall watchdog job:", error);
+    console.error(
+      "[Startup] Failed to initialize worker stall watchdog job:",
+      error
+    );
+  }
+
+  try {
+    await initializeWorkerHeartbeatRetentionJob();
+  } catch (error) {
+    console.error(
+      "[Startup] Failed to initialize worker heartbeat retention job:",
+      error,
+    );
   }
 
   try {
     await initializeUnifiedJobControlPlaneReconcilerJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize Feature 186 job reconciler:", error);
+    console.error(
+      "[Startup] Failed to initialize Feature 186 job reconciler:",
+      error
+    );
   }
 
   try {
     await initializeUnifiedJobControlPlaneRuntime();
   } catch (error) {
-    console.error("[Startup] Failed to initialize Feature 186 unified runtime:", error);
+    console.error(
+      "[Startup] Failed to initialize Feature 186 unified runtime:",
+      error
+    );
   }
 
   try {
     await initializeProductionExecutionReconciliationJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize production execution reconciler job:", error);
+    console.error(
+      "[Startup] Failed to initialize production execution reconciler job:",
+      error
+    );
   }
 
   try {
     await initializeMarketplaceAutoReviewJob();
   } catch (error) {
-    console.error("[Startup] Failed to initialize marketplace auto-review job:", error);
+    console.error(
+      "[Startup] Failed to initialize marketplace auto-review job:",
+      error
+    );
   }
 
   try {
-    await initializeCeleryMediaDoctorJob();
-  } catch (error) {
-    console.error("[Startup] Failed to initialize Celery media doctor:", error);
-  }
-
-  try {
-    const { startAutoTeamRecoverySweep } = await import("../services/autoTeamRecoveryService");
+    const { startAutoTeamRecoverySweep } =
+      await import("../services/autoTeamRecoveryService");
     startAutoTeamRecoverySweep();
   } catch (error) {
     console.error("[Startup] Failed to start auto-team recovery sweep:", error);
@@ -2427,7 +2986,7 @@ async function main() {
   // Header receipt is still bounded tightly against slow-header attacks; it
   // does not limit the time spent generating the response body.
   server.headersTimeout = 30_000;
-  server.keepAliveTimeout = 65_000;  // must be > Nginx keepalive_timeout (60s)
+  server.keepAliveTimeout = 65_000; // must be > Nginx keepalive_timeout (60s)
   console.log("[Startup] HTTP timeouts configured", {
     timeoutMs: server.timeout,
     requestTimeoutMs: server.requestTimeout,
@@ -2435,41 +2994,57 @@ async function main() {
     keepAliveTimeoutMs: server.keepAliveTimeout,
   });
 
-  server.listen(port, '0.0.0.0', () => {
+  server.listen(port, "0.0.0.0", () => {
     console.log(`SmartAIHub Web listening on http://0.0.0.0:${port}`);
 
     // Start background scheduler to resolve pending media images
-    import("../services/aiPresentationService").then(({ startPendingMediaScheduler }) => {
-      startPendingMediaScheduler();
-    }).catch((err) => {
-      console.error("[Startup] Failed to start pending media scheduler:", err);
-    });
+    import("../services/aiPresentationService")
+      .then(({ startPendingMediaScheduler }) => {
+        startPendingMediaScheduler();
+      })
+      .catch(err => {
+        console.error(
+          "[Startup] Failed to start pending media scheduler:",
+          err
+        );
+      });
 
-    import("../services/presentationBuilderImageJobService").then(({ startPresentationBuilderImageJobScheduler }) => {
-      startPresentationBuilderImageJobScheduler();
-    }).catch((err) => {
-      console.error("[Startup] Failed to start Presentation Builder image scheduler:", err);
-    });
+    import("../services/presentationBuilderImageJobService")
+      .then(({ startPresentationBuilderImageJobScheduler }) => {
+        startPresentationBuilderImageJobScheduler();
+      })
+      .catch(err => {
+        console.error(
+          "[Startup] Failed to start Presentation Builder image scheduler:",
+          err
+        );
+      });
 
     // Start queue health monitor
-    import("../services/queueHealthMonitor").then(({ startQueueHealthMonitor }) => {
-      startQueueHealthMonitor();
-    }).catch((err) => {
-      console.error("[Startup] Failed to start queue health monitor:", err);
-    });
+    import("../services/queueHealthMonitor")
+      .then(({ startQueueHealthMonitor }) => {
+        startQueueHealthMonitor();
+      })
+      .catch(err => {
+        console.error("[Startup] Failed to start queue health monitor:", err);
+      });
 
-    import("../services/opsAnomalyMonitor").then(({ startOpsAnomalyMonitor }) => {
-      startOpsAnomalyMonitor();
-    }).catch((err) => {
-      console.error("[Startup] Failed to start ops anomaly monitor:", err);
-    });
+    import("../services/opsAnomalyMonitor")
+      .then(({ startOpsAnomalyMonitor }) => {
+        startOpsAnomalyMonitor();
+      })
+      .catch(err => {
+        console.error("[Startup] Failed to start ops anomaly monitor:", err);
+      });
 
     // Start System Guardian (Virtual Admin Agent)
-    import("../services/virtualAdmin/guardianScheduler").then(({ startGuardian }) => {
-      startGuardian();
-    }).catch((err) => {
-      console.error("[Startup] Failed to start System Guardian:", err);
-    });
+    import("../services/virtualAdmin/guardianScheduler")
+      .then(({ startGuardian }) => {
+        startGuardian();
+      })
+      .catch(err => {
+        console.error("[Startup] Failed to start System Guardian:", err);
+      });
   });
 }
 
@@ -2478,13 +3053,14 @@ process.stdout?.on?.("error", () => {});
 process.stderr?.on?.("error", () => {});
 
 // Handle uncaught errors — ignore EPIPE (broken pipe) to prevent crash loops
-process.on("uncaughtException", (err) => {
+process.on("uncaughtException", err => {
   if ((err as any)?.code === "EPIPE" || String(err).includes("EPIPE")) return;
   debugError("Process", "Uncaught Exception", err);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  if ((reason as any)?.code === "EPIPE" || String(reason).includes("EPIPE")) return;
+  if ((reason as any)?.code === "EPIPE" || String(reason).includes("EPIPE"))
+    return;
   debugError("Process", "Unhandled Rejection", reason);
 });
 
@@ -2495,24 +3071,36 @@ process.on("SIGTERM", async () => {
   setVerticalDramaStoryJobsDraining(true);
 
   // 0. Stop background schedulers
-  import("../services/aiPresentationService").then(({ stopPendingMediaScheduler }) => {
-    stopPendingMediaScheduler();
-  }).catch(() => {});
-  import("../services/queueHealthMonitor").then(({ stopQueueHealthMonitor }) => {
-    stopQueueHealthMonitor();
-  }).catch(() => {});
-  import("../services/opsAnomalyMonitor").then(({ stopOpsAnomalyMonitor }) => {
-    stopOpsAnomalyMonitor();
-  }).catch(() => {});
-  import("../services/virtualAdmin/guardianScheduler").then(({ stopGuardian }) => {
-    stopGuardian();
-  }).catch(() => {});
-  import("../services/autoTeamRecoveryService").then(({ stopAutoTeamRecoverySweep }) => {
-    stopAutoTeamRecoverySweep();
-  }).catch(() => {});
-  import("../services/autoTeamMediaCompletionService").then(({ stopAutoTeamMediaPipelineSweeper }) => {
-    stopAutoTeamMediaPipelineSweeper();
-  }).catch(() => {});
+  import("../services/aiPresentationService")
+    .then(({ stopPendingMediaScheduler }) => {
+      stopPendingMediaScheduler();
+    })
+    .catch(() => {});
+  import("../services/queueHealthMonitor")
+    .then(({ stopQueueHealthMonitor }) => {
+      stopQueueHealthMonitor();
+    })
+    .catch(() => {});
+  import("../services/opsAnomalyMonitor")
+    .then(({ stopOpsAnomalyMonitor }) => {
+      stopOpsAnomalyMonitor();
+    })
+    .catch(() => {});
+  import("../services/virtualAdmin/guardianScheduler")
+    .then(({ stopGuardian }) => {
+      stopGuardian();
+    })
+    .catch(() => {});
+  import("../services/autoTeamRecoveryService")
+    .then(({ stopAutoTeamRecoverySweep }) => {
+      stopAutoTeamRecoverySweep();
+    })
+    .catch(() => {});
+  import("../services/autoTeamMediaCompletionService")
+    .then(({ stopAutoTeamMediaPipelineSweeper }) => {
+      stopAutoTeamMediaPipelineSweeper();
+    })
+    .catch(() => {});
 
   // 1. Stop accepting new connections
   if (httpServer) {
@@ -2549,23 +3137,26 @@ process.on("SIGTERM", async () => {
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
-  await shutdownWorkpackScheduleJob().catch(() => {});
-  await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
-  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
+  await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
+    () => {}
+  );
   await shutdownUnifiedJobControlPlaneRuntime().catch(() => {});
-  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
+  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(
+    () => {}
+  );
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
-  await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
 
   // 3b. Shut down channel adapters
   await Promise.all(
-    adapterRegistry.getAll()
-      .filter((a) => typeof a.shutdown === "function")
-      .map((a) => a.shutdown!().catch(() => {})),
+    adapterRegistry
+      .getAll()
+      .filter(a => typeof a.shutdown === "function")
+      .map(a => a.shutdown!().catch(() => {}))
   );
 
   // 4. Flush PostHog event batch
@@ -2631,21 +3222,24 @@ process.on("SIGINT", async () => {
   await closeWebhookApiDeliveryQueue().catch(() => {});
   await shutdownMemoryMaintenanceJobs().catch(() => {});
   await shutdownSkillMaintenanceScheduleJob().catch(() => {});
-  await shutdownWorkpackScheduleJob().catch(() => {});
-  await shutdownRoleRoutineSchedulerJob().catch(() => {});
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
-  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(() => {});
+  await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
+    () => {}
+  );
   await shutdownUnifiedJobControlPlaneRuntime().catch(() => {});
-  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(() => {});
+  await Promise.resolve(shutdownProductionExecutionReconciliationJob()).catch(
+    () => {}
+  );
   await Promise.resolve(shutdownMarketplaceAutoReviewJob()).catch(() => {});
-  await Promise.resolve(shutdownCeleryMediaDoctorJob()).catch(() => {});
   await closeEmbeddingQueue().catch(() => {});
   await shutdownVoiceGateway().catch(() => {});
   await Promise.all(
-    adapterRegistry.getAll()
-      .filter((a) => typeof a.shutdown === "function")
-      .map((a) => a.shutdown!().catch(() => {})),
+    adapterRegistry
+      .getAll()
+      .filter(a => typeof a.shutdown === "function")
+      .map(a => a.shutdown!().catch(() => {}))
   );
 
   try {
@@ -2658,7 +3252,7 @@ process.on("SIGINT", async () => {
   process.exit(0);
 });
 
-main().catch((err) => {
+main().catch(err => {
   console.error(err);
   process.exit(1);
 });

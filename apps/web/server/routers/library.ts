@@ -48,7 +48,6 @@ import {
 } from "../_core/tokens";
 import { getDb } from "../db";
 import { storageDelete, storageHeadFile, storagePresignPut } from "../storage";
-import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { auditLogger } from "../services/auditLogger";
 import { shareOperationLimiter } from "../services/rateLimiter";
 import {
@@ -137,18 +136,6 @@ import {
 import { exportMarkdownArtifact as generateMarkdownExportArtifact } from "../services/markdownExport";
 import { eq } from "drizzle-orm";
 import { users } from "../../drizzle/schema";
-
-/**
- * MIME types that require sandbox-isolated parsing.
- * These formats use native libraries that could be exploited via crafted files.
- */
-const SANDBOX_PARSE_MIME_TYPES = new Set([
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // PPTX
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",   // DOCX
-  "application/vnd.ms-powerpoint",                                              // PPT
-  "application/msword",                                                         // DOC
-]);
 
 const visibilitySchema = z.enum(["private", "team", "public"]);
 const itemStatusSchema = z.enum(["draft", "ready", "indexing", "archived", "failed"]);
@@ -344,56 +331,6 @@ function assertLibraryEnabled(tenantId: string): void {
       message: "Library feature is disabled for this tenant",
     });
   }
-}
-
-async function dispatchLibrarySandboxParsing(params: {
-  result: any;
-  tenantId: string;
-  userId: number;
-  fileName: string;
-  fileType: string;
-}) {
-  if (!shouldUseSandbox("sandbox-file") || !SANDBOX_PARSE_MIME_TYPES.has(params.fileType)) {
-    return params.result;
-  }
-
-  try {
-    const sandboxResult = await dispatchToSandbox({
-      featureType: "library",
-      executionMode: "sandbox-file",
-      tenantId: params.tenantId,
-      userId: params.userId,
-      inputFiles: [
-        {
-          key: params.result.storageKey,
-          mimeType: params.fileType,
-          sizeBytes: Number(params.result.billing?.fileSizeBytes ?? 0),
-        },
-      ],
-      profileOverride: "file-parser",
-      metadata: {
-        libraryItemId: params.result.item.id,
-        fileName: params.fileName,
-      },
-    });
-
-    params.result.sandboxParseJobId = sandboxResult.jobId;
-    const metadata = (params.result.item.metadata ?? {}) as Record<string, any>;
-    const uploadPipeline = metadata.upload_pipeline && typeof metadata.upload_pipeline === "object"
-      ? { ...metadata.upload_pipeline }
-      : {};
-    uploadPipeline.parserJobId = sandboxResult.jobId;
-    uploadPipeline.parserStatus = "queued";
-    uploadPipeline.updatedAt = new Date().toISOString();
-    params.result.item.metadata = {
-      ...metadata,
-      upload_pipeline: uploadPipeline,
-    };
-  } catch (err) {
-    console.error("[library.uploadFile] Sandbox parsing dispatch failed:", err);
-  }
-
-  return params.result;
 }
 
 async function assertKnowledgeVaultSurface(
@@ -1286,15 +1223,6 @@ export const libraryRouter = router({
           );
         }
 
-        if (claims.uploadOperation === "create") {
-          return dispatchLibrarySandboxParsing({
-            result,
-            tenantId,
-            userId: ctx.user.id,
-            fileName: claims.uploadFileName,
-            fileType: claims.uploadMimeType,
-          });
-        }
         return result;
       } catch (error) {
         await storageDelete(claims.uploadKey).catch(() => {});
@@ -1331,49 +1259,6 @@ export const libraryRouter = router({
           });
         }
         throw error;
-      }
-
-      // Dispatch complex file parsing to sandbox when enabled
-      const requiresSandboxParsing =
-        shouldUseSandbox("sandbox-file") &&
-        SANDBOX_PARSE_MIME_TYPES.has(input.fileType);
-
-      if (requiresSandboxParsing) {
-        try {
-          const sandboxResult = await dispatchToSandbox({
-            featureType: "library",
-            executionMode: "sandbox-file",
-            tenantId: tenantIdResolved,
-            userId: ctx.user.id,
-            inputFiles: [
-              {
-                key: result.storageKey,
-                mimeType: input.fileType,
-                sizeBytes: Buffer.byteLength(input.fileBase64, "base64"),
-              },
-            ],
-            profileOverride: "file-parser",
-            metadata: {
-              libraryItemId: result.item.id,
-              fileName: input.fileName,
-            },
-          });
-
-          (result as any).sandboxParseJobId = sandboxResult.jobId;
-          const metadata = (result.item.metadata ?? {}) as Record<string, any>;
-          const uploadPipeline = metadata.upload_pipeline && typeof metadata.upload_pipeline === "object"
-            ? { ...metadata.upload_pipeline }
-            : {};
-          uploadPipeline.parserJobId = sandboxResult.jobId;
-          uploadPipeline.parserStatus = "queued";
-          uploadPipeline.updatedAt = new Date().toISOString();
-          result.item.metadata = {
-            ...metadata,
-            upload_pipeline: uploadPipeline,
-          };
-        } catch (err) {
-          console.error("[library.uploadFile] Sandbox parsing dispatch failed:", err);
-        }
       }
 
       auditLogger.log({

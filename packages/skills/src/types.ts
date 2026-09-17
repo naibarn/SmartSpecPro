@@ -57,7 +57,7 @@ export interface SkillDefinition {
   /** True when the skill is only intended for server-owned execution paths. */
   internalOnly?: boolean;
   /** Surfaces where this skill may be used. */
-  surfaceScopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
+  surfaceScopes?: Array<"chat" | "team_room" | "team_run">;
   /** Interaction modes the skill is designed for. */
   interactionModes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
   /** True when this skill can be used by team-run orchestration. */
@@ -330,8 +330,8 @@ export interface SkillMetadata {
   contentQuality?: SkillContentQuality;
   internal_only?: boolean;
   internalOnly?: boolean;
-  surface_scopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
-  surfaceScopes?: Array<"chat" | "team_room" | "team_run" | "agency">;
+  surface_scopes?: Array<"chat" | "team_room" | "team_run">;
+  surfaceScopes?: Array<"chat" | "team_room" | "team_run">;
   interaction_modes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
   interactionModes?: Array<"human_to_ai" | "agent_to_agent" | "work_item">;
   team_run_eligible?: boolean;
@@ -352,34 +352,6 @@ export interface SkillSettings {
   autoDetect: boolean;
   enabledSkills: string[];
   detectionMode: "ask" | "auto" | "explicit";
-}
-
-/**
- * Minimal agency definition for trigger detection.
- * Not the full agency config -- just enough for matching.
- */
-export interface AgencyTriggerDefinition {
-  /** Agency ID (UUID) */
-  agencyId: string;
-  /** Agency display name */
-  name: string;
-  /** Agency description */
-  description: string;
-  /** Trigger rules (same format as skill triggers) */
-  triggers: TriggerRule[];
-  /** Priority for detection ordering */
-  priority: number;
-}
-
-/**
- * Result of agency trigger detection.
- */
-export interface AgencyDetectionResult {
-  detected: boolean;
-  agency: AgencyTriggerDefinition | null;
-  confidence: number;
-  matchedTrigger: string | null;
-  suggestedPrompt: string | null;
 }
 
 // --- Spec 038: CMS Output Schema Types ---

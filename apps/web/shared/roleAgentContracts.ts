@@ -8,7 +8,8 @@ import {
   sanitizeSensitiveRecord,
   sideEffectClassSchema,
   sideEffectClassValues,
-} from "./workpackContracts";
+  bindingResolutionPolicySchema,
+} from "./agentGovernanceContracts";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 
@@ -61,12 +62,6 @@ export const roleHealthStateValues = [
   "blocked",
   "stale",
   "quarantined",
-] as const;
-
-export const workpackResolutionPolicyValues = [
-  "pinned_version",
-  "follow_benchmark_track",
-  "follow_latest_ready_in_family",
 ] as const;
 
 export const roleDelegationIntentTypeValues = [
@@ -221,22 +216,33 @@ export const roleCheckpointFreshnessTierValues = [
   "critical",
 ] as const;
 
-export const roleAgentLifecycleStateSchema = z.enum(roleAgentLifecycleStateValues);
+export const roleAgentLifecycleStateSchema = z.enum(
+  roleAgentLifecycleStateValues
+);
 export const roleContractStatusSchema = z.enum(roleContractStatusValues);
 export const roleRoutineStatusSchema = z.enum(roleRoutineStatusValues);
 export const roleRoutineRunStatusSchema = z.enum(roleRoutineRunStatusValues);
 export const roleAutonomyTierSchema = z.enum(roleAutonomyTierValues);
 export const roleHealthStateSchema = z.enum(roleHealthStateValues);
-export const workpackResolutionPolicySchema = z.enum(workpackResolutionPolicyValues);
-export const roleDelegationIntentTypeSchema = z.enum(roleDelegationIntentTypeValues);
-export const checkpointRecoveryStateSchema = z.enum(checkpointRecoveryStateValues);
+export const roleDelegationIntentTypeSchema = z.enum(
+  roleDelegationIntentTypeValues
+);
+export const checkpointRecoveryStateSchema = z.enum(
+  checkpointRecoveryStateValues
+);
 export const rolePromotionDecisionSchema = z.enum(rolePromotionDecisionValues);
-export const roleRoutineTriggerTypeSchema = z.enum(roleRoutineTriggerTypeValues);
-export const roleRoutineConcurrencyPolicySchema = z.enum(roleRoutineConcurrencyPolicyValues);
+export const roleRoutineTriggerTypeSchema = z.enum(
+  roleRoutineTriggerTypeValues
+);
+export const roleRoutineConcurrencyPolicySchema = z.enum(
+  roleRoutineConcurrencyPolicyValues
+);
 export const roleQueueItemStatusSchema = z.enum(roleQueueItemStatusValues);
 export const roleQueueClaimStateSchema = z.enum(roleQueueClaimStateValues);
 export const roleMessagePrioritySchema = z.enum(roleMessagePriorityValues);
-export const roleMessageActionabilityStateSchema = z.enum(roleMessageActionabilityStateValues);
+export const roleMessageActionabilityStateSchema = z.enum(
+  roleMessageActionabilityStateValues
+);
 export const roleVisibilityClassSchema = z.enum(roleVisibilityClassValues);
 export const roleTrustClassSchema = z.enum(roleTrustClassValues);
 export const roleMemoryClassSchema = z.enum(roleMemoryClassValues);
@@ -246,7 +252,9 @@ export const roleHandoffStatusSchema = z.enum(roleHandoffStatusValues);
 export const roleApprovalTypeSchema = z.enum(roleApprovalTypeValues);
 export const roleApprovalStatusSchema = z.enum(roleApprovalStatusValues);
 export const roleAuthorityImpactSchema = z.enum(roleAuthorityImpactValues);
-export const roleCheckpointFreshnessTierSchema = z.enum(roleCheckpointFreshnessTierValues);
+export const roleCheckpointFreshnessTierSchema = z.enum(
+  roleCheckpointFreshnessTierValues
+);
 
 export const roleContextGovernanceSchema = z.object({
   trustClass: roleTrustClassSchema.default("internal"),
@@ -273,7 +281,9 @@ export const roleAuthorityEnvelopeSchema = z.object({
   monthlyBudgetLimit: z.number().nonnegative().default(0),
   regulatedActionLabels: z.array(z.string()).default([]),
   requiresApprovalFor: z.array(z.string()).default([]),
-  visibilityDefaults: z.array(roleVisibilityClassSchema).default(["owner_full"]),
+  visibilityDefaults: z
+    .array(roleVisibilityClassSchema)
+    .default(["owner_full"]),
 });
 
 export const roleBlueprintRoutineStarterSchema = z.object({
@@ -295,7 +305,9 @@ export const roleBlueprintSchema = z.object({
   kpiCategories: z.array(z.string()).default([]),
   defaultAuthorityEnvelope: roleAuthorityEnvelopeSchema,
   typicalConnectorFamilies: z.array(z.string()).default([]),
-  recommendedRoutineStarters: z.array(roleBlueprintRoutineStarterSchema).default([]),
+  recommendedRoutineStarters: z
+    .array(roleBlueprintRoutineStarterSchema)
+    .default([]),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -331,7 +343,9 @@ export const roleContractSchema = z.object({
   kpiTargets: z.array(roleKpiTargetSchema).default([]),
   authorityEnvelope: roleAuthorityEnvelopeSchema,
   workpackBindingIds: z.array(z.string()).default([]),
-  visibilityMatrix: z.record(z.string(), z.array(roleVisibilityClassSchema)).default({}),
+  visibilityMatrix: z
+    .record(z.string(), z.array(roleVisibilityClassSchema))
+    .default({}),
   notes: z.string().default(""),
   activatedAt: z.string().datetime().nullable().optional(),
   supersededByContractId: z.string().nullable().optional(),
@@ -347,7 +361,7 @@ export const roleWorkpackBindingSchema = z.object({
   workpackFamily: z.string().min(1),
   benchmarkTrack: z.string().nullable().optional(),
   pinnedVersionId: z.string().nullable().optional(),
-  resolutionPolicy: workpackResolutionPolicySchema,
+  resolutionPolicy: bindingResolutionPolicySchema,
   rollbackBaselineVersionId: z.string().nullable().optional(),
   connectorCeilingFamilies: z.array(z.string()).default([]),
   sideEffectCeiling: z.enum(sideEffectClassValues).default("bounded_write"),
@@ -410,7 +424,7 @@ export const roleRoutineRunSchema = z.object({
   linkedWorkpackRunIds: z.array(z.string()).default([]),
   checkpointId: z.string().nullable().optional(),
   recoveryState: checkpointRecoveryStateSchema.default("fresh"),
-  resolutionPolicy: workpackResolutionPolicySchema.nullable().optional(),
+  resolutionPolicy: bindingResolutionPolicySchema.nullable().optional(),
   previousResolvedVersionId: z.string().nullable().optional(),
   rollbackBaselineVersionId: z.string().nullable().optional(),
   partitionKey: z.string().nullable().optional(),
@@ -465,7 +479,8 @@ export const roleMessageSchema = z.object({
   intentType: roleDelegationIntentTypeSchema,
   priority: roleMessagePrioritySchema.default("normal"),
   dueState: z.enum(["none", "pending", "due_soon", "overdue"]).default("none"),
-  actionabilityState: roleMessageActionabilityStateSchema.default("informational"),
+  actionabilityState:
+    roleMessageActionabilityStateSchema.default("informational"),
   provenance: roleMessageProvenanceSchema,
   visibilityClass: roleVisibilityClassSchema.default("owner_full"),
   contentSummary: z.string().min(1),
@@ -527,15 +542,12 @@ export const roleExceptionBindingSchema = z.object({
   workpackExceptionId: z.string().min(1),
   triageOwnerRoleId: z.string().nullable().optional(),
   escalationTargetRoleId: z.string().nullable().optional(),
-  nextAction: z.enum([
-    "retry",
-    "remap",
-    "review",
-    "escalate",
-    "downgrade",
-    "approve",
-  ]).default("review"),
-  operatorActionState: z.enum(["pending", "in_progress", "completed", "review_required"]).default("pending"),
+  nextAction: z
+    .enum(["retry", "remap", "review", "escalate", "downgrade", "approve"])
+    .default("review"),
+  operatorActionState: z
+    .enum(["pending", "in_progress", "completed", "review_required"])
+    .default("pending"),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -552,7 +564,9 @@ export const roleImprovementProposalSchema = z.object({
   evidenceRefs: z.array(z.string()).default([]),
   suggestedChange: jsonRecordSchema.default({}),
   autoApplyEligible: z.boolean().default(false),
-  status: z.enum(["pending", "approved", "rejected", "auto_applied", "blocked"]).default("pending"),
+  status: z
+    .enum(["pending", "approved", "rejected", "auto_applied", "blocked"])
+    .default("pending"),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
@@ -608,10 +622,14 @@ export const roleApprovalRequestSchema = z.object({
   approvalType: roleApprovalTypeSchema,
   requesterRoleId: z.string().nullable().optional(),
   requesterUserId: z.number().int().nullable().optional(),
-  approverScope: z.enum(["tenant_admin", "role_owner", "ops_console"]).default("tenant_admin"),
+  approverScope: z
+    .enum(["tenant_admin", "role_owner", "ops_console"])
+    .default("tenant_admin"),
   quorum: z.number().int().positive().default(1),
   status: roleApprovalStatusSchema.default("pending"),
-  allowedDecisions: z.array(z.enum(["approve", "reject", "downgrade", "freeze"])).default(["approve", "reject"]),
+  allowedDecisions: z
+    .array(z.enum(["approve", "reject", "downgrade", "freeze"]))
+    .default(["approve", "reject"]),
   expiresAt: z.string().datetime().nullable().optional(),
   createdAt: z.string().datetime(),
   resolvedAt: z.string().datetime().nullable().optional(),
@@ -665,12 +683,16 @@ export type RoleRoutine = z.infer<typeof roleRoutineSchema>;
 export type RoleRoutineRun = z.infer<typeof roleRoutineRunSchema>;
 export type RoleRoutineRunStatus = z.infer<typeof roleRoutineRunStatusSchema>;
 export type RoleCheckpoint = z.infer<typeof roleCheckpointSchema>;
-export type CheckpointRecoveryState = z.infer<typeof checkpointRecoveryStateSchema>;
+export type CheckpointRecoveryState = z.infer<
+  typeof checkpointRecoveryStateSchema
+>;
 export type RoleMessage = z.infer<typeof roleMessageSchema>;
 export type RoleHandoff = z.infer<typeof roleHandoffSchema>;
 export type RoleMetricSnapshot = z.infer<typeof roleMetricSnapshotSchema>;
 export type RoleExceptionBinding = z.infer<typeof roleExceptionBindingSchema>;
-export type RoleImprovementProposal = z.infer<typeof roleImprovementProposalSchema>;
+export type RoleImprovementProposal = z.infer<
+  typeof roleImprovementProposalSchema
+>;
 export type RolePromotionGate = z.infer<typeof rolePromotionGateSchema>;
 export type RoleRoutineQueueItem = z.infer<typeof roleRoutineQueueItemSchema>;
 export type RoleApprovalRequest = z.infer<typeof roleApprovalRequestSchema>;
@@ -683,7 +705,7 @@ export type RoleHealthState = z.infer<typeof roleHealthStateSchema>;
 export type RoleApprovalStatus = z.infer<typeof roleApprovalStatusSchema>;
 
 export function buildDefaultRoleContextGovernance(
-  overrides: Partial<z.infer<typeof roleContextGovernanceSchema>> = {},
+  overrides: Partial<z.infer<typeof roleContextGovernanceSchema>> = {}
 ): z.infer<typeof roleContextGovernanceSchema> {
   return roleContextGovernanceSchema.parse({
     trustClass: "internal",
@@ -696,7 +718,10 @@ export function buildDefaultRoleContextGovernance(
   });
 }
 
-export function requiresNewRoleContractVersion(current: RoleContract, next: RoleContract): boolean {
+export function requiresNewRoleContractVersion(
+  current: RoleContract,
+  next: RoleContract
+): boolean {
   if (current.status !== "active") {
     return false;
   }
@@ -719,6 +744,8 @@ export function requiresNewRoleContractVersion(current: RoleContract, next: Role
   return JSON.stringify(currentMaterial) !== JSON.stringify(nextMaterial);
 }
 
-export function sanitizeRoleSensitivePayload(payload: Record<string, unknown>): Record<string, unknown> {
+export function sanitizeRoleSensitivePayload(
+  payload: Record<string, unknown>
+): Record<string, unknown> {
   return sanitizeSensitiveRecord(payload);
 }

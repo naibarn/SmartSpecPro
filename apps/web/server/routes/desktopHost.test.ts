@@ -297,7 +297,6 @@ describe("desktopHost routes", () => {
         ...FEATURE_FLAG_DEFAULTS,
         desktopHostEnabled: true,
         desktopPackageSync: true,
-        desktopAgencyRuntime: true,
         desktopWorkerProjection: true,
       }),
       getSkillByIdAsync: async () => undefined,
@@ -606,7 +605,6 @@ describe("desktopHost routes", () => {
         policyOverrides: {
           allowAdvancedLocalMode: overrides.allowAdvancedLocalMode ?? null,
           allowPackageSync: overrides.allowPackageSync ?? null,
-          allowAgencyRuntime: overrides.allowAgencyRuntime ?? null,
           allowWorkerProjection: overrides.allowWorkerProjection ?? null,
           maxLocalRoots: overrides.maxLocalRoots ?? null,
           outputWritebackMode: overrides.outputWritebackMode ?? null,

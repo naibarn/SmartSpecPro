@@ -699,27 +699,8 @@ async def recover_stuck(request: Request):
 
 @router.post("/check-workflows")
 async def check_workflows(request: Request):
-    """Check for workflow schedules that are due for execution.
-    Replaces CeleryBeat 'check-scheduled-workflows' schedule.
-
-    Payload: {} (no payload needed)
-    """
-    logger.info("check_workflows_handler")
-
-    try:
-        from app.tasks.workflow_tasks import _check_scheduled_workflows_async
-
-        await _check_scheduled_workflows_async()
-        return JSONResponse(
-            status_code=200,
-            content={"status": "completed"},
-        )
-    except Exception as e:
-        logger.error("check_workflows_handler_error", error=str(e))
-        return JSONResponse(
-            status_code=500,
-            content={"status": "error"},
-        )
+    """Legacy workflow scheduling is retired."""
+    return JSONResponse(status_code=410, content={"status": "retired"})
 
 
 @router.post("/cleanup-sessions")

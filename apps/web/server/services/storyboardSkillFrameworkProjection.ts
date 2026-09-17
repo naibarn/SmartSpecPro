@@ -17,6 +17,10 @@ export type StoryboardFrameworkProjectionShot = {
   status: "completed" | "queued";
   source: "generated";
   model: string;
+  modelProvenance: {
+    image: { requestedModelId: string; effectiveModelId?: string };
+    video: { requestedModelId: string };
+  };
   generationExtraParams: Record<string, unknown>;
   storyboardContext: Record<string, unknown>;
 };
@@ -29,6 +33,10 @@ export type StoryboardFrameworkReviewProjection = {
   projectName: string;
   taskIds: string[];
   selectedTaskIds: string[];
+  modelProvenance: {
+    image: { requestedModelId: string; effectiveModelId?: string };
+    video: { requestedModelId: string };
+  };
   tasks: StoryboardFrameworkProjectionShot[];
 };
 
@@ -42,8 +50,18 @@ export function buildStoryboardReviewProjection(input: {
     response: StoryboardCanonicalSkillResponse;
     imageUrl?: string | null;
     videoPrompt?: string | null;
+    imageEffectiveModelId?: string | null;
   }>;
 }): StoryboardFrameworkReviewProjection {
+  const modelProvenance = {
+    image: {
+      requestedModelId: input.global.imageModelSelection.modelId,
+      ...(input.shots.find((item) => item.imageEffectiveModelId)?.imageEffectiveModelId
+        ? { effectiveModelId: input.shots.find((item) => item.imageEffectiveModelId)?.imageEffectiveModelId }
+        : {}),
+    },
+    video: { requestedModelId: input.global.videoModelSelection.modelId },
+  };
   const tasks = input.shots.map(
     ({ shot, response, imageUrl = null, videoPrompt = null }) => {
       const id = `skill-${input.runId}-shot-${shot.shotNumber}`;
@@ -59,6 +77,7 @@ export function buildStoryboardReviewProjection(input: {
         status: imageUrl ? "completed" as const : "queued" as const,
         source: "generated" as const,
         model: input.global.imageModelSelection.modelId,
+        modelProvenance,
         generationExtraParams: {
           source: "skill_framework",
           runId: input.runId,
@@ -73,6 +92,7 @@ export function buildStoryboardReviewProjection(input: {
           beat: shot.beat,
           storyType: input.global.storyType,
           videoModelId: input.global.videoModelSelection.modelId,
+          modelProvenance,
         },
       };
     }
@@ -86,6 +106,7 @@ export function buildStoryboardReviewProjection(input: {
     projectName: input.projectName,
     taskIds,
     selectedTaskIds: taskIds,
+    modelProvenance,
     tasks,
   };
 }

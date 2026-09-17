@@ -114,6 +114,12 @@ export function createWebhookTriggerRouter(): Router {
     if (!trigger || !trigger.isActive) {
       return res.status(404).json({ error: "Trigger not found" });
     }
+    if (trigger.targetType !== "chat") {
+      return res.status(410).json({
+        error: "retired_target",
+        message: "Agency and workflow webhook targets are retired; configure a chat target.",
+      });
+    }
 
     // ── Step 2: Feature flag check ─────────────────────────────────────────────
     const flagEnabled = await getTenantFeatureFlag("webhookTriggers", trigger.tenantId);
@@ -256,10 +262,8 @@ export function createWebhookTriggerRouter(): Router {
       triggerId,
       userId: trigger.userId,
       tenantId: trigger.tenantId,
-      targetType: trigger.targetType as "agency" | "chat" | "workflow",
-      targetAgencyId: trigger.targetAgencyId ?? undefined,
+      targetType: "chat",
       targetConversationId: trigger.targetConversationId ?? undefined,
-      targetWorkflowId: trigger.targetWorkflowId ?? undefined,
       message: dispatchMessage,
       payload: substitutedPayload,
       creditCost,

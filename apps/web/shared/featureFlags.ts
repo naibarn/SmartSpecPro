@@ -78,7 +78,6 @@ export interface TenantFeatureFlags {
   desktopHostEnabled: boolean; // F51 — Unified Desktop Host control plane
   desktopAdvancedLocalMode: boolean; // F52 — Step-up desktop local power
   desktopPackageSync: boolean; // F53 — Signed desktop package sync and materialization
-  desktopAgencyRuntime: boolean; // F54 — Desktop Agency Swarm runtime enablement
   desktopWorkerProjection: boolean; // F55 — Desktop Host projection into worker fabric
   agencyHybridAdk: boolean; // F56 — Hybrid Agency Runtime with Google ADK compile/runtime surfaces
   agencyHybridAdkKillSwitch: boolean; // F57 — Operational kill switch for Agency Hybrid ADK paths
@@ -335,7 +334,6 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
-  "desktopAgencyRuntime",
   "desktopWorkerProjection",
   "agencyHybridAdk",
   "agencyHybridAdkKillSwitch",
@@ -518,20 +516,20 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   webhookTriggers: true,
   costDisplay: true,
   personaSystem: true,
-  crossAgency: true,
+  crossAgency: false,
   channelRouter: true,
   automationCopilot: true,
   liveBrowser: true,
   responsesApi: true,
   taskPlannerEnabled: true,
-  taskPlannerAgencyEscalation: true,
+  taskPlannerAgencyEscalation: false,
   chatBrowserSessionEntry: true,
-  agencyBrowserSessionUi: true,
-  workflowBrowserSessionNodes: true,
+  agencyBrowserSessionUi: false,
+  workflowBrowserSessionNodes: false,
   publicApi: true,
   multimodalMemory: true,
   skillOrchestrator: true,
-  orchestratorEnabled: true,
+  orchestratorEnabled: false,
   notificationDedupEnabled: true,
   notificationPreferencesEnabled: true,
   notificationEscalationEnabled: true,
@@ -539,15 +537,15 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   notificationEmailDelivery: true,
   notificationWebhookDelivery: true,
   unifiedSkillExecution: true,
-  agencyCustomTools: true,
-  agencyGuardrails: true,
-  agencyStreaming: true,
-  agencyMcpBridge: true,
-  agencyToolApi: true,
-  agencyAgenticModeEnabled: true,
-  agencyReactExecutorEnabled: true,
-  agencyAutonomousAgentEnabled: true,
-  agencyLongTermMemoryEnabled: true,
+  agencyCustomTools: false,
+  agencyGuardrails: false,
+  agencyStreaming: false,
+  agencyMcpBridge: false,
+  agencyToolApi: false,
+  agencyAgenticModeEnabled: false,
+  agencyReactExecutorEnabled: false,
+  agencyAutonomousAgentEnabled: false,
+  agencyLongTermMemoryEnabled: false,
   META_CHANNELS_ENABLED: true,
   mcpServerRegistry: true,
   mcpStdio: false,  // Requires OpenSandbox — keep disabled by default
@@ -582,13 +580,12 @@ export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
   desktopHostEnabled: false, // Desktop Host control plane rollout is explicit and fail-closed
   desktopAdvancedLocalMode: false, // High-power local mode requires explicit tenant opt-in
   desktopPackageSync: false, // Signed package sync stays disabled until registry/policy is ready
-  desktopAgencyRuntime: false, // Desktop agency runtime stays disabled until gateway enforcement lands
   desktopWorkerProjection: false, // Desktop Host only joins worker fabric when explicitly enabled
   agencyHybridAdk: false, // Hybrid Agency Runtime is explicit opt-in while ADK integration remains rollout-gated
   agencyHybridAdkKillSwitch: false, // Kill switch defaults open but stays available for incident response
-  workpacksEnabled: true, // Workpack authoring ships on by default for first-party tenants
+  workpacksEnabled: false,
   workpackAutonomousPilot: false, // Autonomous execution remains rollout-gated until readiness evidence exists
-  workpackOpsConsole: true, // Admin monitoring surfaces can render workpack readiness immediately
+  workpackOpsConsole: false,
   documentOcrExternalProcessing: false, // External document OCR stays tenant-gated by default
   hermesProfileExperience: false, // Hermes persona/profile summaries stay rollout-gated until tenant admins opt in
   hermesChannelWorkflowExpansion: false, // Hermes channel workflow expansion stays off until revoke/reauthorize behavior is ready

@@ -5,7 +5,7 @@ export type QueueEditorOperation = (
   operation: MediaOperation,
   options?: Record<string, unknown>,
   assetIds?: string[],
-) => void | Promise<void>;
+) => void | string | Promise<void | string>;
 
 export interface EditorPanelBaseProps {
   onQueueOperation?: QueueEditorOperation;

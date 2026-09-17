@@ -250,6 +250,11 @@ pub struct LocalMediaProbe {
     pub duration_ms: Option<u64>,
     pub width: Option<u32>,
     pub height: Option<u32>,
+    /// Display orientation applied by FFmpeg's default autorotate path.
+    /// Width/height above are already returned in this display coordinate
+    /// space, rather than the container's coded coordinate space.
+    #[serde(default)]
+    pub rotation_degrees: u16,
     pub has_audio: bool,
     #[serde(default)]
     pub audio_tracks: Vec<AudioTrackInfo>,
@@ -2713,6 +2718,109 @@ fn build_interactive_crop_filter(
     ))
 }
 
+/// The native probe describes the exact decoded source that FFmpeg will read.
+/// A persisted/browser geometry is only a hint and may belong to an older
+/// project draft or a previous output file, so it must never override the
+/// current source probe.
+fn resolve_render_source_dimensions(
+    probed_dimensions: Option<(u32, u32)>,
+    requested_dimensions: Option<(u32, u32)>,
+) -> Option<(u32, u32)> {
+    probed_dimensions.or(requested_dimensions)
+}
+
+/// A camera plan is an explicit request for animated framing. Keep the native
+/// path consistent even if an older frontend sends the plan with the boolean
+/// flag missing or stale; otherwise the plan is silently ignored.
+fn resolve_render_auto_pan_zoom(
+    requested: bool,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+) -> bool {
+    requested || camera_motion_plan.is_some()
+}
+
+/// Produces the exact native render inputs that are also passed to FFmpeg.
+/// This is intentionally built from the same crop-filter helper as the render
+/// path so a debug artifact can prove whether a bad result came from the
+/// frontend plan, native remapping, or FFmpeg execution.
+pub fn build_interactive_render_debug(
+    segments: &[(u64, u64)],
+    aspect_ratio: &str,
+    focus_x: f64,
+    focus_y: f64,
+    playback_speed: f64,
+    _tools: &MediaToolchain,
+    target_width: Option<u32>,
+    target_height: Option<u32>,
+    auto_pan_zoom: bool,
+    auto_pan_zoom_mode: &str,
+    auto_pan_zoom_scale: Option<f64>,
+    source_dimensions: Option<(u32, u32)>,
+    camera_motion_plan: Option<&CameraMotionPlan>,
+) -> Result<Value, String> {
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    let (out_w, out_h) = match (target_width, target_height) {
+        (Some(w), Some(h)) if w >= 200 && h >= 200 => (w & !1, h & !1),
+        _ => match aspect_ratio {
+            "9:16" => (1080, 1920),
+            "16:9" => (1920, 1080),
+            "1:1" => (1080, 1080),
+            "4:5" => (1080, 1350),
+            _ => (0, 0),
+        },
+    };
+    let speed = playback_speed.clamp(0.25, 4.0);
+    let speed_vf_suffix = if (speed - 1.0).abs() >= 0.001 {
+        format!(",setpts={:.6}*PTS", 1.0 / speed)
+    } else {
+        String::new()
+    };
+    let effective_auto_pan_zoom = resolve_render_auto_pan_zoom(auto_pan_zoom, camera_motion_plan);
+    let remapped_camera_plan = camera_motion_plan
+        .map(|plan| remap_camera_motion_plan_for_segments(plan, segments))
+        .transpose()?;
+    let filters = segments
+        .iter()
+        .scan(0_u64, |output_offset_ms, &(start, end)| {
+            let filter = build_interactive_crop_filter(
+                out_w,
+                out_h,
+                if effective_auto_pan_zoom {
+                    source_dimensions
+                } else {
+                    None
+                },
+                focus_x,
+                focus_y,
+                effective_auto_pan_zoom,
+                auto_pan_zoom_mode,
+                auto_pan_zoom_scale,
+                remapped_camera_plan.as_ref(),
+                *output_offset_ms,
+                &speed_vf_suffix,
+            );
+            *output_offset_ms = output_offset_ms.saturating_add(end.saturating_sub(start));
+            Some(filter)
+        })
+        .collect::<Vec<_>>();
+
+    Ok(json!({
+        "segments": segments,
+        "outputDimensions": { "width": out_w, "height": out_h },
+        "sourceDimensions": source_dimensions.map(|(width, height)| json!({ "width": width, "height": height })),
+        "requestedAutoPanZoom": auto_pan_zoom,
+        "effectiveAutoPanZoom": effective_auto_pan_zoom,
+        "autoPanZoomMode": auto_pan_zoom_mode,
+        "autoPanZoomScale": auto_pan_zoom_scale,
+        "cameraPlanKeyframes": camera_motion_plan.map(|plan| plan.keyframes.len()).unwrap_or(0),
+        "cameraPlan": camera_motion_plan,
+        "remappedPlan": remapped_camera_plan,
+        "filters": filters,
+    }))
+}
+
 pub fn run_interactive_media_render(
     source: &Path,
     output: &Path,
@@ -2727,6 +2835,7 @@ pub fn run_interactive_media_render(
     auto_pan_zoom: bool,
     auto_pan_zoom_mode: &str,
     auto_pan_zoom_scale: Option<f64>,
+    canonical_source_dimensions: Option<(u32, u32)>,
     camera_motion_plan: Option<&CameraMotionPlan>,
 ) -> Result<(), String> {
     if segments.is_empty() {
@@ -2757,9 +2866,12 @@ pub fn run_interactive_media_render(
             _ => (0, 0),
         },
     };
-    let source_dimensions = if auto_pan_zoom {
-        let probe = probe_media_file(source, tools)?;
-        probe.width.zip(probe.height)
+    let effective_auto_pan_zoom = resolve_render_auto_pan_zoom(auto_pan_zoom, camera_motion_plan);
+    let probed_source_dimensions = probe_media_file(source, tools)
+        .ok()
+        .and_then(|probe| probe.width.zip(probe.height));
+    let source_dimensions = if effective_auto_pan_zoom {
+        resolve_render_source_dimensions(probed_source_dimensions, canonical_source_dimensions)
     } else {
         None
     };
@@ -2779,7 +2891,7 @@ pub fn run_interactive_media_render(
             source_dimensions,
             fx,
             fy,
-            auto_pan_zoom,
+            effective_auto_pan_zoom,
             auto_pan_zoom_mode,
             auto_pan_zoom_scale,
             remapped_camera_plan.as_ref(),
@@ -2852,7 +2964,7 @@ pub fn run_interactive_media_render(
                     source_dimensions,
                     fx,
                     fy,
-                    auto_pan_zoom,
+                    effective_auto_pan_zoom,
                     auto_pan_zoom_mode,
                     auto_pan_zoom_scale,
                     remapped_camera_plan.as_ref(),
@@ -3113,6 +3225,16 @@ pub fn probe_media_file(file: &Path, tools: &MediaToolchain) -> Result<LocalMedi
     let video = streams.iter().find(|stream| {
         stream.get("codec_type").and_then(serde_json::Value::as_str) == Some("video")
     });
+    let rotation_degrees = video.map(read_video_rotation_degrees).unwrap_or(0);
+    let raw_width = video
+        .and_then(|value| value.get("width"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|value| value as u32);
+    let raw_height = video
+        .and_then(|value| value.get("height"))
+        .and_then(serde_json::Value::as_u64)
+        .map(|value| value as u32);
+    let (width, height) = display_dimensions_for_rotation(raw_width, raw_height, rotation_degrees);
     let audio_tracks = parse_audio_tracks(streams);
     let audio = !audio_tracks.is_empty();
     let duration_ms = json
@@ -3123,14 +3245,9 @@ pub fn probe_media_file(file: &Path, tools: &MediaToolchain) -> Result<LocalMedi
         .map(|value| (value.max(0.0) * 1000.0).round() as u64);
     Ok(LocalMediaProbe {
         duration_ms,
-        width: video
-            .and_then(|value| value.get("width"))
-            .and_then(serde_json::Value::as_u64)
-            .map(|value| value as u32),
-        height: video
-            .and_then(|value| value.get("height"))
-            .and_then(serde_json::Value::as_u64)
-            .map(|value| value as u32),
+        width,
+        height,
+        rotation_degrees,
         has_audio: audio,
         audio_tracks,
         codec: video
@@ -3143,6 +3260,47 @@ pub fn probe_media_file(file: &Path, tools: &MediaToolchain) -> Result<LocalMedi
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
     })
+}
+
+fn read_video_rotation_degrees(stream: &Value) -> u16 {
+    let tag_rotation = stream
+        .get("tags")
+        .and_then(|tags| tags.get("rotate"))
+        .and_then(Value::as_str)
+        .and_then(|value| value.parse::<f64>().ok());
+    let side_data_rotation = stream
+        .get("side_data_list")
+        .and_then(Value::as_array)
+        .and_then(|items| {
+            items.iter().find_map(|item| {
+                let is_display_matrix = item
+                    .get("side_data_type")
+                    .and_then(Value::as_str)
+                    .is_some_and(|kind| kind.eq_ignore_ascii_case("Display Matrix"));
+                if !is_display_matrix {
+                    return None;
+                }
+                item.get("rotation").and_then(Value::as_f64)
+            })
+        });
+    let rotation = side_data_rotation.or(tag_rotation).unwrap_or(0.0);
+    let normalized = rotation.rem_euclid(360.0).round() as u16;
+    match normalized {
+        90 | 180 | 270 => normalized,
+        _ => 0,
+    }
+}
+
+fn display_dimensions_for_rotation(
+    width: Option<u32>,
+    height: Option<u32>,
+    rotation_degrees: u16,
+) -> (Option<u32>, Option<u32>) {
+    if matches!(rotation_degrees, 90 | 270) {
+        (height, width)
+    } else {
+        (width, height)
+    }
 }
 
 fn parse_audio_tracks(streams: &[Value]) -> Vec<AudioTrackInfo> {
@@ -3935,6 +4093,123 @@ mod tests {
     }
 
     #[test]
+    fn native_render_prefers_dimensions_probed_from_the_actual_source() {
+        assert_eq!(
+            resolve_render_source_dimensions(Some((1920, 1080)), Some((1080, 1920))),
+            Some((1920, 1080))
+        );
+        assert_eq!(
+            resolve_render_source_dimensions(None, Some((1080, 1920))),
+            Some((1080, 1920))
+        );
+    }
+
+    #[test]
+    fn probe_rotation_uses_display_matrix_and_normalizes_negative_angles() {
+        let display_matrix = serde_json::json!({
+            "side_data_list": [{
+                "side_data_type": "Display Matrix",
+                "rotation": 90
+            }]
+        });
+        assert_eq!(read_video_rotation_degrees(&display_matrix), 90);
+
+        let legacy_tag = serde_json::json!({
+            "tags": { "rotate": "-90" }
+        });
+        assert_eq!(read_video_rotation_degrees(&legacy_tag), 270);
+    }
+
+    #[test]
+    fn probe_rotation_swaps_display_dimensions_for_portrait_media() {
+        let raw_width = Some(1920_u32);
+        let raw_height = Some(1080_u32);
+        let rotation = 90_u16;
+        let display_dimensions = display_dimensions_for_rotation(raw_width, raw_height, rotation);
+        assert_eq!(display_dimensions, (Some(1080), Some(1920)));
+    }
+
+    #[test]
+    fn native_render_enables_auto_pan_zoom_when_a_camera_plan_is_present() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 1_000,
+            keyframes: vec![CameraMotionKeyframe {
+                time_ms: 0,
+                x: 0.6,
+                y: 0.5,
+                scale: 1.16,
+                easing: Some("linear".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            }],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        assert!(resolve_render_auto_pan_zoom(false, Some(&plan)));
+        assert!(resolve_render_auto_pan_zoom(true, Some(&plan)));
+        assert!(!resolve_render_auto_pan_zoom(false, None));
+    }
+
+    #[test]
+    fn render_debug_snapshot_exposes_the_same_plan_and_filter_inputs_as_native_render() {
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 2_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.2,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.8,
+                    y: 0.5,
+                    scale: 1.16,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let debug = build_interactive_render_debug(
+            &[(0, 2_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &MediaToolchain::native("ffmpeg", "ffprobe"),
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.16),
+            Some((1920, 1080)),
+            Some(&plan),
+        )
+        .unwrap();
+
+        assert_eq!(debug.get("cameraPlanKeyframes"), Some(&json!(2)));
+        assert_eq!(debug.get("sourceDimensions"), Some(&json!({"width": 1920, "height": 1080})));
+        assert!(debug
+            .get("filters")
+            .and_then(Value::as_array)
+            .is_some_and(|filters| !filters.is_empty()));
+        assert_eq!(debug["remappedPlan"]["keyframes"][1]["x"], json!(0.8));
+    }
+
+    #[test]
     fn camera_plan_native_ffmpeg_smoke_keeps_audio_after_dead_air_concat() {
         if !Command::new("ffmpeg")
             .arg("-version")
@@ -4035,12 +4310,120 @@ mod tests {
             true,
             "auto",
             Some(1.16),
+            None,
             Some(&plan),
         )
         .unwrap();
         let probe = probe_media_file(&output, &tools).unwrap();
         assert!(probe.duration_ms.unwrap_or(0) >= 1_000);
         assert!(probe.has_audio);
+    }
+
+    #[test]
+    fn camera_plan_native_render_changes_framing_when_keyframes_move() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("static-halves.mp4");
+        let output = dir.path().join("moving-camera.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:size=640x360:rate=30,drawbox=x=0:y=0:w=320:h=360:color=red:t=fill,drawbox=x=320:y=0:w=320:h=360:color=blue:t=fill",
+                "-t",
+                "2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 2_000,
+            keyframes: vec![
+                CameraMotionKeyframe {
+                    time_ms: 0,
+                    x: 0.2,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+                CameraMotionKeyframe {
+                    time_ms: 2_000,
+                    x: 0.8,
+                    y: 0.5,
+                    scale: 1.0,
+                    easing: Some("linear".into()),
+                    source: "auto".into(),
+                    source_mark_id: None,
+                },
+            ],
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let tools = MediaToolchain::native("ffmpeg", "ffprobe");
+        run_interactive_media_render(
+            &source,
+            &output,
+            &[(0, 2_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &tools,
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.0),
+            None,
+            Some(&plan),
+        )
+        .unwrap();
+
+        let frame_md5 = |time: &str| {
+            let output = Command::new("ffmpeg")
+                .args([
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-ss",
+                    time,
+                    "-i",
+                    output.to_str().unwrap(),
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "md5",
+                    "-",
+                ])
+                .output()
+                .unwrap();
+            assert!(output.status.success());
+            String::from_utf8_lossy(&output.stdout).into_owned()
+        };
+        assert_ne!(frame_md5("0.1"), frame_md5("1.9"));
     }
 
     #[test]

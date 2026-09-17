@@ -459,6 +459,35 @@ function mapStoryboardGenerationError(
       repairable: false,
     };
   }
+  // Scene intent is a separate, character-safety-critical contract. Keep its
+  // diagnostics distinct from the storyboard schema so the UI tells the user
+  // exactly which shot/field must be repaired.
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "VD_SHOT_SCENE_INTENT_SCHEMA_VALIDATION_FAILED"
+  ) {
+    const sceneIntentError = error as {
+      message?: unknown;
+      diagnostics?: unknown;
+    };
+    return {
+      code: "VD_SHOT_SCENE_INTENT_SCHEMA_VALIDATION_FAILED",
+      message:
+        typeof sceneIntentError.message === "string"
+          ? sceneIntentError.message
+          : "Shot scene intent output failed its contract.",
+      repairable: true,
+      details: {
+        diagnostics: Array.isArray(sceneIntentError.diagnostics)
+          ? sceneIntentError.diagnostics
+          : [],
+        action:
+          "ตรวจสอบทุก shot ให้มี scene_intent และใช้ชนิดข้อมูลตามสัญญา แล้วกดลองใหม่",
+      },
+    };
+  }
   if (error instanceof StoryboardVdSchemaValidationError) {
     return {
       code: VD_SCHEMA_VALIDATION_FAILED,

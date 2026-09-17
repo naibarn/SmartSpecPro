@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SmartAIHub Companion",
-  "version": "0.1.142",
+  "version": "0.1.146",
   "description": "Connect SmartAIHub capture, production, storyboard, drama, local AI, and supported browser workflows.",
   "permissions": [
     "activeTab",
@@ -35,6 +35,8 @@
     "https://*.higgsfield.ai/*",
     "https://grok.com/*",
     "https://*.grok.com/*",
+    "https://meta.ai/*",
+    "https://*.meta.ai/*",
     "http://localhost/*",
     "http://127.0.0.1/*"
   ],
@@ -84,7 +86,9 @@
         "https://higgsfield.ai/*",
         "https://*.higgsfield.ai/*",
         "https://grok.com/*",
-        "https://*.grok.com/*"
+        "https://*.grok.com/*",
+        "https://meta.ai/*",
+        "https://*.meta.ai/*"
       ],
       "js": [
         "assets/dragBridge.js"

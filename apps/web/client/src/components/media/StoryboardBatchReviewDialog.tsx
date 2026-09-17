@@ -62,6 +62,7 @@ const STORYBOARD_TRIM_MIN_KEPT_DURATION_SECONDS = 1;
 const STORYBOARD_TRIM_MERGE_GAP_SECONDS = 0.2;
 const STORYBOARD_TRIM_TIMELINE_MIN_ZOOM = 1;
 const STORYBOARD_TRIM_TIMELINE_MAX_ZOOM = 16;
+type StoryboardPromptTab = "image" | "video";
 
 export interface StoryboardSourceTrimRange {
   inSec: number;
@@ -74,12 +75,25 @@ export interface StoryboardReviewTask {
   id: string;
   index: number;
   prompt: string;
+  videoPrompt?: string | null;
   url?: string | null;
   model?: string;
   durationSeconds?: number;
   mediaType?: StoryboardClipMediaType;
   transition?: StoryboardClipTransition;
   generationModelId?: string;
+  modelProvenance?: {
+    image?: {
+      requestedModelId: string;
+      effectiveModelId?: string | null;
+      providerId?: string | null;
+    };
+    video?: {
+      requestedModelId: string;
+      effectiveModelId?: string | null;
+      providerId?: string | null;
+    };
+  };
   referenceUrls?: string[];
   generationAspectRatio?: string;
   generationExtraParams?: Record<string, unknown>;
@@ -132,6 +146,7 @@ interface StoryboardBatchReviewDialogProps {
   onSelectAll: () => void;
   onSelectNone: () => void;
   onRegenerateTask: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
+  onRegenerateImageTask?: (taskId: string, prompt: string) => boolean | void | Promise<boolean | void>;
   onUpdateTaskPrompt?: (taskId: string, prompt: string) => void | Promise<void>;
   onUpdateTaskExtraParams?: (taskId: string, extraParams: Record<string, unknown>) => void | Promise<void>;
   onUpdateTaskDuration?: (taskId: string, durationSeconds: number) => void | Promise<void>;
@@ -245,6 +260,17 @@ function findScrollableParent(element: HTMLElement | null): HTMLElement | null {
 function summarizePrompt(prompt: string): string {
   const normalized = prompt.replace(/\s+/g, " ").trim();
   return normalized.length > 120 ? `${normalized.slice(0, 120)}...` : normalized;
+}
+
+function readPromptFromExtraParams(
+  extraParams: Record<string, unknown> | undefined,
+  keys: string[],
+): string {
+  for (const key of keys) {
+    const value = extraParams?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
 }
 
 function getFirstLastFrameUrls(task: StoryboardReviewTask): string[] | null {
@@ -449,6 +475,7 @@ export function StoryboardBatchReviewPanel({
   onSelectAll,
   onSelectNone,
   onRegenerateTask,
+  onRegenerateImageTask,
   onUpdateTaskPrompt,
   onUpdateTaskExtraParams,
   onUpdateTaskDuration,
@@ -518,6 +545,7 @@ export function StoryboardBatchReviewPanel({
   const hyperframesCopy = getMarketplaceHyperframesUiCopy(locale);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [draftPrompts, setDraftPrompts] = useState<Record<string, string>>({});
+  const [promptTabs, setPromptTabs] = useState<Record<string, StoryboardPromptTab>>({});
   const [isGeneratingSelected, setIsGeneratingSelected] = useState(false);
   const [isCancellingSelected, setIsCancellingSelected] = useState(false);
   const [expandedMetadataTaskId, setExpandedMetadataTaskId] = useState<string | null>(null);
@@ -1149,7 +1177,10 @@ export function StoryboardBatchReviewPanel({
     try {
       for (const task of generatableSelectedTasks) {
         if (generationCancelRequestedRef.current) break;
-        const shouldContinue = await onRegenerateTask(task.id, draftPrompts[task.id] ?? task.prompt);
+        const regenerate = isStoryboardImageMedia(task) && onRegenerateImageTask
+          ? onRegenerateImageTask
+          : onRegenerateTask;
+        const shouldContinue = await regenerate(task.id, draftPrompts[task.id] ?? task.prompt);
         if (shouldContinue === false) break;
       }
     } finally {
@@ -2030,7 +2061,7 @@ export function StoryboardBatchReviewPanel({
                   title={locale === "th" ? "สร้าง prompt พร้อม customer journey สำหรับทุกฉาก" : "Plan scene prompts with customer journey"}
                 >
                   {isPlanningScenePrompts ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic2 className="h-4 w-4" />}
-                  {locale === "th" ? "สร้าง Prompt ทุกฉาก" : "Plan prompts"}
+                  {locale === "th" ? "สร้าง Prompt ภาพ + วิดีโอทุกฉาก" : "Create image + video prompts"}
                 </Button>
               </>
             ) : null}
@@ -2056,7 +2087,10 @@ export function StoryboardBatchReviewPanel({
                 className="col-span-2 h-8 px-2 text-xs sm:col-span-1"
                 title={t("mediaStudio.storyboardReviewGenerateSelectedHelp")}
               >
-                <Video className="mr-2 h-4 w-4" />
+                <span className="mr-2 inline-flex items-center gap-0.5" aria-hidden="true">
+                  <ImagePlus className="h-4 w-4" />
+                  <Video className="h-4 w-4" />
+                </span>
                 {t("mediaStudio.storyboardReviewGenerateSelected")}
               </Button>
             )}
@@ -2180,11 +2214,52 @@ export function StoryboardBatchReviewPanel({
               const isImageShot = isStoryboardImageMedia(task);
               const firstLastFrameUrls = getFirstLastFrameUrls(task);
               const isEditing = editingTaskId === task.id;
+              const imagePromptText = isImageShot
+                ? task.prompt
+                : readPromptFromExtraParams(task.generationExtraParams, [
+                    "imagePrompt",
+                    "image_prompt",
+                    "startFrameImagePrompt",
+                    "start_frame_image_prompt",
+                  ]);
+              const videoPromptText = isImageShot
+                ? String(
+                    task.videoPrompt ??
+                      readPromptFromExtraParams(task.generationExtraParams, [
+                        "videoPrompt",
+                        "video_prompt",
+                        "generatedVideoPrompt",
+                      ])
+                  ).trim()
+                : task.prompt;
+              const promptTab = promptTabs[task.id] ?? (isImageShot ? "image" : "video");
+              const visiblePrompt = promptTab === "image" ? imagePromptText : videoPromptText;
               const draftPrompt = draftPrompts[task.id] ?? task.prompt;
+              const promptToCopy = isEditing ? draftPrompt : visiblePrompt;
+              const isQueuedForGeneration = task.status === "queued";
+              const promptActionLabel = promptTab === "image"
+                ? t("mediaStudio.storyboardReviewEditImagePrompt")
+                : t("mediaStudio.storyboardReviewEditVideoPrompt");
+              const copyPromptLabel = promptTab === "image"
+                ? t("mediaStudio.storyboardReviewCopyImagePrompt")
+                : t("mediaStudio.storyboardReviewCopyVideoPrompt");
+              const generateTitle = isImageShot
+                ? (isQueuedForGeneration
+                  ? t("mediaStudio.storyboardReviewGenerateImageTitle")
+                  : t("mediaStudio.storyboardReviewRegenerateImageTitle"))
+                : (isQueuedForGeneration
+                  ? t("mediaStudio.storyboardReviewGenerateVideoTitle")
+                  : t("mediaStudio.storyboardReviewRegenerateTitle"));
+              const generateLabel = isImageShot
+                ? (isQueuedForGeneration
+                  ? t("mediaStudio.storyboardReviewGenerateImage")
+                  : t("mediaStudio.storyboardReviewRegenerateImage"))
+                : (isQueuedForGeneration
+                  ? t("mediaStudio.storyboardReviewGenerateVideo")
+                  : t("mediaStudio.storyboardReviewRegenerate"));
               const canRegenerate = task.canRegenerate !== false;
               const isMediaOnlyInsertedShot = task.isImported && !firstLastFrameUrls && !canRegenerate;
               const showPromptWorkflowActions = !isMediaOnlyInsertedShot;
-              const isQueuedForGeneration = task.status === "queued";
               const articleStoryboardMetadata = getArticleStoryboardReviewMetadata(task.generationExtraParams);
               const marketplaceMetadata = task.marketplaceProduct
                 ?? (task.generationExtraParams?.marketplaceContext && typeof task.generationExtraParams.marketplaceContext === "object"
@@ -2200,6 +2275,30 @@ export function StoryboardBatchReviewPanel({
               const videoSegmentEffectiveMode = typeof task.generationExtraParams?.videoSegmentEffectiveMode === "string"
                 ? task.generationExtraParams.videoSegmentEffectiveMode
                 : "";
+              const imageModelProvenance = task.modelProvenance?.image;
+              const videoModelProvenance = task.modelProvenance?.video;
+              const imageRequestedModelLabel = imageModelProvenance?.requestedModelId ||
+                (isImageShot ? task.model : "") ||
+                (locale === "th" ? "ไม่ได้บันทึก" : "Not recorded");
+              const videoRequestedModelLabel = videoModelProvenance?.requestedModelId ||
+                (!isImageShot ? task.model : "") ||
+                (locale === "th" ? "ไม่ได้บันทึก" : "Not recorded");
+              const imageEffectiveModelLabel = imageModelProvenance?.effectiveModelId &&
+                imageModelProvenance.effectiveModelId !== imageRequestedModelLabel
+                ? imageModelProvenance.effectiveModelId
+                : "";
+              const videoEffectiveModelLabel = videoModelProvenance?.effectiveModelId &&
+                videoModelProvenance.effectiveModelId !== videoRequestedModelLabel
+                ? videoModelProvenance.effectiveModelId
+                : "";
+              const imageModelLabel = imageEffectiveModelLabel ||
+                imageModelProvenance?.requestedModelId ||
+                (isImageShot ? task.model : "") ||
+                (locale === "th" ? "ไม่ได้บันทึก" : "Not recorded");
+              const videoModelLabel = videoEffectiveModelLabel ||
+                videoModelProvenance?.requestedModelId ||
+                (!isImageShot ? task.model : "") ||
+                (locale === "th" ? "ไม่ได้บันทึก" : "Not recorded");
               const segmentLabel = videoSegmentShotIds.length > 1
                 ? (locale === "th" ? `Segment ${videoSegmentShotIds.length} ช็อต` : `Segment ${videoSegmentShotIds.length} shots`)
                 : videoSegmentId
@@ -2491,6 +2590,20 @@ export function StoryboardBatchReviewPanel({
                         >
                           {taskStatusLabel(task.status)}
                         </Badge>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "whitespace-nowrap",
+                            isImageShot
+                              ? "border-amber-300 bg-amber-50 text-amber-900"
+                              : "border-sky-300 bg-sky-50 text-sky-900",
+                          )}
+                        >
+                          {isImageShot ? <ImagePlus className="mr-1 h-3.5 w-3.5" /> : <Video className="mr-1 h-3.5 w-3.5" />}
+                          {isImageShot
+                            ? t("mediaStudio.storyboardReviewAssetTypeImage")
+                            : t("mediaStudio.storyboardReviewAssetTypeVideo")}
+                        </Badge>
                         {isMediaAttachTarget ? (
                           <Badge variant="outline" className="border-sky-300 bg-sky-50 text-sky-700">
                             {locale === "th" ? "ปลายทางแนบภาพ" : "Attach target"}
@@ -2515,7 +2628,9 @@ export function StoryboardBatchReviewPanel({
                         ) : null}
                         {hasMedia ? (
                           <Badge variant="outline">
-                            {isImageShot ? (locale === "th" ? "ภาพนิ่ง" : "Image") : (locale === "th" ? "วิดีโอ" : "Video")}
+                            {isImageShot
+                              ? t("mediaStudio.storyboardReviewResultImage")
+                              : t("mediaStudio.storyboardReviewResultVideo")}
                           </Badge>
                         ) : null}
                         {hasSourceTrim && taskSourceTrim ? (
@@ -2525,6 +2640,22 @@ export function StoryboardBatchReviewPanel({
                               : `Trim ${taskSourceTrim.inSec}-${taskSourceTrim.outSec}s`}
                           </Badge>
                         ) : null}
+                        <div className="basis-full grid gap-1 rounded-md border border-border/60 bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground sm:grid-cols-2">
+                          <span className="min-w-0 truncate" title={imageModelLabel}>
+                            <span className="font-medium text-foreground">{locale === "th" ? "โมเดลสร้างภาพ" : "Image model"}:</span>{" "}
+                            <code className="break-all">{imageRequestedModelLabel}</code>
+                            {imageEffectiveModelLabel ? (
+                              <span className="ml-1 text-amber-700">→ <code>{imageEffectiveModelLabel}</code> ({locale === "th" ? "ใช้จริง" : "effective"})</span>
+                            ) : null}
+                          </span>
+                          <span className="min-w-0 truncate" title={videoModelLabel}>
+                            <span className="font-medium text-foreground">{locale === "th" ? "โมเดลสร้างวิดีโอ" : "Video model"}:</span>{" "}
+                            <code className="break-all">{videoRequestedModelLabel}</code>
+                            {videoEffectiveModelLabel ? (
+                              <span className="ml-1 text-amber-700">→ <code>{videoEffectiveModelLabel}</code> ({locale === "th" ? "ใช้จริง" : "effective"})</span>
+                            ) : null}
+                          </span>
+                        </div>
                         <label className="flex h-7 items-center gap-1.5 rounded-md border bg-background px-2 text-xs text-muted-foreground">
                           <span>{locale === "th" ? "วินาที/shot" : "Sec/shot"}</span>
                           <select
@@ -3222,12 +3353,44 @@ export function StoryboardBatchReviewPanel({
                         </p>
                       ) : (
                         <div className="mt-2 rounded-lg border bg-slate-50/70 p-3">
-                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-[11px] font-medium uppercase text-muted-foreground">
-                            <span>Prompt</span>
-                            <span>{task.prompt.length.toLocaleString(locale === "th" ? "th-TH" : "en-US")} chars</span>
+                          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                            <div className="inline-flex rounded-md border bg-background p-0.5" role="tablist" aria-label={locale === "th" ? "เลือก prompt ของช็อต" : "Select shot prompt"}>
+                              <button
+                                type="button"
+                                role="tab"
+                                aria-selected={promptTab === "image"}
+                                className={cn(
+                                  "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
+                                  promptTab === "image" ? "bg-amber-100 text-amber-900" : "text-muted-foreground hover:bg-muted",
+                                )}
+                                onClick={() => setPromptTabs((current) => ({ ...current, [task.id]: "image" }))}
+                              >
+                                {locale === "th" ? "Prompt ภาพ" : "Image prompt"}
+                              </button>
+                              <button
+                                type="button"
+                                role="tab"
+                                aria-selected={promptTab === "video"}
+                                className={cn(
+                                  "rounded px-2.5 py-1 text-[11px] font-medium transition-colors",
+                                  promptTab === "video" ? "bg-sky-100 text-sky-900" : "text-muted-foreground hover:bg-muted",
+                                )}
+                                onClick={() => setPromptTabs((current) => ({ ...current, [task.id]: "video" }))}
+                              >
+                                {locale === "th" ? "Prompt วีดีโอ" : "Video prompt"}
+                              </button>
+                            </div>
+                            <span className="text-[11px] font-medium uppercase text-muted-foreground">
+                              {visiblePrompt.length.toLocaleString(locale === "th" ? "th-TH" : "en-US")} chars
+                            </span>
                           </div>
+                          <p className="mb-2 text-xs font-medium text-muted-foreground">
+                            {promptTab === "image"
+                              ? (locale === "th" ? "ใช้สร้างภาพเดี่ยว และภาพนี้จะเป็น Start Frame" : "Used to create the single image, which becomes the Start Frame")
+                              : (locale === "th" ? "ใช้สร้างวีดีโอจากภาพ Start Frame แล้วส่งเข้า Video slot" : "Used to create the video from the Start Frame and place it in the Video slot")}
+                          </p>
                           <p className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words pr-2 text-sm leading-6 text-slate-700">
-                            {task.prompt}
+                            {visiblePrompt || (locale === "th" ? "ยังไม่มี prompt สำหรับขั้นตอนนี้" : "No prompt is available for this stage yet.")}
                           </p>
                         </div>
                       )}
@@ -3342,12 +3505,17 @@ export function StoryboardBatchReviewPanel({
                               setEditingTaskId(null);
                               return;
                             }
+                            setPromptTabs((current) => ({
+                              ...current,
+                              [task.id]: isImageShot ? "image" : "video",
+                            }));
                             setDraftPrompts((prev) => ({ ...prev, [task.id]: task.prompt }));
                             setEditingTaskId(task.id);
                           }}
+                          title={isEditing ? t("mediaStudio.storyboardReviewDoneEditing") : promptActionLabel}
                         >
                           <Pencil className="mr-2 h-4 w-4" />
-                          {isEditing ? "Stop editing" : "Edit"}
+                          {isEditing ? t("mediaStudio.storyboardReviewDoneEditing") : promptActionLabel}
                         </Button>
                         {showPromptWorkflowActions ? (
                           <Button
@@ -3355,9 +3523,9 @@ export function StoryboardBatchReviewPanel({
                             size="sm"
                             variant="outline"
                             className="h-8 px-2 text-xs"
-                            disabled={!draftPrompt.trim()}
-                            onClick={() => void handleCopyTaskPrompt(task.id, draftPrompt)}
-                            title={locale === "th" ? "คัดลอก prompt ของคลิปนี้" : "Copy this clip prompt"}
+                            disabled={!promptToCopy.trim()}
+                            onClick={() => void handleCopyTaskPrompt(task.id, promptToCopy)}
+                            title={copyPromptLabel}
                           >
                             {copiedPromptTaskId === task.id ? (
                               <Check className="mr-2 h-4 w-4" />
@@ -3366,7 +3534,7 @@ export function StoryboardBatchReviewPanel({
                             )}
                             {copiedPromptTaskId === task.id
                               ? (locale === "th" ? "คัดลอกแล้ว" : "Copied")
-                              : (locale === "th" ? "Copy Prompt" : "Copy prompt")}
+                              : copyPromptLabel}
                           </Button>
                         ) : null}
                         {showPromptWorkflowActions ? (
@@ -3378,22 +3546,20 @@ export function StoryboardBatchReviewPanel({
                             disabled={!canRegenerate || task.status === "generating" || Boolean(regeneratingTaskId)}
                             onClick={() => {
                               onStartGenerationBatch?.();
-                              void onRegenerateTask(task.id, draftPrompt);
+                              void (isImageShot && onRegenerateImageTask
+                                ? onRegenerateImageTask(task.id, draftPrompt)
+                                : onRegenerateTask(task.id, draftPrompt));
                             }}
-                            title={canRegenerate
-                              ? isQueuedForGeneration
-                                ? t("mediaStudio.storyboardReviewGenerateVideoTitle")
-                                : t("mediaStudio.storyboardReviewRegenerateTitle")
-                              : t("mediaStudio.storyboardReviewImportedNoRegenerate")}
+                            title={canRegenerate ? generateTitle : t("mediaStudio.storyboardReviewImportedNoRegenerate")}
                           >
                             {regeneratingTaskId === task.id ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : isImageShot ? (
+                              <ImagePlus className="mr-2 h-4 w-4" />
                             ) : (
-                              <RefreshCw className="mr-2 h-4 w-4" />
+                              <Video className="mr-2 h-4 w-4" />
                             )}
-                            {isQueuedForGeneration
-                              ? t("mediaStudio.storyboardReviewGenerateVideo")
-                              : t("mediaStudio.storyboardReviewRegenerate")}
+                            {generateLabel}
                           </Button>
                         ) : null}
                         {onPlanScenePrompts && showPromptWorkflowActions ? (
@@ -3406,16 +3572,16 @@ export function StoryboardBatchReviewPanel({
                             onClick={() => void onPlanScenePrompts(currentPlannerOptions, task.id)}
                             title={videoSegmentId
                               ? locale === "th"
-                                ? "ให้ skill สร้าง prompt ใหม่ตาม segment plan ของฉากนี้"
+                                ? t("mediaStudio.storyboardReviewPlanSegmentPrompts")
                                 : "Use the skill to plan this task from its segment plan"
                               : locale === "th"
-                                ? "สร้าง prompt เฉพาะฉากนี้ พร้อมส่งบทบาทภาพแนบและแนวคิด"
+                                ? t("mediaStudio.storyboardReviewPlanScenePrompts")
                                 : "Plan only this scene with frame roles and concept guidance"}
                           >
                             {isPlanningScenePrompts ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mic2 className="mr-2 h-4 w-4" />}
                             {videoSegmentId
-                              ? locale === "th" ? "สร้าง Prompt segment นี้" : "Plan this segment"
-                              : locale === "th" ? "สร้าง Prompt ฉากนี้" : "Plan this scene"}
+                              ? locale === "th" ? t("mediaStudio.storyboardReviewPlanSegmentPrompts") : "Create image + video prompts for this segment"
+                              : locale === "th" ? t("mediaStudio.storyboardReviewPlanScenePrompts") : "Create image + video prompts for this scene"}
                           </Button>
                         ) : null}
                         {canSplitVideoSegment ? (
@@ -3452,13 +3618,13 @@ export function StoryboardBatchReviewPanel({
                                   isMediaAttachTarget ? null : 0,
                                 )}
                                 title={locale === "th"
-                                  ? "เลือกช่องรูปด้านบนของ Shot นี้เป็นปลายทางสำหรับภาพจาก History Gallery หรือภาพที่ตัดแล้ว"
+                                  ? "เลือกช่องภาพ Start Frame ของช็อตนี้เป็นปลายทางสำหรับภาพจาก History Gallery หรือภาพที่ตัดแล้ว"
                                   : "Use this shot's top image slot as the tap-to-attach target for History Gallery or cut images"}
                               >
                                 <ImagePlus className="mr-2 h-4 w-4" />
                                 {isMediaAttachTarget
-                                  ? (locale === "th" ? `เลือกช่องรูป Shot ${task.index + 1}` : `Shot ${task.index + 1} image slot`)
-                                  : (locale === "th" ? "เลือกช่องรูปบนสำหรับภาพที่ตัด" : "Use top image slot for cut images")}
+                                  ? (locale === "th" ? `เลือกช่องภาพ Start Frame ช็อต ${task.index + 1}` : `Shot ${task.index + 1} Start Frame slot`)
+                                  : (locale === "th" ? "เลือกช่องภาพ Start Frame" : "Select Start Frame slot")}
                               </Button>
                             ) : null}
                             <Button
@@ -3514,9 +3680,10 @@ export function StoryboardBatchReviewPanel({
                               className="h-8 px-2 text-xs"
                               disabled={taskIndex === 0}
                               onClick={() => onMoveTask(task.id, "up")}
+                              title={t("mediaStudio.storyboardReviewMoveShotUp")}
                             >
                               <ArrowUp className="mr-2 h-4 w-4" />
-                              {t("common.up")}
+                              {t("mediaStudio.storyboardReviewMoveShotUp")}
                             </Button>
                             <Button
                               type="button"
@@ -3525,9 +3692,10 @@ export function StoryboardBatchReviewPanel({
                               className="h-8 px-2 text-xs"
                               disabled={taskIndex === tasks.length - 1}
                               onClick={() => onMoveTask(task.id, "down")}
+                              title={t("mediaStudio.storyboardReviewMoveShotDown")}
                             >
                               <ArrowDown className="mr-2 h-4 w-4" />
-                              {t("common.down")}
+                              {t("mediaStudio.storyboardReviewMoveShotDown")}
                             </Button>
                           </>
                         ) : null}
@@ -3537,6 +3705,7 @@ export function StoryboardBatchReviewPanel({
                           variant={isSelected ? "secondary" : "ghost"}
                           className="h-8 px-2 text-xs"
                           onClick={() => onToggleTask(task.id)}
+                          title={isSelected ? t("mediaStudio.storyboardReviewKeep") : t("mediaStudio.storyboardReviewExclude")}
                         >
                           {isSelected ? (
                             <>
@@ -3557,9 +3726,10 @@ export function StoryboardBatchReviewPanel({
                             variant="outline"
                             className="h-8 px-2 text-xs"
                             onClick={() => onRemoveTask(task.id)}
+                            title={t("mediaStudio.storyboardReviewRemoveShot")}
                           >
                             <Trash2 className="mr-2 h-4 w-4" />
-                            {t("common.remove")}
+                            {t("mediaStudio.storyboardReviewRemoveShot")}
                           </Button>
                         ) : null}
                       </div>
@@ -3694,7 +3864,10 @@ export function StoryboardBatchReviewPanel({
                     disabled={generatableSelectedTasks.length === 0 || Boolean(regeneratingTaskId) || isGeneratingSelected}
                     title={t("mediaStudio.storyboardReviewGenerateSelectedHelp")}
                   >
-                    <Video className="mr-2 h-4 w-4" />
+                    <span className="mr-2 inline-flex items-center gap-0.5" aria-hidden="true">
+                      <ImagePlus className="h-4 w-4" />
+                      <Video className="h-4 w-4" />
+                    </span>
                     {t("mediaStudio.storyboardReviewGenerateSelected")}
                   </Button>
                 )}
@@ -3729,7 +3902,7 @@ export function StoryboardBatchReviewPanel({
                     ) : (
                       <Video className="mr-2 h-4 w-4" />
                     )}
-                    {locale === "th" ? "HyperFrames Final" : "HyperFrames Final"}
+                    {locale === "th" ? "สร้างวิดีโอสุดท้ายด้วย HyperFrames" : "Create final video with HyperFrames"}
                   </Button>
                   {hyperframesFinalCompositeStatus ? (
                     <span className="max-w-[13rem] truncate text-[10px] text-sky-700">

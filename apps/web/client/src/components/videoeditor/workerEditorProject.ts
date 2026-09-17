@@ -144,6 +144,15 @@ export function buildCanonicalWorkerProject(
       unsupported,
       preservedUnknown: {
         ...(Object.keys(cameraSettings).length > 0 ? { smartCamera: cameraSettings } : {}),
+        ...(Object.keys(cameraSettings).length > 0
+          ? {
+              cameraMotionPlans: Object.fromEntries(
+                Object.entries(cameraSettings)
+                  .filter(([, settings]) => settings?.plan && settings.analysisStatus !== 'stale')
+                  .map(([clipId, settings]) => [clipId, settings?.plan]),
+              ),
+            }
+          : {}),
         audioMixing: source.audioMixing,
       },
     },

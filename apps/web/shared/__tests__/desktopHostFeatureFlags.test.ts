@@ -10,7 +10,6 @@ describe("desktop host feature flags", () => {
     expect(FEATURE_FLAG_DEFAULTS.desktopHostEnabled).toBe(false);
     expect(FEATURE_FLAG_DEFAULTS.desktopAdvancedLocalMode).toBe(false);
     expect(FEATURE_FLAG_DEFAULTS.desktopPackageSync).toBe(false);
-    expect(FEATURE_FLAG_DEFAULTS.desktopAgencyRuntime).toBe(false);
     expect(FEATURE_FLAG_DEFAULTS.desktopWorkerProjection).toBe(false);
   });
 
@@ -18,7 +17,6 @@ describe("desktop host feature flags", () => {
     expect(ALLOWED_FEATURE_FLAGS.has("desktopHostEnabled")).toBe(true);
     expect(ALLOWED_FEATURE_FLAGS.has("desktopAdvancedLocalMode")).toBe(true);
     expect(ALLOWED_FEATURE_FLAGS.has("desktopPackageSync")).toBe(true);
-    expect(ALLOWED_FEATURE_FLAGS.has("desktopAgencyRuntime")).toBe(true);
     expect(ALLOWED_FEATURE_FLAGS.has("desktopWorkerProjection")).toBe(true);
   });
 });

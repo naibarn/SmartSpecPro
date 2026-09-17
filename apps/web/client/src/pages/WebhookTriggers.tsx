@@ -87,7 +87,7 @@ interface TriggerFormData {
   description: string;
   authType: "token" | "hmac_sha256";
   authSecret: string;
-  targetType: "chat" | "agency" | "workflow";
+  targetType: "chat";
   targetConversationId: string;
   payloadTemplate: string;
   rateLimitPerMinute: number;
@@ -205,7 +205,7 @@ function TriggerFormDialog({
           description: editTrigger.description ?? "",
           authType: (editTrigger.authType as "token" | "hmac_sha256") ?? "token",
           authSecret: "",
-          targetType: (editTrigger.targetType as "chat" | "agency" | "workflow") ?? "chat",
+          targetType: "chat",
           targetConversationId: "",
           payloadTemplate: "",
           rateLimitPerMinute: editTrigger.rateLimitPerMinute ?? 10,

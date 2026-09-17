@@ -19,6 +19,44 @@
 - If you discover unrelated issues, report them separately and do not change
   them unless the user asks.
 
+## Retired Systems — Strictly Prohibited
+
+The following systems are retired and must not be used, called, imported,
+enabled, restored, extended, or developed further:
+
+- Agency and every Agency-related service, router, task, UI, adapter, and
+  integration.
+- `work/request`
+- `work/requests`
+- `workpacks/intake`
+- `workpacks/discovery`
+- `workpacks/roi`
+- `workpacks/*` in its entirety.
+- `/workflows` and the legacy custom workflow engine in its entirety.
+- OpenSandbox, `sandbox_jobs`, Docker/OpenSandbox dispatch, and every related
+  integration.
+
+Do not add new callers, routes, schemas, migrations, tests, documentation,
+feature flags, or compatibility code that brings any retired system back into
+active use. Do not route new work through a retired system as a temporary
+workaround.
+
+Removal and migration work is allowed only when explicitly requested. Such
+work must first perform a read-only dependency/runtime audit, preserve
+unrelated worktree changes, and identify data-retention and rollback impact
+before destructive deletion.
+
+Use these replacement boundaries for new work:
+
+- OpenAI Agents API on the Python backend is the agent runtime.
+- Risky or isolated execution belongs in the approved Cloudflare Container
+  runtime; do not introduce Docker/OpenSandbox as a replacement.
+- Hermes, Claude, or Codex may be used as external workers directly; do not
+  build a new in-house Agency or workflow engine around them.
+- Remaining long-running skill, LLM, media, agent, and external-worker work
+  must enter the canonical `worker_jobs` plus outbox control plane before
+  execution.
+
 ## SocratiCode First
 
 This repository has SocratiCode installed as the local codebase intelligence MCP.

@@ -577,10 +577,13 @@ async def cleanup_drive_vectors(
 
     from app.services.library_indexing_service import (
         delete_cloudflare_vector_ids,
-        resolve_library_vector_provider,
+        resolve_library_vector_provider_from_db,
     )
 
-    active_provider, provider_config = resolve_library_vector_provider()
+    active_provider, provider_config = await resolve_library_vector_provider_from_db(
+        db,
+        tenant_id=request.tenant_id,
+    )
     vector_rows = await db.execute(
         sa_text("""SELECT vector_ref_id FROM library_chunks
                    WHERE library_item_id = :item_id AND tenant_id = :tenant_id"""),

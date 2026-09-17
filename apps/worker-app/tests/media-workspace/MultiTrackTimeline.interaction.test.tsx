@@ -100,3 +100,35 @@ it("moves a clip between video lanes with pointer drag", () => {
     sourcePath: "D:/C3784.MP4",
   });
 });
+
+it("uses the edited canvas duration for the ruler instead of adding a hidden tail", () => {
+  container = document.createElement("section");
+  root = createRoot(container);
+  const project = createDefaultProjectDraft({
+    projectId: "timeline-duration",
+    title: "Edited timeline",
+    videoPath: "D:/C3784.MP4",
+    videoDurationMs: 10_000,
+    deadAirSegments: [{ startMs: 4_000, endMs: 8_000 }],
+  });
+
+  act(() => root?.render(
+    <MultiTrackTimeline
+      project={project}
+      currentTimeMs={0}
+      durationMs={10_000}
+      isPlaying={false}
+      onSeek={() => {}}
+      onTogglePlay={() => {}}
+      onUpdateProject={() => {}}
+      onOpenAutoSubtitles={() => {}}
+      onOpenCodeOverlayModal={() => {}}
+      onOpenAssetDrawer={() => {}}
+      onDetachAudio={() => {}}
+      onSaveProjectFile={() => {}}
+      onExportCapCutDraft={() => {}}
+    />,
+  ));
+
+  expect(container.querySelector<HTMLElement>(".tc-total")?.textContent).toBe("00:06:00");
+});

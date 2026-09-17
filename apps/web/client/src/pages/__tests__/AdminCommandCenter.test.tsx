@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
-const doctorMutationMock = vi.fn();
 
 function queryResult<T>(data: T) {
   return { data, isLoading: false, refetch: vi.fn() };
@@ -34,6 +33,16 @@ vi.mock("@/features/desktop-host/useDesktopHostStatus", () => ({
 
 vi.mock("@/components/LocaleToggle", () => ({
   LocaleToggle: () => <div>Locale</div>,
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) => key === "dashboard:workerMonitor.title"
+      ? "Worker Job Monitor"
+      : key === "dashboard:workerMonitor.description"
+        ? "Canonical worker_jobs, outbox, lease, capacity, and heartbeat health."
+        : key,
+  }),
 }));
 
 vi.mock("@/components/dashboard", () => {
@@ -90,18 +99,18 @@ vi.mock("@/lib/trpc", () => ({
     queues: {
       getSystemStatus: { useQuery: () => queryResult({ limiters: { totalQueued: 0 }, cloudTasks: { totalTasks: 0 } }) },
     },
-    infrastructure: {
-      getCeleryMediaDoctorStatus: { useQuery: () => queryResult({
-        checkedAt: new Date().toISOString(),
-        overallStatus: "healthy",
-        workers: {
-          media: { service: "celery-media", containerName: "smartspec-celery-media", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
-          beat: { service: "celery-beat", containerName: "smartspec-celery-beat", status: "running", project: "smartspecpro", health: "healthy", restartCount: 0, startedAt: null, duplicate: false, candidates: [] },
-        },
-        queue: { redisMediaDepth: 0, pendingCount: 0, processingCount: 0, inFlightCount: 0, claimedPendingCount: 0, unclaimedPendingCount: 0, stalePendingCount: 0 },
-        users: [], selectedUser: null, repair: { available: false, reason: null },
+    workerJobs: {
+      adminDashboardSummary: { useQuery: () => queryResult({
+        counts: { pending: 0, queued: 0, running: 0, waitingExternal: 0, retryScheduled: 0, succeeded: 0, failed: 0, canceled: 0, expired: 0, active: 0, stale: 0, executingByStatus: { leased: 0, claimed: 0, preparing: 0, running: 0, uploading: 0, publishing: 0, indexing: 0 } },
+        capacity: { workersTotal: 0, workersOnline: 0, workersUnhealthy: 0, workersStale: 0, totalSlots: 0, usedSlots: 0, freeSlots: 0, queueDepth: 0, capacityKnown: true, unknownCapacityWorkers: 0, slotSources: [] },
+        outbox: { pending: 0, failed: 0, quarantined: 0, oldestPendingAt: null, oldestPendingAgeSeconds: 0 },
+        backlog: { oldestQueuedAt: null, oldestQueuedAgeSeconds: 0 },
+        alerts: { hasIncident: false, capacityExhausted: false, capacityUnknown: false },
+        openJobs: [],
+        recentJobs: [],
       }) },
-      runCeleryMediaDoctor: { useMutation: () => ({ mutate: doctorMutationMock, isPending: false }) },
+    },
+    infrastructure: {
     },
   },
 }));
@@ -111,34 +120,12 @@ import AdminCommandCenter from "../Admin/AdminCommandCenter";
 describe("AdminCommandCenter", () => {
   beforeEach(() => {
     setLocationMock.mockClear();
-    doctorMutationMock.mockClear();
   });
 
-  it("shows the exact-admin Celery doctor and can run a safe repair", () => {
+  it("shows the canonical worker job monitor", () => {
     render(<AdminCommandCenter />);
 
-    expect(screen.getByText("Celery Media Doctor")).toBeInTheDocument();
-    expect(screen.getByText("celery-media")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /run doctor/i }));
-    expect(doctorMutationMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("exposes workpack routes from the command center", () => {
-    render(<AdminCommandCenter />);
-
-    expect(screen.getByText("Workpack Hub")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /intake studio/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/intake?entrypoint=dashboard");
-
-    fireEvent.click(screen.getByRole("button", { name: /discovery library/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/discovery?entrypoint=dashboard");
-
-    fireEvent.click(screen.getByRole("button", { name: /roi dashboard/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/roi?entrypoint=dashboard");
-
-    fireEvent.click(screen.getByRole("button", { name: /exceptions inbox/i }));
-    expect(setLocationMock).toHaveBeenCalledWith(
-      "/workpacks/exceptions?entrypoint=dashboard"
-    );
+    expect(screen.getByText("Worker Job Monitor")).toBeInTheDocument();
+    expect(screen.getByText("Canonical worker_jobs, outbox, lease, capacity, and heartbeat health.")).toBeInTheDocument();
   });
 });

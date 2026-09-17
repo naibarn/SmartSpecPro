@@ -12,11 +12,11 @@ from typing import Any, Awaitable, Callable, Optional, Protocol
 from urllib.parse import unquote, urlparse
 
 import structlog
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.vectordb import VectorCollection
-from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
+from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem, VectorIndexRecord
 from app.orchestrator.rag.chunker import SmartChunker, ChunkConfig
 from app.services.embedding_service import (
     EmbeddingService,
@@ -31,9 +31,17 @@ from app.services.library_vector_observability_service import (
 )
 from app.services.library_pgvector_service import (
     delete_library_chunk_vectors,
-    get_pgvector_table_dimension,
     upsert_library_chunk_vectors,
 )
+from app.services.vector_projection_registry import (
+    VECTORIZE_EMBEDDING_VERSION,
+    build_library_vector_projection_records,
+    enqueue_vector_projection_records,
+    mark_vector_projection_failed,
+    mark_vector_projection_indexed,
+    sha256_text,
+)
+from app.core.system_settings_loader import get_category_settings
 
 logger = structlog.get_logger()
 
@@ -473,7 +481,11 @@ async def _cloudflare_vector_upsert(
     cfg = vectorize_config or {}
     account_id = cfg.get("vectorizeAccountId", "")
     api_token = cfg.get("vectorizeApiToken", "")
-    index_name = cfg.get("vectorizeIndexName", "library-index")
+    index_name = (
+        cfg.get("vectorizeKnowledgeIndexName")
+        or cfg.get("vectorizeIndexName")
+        or "smartaihub-knowledge-v1"
+    )
 
     if not account_id or not api_token:
         raise RuntimeError("Cloudflare Vectorize credentials not configured")
@@ -487,13 +499,17 @@ async def _cloudflare_vector_upsert(
     )
 
     vector_ids = [
-        _cloudflare_library_vector_id(tenant_id, item_id, int(chunk["chunk_index"]))
+        str(
+            chunk.get("vector_id")
+            or _cloudflare_library_vector_id(tenant_id, item_id, int(chunk["chunk_index"]))
+        )
         for chunk in chunks
     ]
 
     vectors = [
         {
             "id": vid,
+            "namespace": f"tenant:{tenant_id}",
             "values": emb,
             "metadata": {
                 # camelCase is the cross-runtime Vectorize contract. The
@@ -501,7 +517,16 @@ async def _cloudflare_vector_upsert(
                 # compatible during the index rebuild window.
                 "tenantId": tenant_id,
                 "tenant_id": tenant_id,
+                "namespace": f"tenant:{tenant_id}",
                 "type": "library_chunk",
+                "vectorIndex": index_name,
+                "vector_index": index_name,
+                "metric": "cosine",
+                "sourceFamily": "library_chunks",
+                "source_family": "library_chunks",
+                "sourceId": item_id,
+                "source_id": str(item_id),
+                "embeddingVersion": VECTORIZE_EMBEDDING_VERSION,
                 "itemId": item_id,
                 "item_id": item_id,
                 "chunkIndex": chunk["chunk_index"],
@@ -509,6 +534,10 @@ async def _cloudflare_vector_upsert(
                 "contentType": chunk.get("content_type") or "text",
                 "content_type": chunk.get("content_type") or "text",
                 "allowed_scopes": chunk.get("allowed_scopes") or [],
+                "contentHash": sha256_text(str(chunk.get("content") or "")),
+                "sourceRevision": chunk.get("source_revision"),
+                "embeddingModel": chunk.get("embedding_model") or "@cf/baai/bge-base-en-v1.5",
+                "embeddingDimensions": CLOUDFLARE_VECTORIZE_DIMENSIONS,
             },
         }
         for vid, chunk, emb in zip(vector_ids, chunks, embeddings)
@@ -528,6 +557,115 @@ async def _cloudflare_vector_upsert(
     return VectorUpsertIds(vector_ids, mutation_ids)
 
 
+async def _mirror_library_item_to_cloudflare(
+    db: AsyncSession,
+    *,
+    tenant_id: str,
+    item_id: int,
+    owner_user_id: int | None,
+    indexable_text: str,
+    chunks: list[dict[str, Any]],
+    target_config: dict[str, Any],
+) -> list[str]:
+    """Project a canonical library item to Vectorize while pgvector reads stay active."""
+    index_name = str(
+        target_config.get("vectorizeKnowledgeIndexName")
+        or target_config.get("vectorizeIndexName")
+        or "smartaihub-knowledge-v1"
+    )
+    source_revision = (
+        f"library-item:{item_id}:content:{sha256_text(indexable_text)}:"
+        f"embedding:{VECTORIZE_EMBEDDING_VERSION}"
+    )
+    target_chunks = [dict(chunk) for chunk in chunks]
+    target_embedder = resolve_library_embedding_service(
+        provider="cloudflare_vectorize",
+        config=target_config,
+    )
+    target_embeddings = target_embedder.embed_batch(
+        [str(chunk.get("content") or "") for chunk in target_chunks]
+    )
+    validate_cloudflare_embeddings(target_embeddings, expected_count=len(target_chunks))
+
+    records = build_library_vector_projection_records(
+        tenant_id=tenant_id,
+        item_id=item_id,
+        chunks=target_chunks,
+        vector_index=index_name,
+        source_revision=source_revision,
+        owner_user_id=owner_user_id,
+        source_locator_kind="r2_or_sql",
+    )
+    vector_ids = [str(record["vector_id"]) for record in records]
+    for chunk, record in zip(target_chunks, records, strict=True):
+        chunk["vector_id"] = record["vector_id"]
+        chunk["source_revision"] = source_revision
+        chunk["embedding_model"] = record["embedding_model"]
+
+    old_rows = (
+        await db.execute(
+            select(VectorIndexRecord.vector_id).where(
+                and_(
+                    VectorIndexRecord.tenant_id == tenant_id,
+                    VectorIndexRecord.source_family == "library_chunks",
+                    VectorIndexRecord.source_id == str(item_id),
+                    VectorIndexRecord.status != "deleted",
+                )
+            )
+        )
+    ).all()
+    old_ids = {str(row.vector_id) for row in old_rows if row.vector_id}
+    await enqueue_vector_projection_records(db, records)
+    await db.commit()
+
+    try:
+        result = await _cloudflare_vector_upsert(
+            tenant_id=tenant_id,
+            item_id=item_id,
+            chunks=target_chunks,
+            embeddings=target_embeddings,
+            vectorize_config=target_config,
+        )
+        confirmed_ids, mutation_ids = validate_cloudflare_vector_upsert_result(
+            result,
+            expected_ids=vector_ids,
+        )
+        stale_ids = sorted(old_ids - set(confirmed_ids))
+        if stale_ids:
+            await delete_cloudflare_vector_ids(
+                tenant_id=tenant_id,
+                item_id=item_id,
+                vector_ids=stale_ids,
+                vectorize_config=target_config,
+                allow_missing=True,
+            )
+            await db.execute(
+                update(VectorIndexRecord)
+                .where(
+                    VectorIndexRecord.vector_index == index_name,
+                    VectorIndexRecord.vector_id.in_(stale_ids),
+                )
+                .values(status="deleted", indexed_at=None, updated_at=datetime.utcnow())
+            )
+        await mark_vector_projection_indexed(
+            db,
+            vector_index=index_name,
+            vector_ids=confirmed_ids,
+            mutation_id=",".join(mutation_ids)[:256],
+        )
+        await db.commit()
+        return confirmed_ids
+    except Exception as exc:  # noqa: BLE001
+        await mark_vector_projection_failed(
+            db,
+            vector_index=index_name,
+            vector_ids=vector_ids,
+            failure_code=str(exc)[:96] or "VECTORIZE_MIRROR_FAILED",
+        )
+        await db.commit()
+        raise
+
+
 def _is_vectorize_safe_id(value: Any) -> bool:
     return isinstance(value, str) and bool(value) and len(value.encode("utf-8")) <= 64
 
@@ -541,7 +679,11 @@ def _cloudflare_vectorize_store(vectorize_config: dict[str, str] | None = None):
     cfg = vectorize_config or {}
     account_id = cfg.get("vectorizeAccountId", "")
     api_token = cfg.get("vectorizeApiToken", "")
-    index_name = cfg.get("vectorizeIndexName", "library-index")
+    index_name = (
+        cfg.get("vectorizeKnowledgeIndexName")
+        or cfg.get("vectorizeIndexName")
+        or "smartaihub-knowledge-v1"
+    )
     if not account_id or not api_token:
         raise RuntimeError("Cloudflare Vectorize credentials not configured")
     return CloudflareVectorizeStore(
@@ -555,6 +697,7 @@ async def delete_cloudflare_vector_ids(
     vector_ids: list[str],
     vectorize_config: dict[str, str] | None = None,
     item_id: int | None = None,
+    allow_missing: bool = False,
 ) -> int:
     """Verify ownership and delete Vectorize IDs; never fall back to Chroma."""
     ids = sorted({value for value in vector_ids if _is_vectorize_safe_id(value)})
@@ -562,11 +705,13 @@ async def delete_cloudflare_vector_ids(
         return 0
 
     store = _cloudflare_vectorize_store(vectorize_config)
-    verified = await store.get_by_ids(
-        ids,
-        expected_tenant_id=tenant_id,
-        expected_item_id=item_id,
-    )
+    get_kwargs: dict[str, Any] = {
+        "expected_tenant_id": tenant_id,
+        "expected_item_id": item_id,
+    }
+    if allow_missing:
+        get_kwargs["allow_missing"] = True
+    verified = await store.get_by_ids(ids, **get_kwargs)
     verified_ids = [str(vector["id"]) for vector in verified]
     if not verified_ids:
         return 0
@@ -630,8 +775,9 @@ def get_vector_upsert_fn(
             )
         return vectorize_fn
 
-    # Default: ChromaDB
-    return _default_vector_upsert
+    if provider == "chroma":
+        return _default_vector_upsert
+    raise ValueError(f"unsupported_vector_provider:{provider}")
 
 
 def _vector_provider_config_from_env() -> dict[str, str]:
@@ -645,7 +791,11 @@ def _vector_provider_config_from_env() -> dict[str, str]:
         "PGVECTOR_CONNECT_TIMEOUT": "pgvectorConnectTimeout",
         "VECTORIZE_ACCOUNT_ID": "vectorizeAccountId",
         "VECTORIZE_API_TOKEN": "vectorizeApiToken",
+        "CLOUDFLARE_AI_API_KEY": "cloudflareAiApiKey",
         "VECTORIZE_INDEX_NAME": "vectorizeIndexName",
+        "VECTORIZE_KNOWLEDGE_INDEX": "vectorizeKnowledgeIndexName",
+        "VECTORIZE_MEDIA_INDEX": "vectorizeMediaIndexName",
+        "VECTORIZE_AGENT_MEMORY_INDEX": "vectorizeAgentMemoryIndexName",
     }
     for env_key, config_key in mapping.items():
         value = os.getenv(env_key)
@@ -664,6 +814,12 @@ def _vector_provider_config_from_env() -> dict[str, str]:
         index_name = os.getenv("VECTORIZE_LIBRARY_INDEX") or os.getenv("LIBRARY_VECTOR_INDEX_NAME")
         if index_name:
             config["vectorizeIndexName"] = index_name
+    if "vectorizeKnowledgeIndexName" not in config:
+        knowledge_index = os.getenv("VECTORIZE_LIBRARY_INDEX") or os.getenv("LIBRARY_VECTOR_INDEX_NAME")
+        if knowledge_index:
+            config["vectorizeKnowledgeIndexName"] = knowledge_index
+    if "cloudflareAiApiKey" not in config and config.get("vectorizeApiToken"):
+        config["cloudflareAiApiKey"] = config["vectorizeApiToken"]
 
     database_url = os.getenv("DATABASE_URL", "").strip()
     if database_url.startswith("postgresql"):
@@ -686,7 +842,7 @@ def resolve_library_vector_provider() -> tuple[str, dict[str, str]]:
         os.getenv("LIBRARY_VECTOR_PROVIDER")
         or os.getenv("VECTOR_DB_PROVIDER")
         or os.getenv("VECTORDB_PROVIDER")
-        or "chroma"
+        or "pgvector"
     ).strip().lower()
     aliases = {
         "vectorize": "cloudflare_vectorize",
@@ -695,8 +851,98 @@ def resolve_library_vector_provider() -> tuple[str, dict[str, str]]:
     }
     provider = aliases.get(raw, raw)
     if provider not in SUPPORTED_VECTOR_PROVIDERS:
-        provider = "chroma"
+        provider = "pgvector"
     return provider, _vector_provider_config_from_env()
+
+
+async def resolve_library_vector_provider_from_db(
+    db: AsyncSession,
+    *,
+    tenant_id: str | None = None,
+) -> tuple[str, dict[str, str]]:
+    """Resolve the active provider from governed DB state, then env fallback.
+
+    The admin UI stores credentials and a prepared target in ``system_settings``.
+    That target must not become active merely because it was saved. A switch-state
+    row is the only authority for a non-default read provider; without one, the
+    conservative active provider is pgvector.
+    """
+    config = _vector_provider_config_from_env()
+    try:
+        stored = await get_category_settings("vectordb", db)
+    except Exception:
+        stored = {}
+
+    for key in (
+        "vectorizeAccountId",
+        "vectorizeApiToken",
+        "cloudflareAiApiKey",
+        "vectorizeIndexName",
+        "vectorizeKnowledgeIndexName",
+        "vectorizeMediaIndexName",
+        "vectorizeAgentMemoryIndexName",
+        "targetProvider",
+        "mirrorWrites",
+        "pgvectorHost",
+        "pgvectorPort",
+        "pgvectorDatabase",
+        "pgvectorUser",
+        "pgvectorPassword",
+        "pgvectorConnectTimeout",
+    ):
+        value = str(stored.get(key) or "").strip()
+        if value:
+            config[key] = value
+
+    # The admin UI stores one Cloudflare API token. It must carry both
+    # Vectorize and Workers AI permissions so the same 768D model used for
+    # backfill can be generated before vectors are written to Vectorize.
+    if "cloudflareAiApiKey" not in config and config.get("vectorizeApiToken"):
+        config["cloudflareAiApiKey"] = config["vectorizeApiToken"]
+
+    active_provider = "pgvector"
+    try:
+        result = await db.execute(
+            text(
+                """
+                SELECT current_read_provider, target_provider, mirror_writes, status
+                FROM library_provider_switch_states
+                WHERE tenant_id = :tenant_id OR tenant_id IS NULL
+                -- A global active cutover must govern tenants that only have
+                -- an automatically-created idle default row. A tenant-level
+                -- active/cutover-complete state still takes precedence.
+                ORDER BY CASE
+                           WHEN tenant_id = :tenant_id
+                                AND status IN ('active', 'cutover_complete') THEN 0
+                           WHEN tenant_id IS NULL
+                                AND status IN ('active', 'cutover_complete') THEN 1
+                           WHEN tenant_id = :tenant_id THEN 2
+                           ELSE 3
+                         END,
+                         updated_at DESC, id DESC
+                LIMIT 1
+                """
+            ),
+            {"tenant_id": str(tenant_id).strip() if tenant_id else None},
+        )
+        row = result.mappings().first()
+        candidate = str(row.get("current_read_provider") or "").strip().lower() if row else ""
+        switch_status = str(row.get("status") or "").strip().lower() if row else ""
+        if candidate == "pgvector" or (
+            candidate in {"cloudflare_vectorize", "chromadb"}
+            and switch_status == "cutover_complete"
+        ):
+            active_provider = candidate
+        if row:
+            target_provider = str(row.get("target_provider") or "").strip().lower()
+            if target_provider:
+                config["targetProvider"] = target_provider
+            config["mirrorWrites"] = "true" if bool(row.get("mirror_writes")) else "false"
+    except Exception:
+        # Earlier deployments may not have the switch-state table yet.
+        active_provider = "pgvector"
+
+    return active_provider, config
 
 
 def _resolve_vector_upsert_fn(explicit: Optional[VectorUpsertFn]) -> VectorUpsertFn:
@@ -725,7 +971,10 @@ def resolve_library_embedding_service(
     if resolved_provider == "cloudflare_vectorize":
         return get_cloudflare_workers_ai_embedding_service(
             account_id=resolved_config.get("vectorizeAccountId"),
-            api_token=os.getenv("CLOUDFLARE_AI_API_KEY"),
+            api_token=(
+                resolved_config.get("cloudflareAiApiKey")
+                or os.getenv("CLOUDFLARE_AI_API_KEY")
+            ),
         )
     return get_embedding_service()
 
@@ -928,21 +1177,62 @@ async def delete_library_item_vectors(
     removed_pgvector_rows = 0
     removed_cloudflare_vectors = 0
 
-    provider, _provider_config = resolve_library_vector_provider()
+    provider, _provider_config = await resolve_library_vector_provider_from_db(
+        db,
+        tenant_id=tenant_id,
+    )
     if provider == "pgvector":
         removed_pgvector_rows = await delete_library_chunk_vectors(
             db,
             tenant_id=tenant_id,
             item_id=library_item_id,
         )
-    elif provider == "cloudflare_vectorize" and removed_vector_refs:
-        vector_ids = [row.vector_ref_id for row in chunk_rows if row.vector_ref_id]
+    elif provider == "cloudflare_vectorize":
+        registry_rows = (
+            await db.execute(
+                select(VectorIndexRecord.vector_id).where(
+                    and_(
+                        VectorIndexRecord.tenant_id == tenant_id,
+                        VectorIndexRecord.source_family == "library_chunks",
+                        VectorIndexRecord.source_id == str(library_item_id),
+                        VectorIndexRecord.status.in_(
+                            ["queued", "indexing", "indexed", "stale", "failed", "delete_pending"]
+                        ),
+                    )
+                )
+            )
+        ).all()
+        vector_ids = sorted(
+            {
+                str(row.vector_ref_id)
+                for row in chunk_rows
+                if row.vector_ref_id
+            }
+            | {str(row.vector_id) for row in registry_rows if row.vector_id}
+        )
         removed_cloudflare_vectors = await delete_cloudflare_vector_ids(
             tenant_id=tenant_id,
             item_id=library_item_id,
             vector_ids=vector_ids,
             vectorize_config=_provider_config,
+            allow_missing=True,
         )
+        if registry_rows:
+            await db.execute(
+                update(VectorIndexRecord)
+                .where(
+                    and_(
+                        VectorIndexRecord.tenant_id == tenant_id,
+                        VectorIndexRecord.source_family == "library_chunks",
+                        VectorIndexRecord.source_id == str(library_item_id),
+                    )
+                )
+                .values(
+                    status="deleted",
+                    indexed_at=None,
+                    updated_at=datetime.utcnow(),
+                )
+            )
 
     await db.execute(
         delete(LibraryChunk).where(
@@ -1086,9 +1376,14 @@ async def process_library_index_job(
     embedding_service: Optional[EmbeddingService] = None,
     vector_upsert_fn: Optional[VectorUpsertFn] = None,
     job_payload: Optional[dict[str, Any]] = None,
+    job_claimed: bool = False,
 ) -> dict[str, Any]:
     """Process a single index job through extract/chunk/embed/upsert pipeline."""
-    job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
+    job = await db.scalar(
+        select(LibraryIndexJob)
+        .where(LibraryIndexJob.id == job_id)
+        .with_for_update()
+    )
     if not job:
         raise LookupError(f"library_index_job_not_found:{job_id}")
 
@@ -1100,16 +1395,45 @@ async def process_library_index_job(
             "duplicate": True,
         }
 
-    job.status = PROCESSING_STATUS
-    job.attempt_count = (job.attempt_count or 0) + 1
-    job.started_at = datetime.utcnow()
-    job.last_error = None
-    job.next_retry_at = None
-    job.updated_at = datetime.utcnow()
-    await db.commit()
+    # Direct Celery deliveries may overlap with the periodic retry batch. The
+    # row lock above makes this check an atomic single-job claim; the retry
+    # batch passes job_claimed=True after claiming a whole batch up front.
+    if job.status == PROCESSING_STATUS and not job_claimed:
+        return {
+            "job_id": job.id,
+            "status": PROCESSING_STATUS,
+            "chunks_written": 0,
+            "duplicate": True,
+        }
+
+    if not job_claimed:
+        job.status = PROCESSING_STATUS
+        job.attempt_count = (job.attempt_count or 0) + 1
+        job.started_at = datetime.utcnow()
+        job.last_error = None
+        job.next_retry_at = None
+        job.updated_at = datetime.utcnow()
+        await db.commit()
+
+    # Multiple durable jobs can legitimately point at the same item after a
+    # backfill/retry repair. Serialize the destructive chunk replacement per
+    # item so concurrent workers cannot violate the unique item/chunk index.
+    # SQLite-backed unit tests do not provide PostgreSQL advisory locks.
+    try:
+        bind = db.get_bind()
+        dialect_name = getattr(getattr(bind, "dialect", None), "name", "")
+    except Exception:  # noqa: BLE001
+        dialect_name = ""
+    if dialect_name == "postgresql":
+        await db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
+            {"lock_key": f"library-index-item:{job.tenant_id}:{job.library_item_id}"},
+        )
 
     item: Optional[LibraryItem] = None
     parsed_payload: Optional[dict[str, Any]] = None
+    registry_vector_index: str | None = None
+    registry_vector_ids: list[str] = []
     try:
         if job_payload is not None:
             parsed_payload = parse_library_index_job_payload(job_payload)
@@ -1293,7 +1617,10 @@ async def process_library_index_job(
         parent_chunks = [c for c in all_chunks if c.is_parent]
 
         # Only embed and upsert child chunks (parents stored for context only)
-        resolved_provider, resolved_provider_config = resolve_library_vector_provider()
+        resolved_provider, resolved_provider_config = await resolve_library_vector_provider_from_db(
+            db,
+            tenant_id=job.tenant_id,
+        )
         embedder = resolve_library_embedding_service(
             embedding_service,
             provider=resolved_provider,
@@ -1303,7 +1630,10 @@ async def process_library_index_job(
         if resolved_provider == "cloudflare_vectorize":
             validate_cloudflare_embeddings(embeddings, expected_count=len(child_chunks))
 
-        upsert = _resolve_vector_upsert_fn(vector_upsert_fn)
+        upsert = vector_upsert_fn or get_vector_upsert_fn(
+            resolved_provider,
+            config=resolved_provider_config,
+        )
         chunks_for_upsert = [
             {
                 "content": c.content,
@@ -1315,6 +1645,37 @@ async def process_library_index_job(
             }
             for c in child_chunks
         ]
+        if resolved_provider == "cloudflare_vectorize":
+            registry_vector_index = str(
+                resolved_provider_config.get("vectorizeKnowledgeIndexName")
+                or resolved_provider_config.get("vectorizeIndexName")
+                or "smartaihub-knowledge-v1"
+            )
+            source_revision = (
+                f"library-item:{item.id}:content:{sha256_text(indexable_text)}:"
+                f"embedding:{VECTORIZE_EMBEDDING_VERSION}"
+            )
+            registry_records = build_library_vector_projection_records(
+                tenant_id=job.tenant_id,
+                item_id=job.library_item_id,
+                chunks=chunks_for_upsert,
+                vector_index=registry_vector_index,
+                source_revision=source_revision,
+                owner_user_id=item.owner_user_id,
+                source_locator_kind="r2_or_sql",
+            )
+            # The provider ID must be the same deterministic ID recorded in
+            # the registry. This prevents a second identity from being
+            # created during reindex and makes provider/SQL reconciliation
+            # exact across retries.
+            registry_vector_ids = [str(record["vector_id"]) for record in registry_records]
+            for chunk, record in zip(chunks_for_upsert, registry_records):
+                chunk["vector_id"] = record["vector_id"]
+                chunk["source_revision"] = source_revision
+                chunk["embedding_model"] = record["embedding_model"]
+            await enqueue_vector_projection_records(db, registry_records)
+            # Durable queued intent is committed before the remote mutation.
+            await db.commit()
         old_vector_ids: list[str] = []
         if resolved_provider == "cloudflare_vectorize":
             existing_vector_rows = (
@@ -1338,16 +1699,38 @@ async def process_library_index_job(
         vector_ids = await upsert_result if inspect.isawaitable(upsert_result) else upsert_result
         vectorize_mutation_ids: list[str] = []
         if resolved_provider == "cloudflare_vectorize":
-            expected_vector_ids = [
-                _cloudflare_library_vector_id(job.tenant_id, job.library_item_id, child.index)
-                for child in child_chunks
-            ]
+            expected_vector_ids = registry_vector_ids
             vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
                 vector_ids,
                 expected_ids=expected_vector_ids,
             )
         elif not isinstance(vector_ids, list) or len(vector_ids) != len(child_chunks):
             raise RuntimeError("vector_id_count_mismatch")
+
+        mirror_target = str(
+            resolved_provider_config.get("targetProvider") or ""
+        ).strip().lower()
+        mirror_enabled = str(
+            resolved_provider_config.get("mirrorWrites") or ""
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if resolved_provider == "pgvector" and mirror_enabled and mirror_target == "cloudflare_vectorize":
+            # Keep pgvector authoritative for reads until approval, while the
+            # same canonical content is independently embedded and projected
+            # into the verified Vectorize target.
+            registry_vector_index = str(
+                resolved_provider_config.get("vectorizeKnowledgeIndexName")
+                or resolved_provider_config.get("vectorizeIndexName")
+                or "smartaihub-knowledge-v1"
+            )
+            await _mirror_library_item_to_cloudflare(
+                db,
+                tenant_id=job.tenant_id,
+                item_id=job.library_item_id,
+                owner_user_id=item.owner_user_id,
+                indexable_text=indexable_text,
+                chunks=chunks_for_upsert,
+                target_config=resolved_provider_config,
+            )
 
         if resolved_provider == "cloudflare_vectorize":
             await delete_stale_cloudflare_vectors(
@@ -1356,6 +1739,12 @@ async def process_library_index_job(
                 old_vector_ids=old_vector_ids,
                 new_vector_ids=[str(vector_id) for vector_id in vector_ids],
                 vectorize_config=resolved_provider_config,
+            )
+            await mark_vector_projection_indexed(
+                db,
+                vector_index=registry_vector_index or "library-index",
+                vector_ids=registry_vector_ids,
+                mutation_id=",".join(vectorize_mutation_ids)[:256],
             )
 
         # ── Step 2: Delete ONLY non-markdown_source chunks ───────────────────────
@@ -1471,6 +1860,34 @@ async def process_library_index_job(
 
         await db.commit()
 
+        if registry_vector_index:
+            # A completed index job is the earliest reliable event for an
+            # automatic promotion check. The helper still requires a completed
+            # campaign and full server-measured registry evidence, so this is
+            # safe to call for every successful job and avoids a manual approve
+            # step after the final projection is acknowledged.
+            try:
+                from app.services.library_cutover_service import (
+                    maybe_auto_promote_vectorize_cutover,
+                )
+
+                await maybe_auto_promote_vectorize_cutover(
+                    db,
+                    tenant_id=job.tenant_id,
+                    target_index=registry_vector_index,
+                    smoke_passed=resolved_provider == "cloudflare_vectorize" or mirror_enabled,
+                )
+            except Exception as auto_promote_error:  # noqa: BLE001
+                # Automatic promotion is best effort; a temporary control
+                # plane/provider error must not turn a successful index job
+                # into a failed job. Health polling retries the same gate.
+                logger.warning(
+                    "library_vectorize_auto_promotion_check_failed",
+                    job_id=job.id,
+                    tenant_id=job.tenant_id,
+                    error=str(auto_promote_error)[:160],
+                )
+
         logger.info(
             "library_index_job_completed",
             job_id=job.id,
@@ -1531,6 +1948,18 @@ async def process_library_index_job(
         error_message = str(exc)
         is_transient = _is_transient_indexing_error(exc)
         terminal = (not is_transient) or job.attempt_count >= (job.max_attempts or 5)
+
+        if registry_vector_index and registry_vector_ids:
+            try:
+                await mark_vector_projection_failed(
+                    db,
+                    vector_index=registry_vector_index,
+                    vector_ids=registry_vector_ids,
+                    failure_code=error_message or "VECTORIZE_INDEX_FAILED",
+                )
+            except Exception:  # noqa: BLE001
+                # A registry outage must not hide the original job failure.
+                await db.rollback()
 
         if terminal:
             failure_classification = "transient_exhausted" if is_transient else "permanent"
@@ -1642,23 +2071,6 @@ async def retry_due_library_index_jobs(
 ) -> dict[str, int]:
     """Retry and process index jobs due for execution."""
     now = datetime.utcnow()
-    provider_name, provider_config = resolve_library_vector_provider()
-    effective_embedding_service = resolve_library_embedding_service(
-        embedding_service,
-        provider=provider_name,
-        config=provider_config,
-    )
-    if provider_name == "pgvector":
-        table_dimension = await get_pgvector_table_dimension(db)
-        embedder_dimension = int(getattr(effective_embedding_service, "dimension", 0) or 0)
-        if (
-            table_dimension is not None
-            and embedder_dimension > 0
-            and table_dimension != embedder_dimension
-        ):
-            raise RuntimeError(
-                f"pgvector_dimension_mismatch:table={table_dimension}:embedding={embedder_dimension}"
-            )
 
     due_jobs = (
         (
@@ -1675,15 +2087,35 @@ async def retry_due_library_index_jobs(
                             LibraryIndexJob.next_retry_at.is_not(None),
                             LibraryIndexJob.next_retry_at <= now,
                         ),
+                        and_(
+                            LibraryIndexJob.status == PROCESSING_STATUS,
+                            LibraryIndexJob.started_at.is_not(None),
+                            LibraryIndexJob.started_at <= now - timedelta(minutes=15),
+                        ),
                     )
                 )
                 .order_by(LibraryIndexJob.id.asc())
                 .limit(limit)
+                .with_for_update(skip_locked=True)
             )
         )
         .scalars()
         .all()
     )
+
+    # Claim the whole batch in one transaction before doing network/embedding
+    # work. The periodic task can run longer than its one-minute schedule;
+    # this prevents overlapping retry tasks from selecting the same jobs.
+    claim_time = datetime.utcnow()
+    for job in due_jobs:
+        job.status = PROCESSING_STATUS
+        job.attempt_count = (job.attempt_count or 0) + 1
+        job.started_at = claim_time
+        job.last_error = None
+        job.next_retry_at = None
+        job.updated_at = claim_time
+    if due_jobs:
+        await db.commit()
 
     summary = {
         "processed": 0,
@@ -1696,8 +2128,12 @@ async def retry_due_library_index_jobs(
         result = await process_library_index_job(
             db,
             job.id,
-            embedding_service=effective_embedding_service,
+            # Provider and credentials are resolved per job/tenant inside the
+            # processor. A batch-wide resolver could send a tenant's retry to
+            # the wrong provider immediately after a governed cutover.
+            embedding_service=embedding_service,
             vector_upsert_fn=vector_upsert_fn,
+            job_claimed=True,
         )
         summary["processed"] += 1
 

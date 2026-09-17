@@ -194,7 +194,6 @@ vi.mock("@/hooks/useTenantFeatureFlag", () => ({
     desktopHostEnabled: true,
     desktopAdvancedLocalMode: true,
     desktopPackageSync: true,
-    desktopAgencyRuntime: true,
     desktopWorkerProjection: true,
     agencyHybridAdk: true,
     agencyHybridAdkKillSwitch: true,

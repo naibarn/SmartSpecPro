@@ -755,9 +755,7 @@ function App() {
       if (restoredConnection.connection) {
         setConnectionState("connected");
         if (updateConnectionMessage) {
-          setConnectMessage(
-            "Restored saved Worker App connection. Access tokens will refresh automatically.",
-          );
+          setConnectMessage("");
         }
       } else if (connectionStateRef.current !== "pending") {
         setConnectionState("not_connected");
@@ -1173,6 +1171,9 @@ function App() {
   const [connectionHealthRecoveryTimedOut, setConnectionHealthRecoveryTimedOut] =
     useState(false);
   const [connectionHealthStale, setConnectionHealthStale] = useState(false);
+  const [connectionHealthRefreshToken, setConnectionHealthRefreshToken] =
+    useState(0);
+  const connectionHealthGenerationRef = useRef(0);
   useEffect(() => {
     let cancelled = false;
     const scheduleNextCheck = (
@@ -1191,11 +1192,12 @@ function App() {
       }, delayMs);
     };
     const check = async () => {
+      const generation = connectionHealthGenerationRef.current;
       const health = await safeInvoke<ConnectionHealth | null>(
         "worker_app_check_connection_health",
         null,
       );
-      if (cancelled) return;
+      if (cancelled || generation !== connectionHealthGenerationRef.current) return;
       if (!health) {
         setConnectionHealthStale(true);
         scheduleNextCheck();
@@ -1294,7 +1296,7 @@ function App() {
         connectionHealthRetryTimerRef.current = null;
       }
     };
-  }, []);
+  }, [connectionHealthRefreshToken]);
 
   useEffect(() => {
     const handle = window.setInterval(() => {
@@ -1330,6 +1332,7 @@ function App() {
       ) ?? null,
     [activeJobs],
   );
+  const currentWorkerJob = renderJob ?? activeJobs[0] ?? null;
 
   const readinessLabel = useMemo(() => {
     if (doctor.status === "ready") return "Ready for render jobs";
@@ -1428,36 +1431,35 @@ function App() {
     if (connectionState === "pending") {
       return {
         label: "Approval pending",
-        detail: "Approve this Worker App in the browser.",
+        detail: "Finish approval in your browser.",
         tone: "pending",
       };
     }
     if (!savedConnection) {
       return {
         label: "Not connected",
-        detail: "Connect this machine to receive worker jobs.",
+        detail: "Connect to receive worker jobs.",
         tone: "error",
       };
     }
     if (!connectionHealth) {
       return {
-        label: "Connected · checking access",
-        detail: "Verifying the saved connection with Smart AI Hub...",
+        label: "Checking connection",
+        detail: "Checking the saved connection.",
         tone: "pending",
       };
     }
     if (connectionHealthStale) {
       return {
         label: "Connection check delayed",
-        detail:
-          "The last connection result is stale. The Worker App is checking again and will not claim readiness until the server responds.",
+        detail: "Waiting for a fresh server check.",
         tone: "warning",
       };
     }
     if (!connectionHealth.connected) {
       return {
         label: "Not connected",
-        detail: "Connect this machine to receive worker jobs.",
+        detail: "Connect to receive worker jobs.",
         tone: "error",
       };
     }
@@ -1470,8 +1472,8 @@ function App() {
           ? "Smart AI Hub unavailable · retrying"
           : "Reconnecting automatically",
         detail: connectionHealthRecoveryTimedOut
-          ? "Smart AI Hub has not responded for 2 minutes. The Worker App will continue retrying without deleting this connection."
-          : "Smart AI Hub is temporarily unavailable. The Worker App will retry automatically.",
+          ? "Smart AI Hub is unavailable. Retrying automatically."
+          : "Retrying automatically.",
         tone: connectionHealthRecoveryTimedOut ? "warning" : "pending",
       };
     }
@@ -1492,7 +1494,7 @@ function App() {
     if (runtimeUpdateCheckError) {
       return {
         label: "Connected · version check unavailable",
-        detail: `Runtime freshness could not be checked: ${runtimeUpdateCheckError}. Existing compatible runtime remains usable.`,
+        detail: "Runtime version check is unavailable. Existing jobs can continue.",
         tone: "warning",
       };
     }
@@ -1508,21 +1510,20 @@ function App() {
     if (remotionRuntimeReady && loopStatus.running) {
       return {
         label: "Ready to receive jobs",
-        detail: "Connection, Remotion runtime, and worker loop are active.",
+        detail: "Connection and worker loop are active.",
         tone: "ready",
       };
     }
     if (remotionRuntimeReady) {
       return {
         label: "Connected · loop stopped",
-        detail:
-          "Access and Remotion runtime are valid. Start the worker loop to receive jobs.",
+        detail: "Start the worker loop to receive jobs.",
         tone: "warning",
       };
     }
     return {
       label: "Connected · runtime needs attention",
-      detail: "Access is valid, but render readiness checks are not complete.",
+      detail: "Runtime checks need attention before receiving jobs.",
       tone: "warning",
     };
   }, [
@@ -1540,6 +1541,7 @@ function App() {
     savedConnection,
   ]);
   const localizedConnectionStatus = localizeConnectionPresentation(connectionStatus, settings.locale);
+  const thaiLocale = settings.locale === "th";
 
   const doctorCheckById = useMemo(() => {
     return new Map(doctor.checks.map((check) => [check.id, check]));
@@ -1597,17 +1599,17 @@ function App() {
   const stopLoopDisabled = !loopStatus.running;
   const terminalText = renderTerminalText(executor);
   const startLoopLabel = !startupUpdateCheckDone
-    ? "Checking for updates..."
+    ? thaiLocale ? "กำลังตรวจสอบ..." : "Checking..."
     : loopStatus.running
-      ? "Loop already running"
+      ? thaiLocale ? "กำลังทำงาน" : "Running"
       : savedConnection
-        ? "Start worker loop"
+        ? thaiLocale ? "เริ่มรับงาน" : "Start worker"
         : connectionState === "pending"
-          ? "Waiting for approval"
-          : "Connect before starting";
+          ? thaiLocale ? "รอการอนุมัติ" : "Waiting approval"
+          : thaiLocale ? "เชื่อมต่อก่อน" : "Connect first";
   const stopLoopLabel = loopStatus.running
-    ? "Stop loop"
-    : "Loop already stopped";
+    ? thaiLocale ? "หยุดรับงาน" : "Stop worker"
+    : thaiLocale ? "หยุดแล้ว" : "Stopped";
 
   const saveSettings = async (patch: Partial<Settings>) => {
     const nextSettings = { ...settings, ...patch };
@@ -1639,15 +1641,21 @@ function App() {
   };
 
   const connect = async () => {
+    connectionHealthGenerationRef.current += 1;
+    connectionHealthAlertedRef.current = null;
+    connectionHealthTransientStartedAtRef.current = null;
+    setConnectionHealth(null);
+    setConnectionHealthStale(false);
+    setConnectionHealthRecoveryTimedOut(false);
+    setConnectSession(null);
     setConnectionState("pending");
-    setConnectMessage("Opening browser approval...");
+    setConnectMessage("");
     setConnectedWorker(null);
     try {
       const session = await invoke<WorkerConnectSession>(
         "worker_app_start_connect_session",
       );
       setConnectSession(session);
-      setConnectMessage("Approve this Worker App in your browser.");
     } catch (error) {
       setConnectionState("error");
       setConnectMessage(error instanceof Error ? error.message : String(error));
@@ -1679,9 +1687,16 @@ function App() {
             };
             setSavedConnection(nextSession);
           }
+          connectionHealthGenerationRef.current += 1;
+          connectionHealthAlertedRef.current = null;
+          connectionHealthTransientStartedAtRef.current = null;
+          setConnectionHealth(null);
+          setConnectionHealthStale(false);
+          setConnectionHealthRecoveryTimedOut(false);
+          setConnectionHealthRefreshToken((value) => value + 1);
           setConnectionState("connected");
           setConnectedWorker(result.worker ?? null);
-          setConnectMessage("Connected. This app can now receive worker jobs.");
+          setConnectMessage("");
           return;
         }
         if (
@@ -1696,7 +1711,7 @@ function App() {
           );
           return;
         }
-        setConnectMessage("Waiting for browser approval...");
+        setConnectMessage("");
       } catch (error) {
         if (!cancelled) {
           setConnectionState("error");
@@ -2235,10 +2250,6 @@ function App() {
             <strong>{runtimeVersionStatus.label}</strong>
             <span>{runtimeVersionStatus.detail}</span>
           </div>
-          <p className="subtle">
-            Connect in your browser, verify the Worker App runtime, then let this
-            app process jobs in the background.
-          </p>
         </div>
         <div className="hero-status-stack">
           <div
@@ -2349,52 +2360,62 @@ function App() {
         <section className="dashboard-grid" role="tabpanel">
           <article className="panel connect-panel">
             <div className="panel-heading">
-              <p className="eyebrow">Connection</p>
-              <h2>Connect to Smart AI Hub</h2>
+              <p className="eyebrow">{thaiLocale ? "การเชื่อมต่อ" : "Connection"}</p>
+              <h2>{thaiLocale ? "การเชื่อมต่อ Worker" : "Worker connection"}</h2>
             </div>
-            <p className="subtle">
-              Approval opens in your browser. This app never asks for a
-              username, password, API key, manual token, cookie, or pasted
-              credential.
-            </p>
-            {connectedWorker ? (
-              <p className="connection-summary">
-                Connected worker: <strong>{connectedWorker.displayName}</strong>
-              </p>
-            ) : null}
             <div
               className={`connection-status-card ${connectionStatus.tone}`}
               data-testid="connection-status-panel"
+              role="status"
+              aria-live="polite"
             >
-              <strong>{localizedConnectionStatus.label}</strong>
+              <span className="connection-status-heading">
+                <span className="connection-status-dot" aria-hidden="true" />
+                <strong>{localizedConnectionStatus.label}</strong>
+              </span>
               <span>{localizedConnectionStatus.detail}</span>
             </div>
-            {savedConnection?.lastRefreshedAt ? (
-              <p className="subtle">
-                Last token refresh:{" "}
-                {new Date(savedConnection.lastRefreshedAt).toLocaleString()}
-              </p>
+
+            <div className="connection-facts" aria-label={thaiLocale ? "รายละเอียด Worker" : "Worker details"}>
+              <div>
+                <span>{thaiLocale ? "Worker" : "Worker"}</span>
+                <strong>{connectedWorker?.displayName ?? savedConnection?.worker.displayName ?? "—"}</strong>
+              </div>
+              <div>
+                <span>{thaiLocale ? "Worker loop" : "Worker loop"}</span>
+                <strong className={loopStatus.running ? "is-running" : "is-stopped"}>
+                  {loopStatus.running ? (thaiLocale ? "กำลังทำงาน" : "Running") : (thaiLocale ? "หยุดอยู่" : "Stopped")}
+                </strong>
+              </div>
+            </div>
+
+            {loopStatus.running || currentWorkerJob || executor.currentJobLabel ? (
+              <div className="current-work-card" data-testid="current-worker-work">
+                <span className="connection-meta-label">{thaiLocale ? "งานที่กำลังทำ" : "Current work"}</span>
+                <strong>{currentWorkerJob?.jobLabel || executor.currentJobLabel || (thaiLocale ? "กำลังรอรับงาน" : "Waiting for jobs")}</strong>
+                {currentWorkerJob ? (
+                  <span>{currentWorkerJob.progressPercent}%{currentWorkerJob.message ? ` · ${currentWorkerJob.message}` : ""}</span>
+                ) : null}
+              </div>
             ) : null}
-            {/* Expiry was computed for the warning dialogs but never SHOWN, so
-              "last refresh" left the obvious question — when does it run out?
-              — unanswered (2026-07-31). */}
+
             {connectionHealth ? (
               <p
-                className={`subtle${connectionHealth.expiringSoon || (connectionHealth.hoursUntilExpiry ?? 0) < 0 ? " warning" : ""}`}
+                className={`connection-meta${connectionHealth.expiringSoon || (connectionHealth.hoursUntilExpiry ?? 0) < 0 ? " warning" : ""}`}
                 data-testid="connection-expiry"
               >
-                {formatConnectionExpiry(connectionHealth)}
-                {connectionHealth.expiringSoon ? " — reconnect soon" : ""}
-                {` · Last checked ${new Date(connectionHealth.checkedAt).toLocaleString()}`}
+                <span>{formatConnectionExpiry(connectionHealth)}{connectionHealth.expiringSoon ? (thaiLocale ? " · ใกล้หมดอายุ" : " · reconnect soon") : ""}</span>
+                <span>{thaiLocale ? "ตรวจล่าสุด" : "Checked"} {new Date(connectionHealth.checkedAt).toLocaleString()}</span>
               </p>
-            ) : (
-              <p className="subtle" data-testid="connection-expiry">
-                Connection status and expiry: checking...
+            ) : savedConnection ? (
+              <p className="connection-meta" data-testid="connection-expiry">
+                {thaiLocale ? "กำลังตรวจสอบการเชื่อมต่อ..." : "Checking connection..."}
               </p>
-            )}
+            ) : null}
+
             {connectSession && connectionState === "pending" ? (
-              <div className="connect-code-box">
-                <span>Browser code</span>
+              <div className="connect-code-box" role="status" aria-live="polite">
+                <span>{thaiLocale ? "รออนุมัติใน browser" : "Browser approval"}</span>
                 <strong>{connectSession.userCode}</strong>
                 <a href={connectSession.verificationUriComplete}>
                   {connectSession.verificationUriComplete}
@@ -2408,18 +2429,20 @@ function App() {
             ) : null}
             {startupRecoveryRequired ? (
               <p className="connect-message error" data-testid="startup-recovery-required">
-                แอปตรวจพบว่ารอบก่อนหน้าปิดไม่สมบูรณ์ จึงหยุดรับงานอัตโนมัติเพื่อป้องกันงานซ้ำและ token ชนกัน กด “Start worker loop” หลังตรวจสอบสถานะได้เลย
+                {thaiLocale
+                  ? "รอบก่อนหน้าปิดไม่สมบูรณ์ ระบบจึงหยุดรับงานไว้ ตรวจสอบสถานะแล้วกดเริ่มรับงาน"
+                  : "The previous run did not close cleanly. Review the status, then start the worker."}
               </p>
             ) : null}
-            <button type="button" className="primary-button" onClick={connect}>
+            <button type="button" className="primary-button connection-primary-action" onClick={connect}>
               {connectionState === "pending"
-                ? "Waiting for browser approval"
+                ? thaiLocale ? "รออนุมัติใน browser" : "Waiting for approval"
                 : connectionState === "connected" ||
                     (savedConnection && connectionState === "error")
-                  ? "Reconnect Worker App"
-                  : "Connect to Smart AI Hub"}
+                  ? thaiLocale ? "เชื่อมต่อใหม่" : "Reconnect"
+                  : thaiLocale ? "เชื่อมต่อ Worker" : "Connect worker"}
             </button>
-            <div className="button-row">
+            <div className="button-row connection-actions">
               <button
                 type="button"
                 className="secondary-button"

@@ -315,16 +315,20 @@ async def process_onedrive_index_job(
     from app.models.library import LibraryChunk, LibraryIndexJob, LibraryItem
     from app.services.library_indexing_service import (
         chunk_text_content,
-        _cloudflare_library_vector_id,
-        delete_cloudflare_vector_ids,
         delete_stale_cloudflare_vectors,
         get_vector_upsert_fn,
         resolve_library_embedding_service,
-        resolve_library_vector_provider,
+        resolve_library_vector_provider_from_db,
+        VECTORIZE_EMBEDDING_VERSION,
         validate_cloudflare_embeddings,
         validate_cloudflare_vector_upsert_result,
     )
     from app.services.credit_billing_client import charge_credits_post_deduct
+    from app.services.vector_projection_registry import (
+        build_vector_projection_records,
+        enqueue_vector_projection_records,
+        mark_vector_projection_indexed,
+    )
 
     job = await db.scalar(select(LibraryIndexJob).where(LibraryIndexJob.id == job_id))
     if not job:
@@ -414,7 +418,10 @@ async def process_onedrive_index_job(
         if not chunks:
             raise ValueError("Chunking produced no content")
 
-        resolved_provider, resolved_provider_config = resolve_library_vector_provider()
+        resolved_provider, resolved_provider_config = await resolve_library_vector_provider_from_db(
+            db,
+            tenant_id=job.tenant_id,
+        )
         embedder = resolve_library_embedding_service(
             embedding_service,
             provider=resolved_provider,
@@ -424,7 +431,9 @@ async def process_onedrive_index_job(
         if resolved_provider == "cloudflare_vectorize":
             validate_cloudflare_embeddings(embeddings, expected_count=len(chunks))
 
-        # Build vector IDs with onedrive: prefix
+        # Build the provider payload from the canonical source. Vectorize IDs
+        # come from the registry so retries/re-indexes cannot create a second
+        # identity for the same source revision.
         tenant_id = job.tenant_id
         vector_ids = [
             f"onedrive:{tenant_id}:{drive_item_id}:{chunk['chunk_index']}"
@@ -433,9 +442,41 @@ async def process_onedrive_index_job(
 
         # Compute allowed_scopes from parent item
         item_scopes = item.allowed_scopes or []
+        chunks_for_upsert = [
+            {**chunk, "allowed_scopes": list(item_scopes)} for chunk in chunks
+        ]
         vectorize_mutation_ids: list[str] = []
+        registry_vector_index: str | None = None
+        registry_vector_ids: list[str] = []
         old_vector_ids: list[str] = []
         if resolved_provider == "cloudflare_vectorize":
+            registry_vector_index = str(
+                resolved_provider_config.get("vectorizeKnowledgeIndexName")
+                or resolved_provider_config.get("vectorizeIndexName")
+                or "smartaihub-knowledge-v1"
+            )
+            source_revision = (
+                f"onedrive:{job.library_item_id}:content:{content_hash}:"
+                f"embedding:{VECTORIZE_EMBEDDING_VERSION}"
+            )
+            registry_records = build_vector_projection_records(
+                tenant_id=tenant_id,
+                source_family="onedrive_documents",
+                source_table="library_items",
+                source_id=str(job.library_item_id),
+                chunks=chunks_for_upsert,
+                vector_index=registry_vector_index,
+                source_revision=source_revision,
+                owner_user_id=item.owner_user_id,
+                source_locator_kind="onedrive_canonical",
+            )
+            registry_vector_ids = [str(record["vector_id"]) for record in registry_records]
+            for chunk, record in zip(chunks_for_upsert, registry_records):
+                chunk["vector_id"] = record["vector_id"]
+                chunk["source_revision"] = source_revision
+                chunk["embedding_model"] = record["embedding_model"]
+            await enqueue_vector_projection_records(db, registry_records)
+            await db.commit()
             existing_vector_rows = (
                 await db.execute(
                     select(LibraryChunk.vector_ref_id).where(
@@ -456,7 +497,7 @@ async def process_onedrive_index_job(
             upsert_result = active_upsert_fn(
                 tenant_id=tenant_id,
                 item_id=job.library_item_id,
-                chunks=[{**chunk, "allowed_scopes": list(item_scopes)} for chunk in chunks],
+                chunks=chunks_for_upsert,
                 embeddings=embeddings,
             )
             if inspect.isawaitable(upsert_result):
@@ -464,10 +505,7 @@ async def process_onedrive_index_job(
             if resolved_provider == "cloudflare_vectorize":
                 vector_ids, vectorize_mutation_ids = validate_cloudflare_vector_upsert_result(
                     upsert_result,
-                    expected_ids=[
-                        _cloudflare_library_vector_id(tenant_id, job.library_item_id, int(chunk["chunk_index"]))
-                        for chunk in chunks
-                    ],
+                    expected_ids=registry_vector_ids,
                 )
                 await delete_stale_cloudflare_vectors(
                     tenant_id=tenant_id,
@@ -475,6 +513,12 @@ async def process_onedrive_index_job(
                     old_vector_ids=old_vector_ids,
                     new_vector_ids=vector_ids,
                     vectorize_config=resolved_provider_config,
+                )
+                await mark_vector_projection_indexed(
+                    db,
+                    vector_index=registry_vector_index or "smartaihub-knowledge-v1",
+                    vector_ids=registry_vector_ids,
+                    mutation_id=",".join(vectorize_mutation_ids)[:256],
                 )
         else:
             from app.core.vectordb import VectorCollection
@@ -795,7 +839,7 @@ async def _disconnect_cleanup_async(user_id: int, tenant_id: str = ""):
     from app.services.microsoft_token_service import MicrosoftTokenService
     from app.services.library_indexing_service import (
         delete_cloudflare_vector_ids,
-        resolve_library_vector_provider,
+        resolve_library_vector_provider_from_db,
     )
     from sqlalchemy import text
 
@@ -828,9 +872,12 @@ async def _disconnect_cleanup_async(user_id: int, tenant_id: str = ""):
         )
         items_to_clean = items_result.fetchall()
 
-        active_provider, provider_config = resolve_library_vector_provider()
         for row in items_to_clean:
             item_id, item_tenant_id, drive_item_id = row
+            active_provider, provider_config = await resolve_library_vector_provider_from_db(
+                db,
+                tenant_id=str(item_tenant_id),
+            )
             vector_rows = await db.execute(
                 text("SELECT vector_ref_id FROM library_chunks WHERE library_item_id = :item_id"),
                 {"item_id": item_id},
@@ -1183,7 +1230,7 @@ async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: 
     from sqlalchemy import text
     from app.services.library_indexing_service import (
         delete_cloudflare_vector_ids,
-        resolve_library_vector_provider,
+        resolve_library_vector_provider_from_db,
     )
 
     # Find the item (filter by tenant_id for multi-tenant safety)
@@ -1209,7 +1256,10 @@ async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: 
         {"item_id": item_id},
     )
     vector_ids = [str(vector_row[0]) for vector_row in vector_rows.fetchall() if vector_row[0]]
-    active_provider, provider_config = resolve_library_vector_provider()
+    active_provider, provider_config = await resolve_library_vector_provider_from_db(
+        db,
+        tenant_id=str(item_tenant_id),
+    )
 
     if active_provider == "cloudflare_vectorize":
         await delete_cloudflare_vector_ids(

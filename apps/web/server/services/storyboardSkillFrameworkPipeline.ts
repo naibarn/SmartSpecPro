@@ -7,6 +7,36 @@ import {
   storyboardCanonicalSkillResponseSchema,
 } from "./storyboardSkillFrameworkContracts";
 
+export const STORYBOARD_SINGLE_IMAGE_PROMPT_LOCK =
+  "Create exactly one single vertical 9:16 image of one continuous scene. No collage, no grid, no contact sheet, no split screen, no multiple panels, no storyboard frames, no borders.";
+
+export function ensureStoryboardSingleImagePrompt(prompt: string): string {
+  const normalized = prompt.trim();
+  if (!normalized) return normalized;
+  return normalized.includes(STORYBOARD_SINGLE_IMAGE_PROMPT_LOCK)
+    ? normalized
+    : `${normalized}\n\n${STORYBOARD_SINGLE_IMAGE_PROMPT_LOCK}`;
+}
+
+function lockStoryboardImageResponse(
+  response: StoryboardCanonicalSkillResponse
+): StoryboardCanonicalSkillResponse {
+  const prompt = ensureStoryboardSingleImagePrompt(
+    response.result.generation_request.prompt
+  );
+  return assertCanonicalGenerationRequest({
+    ...response,
+    result: {
+      ...response.result,
+      generation_prompt: prompt,
+      generation_request: {
+        ...response.result.generation_request,
+        prompt,
+      },
+    },
+  });
+}
+
 const STORY_BEAT_DESCRIPTIONS: Record<string, string> = {
   setup: "Introduce the child character, setting, and the normal desire.",
   problem:
@@ -107,18 +137,27 @@ const NARRATIVE_PATTERNS: Record<number, string[]> = {
 
 const SHOT_VARIATION_DIRECTIONS: Record<string, string> = {
   setup: "establish the stated activity and the characters' initial intention",
-  problem: "introduce a small visible obstacle or change that affects the stated activity",
-  reaction: "show a distinct emotional reaction while keeping the same story situation",
-  detail: "focus on a concrete hand, object, food, or environmental detail involved in the activity",
-  attempt: "show the characters trying a new step or a different part of the stated activity",
+  problem:
+    "introduce a small visible obstacle or change that affects the stated activity",
+  reaction:
+    "show a distinct emotional reaction while keeping the same story situation",
+  detail:
+    "focus on a concrete hand, object, food, or environmental detail involved in the activity",
+  attempt:
+    "show the characters trying a new step or a different part of the stated activity",
   turning_point: "make a clear action change the direction of the story",
   solution: "show the stated activity succeeding through an observable action",
   result: "show the immediate visual result and a warm interaction",
-  ending: "close with a memorable, calm emotional interaction that completes the story",
-  resolution: "resolve the stated activity with an observable successful action",
-  aftermath: "show the consequence of the completed activity without changing the setting",
-  secondary_payoff: "add one small coherent payoff that grows from the completed activity",
-  final_cta: "end with a simple story-appropriate visual close rather than a text overlay",
+  ending:
+    "close with a memorable, calm emotional interaction that completes the story",
+  resolution:
+    "resolve the stated activity with an observable successful action",
+  aftermath:
+    "show the consequence of the completed activity without changing the setting",
+  secondary_payoff:
+    "add one small coherent payoff that grows from the completed activity",
+  final_cta:
+    "end with a simple story-appropriate visual close rather than a text overlay",
 };
 
 export function buildStoryboardShotActivity(input: {
@@ -127,11 +166,66 @@ export function buildStoryboardShotActivity(input: {
   shotNumber: number;
   totalShots: number;
 }): string {
-  const baseActivity = input.baseActivity.trim() || "a natural child-safe activity";
+  const baseActivity =
+    input.baseActivity.trim() || "a natural child-safe activity";
   const direction =
     SHOT_VARIATION_DIRECTIONS[input.beat] ??
     "continue the stated activity with a new observable action";
   return `${baseActivity}. Shot ${input.shotNumber} of ${input.totalShots}: ${direction}. Do not repeat the previous shot's exact pose or action; preserve the same characters, setting, and story continuity.`;
+}
+
+export function buildStoryboardShotVariationInstruction(
+  shot: StoryboardPlannedShot,
+  language?: string
+): string {
+  const direction =
+    SHOT_VARIATION_DIRECTIONS[shot.beat] ??
+    "continue the stated activity with a new observable action";
+  const dialogue =
+    shot.dialogueLines.length > 0
+      ? ` ${language ? `Spoken dialogue in ${language}` : "Spoken dialogue context"}: ${shot.dialogueLines.map(line => `${line.speaker}: ${line.text}`).join(" | ")}. Do not render dialogue as text.`
+      : " No spoken dialogue; communicate the change through the visible action and expression.";
+  return `Shot ${shot.shotNumber} (${shot.beat}) change: ${direction}.${dialogue}`;
+}
+
+export function buildStoryboardContinuationImagePrompt(
+  input: StoryboardGlobalInput,
+  shot: StoryboardPlannedShot
+): string {
+  return [
+    STORYBOARD_SINGLE_IMAGE_PROMPT_LOCK,
+    "Use the attached Shot 1 image as the canonical identity and scene reference.",
+    "Keep exactly the same recognizable characters, facial identity, age, hair, clothing, props, setting, lighting, and visual style as Shot 1.",
+    "Do not redesign the characters or scene, add or remove accessories, change wardrobe, or introduce new characters or locations.",
+    buildStoryboardShotVariationInstruction(shot),
+    `Keep a ${input.outputAspectRatio} child-eye-level composition and show one clear continuous moment. No text overlays or watermarks.`,
+  ].join("\n");
+}
+
+function buildStoryboardContinuationImageResponse(
+  input: StoryboardGlobalInput,
+  shot: StoryboardPlannedShot
+): StoryboardCanonicalSkillResponse {
+  const prompt = buildStoryboardContinuationImagePrompt(input, shot);
+  return lockStoryboardImageResponse(
+    assertCanonicalGenerationRequest({
+      success: true,
+      result: {
+        resolved: {},
+        generation_prompt: prompt,
+        generation_request: {
+          prompt,
+          aspect_ratio: input.outputAspectRatio,
+          reference_images: [],
+        },
+        prompt_debug: {
+          strategy: "shot_1_reference_continuation",
+          referenceShotNumber: 1,
+          skillCalled: false,
+        },
+      },
+    })
+  );
 }
 
 export function planStoryboardShots(
@@ -182,8 +276,10 @@ export function buildCuteChildPromptOnlyRequest(
     character_reference_images: normalizedReferences,
     aspect_ratio: input.outputAspectRatio,
   });
-  return assertCanonicalGenerationRequest(
-    storyboardCanonicalSkillResponseSchema.parse({ success: true, result })
+  return lockStoryboardImageResponse(
+    assertCanonicalGenerationRequest(
+      storyboardCanonicalSkillResponseSchema.parse({ success: true, result })
+    )
   );
 }
 
@@ -193,11 +289,7 @@ export function buildStoryboardVideoPrompt(input: {
   videoModelId: string;
   language: string;
 }): string {
-  const dialogue =
-    input.shot.dialogueLines.length > 0
-      ? ` Spoken dialogue in ${input.language}: ${input.shot.dialogueLines.map(line => `${line.speaker}: ${line.text}`).join(" | ")}.`
-      : " No spoken dialogue; communicate the action with expressive mime and clear visual storytelling.";
-  return `Create a ${10}-second vertical 9:16 video using storyboard image asset ${input.imageAssetId} as the visual reference. Preserve the same character identity, age, clothing continuity, setting, and lighting. Animate the ${input.shot.beat} beat with natural child-safe motion and a clear beginning, middle, and end.${dialogue} Camera and motion should suit ${input.videoModelId}. Do not add text overlays or watermarks.`;
+  return `Create a ${10}-second vertical 9:16 video using storyboard image asset ${input.imageAssetId} as the exact start frame. Preserve everything visible in that image, including character identity, age, hair, clothing, props, setting, lighting, and composition. Animate only this shot change: ${buildStoryboardShotVariationInstruction(input.shot, input.language)} Use natural child-safe motion with a clear beginning, middle, and end. Camera and motion should suit ${input.videoModelId}. Do not add text overlays or watermarks.`;
 }
 
 export type StoryboardPipelineDependencies = {
@@ -232,10 +324,14 @@ export async function runStoryboardPromptPipeline(
     imageAssetId?: string;
     videoPrompt?: string;
   }> = [];
+  let anchorImageAssetId: string | undefined;
   for (const shot of planStoryboardShots(input)) {
-    const response = assertCanonicalGenerationRequest(
-      await promptOnly(input, shot)
-    );
+    const response =
+      shot.shotNumber === 1
+        ? lockStoryboardImageResponse(
+            assertCanonicalGenerationRequest(await promptOnly(input, shot))
+          )
+        : buildStoryboardContinuationImageResponse(input, shot);
     const item: (typeof output)[number] = { shot, response };
     if (dependencies.generateImage) {
       const referenceInputs = Array.isArray(
@@ -248,14 +344,20 @@ export async function runStoryboardPromptPipeline(
         aspectRatio: response.result.generation_request.aspect_ratio,
         modelId: input.imageModelSelection.modelId,
         quality: input.imageModelSelection.quality,
-        referenceAssetIds: referenceInputs
-          .filter((value): value is Record<string, unknown> =>
-            Boolean(value && typeof value === "object")
-          )
-          .map(value => String(value.asset_id ?? ""))
-          .filter(Boolean),
+        referenceAssetIds: [
+          ...(anchorImageAssetId ? [anchorImageAssetId] : []),
+          ...referenceInputs
+            .filter((value): value is Record<string, unknown> =>
+              Boolean(value && typeof value === "object")
+            )
+            .map(value => String(value.asset_id ?? ""))
+            .filter(Boolean),
+        ]
+          .filter((value, index, all) => all.indexOf(value) === index)
+          .slice(0, 5),
       });
       item.imageAssetId = image.assetId;
+      if (shot.shotNumber === 1) anchorImageAssetId = image.assetId;
       item.videoPrompt = buildStoryboardVideoPrompt({
         shot,
         imageAssetId: image.assetId,

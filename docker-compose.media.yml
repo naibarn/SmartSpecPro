@@ -43,8 +43,6 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
-      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
-      - OPENSANDBOX_MEDIA_IMAGE=jrottenberg/ffmpeg:6-ubuntu
       - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
       - WEB_APP_URL=http://host.docker.internal:3000
       - SMARTSPEC_PLAYWRIGHT_ENABLED=false
@@ -74,7 +72,6 @@ services:
     memswap_limit: 2G
     networks:
       - smartspec-network
-      - opensandbox-network
 
   # ============================================
   # CELERY VIDEO WORKER
@@ -99,8 +96,6 @@ services:
       - REDIS_URL=redis://smartspec-redis:6379/0
       - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
       - MEDIA_STORAGE_PATH=/app/media_storage
-      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
-      - OPENSANDBOX_MEDIA_IMAGE=jrottenberg/ffmpeg:6-ubuntu
       - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
       - WEB_APP_URL=http://host.docker.internal:3000
     extra_hosts:
@@ -126,7 +121,6 @@ services:
     memswap_limit: 5G
     networks:
       - smartspec-network
-      - opensandbox-network
 
   # ============================================
   # CELERY IMPORT WORKER
@@ -220,56 +214,6 @@ services:
       - smartspec-network
 
   # ============================================
-  # CELERY SANDBOX WORKER
-  # Handles: execute_sandbox_job (OpenSandbox orchestration)
-  # Manages sandbox lifecycle: provision, execute, collect, destroy
-  # Resource limits: 2 CPUs / 4GB RAM max
-  # ============================================
-  celery-sandbox:
-    <<: *external-dns
-    build:
-      context: ./python-backend
-      dockerfile: Dockerfile
-    container_name: smartspec-celery-sandbox
-    group_add:
-      - "${DOCKER_GID:-989}"
-    command: celery -A app.core.celery_app worker --loglevel=info --concurrency=1 --max-tasks-per-child=10 --max-memory-per-child=1200000 -Q sandbox -n sandbox@%h
-    env_file:
-      - ./python-backend/.env
-    environment:
-      - CELERY_BROKER_URL=redis://smartspec-redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://smartspec-redis:6379/0
-      - REDIS_URL=redis://smartspec-redis:6379/0
-      - DATABASE_URL=postgresql+asyncpg://smartspec:smartspec123@smartspec-postgres:5432/smartspec
-      - OPENSANDBOX_BASE_URL=http://smartspec-opensandbox:8080
-      - SMARTSPEC_WEB_GATEWAY_URL=http://host.docker.internal:3000
-      - WEB_APP_URL=http://host.docker.internal:3000
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./python-backend:/app
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A app.core.celery_app inspect ping -d sandbox@$$HOSTNAME || exit 1"]
-      interval: 30s
-      timeout: 10s
-      start_period: 60s
-      retries: 3
-    restart: unless-stopped
-    memswap_limit: 2G
-    networks:
-      - smartspec-network
-      - opensandbox-network
-
-  # ============================================
   # CELERY BEAT (Periodic Task Scheduler)
   # Runs exactly once — schedules cleanup + retry tasks
   # ============================================
@@ -346,6 +290,4 @@ services:
 
 networks:
   smartspec-network:
-    external: true
-  opensandbox-network:
     external: true

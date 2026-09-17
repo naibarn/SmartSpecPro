@@ -23,7 +23,7 @@ import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/asyncJobHandle";
 import { classifyCreditFailure } from "../services/creditFailurePolicy";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
-import { isCloudflareHardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
+import { isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 type MediaJobAssetAuth = { userId: string; tenantId: string | null };
 
@@ -746,10 +746,10 @@ export const mediaJobsRouter = router({
       await addRecentJob(String(ctx.user.id), jobId);
 
       // Hard cutover sends video rendering as a canonical job to the
-      // Cloudflare Container/Worker App target. The old provider-specific
-      // HTTP task endpoint is intentionally retired.
+      // selected Feature 186 transport. The old provider-specific HTTP task
+      // endpoint is intentionally retired.
       try {
-        if (isCloudflareHardCutoverEnabled()) {
+        if (isFeature186HardCutoverEnabled()) {
           await createControlPlaneJob({
             context: {
               tenantId,

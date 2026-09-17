@@ -159,7 +159,7 @@ export async function enqueueVerticalDramaEpisodeStageJob(
   } catch (error) {
     debugError(
       "vd_episode_stage_jobs",
-      `Failed to enqueue BullMQ job for storyboard_shotgrid run #${data.runId} (episode #${data.owner.episodeId}) — marking the run failed instead of leaving it stranded at 'queued'`,
+      `Failed to enqueue episode-stage job for storyboard_shotgrid run #${data.runId} (episode #${data.owner.episodeId}) — marking the run failed instead of leaving it stranded at 'queued'`,
       error
     );
     try {

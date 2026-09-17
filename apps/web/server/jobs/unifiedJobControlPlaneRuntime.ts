@@ -1,16 +1,18 @@
 import { defaultJobExecutorRegistry, type JobExecutorRegistry } from "../services/jobExecutorRegistry";
 import { JobOutboxRunner } from "../services/jobOutboxRunner";
-import { CloudflareQueueHttpJobTransportAdapter, PostgresPullJobTransportAdapter, type JobTransportAdapter } from "../services/jobTransportAdapters";
+import { type JobTransportAdapter } from "../services/jobTransportAdapters";
+import { createFeature186RuntimeAdapter } from "../services/feature186RuntimeAdapter";
 import { isPostgresNodeJobType, POSTGRES_NODE_JOB_TYPES } from "./feature186JobTypes";
-import { assertFeature186RuntimeConfigured, assertGoogleRuntimeDisabled, feature186RuntimeReadiness, isCloudflareHardCutoverEnabled, isPostgresPullHarnessEnabled } from "../services/cloudflareRuntimeTarget";
+import { assertGoogleRuntimeDisabled, feature186RuntimeReadiness, isFeature186HardCutoverEnabled, isPostgresPullHarnessEnabled } from "../services/cloudflareRuntimeTarget";
 
 /**
- * Feature 186 hard-cutover runtime.
+ * Feature 186 canonical runtime.
  *
  * The web process only publishes durable PostgreSQL outbox intents. The
- * Cloudflare target consumes the canonical envelope through the Hyperdrive /
- * Queue boundary. Redis, BullMQ, Celery and retired hosted runtimes are not initialized by
- * this runtime, even when an old environment still contains their settings.
+ * default transport is PostgreSQL-pull for the separately supervised Node
+ * worker. Cloudflare can consume the same canonical envelope after the
+ * explicit target-account activation flag is enabled. Redis, BullMQ, Celery
+ * and retired hosted runtimes are not initialized by this runtime.
  */
 export const FEATURE_186_UNIFIED_QUEUE = "cloudflare-canonical-job-queue";
 
@@ -20,31 +22,23 @@ let runtimeActive = false;
 export async function initializeUnifiedJobControlPlaneRuntime(
   _executorRegistry: JobExecutorRegistry = defaultJobExecutorRegistry,
 ): Promise<void> {
-  if (!isCloudflareHardCutoverEnabled() || runtimeActive) return;
+  if (!isFeature186HardCutoverEnabled() || runtimeActive) return;
   assertGoogleRuntimeDisabled();
-  assertFeature186RuntimeConfigured();
+  const activeAdapter = createFeature186RuntimeAdapter();
   runtimeActive = true;
-
-  const cloudflareRuntimeUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim();
-  const cloudflareAdapter = cloudflareRuntimeUrl
-    ? new CloudflareQueueHttpJobTransportAdapter(
-      cloudflareRuntimeUrl,
-      process.env.CLOUDFLARE_RUNTIME_TOKEN ?? "",
-    )
-    : new PostgresPullJobTransportAdapter();
   const adapters = new Map<string, JobTransportAdapter>([
-    ["node_job_worker", cloudflareAdapter],
-    ["python_job_worker", cloudflareAdapter],
-    ["external_runtime", cloudflareAdapter],
-    ["cloudflare", cloudflareAdapter],
-    ["default", cloudflareAdapter],
+    ["node_job_worker", activeAdapter],
+    ["python_job_worker", activeAdapter],
+    ["external_runtime", activeAdapter],
+    ["cloudflare", activeAdapter],
+    ["default", activeAdapter],
   ]);
 
   outboxRunner = new JobOutboxRunner({
     adapters,
     resolveAdapter: row => isPostgresNodeJobType(row.jobType)
-      ? cloudflareAdapter
-      : adapters.get(row.runtimeType) ?? cloudflareAdapter,
+      ? activeAdapter
+      : adapters.get(row.runtimeType) ?? activeAdapter,
     onError: error => {
       console.error("[Feature186] outbox publisher tick failed", {
         runtime: feature186RuntimeReadiness(),
@@ -55,7 +49,7 @@ export async function initializeUnifiedJobControlPlaneRuntime(
   });
   outboxRunner.start();
   console.info(
-    `[Feature186] Cloudflare hard-cutover runtime active node=${[...POSTGRES_NODE_JOB_TYPES].join(",")} adapter=${cloudflareAdapter.name}`,
+    `[Feature186] canonical runtime active mode=${feature186RuntimeReadiness().mode} node=${[...POSTGRES_NODE_JOB_TYPES].join(",")} adapter=${activeAdapter.name}`,
   );
 }
 

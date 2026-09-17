@@ -119,9 +119,9 @@ describe("systemAutoReportService credit routing", () => {
     mockDb.limit.mockResolvedValueOnce([]);
 
     await reportSystemFailure({
-      source: "celery_media_doctor",
-      title: "Urgent: stale Celery media queue detected",
-      errorMessage: "An image task remained unclaimed while capacity was available.",
+      source: "worker_job_monitor",
+      title: "Urgent: stale worker job detected",
+      errorMessage: "A worker job remained unclaimed while capacity was available.",
       priority: "critical",
       affectedUserIds: [24, "25", 24, "not-a-user"],
       affectedTaskIds: ["task-a", "task-a", "task-b"],

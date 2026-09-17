@@ -172,6 +172,7 @@ export type JobEventType =
   | "CALLBACK_ACCEPTED"
   | "CALLBACK_REJECTED"
   | "SETTLEMENT_RECORDED"
+  | "RECONCILED"
   | "PROJECTION_REPAIRED";
 
 export type OperatorJobAction = {

@@ -74,6 +74,7 @@ celery_app.conf.update(
         "app.tasks.media_tasks.retry_media_callback_events": {"queue": "media"},
         "app.tasks.media_tasks.process_library_index_job_task": {"queue": "media"},
         "app.tasks.media_tasks.retry_library_index_jobs": {"queue": "media"},
+        "app.tasks.vector_db_backfill_tasks.run_vector_db_backfill_campaign": {"queue": "media"},
         "app.tasks.media_tasks.recover_stuck_tasks": {"queue": "media"},
         "app.tasks.media_tasks.backfill_missing_media_thumbnails": {"queue": "thumbnail_backfill"},
         # Google Drive indexing -> media queue (network-bound)
@@ -110,20 +111,11 @@ celery_app.conf.update(
         "app.tasks.presentation_render.render_presentation": {"queue": "presentation_export"},
         # Presentation import (PPTX/Google Slides -> slides JSON)
         "tasks.import_presentation": {"queue": "presentation_import"},
-        # Agency creator (LLM call) -> media queue (network-bound, like workflow gen)
-        "app.tasks.agency_creator_task.create_agency_discover_task": {"queue": "media"},
-        "app.tasks.agency_creator_task.create_agency_design_task": {"queue": "media"},
         # Automation Copilot (Browser tasks, LLM + Playwright) -> media queue
         "app.tasks.automation_copilot_task.automation_analyze_task": {"queue": "media"},
         "app.tasks.automation_copilot_task.automation_execute_task": {"queue": "media"},
         "app.tasks.automation_copilot_task.browser_pool_health_check": {"queue": "media"},
         "app.tasks.automation_copilot_task.automation_credit_reconciliation": {"queue": "media"},
-        # Sandbox job execution -> sandbox queue (isolated, resource-intensive)
-        "app.workers.sandbox_job_worker.execute_sandbox_job": {"queue": "sandbox"},
-        # Sandbox maintenance tasks
-        "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs": {"queue": "media"},
-        "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes": {"queue": "sandbox"},
-        "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs": {"queue": "sandbox"},
         # Vision analysis (Gemini 2.5 Flash image analysis) -> vision queue
         "app.tasks.vision_tasks.analyze_image_task": {"queue": "vision"},
         # System health monitor -> celery queue (lightweight, periodic)
@@ -135,9 +127,8 @@ celery_app.conf.update(
     # Ensure non-default task modules are always loaded at worker startup.
     imports=(
         "app.tasks.google_drive_tasks",
-        "app.tasks.workflow_tasks",
-        "app.workers.sandbox_job_worker",
         "app.workers.vertical_drama_audio_worker",
+        "app.tasks.vector_db_backfill_tasks",
     ),
 )
 
@@ -205,24 +196,11 @@ beat_schedule = {
         "task": "app.tasks.live_browser_tasks.run_live_browser_maintenance",
         "schedule": float(settings.LIVE_BROWSER_MAINTENANCE_INTERVAL_SECONDS),
     },
-    # Sandbox maintenance tasks
-    "cleanup-expired-sandbox-jobs": {
-        "task": "app.tasks.sandbox_maintenance_tasks.cleanup_expired_sandbox_jobs",
-        "schedule": crontab(hour=4, minute=0),  # Daily at 4:00 AM UTC
-    },
     # System health monitor — every 60 seconds
     "monitor-system-health": {
         "task": "app.tasks.system_health_task.monitor_system_health",
         "schedule": 60.0,
         "options": {"queue": "media"},
-    },
-    "cleanup-orphan-sandboxes": {
-        "task": "app.tasks.sandbox_maintenance_tasks.cleanup_orphan_sandboxes",
-        "schedule": crontab(minute="*/10"),  # Every 10 minutes
-    },
-    "detect-stuck-sandbox-jobs": {
-        "task": "app.tasks.sandbox_maintenance_tasks.detect_stuck_sandbox_jobs",
-        "schedule": crontab(minute="*/5"),  # Every 5 minutes
     },
 }
 

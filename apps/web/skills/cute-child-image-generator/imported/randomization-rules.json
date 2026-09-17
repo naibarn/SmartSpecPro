@@ -50,6 +50,16 @@
       "min": 9,
       "max": 12,
       "name": "older_child"
+    },
+    {
+      "min": 13,
+      "max": 17,
+      "name": "teenager"
+    },
+    {
+      "min": 18,
+      "max": 120,
+      "name": "adult"
     }
   ],
   "outfit_pools": {
@@ -80,6 +90,13 @@
       "a playful pastel outfit with subtle childlike patterns",
       "a simple cotton outfit with soft warm colors",
       "a light neutral outfit with tiny embroidered details"
+    ],
+    "adult": [
+      "a tasteful casual outfit in soft neutral tones",
+      "a simple smart-casual outfit with clean styling",
+      "a comfortable modern outfit in coordinated pastel tones",
+      "a modest everyday outfit with subtle texture",
+      "a polished but natural outfit suitable for the setting"
     ]
   },
   "hair_pools": {
@@ -101,6 +118,11 @@
       "a natural child hairstyle with soft texture",
       "slightly tousled dark hair with a cute childlike appearance",
       "soft dark hair with wispy bangs and a natural child look"
+    ],
+    "adult": [
+      "natural dark hair with a soft, polished finish",
+      "a simple contemporary hairstyle with natural texture",
+      "neatly styled hair with a relaxed everyday appearance"
     ]
   },
   "accessories": {
@@ -142,5 +164,5 @@
     "waist_up": "waist-up portrait",
     "full_body": "full-body portrait"
   },
-  "single_prompt_safety_suffix": "Keep the child clearly looking like a child. Make the child extra adorable, wholesome, and age-appropriate. Use realistic child proportions and natural skin texture. Clothing must be modest, cute, and age-appropriate. Avoid adult-like styling, heavy makeup, glamorous fashion-model posing, mature body proportions, sexualized appearance, revealing clothing, dramatic cosmetics, luxury influencer styling, text overlays, and watermarks."
+  "single_prompt_safety_suffix": "Keep every subject clearly recognizable and age-appropriate. Use realistic proportions and natural skin texture. Clothing must be modest and age-appropriate. For minors, avoid adult-like styling, heavy makeup, glamorous fashion-model posing, mature body proportions, sexualized appearance, and revealing clothing. For adults, avoid sexualized or revealing presentation, dramatic cosmetics, luxury influencer styling, text overlays, and watermarks."
 }

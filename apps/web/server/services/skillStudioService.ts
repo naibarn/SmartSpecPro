@@ -892,7 +892,7 @@ export async function launchSkillStudioTask(
       runId: skillRunId,
     },
     ctx.userId,
-    executionToken,
+    ctx.tenantId,
     async (result) => {
       if (!result.success) {
         if (hooks?.onCompleted) {
@@ -1012,6 +1012,7 @@ export async function launchSkillStudioTask(
       }
       return finalResult;
     },
+    executionToken,
   );
 
   return {

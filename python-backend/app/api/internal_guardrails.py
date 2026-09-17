@@ -7,6 +7,8 @@ Called by Node.js tRPC testGuardrail procedure via X-Internal-Token auth.
 from __future__ import annotations
 
 import secrets
+import re
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import structlog
@@ -14,11 +16,45 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
-from app.services.agency_guardrails import (
-    GuardrailDefinition,
-    GuardrailResult,
-    execute_guardrails,
-)
+
+@dataclass
+class GuardrailDefinition:
+    id: str
+    name: str
+    type: str
+    mode: str
+    strategy: str
+    config: dict[str, Any]
+
+
+@dataclass
+class GuardrailResult:
+    passed: bool
+    message: str = ""
+    action: str = "allow"
+    redacted_message: Optional[str] = None
+
+
+async def execute_guardrails(
+    guardrails: list[GuardrailDefinition],
+    message: str,
+    phase: str,
+) -> GuardrailResult:
+    """Small HTTP-safe guardrail evaluator; agent execution is owned by Agents API."""
+    for guardrail in guardrails:
+        config = guardrail.config or {}
+        strategy = guardrail.strategy
+        if strategy == "max_length" and len(message) > int(config.get("max_length", 10000)):
+            return GuardrailResult(False, "Message exceeds the configured length", "block")
+        if strategy == "keyword_block":
+            keywords = [str(item).lower() for item in config.get("keywords", [])]
+            if any(keyword and keyword in message.lower() for keyword in keywords):
+                return GuardrailResult(False, "Blocked keyword detected", "block")
+        if strategy == "regex_match":
+            pattern = str(config.get("pattern", ""))
+            if pattern and re.search(pattern, message):
+                return GuardrailResult(False, "Blocked pattern detected", "block")
+    return GuardrailResult(True)
 
 logger = structlog.get_logger(__name__)
 

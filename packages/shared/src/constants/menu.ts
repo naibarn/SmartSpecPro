@@ -1,8 +1,8 @@
-import type { Platform } from './platform';
+import type { Platform } from "./platform";
 
-export type UserRole = 'user' | 'admin' | 'domain_admin';
+export type UserRole = "user" | "admin" | "domain_admin";
 
-export type MenuGroup = 'main' | 'admin' | 'domain-admin';
+export type MenuGroup = "main" | "admin" | "domain-admin";
 
 export interface MenuItem {
   id: string;
@@ -13,7 +13,7 @@ export interface MenuItem {
   platforms: Platform[];
   roles?: UserRole[];
   group?: MenuGroup;
-  section?: 'documents' | 'private';
+  section?: "documents" | "private";
   parentId?: string;
   external?: boolean;
   requiresFeature?: string;
@@ -23,64 +23,403 @@ export interface MenuItem {
 }
 
 const marketplaceIntelligenceMenuFeatureFlags = [
-  'marketplaceConnectorLabEnabled',
-  'marketplaceIntelligenceImportsEnabled',
-  'marketplaceKeywordDiscoveryEnabled',
-  'marketplaceIntelligenceReportsEnabled',
-  'marketplaceReportImageSkillsEnabled',
-  'marketplaceIntelligenceShareableImageEnabled',
-  'marketplaceIntelligenceWatchlistsEnabled',
-  'marketplaceIntelligenceMcpWritesEnabled',
+  "marketplaceConnectorLabEnabled",
+  "marketplaceIntelligenceImportsEnabled",
+  "marketplaceKeywordDiscoveryEnabled",
+  "marketplaceIntelligenceReportsEnabled",
+  "marketplaceReportImageSkillsEnabled",
+  "marketplaceIntelligenceShareableImageEnabled",
+  "marketplaceIntelligenceWatchlistsEnabled",
+  "marketplaceIntelligenceMcpWritesEnabled",
 ];
 
 export const defaultMenuItems: MenuItem[] = [
   // === Main group (shared across web & desktop) ===
-  { id: 'dashboard',     label: 'Dashboard',      labelTh: 'แดชบอร์ด',      icon: 'TrendingUp',      path: '/dashboard',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 0 },
-  { id: 'chat',          label: 'Chat (LLM)',     labelTh: 'แชท AI',        icon: 'MessageSquare',   path: '/chat',           platforms: ['web', 'desktop'], group: 'main', sortOrder: 1 },
-  { id: 'work-request',  label: 'Start Work',     labelTh: 'เริ่มงาน',      icon: 'PenLine',         path: '/work/request',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.05 },
-  { id: 'workpack-intake', label: 'Workpack Intake', labelTh: 'รับงานเวิร์กแพ็ก', icon: 'ClipboardList', path: '/workpacks/intake', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.051 },
-  { id: 'workpack-discovery', label: 'Workpack Discovery', labelTh: 'คลังแนวทางเวิร์กแพ็ก', icon: 'Package', path: '/workpacks/discovery', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.052 },
-  { id: 'workpack-roi', label: 'Workpack ROI', labelTh: 'สถานะเวิร์กแพ็ก', icon: 'Gauge', path: '/workpacks/roi', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.053 },
-  { id: 'workpack-exceptions', label: 'Workpack Exceptions', labelTh: 'ข้อยกเว้นเวิร์กแพ็ก', icon: 'ShieldAlert', path: '/workpacks/exceptions', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.054 },
-  { id: 'my-requests',   label: 'My Requests',    labelTh: 'งานของฉัน',     icon: 'ClipboardCheck',  path: '/work/requests',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.06 },
-  { id: 'finance',       label: 'Finance',        labelTh: 'การเงิน',       icon: 'Wallet',          path: '/finance',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.1 },
-  { id: 'finance-reports', label: 'Finance Reports', labelTh: 'รายงานการเงิน', icon: 'BarChart3', path: '/finance/reports', platforms: ['web', 'desktop'], group: 'main', sortOrder: 1.2 },
-  { id: 'media',         label: 'Media Studio',   labelTh: 'มีเดียสตูดิโอ', icon: 'Sparkles',        path: '/media-studio',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 2 },
-  { id: 'content-composer', label: 'Content Composer', labelTh: 'เขียนคอนเทนต์', icon: 'FileText', path: '/content-composer', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.05 },
-  { id: 'storyboard-review', label: 'Storyboard Review', labelTh: 'สตอรี่บอร์ด', icon: 'Film', path: '/storyboard-review', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.1 },
-  { id: 'vertical-drama-series', label: 'Vertical Drama Series', labelTh: 'ซีรีส์แนวตั้ง', icon: 'Clapperboard', path: '/drama-series', platforms: ['web', 'desktop'], group: 'main', sortOrder: 2.15, requiresFeature: 'verticalDramaSeriesDashboardMenu' },
-  { id: 'skills',        label: 'Skills',         labelTh: 'ทักษะ',         icon: 'Sparkles',        path: '/settings/skills', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3 },
-  { id: 'workflows',     label: 'Workflows',      labelTh: 'เวิร์กโฟลว์',    icon: 'GitBranch',       path: '/workflows',      platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.5 },
-  { id: 'webhook-triggers', label: 'Webhook Triggers', labelTh: 'เว็บฮุก', icon: 'Webhook', path: '/webhook-triggers', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.6, requiresFeature: 'webhookTriggers' },
-  { id: 'agencies',      label: 'Agencies',       labelTh: 'เอเจนซี่',       icon: 'Users',           path: '/agencies',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.7, requiresFeature: 'AGENCY_SWARM_ENABLED' },
-  { id: 'teams',         label: 'Teams',          labelTh: 'ทีม AI',         icon: 'UsersRound',      path: '/teams',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.75, requiresFeature: 'orchestratorEnabled' },
-  { id: 'role-monitor',  label: 'Role Monitor',   labelTh: 'มอนิเตอร์บทบาท', icon: 'Radar',         path: '/role-monitor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.76, requiresFeature: 'orchestratorEnabled' },
-  { id: 'automation',    label: 'Automation Copilot', labelTh: 'ระบบอัตโนมัติ', icon: 'Bot', path: '/automation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.8, requiresFeature: 'automationCopilot' },
-  { id: 'marketplace-capture', label: 'Marketplace Capture', labelTh: 'ข้อมูลสินค้า', icon: 'Store', path: '/marketplace-capture', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.9, requiresFeature: 'MARKETPLACE_CAPTURE_ENABLED' },
-  { id: 'marketplace-intelligence', label: 'Marketplace Intelligence', labelTh: 'วิเคราะห์ Marketplace', icon: 'BarChart3', path: '/marketplace-capture/intelligence', platforms: ['web', 'desktop'], group: 'main', sortOrder: 3.91, requiresFeature: 'MARKETPLACE_CAPTURE_ENABLED', requiresAnyFeature: marketplaceIntelligenceMenuFeatureFlags },
-  { id: 'social-channels', label: 'Social Channels', icon: 'Share2', path: '/social/channels', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.0, requiresFeature: 'META_CHANNELS_ENABLED' },
-  { id: 'social-inbox', label: 'Social Inbox', icon: 'MessageCircleMore', path: '/social/inbox', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.1, requiresFeature: 'META_CHANNELS_ENABLED' },
-  { id: 'social-publishing', label: 'Social Publishing', icon: 'Send', path: '/social/publishing', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.2, requiresFeature: 'META_CHANNELS_ENABLED' },
-  { id: 'social-moderation', label: 'Social Moderation', icon: 'ShieldCheck', path: '/social/moderation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.3, requiresFeature: 'META_CHANNELS_ENABLED' },
-  { id: 'social-automation', label: 'Social Automation', icon: 'Workflow', path: '/social/automation', platforms: ['web', 'desktop'], group: 'main', sortOrder: 7.4, requiresFeature: 'META_CHANNELS_ENABLED' },
-  { id: 'media-history', label: 'Media History',  labelTh: 'ประวัติมีเดีย',  icon: 'Clock',           path: '/media-history',  platforms: ['web', 'desktop'], group: 'main', sortOrder: 4 },
-  { id: 'worker-jobs', label: 'Worker Jobs', labelTh: 'คิวงาน Worker', icon: 'Activity', path: '/worker-jobs', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.01 },
-  { id: 'video-studio', label: 'Video Studio', labelTh: 'สตูดิโอวิดีโอ', icon: 'Film', path: '/video-studio', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.02, requiresFeature: 'videoIntelligencePlatformEnabled' },
-  { id: 'video-studio-catalog', label: 'Catalog Video Studio', labelTh: 'สตูดิโอวิดีโอสินค้า', icon: 'Store', path: '/video-studio', platforms: ['web', 'desktop'], group: 'main', parentId: 'video-studio', sortOrder: 4.021, requiresFeature: 'videoIntelligenceCatalogStudioEnabled' },
-  { id: 'video-studio-motion', label: 'Motion Studio', labelTh: 'สตูดิโอโมชัน', icon: 'Clapperboard', path: '/video-studio', platforms: ['web', 'desktop'], group: 'main', parentId: 'video-studio', sortOrder: 4.022, requiresFeature: 'videoIntelligenceMotionStudioEnabled' },
-  { id: 'document-management', label: 'Library', labelTh: 'คลังเอกสาร', icon: 'FileText', path: '/document-management', platforms: ['web', 'desktop'], group: 'main', section: 'documents', sortOrder: 4.2 },
-  { id: 'private-files', label: 'Private Files', labelTh: 'ไฟล์ส่วนตัว', icon: 'Lock', path: '/document-management?scope=private_vault&sort=updated_desc', platforms: ['web', 'desktop'], group: 'main', parentId: 'document-management', sortOrder: 4.21 },
-  { id: 'presentations', label: 'Presentations', labelTh: 'พรีเซนเทชัน', icon: 'GalleryHorizontal', path: '/presentations', platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.25 },
-  { id: 'groups',              label: 'Groups',              labelTh: 'กลุ่ม',          icon: 'Users',    path: '/groups',              platforms: ['web', 'desktop'], group: 'main', sortOrder: 4.3 },
-  { id: 'factory',       label: 'SaaS Factory',   labelTh: 'โรงงาน',        icon: 'Factory',         path: '/factory',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 5 },
-  { id: 'terminal',      label: 'Terminal',        labelTh: 'เทอร์มินัล',    icon: 'Terminal',        path: '/terminal',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 6 },
-  { id: 'kilo',          label: 'CLI',             labelTh: 'CLI',           icon: 'Terminal',        path: '/kilo',           platforms: ['web', 'desktop'], group: 'main', sortOrder: 7 },
-  { id: 'docker',        label: 'Docker Sandbox',  labelTh: 'แซนด์บ็อกซ์',   icon: 'Container',       path: '/docker',         platforms: ['web', 'desktop'], group: 'main', sortOrder: 8 },
-  { id: 'video-editor',  label: 'Video Editor',    labelTh: 'ตัดต่อวิดีโอ',   icon: 'Film',            path: '/video-editor',   platforms: ['web', 'desktop'], group: 'main', sortOrder: 8.5 },
-  { id: 'credits',       label: 'Credits',         labelTh: 'เครดิต',        icon: 'CreditCard',      path: '/credits',        platforms: ['web', 'desktop'], group: 'main', sortOrder: 9 },
-  { id: 'usage-analytics', label: 'Usage Analytics', labelTh: 'สถิติการใช้งาน', icon: 'BarChart3',       path: '/usage',          platforms: ['web', 'desktop'], group: 'main', sortOrder: 9.5 },
-  { id: 'my-feedback',   label: 'My Feedback',     labelTh: 'ข้อเสนอของฉัน',  icon: 'MessageSquare',   path: '/my-feedback',    platforms: ['web', 'desktop'], group: 'main', sortOrder: 98 },
-  { id: 'settings',      label: 'Settings',        labelTh: 'ตั้งค่า',       icon: 'Settings',        path: '/settings',       platforms: ['web', 'desktop'], group: 'main', sortOrder: 99 },
+  {
+    id: "dashboard",
+    label: "Dashboard",
+    labelTh: "แดชบอร์ด",
+    icon: "TrendingUp",
+    path: "/dashboard",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 0,
+  },
+  {
+    id: "chat",
+    label: "Chat (LLM)",
+    labelTh: "แชท AI",
+    icon: "MessageSquare",
+    path: "/chat",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 1,
+  },
+  {
+    id: "finance",
+    label: "Finance",
+    labelTh: "การเงิน",
+    icon: "Wallet",
+    path: "/finance",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 1.1,
+  },
+  {
+    id: "finance-reports",
+    label: "Finance Reports",
+    labelTh: "รายงานการเงิน",
+    icon: "BarChart3",
+    path: "/finance/reports",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 1.2,
+  },
+  {
+    id: "media",
+    label: "Media Studio",
+    labelTh: "มีเดียสตูดิโอ",
+    icon: "Sparkles",
+    path: "/media-studio",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2,
+  },
+  {
+    id: "content-composer",
+    label: "Content Composer",
+    labelTh: "เขียนคอนเทนต์",
+    icon: "FileText",
+    path: "/content-composer",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2.05,
+  },
+  {
+    id: "storyboard-review",
+    label: "Storyboard Review",
+    labelTh: "สตอรี่บอร์ด",
+    icon: "Film",
+    path: "/storyboard-review",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2.1,
+  },
+  {
+    id: "vertical-drama-series",
+    label: "Vertical Drama Series",
+    labelTh: "ซีรีส์แนวตั้ง",
+    icon: "Clapperboard",
+    path: "/drama-series",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2.15,
+    requiresFeature: "verticalDramaSeriesDashboardMenu",
+  },
+  {
+    id: "skills",
+    label: "Skills",
+    labelTh: "ทักษะ",
+    icon: "Sparkles",
+    path: "/settings/skills",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3,
+  },
+  {
+    id: "webhook-triggers",
+    label: "Webhook Triggers",
+    labelTh: "เว็บฮุก",
+    icon: "Webhook",
+    path: "/webhook-triggers",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.6,
+    requiresFeature: "webhookTriggers",
+  },
+  {
+    id: "teams",
+    label: "Teams",
+    labelTh: "ทีม AI",
+    icon: "UsersRound",
+    path: "/teams",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.75,
+    requiresFeature: "orchestratorEnabled",
+  },
+  {
+    id: "role-monitor",
+    label: "Role Monitor",
+    labelTh: "มอนิเตอร์บทบาท",
+    icon: "Radar",
+    path: "/role-monitor",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.76,
+    requiresFeature: "orchestratorEnabled",
+  },
+  {
+    id: "automation",
+    label: "Automation Copilot",
+    labelTh: "ระบบอัตโนมัติ",
+    icon: "Bot",
+    path: "/automation",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.8,
+    requiresFeature: "automationCopilot",
+  },
+  {
+    id: "marketplace-capture",
+    label: "Marketplace Capture",
+    labelTh: "ข้อมูลสินค้า",
+    icon: "Store",
+    path: "/marketplace-capture",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.9,
+    requiresFeature: "MARKETPLACE_CAPTURE_ENABLED",
+  },
+  {
+    id: "marketplace-intelligence",
+    label: "Marketplace Intelligence",
+    labelTh: "วิเคราะห์ Marketplace",
+    icon: "BarChart3",
+    path: "/marketplace-capture/intelligence",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 3.91,
+    requiresFeature: "MARKETPLACE_CAPTURE_ENABLED",
+    requiresAnyFeature: marketplaceIntelligenceMenuFeatureFlags,
+  },
+  {
+    id: "social-channels",
+    label: "Social Channels",
+    icon: "Share2",
+    path: "/social/channels",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7.0,
+    requiresFeature: "META_CHANNELS_ENABLED",
+  },
+  {
+    id: "social-inbox",
+    label: "Social Inbox",
+    icon: "MessageCircleMore",
+    path: "/social/inbox",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7.1,
+    requiresFeature: "META_CHANNELS_ENABLED",
+  },
+  {
+    id: "social-publishing",
+    label: "Social Publishing",
+    icon: "Send",
+    path: "/social/publishing",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7.2,
+    requiresFeature: "META_CHANNELS_ENABLED",
+  },
+  {
+    id: "social-moderation",
+    label: "Social Moderation",
+    icon: "ShieldCheck",
+    path: "/social/moderation",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7.3,
+    requiresFeature: "META_CHANNELS_ENABLED",
+  },
+  {
+    id: "social-automation",
+    label: "Social Automation",
+    icon: "Workflow",
+    path: "/social/automation",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7.4,
+    requiresFeature: "META_CHANNELS_ENABLED",
+  },
+  {
+    id: "media-history",
+    label: "Media History",
+    labelTh: "ประวัติมีเดีย",
+    icon: "Clock",
+    path: "/media-history",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4,
+  },
+  {
+    id: "worker-jobs",
+    label: "Worker Jobs",
+    labelTh: "คิวงาน Worker",
+    icon: "Activity",
+    path: "/worker-jobs",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4.01,
+  },
+  {
+    id: "video-studio",
+    label: "Video Studio",
+    labelTh: "สตูดิโอวิดีโอ",
+    icon: "Film",
+    path: "/video-studio",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4.02,
+    requiresFeature: "videoIntelligencePlatformEnabled",
+  },
+  {
+    id: "video-studio-catalog",
+    label: "Catalog Video Studio",
+    labelTh: "สตูดิโอวิดีโอสินค้า",
+    icon: "Store",
+    path: "/video-studio",
+    platforms: ["web", "desktop"],
+    group: "main",
+    parentId: "video-studio",
+    sortOrder: 4.021,
+    requiresFeature: "videoIntelligenceCatalogStudioEnabled",
+  },
+  {
+    id: "video-studio-motion",
+    label: "Motion Studio",
+    labelTh: "สตูดิโอโมชัน",
+    icon: "Clapperboard",
+    path: "/video-studio",
+    platforms: ["web", "desktop"],
+    group: "main",
+    parentId: "video-studio",
+    sortOrder: 4.022,
+    requiresFeature: "videoIntelligenceMotionStudioEnabled",
+  },
+  {
+    id: "document-management",
+    label: "Library",
+    labelTh: "คลังเอกสาร",
+    icon: "FileText",
+    path: "/document-management",
+    platforms: ["web", "desktop"],
+    group: "main",
+    section: "documents",
+    sortOrder: 4.2,
+  },
+  {
+    id: "private-files",
+    label: "Private Files",
+    labelTh: "ไฟล์ส่วนตัว",
+    icon: "Lock",
+    path: "/document-management?scope=private_vault&sort=updated_desc",
+    platforms: ["web", "desktop"],
+    group: "main",
+    parentId: "document-management",
+    sortOrder: 4.21,
+  },
+  {
+    id: "presentations",
+    label: "Presentations",
+    labelTh: "พรีเซนเทชัน",
+    icon: "GalleryHorizontal",
+    path: "/presentations",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4.25,
+  },
+  {
+    id: "groups",
+    label: "Groups",
+    labelTh: "กลุ่ม",
+    icon: "Users",
+    path: "/groups",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 4.3,
+  },
+  {
+    id: "factory",
+    label: "SaaS Factory",
+    labelTh: "โรงงาน",
+    icon: "Factory",
+    path: "/factory",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 5,
+  },
+  {
+    id: "terminal",
+    label: "Terminal",
+    labelTh: "เทอร์มินัล",
+    icon: "Terminal",
+    path: "/terminal",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 6,
+  },
+  {
+    id: "kilo",
+    label: "CLI",
+    labelTh: "CLI",
+    icon: "Terminal",
+    path: "/kilo",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 7,
+  },
+  {
+    id: "video-editor",
+    label: "Video Editor",
+    labelTh: "ตัดต่อวิดีโอ",
+    icon: "Film",
+    path: "/video-editor",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 8.5,
+  },
+  {
+    id: "credits",
+    label: "Credits",
+    labelTh: "เครดิต",
+    icon: "CreditCard",
+    path: "/credits",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 9,
+  },
+  {
+    id: "usage-analytics",
+    label: "Usage Analytics",
+    labelTh: "สถิติการใช้งาน",
+    icon: "BarChart3",
+    path: "/usage",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 9.5,
+  },
+  {
+    id: "my-feedback",
+    label: "My Feedback",
+    labelTh: "ข้อเสนอของฉัน",
+    icon: "MessageSquare",
+    path: "/my-feedback",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 98,
+  },
+  {
+    id: "settings",
+    label: "Settings",
+    labelTh: "ตั้งค่า",
+    icon: "Settings",
+    path: "/settings",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 99,
+  },
 
   // === Admin group ===
   {
@@ -210,17 +549,6 @@ export const defaultMenuItems: MenuItem[] = [
     roles: ["admin"],
     group: "admin",
     sortOrder: 21.8,
-  },
-  {
-    id: "admin-work-os",
-    label: "Work OS",
-    labelTh: "เวิร์กโอเอส",
-    icon: "ClipboardList",
-    path: "/admin/work-os",
-    platforms: ["web", "desktop"],
-    roles: ["admin", "domain_admin"],
-    group: "admin",
-    sortOrder: 21.82,
   },
   {
     id: "admin-notifications",
@@ -405,16 +733,6 @@ export const defaultMenuItems: MenuItem[] = [
     requiresFeature: "personaSystem",
   },
   {
-    id: "admin-agencies",
-    label: "Agencies",
-    icon: "Bot",
-    path: "/admin/agencies",
-    platforms: ["web", "desktop"],
-    roles: ["admin"],
-    group: "admin",
-    sortOrder: 30,
-  },
-  {
     id: "admin-mcp-servers",
     label: "MCP Servers",
     labelTh: "MCP เซิร์ฟเวอร์",
@@ -425,18 +743,6 @@ export const defaultMenuItems: MenuItem[] = [
     group: "admin",
     sortOrder: 30.1,
     requiresFeature: "mcpServerRegistry",
-  },
-  {
-    id: "admin-channel-router",
-    label: "Channel Router",
-    labelTh: "ตัวกำหนดเส้นทาง",
-    icon: "GitFork",
-    path: "/admin/channel-router",
-    platforms: ["web", "desktop"],
-    roles: ["admin", "domain_admin"],
-    group: "admin",
-    sortOrder: 30.2,
-    requiresFeature: "channelRouter",
   },
   {
     id: "admin-guardian",
@@ -571,13 +877,83 @@ export const defaultMenuItems: MenuItem[] = [
   },
 
   // === Domain admin group ===
-  { id: 'domain-users',    label: 'Manage Users',    labelTh: 'จัดการผู้ใช้',   icon: 'UserCog',   path: '/domain-admin/users',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 40 },
-  { id: 'domain-content',  label: 'Edit Content',    labelTh: 'แก้ไขเนื้อหา',  icon: 'FileText',  path: '/domain-admin/content',  platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 41 },
-  { id: 'domain-docs',     label: 'Manage Docs',     labelTh: 'จัดการเอกสาร',  icon: 'BookOpen',  path: '/domain-admin/docs',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 42 },
-  { id: 'domain-theme',    label: 'Edit Theme',      labelTh: 'แก้ไขธีม',      icon: 'Palette',   path: '/domain-admin/theme',    platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 43 },
-  { id: 'domain-blog',     label: 'Manage Blog',     labelTh: 'จัดการบล็อก',   icon: 'PenLine',   path: '/domain-admin/blog',     platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 44 },
-  { id: 'domain-settings', label: 'Tenant Settings', labelTh: 'ตั้งค่าโดเมน', icon: 'FileText',  path: '/domain-admin/settings', platforms: ['web', 'desktop'], roles: ['domain_admin', 'admin'], group: 'domain-admin', sortOrder: 45 },
-  { id: 'domain-skill-revenue', label: 'Skill Revenue', labelTh: 'รายได้จาก Skill', icon: 'Coins', path: '/domain-admin/skill-revenue', platforms: ['web', 'desktop'], roles: ['domain_admin'], group: 'domain-admin', sortOrder: 45.5 },
+  {
+    id: "domain-users",
+    label: "Manage Users",
+    labelTh: "จัดการผู้ใช้",
+    icon: "UserCog",
+    path: "/domain-admin/users",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 40,
+  },
+  {
+    id: "domain-content",
+    label: "Edit Content",
+    labelTh: "แก้ไขเนื้อหา",
+    icon: "FileText",
+    path: "/domain-admin/content",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 41,
+  },
+  {
+    id: "domain-docs",
+    label: "Manage Docs",
+    labelTh: "จัดการเอกสาร",
+    icon: "BookOpen",
+    path: "/domain-admin/docs",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 42,
+  },
+  {
+    id: "domain-theme",
+    label: "Edit Theme",
+    labelTh: "แก้ไขธีม",
+    icon: "Palette",
+    path: "/domain-admin/theme",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 43,
+  },
+  {
+    id: "domain-blog",
+    label: "Manage Blog",
+    labelTh: "จัดการบล็อก",
+    icon: "PenLine",
+    path: "/domain-admin/blog",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 44,
+  },
+  {
+    id: "domain-settings",
+    label: "Tenant Settings",
+    labelTh: "ตั้งค่าโดเมน",
+    icon: "FileText",
+    path: "/domain-admin/settings",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin", "admin"],
+    group: "domain-admin",
+    sortOrder: 45,
+  },
+  {
+    id: "domain-skill-revenue",
+    label: "Skill Revenue",
+    labelTh: "รายได้จาก Skill",
+    icon: "Coins",
+    path: "/domain-admin/skill-revenue",
+    platforms: ["web", "desktop"],
+    roles: ["domain_admin"],
+    group: "domain-admin",
+    sortOrder: 45.5,
+  },
 ];
 
 /**
@@ -586,25 +962,34 @@ export const defaultMenuItems: MenuItem[] = [
 export function getVisibleMenuItems(
   platform: Platform,
   role: UserRole,
-  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
-  enabledFeatures?: Record<string, boolean>
+  overrides?: Array<{
+    menuItemId: string;
+    visible: boolean;
+    sortOrder?: number;
+  }>,
+  enabledFeatures?: Record<string, boolean>,
 ): MenuItem[] {
   return defaultMenuItems
-    .filter(item => item.platforms.includes(platform))
-    .filter(item => !item.roles || item.roles.includes(role))
-    .filter(item => {
+    .filter((item) => item.platforms.includes(platform))
+    .filter((item) => !item.roles || item.roles.includes(role))
+    .filter((item) => {
       if (!enabledFeatures) return true; // No feature info = show all (backward compat)
-      if (item.requiresFeature && enabledFeatures[item.requiresFeature] === false) {
+      if (
+        item.requiresFeature &&
+        enabledFeatures[item.requiresFeature] === false
+      ) {
         return false;
       }
       if (item.requiresAnyFeature?.length) {
-        return item.requiresAnyFeature.some(feature => enabledFeatures[feature] === true);
+        return item.requiresAnyFeature.some(
+          (feature) => enabledFeatures[feature] === true,
+        );
       }
       // Default to true — features are shown unless explicitly disabled
       return true;
     })
-    .map(item => {
-      const override = overrides?.find(o => o.menuItemId === item.id);
+    .map((item) => {
+      const override = overrides?.find((o) => o.menuItemId === item.id);
       if (override) {
         return {
           ...item,
@@ -613,8 +998,8 @@ export function getVisibleMenuItems(
       }
       return item;
     })
-    .filter(item => {
-      const override = overrides?.find(o => o.menuItemId === item.id);
+    .filter((item) => {
+      const override = overrides?.find((o) => o.menuItemId === item.id);
       return override ? override.visible !== false : true;
     })
     .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -627,9 +1012,14 @@ export function getMenuItemsByGroup(
   platform: Platform,
   role: UserRole,
   group: MenuGroup,
-  overrides?: Array<{ menuItemId: string; visible: boolean; sortOrder?: number }>,
-  enabledFeatures?: Record<string, boolean>
+  overrides?: Array<{
+    menuItemId: string;
+    visible: boolean;
+    sortOrder?: number;
+  }>,
+  enabledFeatures?: Record<string, boolean>,
 ): MenuItem[] {
-  return getVisibleMenuItems(platform, role, overrides, enabledFeatures)
-    .filter(item => item.group === group);
+  return getVisibleMenuItems(platform, role, overrides, enabledFeatures).filter(
+    (item) => item.group === group,
+  );
 }

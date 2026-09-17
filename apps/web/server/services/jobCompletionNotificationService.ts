@@ -203,6 +203,7 @@ export function buildVerticalDramaEpisodeUrl(
 }
 
 export function buildWorkerJobActionUrl(job: {
+  id?: string | null;
   inputJson?: unknown;
   outputJson?: unknown;
   workflowRunId?: string | null;
@@ -225,7 +226,11 @@ export function buildWorkerJobActionUrl(job: {
       : typeof input.runId === "string" && input.runId.trim()
         ? input.runId.trim()
         : undefined;
-  if (runId) return `/work/requests?runId=${encodeURIComponent(runId)}`;
+  if (runId) {
+    return job.id
+      ? `/worker-jobs?jobId=${encodeURIComponent(job.id)}`
+      : "/worker-jobs";
+  }
 
   const output =
     job.outputJson &&

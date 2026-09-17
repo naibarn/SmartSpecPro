@@ -3777,6 +3777,15 @@ export const libraryIndexJobStatusEnum = pgEnum("library_index_job_status", [
   "completed",
   "failed",
 ]);
+export const vectorProjectionStatusEnum = pgEnum("vector_projection_status", [
+  "queued",
+  "indexing",
+  "indexed",
+  "stale",
+  "delete_pending",
+  "deleted",
+  "failed",
+]);
 export const libraryContextPackStatusEnum = pgEnum(
   "library_context_pack_status",
   ["draft", "active", "archived"]
@@ -4050,6 +4059,91 @@ export const libraryChunks = pgTable(
 
 export type LibraryChunk = typeof libraryChunks.$inferSelect;
 export type InsertLibraryChunk = typeof libraryChunks.$inferInsert;
+
+/**
+ * PostgreSQL ledger for rebuildable Vectorize projections.
+ *
+ * This table owns projection identity and reconciliation state only. Canonical
+ * content, ACLs, and file bytes remain in their domain tables and R2.
+ */
+export const vectorIndexRecords = pgTable(
+  "vector_index_records",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    workspaceId: varchar("workspace_id", { length: 128 }),
+    pluginId: varchar("plugin_id", { length: 128 }),
+    sourceFamily: varchar("source_family", { length: 96 }).notNull(),
+    sourceTable: varchar("source_table", { length: 128 }).notNull(),
+    sourceId: varchar("source_id", { length: 256 }).notNull(),
+    chunkId: varchar("chunk_id", { length: 256 }),
+    assetId: varchar("asset_id", { length: 256 }),
+    vectorId: varchar("vector_id", { length: 128 }).notNull(),
+    vectorIndex: varchar("vector_index", { length: 128 }).notNull(),
+    namespace: varchar("namespace", { length: 128 }).notNull(),
+    embeddingModel: varchar("embedding_model", { length: 256 }).notNull(),
+    embeddingDimensions: integer("embedding_dimensions").notNull(),
+    embeddingVersion: varchar("embedding_version", { length: 64 }).notNull(),
+    metric: varchar("metric", { length: 32 }).notNull().default("cosine"),
+    chunkingVersion: varchar("chunking_version", { length: 64 }).notNull(),
+    normalizationVersion: varchar("normalization_version", { length: 64 }),
+    contentHash: varchar("content_hash", { length: 64 }).notNull(),
+    sourceRevision: varchar("source_revision", { length: 256 }).notNull(),
+    indexedAt: timestamp("indexed_at", { withTimezone: true }),
+    lastMutationId: varchar("last_mutation_id", { length: 256 }),
+    inputHash: varchar("input_hash", { length: 64 }),
+    sourceLocatorKind: varchar("source_locator_kind", { length: 64 }),
+    status: vectorProjectionStatusEnum("status").notNull().default("queued"),
+    failureCode: varchar("failure_code", { length: 96 }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("vector_index_records_index_vector_unique").on(
+      t.vectorIndex,
+      t.vectorId
+    ),
+    index("vector_index_records_index_namespace_idx").on(
+      t.vectorIndex,
+      t.namespace
+    ),
+    index("vector_index_records_tenant_source_idx").on(
+      t.tenantId,
+      t.sourceFamily,
+      t.sourceId
+    ),
+    index("vector_index_records_tenant_hash_version_idx").on(
+      t.tenantId,
+      t.contentHash,
+      t.embeddingVersion
+    ),
+    index("vector_index_records_index_status_idx").on(
+      t.vectorIndex,
+      t.status
+    ),
+    index("vector_index_records_source_revision_idx").on(t.sourceRevision),
+    check(
+      "vector_index_records_dimensions_positive",
+      sql`${t.embeddingDimensions} > 0`
+    ),
+    check(
+      "vector_index_records_metric_check",
+      sql`${t.metric} IN ('cosine', 'euclidean', 'dot-product')`
+    ),
+  ]
+);
+
+export type VectorIndexRecord = typeof vectorIndexRecords.$inferSelect;
+export type InsertVectorIndexRecord = typeof vectorIndexRecords.$inferInsert;
 
 export const libraryContentVersions = pgTable(
   "library_content_versions",
@@ -15725,7 +15819,13 @@ export const workerHeartbeats = pgTable(
       .notNull(),
   },
   t => [
+    index("worker_heartbeats_created_at_idx").on(t.createdAt),
     index("worker_heartbeats_worker_created_idx").on(t.workerId, t.createdAt),
+    index("worker_heartbeats_worker_created_id_idx").on(
+      t.workerId,
+      t.createdAt,
+      t.id,
+    ),
     index("worker_heartbeats_status_created_idx").on(t.status, t.createdAt),
   ]
 );

@@ -13,14 +13,32 @@ import {
 import {
   dispatchVectorOperation,
   getEffectiveVectorProviderConfig,
+  type VectorProviderConfig,
 } from "./vectorProvider";
-import { toVectorizeSafeId } from "./vectorizeContract";
+import {
+  toVectorizeSafeId,
+  vectorizeNamespaceForTenant,
+} from "./vectorizeContract";
 
-const DOCS_INDEX =
-  process.env.VECTORIZE_DOCS_INDEX || "docs-index-prod";
-const IMAGES_INDEX =
-  process.env.VECTORIZE_IMAGES_INDEX || "images-index-prod";
 const BATCH_SIZE = 1000;
+
+function resolveKnowledgeIndex(config: VectorProviderConfig): string {
+  return (
+    config.vectorizeKnowledgeIndexName?.trim() ||
+    config.vectorizeIndexName?.trim() ||
+    process.env.VECTORIZE_KNOWLEDGE_INDEX?.trim() ||
+    process.env.VECTORIZE_LIBRARY_INDEX?.trim() ||
+    "smartaihub-knowledge-v1"
+  );
+}
+
+function resolveMediaIndex(config: VectorProviderConfig): string {
+  return (
+    config.vectorizeMediaIndexName?.trim() ||
+    process.env.VECTORIZE_MEDIA_INDEX?.trim() ||
+    "smartaihub-media-v1"
+  );
+}
 
 interface VectorMetadata {
   tenantId: string;
@@ -56,13 +74,18 @@ export async function indexDocument(params: {
 }): Promise<VectorizeMutationEvidence> {
   const chunks = chunkDocument(params.text);
   const vectors: VectorEntry[] = [];
-  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+  const providerConfig = await getEffectiveVectorProviderConfig({
+    tenantId: params.tenantId,
+  });
+  const indexName = resolveKnowledgeIndex(providerConfig);
+  const namespace = vectorizeNamespaceForTenant(params.tenantId);
 
   for (let i = 0; i < chunks.length; i++) {
     const embedding = await generateEmbedding(chunks[i]);
     vectors.push({
       id: toVectorizeSafeId(`${params.id}-chunk-${i}`),
       values: embedding,
+      namespace,
       metadata: {
         tenantId: params.tenantId,
         type: params.type,
@@ -80,11 +103,12 @@ export async function indexDocument(params: {
   for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
     const result = await dispatchVectorOperation({
       operation: "index",
-      indexName: DOCS_INDEX,
+      indexName,
       vectors: vectors.slice(i, i + BATCH_SIZE),
       providerConfig,
     });
-    if ("mutationId" in result && result.mutationId) mutationIds.push(result.mutationId);
+    if ("mutationId" in result && result.mutationId)
+      mutationIds.push(result.mutationId);
   }
   return { mutationIds, vectorCount: vectors.length };
 }
@@ -121,7 +145,9 @@ export async function indexImageBuffer(params: {
   type?: string;
   metadata?: Record<string, string | number | boolean | undefined>;
 }) {
-  const description = await generateImageDescriptionFromBuffer(params.imageBuffer);
+  const description = await generateImageDescriptionFromBuffer(
+    params.imageBuffer
+  );
   return indexImageDescription({
     id: params.id,
     description,
@@ -149,17 +175,24 @@ async function indexImageDescription(params: {
     params.metadata?.productDescription,
     params.metadata?.platform,
     params.metadata?.imageKind,
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   const embedding = await generateEmbedding(searchableText);
-  const providerConfig = await getEffectiveVectorProviderConfig({ tenantId: params.tenantId });
+  const providerConfig = await getEffectiveVectorProviderConfig({
+    tenantId: params.tenantId,
+  });
+  const indexName = resolveMediaIndex(providerConfig);
+  const namespace = vectorizeNamespaceForTenant(params.tenantId);
 
   const result = await dispatchVectorOperation({
     operation: "index",
-    indexName: IMAGES_INDEX,
+    indexName,
     vectors: [
       {
         id: toVectorizeSafeId(params.id),
         values: embedding,
+        namespace,
         metadata: {
           ...params.metadata,
           tenantId: params.tenantId,
@@ -175,7 +208,8 @@ async function indexImageDescription(params: {
     providerConfig,
   });
   return {
-    mutationIds: "mutationId" in result && result.mutationId ? [result.mutationId] : [],
+    mutationIds:
+      "mutationId" in result && result.mutationId ? [result.mutationId] : [],
     vectorCount: 1,
   };
 }
@@ -198,14 +232,14 @@ export async function removeVector(indexName: string, id: string) {
  * Documents are stored as {id}-chunk-0, {id}-chunk-1, etc.
  */
 export async function removeDocument(id: string, maxChunks = 100) {
-  const chunkIds = Array.from(
-    { length: maxChunks },
-    (_, i) => toVectorizeSafeId(`${id}-chunk-${i}`),
+  const chunkIds = Array.from({ length: maxChunks }, (_, i) =>
+    toVectorizeSafeId(`${id}-chunk-${i}`)
   );
   const providerConfig = await getEffectiveVectorProviderConfig();
+  const indexName = resolveKnowledgeIndex(providerConfig);
   await dispatchVectorOperation({
     operation: "delete",
-    indexName: DOCS_INDEX,
+    indexName,
     ids: chunkIds,
     providerConfig,
   });

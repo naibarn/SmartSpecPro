@@ -1,5 +1,4 @@
 pub mod audit_sink;
-pub mod agency_swarm_runtime;
 pub mod connector_runtime;
 pub mod desktop_runtime_capabilities;
 pub mod desktop_worker_comfy;
@@ -62,7 +61,6 @@ pub fn run() {
             docker_commands::docker_list_images,
             docker_commands::docker_pull_image,
             docker_commands::docker_remove_image,
-            docker_commands::docker_create_sandbox,
             docker_commands::docker_prune,
             docker_commands::docker_container_stats,
             docker_commands::docker_system_info,
@@ -90,7 +88,6 @@ pub fn run() {
             local_file_service::desktop_host_list_related_files,
             local_file_service::desktop_host_remove_root,
             local_file_service::desktop_host_describe_local_file_parser_capabilities,
-            agency_swarm_runtime::desktop_host_prepare_agency_swarm_runtime,
             connector_runtime::desktop_host_authorize_connector_action,
             desktop_runtime_capabilities::desktop_host_build_runtime_capabilities,
             desktop_runtime_capabilities::desktop_host_build_worker_doctor_summary,

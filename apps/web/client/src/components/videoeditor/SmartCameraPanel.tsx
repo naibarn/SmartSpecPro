@@ -14,6 +14,7 @@ interface SmartCameraPanelProps {
   onChange: (clipId: string, settings: SmartCameraSettings) => void;
   onAddKeyframe: (clipId: string) => void;
   onRequestAnalysis: (clipId: string) => void | Promise<void>;
+  onRequestFullScan?: (clipId: string) => void | Promise<void>;
 }
 
 const buttonStyle: React.CSSProperties = {
@@ -32,6 +33,7 @@ export default function SmartCameraPanel({
   onChange,
   onAddKeyframe,
   onRequestAnalysis,
+  onRequestFullScan,
 }: SmartCameraPanelProps) {
   const settings = selectedClip?.smartCamera || DEFAULT_SETTINGS;
 
@@ -44,7 +46,7 @@ export default function SmartCameraPanel({
     <section style={{ padding: 14, color: '#ddd', fontSize: 12 }} aria-label="Smart Camera">
       <h3 style={{ margin: '0 0 6px', fontSize: 15, color: '#fff' }}>🎯 Smart Camera</h3>
       <p style={{ margin: '0 0 14px', color: '#999', lineHeight: 1.5 }}>
-        ตั้งค่า face track, auto pan และ auto zoom ได้จากเว็บ ส่วนการวิเคราะห์ใบหน้าเชิงลึกจะทำใน Worker
+        ติดตามใบหน้าและ activity ได้ใน browser; Full Scan และ render หนักส่ง Worker เมื่อพร้อม
       </p>
       {!selectedClip ? (
         <div style={{ padding: 16, border: '1px dashed #555', borderRadius: 6, color: '#999', textAlign: 'center' }}>
@@ -56,6 +58,8 @@ export default function SmartCameraPanel({
             {([
               ['off', 'ปิด'],
               ['auto_face', 'ติดตามใบหน้า'],
+              ['face_focus', 'Face Focus'],
+              ['face_activity', 'Face + Activity'],
               ['auto_object', 'ติดตามวัตถุ'],
               ['manual_keyframes', 'กำหนดเอง'],
             ] as const).map(([mode, label]) => (
@@ -88,9 +92,15 @@ export default function SmartCameraPanel({
             <input style={{ width: '100%', marginTop: 7 }} type="range" min={0} max={30} value={settings.safeMargin} onChange={(event) => update({ safeMargin: Number(event.target.value) })} />
           </label>
           <div style={{ display: 'grid', gap: 8 }}>
+            <div role="status" aria-live="polite" style={{ color: settings.analysisStatus === 'error' ? '#fca5a5' : '#9ca3af' }}>
+              {settings.analysisStatus === 'worker_running' ? 'กำลังวิเคราะห์ใน Worker…' : settings.analysisStatus === 'browser_running' ? 'กำลังวิเคราะห์ใน browser…' : (settings.analysisStatus === 'browser_ready' || settings.analysisStatus === 'browser_degraded') && settings.mode === 'face_activity' && settings.warnings?.includes('activity_unavailable') ? 'ไม่พบ activity ที่เชื่อถือได้ · ใช้ Face Focus ชั่วคราว' : settings.analysisStatus === 'browser_ready' ? `พร้อมใช้ใน browser${settings.facePointCount ? ` · ${settings.facePointCount} จุดใบหน้า` : ''}` : settings.analysisStatus === 'browser_degraded' ? 'วิเคราะห์ได้บางส่วน · ตรวจกรอบหรือใช้ Full Scan' : settings.analysisStatus === 'stale' ? 'ผลวิเคราะห์เก่าแล้ว ต้องวิเคราะห์ใหม่' : settings.analysisStatus === 'error' ? 'วิเคราะห์ไม่สำเร็จ · ลอง Quick ใหม่หรือใช้ Full Scan' : 'พร้อมวิเคราะห์จากคลิป'}
+            </div>
             <button type="button" style={{ ...buttonStyle, flex: 'none', background: '#153b53', borderColor: '#0078d4' }} onClick={() => void onRequestAnalysis(selectedClip.id)}>
-              🔍 วิเคราะห์ใบหน้า/วัตถุใน Worker
+              🔍 วิเคราะห์ใน browser (Quick)
             </button>
+            {onRequestFullScan && <button type="button" style={{ ...buttonStyle, flex: 'none' }} onClick={() => void onRequestFullScan(selectedClip.id)}>
+              🧠 Full Scan ผ่าน Worker
+            </button>}
             <button type="button" style={{ ...buttonStyle, flex: 'none' }} onClick={() => onAddKeyframe(selectedClip.id)}>
               ◇ เพิ่ม keyframe ที่ playhead
             </button>

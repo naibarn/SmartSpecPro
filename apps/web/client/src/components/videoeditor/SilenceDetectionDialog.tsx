@@ -27,6 +27,7 @@ import {
   applyBufferToRegions,
 } from '../../types/videoEditor';
 import { createMediaJobClient } from '../../services/mediaJobClient';
+import { analyzeSilenceQuick } from '../../services/browserVideoAnalysis';
 import PreviewPlayer, { type ActiveClipInfo } from './PreviewPlayer';
 import SilenceWaveformOverlay from './SilenceWaveformOverlay';
 import WaveformCanvas from './WaveformCanvas';
@@ -981,13 +982,22 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
       setAnalysisStage('detecting');
       setAnalysisProgressLabel(getAnalysisStageLabel('detecting'));
 
-      // Call backend
-      const client = await createMediaJobClient();
-      const result = await client.detectDeadAir(assetUri, {
-        thresholdDb: threshold,
-        minSilenceMs: minDuration * 1000,
-        ...(selectedAudioStreamIndex === null ? {} : { audioStreamIndex: selectedAudioStreamIndex }),
-      }, (progress) => {
+      // Prefer browser Quick Silence Cut; retain the existing Worker adapter
+      // when source fetch, decoder, or the local size budget is unavailable.
+      let result: any;
+      try {
+        const response = await fetch(assetUri, { credentials: assetUri.startsWith('/') ? 'include' : 'same-origin' });
+        if (!response.ok) throw new Error(`source fetch failed (${response.status})`);
+        const blob = await response.blob();
+        if (blob.size > 250 * 1024 * 1024) throw new Error('source exceeds browser quick-analysis budget');
+        const local = await analyzeSilenceQuick(blob, { sourceFingerprint: `${selectedSource.assetId}:${blob.size}:${asset.duration}`, thresholdDb: threshold, minSilenceMs: minDuration * 1000, paddingMs: Math.round(softeningBuffer * 1000), audioStreamIndex: selectedAudioStreamIndex, signal: abortController.signal });
+        if (local.status !== 'browser_ready') throw new Error(local.warnings.join(',') || 'browser audio unavailable');
+        result = { derived: { silenceSegments: local.ranges } };
+        setAnalysisProgressPct((prev) => Math.max(prev, 85));
+        setAnalysisProgressLabel('วิเคราะห์เสียงใน browser แล้ว');
+      } catch {
+        const client = await createMediaJobClient();
+        result = await client.detectDeadAir(assetUri, { thresholdDb: threshold, minSilenceMs: minDuration * 1000, ...(selectedAudioStreamIndex === null ? {} : { audioStreamIndex: selectedAudioStreamIndex }) }, (progress) => {
         if (abortController.signal.aborted || !mountedRef.current) return;
 
         const mappedStage = mapMediaStageToAnalysisStage(progress.stage);
@@ -1015,7 +1025,8 @@ const SilenceDetectionDialog: React.FC<SilenceDetectionDialogProps> = ({
         if (progress.stage) {
           setAnalysisProgressLabel(humanizeStageText(progress.stage));
         }
-      });
+        });
+      }
 
       // Check if aborted
       if (abortController.signal.aborted) {

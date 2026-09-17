@@ -296,21 +296,26 @@ h2 {
   height: 100%;
 }
 
-.connection-summary {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  border-radius: 6px;
-  color: #065f46;
-  margin: 14px 0 0;
-  padding: 10px 12px;
-}
-
 .connection-status-card {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   display: grid;
   gap: 4px;
   padding: 10px 12px;
+}
+
+.connection-status-heading {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.connection-status-dot {
+  background: #64748b;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  height: 9px;
+  width: 9px;
 }
 
 .connection-status-card strong {
@@ -328,15 +333,102 @@ h2 {
   border-color: #86efac;
 }
 
+.connection-status-card.ready .connection-status-dot {
+  background: #16a34a;
+}
+
 .connection-status-card.warning,
 .connection-status-card.pending {
   background: #fffbeb;
   border-color: #fcd34d;
 }
 
+.connection-status-card.warning .connection-status-dot,
+.connection-status-card.pending .connection-status-dot {
+  background: #d97706;
+}
+
 .connection-status-card.error {
   background: #fef2f2;
   border-color: #fca5a5;
+}
+
+.connection-status-card.error .connection-status-dot {
+  background: #dc2626;
+}
+
+.connection-facts {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.connection-facts > div,
+.current-work-card {
+  background: #f8fafc;
+  border: 1px solid #d8e0ea;
+  border-radius: 6px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.connection-facts span,
+.connection-meta-label {
+  color: #64748b;
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.connection-facts strong {
+  color: #0f172a;
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.connection-facts strong.is-running {
+  color: #166534;
+}
+
+.connection-facts strong.is-stopped {
+  color: #64748b;
+}
+
+.current-work-card {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.current-work-card strong {
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.current-work-card > span:last-child {
+  color: #475569;
+  font-size: 0.84rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.connection-meta {
+  align-items: baseline;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  gap: 4px 12px;
+  line-height: 1.4;
+  margin: 10px 0 0;
+}
+
+.connection-meta.warning {
+  color: #b45309;
+  font-weight: 700;
 }
 
 .subtle.warning {
@@ -554,6 +646,15 @@ h2 {
   .hero-status-stack {
     justify-items: stretch;
     min-width: 0;
+  }
+
+  .connection-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .connection-meta {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .queue-summary {
@@ -2222,6 +2323,80 @@ h2 {
   height: 100%;
   display: block;
   object-fit: contain;
+}
+
+.face-diagnostic-status,
+.face-scan-status {
+  position: absolute;
+  z-index: 100;
+  max-width: min(94%, 420px);
+  padding: 5px 9px;
+  border: 1px solid #f59e0b;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.93);
+  color: #fef3c7;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.face-diagnostic-status {
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.face-scan-status {
+  top: 8px;
+  right: 8px;
+}
+
+.face-diagnostic-status.is-found,
+.face-scan-status.is-found {
+  border-color: #34d399;
+  color: #d1fae5;
+}
+
+.face-diagnostic-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.face-diagnostic-status.is-found .face-diagnostic-dot {
+  background: #34d399;
+}
+
+.face-diagnostic-box {
+  position: absolute;
+  z-index: 91;
+  border: 2px dashed #f59e0b;
+  pointer-events: none;
+}
+
+.face-diagnostic-box.is-found {
+  border: 2px solid #34d399;
+}
+
+.face-diagnostic-landmark {
+  position: absolute;
+  z-index: 92;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #0f172a;
+  border-radius: 50%;
+  background: #f59e0b;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.face-diagnostic-landmark.is-found {
+  background: #34d399;
 }
 
 .crop-overlay-mask {

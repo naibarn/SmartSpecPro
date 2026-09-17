@@ -38,7 +38,6 @@ import {
   setDeployMode,
 } from "../services/scaleTier";
 import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
-import { getCeleryMediaDoctorStatus, runCeleryMediaDoctor } from "../services/celeryMediaDoctorService";
 import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
@@ -810,12 +809,6 @@ export const infrastructureRouter = router({
       };
     }
   }),
-
-  getCeleryMediaDoctorStatus: exactAdminProcedure
-    .input(z.object({ userId: z.number().int().positive().optional() }).optional())
-    .query(({ input }) => getCeleryMediaDoctorStatus(input?.userId)),
-
-  runCeleryMediaDoctor: exactAdminProcedure.mutation(() => runCeleryMediaDoctor()),
 
   // ----------------------------------------------------------
   // Scale Tier Management

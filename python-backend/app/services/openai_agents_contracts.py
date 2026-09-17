@@ -25,7 +25,6 @@ RuntimeOriginSurface = Literal[
     "media_studio_video_shot",
     "storyboard_review",
     "video_edit",
-    "workflow",
     "unknown",
 ]
 RuntimeEntryPoint = Literal[

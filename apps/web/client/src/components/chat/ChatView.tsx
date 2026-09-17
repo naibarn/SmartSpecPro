@@ -4,8 +4,6 @@ import {
   useState,
   useCallback,
   useMemo,
-  type CSSProperties,
-  type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
@@ -46,8 +44,6 @@ import {
   Video,
   Code2,
   FileText,
-  ClipboardList,
-  ArrowRight,
   Search,
   Sparkles,
   Bot,
@@ -59,7 +55,6 @@ import {
   ChevronDown,
   ChevronsUp,
   ChevronsDown,
-  GripVertical,
 } from "lucide-react";
 import {
   Tooltip,
@@ -156,8 +151,6 @@ import {
   mergeReferenceImagesIntoParams,
   shouldUseAttachedImagesAsReference,
 } from "./chatAttachmentReferences";
-import { AgencyEscalationCard } from "./AgencyEscalationCard";
-import { HybridOrchestrationCard } from "./HybridOrchestrationCard";
 import { toast } from "sonner";
 import {
   Popover,
@@ -189,7 +182,6 @@ import {
   readClientConversationSkillSettings,
 } from "@shared/localAiConversationSettings";
 import { HelpButton } from "@/components/help";
-import { ComparisonPreviewCard } from "@/components/comparison/ComparisonPreviewCard";
 import { FinanceActivityCard } from "@/components/finance/FinanceActivityCard";
 import { PersonaSelector } from "./PersonaSelector";
 import type { BrowserSessionLaunchSuggestion } from "@/lib/browserSessionInvocation";
@@ -206,24 +198,18 @@ import {
 } from "@/lib/chatLibrary";
 import { buildBrowserSessionPath } from "@/lib/browserSessionRouting";
 import { type BrowserSessionArtifact } from "@shared/browserSession";
-import {
-  extractBrowserSessionArtifacts,
-  extractComparisonPreviews,
-} from "@/lib/chatArtifactPresentation";
+import { extractBrowserSessionArtifacts } from "@/lib/chatArtifactPresentation";
 import {
   extractTeamRoomActionLinks,
   stripStandaloneTeamRoomActionLinks,
 } from "@/lib/teamRoomActionLinks";
-import type { HybridOrchestrationPlan } from "@shared/orchestration/hybridOrchestration";
 import { shouldPreserveLocalMessages } from "@/lib/chatMessageSync";
-import { buildWorkRequestLaunchPath } from "@/lib/workRequestLinks";
 import {
   resolveChatLocalRuntimeReadiness,
   looksLikeSkillRequest,
   getDirectMediaGenerationRequestType,
   resolveDetectedSkillForSend,
   shouldAutoRunDetectedSkill,
-  shouldBlockPendingCloudKeepInChat,
 } from "./chatLocalRouting";
 
 // Debounce hook for skill detection
@@ -326,18 +312,6 @@ function normalizeWakePhrase(value: string | null | undefined): string | null {
   const normalized = normalizeVoiceLookup(value);
   return normalized.length > 0 ? normalized : null;
 }
-
-type WorkStartCardPosition = {
-  x: number;
-  y: number;
-};
-
-type WorkStartDragState = {
-  startX: number;
-  startY: number;
-  originX: number;
-  originY: number;
-};
 
 function getTeamRoomActionIcon(
   kind: "approval" | "reply" | "workflow" | "open"
@@ -512,7 +486,10 @@ function formatAgeSafetyChatError(payload: any): string {
   const code = String(payload?.code ?? "");
   const actualAgeBand = String(payload?.actualAgeBand ?? "");
   const enforcementAgeBand = String(payload?.enforcementAgeBand ?? "");
-  if (code === "safety_profile_required" || code === "country_profile_invalid") {
+  if (
+    code === "safety_profile_required" ||
+    code === "country_profile_invalid"
+  ) {
     return "กรุณากรอกวันเกิดและประเทศที่ใช้งานใน Settings > ความปลอดภัย ก่อนใช้งาน Chat";
   }
   if (code === "age_policy_chat_illegal_instruction") {
@@ -522,15 +499,23 @@ function formatAgeSafetyChatError(payload: any): string {
     return "คำถามนี้ถูกบล็อกเพราะเข้าข่ายคำแนะนำที่อาจเป็นอันตรายต่อความปลอดภัยของตนเอง";
   }
   if (code.startsWith("age_policy_chat") || code === "minimum_service_age") {
-    const bandText = enforcementAgeBand && enforcementAgeBand !== "undefined"
-      ? ` ระบบประเมินสถานะอายุปัจจุบันเป็น ${enforcementAgeBand}${actualAgeBand ? ` (actual: ${actualAgeBand})` : ""}.`
-      : "";
+    const bandText =
+      enforcementAgeBand && enforcementAgeBand !== "undefined"
+        ? ` ระบบประเมินสถานะอายุปัจจุบันเป็น ${enforcementAgeBand}${actualAgeBand ? ` (actual: ${actualAgeBand})` : ""}.`
+        : "";
     return `Chat ถูกจำกัดด้วยนโยบายอายุและต้องใช้โปรไฟล์อายุผู้ใหญ่.${bandText} โปรดตรวจสอบวันเกิดและประเทศใน Settings > ความปลอดภัย`;
   }
-  return payload?.message || payload?.error || "This chat request is restricted by age-safety policy.";
+  return (
+    payload?.message ||
+    payload?.error ||
+    "This chat request is restricted by age-safety policy."
+  );
 }
 
-const skillIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+const skillIconMap: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
   "image-generation": Wand2,
   "video-generation": Video,
   "audio-generation": Music,
@@ -772,8 +757,6 @@ interface ChatViewProps {
     suggestion: BrowserSessionLaunchSuggestion
   ) => void;
   onDismissBrowserSessionSuggestion?: (suggestionId: string) => void;
-  showWorkStartEntry?: boolean;
-  onRunAgency?: () => void;
   onOpenFinancePanel?: () => void;
 }
 
@@ -789,7 +772,6 @@ export function ChatView({
   onUserMessageSent,
   onConfirmBrowserSessionSuggestion,
   onDismissBrowserSessionSuggestion,
-  showWorkStartEntry = true,
   onOpenFinancePanel,
 }: ChatViewProps) {
   const [, navigate] = useLocation();
@@ -818,10 +800,6 @@ export function ChatView({
   const [handsFreeListening, setHandsFreeListening] = useState(false);
   const [modelDialogOpen, setModelDialogOpen] = useState(false);
   const [ocrOnlyMode, setOcrOnlyMode] = useState(false);
-  const [workStartDismissed, setWorkStartDismissed] = useState(false);
-  const [workStartPosition, setWorkStartPosition] =
-    useState<WorkStartCardPosition>({ x: 0, y: 0 });
-  const [isWorkStartDragging, setIsWorkStartDragging] = useState(false);
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
   const lastLocalAddConversationId = useRef<number | null>(conversationId);
@@ -837,19 +815,6 @@ export function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
-  const workStartDragStateRef = useRef<WorkStartDragState | null>(null);
-  const workStartStorageKey = useMemo(() => {
-    const tenantId =
-      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
-    const userId = user?.id != null ? String(user.id) : "anonymous";
-    return `smartspec_chat_workstart_hidden:${tenantId}:${userId}`;
-  }, [user?.currentTenantId, user?.id]);
-  const workStartPositionStorageKey = useMemo(() => {
-    const tenantId =
-      user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
-    const userId = user?.id != null ? String(user.id) : "anonymous";
-    return `smartspec_chat_workstart_position:${tenantId}:${userId}`;
-  }, [user?.currentTenantId, user?.id]);
   const ocrOnlyModeStorageKey = useMemo(() => {
     const tenantId =
       user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
@@ -868,56 +833,6 @@ export function ChatView({
     if (typeof window === "undefined") {
       return;
     }
-    const stored = window.localStorage.getItem(workStartStorageKey);
-    setWorkStartDismissed(stored === "1");
-  }, [workStartStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(
-      workStartStorageKey,
-      workStartDismissed ? "1" : "0"
-    );
-  }, [workStartDismissed, workStartStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      const stored = window.localStorage.getItem(workStartPositionStorageKey);
-      if (!stored) {
-        return;
-      }
-      const parsed = JSON.parse(stored) as Partial<WorkStartCardPosition>;
-      if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-        setWorkStartPosition({ x: parsed.x, y: parsed.y });
-      }
-    } catch {
-      // Ignore malformed storage and keep the default position.
-    }
-  }, [workStartPositionStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    try {
-      window.localStorage.setItem(
-        workStartPositionStorageKey,
-        JSON.stringify(workStartPosition)
-      );
-    } catch {
-      // Ignore storage failures.
-    }
-  }, [workStartPosition, workStartPositionStorageKey]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
     const stored = window.localStorage.getItem(ocrOnlyModeStorageKey);
     setOcrOnlyMode(stored === "1");
   }, [ocrOnlyModeStorageKey]);
@@ -928,53 +843,6 @@ export function ChatView({
     }
     window.localStorage.setItem(ocrOnlyModeStorageKey, ocrOnlyMode ? "1" : "0");
   }, [ocrOnlyMode, ocrOnlyModeStorageKey]);
-
-  useEffect(() => {
-    if (!isWorkStartDragging) {
-      return;
-    }
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const dragState = workStartDragStateRef.current;
-      if (!dragState) {
-        return;
-      }
-      setWorkStartPosition({
-        x: dragState.originX + (event.clientX - dragState.startX),
-        y: dragState.originY + (event.clientY - dragState.startY),
-      });
-    };
-
-    const handleMouseUp = () => {
-      workStartDragStateRef.current = null;
-      setIsWorkStartDragging(false);
-    };
-
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
-  }, [isWorkStartDragging]);
-
-  const handleWorkStartDragStart = useCallback(
-    (event: ReactMouseEvent<HTMLElement>) => {
-      if (event.button !== 0) {
-        return;
-      }
-
-      workStartDragStateRef.current = {
-        startX: event.clientX,
-        startY: event.clientY,
-        originX: workStartPosition.x,
-        originY: workStartPosition.y,
-      };
-      setIsWorkStartDragging(true);
-      event.preventDefault();
-    },
-    [workStartPosition.x, workStartPosition.y]
-  );
 
   const utils = trpc.useUtils();
   const librarySourcePickerEnabled = isChatLibrarySourcePickerEnabled(
@@ -988,8 +856,6 @@ export function ChatView({
   );
   const conversationProjectId = (conversation as any)?.projectId ?? null;
   const isPersonalConversation = conversationProjectId === "personal";
-  const shouldShowWorkStartEntry =
-    showWorkStartEntry && !isPersonalConversation;
   const handleOpenBrowserSession = useCallback(
     (artifact: BrowserSessionArtifact) => {
       const path = buildBrowserSessionPath(
@@ -3024,20 +2890,6 @@ export function ChatView({
     conversationId: number;
   } | null>(null);
 
-  // ── Intent-driven agency escalation state ─────────────────────
-  const [pendingAgencyEscalation, setPendingAgencyEscalation] = useState<{
-    message: string;
-    reason: string;
-    modalities: string[];
-    complexity: string;
-  } | null>(null);
-  const [pendingHybridOrchestration, setPendingHybridOrchestration] = useState<{
-    message: string;
-    reason: string;
-    plan: HybridOrchestrationPlan;
-    fallbackUserMessage: Message;
-    retrievalQueryText: string;
-  } | null>(null);
 
   const parseIntentMutation = trpc.scheduledMessages.parseIntent.useMutation();
   const autoGeneratePresentationMutation =
@@ -3054,8 +2906,6 @@ export function ChatView({
   useEffect(() => {
     if (!sessionLocalOnlyEnabled) return;
     setDetectedSkill(null);
-    setPendingAgencyEscalation(null);
-    setPendingHybridOrchestration(null);
   }, [sessionLocalOnlyEnabled]);
 
   const presentationProgressQuery =
@@ -3417,7 +3267,9 @@ export function ChatView({
     if (file.size > maxSize) {
       const sizeMB = (maxSize / (1024 * 1024)).toFixed(0);
       const typeLabel = isImage ? "images" : isVideo ? "videos" : "files";
-      toast.error(`File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`);
+      toast.error(
+        `File too large. Maximum size is ${sizeMB}MB for ${typeLabel}.`
+      );
       return;
     }
 
@@ -3490,7 +3342,7 @@ export function ChatView({
       toast.error(
         `Failed to upload ${file.name}: ${
           error instanceof Error ? error.message : "Unknown upload error"
-        }. Please retry.`,
+        }. Please retry.`
       );
     } finally {
       if (fileRef.current) fileRef.current.value = "";
@@ -3916,7 +3768,10 @@ export function ChatView({
                     setIsStreaming(false);
                     reader.releaseLock();
                     return ""; // Stop processing, user must decide
-                  } else if (eventName === "error" || eventName === "safety_block") {
+                  } else if (
+                    eventName === "error" ||
+                    eventName === "safety_block"
+                  ) {
                     streamErrorMessage = formatAgeSafetyChatError(parsed);
                     logTiming("stream_error_event", {
                       error: streamErrorMessage,
@@ -4304,64 +4159,6 @@ export function ChatView({
             attachment.fileType.startsWith("image/")
           ),
         });
-
-        // Agency escalation — complex multi-step request (e.g., "สร้างภาพ และ ข้อความ")
-        if (intent.route === "agency" && intent.agencyEscalation) {
-          const assistantContent =
-            "This request requires multiple coordinated steps. Let me check if an AI Agency can handle this.";
-          const saved = await saveAssistantMessageMutation
-            .mutateAsync({
-              conversationId: conversationId!,
-              content: assistantContent,
-            })
-            .catch(() => null);
-          markLocalAdd();
-          setMessages(prev => [
-            ...prev,
-            {
-              id: saved?.id ?? Date.now(),
-              role: "assistant" as const,
-              content: assistantContent,
-              runtimeMetadata: saved?.runtimeMetadata ?? null,
-              createdAt: new Date(),
-            },
-          ]);
-          setPendingAgencyEscalation({
-            message: text,
-            reason: intent.reason,
-            modalities: intent.taskProfile?.modalities ?? [],
-            complexity: intent.taskProfile?.complexity ?? "single",
-          });
-          return; // Exit — wait for user action on the escalation card
-        }
-
-        if (intent.route === "hybrid" && intent.hybridPlan) {
-          const assistantContent =
-            "I found a possible hybrid workflow for this request. Please confirm whether you want to open the hybrid flow, or keep this as a normal chat question.";
-          markLocalAdd();
-          setMessages(prev => [
-            ...prev,
-            {
-              id: Date.now(),
-              role: "assistant" as const,
-              content: assistantContent,
-              createdAt: new Date(),
-            },
-          ]);
-          setPendingHybridOrchestration({
-            message: text,
-            reason: intent.reason,
-            plan: intent.hybridPlan,
-            fallbackUserMessage: {
-              id: userMessage.id,
-              role: "user" as const,
-              content: typeof content === "string" ? content : text,
-              createdAt: new Date(userMessage.createdAt),
-            },
-            retrievalQueryText: text,
-          });
-          return;
-        }
 
         // Skill detected by intent router — enrich resolvedSkill from server decision
         if (
@@ -5729,37 +5526,6 @@ export function ChatView({
     setPendingMediaPrompt(null);
   };
 
-  // ── Handler: user delegates to agency ───────────────────────────────────
-  const handleAgencyDelegation = (agencyId: string) => {
-    setPendingAgencyEscalation(null);
-    // Navigate to agency chat with the original message
-    window.location.href = `/agency/${agencyId}`;
-  };
-
-  // ── Handler: user keeps complex request in chat ─────────────────────────
-  const handleKeepInChat = () => {
-    setPendingAgencyEscalation(null);
-    // The message was already sent — LLM will respond via normal stream
-  };
-
-  const handleKeepHybridInChat = () => {
-    if (shouldBlockPendingCloudKeepInChat(sessionLocalOnlyEnabled)) {
-      setPendingHybridOrchestration(null);
-      toast.info(
-        "This chat is pinned to Local AI. Switch it back to account default or cloud/API before using a hybrid plan in chat."
-      );
-      return;
-    }
-    const pending = pendingHybridOrchestration;
-    setPendingHybridOrchestration(null);
-    if (!pending || isStreaming) return;
-    void streamResponse(
-      pending.fallbackUserMessage,
-      undefined,
-      pending.retrievalQueryText
-    );
-  };
-
   // Render user content (including images)
   const renderUserContent = (message: Message) => {
     const imageAttachments =
@@ -6197,181 +5963,11 @@ export function ChatView({
                   />
                 </div>
               ) : null}
-              {shouldShowWorkStartEntry && !workStartDismissed ? (
-                <div
-                  className={cn(
-                    "mt-4 w-full max-w-xl rounded-[var(--radius-container)] border border-[var(--color-border-blue)] bg-[var(--color-background-blue)] p-4 text-left shadow-sm select-none",
-                    isWorkStartDragging ? "cursor-grabbing" : "cursor-grab"
-                  )}
-                  style={
-                    {
-                      transform: `translate(${workStartPosition.x}px, ${workStartPosition.y}px)`,
-                      transition: isWorkStartDragging
-                        ? "none"
-                        : "transform 180ms ease",
-                      zIndex: isWorkStartDragging ? 30 : 1,
-                      position: "relative",
-                    } as CSSProperties
-                  }
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-sky-600 shadow-sm">
-                      <ClipboardList className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div
-                          className="flex flex-wrap items-center gap-2"
-                          onMouseDown={handleWorkStartDragStart}
-                        >
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 shrink-0 rounded-full text-sky-600 hover:bg-white"
-                            onMouseDown={handleWorkStartDragStart}
-                            aria-label={t("workStart.move")}
-                            title={t("workStart.move")}
-                          >
-                            <GripVertical className="h-4 w-4" />
-                          </Button>
-                          <h4 className="font-semibold text-slate-900">
-                            {t("workStart.title")}
-                          </h4>
-                          <Badge variant="outline" className="text-[10px]">
-                            {t("workStart.badge")}
-                          </Badge>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 rounded-full text-slate-500 hover:bg-white hover:text-slate-900"
-                          onClick={() => setWorkStartDismissed(true)}
-                          aria-label={t("workStart.hide")}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-600">
-                        {t("workStart.body")}
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        {t("workStart.userBody")}
-                      </p>
-                      {user?.role === "admin" ||
-                      user?.role === "domain_admin" ? (
-                        <p className="mt-2 text-sm text-slate-600">
-                          {t("workStart.adminBody")}
-                        </p>
-                      ) : null}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="default"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() =>
-                            navigate(
-                              buildWorkRequestLaunchPath({
-                                sourceType:
-                                  conversationId !== null ? "chat" : null,
-                                sourceRef:
-                                  conversationId !== null
-                                    ? String(conversationId)
-                                    : null,
-                                linkedConversationIds:
-                                  conversationId !== null
-                                    ? [String(conversationId)]
-                                    : [],
-                              })
-                            )
-                          }
-                        >
-                          {t("workStart.openRequest")}
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => navigate("/work/requests")}
-                        >
-                          <ClipboardList className="h-4 w-4" />
-                          {t("workStart.openRequests")}
-                        </Button>
-                        {user?.role === "admin" ||
-                        user?.role === "domain_admin" ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                            onClick={() => navigate("/admin/work-os")}
-                          >
-                            <ClipboardList className="h-4 w-4" />
-                            {t("workStart.openConsole")}
-                          </Button>
-                        ) : null}
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => navigate("/help/work-os")}
-                        >
-                          {t("workStart.openGuide")}
-                        </Button>
-                      </div>
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-600">
-                        <p className="font-medium text-slate-800">
-                          Permalink tips
-                        </p>
-                        <p className="mt-1">
-                          Use <code>caseId</code> to reopen the same case later.
-                          Use <code>timelineSource</code> to jump to a specific
-                          evidence slice such as <code>work_os</code>,{" "}
-                          <code>role_routine</code>, <code>team_run</code>, or{" "}
-                          <code>workpack_record</code>.
-                        </p>
-                        <p className="mt-1">
-                          If you need the guide, the button above opens
-                          `/help/work-os`.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : shouldShowWorkStartEntry ? (
-                <div className="mt-4 flex w-full max-w-xl flex-col gap-3 rounded-[var(--radius-container)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-3 text-left shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900">
-                      {t("workStart.hiddenTitle")}
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      {t("workStart.hiddenBody")}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => setWorkStartDismissed(false)}
-                  >
-                    {t("workStart.show")}
-                  </Button>
-                </div>
-              ) : null}
             </div>
           ) : (
             <>
               {messages.map(m => {
                 const browserSessionArtifacts = extractBrowserSessionArtifacts(
-                  m.artifacts
-                );
-                const comparisonPreviews = extractComparisonPreviews(
                   m.artifacts
                 );
                 const teamRoomActions =
@@ -6499,12 +6095,6 @@ export function ChatView({
                             key={`${artifact.sessionId}-${artifact.updatedAt ?? "latest"}`}
                             artifact={artifact}
                             onOpen={handleOpenBrowserSession}
-                          />
-                        ))}
-                        {comparisonPreviews.map((preview, index) => (
-                          <ComparisonPreviewCard
-                            key={`${preview.data.title}-${index}`}
-                            preview={preview}
                           />
                         ))}
                         {(m.artifacts ?? [])
@@ -6688,31 +6278,6 @@ export function ChatView({
                 </div>
               )}
 
-              {/* Agency escalation — complex multi-step request */}
-              {pendingAgencyEscalation && (
-                <div className="mr-auto max-w-full sm:max-w-[85%]">
-                  <AgencyEscalationCard
-                    message={pendingAgencyEscalation.message}
-                    reason={pendingAgencyEscalation.reason}
-                    modalities={pendingAgencyEscalation.modalities}
-                    complexity={pendingAgencyEscalation.complexity}
-                    onDelegateToAgency={handleAgencyDelegation}
-                    onKeepInChat={handleKeepInChat}
-                  />
-                </div>
-              )}
-
-              {pendingHybridOrchestration && (
-                <div className="mr-auto max-w-full sm:max-w-[85%]">
-                  <HybridOrchestrationCard
-                    message={pendingHybridOrchestration.message}
-                    reason={pendingHybridOrchestration.reason}
-                    plan={pendingHybridOrchestration.plan}
-                    onKeepInChat={handleKeepHybridInChat}
-                  />
-                </div>
-              )}
-
               {browserSessionSuggestion ? (
                 <div className="mr-auto max-w-full sm:max-w-[85%]">
                   <BrowserSessionLaunchSuggestionCard
@@ -6816,8 +6381,12 @@ export function ChatView({
                                       const parsed = JSON.parse(
                                         dataLine.slice("data:".length).trim()
                                       );
-                                      if (eventName === "error" || eventName === "safety_block") {
-                                        streamErrorMessage = formatAgeSafetyChatError(parsed);
+                                      if (
+                                        eventName === "error" ||
+                                        eventName === "safety_block"
+                                      ) {
+                                        streamErrorMessage =
+                                          formatAgeSafetyChatError(parsed);
                                       } else if (
                                         eventName === "message_complete"
                                       ) {

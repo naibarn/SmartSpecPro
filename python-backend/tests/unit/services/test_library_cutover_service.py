@@ -6,7 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
-from app.models.library import LibraryProviderSwitchState
+from app.models.library import (
+    LibraryBackfillCampaign,
+    LibraryItem,
+    LibraryProviderSwitchState,
+    VectorIndexRecord,
+)
 from app.services.library_cutover_service import (
     DEFAULT_READ_PROVIDER,
     apply_either_trigger_rollback,
@@ -15,6 +20,7 @@ from app.services.library_cutover_service import (
     detect_reconciliation_drift,
     evaluate_cutover_readiness,
     get_or_create_switch_state,
+    maybe_auto_promote_vectorize_cutover,
     request_provider_cutover,
 )
 
@@ -33,6 +39,9 @@ async def cutover_db():
                 sync_conn,
                 tables=[
                     LibraryProviderSwitchState.__table__,
+                    LibraryBackfillCampaign.__table__,
+                    LibraryItem.__table__,
+                    VectorIndexRecord.__table__,
                 ],
             )
         )
@@ -46,6 +55,14 @@ async def cutover_db():
 @pytest.mark.unit
 class TestLibraryCutoverService:
     @pytest.mark.asyncio
+    async def test_new_switch_state_keeps_pgvector_active(self, cutover_db):
+        state = await get_or_create_switch_state(cutover_db, tenant_id="tenant-599")
+
+        assert state.current_read_provider == "pgvector"
+        assert state.target_provider == "pgvector"
+        assert state.mirror_writes is False
+
+    @pytest.mark.asyncio
     async def test_switch_request_fails_when_connectivity_check_fails(self, cutover_db):
         state = await get_or_create_switch_state(cutover_db, tenant_id="tenant-600")
 
@@ -53,7 +70,7 @@ class TestLibraryCutoverService:
             await request_provider_cutover(
                 cutover_db,
                 tenant_id="tenant-600",
-                target_provider="pgvector",
+                target_provider="cloudflare_vectorize",
                 campaign_completed=True,
                 connectivity_ok=False,
                 expected_version=state.switch_version,
@@ -65,7 +82,7 @@ class TestLibraryCutoverService:
         active = await request_provider_cutover(
             cutover_db,
             tenant_id="tenant-601",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=state.switch_version,
@@ -84,7 +101,7 @@ class TestLibraryCutoverService:
         await request_provider_cutover(
             cutover_db,
             tenant_id="tenant-602",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=stale_version,
@@ -106,7 +123,7 @@ class TestLibraryCutoverService:
         active = await request_provider_cutover(
             cutover_db,
             tenant_id="tenant-603",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=initial.switch_version,
@@ -139,7 +156,7 @@ class TestLibraryCutoverService:
             expected_version=refreshed.switch_version,
         )
         assert success["cutover_applied"] is True
-        assert success["current_read_provider"] == "pgvector"
+        assert success["current_read_provider"] == "cloudflare_vectorize"
         assert success["mirror_writes"] is False
 
     @pytest.mark.asyncio
@@ -156,6 +173,110 @@ class TestLibraryCutoverService:
         assert "smoke_failed" in gate["failed_checks"]
         assert "parity_below_threshold" in gate["failed_checks"]
         assert "reconciliation_drift" in gate["failed_checks"]
+
+    @pytest.mark.asyncio
+    async def test_auto_promotes_after_server_measured_projection_is_complete(self, cutover_db):
+        campaign = LibraryBackfillCampaign(
+            tenant_id="tenant-auto",
+            domain="library",
+            status="completed",
+            checkpoint_json={"source_high_water_mark": 1},
+        )
+        item = LibraryItem(
+            tenant_id="tenant-auto",
+            owner_user_id=1,
+            item_type="document",
+            source="upload",
+            title="Canonical source",
+            status="ready",
+        )
+        cutover_db.add_all([campaign, item])
+        await cutover_db.flush()
+        cutover_db.add(
+            VectorIndexRecord(
+                tenant_id="tenant-auto",
+                source_family="library_chunks",
+                source_table="library_chunks",
+                source_id="1",
+                chunk_id="0",
+                vector_id="v:auto-1",
+                vector_index="smartaihub-knowledge-v1",
+                namespace="tenant:tenant-auto",
+                embedding_model="@cf/baai/bge-base-en-v1.5",
+                embedding_dimensions=768,
+                embedding_version="bge-base-en-v1.5-v1",
+                metric="cosine",
+                chunking_version="text-2000-overlap-200-v1",
+                content_hash="a" * 64,
+                source_revision="revision-1",
+                status="indexed",
+            )
+        )
+        await cutover_db.commit()
+
+        initial = await get_or_create_switch_state(cutover_db, tenant_id="tenant-auto")
+        active = await request_provider_cutover(
+            cutover_db,
+            tenant_id="tenant-auto",
+            target_provider="cloudflare_vectorize",
+            campaign_id=campaign.id,
+            campaign_completed=True,
+            connectivity_ok=True,
+            expected_version=initial.switch_version,
+        )
+
+        result = await maybe_auto_promote_vectorize_cutover(
+            cutover_db,
+            tenant_id="tenant-auto",
+            target_index="smartaihub-knowledge-v1",
+            smoke_passed=True,
+        )
+
+        assert result["automatic"] is True
+        assert result["cutover_applied"] is True
+        assert result["current_read_provider"] == "cloudflare_vectorize"
+
+    @pytest.mark.asyncio
+    async def test_auto_promotion_stays_on_pgvector_when_projection_is_pending(self, cutover_db):
+        campaign = LibraryBackfillCampaign(
+            tenant_id="tenant-pending",
+            domain="library",
+            status="completed",
+            checkpoint_json={"source_high_water_mark": 1},
+        )
+        item = LibraryItem(
+            tenant_id="tenant-pending",
+            owner_user_id=1,
+            item_type="document",
+            source="upload",
+            title="Canonical source",
+            status="ready",
+        )
+        cutover_db.add_all([campaign, item])
+        await cutover_db.commit()
+
+        initial = await get_or_create_switch_state(cutover_db, tenant_id="tenant-pending")
+        active = await request_provider_cutover(
+            cutover_db,
+            tenant_id="tenant-pending",
+            target_provider="cloudflare_vectorize",
+            campaign_id=campaign.id,
+            campaign_completed=True,
+            connectivity_ok=True,
+            expected_version=initial.switch_version,
+        )
+
+        result = await maybe_auto_promote_vectorize_cutover(
+            cutover_db,
+            tenant_id="tenant-pending",
+            target_index="smartaihub-knowledge-v1",
+            smoke_passed=True,
+        )
+
+        assert result["automatic"] is True
+        assert result["cutover_applied"] is False
+        assert "coverage_below_threshold" in result["failed_checks"]
+        assert result["current_read_provider"] == "pgvector"
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -176,7 +297,7 @@ class TestLibraryCutoverService:
         active = await request_provider_cutover(
             cutover_db,
             tenant_id="tenant-604",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=initial.switch_version,
@@ -191,7 +312,7 @@ class TestLibraryCutoverService:
             expected_version=active.switch_version,
         )
         assert cutover["cutover_applied"] is True
-        assert cutover["current_read_provider"] == "pgvector"
+        assert cutover["current_read_provider"] == "cloudflare_vectorize"
 
         refreshed = await cutover_db.scalar(
             select(LibraryProviderSwitchState).where(LibraryProviderSwitchState.tenant_id == "tenant-604")
@@ -217,7 +338,7 @@ class TestLibraryCutoverService:
         active = await request_provider_cutover(
             cutover_db,
             tenant_id="tenant-605",
-            target_provider="pgvector",
+            target_provider="cloudflare_vectorize",
             campaign_completed=True,
             connectivity_ok=True,
             expected_version=initial.switch_version,

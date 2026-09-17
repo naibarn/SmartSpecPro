@@ -186,6 +186,16 @@ button, input, textarea, select {
   min-width: 0;
 }
 
+.storyboard-project-list,
+.storyboard-review-detail {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.storyboard-review-detail .production-prompt-textarea {
+  min-height: 86px;
+}
+
 .production-project-card {
   width: 100%;
   display: grid;
@@ -223,6 +233,12 @@ button, input, textarea, select {
   min-width: 0;
   display: grid;
   gap: 2px;
+}
+
+.production-project-open-label {
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .production-project-title {
@@ -472,6 +488,10 @@ button, input, textarea, select {
   .production-search-row,
   .extension-update-banner {
     grid-template-columns: 1fr;
+  }
+
+  .storyboard-layout .storyboard-review-detail {
+    order: -1;
   }
 
   .extension-update-actions {

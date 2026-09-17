@@ -6,8 +6,6 @@ import { and, asc, count, eq, gt, isNull, or } from "drizzle-orm";
 
 import { getDb, getUserById } from "../db";
 import {
-  agencies,
-  agencyConversations,
   llmProviders,
   mediaModels,
   modelProviderMap,
@@ -72,10 +70,9 @@ import {
 } from "../services/libraryKnowledgeObservabilityService";
 import { getRedisClient } from "../services/redis";
 import { getSkillByIdAsync, getAvailableSkillsAsync } from "../services/skillRegistry";
-import { executeSkill } from "../services/skillExecutor";
+import { startSkillTask } from "../services/skillExecutor";
 import { normalizeSkillRevenuePricing } from "../services/skillRevenueBilling";
 import { detectSkill } from "../services/skillDetector";
-import { agencyBridge } from "../services/agencyBridge";
 import { mediaGenerationService } from "../services/mediaGenerationService";
 import { listDeferredMediaTasks } from "../services/deferredMediaRetryService";
 import {
@@ -134,7 +131,6 @@ export type McpToolFamily =
   | "gateway"
   | "knowledge"
   | "skills"
-  | "agencies"
   | "media"
   | "presentations"
   | "video_projects"
@@ -151,8 +147,6 @@ export type McpToolGroup =
   | "knowledge_ingest"
   | "skills_read"
   | "skills_execute"
-  | "agency_read"
-  | "agency_execute"
   | "media_generation"
   | "presentation_generation"
   | "video_generation"
@@ -268,7 +262,6 @@ const MCP_TOOL_FAMILIES: McpToolFamily[] = [
   "gateway",
   "knowledge",
   "skills",
-  "agencies",
   "media",
   "presentations",
   "video_projects",
@@ -286,8 +279,6 @@ const MCP_TOOL_GROUPS: McpToolGroup[] = [
   "knowledge_ingest",
   "skills_read",
   "skills_execute",
-  "agency_read",
-  "agency_execute",
   "media_generation",
   "presentation_generation",
   "video_generation",
@@ -2202,7 +2193,7 @@ async function executeSkillViaMcp(
     }
     const prompt = typeof inputs.prompt === "string" ? inputs.prompt : "";
     const { prompt: _prompt, ...rest } = inputs;
-    const result = await executeSkill(
+    const { taskId } = await startSkillTask(
       skill,
       {
         prompt,
@@ -2211,219 +2202,17 @@ async function executeSkillViaMcp(
         runId: skillRunId,
       } as any,
       ctx.session.userId,
-      createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
       ctx.session.tenantId,
     );
 
     return {
-      result,
-      creditsUsed: result.success ? result.creditsUsed ?? estimatedCost : 0,
+      status: "queued",
+      taskId,
+      skillId,
+      creditsReserved: estimatedCost,
+      message: "Skill execution admitted to the central worker queue.",
     };
   });
-}
-
-async function getOrCreateAgencyConversation(
-  agencyId: string,
-  session: McpToolSession,
-): Promise<string> {
-  const db = await getDb();
-  const existing = await db
-    .select({ id: agencyConversations.id })
-    .from(agencyConversations)
-    .innerJoin(agencies, eq(agencyConversations.agencyId, agencies.id))
-    .where(
-      and(
-        eq(agencyConversations.agencyId, agencyId),
-        eq(agencyConversations.userId, session.userId),
-        eq(agencyConversations.source, "api"),
-        eq(agencies.tenantId, session.tenantId),
-        or(isNull(agencyConversations.expiresAt), gt(agencyConversations.expiresAt, new Date())),
-      ),
-    )
-    .limit(1);
-  if (existing.length) {
-    return existing[0].id;
-  }
-  const id = crypto.randomUUID();
-  await db.insert(agencyConversations).values({
-    id,
-    agencyId,
-    userId: session.userId,
-    tenantId: session.tenantId,
-    title: "MCP Conversation",
-    source: "api",
-    apiKeyId: session.apiKeyId,
-    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-  });
-  return id;
-}
-
-async function verifyAgencyExists(agencyId: string, tenantId: string): Promise<void> {
-  const db = await getDb();
-  const rows = await db
-    .select({ id: agencies.id })
-    .from(agencies)
-    .where(and(eq(agencies.id, agencyId), eq(agencies.tenantId, tenantId)))
-    .limit(1);
-  if (!rows.length) {
-    throw new Error("Agency not found");
-  }
-}
-
-async function listAgenciesForTenant(session: McpToolSession): Promise<unknown> {
-  const db = await getDb();
-  const [{ value: total }] = await db
-    .select({ value: count() })
-    .from(agencies)
-    .where(eq(agencies.tenantId, session.tenantId));
-  const rows = await db
-    .select({
-      id: agencies.id,
-      name: agencies.name,
-      slug: agencies.slug,
-      description: agencies.description,
-      defaultModel: agencies.defaultModel,
-      createdAt: agencies.createdAt,
-    })
-    .from(agencies)
-    .where(eq(agencies.tenantId, session.tenantId))
-    .orderBy(agencies.createdAt);
-  return {
-    total,
-    agencies: rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      description: row.description ?? "",
-      default_model: row.defaultModel ?? null,
-      created_at: row.createdAt?.toISOString() ?? null,
-    })),
-  };
-}
-
-async function invokeAgency(
-  args: Record<string, unknown>,
-  ctx: McpExecutionContext,
-): Promise<unknown> {
-  const agencyId = typeof args.agency_id === "string" ? args.agency_id : "";
-  const message = typeof args.message === "string" ? args.message : "";
-  if (!agencyId || !message) {
-    throw new Error("agency_id and message are required");
-  }
-  await assertDelegatedWorkerGrant(ctx.session as any, { grantType: "agency", resourceId: agencyId });
-  await verifyAgencyExists(agencyId, ctx.session.tenantId);
-
-  const maxCredits = Number.isFinite(Number(args.max_credits)) ? Number(args.max_credits) : undefined;
-  return runWithDelegatedWorkerExecution({
-    auth: ctx.session as any,
-    actionClass: "compute",
-    estimatedCredits: maxCredits ?? 1,
-    idempotencyKey: ctx.idempotencyKey,
-  }, async () => {
-    const conversationId = typeof args.conversation_id === "string" && args.conversation_id
-      ? args.conversation_id
-      : await getOrCreateAgencyConversation(agencyId, ctx.session);
-
-    let reservedCredits = 0;
-    if (maxCredits && maxCredits > 0) {
-      reservedCredits = maxCredits;
-      await deductCredits({
-        userId: ctx.session.userId,
-        amount: reservedCredits,
-        sourceType: "api_agency",
-        description: `Agency invocation reservation: ${agencyId}`,
-        idempotencyKey: ctx.idempotencyKey ?? undefined,
-        metadata: buildDelegatedWorkerOriginMetadata(ctx.session as any, "mcp.agencies.invoke", {
-          endpoint: "/v1/mcp",
-          toolName: "smartspec.agencies.invoke",
-          agencyId,
-          conversationId,
-          reservedCredits,
-        }),
-      } as any);
-    }
-
-    try {
-      const result = await agencyBridge.executeRun({
-        agencyId,
-        conversationId,
-        message,
-        userToken: createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
-        tenantId: ctx.session.tenantId,
-        userId: ctx.session.userId,
-      });
-
-      const creditsUsed = result.creditsUsed ?? 0;
-      if (reservedCredits > 0) {
-        const unused = Math.max(0, reservedCredits - creditsUsed);
-        if (unused > 0) {
-          await refundCredits({
-            userId: ctx.session.userId,
-            amount: unused,
-            reason: `Agency invocation refund: used ${creditsUsed} of ${reservedCredits} reserved`,
-          } as any);
-        }
-      } else if (creditsUsed > 0) {
-        await deductCredits({
-          userId: ctx.session.userId,
-          amount: creditsUsed,
-          sourceType: "api_agency",
-          description: `Agency invocation: ${agencyId}`,
-          idempotencyKey: ctx.idempotencyKey ?? undefined,
-          metadata: buildDelegatedWorkerOriginMetadata(ctx.session as any, "mcp.agencies.invoke", {
-            endpoint: "/v1/mcp",
-            toolName: "smartspec.agencies.invoke",
-            agencyId,
-            conversationId,
-            actualCreditsUsed: creditsUsed,
-          }),
-        } as any);
-      }
-
-      return {
-        run_id: result.runId,
-        conversation_id: conversationId,
-        status: result.status,
-        response: result.response,
-        credits_used: creditsUsed,
-      };
-    } catch (error) {
-      if (reservedCredits > 0) {
-        await refundCredits({
-          userId: ctx.session.userId,
-          amount: reservedCredits,
-          reason: `Agency invocation failed — full reservation refund: ${agencyId}`,
-        } as any).catch(() => {});
-      }
-      throw error;
-    }
-  });
-}
-
-async function getAgencyRunStatus(
-  args: Record<string, unknown>,
-  ctx: McpExecutionContext,
-): Promise<unknown> {
-  const agencyId = typeof args.agency_id === "string" ? args.agency_id : "";
-  const runId = typeof args.run_id === "string" ? args.run_id : "";
-  if (!agencyId || !runId) {
-    throw new Error("agency_id and run_id are required");
-  }
-  await verifyAgencyExists(agencyId, ctx.session.tenantId);
-  const result = await agencyBridge.getRunDetails(
-    agencyId,
-    runId,
-    createInternalTokenFromAuth({ userId: ctx.session.userId, tenantId: ctx.session.tenantId }),
-  );
-  return {
-    run_id: result.runId,
-    status: result.status,
-    response: result.response,
-    credits_used: result.creditsUsed,
-    duration_ms: result.durationMs,
-    started_at: result.startedAt ?? null,
-    completed_at: result.completedAt ?? null,
-  };
 }
 
 async function resolveMediaModelAndPricing(
@@ -4767,73 +4556,6 @@ const TOOL_REGISTRY: McpToolDefinition[] = [
     },
     listVisibleWhen: (ctx) => ctx.session.authMode !== "delegated_worker" || (ctx.delegatedManifest?.grantSummary.skills?.length ?? 0) > 0,
     execute: executeSkillViaMcp,
-  },
-  {
-    name: "smartspec.agencies.list",
-    family: "agencies",
-    namespace: "agencies",
-    toolGroup: "agency_read",
-    description: "List agencies visible in the current tenant",
-    requiredScope: "agencies:list",
-    readWrite: "Read",
-    delegatedWorkerEligible: true,
-    executionMode: "implemented",
-    resultSafetyClass: "structured_json",
-    idempotencyMode: "none",
-    actionClass: "read",
-    inputSchema: { type: "object", properties: {}, additionalProperties: false },
-    execute: async (_args, ctx) => listAgenciesForTenant(ctx.session),
-  },
-  {
-    name: "smartspec.agencies.invoke",
-    family: "agencies",
-    namespace: "agencies",
-    toolGroup: "agency_execute",
-    description: "Invoke an allowed agency and return the created run information",
-    requiredScope: "agencies:invoke",
-    readWrite: "Write",
-    delegatedWorkerEligible: true,
-    executionMode: "implemented",
-    resultSafetyClass: "structured_json",
-    idempotencyMode: "optional",
-    actionClass: "compute",
-    inputSchema: {
-      type: "object",
-      required: ["agency_id", "message"],
-      properties: {
-        agency_id: { type: "string" },
-        message: { type: "string" },
-        conversation_id: { type: "string" },
-        max_credits: { type: "integer" },
-      },
-      additionalProperties: false,
-    },
-    listVisibleWhen: (ctx) => ctx.session.authMode !== "delegated_worker" || (ctx.delegatedManifest?.grantSummary.agencies?.length ?? 0) > 0,
-    execute: invokeAgency,
-  },
-  {
-    name: "smartspec.agencies.status",
-    family: "agencies",
-    namespace: "agencies",
-    toolGroup: "agency_read",
-    description: "Read the current status of a specific agency run",
-    requiredScope: "agencies:invoke",
-    readWrite: "Read",
-    delegatedWorkerEligible: true,
-    executionMode: "implemented",
-    resultSafetyClass: "structured_json",
-    idempotencyMode: "none",
-    actionClass: "read",
-    inputSchema: {
-      type: "object",
-      required: ["agency_id", "run_id"],
-      properties: {
-        agency_id: { type: "string" },
-        run_id: { type: "string" },
-      },
-      additionalProperties: false,
-    },
-    execute: getAgencyRunStatus,
   },
   {
     name: "smartspec.media.generate_image",

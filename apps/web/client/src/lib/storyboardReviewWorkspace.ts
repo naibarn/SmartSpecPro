@@ -38,10 +38,23 @@ export interface StoryboardReferenceVideo {
   url?: string;
 }
 
+export interface StoryboardModelProvenanceEntry {
+  requestedModelId: string;
+  effectiveModelId?: string | null;
+  providerId?: string | null;
+}
+
+export interface StoryboardModelProvenance {
+  image?: StoryboardModelProvenanceEntry;
+  video?: StoryboardModelProvenanceEntry;
+}
+
 export interface StoryboardVideoGenerationContext {
   aspectRatio: string;
   duration?: number;
   model?: string;
+  /** Legacy projection field retained for video-model migration. */
+  videoModelId?: string;
   referenceImages: StoryboardReferenceImage[];
   referenceVideos: StoryboardReferenceVideo[];
   extraParams?: Record<string, any>;
@@ -51,6 +64,7 @@ export interface StoryboardVideoGenerationContext {
   useReferenceVideoUrlFallback?: boolean;
   productionContext?: StoryboardProductionContext | null;
   transportMetadata?: Partial<MediaTaskTransportMetadata> | null;
+  modelProvenance?: StoryboardModelProvenance;
 }
 
 export interface StoryboardGenerationTask {
@@ -59,6 +73,7 @@ export interface StoryboardGenerationTask {
   status: "queued" | "generating" | "completed" | "error";
   type: string;
   prompt: string;
+  videoPrompt?: string | null;
   model: string;
   durationSeconds?: number;
   transition?: StoryboardClipTransition;
@@ -73,6 +88,9 @@ export interface StoryboardGenerationTask {
   source?: "generated" | "imported";
   aspectRatio?: string;
   storyboardContext?: StoryboardVideoGenerationContext;
+  modelProvenance?: StoryboardModelProvenance;
+  /** Provider-specific prompt metadata supplied by a projection source. */
+  generationExtraParams?: Record<string, unknown>;
   transportMetadata?: Partial<MediaTaskTransportMetadata> | null;
   marketplaceProduct?: MarketplaceProductReferenceContext | null;
   productionContext?: StoryboardProductionContext | null;
@@ -135,6 +153,7 @@ export interface StoryboardReviewDraft {
   voiceoverFullScript?: string | null;
   /** When true, planner treats voiceoverFullScript as the primary concept/content source */
   useVoiceoverScriptAsConcept?: boolean;
+  modelProvenance?: StoryboardModelProvenance;
   videoSegmentState?: StoryboardVideoSegmentState | null;
 }
 
@@ -234,7 +253,10 @@ export function applyRegeneratedVideoSegmentPromptToDraft(
   const now = input.now ?? Date.now();
   const generatedAt = input.generatedAt ?? new Date(now).toISOString();
   const nextTasks = draft.tasks.map((task) => {
-    const extraParams = task.storyboardContext?.extraParams ?? {};
+      const extraParams = {
+        ...(task.generationExtraParams ?? {}),
+        ...(task.storyboardContext?.extraParams ?? {}),
+      };
     const taskSegmentId =
       typeof extraParams.videoSegmentId === "string" ? extraParams.videoSegmentId.trim() : "";
     const matchesSegment = taskSegmentId === segmentId;
@@ -616,14 +638,28 @@ function normalizeStoryboardGenerationModelId(value: unknown): string | undefine
 
 export function getStoryboardTaskEffectiveGenerationContext(
   task: StoryboardGenerationTask,
-  draft?: Pick<StoryboardReviewDraft, "videoSegmentState"> | null,
+  draft?: Pick<StoryboardReviewDraft, "videoSegmentState" | "modelProvenance"> | null,
+  mediaType: "image" | "video" = task.type === "image" ? "image" : "video",
 ): StoryboardVideoGenerationContext | null {
   const context = task.storyboardContext;
   if (!context) return null;
-  const model =
-    normalizeStoryboardGenerationModelId(draft?.videoSegmentState?.videoSegmentPlan.videoModelId) ??
-    normalizeStoryboardGenerationModelId(task.model) ??
-    normalizeStoryboardGenerationModelId(context.model);
+  const model = mediaType === "video"
+    ? normalizeStoryboardGenerationModelId(draft?.videoSegmentState?.videoSegmentPlan.videoModelId) ??
+      normalizeStoryboardGenerationModelId(draft?.modelProvenance?.video?.effectiveModelId) ??
+      normalizeStoryboardGenerationModelId(draft?.modelProvenance?.video?.requestedModelId) ??
+      normalizeStoryboardGenerationModelId(task.modelProvenance?.video?.effectiveModelId) ??
+      normalizeStoryboardGenerationModelId(task.modelProvenance?.video?.requestedModelId) ??
+      normalizeStoryboardGenerationModelId(context.modelProvenance?.video?.effectiveModelId) ??
+      normalizeStoryboardGenerationModelId(context.modelProvenance?.video?.requestedModelId) ??
+      normalizeStoryboardGenerationModelId(context.extraParams?.videoModelId) ??
+      normalizeStoryboardGenerationModelId(task.model) ??
+      normalizeStoryboardGenerationModelId(context.model)
+    : normalizeStoryboardGenerationModelId(task.modelProvenance?.image?.effectiveModelId) ??
+      normalizeStoryboardGenerationModelId(task.modelProvenance?.image?.requestedModelId) ??
+      normalizeStoryboardGenerationModelId(context.modelProvenance?.image?.effectiveModelId) ??
+      normalizeStoryboardGenerationModelId(context.modelProvenance?.image?.requestedModelId) ??
+      normalizeStoryboardGenerationModelId(task.model) ??
+      normalizeStoryboardGenerationModelId(context.model);
   const transportMetadataSource =
     task.transportMetadata ??
     context.transportMetadata ??
@@ -641,6 +677,34 @@ export function getStoryboardTaskEffectiveGenerationContext(
     ...(model ? { model } : {}),
     transportMetadata,
   };
+}
+
+function normalizeStoryboardModelProvenanceEntry(value: unknown): StoryboardModelProvenanceEntry | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const requestedModelId = typeof record.requestedModelId === "string"
+    ? record.requestedModelId.trim()
+    : "";
+  if (!requestedModelId) return undefined;
+  const effectiveModelId = typeof record.effectiveModelId === "string"
+    ? record.effectiveModelId.trim() || null
+    : null;
+  const providerId = typeof record.providerId === "string"
+    ? record.providerId.trim() || null
+    : null;
+  return {
+    requestedModelId,
+    ...(effectiveModelId ? { effectiveModelId } : {}),
+    ...(providerId ? { providerId } : {}),
+  };
+}
+
+function normalizeStoryboardModelProvenance(value: unknown): StoryboardModelProvenance | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const image = normalizeStoryboardModelProvenanceEntry(record.image);
+  const video = normalizeStoryboardModelProvenanceEntry(record.video);
+  return image || video ? { ...(image ? { image } : {}), ...(video ? { video } : {}) } : undefined;
 }
 
 function normalizeStoryboardProductionContext(value: unknown): StoryboardProductionContext | null {
@@ -926,6 +990,10 @@ export function applyStoryboardReviewVideoOptionsToDraft(
   const requestedModel = normalizeStoryboardReviewVideoModelId(input.videoModel) ?? "";
   const fallbackModel =
     normalizeStoryboardReviewVideoModelId(draft.videoSegmentState?.videoSegmentPlan.videoModelId) ||
+    normalizeStoryboardReviewVideoModelId(draft.modelProvenance?.video?.requestedModelId) ||
+    normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.modelProvenance?.video)?.modelProvenance?.video?.requestedModelId) ||
+    normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.storyboardContext?.modelProvenance?.video)?.storyboardContext?.modelProvenance?.video?.requestedModelId) ||
+    normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.storyboardContext?.extraParams?.videoModelId)?.storyboardContext?.extraParams?.videoModelId) ||
     normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.type !== "image")?.storyboardContext?.model) ||
     normalizeStoryboardReviewVideoModelId(draft.tasks.find((task) => task.type !== "image")?.model) ||
     "veo3/generate-veo-3-video-lite";
@@ -963,6 +1031,7 @@ export function applyStoryboardReviewVideoOptionsToDraft(
   const hasInputTransportMetadata = Object.prototype.hasOwnProperty.call(input, "transportMetadata");
   const nextTransportMetadata = hasInputTransportMetadata ? input.transportMetadata ?? null : null;
   const shots = buildStoryboardVideoSegmentPlannerShots(draft);
+  const now = input.now ?? Date.now();
   const referenceMode = normalizeStoryboardVideoReferenceModeValue(
     currentPlan?.referenceMode ?? inferStoryboardVideoReferenceMode(draft),
   );
@@ -983,7 +1052,35 @@ export function applyStoryboardReviewVideoOptionsToDraft(
         shots,
       })
     : currentPlan;
-  if (!nextPlan) return draft;
+  const nextModelProvenance: StoryboardModelProvenance = {
+    ...(draft.modelProvenance ?? {}),
+    video: {
+      requestedModelId: videoModel,
+      ...(draft.modelProvenance?.video?.requestedModelId === videoModel
+        ? {
+            ...(draft.modelProvenance.video.effectiveModelId
+              ? { effectiveModelId: draft.modelProvenance.video.effectiveModelId }
+              : {}),
+            ...(draft.modelProvenance.video.providerId
+              ? { providerId: draft.modelProvenance.video.providerId }
+              : {}),
+          }
+        : {}),
+    },
+  };
+  const provenanceChanged = JSON.stringify(draft.modelProvenance ?? null) !== JSON.stringify(nextModelProvenance);
+  if (!nextPlan) {
+    return provenanceChanged
+      ? {
+          ...draft,
+          updatedAt: now,
+          modelProvenance: nextModelProvenance,
+          projectLink: null,
+          renderJobId: null,
+          compoundStatus: null,
+        }
+      : draft;
+  }
 
   const previousPlan = currentPlan;
   const structureChanged =
@@ -996,7 +1093,6 @@ export function applyStoryboardReviewVideoOptionsToDraft(
     previousPlan?.transport !== nextPlan.transport ||
     (previousPlan?.provider ?? "") !== (nextPlan.provider ?? "");
   const audioChanged = previousPlan?.audioStrategy !== nextPlan.audioStrategy;
-  const now = input.now ?? Date.now();
   const segmentByShotId = new Map<string, VideoSegment>();
   nextPlan.segments.forEach((segment) => {
     segment.shotIds.forEach((shotId) => {
@@ -1008,7 +1104,8 @@ export function applyStoryboardReviewVideoOptionsToDraft(
     structureChanged ||
     modelChanged ||
     audioChanged ||
-    draft.videoSegmentState?.effectiveMode !== nextPlan.effectiveMode;
+    draft.videoSegmentState?.effectiveMode !== nextPlan.effectiveMode ||
+    provenanceChanged;
   const staleTaskIds = new Set(draft.videoSegmentState?.staleTaskIds ?? []);
   const nextTasks = draft.tasks.map((task, taskIndex): StoryboardGenerationTask => {
     if (task.type === "image" || !task.storyboardContext) return task;
@@ -1074,6 +1171,10 @@ export function applyStoryboardReviewVideoOptionsToDraft(
     return {
       ...task,
       model: videoModel,
+      modelProvenance: {
+        ...(task.modelProvenance ?? {}),
+        video: nextModelProvenance.video,
+      },
       status: shouldInvalidateGeneratedClip && task.status === "completed"
         ? "queued"
         : task.status,
@@ -1097,6 +1198,10 @@ export function applyStoryboardReviewVideoOptionsToDraft(
       storyboardContext: {
         ...task.storyboardContext,
         model: videoModel,
+        modelProvenance: {
+          ...(task.storyboardContext.modelProvenance ?? {}),
+          video: nextModelProvenance.video,
+        },
         transportMetadata: appliedContextTransportMetadata,
         extraParams: {
           ...(task.storyboardContext.extraParams ?? {}),
@@ -1144,6 +1249,7 @@ export function applyStoryboardReviewVideoOptionsToDraft(
   return {
     ...draft,
     updatedAt: now,
+    modelProvenance: nextModelProvenance,
     tasks: nextTasks,
     projectLink: null,
     renderJobId: null,
@@ -1185,6 +1291,39 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
   const companionAudioUpdatedAt = typeof parsed.companionAudioUpdatedAt === "number" && Number.isFinite(parsed.companionAudioUpdatedAt)
     ? parsed.companionAudioUpdatedAt
     : null;
+  const normalizedTasks = parsed.tasks.map((rawTask, index) => {
+    const task = rawTask as StoryboardGenerationTask & {
+      imageUrl?: unknown;
+      image_url?: unknown;
+      mediaType?: unknown;
+    };
+    const imageUrl = typeof task.imageUrl === "string" && task.imageUrl.trim()
+      ? task.imageUrl
+      : typeof task.image_url === "string" && task.image_url.trim()
+        ? task.image_url
+        : null;
+    const normalizedUrl = typeof task.url === "string" && task.url.trim()
+      ? normalizeStoryboardMediaUrl(task.url)
+      : imageUrl
+        ? normalizeStoryboardMediaUrl(imageUrl)
+        : undefined;
+    const modelProvenance = normalizeStoryboardModelProvenance(
+      task.modelProvenance ?? task.storyboardContext?.modelProvenance,
+    );
+    const isImageProjection = Boolean(imageUrl) || task.mediaType === "image";
+    return {
+      ...task,
+      id: typeof task.id === "string" && task.id.trim() ? task.id : `storyboard-task-${index + 1}`,
+      type: task.type || (isImageProjection ? "image" : "video"),
+      status: task.status || (isImageProjection ? "completed" : "queued"),
+      ...(modelProvenance ? { modelProvenance } : {}),
+      ...(normalizedUrl ? { url: normalizedUrl } : {}),
+    };
+  });
+  const modelProvenance = normalizeStoryboardModelProvenance(parsed.modelProvenance) ??
+    normalizeStoryboardModelProvenance(
+      normalizedTasks.find((task) => task.modelProvenance)?.modelProvenance,
+    );
   const baseDraft: StoryboardReviewDraft = {
     version: 1,
     reviewId: typeof parsed.reviewId === "number" ? parsed.reviewId : null,
@@ -1194,31 +1333,7 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     selectedTaskIds: Array.isArray(parsed.selectedTaskIds)
       ? parsed.selectedTaskIds.filter((id): id is string => typeof id === "string" && id.trim().length > 0)
       : [],
-    tasks: parsed.tasks.map((rawTask, index) => {
-      const task = rawTask as StoryboardGenerationTask & {
-        imageUrl?: unknown;
-        image_url?: unknown;
-        mediaType?: unknown;
-      };
-      const imageUrl = typeof task.imageUrl === "string" && task.imageUrl.trim()
-        ? task.imageUrl
-        : typeof task.image_url === "string" && task.image_url.trim()
-          ? task.image_url
-          : null;
-      const normalizedUrl = typeof task.url === "string" && task.url.trim()
-        ? normalizeStoryboardMediaUrl(task.url)
-        : imageUrl
-          ? normalizeStoryboardMediaUrl(imageUrl)
-          : undefined;
-      const isImageProjection = Boolean(imageUrl) || task.mediaType === "image";
-      return {
-        ...task,
-        id: typeof task.id === "string" && task.id.trim() ? task.id : `storyboard-task-${index + 1}`,
-        type: task.type || (isImageProjection ? "image" : "video"),
-        status: task.status || (isImageProjection ? "completed" : "queued"),
-        ...(normalizedUrl ? { url: normalizedUrl } : {}),
-      };
-    }),
+    tasks: normalizedTasks,
     companionAudio,
     companionAudioUpdatedAt,
     compoundStatus: typeof parsed.compoundStatus === "string" ? parsed.compoundStatus : null,
@@ -1232,6 +1347,7 @@ export function normalizeStoryboardReviewDraft(parsed: Partial<StoryboardReviewD
     storyboardGuide: typeof parsed.storyboardGuide === "string" ? parsed.storyboardGuide : null,
     voiceoverFullScript: typeof parsed.voiceoverFullScript === "string" ? parsed.voiceoverFullScript : null,
     useVoiceoverScriptAsConcept: Boolean(parsed.useVoiceoverScriptAsConcept),
+    ...(modelProvenance ? { modelProvenance } : {}),
     videoSegmentState: normalizeStoryboardVideoSegmentState(
       (parsed as Record<string, unknown>).videoSegmentState
     ),
@@ -1896,6 +2012,7 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
       const context = task.storyboardContext;
       const extraParams: Record<string, unknown> = context
         ? {
+            ...(task.generationExtraParams ?? {}),
             ...(context.extraParams ?? {}),
             transportMetadata: normalizeStoryboardTransportMetadata(
               task.transportMetadata ?? context.transportMetadata ?? context.extraParams?.transportMetadata,
@@ -1926,12 +2043,14 @@ export function storyboardDraftToReviewTasks(draft: StoryboardReviewDraft | null
         id: task.id,
         index: task.index,
         prompt: task.prompt,
+        videoPrompt: task.videoPrompt ?? null,
         url: task.url,
         model: task.model,
         durationSeconds: normalizeStoryboardShotDurationSeconds(task.durationSeconds ?? context?.duration),
         mediaType: task.type === "image" ? "image" as StoryboardClipMediaType : "video" as StoryboardClipMediaType,
         transition: task.transition,
         generationModelId: context?.model || task.model,
+        modelProvenance: task.modelProvenance ?? context?.modelProvenance ?? draft.modelProvenance,
         referenceUrls: context?.referenceImages?.map((image) => image.url).filter(Boolean),
         generationAspectRatio: context?.aspectRatio ?? task.aspectRatio,
         generationExtraParams: Object.keys(extraParams).length > 0 ? extraParams : undefined,

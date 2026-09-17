@@ -7,6 +7,14 @@ export const STORYBOARD_DEFAULT_SHOTS = 9;
 export const STORYBOARD_SHOT_DURATION_SEC = 10;
 export const STORYBOARD_ASPECT_RATIO = "9:16" as const;
 
+export const storyboardDialogueLineSchema = z
+  .object({
+    speaker: z.string().trim().min(1).max(120),
+    text: z.string().trim().min(1).max(4000),
+    language: z.string().trim().min(2).max(16),
+  })
+  .strict();
+
 export const storyboardIdeaExpansionSchema = z
   .object({
     projectTitle: z.string().trim().min(1).max(256),
@@ -14,6 +22,7 @@ export const storyboardIdeaExpansionSchema = z
     sceneDetail: z.string().trim().min(1).max(12000),
     customActivity: z.string().trim().min(1).max(12000),
     customNotes: z.string().trim().min(1).max(16000),
+    dialogueLines: z.array(storyboardDialogueLineSchema).max(200).default([]),
   })
   .strict();
 export type StoryboardIdeaExpansion = z.infer<
@@ -29,14 +38,12 @@ export const STORYBOARD_IDEA_EXPANSION_FIELD_MAP = {
 export function mapStoryboardIdeaExpansionToSkillInputs(
   expansion: StoryboardIdeaExpansion,
   skillProperties: Record<string, unknown>,
-  currentSkillInputs: Record<string, unknown> = {},
+  currentSkillInputs: Record<string, unknown> = {}
 ): Record<string, unknown> {
   const next = { ...currentSkillInputs };
   for (const [sourceKey, skillKey] of Object.entries(
-    STORYBOARD_IDEA_EXPANSION_FIELD_MAP,
-  ) as Array<
-    [keyof typeof STORYBOARD_IDEA_EXPANSION_FIELD_MAP, string]
-  >) {
+    STORYBOARD_IDEA_EXPANSION_FIELD_MAP
+  ) as Array<[keyof typeof STORYBOARD_IDEA_EXPANSION_FIELD_MAP, string]>) {
     if (skillProperties[skillKey] !== undefined) {
       next[skillKey] = expansion[sourceKey];
     }
@@ -55,14 +62,6 @@ export const storyboardReferenceSchema = z
   })
   .strict();
 export type StoryboardReference = z.infer<typeof storyboardReferenceSchema>;
-
-export const storyboardDialogueLineSchema = z
-  .object({
-    speaker: z.string().trim().min(1).max(120),
-    text: z.string().trim().min(1).max(4000),
-    language: z.string().trim().min(2).max(16),
-  })
-  .strict();
 
 export const storyboardModelSelectionSchema = z
   .object({
@@ -108,6 +107,9 @@ export const storyboardGlobalInputSchema = z
       .array(z.string().trim().min(1).max(160))
       .max(50)
       .default([]),
+    characterLookIds: z
+      .record(z.string().uuid(), z.string().uuid())
+      .default({}),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -206,7 +208,24 @@ export function isTerminalStoryboardRunStatus(
 }
 
 export function isStoryboardExecutionStopped(status: string): boolean {
-  return status === "paused" || status === "cancel_requested" || status === "cancelled";
+  return (
+    status === "paused" ||
+    status === "cancel_requested" ||
+    status === "cancelled"
+  );
+}
+
+/** Only runs with a live/recoverable control-plane path belong in the UI index. */
+export function isStoryboardRunRecoverable(input: {
+  runStatus: string;
+  controlPlaneStatus?: string | null;
+}): boolean {
+  if (input.runStatus === "succeeded" || input.runStatus === "cancelled") {
+    return false;
+  }
+  return !["succeeded", "cancelled", "expired"].includes(
+    input.controlPlaneStatus ?? ""
+  );
 }
 
 /** A successful durable image is reusable and must never be submitted again. */
@@ -216,10 +235,12 @@ export function isReusableStoryboardImage(input: {
   suppressedResult?: unknown;
 }): boolean {
   const assetId = Number(input.imageAssetId);
-  return input.status === "succeeded"
-    && Number.isSafeInteger(assetId)
-    && assetId > 0
-    && input.suppressedResult !== true;
+  return (
+    input.status === "succeeded" &&
+    Number.isSafeInteger(assetId) &&
+    assetId > 0 &&
+    input.suppressedResult !== true
+  );
 }
 
 export function isRetryableStoryboardShotStatus(status: string): boolean {
@@ -228,7 +249,7 @@ export function isRetryableStoryboardShotStatus(status: string): boolean {
 
 export function isRepairableStoryboardShot(
   status: string,
-  _error: unknown,
+  _error: unknown
 ): boolean {
   if (!isRetryableStoryboardShotStatus(status)) return false;
   // This predicate is for an explicit user repair action. Unknown provider
@@ -237,13 +258,17 @@ export function isRepairableStoryboardShot(
   return true;
 }
 
-export type StoryboardGenerationFailureClass = "policy" | "transient" | "permanent" | "unknown";
+export type StoryboardGenerationFailureClass =
+  "policy" | "transient" | "permanent" | "unknown";
 
 function sanitizeStoryboardFailureDetail(value: string): string {
   return value
     .replace(/https?:\/\/\S+/gi, "[url]")
     .replace(/(bearer\s+)[^\s,;]+/gi, "$1[redacted]")
-    .replace(/((?:token|secret|authorization|api[_-]?key)\s*[=:]\s*)[^\s,;]+/gi, "$1[redacted]")
+    .replace(
+      /((?:token|secret|authorization|api[_-]?key)\s*[=:]\s*)[^\s,;]+/gi,
+      "$1[redacted]"
+    )
     .slice(0, 500);
 }
 
@@ -254,56 +279,142 @@ export function classifyStoryboardGenerationError(error: unknown): {
   detail: string;
   statusCode?: number;
 } {
-  const rawMessage = (error instanceof Error ? error.message : String(error ?? "Unknown provider error"))
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 2000) || "Unknown provider error";
+  const rawMessage =
+    (error instanceof Error
+      ? error.message
+      : String(error ?? "Unknown provider error")
+    )
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 2000) || "Unknown provider error";
   const detail = sanitizeStoryboardFailureDetail(rawMessage);
   const lower = rawMessage.toLowerCase();
-  const statusCode = error && typeof error === "object" && !Array.isArray(error)
-    ? Number((error as Record<string, unknown>).statusCode)
-    : Number.NaN;
-  const classified = <T extends { class: StoryboardGenerationFailureClass; code: string; message: string }>(
-    result: T,
+  const statusCode =
+    error && typeof error === "object" && !Array.isArray(error)
+      ? Number((error as Record<string, unknown>).statusCode)
+      : Number.NaN;
+  const classified = <
+    T extends {
+      class: StoryboardGenerationFailureClass;
+      code: string;
+      message: string;
+    },
+  >(
+    result: T
   ): T & { detail: string; statusCode?: number } => ({
     ...result,
     detail,
     ...(Number.isFinite(statusCode) ? { statusCode } : {}),
   });
   if (statusCode === 429 || (statusCode >= 500 && statusCode <= 599)) {
-    return classified({ class: "transient", code: "IMAGE_PROVIDER_TRANSIENT", message: "The image provider is temporarily unavailable." });
+    return classified({
+      class: "transient",
+      code: "IMAGE_PROVIDER_TRANSIENT",
+      message: "The image provider is temporarily unavailable.",
+    });
   }
   if (statusCode >= 400 && statusCode < 500 && statusCode !== 409) {
-    return classified({ class: "permanent", code: "IMAGE_PROVIDER_PERMANENT", message: "The image provider rejected the request." });
+    return classified({
+      class: "permanent",
+      code: "IMAGE_PROVIDER_PERMANENT",
+      message: "The image provider rejected the request.",
+    });
   }
-  if (/(insufficient|not enough|no enough).*(credit|point)|credit.*(required|balance|exhausted)/.test(lower)) {
-    return classified({ class: "permanent", code: "STORYBOARD_INSUFFICIENT_CREDITS", message: "There are not enough credits to generate this image." });
+  if (
+    /(insufficient|not enough|no enough).*(credit|point)|credit.*(required|balance|exhausted)/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "permanent",
+      code: "STORYBOARD_INSUFFICIENT_CREDITS",
+      message: "There are not enough credits to generate this image.",
+    });
   }
-  if (/storyboard_reference|reference (asset|image).*(not found|missing|invalid)|asset.*not found/.test(lower)) {
-    return classified({ class: "permanent", code: "STORYBOARD_REFERENCE_INVALID", message: "A storyboard reference image is missing or invalid." });
+  if (
+    /storyboard_reference|reference (asset|image).*(not found|missing|invalid)|asset.*not found/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "permanent",
+      code: "STORYBOARD_REFERENCE_INVALID",
+      message: "A storyboard reference image is missing or invalid.",
+    });
   }
-  if (/(model|image model).*(not found|unavailable|unsupported)|selected model/.test(lower)) {
-    return classified({ class: "permanent", code: "STORYBOARD_MODEL_UNAVAILABLE", message: "The selected image model is unavailable." });
+  if (
+    /(model|image model).*(not found|unavailable|unsupported)|selected model/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "permanent",
+      code: "STORYBOARD_MODEL_UNAVAILABLE",
+      message: "The selected image model is unavailable.",
+    });
   }
-  if (/(database unavailable|database not available|credit_ledger_write_failed|deadlock|could not serialize)/.test(lower)) {
-    return classified({ class: "transient", code: "STORYBOARD_DEPENDENCY_TRANSIENT", message: "A required service was temporarily unavailable." });
+  if (
+    /(database unavailable|database not available|credit_ledger_write_failed|deadlock|could not serialize)/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "transient",
+      code: "STORYBOARD_DEPENDENCY_TRANSIENT",
+      message: "A required service was temporarily unavailable.",
+    });
   }
-  if (/(content|safety|policy|moderation|prompt|provider).*(invalid|blocked|violation|reject)|invalid prompt|safety filter/.test(lower)) {
-    return classified({ class: "policy", code: "IMAGE_PROMPT_CONSTRAINT", message: "The provider rejected the image prompt for a content or safety constraint." });
+  if (
+    /(content|safety|policy|moderation|prompt|provider).*(invalid|blocked|violation|reject)|invalid prompt|safety filter/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "policy",
+      code: "IMAGE_PROMPT_CONSTRAINT",
+      message:
+        "The provider rejected the image prompt for a content or safety constraint.",
+    });
   }
   if (/(429|rate limit|502|503|504)/.test(lower)) {
-    return classified({ class: "transient", code: "IMAGE_PROVIDER_TRANSIENT", message: "The image provider is temporarily unavailable." });
+    return classified({
+      class: "transient",
+      code: "IMAGE_PROVIDER_TRANSIENT",
+      message: "The image provider is temporarily unavailable.",
+    });
   }
   // A network failure after submission can mean the provider accepted the
   // operation but the response was lost. Keep these cases fail-closed until
   // the deterministic operation key/reference is reconciled.
-  if (/(timeout|timed out|deadline|socket hang up|econnreset|connection reset|temporar(?:ily)? unavailable)/.test(lower)) {
-    return classified({ class: "unknown", code: "IMAGE_OPERATION_AMBIGUOUS", message: "The provider operation could not be verified and requires review." });
+  if (
+    /(timeout|timed out|deadline|socket hang up|econnreset|connection reset|temporar(?:ily)? unavailable)/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "unknown",
+      code: "IMAGE_OPERATION_AMBIGUOUS",
+      message:
+        "The provider operation could not be verified and requires review.",
+    });
   }
-  if (/(400|unsupported|invalid model|bad request|permission|unauthorized|forbidden)/.test(lower)) {
-    return classified({ class: "permanent", code: "IMAGE_PROVIDER_PERMANENT", message: "The image provider rejected the request." });
+  if (
+    /(400|unsupported|invalid model|bad request|permission|unauthorized|forbidden)/.test(
+      lower
+    )
+  ) {
+    return classified({
+      class: "permanent",
+      code: "IMAGE_PROVIDER_PERMANENT",
+      message: "The image provider rejected the request.",
+    });
   }
-  return classified({ class: "unknown", code: "IMAGE_PROVIDER_UNKNOWN", message: "The image provider returned an unclassified error and requires review." });
+  return classified({
+    class: "unknown",
+    code: "IMAGE_PROVIDER_UNKNOWN",
+    message:
+      "The image provider returned an unclassified error and requires review.",
+  });
 }
 
 export function escalateStoryboardProviderFailure(input: {
@@ -319,7 +430,8 @@ export function escalateStoryboardProviderFailure(input: {
       ...input.failure,
       class: "unknown",
       code: "STORYBOARD_PROVIDER_OPERATION_AMBIGUOUS",
-      message: "The provider request may have started, so automatic retry is blocked until the operation is reconciled.",
+      message:
+        "The provider request may have started, so automatic retry is blocked until the operation is reconciled.",
     };
   }
   return input.failure;
@@ -332,11 +444,12 @@ export function escalateStoryboardProviderFailure(input: {
  */
 export function optimizeStoryboardPromptForConstraint(
   prompt: string,
-  failureCode: string,
+  failureCode: string
 ): string {
-  const repair = failureCode === "IMAGE_PROMPT_CONSTRAINT"
-    ? "Constraint repair: keep the scene family-friendly, non-graphic, non-sexual, and free of logos, copyrighted characters, readable text, and unsafe instructions."
-    : "Constraint repair: simplify the visual description while preserving the same character, action, setting, and camera intent."
+  const repair =
+    failureCode === "IMAGE_PROMPT_CONSTRAINT"
+      ? "Constraint repair: keep the scene family-friendly, non-graphic, non-sexual, and free of logos, copyrighted characters, readable text, and unsafe instructions."
+      : "Constraint repair: simplify the visual description while preserving the same character, action, setting, and camera intent.";
   const normalized = prompt.trim();
   return `${normalized}\n\n${repair}`.slice(0, 100000);
 }
@@ -387,12 +500,22 @@ export function normalizeStoryboardGlobalInput(
   input: unknown
 ): StoryboardGlobalInput {
   const parsed = storyboardGlobalInputSchema.parse(input);
+  const characterIds = [
+    ...new Set(parsed.characterIds.map(value => value.trim())),
+  ];
+  const characterIdSet = new Set(characterIds);
   return {
     ...parsed,
     title: parsed.title.trim(),
     idea: parsed.idea.trim(),
     productContext: parsed.productContext?.trim() ?? "",
-    characterIds: [...new Set(parsed.characterIds.map(value => value.trim()))],
+    characterIds,
+    characterLookIds: Object.fromEntries(
+      Object.entries(parsed.characterLookIds)
+        .filter(([characterId]) => characterIdSet.has(characterId.trim()))
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([characterId, lookId]) => [characterId.trim(), lookId.trim()])
+    ),
     skillInputs: Object.fromEntries(
       Object.entries(parsed.skillInputs).sort(([a], [b]) => a.localeCompare(b))
     ),
@@ -444,7 +567,7 @@ export function redactStoryboardValue(value: unknown, depth = 0): unknown {
 export function normalizeStoryboardReferenceValue(
   value: string,
   tenantId: string,
-  userId: number,
+  userId: number
 ): string | null {
   const normalized = value.trim();
   if (!normalized) return null;

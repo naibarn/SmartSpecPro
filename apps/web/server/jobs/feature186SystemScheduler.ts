@@ -4,6 +4,7 @@ type SystemScheduleDefinition = {
   scheduleId: string;
   jobType: string;
   executionClass: "short" | "long";
+  priority?: number;
   scheduleVersion: string;
   timezone: "UTC";
   missedOccurrencePolicy: "skip" | "coalesce" | "catch_up";
@@ -32,11 +33,15 @@ export function utcDateOccurrence(now: Date): string {
 }
 
 export function utcMinuteOccurrence(now: Date, bucketMinutes: number): string {
-  const bucket = Math.floor(now.getUTCMinutes() / bucketMinutes) * bucketMinutes;
+  const bucket =
+    Math.floor(now.getUTCMinutes() / bucketMinutes) * bucketMinutes;
   return `${utcDateOccurrence(now)}T${pad(now.getUTCHours())}:${pad(bucket)}Z`;
 }
 
-export function utcDailyDue(hour: number, minute: number): (now: Date) => boolean {
+export function utcDailyDue(
+  hour: number,
+  minute: number
+): (now: Date) => boolean {
   return (now: Date) => {
     const currentMinute = now.getUTCHours() * 60 + now.getUTCMinutes();
     return currentMinute >= hour * 60 + minute;
@@ -49,16 +54,21 @@ export function utcDailyDue(hour: number, minute: number): (now: Date) => boolea
  * instances may run this function safely because the schedule occurrence
  * uniqueness constraint converges them on one worker_jobs row.
  */
-export function startFeature186SystemSchedule(definition: SystemScheduleDefinition): void {
+export function startFeature186SystemSchedule(
+  definition: SystemScheduleDefinition
+): void {
   if (process.env.FEATURE_186_HARD_CUTOVER !== "true") return;
   if (startedSchedules.has(definition.scheduleId)) return;
 
   const tenantId = systemTenantId();
   if (!tenantId) {
-    console.warn(`[Feature186] system schedule disabled: ${SYSTEM_TENANT_ENV} is required`, {
-      scheduleId: definition.scheduleId,
-      jobType: definition.jobType,
-    });
+    console.warn(
+      `[Feature186] system schedule disabled: ${SYSTEM_TENANT_ENV} is required`,
+      {
+        scheduleId: definition.scheduleId,
+        jobType: definition.jobType,
+      }
+    );
     return;
   }
 
@@ -79,6 +89,7 @@ export function startFeature186SystemSchedule(definition: SystemScheduleDefiniti
         contractVersion: "feature-186-v1",
         jobType: definition.jobType,
         executionClass: definition.executionClass,
+        priority: definition.priority,
         input: definition.input ?? {},
         retryPolicy: {
           maxAttempts: 3,
@@ -122,5 +133,6 @@ export function stopFeature186SystemSchedule(scheduleId: string): void {
 }
 
 export function stopAllFeature186SystemSchedules(): void {
-  for (const scheduleId of timers.keys()) stopFeature186SystemSchedule(scheduleId);
+  for (const scheduleId of timers.keys())
+    stopFeature186SystemSchedule(scheduleId);
 }

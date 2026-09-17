@@ -4,8 +4,8 @@ use crate::credentials::{
     WorkerDeviceProofMaterial,
 };
 use crate::diagnostics::{
-    append_diagnostic_event, diagnostic_log_path, export_diagnostics, log_event_throttled,
-    token_reference, LogLevel,
+    append_diagnostic_event, append_media_debug_event, diagnostic_log_path, export_diagnostics,
+    log_event_throttled, media_debug_log_path, token_reference, LogLevel,
 };
 use crate::executor_state::ExecutorState;
 use crate::runtime_manifest::{
@@ -48,10 +48,10 @@ use crate::local_llm_registry::{
     load_registry, save_registry, LocalLlmModelRecord, LocalLlmProviderProfile, LocalLlmRegistry,
 };
 use crate::media_pipeline::{
-    analyze_media_file, build_media_plan, probe_media_file, qc_derived_output_with_probe,
-    run_allowlisted_ffmpeg, run_interactive_media_render, validate_camera_motion_plan,
-    CameraMotionPlan, LocalMediaAnalysis, LocalMediaEditPlan, LocalMediaQc, MediaPlanOptions,
-    MediaRuntimeReadiness, MediaToolchain,
+    analyze_media_file, build_interactive_render_debug, build_media_plan, probe_media_file,
+    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_interactive_media_render,
+    validate_camera_motion_plan, CameraMotionPlan, LocalMediaAnalysis, LocalMediaEditPlan,
+    LocalMediaQc, MediaPlanOptions, MediaRuntimeReadiness, MediaToolchain,
 };
 use crate::series_workspace::{
     clear_root_state, create_child_folder, import_files_into_root, load_root_state_for_series,
@@ -6849,6 +6849,30 @@ pub async fn worker_app_log_frontend_error(
     Ok(())
 }
 
+/// Persists the Face + Activity boundary trace in a dedicated JSONL file.
+/// The payload is redacted by the diagnostics layer and the file is bounded,
+/// so the UI can record the real source/plan/render handoff without relying on
+/// a GUI console that is unavailable in the packaged Windows build.
+#[tauri::command]
+pub async fn worker_app_append_media_debug_event(
+    app: tauri::AppHandle,
+    event: String,
+    details: Value,
+) -> Result<String, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let event = event.trim();
+    if event.is_empty() || event.len() > 120 {
+        return Err("media_debug_event_invalid".into());
+    }
+    append_media_debug_event(&app_data_dir, event, details);
+    Ok(media_debug_log_path(&app_data_dir)
+        .to_string_lossy()
+        .to_string())
+}
+
 #[tauri::command]
 pub async fn worker_app_configure_startup(
     app: tauri::AppHandle,
@@ -9697,6 +9721,15 @@ pub struct CustomSilenceSegmentInput {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SourceGeometryInput {
+    pub width: u32,
+    pub height: u32,
+    #[serde(default)]
+    pub rotation_degrees: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InteractiveProcessRequest {
     pub source_path: String,
     pub trim_start_ms: Option<u64>,
@@ -9731,6 +9764,58 @@ pub struct InteractiveProcessRequest {
     pub target_width: Option<u32>,
     #[serde(default)]
     pub target_height: Option<u32>,
+    /// Canonical source geometry shared by preview/full scan/native render.
+    #[serde(default)]
+    pub source_geometry: Option<SourceGeometryInput>,
+}
+
+#[tauri::command]
+pub async fn worker_app_probe_media(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    source_path: String,
+) -> Result<crate::media_pipeline::LocalMediaProbe, String> {
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
+
+    let raw_source_path =
+        crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(source_path.trim()));
+    let source = if raw_source_path.is_absolute() {
+        if raw_source_path.exists() {
+            raw_source_path
+        } else {
+            crate::media_pipeline::strip_verbatim_prefix(
+                &raw_source_path
+                    .canonicalize()
+                    .map_err(|_| "media_source_missing".to_string())?,
+            )
+        }
+    } else {
+        let workspace = state
+            .series_workspace
+            .lock()
+            .map_err(|_| "workspace lock poisoned".to_string())?;
+        let root = workspace
+            .root
+            .as_ref()
+            .ok_or_else(|| "local_root_not_selected".to_string())?;
+        let target = root.root_path.join(raw_source_path);
+        crate::media_pipeline::strip_verbatim_prefix(
+            &target
+                .canonicalize()
+                .map_err(|_| "media_source_missing".to_string())?,
+        )
+    };
+    probe_media_file(&source, &tools)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9746,6 +9831,14 @@ pub struct InteractiveProcessResult {
     pub checksum: String,
     pub silence_cut_count: usize,
     pub time_saved_ms: u64,
+    /// Render provenance shown by the Worker UI so a plan cannot be silently
+    /// replaced by a static centre crop.
+    pub camera_plan_applied: bool,
+    pub camera_plan_keyframes: usize,
+    pub source_width: u32,
+    pub source_height: u32,
+    pub source_rotation_degrees: u16,
+    pub media_debug_log_path: String,
 }
 
 #[tauri::command]
@@ -9865,6 +9958,16 @@ pub async fn worker_app_process_media_interactive(
     };
 
     let probe = probe_media_file(&source, &tools)?;
+    append_media_debug_event(
+        &app_data_dir,
+        "media.render.native_request_received",
+        json!({
+            "sourcePath": source.to_string_lossy(),
+            "sourceFileName": source.file_name().and_then(|value| value.to_str()),
+            "request": &request,
+            "inputProbe": &probe,
+        }),
+    );
     let source_duration_ms = probe.duration_ms.unwrap_or(0);
     if source_duration_ms == 0 {
         return Err("cannot_determine_video_duration".into());
@@ -10068,6 +10171,40 @@ pub async fn worker_app_process_media_interactive(
 
     let speed = request.playback_speed.unwrap_or(1.0);
 
+    let canonical_source_dimensions = request
+        .source_geometry
+        .as_ref()
+        .filter(|geometry| geometry.width > 0 && geometry.height > 0)
+        .map(|geometry| (geometry.width, geometry.height));
+
+    let render_debug = build_interactive_render_debug(
+        &active_segments,
+        &request.aspect_ratio,
+        fx,
+        fy,
+        speed,
+        &tools,
+        request.target_width,
+        request.target_height,
+        request.auto_pan_zoom,
+        &request.auto_pan_zoom_mode,
+        request.auto_pan_zoom_scale,
+        probe.width.zip(probe.height).or(canonical_source_dimensions),
+        request.camera_motion_plan.as_ref(),
+    );
+    match &render_debug {
+        Ok(snapshot) => append_media_debug_event(
+            &app_data_dir,
+            "media.render.native_filter_snapshot",
+            snapshot.clone(),
+        ),
+        Err(error) => append_media_debug_event(
+            &app_data_dir,
+            "media.render.native_filter_snapshot_failed",
+            json!({ "error": error }),
+        ),
+    }
+
     run_interactive_media_render(
         &source,
         &output_path,
@@ -10082,13 +10219,37 @@ pub async fn worker_app_process_media_interactive(
         request.auto_pan_zoom,
         &request.auto_pan_zoom_mode,
         request.auto_pan_zoom_scale,
+        canonical_source_dimensions,
         request.camera_motion_plan.as_ref(),
     )?;
+
+    let camera_plan_keyframes = request
+        .camera_motion_plan
+        .as_ref()
+        .map(|plan| plan.keyframes.len())
+        .unwrap_or(0);
+    let camera_plan_applied = camera_plan_keyframes > 0 && request.aspect_ratio != "source";
 
     let out_probe = probe_media_file(&output_path, &tools)?;
     let out_meta = fs::metadata(&output_path).map_err(|e| format!("output_missing: {e}"))?;
     let bytes = fs::read(&output_path).unwrap_or_default();
     let checksum = format!("{:x}", Sha256::digest(&bytes));
+
+    append_media_debug_event(
+        &app_data_dir,
+        "media.render.native_completed",
+        json!({
+            "sourcePath": source.to_string_lossy(),
+            "outputPath": output_path.to_string_lossy(),
+            "inputProbe": &probe,
+            "outputProbe": &out_probe,
+            "activeSegments": &active_segments,
+            "cameraPlanKeyframes": camera_plan_keyframes,
+            "cameraPlanApplied": camera_plan_applied,
+            "renderDebug": render_debug.ok(),
+            "checksum": checksum,
+        }),
+    );
 
     Ok(InteractiveProcessResult {
         output_path: output_path.to_string_lossy().to_string(),
@@ -10101,6 +10262,14 @@ pub async fn worker_app_process_media_interactive(
         checksum,
         silence_cut_count,
         time_saved_ms,
+        camera_plan_applied,
+        camera_plan_keyframes,
+        source_width: probe.width.unwrap_or(0),
+        source_height: probe.height.unwrap_or(0),
+        source_rotation_degrees: probe.rotation_degrees,
+        media_debug_log_path: crate::diagnostics::media_debug_log_path(&app_data_dir)
+            .to_string_lossy()
+            .to_string(),
     })
 }
 

@@ -3788,6 +3788,7 @@ async def _run_library_backfill_batch_async(
     dry_run: bool,
     paused: bool,
     max_enqueue: int,
+    rebuild_from_canonical: bool,
 ):
     """Run one operator-controlled backfill batch for library indexing."""
     async with AsyncSessionLocal() as db:
@@ -3800,6 +3801,7 @@ async def _run_library_backfill_batch_async(
                 dry_run=dry_run,
                 paused=paused,
                 max_enqueue=max_enqueue,
+                rebuild_from_canonical=rebuild_from_canonical,
             )
             logger.info("library_backfill_batch_task_completed", **result)
             return {"status": "success", **result}
@@ -3821,6 +3823,7 @@ def run_library_backfill_batch_task(
     dry_run: bool = True,
     paused: bool = False,
     max_enqueue: int = 25,
+    rebuild_from_canonical: bool = False,
 ):
     """Operator-triggered backfill batch with dry-run/pause/resume controls."""
     logger.info(
@@ -3831,6 +3834,7 @@ def run_library_backfill_batch_task(
         dry_run=dry_run,
         paused=paused,
         max_enqueue=max_enqueue,
+        rebuild_from_canonical=rebuild_from_canonical,
     )
     try:
         return _run_async(
@@ -3841,6 +3845,7 @@ def run_library_backfill_batch_task(
                 dry_run=dry_run,
                 paused=paused,
                 max_enqueue=max_enqueue,
+                rebuild_from_canonical=rebuild_from_canonical,
             )
         )
     except Exception as e:

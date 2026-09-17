@@ -228,6 +228,109 @@ def _clip_has_non_default_transform(clip: dict, eps: float = 1e-3) -> bool:
     )
 
 
+def _camera_motion_value_expression(plan: dict, axis: str) -> str:
+    """Build a bounded FFmpeg expression for the shared camera plan.
+
+    The browser and Worker App evaluate the same keyframes.  The hosted
+    Python renderer uses FFmpeg's frame-time expression support so a render
+    cannot silently fall back to a static crop when a plan is present.
+    """
+    keyframes = plan.get("keyframes") if isinstance(plan, dict) else None
+    if not isinstance(keyframes, list) or not keyframes or len(keyframes) > 512:
+        raise ValueError("camera_motion_plan_keyframes_invalid")
+    frames: list[dict[str, Any]] = []
+    for raw in keyframes:
+        if not isinstance(raw, dict):
+            raise ValueError("camera_motion_plan_keyframe_invalid")
+        time_ms = _to_int(raw.get("timeMs"), -1)
+        if time_ms < 0:
+            raise ValueError("camera_motion_plan_time_invalid")
+        values = {name: _to_float(raw.get(name), float("nan")) for name in ("x", "y", "scale")}
+        if not all(value == value for value in values.values()):
+            raise ValueError("camera_motion_plan_value_invalid")
+        if not 0 <= values["x"] <= 1 or not 0 <= values["y"] <= 1 or not 1 <= values["scale"] <= 2.5:
+            raise ValueError("camera_motion_plan_value_invalid")
+        frames.append({"timeMs": time_ms, **values, "easing": raw.get("easing")})
+    frames.sort(key=lambda frame: frame["timeMs"])
+    deduped: list[dict[str, Any]] = []
+    for frame in frames:
+        if deduped and frame["timeMs"] == deduped[-1]["timeMs"]:
+            deduped[-1] = frame
+        else:
+            deduped.append(frame)
+    if len(deduped) > 128:
+        frames = [deduped[round(index * (len(deduped) - 1) / 127)] for index in range(128)]
+    else:
+        frames = deduped
+    value = lambda frame: _safe_float_for_ffmpeg(float(frame[axis]), 4)
+    expression = value(frames[-1])
+    for first, second in zip(reversed(frames[:-1]), reversed(frames[1:])):
+        start = first["timeMs"] / 1000.0
+        end = second["timeMs"] / 1000.0
+        duration = max(0.001, end - start)
+        progress = f"max(0\\,min(1\\,(t-{start:.3f})/{duration:.3f}))"
+        easing = first.get("easing")
+        if easing == "linear":
+            eased = progress
+        elif easing == "ease-in":
+            eased = f"({progress})*({progress})"
+        elif easing == "ease-out":
+            eased = f"1-(1-({progress}))*(1-({progress}))"
+        else:
+            eased = f"if(lt({progress}\\,0.5)\\,4*({progress})*({progress})*({progress})\\,1-pow(-2*({progress})+2\\,3)/2)"
+        expression = f"if(lt(t\\,{end:.3})\\,{value(first)}+({value(second)}-{value(first)})*({eased})\\,{expression})"
+    return expression
+
+
+def _camera_motion_filter(plan: dict, width: int, height: int) -> str:
+    """Apply a normalized CameraMotionPlan to an already canvas-sized stream."""
+    if not isinstance(plan, dict):
+        raise ValueError("camera_motion_plan_invalid")
+    version = plan.get("version")
+    if version not in {"camera.motion.v1", "camera.motion.v2"}:
+        raise ValueError("camera_motion_plan_version_invalid")
+    x_expr = _camera_motion_value_expression(plan, "x")
+    y_expr = _camera_motion_value_expression(plan, "y")
+    scale_expr = _camera_motion_value_expression(plan, "scale")
+    crop_x = f"max(0\\,min(iw-{width}\\,iw*({x_expr})-{width}/2))"
+    crop_y = f"max(0\\,min(ih-{height}\\,ih*({y_expr})-{height}/2))"
+    return (
+        f"scale=w=trunc(iw*({scale_expr})/2)*2:h=trunc(ih*({scale_expr})/2)*2:eval=frame,"
+        f"crop={width}:{height}:{crop_x}:{crop_y},setsar=1,format=yuv420p"
+    )
+
+
+def _validate_silence_cut_map(cut_map: Any) -> None:
+    """Validate the persisted source-time cut map before rendering.
+
+    The timeline is already edited by the browser, so this renderer does not
+    apply ranges a second time. It still rejects malformed or overlapping
+    evidence instead of claiming that the render used the reviewed map.
+    """
+    if cut_map is None:
+        return
+    if not isinstance(cut_map, dict) or cut_map.get("version") != "silence.cut-map.v1":
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
+    source_duration = _to_int(cut_map.get("sourceDurationMs"), -1)
+    edited_duration = _to_int(cut_map.get("editedDurationMs"), -1)
+    ranges = cut_map.get("ranges")
+    if source_duration < 0 or edited_duration < 0 or not isinstance(ranges, list) or len(ranges) > 4096:
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
+    previous_end = 0
+    removed = 0
+    for raw in ranges:
+        if not isinstance(raw, dict):
+            raise ValueError("SILENCE_CUT_MAP_INVALID")
+        start = _to_int(raw.get("startMs"), -1)
+        end = _to_int(raw.get("endMs"), -1)
+        if start < previous_end or start < 0 or end <= start or end > source_duration:
+            raise ValueError("SILENCE_CUT_MAP_INVALID")
+        removed += end - start
+        previous_end = end
+    if edited_duration != max(0, source_duration - removed):
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
+
+
 def _clip_playback_rate(clip: dict) -> float:
     """Resolve a safe clip playback rate for preview/render parity."""
     rate = _to_float(clip.get("playbackRate"), 1.0)
@@ -1085,6 +1188,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
 
     output_target = spec.get("output", {}).get("target", "/tmp/output.mp4")
     tracks = project.get("tracks", [])
+    _validate_silence_cut_map((spec.get("params") or {}).get("silenceCutMap"))
 
     # Collect input files from assets
     assets = spec.get("inputs", {}).get("assets", [])
@@ -1237,6 +1341,16 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                     f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},"
                     f"asetpts=PTS-STARTPTS[a{i}]"
                 )
+
+            # A normalized camera plan is the shared browser/Worker crop
+            # contract. It takes precedence over the legacy static transform
+            # so preview and hosted render follow the same trajectory.
+            camera_plan = clip.get("cameraMotionPlan")
+            if camera_plan is not None:
+                filters.append(
+                    f"[vnorm{i}]{_camera_motion_filter(camera_plan, proj_w, proj_h)}[v{i}]"
+                )
+                continue
 
             # Clip transform (static pan/zoom per clip)
             # 1) Scale normalized clip by user zoom.
@@ -2655,14 +2769,9 @@ def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
         if not handler:
             raise ValueError(f"Unsupported job type: {job_type}")
 
-        # Route through sandbox when enabled
-        from app.integrations.opensandbox.config import opensandbox_settings as _osb_settings
-        if _osb_settings.is_enabled:
-            from app.video.sandbox_runner import SandboxMediaRunner
-            with SandboxMediaRunner.session(profile="media-processing", job_id=job_id) as runner:
-                result = handler(spec, tmp_dir, runner=runner)
-        else:
-            result = handler(spec, tmp_dir)
+        # OpenSandbox execution is retired. Isolation for risky work belongs to
+        # the approved external worker/container boundary, not this worker.
+        result = handler(spec, tmp_dir)
         report_done(job_id, result)
 
         # Persist render to media_tasks DB for permanent Media Library visibility

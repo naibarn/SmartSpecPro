@@ -46,7 +46,6 @@ import {
   users,
 } from "../../drizzle/schema";
 import { eq, asc, and, desc, inArray, sql } from "drizzle-orm";
-import { shouldUseSandbox, dispatchToSandbox } from "../services/sandbox/dispatchService";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
@@ -2656,36 +2655,6 @@ export const mediaRouter = router({
         extraParams: effectiveImageExtraParams,
         outputFormat: input.outputFormat,
       });
-
-      // Check if media should route through sandbox
-      if (
-        shouldUseSandbox("sandbox-media") &&
-        process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true"
-      ) {
-        const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId);
-        const sandboxResult = await dispatchToSandbox({
-          featureType: "media",
-          executionMode: "sandbox-media",
-          tenantId: tenantId || "",
-          userId: ctx.user.id,
-          inputFiles: [],
-          metadata: {
-            model,
-            prompt: input.prompt,
-            aspectRatio: input.aspectRatio,
-            numImages: input.numImages,
-            ...input.extraParams,
-          },
-        });
-
-        return {
-          success: true,
-          taskId: sandboxResult.jobId,
-          isAsync: true,
-          message: "Media generation dispatched to secure sandbox",
-          isSandboxJob: true,
-        };
-      }
 
       const creditCost = calculateCreditCost(dbModel, {
         ...(effectiveImageExtraParams ?? {}),

@@ -4,13 +4,11 @@
  */
 
 import path from "path";
-import { spawnSync, spawn } from "child_process";
+import { spawn } from "child_process";
 import { randomUUID } from "crypto";
 import fs from "fs";
 import { SkillDefinition } from "./skillRegistry";
-import { getDb } from "../db";
-import { sandboxProfiles } from "../../drizzle/schema";
-import { eq, and } from "drizzle-orm";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { getRedisClient } from "./redis";
 import {
   mediaGenerationService,
@@ -27,15 +25,11 @@ import {
   getModelsByTypeAsync,
 } from "./modelRegistry";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
-import {
-  isSandboxEnabled,
-  shouldUseSandboxForFeature,
-  getDispatchMode,
-  dispatchToSandbox as sandboxDispatch,
-} from "./sandbox";
-import { resolveSkillBundleDir } from "./skillFiles";
 import { durabilizeMediaGenerationResponse } from "./durableMediaAssetService";
-import { normalizeSkillRevenuePricing, settleSkillRun } from "./skillRevenueBilling";
+import {
+  normalizeSkillRevenuePricing,
+  settleSkillRun,
+} from "./skillRevenueBilling";
 
 // Simple in-memory rate limiter per user per skill type
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -47,91 +41,11 @@ const RATE_LIMITS: Record<string, number> = {
   "audio-generation": 10,
 };
 const DEFAULT_RATE_LIMIT = 20;
-const SANDBOX_FS_ROOT = "/tmp/smartspec-sandbox";
-const SANDBOX_SKILL_ROOT = `${SANDBOX_FS_ROOT}/skill`;
-const SANDBOX_INPUT_PATH = `${SANDBOX_FS_ROOT}/skill-input.json`;
-const SANDBOX_OUTPUT_DIR = `${SANDBOX_FS_ROOT}/skill-output`;
-const SANDBOX_MAX_INLINE_FILE_BYTES = 2 * 1024 * 1024; // 2MB per file
-const SANDBOX_MAX_INLINE_TOTAL_BYTES = 8 * 1024 * 1024; // 8MB total
-const SKILL_SKIP_DIRS = new Set([".git", "__pycache__", "node_modules", ".venv", "venv", "runs"]);
-const SKILL_SKIP_SUFFIXES = [".pyc", ".pyo"];
-const BUILT_IN_SANDBOX_PROFILES: Record<string, SandboxProfileCapabilities> = {
-  "code-default": {
-    slug: "code-default",
-    timeoutSeconds: 600,
-    networkDefaultAction: "deny",
-    allowBrowser: false,
-    allowCommand: false,
-    allowCodeInterpreter: true,
-    maxInputMb: 50,
-  },
-  "browser-default": {
-    slug: "browser-default",
-    timeoutSeconds: 600,
-    networkDefaultAction: "allow",
-    allowBrowser: true,
-    allowCommand: true,
-    allowCodeInterpreter: false,
-    maxInputMb: 50,
-  },
-  "file-parser": {
-    slug: "file-parser",
-    timeoutSeconds: 300,
-    networkDefaultAction: "deny",
-    allowBrowser: false,
-    allowCommand: true,
-    allowCodeInterpreter: false,
-    maxInputMb: 100,
-  },
-  "media-processing": {
-    slug: "media-processing",
-    timeoutSeconds: 1800,
-    networkDefaultAction: "deny",
-    allowBrowser: false,
-    allowCommand: true,
-    allowCodeInterpreter: false,
-    maxInputMb: 500,
-  },
-};
-
-interface PythonSkillPaths {
-  skillDir: string;
-  scriptPath: string;
-}
-
-interface SandboxInlineFile {
-  path: string;
-  contentBase64: string;
-}
-
-interface SandboxProfileCapabilities {
-  slug: string;
-  timeoutSeconds: number;
-  networkDefaultAction: string;
-  allowBrowser: boolean;
-  allowCommand: boolean;
-  allowCodeInterpreter: boolean;
-  maxInputMb: number | null;
-}
-
-interface CommandSkillPaths {
-  skillDir: string;
-  manifestPath: string;
-  entryPath: string;
-  packageJsonPath: string | null;
-}
-
-interface PreparedPythonSandboxPayload {
-  executionMode: "sandbox-python";
-  metadata: Record<string, unknown>;
-}
-
-interface PreparedCommandSandboxPayload {
-  executionMode: "sandbox-command";
-  metadata: Record<string, unknown>;
-}
-
-function setApiConfigValue(apiConfig: Record<string, string>, key: string, value: unknown): void {
+function setApiConfigValue(
+  apiConfig: Record<string, string>,
+  key: string,
+  value: unknown
+): void {
   if (value === null || value === undefined) return;
   if (typeof value === "string") {
     const normalized = value.trim();
@@ -145,22 +59,29 @@ function setApiConfigValue(apiConfig: Record<string, string>, key: string, value
   }
 }
 
-function mergeApiConfigObject(apiConfig: Record<string, string>, value: unknown): void {
+function mergeApiConfigObject(
+  apiConfig: Record<string, string>,
+  value: unknown
+): void {
   if (!value || typeof value !== "object" || Array.isArray(value)) return;
-  for (const [key, entryValue] of Object.entries(value as Record<string, unknown>)) {
+  for (const [key, entryValue] of Object.entries(
+    value as Record<string, unknown>
+  )) {
     setApiConfigValue(apiConfig, key, entryValue);
   }
 }
 
 function addReferenceImageInputMetadata(
   apiConfig: Record<string, string>,
-  configJson?: Record<string, unknown>,
+  configJson?: Record<string, unknown>
 ): void {
   if (!configJson || typeof configJson !== "object") {
     return;
   }
 
-  const inputFields = Array.isArray(configJson.inputFields) ? configJson.inputFields : [];
+  const inputFields = Array.isArray(configJson.inputFields)
+    ? configJson.inputFields
+    : [];
   for (const rawField of inputFields) {
     if (!rawField || typeof rawField !== "object") {
       continue;
@@ -177,30 +98,30 @@ function addReferenceImageInputMetadata(
       : normalizedKey.includes("audio")
         ? "Reference Audio"
         : "Reference Images";
-    const rawSyncWith = typeof field.syncWith === "string" ? field.syncWith.trim() : "";
+    const rawSyncWith =
+      typeof field.syncWith === "string" ? field.syncWith.trim() : "";
     const rawLabel = typeof field.label === "string" ? field.label.trim() : "";
-    const isReferenceImageField = (
-      rawSyncWith === "reference_images"
-      || normalizedKey === "imageinput"
-      || normalizedKey === "referenceimages"
-      || normalizedKey.includes("referenceimage")
-      || normalizedKey.includes("imageurl")
-    );
+    const isReferenceImageField =
+      rawSyncWith === "reference_images" ||
+      normalizedKey === "imageinput" ||
+      normalizedKey === "referenceimages" ||
+      normalizedKey.includes("referenceimage") ||
+      normalizedKey.includes("imageurl");
     if (!isReferenceImageField) {
       continue;
     }
 
-    const rawType = typeof field.type === "string" ? field.type.trim().toLowerCase() : "";
-    const referenceImageType = (
-      rawType === "array"
-      || rawType === "image_urls"
-      || rawType === "video_urls"
-      || rawType === "audio_urls"
-    ) ? "array" : (
-      rawType === "url"
-      || rawType === "text"
-      || rawType === "string"
-    ) ? "url" : null;
+    const rawType =
+      typeof field.type === "string" ? field.type.trim().toLowerCase() : "";
+    const referenceImageType =
+      rawType === "array" ||
+      rawType === "image_urls" ||
+      rawType === "video_urls" ||
+      rawType === "audio_urls"
+        ? "array"
+        : rawType === "url" || rawType === "text" || rawType === "string"
+          ? "url"
+          : null;
     if (!referenceImageType) {
       continue;
     }
@@ -212,7 +133,9 @@ function addReferenceImageInputMetadata(
   }
 }
 
-function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<string, string> {
+function buildMediaApiConfig(
+  configJson?: Record<string, unknown>
+): Record<string, string> {
   const apiConfig: Record<string, string> = {};
   if (!configJson || typeof configJson !== "object") {
     return apiConfig;
@@ -224,8 +147,16 @@ function buildMediaApiConfig(configJson?: Record<string, unknown>): Record<strin
   setApiConfigValue(apiConfig, "generate_type", configJson.generateType);
   setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4kEndpoint);
   setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4KEndpoint);
-  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4kUpgradeEndpoint);
-  setApiConfigValue(apiConfig, "veo_4k_endpoint", configJson.veo4KUpgradeEndpoint);
+  setApiConfigValue(
+    apiConfig,
+    "veo_4k_endpoint",
+    configJson.veo4kUpgradeEndpoint
+  );
+  setApiConfigValue(
+    apiConfig,
+    "veo_4k_endpoint",
+    configJson.veo4KUpgradeEndpoint
+  );
   mergeApiConfigObject(apiConfig, configJson.apiConfig);
   addReferenceImageInputMetadata(apiConfig, configJson);
   return apiConfig;
@@ -246,30 +177,10 @@ function checkRateLimit(userId: number, skillType: string): boolean {
   return true;
 }
 
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
-}
-
-function isPathInsideDir(resolvedPath: string, rootDir: string): boolean {
-  const relative = path.relative(rootDir, resolvedPath);
-  return relative !== ".." && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
-}
-
-function sanitizeSandboxOutputFileName(
-  value: unknown,
-  fallback: string,
-): string {
-  const raw = typeof value === "string" && value.trim() ? value.trim() : fallback;
-  const normalized = raw.replace(/\\/g, "/");
-  const basename = path.posix.basename(normalized);
-  if (!basename || basename === "." || basename === ".." || basename !== normalized) {
-    throw new Error(`Invalid sandbox output file name: ${raw}`);
-  }
-  return basename;
-}
-
 function readRecordValue(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function readStringValue(value: unknown): string | null {
@@ -282,10 +193,13 @@ function readNumberValue(value: unknown): number | null {
 
 function readStringArrayValue(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.map((item) => String(item).trim()).filter(Boolean);
+  return value.map(item => String(item).trim()).filter(Boolean);
 }
 
-function pickFirstString(source: Record<string, unknown> | null, keys: string[]): string | null {
+function pickFirstString(
+  source: Record<string, unknown> | null,
+  keys: string[]
+): string | null {
   if (!source) return null;
   for (const key of keys) {
     const value = readStringValue(source[key]);
@@ -294,7 +208,10 @@ function pickFirstString(source: Record<string, unknown> | null, keys: string[])
   return null;
 }
 
-function pickFirstNumber(source: Record<string, unknown> | null, keys: string[]): number | null {
+function pickFirstNumber(
+  source: Record<string, unknown> | null,
+  keys: string[]
+): number | null {
   if (!source) return null;
   for (const key of keys) {
     const value = readNumberValue(source[key]);
@@ -303,7 +220,10 @@ function pickFirstNumber(source: Record<string, unknown> | null, keys: string[])
   return null;
 }
 
-function pickFirstStringArray(source: Record<string, unknown> | null, keys: string[]): string[] {
+function pickFirstStringArray(
+  source: Record<string, unknown> | null,
+  keys: string[]
+): string[] {
   if (!source) return [];
   for (const key of keys) {
     const value = readStringArrayValue(source[key]);
@@ -312,12 +232,17 @@ function pickFirstStringArray(source: Record<string, unknown> | null, keys: stri
   return [];
 }
 
-function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<string, unknown> | null {
+function extractPythonSkillLineage(
+  parsed: Record<string, unknown>
+): Record<string, unknown> | null {
   const lineageSource = readRecordValue(parsed.lineage);
   const source = lineageSource ?? parsed;
   const lineage: Record<string, unknown> = {};
 
-  const schemaVersion = pickFirstNumber(source, ["schemaVersion", "schema_version"]);
+  const schemaVersion = pickFirstNumber(source, [
+    "schemaVersion",
+    "schema_version",
+  ]);
   if (schemaVersion != null) {
     lineage.schemaVersion = schemaVersion;
   }
@@ -327,12 +252,19 @@ function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<stri
     lineage.role = role;
   }
 
-  const status = pickFirstString(source, ["status", "phaseStatus", "phase_status"]);
+  const status = pickFirstString(source, [
+    "status",
+    "phaseStatus",
+    "phase_status",
+  ]);
   if (status) {
     lineage.status = status;
   }
 
-  const checkpointVersion = pickFirstNumber(source, ["checkpointVersion", "checkpoint_version"]);
+  const checkpointVersion = pickFirstNumber(source, [
+    "checkpointVersion",
+    "checkpoint_version",
+  ]);
   if (checkpointVersion != null) {
     lineage.checkpointVersion = checkpointVersion;
   }
@@ -342,22 +274,37 @@ function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<stri
     lineage.parentRunId = parentRunId;
   }
 
-  const childRunIds = pickFirstStringArray(source, ["childRunIds", "child_run_ids"]);
+  const childRunIds = pickFirstStringArray(source, [
+    "childRunIds",
+    "child_run_ids",
+  ]);
   if (childRunIds.length > 0) {
     lineage.childRunIds = childRunIds;
   }
 
-  const resumeCursor = pickFirstString(source, ["resumeCursor", "resume_cursor", "resume_hint"]);
+  const resumeCursor = pickFirstString(source, [
+    "resumeCursor",
+    "resume_cursor",
+    "resume_hint",
+  ]);
   if (resumeCursor) {
     lineage.resumeCursor = resumeCursor;
   }
 
-  const verificationState = pickFirstString(source, ["verificationState", "verification_state", "verificationStatus", "verification_status"]);
+  const verificationState = pickFirstString(source, [
+    "verificationState",
+    "verification_state",
+    "verificationStatus",
+    "verification_status",
+  ]);
   if (verificationState) {
     lineage.verificationState = verificationState;
   }
 
-  const artifactRefs = pickFirstStringArray(source, ["artifactRefs", "artifact_refs"]);
+  const artifactRefs = pickFirstStringArray(source, [
+    "artifactRefs",
+    "artifact_refs",
+  ]);
   if (artifactRefs.length > 0) {
     lineage.artifactRefs = artifactRefs;
   }
@@ -374,7 +321,9 @@ function extractPythonSkillLineage(parsed: Record<string, unknown>): Record<stri
   return lineage;
 }
 
-function resolvePythonSkillPaths(skill: SkillDefinition): PythonSkillPaths | null {
+function resolvePythonSkillPaths(
+  skill: SkillDefinition
+): PythonSkillPaths | null {
   const candidateDirs: string[] = [];
 
   const addSkillFilePathCandidate = () => {
@@ -427,362 +376,6 @@ function isWorkspaceArtifactPath(value: string): boolean {
   return normalized.includes("/runs/workspaces/");
 }
 
-function resolveCommandSkillPaths(skill: SkillDefinition): CommandSkillPaths | null {
-  const candidateDirs: string[] = [];
-
-  if (skill.skillFilePath) {
-    const relativeDir = path.dirname(skill.skillFilePath);
-    if (path.isAbsolute(relativeDir)) {
-      candidateDirs.push(relativeDir);
-    } else {
-      candidateDirs.push(path.resolve(process.cwd(), relativeDir));
-      candidateDirs.push(path.resolve(process.cwd(), "..", "..", relativeDir));
-    }
-  }
-
-  const rootCandidates = [
-    path.resolve(process.cwd(), "skills"),
-    path.resolve(process.cwd(), "apps", "web", "skills"),
-    path.resolve(process.cwd(), "..", "..", "apps", "web", "skills"),
-  ];
-  for (const root of rootCandidates) {
-    candidateDirs.push(path.join(root, skill.id));
-  }
-
-  for (const skillDir of Array.from(new Set(candidateDirs))) {
-    const bundleDir = resolveSkillBundleDir(skillDir) ?? skillDir;
-    const manifestPath = path.join(bundleDir, "skill.manifest.json");
-    if (!fs.existsSync(manifestPath)) {
-      continue;
-    }
-
-    try {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as Record<string, unknown>;
-      const entry = typeof manifest.entry === "string" ? manifest.entry.trim() : "";
-      if (!entry) {
-        continue;
-      }
-
-      const entryPath = path.resolve(bundleDir, entry);
-      if (!isPathInsideDir(entryPath, bundleDir) || !fs.existsSync(entryPath)) {
-        continue;
-      }
-
-      const packageJsonPath = path.join(bundleDir, "package.json");
-      return {
-        skillDir: bundleDir,
-        manifestPath,
-        entryPath,
-        packageJsonPath: fs.existsSync(packageJsonPath) ? packageJsonPath : null,
-      };
-    } catch (error) {
-      console.warn(`[SkillExecutor] Failed to parse skill manifest for '${skill.id}':`, error);
-    }
-  }
-
-  return null;
-}
-
-function collectSkillInlineFiles(skillDir: string): SandboxInlineFile[] {
-  const inlineFiles: SandboxInlineFile[] = [];
-  let totalBytes = 0;
-
-  const walk = (dirPath: string) => {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        if (SKILL_SKIP_DIRS.has(entry.name)) {
-          continue;
-        }
-        walk(path.join(dirPath, entry.name));
-        continue;
-      }
-
-      if (!entry.isFile()) {
-        continue;
-      }
-
-      if (SKILL_SKIP_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) {
-        continue;
-      }
-
-      const fullPath = path.join(dirPath, entry.name);
-      const content = fs.readFileSync(fullPath);
-      if (content.length > SANDBOX_MAX_INLINE_FILE_BYTES) {
-        throw new Error(
-          `Skill file too large for sandbox inline transfer: ${fullPath} (${content.length} bytes)`,
-        );
-      }
-
-      totalBytes += content.length;
-      if (totalBytes > SANDBOX_MAX_INLINE_TOTAL_BYTES) {
-        throw new Error(
-          `Skill package exceeds sandbox inline transfer limit (${totalBytes} bytes)`,
-        );
-      }
-
-      const relativePath = path.relative(skillDir, fullPath).split(path.sep).join("/");
-      inlineFiles.push({
-        path: `${SANDBOX_SKILL_ROOT}/${relativePath}`,
-        contentBase64: content.toString("base64"),
-      });
-    }
-  };
-
-  walk(skillDir);
-  return inlineFiles;
-}
-
-function preparePythonSandboxPayload(
-  skill: SkillDefinition,
-  params: SkillExecutionParams,
-  userToken: string,
-): PreparedPythonSandboxPayload {
-  const paths = resolvePythonSkillPaths(skill);
-  if (!paths) {
-    throw new Error(`Python skill script not found for sandbox dispatch: ${skill.id}`);
-  }
-
-  const inlineFiles = collectSkillInlineFiles(paths.skillDir);
-  const inputPayload = JSON.stringify({
-    skill_name: skill.id,
-    prompt: params.prompt,
-    params: params.extraParams ?? {},
-    context: {
-      publicUrl: params.publicUrl ?? "",
-      userToken,
-      commonParams: buildPythonSkillCommonParams(params),
-    },
-  });
-
-  inlineFiles.push({
-    path: SANDBOX_INPUT_PATH,
-    contentBase64: Buffer.from(inputPayload, "utf-8").toString("base64"),
-  });
-
-  const scriptPathInSandbox = `${SANDBOX_SKILL_ROOT}/python/skill.py`;
-  const command = `python3 ${shellQuote(scriptPathInSandbox)} < ${shellQuote(SANDBOX_INPUT_PATH)}`;
-
-  return {
-    executionMode: "sandbox-python",
-    metadata: {
-      skillSlug: skill.id,
-      skillName: skill.name,
-      prompt: params.prompt,
-      extraParams: params.extraParams,
-      commands: [command],
-      inlineFiles,
-    },
-  };
-}
-
-function getSandboxCommandInputPayload(
-  skill: SkillDefinition,
-  params: SkillExecutionParams,
-): Record<string, unknown> {
-  if (params.extraParams && typeof params.extraParams === "object" && !Array.isArray(params.extraParams)) {
-    const raw = params.extraParams as Record<string, unknown>;
-    const prioritizedPayloads = [
-      raw.sandboxInput,
-      raw.inputPayload,
-      raw.input,
-    ];
-    for (const candidate of prioritizedPayloads) {
-      if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) {
-        return candidate as Record<string, unknown>;
-      }
-    }
-    return raw;
-  }
-
-  return {
-    request: {
-      projectTitle: skill.name,
-      language: "en",
-      compositionMode: "slide-deck",
-      outputFormats: ["json"],
-      pagination: {
-        maxPages: 5,
-        allowFewerPages: true,
-        overflowStrategy: "condense",
-      },
-      content: {
-        titleHint: skill.name,
-        rawText: params.prompt ?? "",
-      },
-    },
-  };
-}
-
-function buildSandboxOutputPaths(inputPayload: Record<string, unknown>): string[] {
-  const request = (
-    inputPayload.request && typeof inputPayload.request === "object" && !Array.isArray(inputPayload.request)
-      ? inputPayload.request
-      : {}
-  ) as Record<string, unknown>;
-  const renderOptions = (
-    request.renderOptions && typeof request.renderOptions === "object" && !Array.isArray(request.renderOptions)
-      ? request.renderOptions
-      : {}
-  ) as Record<string, unknown>;
-  const requestedFormats = Array.isArray(request.outputFormats)
-    ? request.outputFormats.map((value) => String(value).trim().toLowerCase()).filter(Boolean)
-    : ["json"];
-
-  const outputPaths = new Set<string>([
-    `${SANDBOX_OUTPUT_DIR}/manifest.json`,
-    `${SANDBOX_OUTPUT_DIR}/debug-report.json`,
-  ]);
-
-  if (requestedFormats.includes("json")) {
-    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.jsonFileName, "layout-spec.json")}`);
-  }
-  if (requestedFormats.includes("md")) {
-    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.mdFileName, "slides.md")}`);
-  }
-  if (requestedFormats.includes("pptx") || requestedFormats.includes("pdf")) {
-    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.pptxFileName, "slides.pptx")}`);
-  }
-  if (requestedFormats.includes("pdf")) {
-    outputPaths.add(`${SANDBOX_OUTPUT_DIR}/${sanitizeSandboxOutputFileName(renderOptions.pdfFileName, "slides.pdf")}`);
-  }
-
-  return Array.from(outputPaths);
-}
-
-function prepareCommandSandboxPayload(
-  skill: SkillDefinition,
-  params: SkillExecutionParams,
-): PreparedCommandSandboxPayload {
-  const paths = resolveCommandSkillPaths(skill);
-  if (!paths) {
-    throw new Error(`Command skill manifest not found for sandbox dispatch: ${skill.id}`);
-  }
-
-  const inlineFiles = collectSkillInlineFiles(paths.skillDir);
-  const inputPayload = getSandboxCommandInputPayload(skill, params);
-  const request = (
-    inputPayload.request && typeof inputPayload.request === "object" && !Array.isArray(inputPayload.request)
-      ? inputPayload.request
-      : {}
-  ) as Record<string, unknown>;
-  const renderOptions = (
-    request.renderOptions && typeof request.renderOptions === "object" && !Array.isArray(request.renderOptions)
-      ? { ...(request.renderOptions as Record<string, unknown>) }
-      : {}
-  );
-  renderOptions.jsonFileName = sanitizeSandboxOutputFileName(renderOptions.jsonFileName, "layout-spec.json");
-  renderOptions.mdFileName = sanitizeSandboxOutputFileName(renderOptions.mdFileName, "slides.md");
-  renderOptions.pptxFileName = sanitizeSandboxOutputFileName(renderOptions.pptxFileName, "slides.pptx");
-  renderOptions.pdfFileName = sanitizeSandboxOutputFileName(renderOptions.pdfFileName, "slides.pdf");
-  const sanitizedInputPayload = {
-    ...inputPayload,
-    request: {
-      ...request,
-      renderOptions,
-    },
-  };
-  inlineFiles.push({
-    path: SANDBOX_INPUT_PATH,
-    contentBase64: Buffer.from(JSON.stringify(sanitizedInputPayload), "utf-8").toString("base64"),
-  });
-
-  const entryRelativePath = path.relative(paths.skillDir, paths.entryPath).split(path.sep).join("/");
-  const entryPathInSandbox = `${SANDBOX_SKILL_ROOT}/${entryRelativePath}`;
-  const commands = [`mkdir -p ${shellQuote(SANDBOX_OUTPUT_DIR)}`];
-  if (paths.packageJsonPath) {
-    commands.push(
-      `npm --prefix ${shellQuote(SANDBOX_SKILL_ROOT)} install --omit=dev --no-package-lock --ignore-scripts --no-audit --no-fund`,
-    );
-  }
-  commands.push(
-    `node ${shellQuote(entryPathInSandbox)} ${shellQuote(SANDBOX_INPUT_PATH)} ${shellQuote(SANDBOX_OUTPUT_DIR)}`,
-  );
-
-  return {
-    executionMode: "sandbox-command",
-    metadata: {
-      skillSlug: skill.id,
-      skillName: skill.name,
-      prompt: params.prompt,
-      extraParams: params.extraParams,
-      commands,
-      output_paths: buildSandboxOutputPaths(sanitizedInputPayload),
-      inlineFiles,
-    },
-  };
-}
-
-function resolveSandboxProfileOverride(
-  skill: SkillDefinition,
-  executionMode: string,
-): string | undefined {
-  if (skill.sandboxProfileSlug?.trim()) {
-    return skill.sandboxProfileSlug.trim();
-  }
-  if (executionMode === "sandbox-code" || executionMode === "sandbox-python") {
-    return "code-default";
-  }
-  if (executionMode === "sandbox-command" || executionMode === "sandbox-browser") {
-    return "browser-default";
-  }
-  if (executionMode === "sandbox-file") {
-    return "file-parser";
-  }
-  if (executionMode === "sandbox-media") {
-    return "media-processing";
-  }
-  return undefined;
-}
-
-async function loadSandboxProfileCapabilities(
-  profileSlug: string,
-): Promise<SandboxProfileCapabilities | null> {
-  const fallback = BUILT_IN_SANDBOX_PROFILES[profileSlug];
-  try {
-    const dbInstance = await getDb();
-    if (!dbInstance) {
-      return fallback ?? null;
-    }
-
-    const [profile] = await dbInstance
-      .select({
-        slug: sandboxProfiles.slug,
-        timeoutSeconds: sandboxProfiles.timeoutSeconds,
-        networkDefaultAction: sandboxProfiles.networkDefaultAction,
-        allowBrowser: sandboxProfiles.allowBrowser,
-        allowCommand: sandboxProfiles.allowCommand,
-        allowCodeInterpreter: sandboxProfiles.allowCodeInterpreter,
-        maxInputMb: sandboxProfiles.maxInputMb,
-      })
-      .from(sandboxProfiles)
-      .where(and(eq(sandboxProfiles.slug, profileSlug), eq(sandboxProfiles.isActive, true)))
-      .limit(1);
-
-    return profile ?? fallback ?? null;
-  } catch {
-    return fallback ?? null;
-  }
-}
-
-function estimateSandboxInputBytes(
-  inputFiles: Array<{ key: string; mimeType: string; sizeBytes: number }>,
-  metadata: Record<string, unknown>,
-): number {
-  let total = inputFiles.reduce((sum, file) => sum + (Number(file.sizeBytes) || 0), 0);
-  const inlineFiles = Array.isArray(metadata.inlineFiles) ? metadata.inlineFiles : [];
-  for (const entry of inlineFiles) {
-    if (!entry || typeof entry !== "object") {
-      continue;
-    }
-    const contentBase64 = (entry as Record<string, unknown>).contentBase64;
-    if (typeof contentBase64 === "string") {
-      total += Buffer.byteLength(contentBase64, "base64");
-    }
-  }
-  return total;
-}
-
 export interface SkillExecutionParams {
   prompt: string;
   conversationId?: string;
@@ -818,7 +411,9 @@ export interface SkillCreateAction {
   triggerPatterns: string[];
 }
 
-function buildPythonSkillCommonParams(params: SkillExecutionParams): Record<string, unknown> {
+function buildPythonSkillCommonParams(
+  params: SkillExecutionParams
+): Record<string, unknown> {
   const commonParams: Record<string, unknown> = {};
   const setIfPresent = (key: string, value: unknown) => {
     if (value === undefined || value === null || value === "") return;
@@ -842,7 +437,7 @@ function buildPythonSkillCommonParams(params: SkillExecutionParams): Record<stri
 export interface SkillExecutionResult {
   success: boolean;
   skillId: string;
-  type: "image" | "video" | "audio" | "text" | "action" | "sandbox-job";
+  type: "image" | "video" | "audio" | "text" | "action";
   data?: MediaGenerationResponse;
   resultUrl?: string;
   resultUrls?: string[];
@@ -851,8 +446,6 @@ export interface SkillExecutionResult {
   creditsUsed?: number;
   taskId?: string;
   isAsync?: boolean;
-  /** Sandbox job ID for polling (when type is 'sandbox-job') */
-  jobId?: string;
   /** Structured side-effect from a python skill (e.g. create_skill) */
   _action?: SkillCreateAction;
   /** Extra machine-readable payload returned by the skill */
@@ -867,7 +460,7 @@ export async function executeSkill(
   params: SkillExecutionParams,
   userId: number,
   userToken: string,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<SkillExecutionResult> {
   const runId = params.runId ?? randomUUID();
   params = { ...params, runId };
@@ -888,7 +481,10 @@ export async function executeSkill(
       error: "Skill is not available in the active tenant",
     };
   }
-  if (normalizeSkillRevenuePricing(skill).totalCredits > 0 && !tenantId?.trim()) {
+  if (
+    normalizeSkillRevenuePricing(skill).totalCredits > 0 &&
+    !tenantId?.trim()
+  ) {
     return {
       success: false,
       skillId: skill.id,
@@ -911,8 +507,14 @@ export async function executeSkill(
   const executionMode = skill.executionMode as string | undefined;
 
   // core-text / llm-only / enhance-prompt: LLM text path (never uses sandbox)
-  if (executionMode === "core-text" || executionMode === "llm-only" || executionMode === "enhance-prompt") {
-    console.log(`[SkillExecutor] Skill '${skill.id}' has executionMode '${executionMode}' — returning text result for LLM processing`);
+  if (
+    executionMode === "core-text" ||
+    executionMode === "llm-only" ||
+    executionMode === "enhance-prompt"
+  ) {
+    console.log(
+      `[SkillExecutor] Skill '${skill.id}' has executionMode '${executionMode}' — returning text result for LLM processing`
+    );
     const settlement = await settleSkillRun({
       runId,
       userId,
@@ -930,67 +532,23 @@ export async function executeSkill(
     };
   }
 
-  // Sandbox execution modes — dispatch to OpenSandbox when enabled
-  if (
-    executionMode?.startsWith("sandbox-") ||
-    (executionMode === "python" && isSandboxEnabled())
-  ) {
-    const sandboxMode =
-      executionMode === "python"
-        ? "sandbox-python"
-        : (executionMode || "sandbox-code");
-    let sandboxResult: SkillExecutionResult | null = null;
-    try {
-      if (shouldUseSandboxForFeature("skill", sandboxMode)) {
-        console.log(`[SkillExecutor] Routing to sandbox dispatch (mode: ${sandboxMode})`);
-        sandboxResult = await executeSandboxSkill(
-          skill,
-          params,
-          userId,
-          userToken,
-          sandboxMode,
-          tenantId,
-        );
-      }
-    } catch (err) {
-      // shouldUseSandboxForFeature throws when required but disabled
-      if (getDispatchMode() === "required") {
-        return {
-          success: false,
-          skillId: skill.id,
-          type: "text",
-          error: "Secure execution environment is required but unavailable. Please contact your administrator.",
-        };
-      }
-      // optional mode: fall through to legacy paths
-      console.warn(`[SkillExecutor] Sandbox check failed, falling back to legacy:`, err);
-    }
-    if (sandboxResult) {
-      if (!sandboxResult.success) return sandboxResult;
-      try {
-        const settlement = await settleSkillRun({
-          runId,
-          userId,
-          tenantId,
-          skillSlug: skill.id,
-          description: `Skill run: ${skill.name}`,
-          metadata: { runtimeKind: "sandbox" },
-        });
-        return { ...sandboxResult, creditsUsed: settlement.totalCredits };
-      } catch (err) {
-        return {
-          success: false,
-          skillId: skill.id,
-          type: sandboxResult.type,
-          error: err instanceof Error ? err.message : "Skill billing settlement failed",
-        };
-      }
-    }
+  // OpenSandbox execution modes are retired. Do not fall back to local execution:
+  // stale records must be migrated to the worker_jobs runtime explicitly.
+  if (executionMode?.startsWith("sandbox-")) {
+    return {
+      success: false,
+      skillId: skill.id,
+      type: "text",
+      error:
+        "This skill uses a retired sandbox runtime; migrate it to worker_jobs before execution.",
+    };
   }
 
   // Python skills: subprocess execution (legacy)
   if (executionMode === "python") {
-    console.log(`[SkillExecutor] Routing to executePythonSkill (executionMode: python)`);
+    console.log(
+      `[SkillExecutor] Routing to executePythonSkill (executionMode: python)`
+    );
     const pythonResult = await executePythonSkill(skill, params, userToken);
     if (!pythonResult.success) return pythonResult;
     const settlement = await settleSkillRun({
@@ -1015,7 +573,9 @@ export async function executeSkill(
       return executeVideoGeneration(skill, params, userId, userToken, tenantId);
 
     case "image-video-generation":
-      console.log(`[SkillExecutor] Skill type is image-video-generation, routing to video generation`);
+      console.log(
+        `[SkillExecutor] Skill type is image-video-generation, routing to video generation`
+      );
       return executeVideoGeneration(skill, params, userId, userToken, tenantId);
 
     case "audio-generation":
@@ -1037,7 +597,9 @@ export async function executeSkill(
       };
 
     default:
-      console.error(`[SkillExecutor] Unknown skill type '${skill.type}' for skill '${skill.id}'`);
+      console.error(
+        `[SkillExecutor] Unknown skill type '${skill.type}' for skill '${skill.id}'`
+      );
       return {
         success: false,
         skillId: skill.id,
@@ -1055,7 +617,7 @@ async function executeImageGeneration(
   params: SkillExecutionParams,
   userId: number,
   userToken: string,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("image");
@@ -1076,7 +638,12 @@ async function executeImageGeneration(
   } else {
     const defaultModel = getDefaultModel("image");
     if (!defaultModel) {
-      return { success: false, skillId: skill.id, type: "image", error: "No image models available" };
+      return {
+        success: false,
+        skillId: skill.id,
+        type: "image",
+        error: "No image models available",
+      };
     }
     model = defaultModel.id as ImageModel;
   }
@@ -1109,7 +676,9 @@ async function executeImageGeneration(
   try {
     // Build apiConfig from model's configJson (database is source of truth)
     const apiConfig = {
-      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...buildMediaApiConfig(
+        modelMeta.configJson as Record<string, unknown> | undefined
+      ),
       ...(params.apiConfig ?? {}),
     };
 
@@ -1124,7 +693,9 @@ async function executeImageGeneration(
         referenceImageUrls: params.referenceImageUrls,
         referenceStyleUrl: params.referenceStyleUrl,
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0
+          ? { extraParams: params.extraParams }
+          : {}),
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
@@ -1149,7 +720,8 @@ async function executeImageGeneration(
     // Do NOT deduct again here to avoid double-charging
 
     // Extract URLs
-    const urls = durableResult.data?.map((d) => d.url).filter((u): u is string => !!u) || [];
+    const urls =
+      durableResult.data?.map(d => d.url).filter((u): u is string => !!u) || [];
 
     // Record step attempt for planner tracking
     if (plannerResult) {
@@ -1200,7 +772,7 @@ async function executeVideoGeneration(
   params: SkillExecutionParams,
   userId: number,
   userToken: string,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("video");
@@ -1221,7 +793,12 @@ async function executeVideoGeneration(
   } else {
     const defaultModel = getDefaultModel("video");
     if (!defaultModel) {
-      return { success: false, skillId: skill.id, type: "video", error: "No video models available" };
+      return {
+        success: false,
+        skillId: skill.id,
+        type: "video",
+        error: "No video models available",
+      };
     }
     model = defaultModel.id as VideoModel;
   }
@@ -1255,19 +832,26 @@ async function executeVideoGeneration(
   try {
     // Build apiConfig from model's configJson (database is source of truth)
     const apiConfig = {
-      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...buildMediaApiConfig(
+        modelMeta.configJson as Record<string, unknown> | undefined
+      ),
       ...(params.apiConfig ?? {}),
     };
 
     // Generate video asynchronously — forward all params including extraParams
-    console.log('[executeVideoGeneration] Preparing to call generateVideoAsync with:', {
-      model,
-      duration,
-      aspectRatio: params.aspectRatio,
-      promptLength: params.prompt?.length,
-      hasApiConfig: Object.keys(apiConfig).length > 0,
-      hasExtraParams: !!(params.extraParams && Object.keys(params.extraParams).length > 0),
-    });
+    console.log(
+      "[executeVideoGeneration] Preparing to call generateVideoAsync with:",
+      {
+        model,
+        duration,
+        aspectRatio: params.aspectRatio,
+        promptLength: params.prompt?.length,
+        hasApiConfig: Object.keys(apiConfig).length > 0,
+        hasExtraParams: !!(
+          params.extraParams && Object.keys(params.extraParams).length > 0
+        ),
+      }
+    );
 
     const task = await mediaGenerationService.generateVideoAsync(
       {
@@ -1278,7 +862,9 @@ async function executeVideoGeneration(
         resolution: params.resolution,
         referenceImageUrls: params.referenceImageUrls,
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0
+          ? { extraParams: params.extraParams }
+          : {}),
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
@@ -1292,7 +878,7 @@ async function executeVideoGeneration(
       userToken
     );
 
-    console.log('[executeVideoGeneration] Task created successfully:', {
+    console.log("[executeVideoGeneration] Task created successfully:", {
       taskId: task.id,
       status: task.status,
     });
@@ -1328,8 +914,11 @@ async function executeVideoGeneration(
       creditsUsed: settlement.totalCredits,
     };
   } catch (error) {
-    console.error('[executeVideoGeneration] Error during video generation:', error);
-    console.error('[executeVideoGeneration] Error details:', {
+    console.error(
+      "[executeVideoGeneration] Error during video generation:",
+      error
+    );
+    console.error("[executeVideoGeneration] Error details:", {
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
@@ -1350,7 +939,7 @@ export async function executeAudioGeneration(
   params: SkillExecutionParams,
   userId: number,
   userToken: string,
-  tenantId?: string,
+  tenantId?: string
 ): Promise<SkillExecutionResult> {
   // Ensure model cache is loaded from DB before any lookups
   await getModelsByTypeAsync("audio");
@@ -1371,7 +960,12 @@ export async function executeAudioGeneration(
   } else {
     const defaultModel = getDefaultModel("audio");
     if (!defaultModel) {
-      return { success: false, skillId: "audio-generation", type: "audio", error: "No audio models available" };
+      return {
+        success: false,
+        skillId: "audio-generation",
+        type: "audio",
+        error: "No audio models available",
+      };
     }
     model = defaultModel.id as AudioModel;
   }
@@ -1401,7 +995,9 @@ export async function executeAudioGeneration(
 
   try {
     const apiConfig = {
-      ...buildMediaApiConfig(modelMeta.configJson as Record<string, unknown> | undefined),
+      ...buildMediaApiConfig(
+        modelMeta.configJson as Record<string, unknown> | undefined
+      ),
       ...(params.apiConfig ?? {}),
     };
 
@@ -1411,7 +1007,9 @@ export async function executeAudioGeneration(
         model,
         voice: params.voice,
         ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-        ...(params.extraParams && Object.keys(params.extraParams).length > 0 ? { extraParams: params.extraParams } : {}),
+        ...(params.extraParams && Object.keys(params.extraParams).length > 0
+          ? { extraParams: params.extraParams }
+          : {}),
         ...(params.publicUrl ? { publicUrl: params.publicUrl } : {}),
         auditContext: {
           userId,
@@ -1476,164 +1074,6 @@ export async function executeAudioGeneration(
 }
 
 /**
- * Execute a skill via the OpenSandbox dispatch system.
- * Returns a sandbox-job result with jobId for client polling.
- */
-async function executeSandboxSkill(
-  skill: SkillDefinition,
-  params: SkillExecutionParams,
-  userId: number,
-  userToken: string = "",
-  executionModeOverride?: string,
-  tenantId?: string,
-): Promise<SkillExecutionResult> {
-  if (!tenantId) {
-    return {
-      success: false,
-      skillId: skill.id,
-      type: "text",
-      error: "Tenant context required for secure sandbox execution.",
-    };
-  }
-
-  const dispatchExecutionMode = executionModeOverride || skill.executionMode || "sandbox-code";
-  try {
-    const defaultMetadata: Record<string, unknown> = {
-      skillSlug: skill.id,
-      skillName: skill.name,
-      skillRunId: params.runId,
-      prompt: params.prompt,
-      extraParams: params.extraParams,
-    };
-    const dispatchPayload =
-      dispatchExecutionMode === "sandbox-python"
-        ? preparePythonSandboxPayload(skill, params, userToken)
-        : dispatchExecutionMode === "sandbox-command"
-          ? prepareCommandSandboxPayload(skill, params)
-        : {
-            executionMode: dispatchExecutionMode,
-            metadata: defaultMetadata,
-          };
-
-    const profileOverride = resolveSandboxProfileOverride(
-      skill,
-      dispatchPayload.executionMode,
-    );
-    if (!profileOverride) {
-      throw new Error(`No sandbox profile resolved for skill '${skill.id}'`);
-    }
-
-    const profile = await loadSandboxProfileCapabilities(profileOverride);
-    if (!profile) {
-      throw new Error(`Sandbox profile '${profileOverride}' not found or inactive`);
-    }
-
-    if (dispatchPayload.executionMode === "sandbox-command" && !profile.allowCommand) {
-      throw new Error(`Sandbox profile '${profile.slug}' does not allow command execution`);
-    }
-
-    if (
-      (dispatchPayload.executionMode === "sandbox-code" || dispatchPayload.executionMode === "sandbox-python")
-      && !profile.allowCodeInterpreter
-    ) {
-      throw new Error(`Sandbox profile '${profile.slug}' does not allow code execution`);
-    }
-
-    if ((dispatchPayload.executionMode === "sandbox-browser" || skill.requiresBrowser) && !profile.allowBrowser) {
-      throw new Error(`Sandbox profile '${profile.slug}' does not allow browser access`);
-    }
-
-    if (skill.requiresNetwork && profile.networkDefaultAction !== "allow") {
-      throw new Error(`Sandbox profile '${profile.slug}' does not allow network access`);
-    }
-
-    const inputLimitMb = [skill.maxInputMb ?? null, profile.maxInputMb ?? null]
-      .filter((value): value is number => typeof value === "number" && Number.isFinite(value) && value > 0)
-      .reduce<number | null>((minValue, value) => minValue == null ? value : Math.min(minValue, value), null);
-    if (inputLimitMb != null) {
-      const inputBytes = estimateSandboxInputBytes([], dispatchPayload.metadata);
-      if (inputBytes > inputLimitMb * 1024 * 1024) {
-        throw new Error(
-          `Sandbox input size ${Math.ceil(inputBytes / (1024 * 1024))}MB exceeds limit of ${inputLimitMb}MB`,
-        );
-      }
-    }
-
-    const requestedTimeoutSeconds = (
-      typeof skill.maxRuntimeSeconds === "number" && Number.isFinite(skill.maxRuntimeSeconds) && skill.maxRuntimeSeconds > 0
-        ? Math.min(skill.maxRuntimeSeconds, profile.timeoutSeconds)
-        : null
-    );
-    if (requestedTimeoutSeconds != null && requestedTimeoutSeconds !== profile.timeoutSeconds) {
-      dispatchPayload.metadata = {
-        ...dispatchPayload.metadata,
-        runtimeOverrides: {
-          timeoutSeconds: requestedTimeoutSeconds,
-        },
-      };
-    }
-
-    const result = await sandboxDispatch({
-      featureType: "skill",
-      executionMode: dispatchPayload.executionMode as any,
-      tenantId,
-      userId,
-      inputFiles: [],
-      profileOverride,
-      idempotencyKey: params.runId,
-      metadata: dispatchPayload.metadata,
-    });
-
-    return {
-      success: true,
-      skillId: skill.id,
-      type: "sandbox-job",
-      jobId: result.jobId,
-      isAsync: true,
-      message: `Skill '${skill.name}' dispatched to secure execution environment. Job ID: ${result.jobId}`,
-    };
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[SkillExecutor] Sandbox dispatch failed for skill '${skill.id}':`, errMsg);
-
-    // Fall back to legacy python subprocess if dispatch mode is optional
-    // BUT only if the skill actually has a Python script — media-generate
-    // skills (image-creator, etc.) don't have python/skill.py and should
-    // fall through to type-based routing (executeImageGeneration, etc.)
-    if (getDispatchMode() !== "required" && dispatchExecutionMode !== "sandbox-media") {
-      const hasPythonScript = resolvePythonSkillPaths(skill) !== null;
-      if (hasPythonScript) {
-        console.warn(`[SkillExecutor] Falling back to legacy python subprocess for '${skill.id}'`);
-        const pythonResult = await executePythonSkill(skill, params, userToken);
-        if (!pythonResult.success) return pythonResult;
-        const settlement = await settleSkillRun({
-          runId: params.runId ?? randomUUID(),
-          userId,
-          tenantId,
-          skillSlug: skill.id,
-          description: `Skill run: ${skill.name}`,
-          metadata: { runtimeKind: "python", originSurface: "sandbox_fallback" },
-        });
-        return { ...pythonResult, creditsUsed: settlement.totalCredits };
-      }
-      return {
-        success: false,
-        skillId: skill.id,
-        type: "text",
-        error: errMsg,
-      };
-    }
-
-    return {
-      success: false,
-      skillId: skill.id,
-      type: "text",
-      error: `Secure execution environment temporarily unavailable. Please try again later.`,
-    };
-  }
-}
-
-/**
  * Execute a Python skill via subprocess (executionMode: "python")
  *
  * Uses async spawn (NOT spawnSync) to keep the Node.js event loop free.
@@ -1666,7 +1106,13 @@ async function executePythonSkill(
 
   // Locate venv Python
   const projectRoot = path.resolve(process.cwd(), "..", "..");
-  const venvPython = path.join(projectRoot, "python-backend", ".venv", "bin", "python");
+  const venvPython = path.join(
+    projectRoot,
+    "python-backend",
+    ".venv",
+    "bin",
+    "python"
+  );
   const pythonBin = fs.existsSync(venvPython) ? venvPython : "python3";
 
   const input = JSON.stringify({
@@ -1681,12 +1127,16 @@ async function executePythonSkill(
     },
   });
 
-  console.log(`[SkillExecutor] Running Python skill (async): ${paths.scriptPath}`);
+  console.log(
+    `[SkillExecutor] Running Python skill (async): ${paths.scriptPath}`
+  );
 
   const TIMEOUT_MS = 600_000; // 10 minutes
 
-  return new Promise<SkillExecutionResult>((resolve) => {
-    const child = spawn(pythonBin, [paths.scriptPath], { stdio: ["pipe", "pipe", "pipe"] });
+  return new Promise<SkillExecutionResult>(resolve => {
+    const child = spawn(pythonBin, [paths.scriptPath], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
     let stdout = "";
     let stderr = "";
@@ -1711,13 +1161,17 @@ async function executePythonSkill(
       });
     }, TIMEOUT_MS);
 
-    child.stdout.on("data", (chunk: Buffer) => { stdout += chunk.toString(); });
-    child.stderr.on("data", (chunk: Buffer) => { stderr += chunk.toString(); });
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
 
     child.stdin.write(input);
     child.stdin.end();
 
-    child.on("error", (err) => {
+    child.on("error", err => {
       settle({
         success: false,
         skillId: skill.id,
@@ -1733,7 +1187,7 @@ async function executePythonSkill(
       });
     });
 
-    child.on("close", (code) => {
+    child.on("close", code => {
       // Log stderr (ISC progress lines) now that process completed
       if (stderr.trim()) {
         console.log(`[SkillExecutor] Python stderr:\n${stderr.trim()}`);
@@ -1741,7 +1195,9 @@ async function executePythonSkill(
 
       if (code !== 0) {
         const errDetail = stderr.trim() || "Unknown error";
-        console.error(`[SkillExecutor] Python skill exited ${code}: ${errDetail}`);
+        console.error(
+          `[SkillExecutor] Python skill exited ${code}: ${errDetail}`
+        );
         settle({
           success: false,
           skillId: skill.id,
@@ -1768,7 +1224,8 @@ async function executePythonSkill(
         };
         if (!parsed.success) {
           // Python returns errors in "output" field (user-facing message), not "error"
-          const errorMsg = parsed.error ?? parsed.output ?? "Python skill returned failure";
+          const errorMsg =
+            parsed.error ?? parsed.output ?? "Python skill returned failure";
           console.error(`[SkillExecutor] Python skill failure: ${errorMsg}`);
           settle({
             success: false,
@@ -1789,16 +1246,31 @@ async function executePythonSkill(
           skillId: skill.id,
           type: "text",
           message: parsed.output ?? stdout.trim(),
-          ...(parsed._action ? { _action: parsed._action as SkillCreateAction } : {}),
-          ...((parsed.skill_path || parsed.skill_name || parsed.saved_proposals || Object.keys(combinedMetadata).length > 0)
+          ...(parsed._action
+            ? { _action: parsed._action as SkillCreateAction }
+            : {}),
+          ...(parsed.skill_path ||
+          parsed.skill_name ||
+          parsed.saved_proposals ||
+          Object.keys(combinedMetadata).length > 0
             ? {
                 metadata: {
                   ...combinedMetadata,
-                  ...(parsed.skill_path ? { skillPath: parsed.skill_path } : {}),
-                  ...(parsed.skill_name ? { skillName: parsed.skill_name } : {}),
-                  ...(parsed.saved_proposals ? { savedProposals: parsed.saved_proposals } : {}),
-                  ...(parsed.bundle_topology ? { bundleTopology: parsed.bundle_topology } : {}),
-                  ...(parsed.subagent_manifest ? { subagentManifest: parsed.subagent_manifest } : {}),
+                  ...(parsed.skill_path
+                    ? { skillPath: parsed.skill_path }
+                    : {}),
+                  ...(parsed.skill_name
+                    ? { skillName: parsed.skill_name }
+                    : {}),
+                  ...(parsed.saved_proposals
+                    ? { savedProposals: parsed.saved_proposals }
+                    : {}),
+                  ...(parsed.bundle_topology
+                    ? { bundleTopology: parsed.bundle_topology }
+                    : {}),
+                  ...(parsed.subagent_manifest
+                    ? { subagentManifest: parsed.subagent_manifest }
+                    : {}),
                 },
               }
             : {}),
@@ -1821,61 +1293,68 @@ async function executePythonSkill(
   });
 }
 
-const TASK_TTL_SECONDS = 3600; // 1 hour
-
 /**
- * Start a Python skill in the background and store the result in Redis.
+ * Admit a skill execution to the canonical worker queue.
  *
  * Returns a taskId immediately so the HTTP request can close while Python
  * continues running. The caller should poll `skill:task:<taskId>` in Redis
  * via the `chat.getSkillTaskResult` tRPC query.
  *
- * @param onComplete  Optional post-processing callback applied to the raw
- *                    Python result before it's stored (e.g. handleIscCreateSkill).
  */
-export async function startPythonSkillTask(
+export async function startSkillTask(
   skill: SkillDefinition,
   params: SkillExecutionParams,
   userId: number,
-  userToken: string = "",
-  onComplete?: (result: SkillExecutionResult) => Promise<SkillExecutionResult>,
+  tenantId: string,
+  userToken: string = ""
 ): Promise<{ taskId: string }> {
-  const redis = getRedisClient();
-  const taskId = `${skill.id}:${userId}:${Date.now()}`;
+  if (!tenantId.trim()) throw new Error("TENANT_CONTEXT_REQUIRED");
+  const taskId = randomUUID();
 
-  // Mark task as running immediately
-  await redis.setex(
-    `skill:task:${taskId}`,
-    TASK_TTL_SECONDS,
-    JSON.stringify({ status: "running", skillId: skill.id, userId, startedAt: Date.now() }),
-  );
-
-  // Run Python skill in background — do NOT await
-  executePythonSkill(skill, params, userToken)
-    .then(async (result) => {
-      const finalResult = onComplete ? await onComplete(result) : result;
-      await redis.setex(
-        `skill:task:${taskId}`,
-        TASK_TTL_SECONDS,
-        JSON.stringify({ status: "done", skillId: skill.id, userId, result: finalResult }),
-      );
-    })
-    .catch(async (err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      await redis.setex(
-        `skill:task:${taskId}`,
-        TASK_TTL_SECONDS,
-        JSON.stringify({
-          status: "done",
-          skillId: skill.id,
-          userId,
-      result: { success: false, skillId: skill.id, type: "text", error: msg },
-        }),
-      );
-    });
-
-  return { taskId };
+  const job = await createControlPlaneJob({
+    context: {
+      tenantId,
+      actorType: "user",
+      actorId: userId,
+      authorizationScope: "skill:execute",
+      correlationId: taskId,
+      idempotencyKey: taskId,
+    },
+    definition: {
+      contractVersion: "feature-186-v1",
+      jobType: "skill.execute",
+      executionClass: "long",
+      input: {
+        skillId: skill.id,
+        userId,
+        tenantId,
+        params,
+        runId: params.runId ?? taskId,
+      },
+      retryPolicy: {
+        maxAttempts: 2,
+        baseDelayMs: 5_000,
+        maxDelayMs: 60_000,
+        jitter: "bounded",
+        deadlineMs: 60 * 60_000,
+        allowedErrorClasses: ["retryable", "unknown"],
+      },
+      timeoutPolicy: {
+        softTimeoutMs: 5 * 60_000,
+        hardTimeoutMs: 30 * 60_000,
+      },
+      requiredCapabilities: {
+        skillId: skill.id,
+        executionMode: skill.executionMode ?? "llm-only",
+      },
+    },
+    createOptions: { runtimeType: "node_job_worker" },
+  });
+  return { taskId: job.jobId };
 }
+
+/** @deprecated Use startSkillTask. Kept for the Skill Studio compatibility API. */
+export const startPythonSkillTask = startSkillTask;
 
 /**
  * Get estimated credit cost for skill execution
@@ -1921,6 +1400,6 @@ export function canAutoExecute(skill: SkillDefinition): boolean {
     "image-generation",
     "video-generation",
     "audio-generation",
-    "image-video-generation"
+    "image-video-generation",
   ].includes(skill.type);
 }

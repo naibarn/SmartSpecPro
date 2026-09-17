@@ -250,7 +250,6 @@ export function buildDesktopRolloutGateStates(input: {
   signedUpdatesEnforced: boolean;
   managedFileRootsDefault: boolean;
   piGatewayOnly: boolean;
-  agencyGatewayOnly: boolean;
   offboardingCleanupReady: boolean;
 }): DesktopRolloutGateState[] {
   return [
@@ -288,13 +287,6 @@ export function buildDesktopRolloutGateStates(input: {
       reason: input.piGatewayOnly
         ? "pi_gateway_injection_enforced"
         : "pi_can_start_with_unmanaged_keys",
-    },
-    {
-      gate: "agency_gateway_only",
-      satisfied: input.agencyGatewayOnly,
-      reason: input.agencyGatewayOnly
-        ? "agency_gateway_injection_enforced"
-        : "agency_can_start_with_unmanaged_keys",
     },
     {
       gate: "offboarding_cleanup_ready",

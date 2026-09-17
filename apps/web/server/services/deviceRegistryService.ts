@@ -43,10 +43,6 @@ export function resolveDesktopHostFeatureFlags(
       typeof storedFlags?.desktopPackageSync === "boolean"
         ? storedFlags.desktopPackageSync
         : FEATURE_FLAG_DEFAULTS.desktopPackageSync,
-    desktopAgencyRuntime:
-      typeof storedFlags?.desktopAgencyRuntime === "boolean"
-        ? storedFlags.desktopAgencyRuntime
-        : FEATURE_FLAG_DEFAULTS.desktopAgencyRuntime,
     desktopWorkerProjection:
       typeof storedFlags?.desktopWorkerProjection === "boolean"
         ? storedFlags.desktopWorkerProjection

@@ -111,7 +111,7 @@ function EmbedCodeDialog({
 
 interface WidgetFormData {
   name: string;
-  targetType: "chat" | "agency";
+  targetType: "chat";
   allowedOrigins: string;
   rateLimitPerMinute: number;
   maxConversationLength: number;
@@ -242,14 +242,13 @@ function WidgetFormDialog({
             <Label>Target Type</Label>
             <Select
               value={form.targetType}
-              onValueChange={(v) => setForm((f) => ({ ...f, targetType: v as "chat" | "agency" }))}
+              onValueChange={(v) => setForm((f) => ({ ...f, targetType: v as "chat" }))}
             >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="chat">Chat</SelectItem>
-                <SelectItem value="agency">Agency</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -513,7 +512,7 @@ export default function AdminWidgets() {
         const theme = (editRow as any)?.theme as Record<string, string> | undefined;
         const initialData: Partial<WidgetFormData> = editRow ? {
           name: editRow.name,
-          targetType: (editRow.targetType as "chat" | "agency") ?? "chat",
+          targetType: "chat",
           allowedOrigins: (editRow.allowedOrigins ?? []).join("\n"),
           rateLimitPerMinute: editRow.rateLimitPerMinute ?? 10,
           creditSource: (editRow.creditSource as "tenant" | "visitor") ?? "tenant",

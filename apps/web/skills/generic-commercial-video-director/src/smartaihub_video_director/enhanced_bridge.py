@@ -394,6 +394,61 @@ def _normalize_position_bucket(pos_str: str | None) -> str | None:
     return None
 
 
+def _custom_character_identity_overrides(payload: dict[str, Any]) -> dict[str, str]:
+    shot = payload.get("shot") or {}
+    continuity = payload.get("continuity") or {}
+    raw = shot.get("characterDescriptionOverrides") or continuity.get("characterDescriptionOverrides") or {}
+    if not isinstance(raw, dict):
+        return {}
+    return {
+        str(key).strip(): str(value).strip()
+        for key, value in raw.items()
+        if str(key).strip() and isinstance(value, str) and value.strip()
+    }
+
+
+def _custom_identity_for(
+    overrides: dict[str, str], *identifiers: object,
+) -> str | None:
+    normalized = {
+        str(key).strip().casefold(): value
+        for key, value in overrides.items()
+    }
+    for identifier in identifiers:
+        key = str(identifier or "").strip().casefold()
+        if key and key in normalized:
+            return normalized[key]
+    return None
+
+
+def _build_custom_character_identity_lock(
+    payload: dict[str, Any], overrides: dict[str, str],
+) -> str:
+    if not overrides:
+        return ""
+    shot = payload.get("shot") or {}
+    cast_positions = shot.get("verifiedCastPositions") or []
+    names_by_key: dict[str, str] = {}
+    for entry in cast_positions:
+        if not isinstance(entry, dict):
+            continue
+        key = str(entry.get("characterKey") or "").strip()
+        name = str(entry.get("name") or "").strip()
+        if key and name:
+            names_by_key[key.casefold()] = name
+    lines = [
+        f"{names_by_key.get(key.casefold(), key)} [characterKey={key}]: {description}"
+        for key, description in overrides.items()
+    ]
+    return (
+        "CUSTOM CHARACTER IDENTIFICATION OVERRIDES (AUTHORITATIVE; user supplied for this shot): "
+        + "; ".join(lines)
+        + ". For every listed character, use the supplied description as the identity anchor and "
+        "do NOT identify or anchor that character by viewer-left/viewer-right screen position. "
+        "Do not combine the custom description with a conflicting position cue."
+    )
+
+
 def _resolve_character_positions(
     payload: dict[str, Any],
     observed_start_state: dict[str, Any] | None,
@@ -615,6 +670,7 @@ def _build_motion_timeline(
     dialogue: list[dict[str, Any]],
     character_positions: dict[str, str] | None = None,
     all_characters: list[dict[str, str]] | None = None,
+    custom_identity_overrides: dict[str, str] | None = None,
 ) -> list[str]:
     blocks: list[str] = []
     tense_keywords = (
@@ -664,7 +720,14 @@ def _build_motion_timeline(
                     or pos_map.get(speaker)
                 )
 
-            speaker_anchor = f"{speaker} on {pos}" if pos else speaker
+            speaker_identity = _custom_identity_for(
+                custom_identity_overrides or {}, speaker_id, line.get("characterKey"), speaker
+            )
+            speaker_anchor = (
+                f"{speaker} identified by {speaker_identity}"
+                if speaker_identity
+                else (f"{speaker} on {pos}" if pos else speaker)
+            )
             txt = line.get("text") or line.get("lineTh") or ""
             emotion = line.get("emotion")
             voice_cue = f"a {emotion} voice" if emotion else "a clear, natural voice"
@@ -700,7 +763,12 @@ def _build_motion_timeline(
             if partner_id and partner_id.casefold() == str(speaker_id).casefold():
                 partner_id = ""
             partner_anchor = partner_name or partner_id
-            if partner_anchor and partner_pos:
+            partner_identity = _custom_identity_for(
+                custom_identity_overrides or {}, partner_id, partner_name
+            )
+            if partner_identity:
+                partner_anchor = f"{partner_name} identified by {partner_identity}"
+            elif partner_anchor and partner_pos:
                 partner_anchor = f"{partner_anchor} on {partner_pos}"
             if pos == "viewer-screen":
                 eyeline = (
@@ -734,7 +802,14 @@ def _build_motion_timeline(
                     and other_name.lower() != speaker_id.lower()
                 ):
                     l_pos = other.get("position") or pos_map.get(other_id.lower()) or pos_map.get(other_name.lower())
-                    l_anchor = f"{other_name} on {l_pos}" if l_pos else other_name
+                    listener_identity = _custom_identity_for(
+                        custom_identity_overrides or {}, other_id, other_name
+                    )
+                    l_anchor = (
+                        f"{other_name} identified by {listener_identity}"
+                        if listener_identity
+                        else (f"{other_name} on {l_pos}" if l_pos else other_name)
+                    )
                     listeners.append(f"{l_anchor} listens, mouth closed with no mouth movement.")
 
             listeners_str = (" " + " ".join(listeners)) if listeners else ""
@@ -777,6 +852,7 @@ def _build_grok_hard_speaker_map(
     duration: float,
     dialogue: list[dict[str, Any]],
     all_characters: list[dict[str, str]],
+    custom_identity_overrides: dict[str, str] | None = None,
 ) -> str:
     """Emit one unambiguous cast/speaker map for Grok multi-person shots.
 
@@ -790,7 +866,12 @@ def _build_grok_hard_speaker_map(
     characters = [
         character
         for character in all_characters
-        if character.get("id") and character.get("name") and character.get("position")
+        if character.get("id")
+        and character.get("name")
+        and character.get("position")
+        and not _custom_identity_for(
+            custom_identity_overrides or {}, character.get("id"), character.get("name")
+        )
     ]
     if len(characters) < 2 or not dialogue:
         return ""
@@ -823,12 +904,16 @@ def _build_grok_hard_speaker_map(
         speaker = str(line.get("speaker") or line.get("speakerHint") or "").strip()
         speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
         position = str(line.get("position") or "").strip()
+        identity = _custom_identity_for(
+            custom_identity_overrides or {}, speaker_id, line.get("characterKey"), speaker
+        )
         if speaker_id:
             speaker_ids.add(speaker_id.casefold())
         if speaker:
             speaker_names.add(speaker.casefold())
+        line_anchor = f"identified by {identity}" if identity else f"on {position}"
         lines.append(
-            f"- Line {index + 1} ONLY: {speaker} ({speaker_id}) on {position}; "
+            f"- Line {index + 1} ONLY: {speaker} ({speaker_id}) {line_anchor}; "
             "no other character may speak this line."
         )
 
@@ -854,22 +939,33 @@ def _build_grok_hard_speaker_map(
     first_speaker = str(first.get("speaker") or first.get("speakerHint") or "").strip()
     first_id = str(first.get("speakerId") or first.get("characterKey") or "").strip()
     first_position = str(first.get("position") or "").strip()
+    first_identity = _custom_identity_for(
+        custom_identity_overrides or {}, first_id, first.get("characterKey"), first_speaker
+    )
+    first_anchor = f"identified by {first_identity}" if first_identity else f"on {first_position}"
     lines.append(
         f"FIRST SPEAKER LOCK: The first moving mouth must be {first_speaker} "
-        f"({first_id}) on {first_position}; never assign Line 1 to another character."
+        f"({first_id}) {first_anchor}; never assign Line 1 to another character."
     )
     return "\n".join(lines)
 
 
 def _validate_dialogue_timeline(
-    timeline_blocks: list[str], dialogue: list[dict[str, Any]]
+    timeline_blocks: list[str],
+    dialogue: list[dict[str, Any]],
+    custom_identity_overrides: dict[str, str] | None = None,
 ) -> None:
     timeline = "\n".join(timeline_blocks)
     for index, line in enumerate(dialogue):
         speaker = str(line.get("speaker") or line.get("speakerHint") or "").strip()
+        speaker_id = str(line.get("speakerId") or line.get("characterKey") or "").strip()
         position = str(line.get("position") or "").strip()
         text = str(line.get("text") or line.get("lineTh") or "").strip()
-        expected = f'{speaker} on {position}; {speaker} says with'
+        identity = _custom_identity_for(
+            custom_identity_overrides or {}, speaker_id, line.get("characterKey"), speaker
+        )
+        expected_anchor = f"{speaker} identified by {identity}" if identity else f"{speaker} on {position}"
+        expected = f'{expected_anchor}; {speaker} says with'
         if not speaker or not position or not text or expected not in timeline:
             raise RuntimeError(
                 f"DIALOGUE_TIMELINE_BINDING_FAILED: line {index + 1} is not bound to its canonical speaker and position"
@@ -1220,6 +1316,7 @@ def _terminal_prompt(
         actions = ["Perform the approved storyboard action with physically plausible motion."]
 
     character_positions = _resolve_character_positions(payload, observed_start_state)
+    custom_identity_overrides = _custom_character_identity_overrides(payload)
     if dialogue and (observed_start_state is not None or character_positions):
         dialogue = _bind_dialogue_to_character_positions(dialogue, character_positions)
     continuity = payload.get("continuity") or {}
@@ -1264,12 +1361,24 @@ def _terminal_prompt(
                 all_characters.append({"id": cid, "name": cname, "position": cpos or ""})
 
     timeline_blocks = _build_motion_timeline(
-        duration_sec, actions, dialogue, character_positions, all_characters
+        duration_sec,
+        actions,
+        dialogue,
+        character_positions,
+        all_characters,
+        custom_identity_overrides,
     )
     if dialogue and all(line.get("position") for line in dialogue):
-        _validate_dialogue_timeline(timeline_blocks, dialogue)
+        _validate_dialogue_timeline(
+            timeline_blocks, dialogue, custom_identity_overrides
+        )
     grok_hard_speaker_map = (
-        _build_grok_hard_speaker_map(duration_sec, dialogue, all_characters)
+        _build_grok_hard_speaker_map(
+            duration_sec,
+            dialogue,
+            all_characters,
+            custom_identity_overrides,
+        )
         if is_grok_target
         else ""
     )
@@ -1306,6 +1415,11 @@ def _terminal_prompt(
         sections.append(visual_cast_lock)
     if existing_virtual_screen_lock:
         sections.append(existing_virtual_screen_lock)
+    custom_identity_lock = _build_custom_character_identity_lock(
+        payload, custom_identity_overrides
+    )
+    if custom_identity_lock:
+        sections.append(custom_identity_lock)
     if ep_synopsis:
         sections.append(f"DRAMATIC EPISODE CONTEXT\n\nEpisode Synopsis: {ep_synopsis}")
 
@@ -1315,16 +1429,29 @@ def _terminal_prompt(
             spk = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
             spk_id = line.get("speakerId") or line.get("characterKey") or ""
             pos = line.get("position")
-            pos_tag = f" on {pos}" if pos else ""
+            identity = _custom_identity_for(
+                custom_identity_overrides, spk_id, line.get("characterKey"), spk
+            )
+            anchor_tag = (
+                f" identified by {identity}"
+                if identity
+                else (f" on {pos}" if pos else "")
+            )
             dialogue_lines_formatted.append(
-                f"- Line {idx + 1} [{spk} ({spk_id}){pos_tag}]: speak only in the matching timed event below."
+                f"- Line {idx + 1} [{spk} ({spk_id}){anchor_tag}]: speak only in the matching timed event below."
             )
 
+        binding_policy = (
+            "Each bracket binds speaker ID + the supplied custom identity cue or viewer position + canonical line order."
+            if custom_identity_overrides
+            else "Each bracket binds speaker ID + viewer position + canonical line order."
+        )
         dialogue_section = (
             (grok_hard_speaker_map + "\n\n" if grok_hard_speaker_map else "")
             + "CHARACTER, POSITION, AND DIALOGUE LOCK\n\n"
             "SPEAKER AND LINE-ORDER LOCK\n\n"
-            "Each bracket binds speaker ID + viewer position + canonical line order. The exact Thai text appears once, in its matching timed speech event below; never transfer, translate or reorder a line.\n"
+            + binding_policy
+            + " The exact Thai text appears once, in its matching timed speech event below; never transfer, translate or reorder a line.\n"
             "Dialogue Language: Thai\n"
             + "\n".join(dialogue_lines_formatted)
             + "\n\nLip-Sync Guidance:\n"
@@ -1416,7 +1543,14 @@ def _terminal_prompt(
     )
     if dialogue:
         compact_dialogue_lines = [
-            f"- {character.get('id')} = {character.get('name')}: {character.get('position')}."
+            (
+                f"- {character.get('id')} = {character.get('name')}: identified by "
+                f"{_custom_identity_for(custom_identity_overrides, character.get('id'), character.get('name'))}."
+                if _custom_identity_for(
+                    custom_identity_overrides, character.get("id"), character.get("name")
+                )
+                else f"- {character.get('id')} = {character.get('name')}: {character.get('position')}."
+            )
             for character in all_characters
             if character.get('id') and character.get('position')
         ]
@@ -1424,11 +1558,47 @@ def _terminal_prompt(
             speaker = line.get("speaker") or line.get("speakerHint") or f"Character {idx + 1}"
             speaker_id = line.get("speakerId") or line.get("characterKey") or ""
             position = line.get("position") or ""
-            compact_dialogue_lines.append(
-                f"- Line {idx + 1} [{speaker} ({speaker_id}) on {position}]: speak only in the matching timed event below."
+            identity = _custom_identity_for(
+                custom_identity_overrides, speaker_id, line.get("characterKey"), speaker
             )
+            anchor = f"identified by {identity}" if identity else f"on {position}"
+            compact_dialogue_lines.append(
+                f"- Line {idx + 1} ONLY: {speaker} ({speaker_id}) {anchor}; speak only in the matching timed event below."
+            )
+        speaker_ids = {
+            str(line.get("speakerId") or line.get("characterKey") or "").casefold()
+            for line in dialogue
+        }
+        speaker_names = {
+            str(line.get("speaker") or line.get("speakerHint") or "").casefold()
+            for line in dialogue
+        }
+        silent_characters = [
+            character
+            for character in all_characters
+            if character.get("id", "").casefold() not in speaker_ids
+            and character.get("name", "").casefold() not in speaker_names
+        ]
+        if silent_characters:
+            silent = ", ".join(
+                f"{character.get('name')} ({character.get('id')}) on {character.get('position')}"
+                for character in silent_characters
+            )
+            compact_dialogue_lines.append(
+                f"- Silent entire shot, mouth fully closed from 0.0–{duration_sec:.1f} seconds: {silent}."
+            )
+        first = dialogue[0]
+        first_speaker = first.get("speaker") or first.get("speakerHint") or ""
+        first_id = first.get("speakerId") or first.get("characterKey") or ""
+        first_identity = _custom_identity_for(
+            custom_identity_overrides, first_id, first.get("characterKey"), first_speaker
+        )
+        first_anchor = f"identified by {first_identity}" if first_identity else f"on {first.get('position') or ''}"
+        compact_dialogue_lines.append(
+            f"- FIRST SPEAKER LOCK: The first moving mouth must be {first_speaker} ({first_id}) {first_anchor}."
+        )
         compact_dialogue = (
-            "HARD SPEAKER MAP (authoritative; do not swap)\n"
+            "HARD SPEAKER MAP (MANDATORY CAST POSITION LOCK; authoritative; do not swap)\n"
             + "CHARACTER, POSITION, AND DIALOGUE LOCK\n"
             "SPEAKER AND LINE-ORDER LOCK; exact Thai text appears once in the matching timed event below:\n"
             + "\n".join(compact_dialogue_lines)
@@ -1440,9 +1610,16 @@ def _terminal_prompt(
         speech_timeline = _build_motion_timeline(
             # The global mouth rule already covers all listeners. Repeating
             # their full names/IDs for every line can exceed Grok's budget.
-            duration_sec, [], dialogue, character_positions, []
+            duration_sec,
+            [],
+            dialogue,
+            character_positions,
+            [],
+            custom_identity_overrides,
         )
-        _validate_dialogue_timeline(speech_timeline, dialogue)
+        _validate_dialogue_timeline(
+            speech_timeline, dialogue, custom_identity_overrides
+        )
     else:
         compact_dialogue = "DIALOGUE POLICY: No spoken dialogue; every mouth remains closed."
         speech_timeline = _build_motion_timeline(
@@ -1472,6 +1649,8 @@ def _terminal_prompt(
         ),
         "CONSTRAINTS: Preserve cast, props and environment; no duplicates, morphing, teleporting, cuts, resets or time jumps.",
     ]
+    if custom_identity_lock:
+        compact_sections.insert(2, custom_identity_lock)
     if visual_cast_lock:
         compact_sections.insert(2, visual_cast_lock)
     if existing_virtual_screen_lock:
@@ -1482,6 +1661,7 @@ def _terminal_prompt(
 
     minimal_text = "\n\n".join([
         "START FRAME LOCK: Preserve approved frame-0 identity, positions, wardrobe and objects.",
+        custom_identity_lock,
         compact_observed,
         protected_core,
         existing_virtual_screen_lock,
@@ -1548,6 +1728,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "characterIds": (payload.get("shot") or {}).get("characterIds") or [],
         "locationId": (payload.get("shot") or {}).get("locationId"),
         "continuityNotes": (payload.get("shot") or {}).get("continuityNotes") or [],
+        "characterDescriptionOverrides": (payload.get("shot") or {}).get("characterDescriptionOverrides") or {},
         "canonicalContext": (payload.get("shot") or {}).get("canonicalContext") or {},
         "dialogue": _extract_dialogue_list(payload),
         "mediaBundle": payload.get("mediaBundle") or {},

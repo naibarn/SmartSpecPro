@@ -446,6 +446,7 @@ async function notifyWorkerJobTerminal(input: {
     const db = await getDb();
     if (!db) return;
     const actionUrl = buildWorkerJobActionUrl({
+      id: String(input.job.id),
       inputJson: input.job.inputJson,
       outputJson: input.job.outputJson,
       workflowRunId: input.job.workflowRunId,

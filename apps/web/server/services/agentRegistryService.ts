@@ -35,7 +35,7 @@ import {
   type AgentRegistryResolutionRequest,
   type AgentRegistryVersionCreateInput,
 } from "../../shared/agentRegistryContracts";
-import { sanitizeSensitiveRecord } from "../../shared/workpackContracts";
+import { sanitizeSensitiveRecord } from "../../shared/agentGovernanceContracts";
 import {
   recordRegistryPromotionMetrics,
   recordRegistryResolutionMetrics,

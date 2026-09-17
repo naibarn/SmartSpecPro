@@ -432,6 +432,27 @@ describe("job control plane", () => {
     expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
   });
 
+  it("treats an already-recorded cancellation request as an idempotent cancel", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(created.jobId).status = "queued";
+    state.jobs.get(created.jobId).statusReason = "cancel_requested:storyboard_cancelled";
+
+    await expect(controlPlane.cancel(created.jobId, "storyboard_cancelled")).resolves.toBeUndefined();
+    expect(state.jobs.get(created.jobId).status).toBe("cancelled");
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+  });
+
+  it("does not surface a cancellation race when another actor already finalized the job", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(created.jobId).status = "succeeded";
+
+    await expect(controlPlane.cancel(created.jobId, "storyboard_cancelled")).resolves.toBeUndefined();
+  });
+
   it("does not auto-dispatch an operator-review retry, but requeues it with the same outbox", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

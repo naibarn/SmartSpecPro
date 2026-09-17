@@ -42,6 +42,13 @@ function sourceBetween(start: string, end: string) {
 }
 
 describe("StoryboardBatchReviewDialog clip list spare-image wiring (Feature 136 / 2026-07-23)", () => {
+  it("renders separate image and video model provenance for every shot", () => {
+    expect(source).toContain("task.modelProvenance?.image");
+    expect(source).toContain("task.modelProvenance?.video");
+    expect(source).toContain("Image model");
+    expect(source).toContain("Video model");
+  });
+
   it("imports the shared strip and the clip -> shot resolver", () => {
     expect(source).toContain(
       'import { SequentialShotAlternatesStrip } from "@/components/marketplaceCapture/SequentialShotAlternatesStrip";'
@@ -92,7 +99,7 @@ describe("StoryboardBatchReviewDialog clip list spare-image wiring (Feature 136 
       'onClick={() => onRemoveTask(task.id)}',
       "locale={locale}\n                        />\n                      ) : null}"
     );
-    expect(middleColumnTail).toContain('{t("common.remove")}');
+    expect(middleColumnTail).toContain('{t("mediaStudio.storyboardReviewRemoveShot")}');
     expect(middleColumnTail).toContain("<SequentialShotAlternatesStrip");
     // No overflow-x-auto scroll wrapper and no narrow left-column grid
     // class on the strip's own root — it uses the wrap layout instead.

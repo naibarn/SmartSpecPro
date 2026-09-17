@@ -5,23 +5,34 @@
 
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { router, adminProcedure, domainAdminProcedure, protectedProcedure } from "../_core/trpc";
+import {
+  router,
+  adminProcedure,
+  domainAdminProcedure,
+  protectedProcedure,
+} from "../_core/trpc";
 import { getDb } from "../db";
 import { systemSettings, invoiceConfig, tenants } from "../../drizzle/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
 import {
   isValidGoogleRedirectUri,
   validateGoogleOAuthFormat,
 } from "../services/googleOAuthValidation";
 import { signBearerToken } from "../_core/tokens";
-import { loadTenantAutomationPolicyStatus, updateTenantAutomationPolicySettings } from "../services/browserPolicySettingsBridge";
+import {
+  loadTenantAutomationPolicyStatus,
+  updateTenantAutomationPolicySettings,
+} from "../services/browserPolicySettingsBridge";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
   getDesktopReleaseConfig,
   updateDesktopReleaseConfig,
 } from "../services/desktopReleaseSettings";
-import { clearDocumentOcrSettingsCache, getDocumentOcrSettings } from "../services/documentOcrSettings";
+import {
+  clearDocumentOcrSettingsCache,
+  getDocumentOcrSettings,
+} from "../services/documentOcrSettings";
 import { clearFinanceSlipMappingPresetCache } from "../services/financeSlipPresetSettings";
 import { clearPinnedMerchantPresetCache } from "../services/financeMerchantPresetSettings";
 import {
@@ -44,10 +55,10 @@ import {
   getVerticalDramaEnhancedRuntimeSettings,
   writeVerticalDramaEnhancedRuntimeSettings,
 } from "../services/verticalDramaEnhancedRuntimeSettings";
-import {
-  getEnhancedRuntimeFacts,
-} from "../services/verticalDramaEnhancedVideoPrompt";
+import { getEnhancedRuntimeFacts } from "../services/verticalDramaEnhancedVideoPrompt";
 import { loadEnabledLlmModelRows } from "../services/enabledLlmModels";
+import { VECTORIZE_EMBEDDING_DIMENSIONS } from "../services/vectorizeContract";
+import { clearVectorProviderConfigCache } from "../services/vectorProvider";
 
 // ============================================================
 // System Settings Router
@@ -72,6 +83,39 @@ const settingCategorySchema = z.enum([
   "marketplace_capture",
   "public_contact",
 ]);
+
+const VECTOR_DB_PROVIDERS = new Set([
+  "chromadb",
+  "pgvector",
+  "cloudflare_vectorize",
+]);
+
+async function getGovernedActiveVectorProvider(db: any): Promise<string> {
+  try {
+    const result = await db.execute(sql`
+      SELECT current_read_provider, status
+      FROM library_provider_switch_states
+      WHERE tenant_id IS NULL
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1
+    `);
+    const row = Array.isArray(result)
+      ? result[0]
+      : Array.isArray(result?.rows)
+        ? result.rows[0]
+        : undefined;
+    const provider = String(row?.current_read_provider || "").trim();
+    const status = String(row?.status || "")
+      .trim()
+      .toLowerCase();
+    return provider === "pgvector" ||
+      (VECTOR_DB_PROVIDERS.has(provider) && status === "cutover_complete")
+      ? provider
+      : "pgvector";
+  } catch {
+    return "pgvector";
+  }
+}
 
 const desktopReleaseSettingsUpdateSchema = z.object({
   githubRepository: z.string().trim().min(1).max(256),
@@ -109,7 +153,7 @@ const stripeSettingsSchema = z.object({
 
 const tenantIdInputSchema = z
   .union([z.string(), z.number()])
-  .transform((value) => String(value).trim())
+  .transform(value => String(value).trim())
   .pipe(z.string().min(1));
 
 const invoiceConfigSchema = z.object({
@@ -128,18 +172,24 @@ const invoiceConfigSchema = z.object({
   logoUrl: z.string().optional(),
   footerText: z.string().optional(),
   termsText: z.string().optional(),
-  bankDetails: z.object({
-    bankName: z.string().optional(),
-    accountName: z.string().optional(),
-    accountNumber: z.string().optional(),
-    routingNumber: z.string().optional(),
-    swiftCode: z.string().optional(),
-    iban: z.string().optional(),
-  }).optional(),
-  customFields: z.array(z.object({
-    label: z.string(),
-    value: z.string(),
-  })).optional(),
+  bankDetails: z
+    .object({
+      bankName: z.string().optional(),
+      accountName: z.string().optional(),
+      accountNumber: z.string().optional(),
+      routingNumber: z.string().optional(),
+      swiftCode: z.string().optional(),
+      iban: z.string().optional(),
+    })
+    .optional(),
+  customFields: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+      })
+    )
+    .optional(),
   isActive: z.boolean().default(true),
 });
 
@@ -150,8 +200,10 @@ async function readPythonErrorDetail(response: Response): Promise<string> {
   if (!raw) return "";
   try {
     const parsed = JSON.parse(raw) as { detail?: unknown; message?: unknown };
-    if (typeof parsed.detail === "string" && parsed.detail.trim()) return parsed.detail;
-    if (typeof parsed.message === "string" && parsed.message.trim()) return parsed.message;
+    if (typeof parsed.detail === "string" && parsed.detail.trim())
+      return parsed.detail;
+    if (typeof parsed.message === "string" && parsed.message.trim())
+      return parsed.message;
   } catch {
     // fall through to raw text
   }
@@ -165,7 +217,7 @@ function createAdminBearerToken(userId: number): string {
       type: "access",
       scopes: ["admin:*"],
     },
-    "5m",
+    "5m"
   );
 }
 
@@ -194,7 +246,7 @@ async function fetchPythonAdminJson<T>(params: {
     throw new Error(detail || `python_admin_request_failed:${response.status}`);
   }
 
-  return ( await response.json()) as T;
+  return (await response.json()) as T;
 }
 
 async function assertVectorDbConfigEditAllowedOrThrow(params: {
@@ -204,18 +256,21 @@ async function assertVectorDbConfigEditAllowedOrThrow(params: {
 }): Promise<void> {
   const runtime = await getAppRuntimeConfig();
   const token = createAdminBearerToken(params.userId);
-  const response = await fetch(`${runtime.pythonBackendUrl}/api/admin/vectordb/provider-switch/assert-config-edit`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    signal: AbortSignal.timeout(PY_TIMEOUT_MS),
-    body: JSON.stringify({
-      tenant_id: params.tenantId ?? null,
-      emergency: params.emergency ?? false,
-    }),
-  });
+  const response = await fetch(
+    `${runtime.pythonBackendUrl}/api/admin/vectordb/provider-switch/assert-config-edit`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(PY_TIMEOUT_MS),
+      body: JSON.stringify({
+        tenant_id: params.tenantId ?? null,
+        emergency: params.emergency ?? false,
+      }),
+    }
+  );
 
   if (response.ok) {
     return;
@@ -239,9 +294,15 @@ async function resolveTenantAutomationPolicyTenantId(params: {
 }): Promise<string> {
   const requestedTenantId = params.requestedTenantId?.trim() || null;
   if (params.user.role === "admin") {
-    const tenantId = requestedTenantId ?? params.ctxTenantId ?? String(params.user.currentTenantId ?? "").trim();
+    const tenantId =
+      requestedTenantId ??
+      params.ctxTenantId ??
+      String(params.user.currentTenantId ?? "").trim();
     if (!tenantId) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Tenant context is required",
+      });
     }
     return tenantId;
   }
@@ -250,7 +311,8 @@ async function resolveTenantAutomationPolicyTenantId(params: {
   if (!registeredDomain) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "domain_admin must have a registeredDomain to manage tenant automation policy",
+      message:
+        "domain_admin must have a registeredDomain to manage tenant automation policy",
     });
   }
 
@@ -272,7 +334,8 @@ async function resolveTenantAutomationPolicyTenantId(params: {
     if (!targetTenant || targetTenant.primaryDomain !== registeredDomain) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "domain_admin can only manage automation policy for their own tenant",
+        message:
+          "domain_admin can only manage automation policy for their own tenant",
       });
     }
     return targetTenant.id;
@@ -307,10 +370,12 @@ async function upsertSystemSetting(params: {
   const existing = await db
     .select()
     .from(systemSettings)
-    .where(and(
-      eq(systemSettings.category, params.category as any),
-      eq(systemSettings.key, params.key),
-    ))
+    .where(
+      and(
+        eq(systemSettings.category, params.category as any),
+        eq(systemSettings.key, params.key)
+      )
+    )
     .limit(1);
 
   if (existing.length > 0) {
@@ -389,7 +454,11 @@ export const systemSettingsRouter = router({
 
       const updates = [
         { key: "secretKey", value: input.secretKey, sensitive: true },
-        { key: "publishableKey", value: input.publishableKey, sensitive: false },
+        {
+          key: "publishableKey",
+          value: input.publishableKey,
+          sensitive: false,
+        },
         { key: "webhookSecret", value: input.webhookSecret, sensitive: true },
         { key: "currency", value: input.currency, sensitive: false },
       ];
@@ -397,16 +466,20 @@ export const systemSettingsRouter = router({
       for (const update of updates) {
         if (update.value !== undefined) {
           // Encrypt sensitive values before storage
-          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+          const storedValue = update.sensitive
+            ? encrypt(update.value)
+            : update.value;
 
           // Check if setting exists
           const existing = await db
             .select()
             .from(systemSettings)
-            .where(and(
-              eq(systemSettings.category, "stripe"),
-              eq(systemSettings.key, update.key)
-            ))
+            .where(
+              and(
+                eq(systemSettings.category, "stripe"),
+                eq(systemSettings.key, update.key)
+              )
+            )
             .limit(1);
 
           if (existing.length > 0) {
@@ -446,10 +519,12 @@ export const systemSettingsRouter = router({
     const secretKeySetting = await db
       .select()
       .from(systemSettings)
-      .where(and(
-        eq(systemSettings.category, "stripe"),
-        eq(systemSettings.key, "secretKey")
-      ))
+      .where(
+        and(
+          eq(systemSettings.category, "stripe"),
+          eq(systemSettings.key, "secretKey")
+        )
+      )
       .limit(1);
 
     if (!secretKeySetting.length || !secretKeySetting[0].value) {
@@ -538,7 +613,7 @@ export const systemSettingsRouter = router({
       .from(invoiceConfig)
       .leftJoin(tenants, eq(invoiceConfig.tenantId, tenants.id));
 
-    return configs.map((row) => ({
+    return configs.map(row => ({
       ...row.config,
       tenant: row.tenant,
     }));
@@ -579,7 +654,10 @@ export const systemSettingsRouter = router({
 
         return { success: true, id: existing[0].id, updated: true };
       } else {
-        const [result] = await db.insert(invoiceConfig).values(normalizedInput).returning();
+        const [result] = await db
+          .insert(invoiceConfig)
+          .values(normalizedInput)
+          .returning();
         return { success: true, id: result.id, updated: false };
       }
     }),
@@ -604,7 +682,13 @@ export const systemSettingsRouter = router({
     const db = await getDb();
     if (!db) return [];
 
-    return db.select({ id: tenants.id, name: tenants.name, domain: tenants.primaryDomain }).from(tenants);
+    return db
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        domain: tenants.primaryDomain,
+      })
+      .from(tenants);
   }),
 
   // ============================================================
@@ -612,14 +696,18 @@ export const systemSettingsRouter = router({
   // ============================================================
 
   publicContactProtection: router({
-    get: adminProcedure.query(async () => getPublicContactProtectionAdminSettings()),
+    get: adminProcedure.query(async () =>
+      getPublicContactProtectionAdminSettings()
+    ),
     update: adminProcedure
-      .input(z.object({
-        siteKey: z.string().trim().max(255),
-        secretKey: z.string().trim().max(4096).optional(),
-        clearSecret: z.boolean().default(false),
-        allowedHostnames: z.array(z.string().trim().min(1).max(253)).max(20),
-      }))
+      .input(
+        z.object({
+          siteKey: z.string().trim().max(255),
+          secretKey: z.string().trim().max(4096).optional(),
+          clearSecret: z.boolean().default(false),
+          allowedHostnames: z.array(z.string().trim().min(1).max(253)).max(20),
+        })
+      )
       .mutation(async ({ input, ctx }) => {
         try {
           return await updatePublicContactProtectionSettings({
@@ -632,7 +720,10 @@ export const systemSettingsRouter = router({
         } catch (error) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: error instanceof Error ? error.message : "Invalid public contact protection settings",
+            message:
+              error instanceof Error
+                ? error.message
+                : "Invalid public contact protection settings",
           });
         }
       }),
@@ -642,10 +733,16 @@ export const systemSettingsRouter = router({
    * Get a setting by category and key
    */
   getSetting: adminProcedure
-    .input(z.object({
-      category: settingCategorySchema,
-      key: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
-    }))
+    .input(
+      z.object({
+        category: settingCategorySchema,
+        key: z
+          .string()
+          .min(1)
+          .max(128)
+          .regex(/^[a-zA-Z0-9_-]+$/),
+      })
+    )
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -653,10 +750,12 @@ export const systemSettingsRouter = router({
       const [setting] = await db
         .select()
         .from(systemSettings)
-        .where(and(
-          eq(systemSettings.category, input.category),
-          eq(systemSettings.key, input.key)
-        ))
+        .where(
+          and(
+            eq(systemSettings.category, input.category),
+            eq(systemSettings.key, input.key)
+          )
+        )
         .limit(1);
 
       if (!setting) return null;
@@ -688,7 +787,7 @@ export const systemSettingsRouter = router({
         .where(eq(systemSettings.category, input.category));
 
       // Mask sensitive values
-      return settings.map((s) => ({
+      return settings.map(s => ({
         ...s,
         value: s.isSensitive && s.value ? "***configured***" : s.value,
         isConfigured: s.isSensitive && s.value ? true : undefined,
@@ -706,7 +805,11 @@ export const systemSettingsRouter = router({
       settings,
       runtime,
       authoringModels: models
-        .filter(model => model.supportsVision === true && model.supportsStructuredOutputs === true)
+        .filter(
+          model =>
+            model.supportsVision === true &&
+            model.supportsStructuredOutputs === true
+        )
         .map(model => ({
           id: model.modelId,
           name: model.modelId,
@@ -719,18 +822,34 @@ export const systemSettingsRouter = router({
   }),
 
   updateVerticalDramaEnhancedRuntimeSettings: adminProcedure
-    .input(z.object({
-      enabled: z.boolean(),
-      authoringModelId: z.string().trim().max(256),
-    }))
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        authoringModelId: z.string().trim().max(256),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       if (input.enabled && !input.authoringModelId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "เลือก Prompt Authoring Model ที่รองรับ Vision ก่อนเปิด Enhanced" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "เลือก Prompt Authoring Model ที่รองรับ Vision ก่อนเปิด Enhanced",
+        });
       }
       if (input.authoringModelId) {
-        const model = (await loadEnabledLlmModelRows()).find(row => row.modelId === input.authoringModelId);
-        if (!model || model.supportsVision !== true || model.supportsStructuredOutputs !== true) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Authoring model ต้องเป็นโมเดลที่เปิดใช้งานและรองรับทั้ง Vision และ Structured Output" });
+        const model = (await loadEnabledLlmModelRows()).find(
+          row => row.modelId === input.authoringModelId
+        );
+        if (
+          !model ||
+          model.supportsVision !== true ||
+          model.supportsStructuredOutputs !== true
+        ) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message:
+              "Authoring model ต้องเป็นโมเดลที่เปิดใช้งานและรองรับทั้ง Vision และ Structured Output",
+          });
         }
       }
       return writeVerticalDramaEnhancedRuntimeSettings({
@@ -740,19 +859,30 @@ export const systemSettingsRouter = router({
       });
     }),
 
-  approveVerticalDramaEnhancedRuntime: adminProcedure.mutation(async ({ ctx }) => {
-    const settings = await getVerticalDramaEnhancedRuntimeSettings();
-    const runtime = await getEnhancedRuntimeFacts(settings);
-    if (!runtime.bridgeAvailable || runtime.manifestHash === "unknown" || runtime.sdkVersion === "unknown" || runtime.adapterVersion === "unknown") {
-      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Enhanced runtime probe ไม่ผ่าน ตรวจสอบ skill package และ OpenAI Agents SDK ก่อนอนุมัติ" });
+  approveVerticalDramaEnhancedRuntime: adminProcedure.mutation(
+    async ({ ctx }) => {
+      const settings = await getVerticalDramaEnhancedRuntimeSettings();
+      const runtime = await getEnhancedRuntimeFacts(settings);
+      if (
+        !runtime.bridgeAvailable ||
+        runtime.manifestHash === "unknown" ||
+        runtime.sdkVersion === "unknown" ||
+        runtime.adapterVersion === "unknown"
+      ) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Enhanced runtime probe ไม่ผ่าน ตรวจสอบ skill package และ OpenAI Agents SDK ก่อนอนุมัติ",
+        });
+      }
+      return writeVerticalDramaEnhancedRuntimeSettings({
+        approvedManifestHash: runtime.manifestHash,
+        approvedSdkVersion: runtime.sdkVersion,
+        approvedAdapterVersion: runtime.adapterVersion,
+        updatedBy: ctx.user?.id,
+      });
     }
-    return writeVerticalDramaEnhancedRuntimeSettings({
-      approvedManifestHash: runtime.manifestHash,
-      approvedSdkVersion: runtime.sdkVersion,
-      approvedAdapterVersion: runtime.adapterVersion,
-      updatedBy: ctx.user?.id,
-    });
-  }),
+  ),
 
   getDesktopReleaseSettings: adminProcedure.query(async () => {
     const config = await getDesktopReleaseConfig();
@@ -782,20 +912,25 @@ export const systemSettingsRouter = router({
     }),
 
   updateTenantAutomationPolicySettings: domainAdminProcedure
-    .input(z.object({
-      tenantId: tenantIdInputSchema.optional(),
-      enabled: browserPolicyConfigSchema.shape.enabled,
-      enforcementMode: browserPolicyConfigSchema.shape.enforcementMode,
-      defaultApprovalTtlSeconds: browserPolicyConfigSchema.shape.defaultApprovalTtlSeconds,
-      reviewCadenceDays: browserPolicyConfigSchema.shape.reviewCadenceDays,
-      killSwitchEnabled: browserPolicyConfigSchema.shape.killSwitchEnabled,
-      requireTamperEvidence: browserPolicyConfigSchema.shape.requireTamperEvidence,
-      evidenceRetentionDays: browserPolicyConfigSchema.shape.evidenceRetentionDays,
-      allowedDomains: browserPolicyConfigSchema.shape.allowedDomains,
-      visionModel: browserPolicyConfigSchema.shape.visionModel,
-      userCustomization: browserPolicyUserCustomizationSchema.optional(),
-      allowedVisionModels: z.array(z.string().min(1)).optional(),
-    }))
+    .input(
+      z.object({
+        tenantId: tenantIdInputSchema.optional(),
+        enabled: browserPolicyConfigSchema.shape.enabled,
+        enforcementMode: browserPolicyConfigSchema.shape.enforcementMode,
+        defaultApprovalTtlSeconds:
+          browserPolicyConfigSchema.shape.defaultApprovalTtlSeconds,
+        reviewCadenceDays: browserPolicyConfigSchema.shape.reviewCadenceDays,
+        killSwitchEnabled: browserPolicyConfigSchema.shape.killSwitchEnabled,
+        requireTamperEvidence:
+          browserPolicyConfigSchema.shape.requireTamperEvidence,
+        evidenceRetentionDays:
+          browserPolicyConfigSchema.shape.evidenceRetentionDays,
+        allowedDomains: browserPolicyConfigSchema.shape.allowedDomains,
+        visionModel: browserPolicyConfigSchema.shape.visionModel,
+        userCustomization: browserPolicyUserCustomizationSchema.optional(),
+        allowedVisionModels: z.array(z.string().min(1)).optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const tenantId = await resolveTenantAutomationPolicyTenantId({
         user: ctx.user!,
@@ -822,15 +957,21 @@ export const systemSettingsRouter = router({
    * Update a setting
    */
   updateSetting: adminProcedure
-    .input(z.object({
-      category: settingCategorySchema,
-      key: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
-      value: z.string().optional(),
-      valueJson: z.record(z.any()).optional(),
-      isSensitive: z.boolean().optional(),
-      description: z.string().optional(),
-      clear: z.boolean().optional(),
-    }))
+    .input(
+      z.object({
+        category: settingCategorySchema,
+        key: z
+          .string()
+          .min(1)
+          .max(128)
+          .regex(/^[a-zA-Z0-9_-]+$/),
+        value: z.string().optional(),
+        valueJson: z.record(z.any()).optional(),
+        isSensitive: z.boolean().optional(),
+        description: z.string().optional(),
+        clear: z.boolean().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -839,14 +980,18 @@ export const systemSettingsRouter = router({
         const existing = await db
           .select()
           .from(systemSettings)
-          .where(and(
-            eq(systemSettings.category, input.category),
-            eq(systemSettings.key, input.key)
-          ))
+          .where(
+            and(
+              eq(systemSettings.category, input.category),
+              eq(systemSettings.key, input.key)
+            )
+          )
           .limit(1);
 
         if (existing.length > 0) {
-          await db.delete(systemSettings).where(eq(systemSettings.id, existing[0].id));
+          await db
+            .delete(systemSettings)
+            .where(eq(systemSettings.id, existing[0].id));
         }
 
         if (input.category === "document_ocr") {
@@ -861,14 +1006,17 @@ export const systemSettingsRouter = router({
         // Clearing the toggle falls back to the env default (OFF unless
         // `SMARTSPEC_INLINE_RENDER_WORKER=true`) — stop the in-server worker
         // to match, mirroring the update-path hook below.
-        if (input.category === "infrastructure" && input.key === "web_process_render_worker_enabled") {
-          const { clearRenderWorkerSettingsCache, getWebProcessRenderWorkerEnabled } = await import(
-            "../services/renderWorkerSettings"
-          );
+        if (
+          input.category === "infrastructure" &&
+          input.key === "web_process_render_worker_enabled"
+        ) {
+          const {
+            clearRenderWorkerSettingsCache,
+            getWebProcessRenderWorkerEnabled,
+          } = await import("../services/renderWorkerSettings");
           clearRenderWorkerSettingsCache();
-          const { startInlineRenderWorker, stopInlineRenderWorker } = await import(
-            "../services/inlineRenderWorker"
-          );
+          const { startInlineRenderWorker, stopInlineRenderWorker } =
+            await import("../services/inlineRenderWorker");
           if (await getWebProcessRenderWorkerEnabled()) {
             startInlineRenderWorker();
           } else {
@@ -883,10 +1031,12 @@ export const systemSettingsRouter = router({
         // Start/stop of an in-web drainer for `web_process_hermes_worker_enabled`
         // is section 07's concern; only the cache clear happens here.
         if (
-          input.category === "infrastructure"
-          && (input.key.startsWith("hermes_") || input.key === "web_process_hermes_worker_enabled")
+          input.category === "infrastructure" &&
+          (input.key.startsWith("hermes_") ||
+            input.key === "web_process_hermes_worker_enabled")
         ) {
-          const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+          const { clearHermesWorkerSettingsCache } =
+            await import("../services/hermesWorkerSettings");
           clearHermesWorkerSettingsCache();
         }
 
@@ -894,11 +1044,14 @@ export const systemSettingsRouter = router({
         // env default (OFF unless `SMARTSPEC_INLINE_HERMES_WORKER=true`) —
         // stop the DEV-ONLY in-web drainer to match, mirroring the
         // render-worker clear-path hook above.
-        if (input.category === "infrastructure" && input.key === "web_process_hermes_worker_enabled") {
-          const { getHermesWorkerSettings } = await import("../services/hermesWorkerSettings");
-          const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } = await import(
-            "../services/hermesWorkerDevDrainer"
-          );
+        if (
+          input.category === "infrastructure" &&
+          input.key === "web_process_hermes_worker_enabled"
+        ) {
+          const { getHermesWorkerSettings } =
+            await import("../services/hermesWorkerSettings");
+          const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } =
+            await import("../services/hermesWorkerDevDrainer");
           if ((await getHermesWorkerSettings()).webProcessWorkerEnabled) {
             startHermesWorkerDevDrainer();
           } else {
@@ -916,9 +1069,9 @@ export const systemSettingsRouter = router({
       // batch permanently un-admittable. Tightly scoped to this one key so
       // every other setting write is unaffected.
       if (
-        input.category === "infrastructure"
-        && input.key === HERMES_WORKER_SETTINGS_KEYS.maxQueuedPerUser
-        && input.value !== undefined
+        input.category === "infrastructure" &&
+        input.key === HERMES_WORKER_SETTINGS_KEYS.maxQueuedPerUser &&
+        input.value !== undefined
       ) {
         const parsedMaxQueuedPerUser = Number.parseInt(input.value, 10);
         const currentSettings = await getHermesWorkerSettings();
@@ -927,29 +1080,35 @@ export const systemSettingsRouter = router({
           maxQueuedPerUser: Number.isFinite(parsedMaxQueuedPerUser)
             ? parsedMaxQueuedPerUser
             : currentSettings.maxQueuedPerUser,
-          maxQueuedPerTenantSharedPool: currentSettings.maxQueuedPerTenantSharedPool,
+          maxQueuedPerTenantSharedPool:
+            currentSettings.maxQueuedPerTenantSharedPool,
           submitWindowPerUser: currentSettings.submitWindowPerUser,
           submitWindowPerTenant: currentSettings.submitWindowPerTenant,
         });
         if (!coherence.ok) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: coherence.reason ?? "Invalid Hermes admission limit configuration",
+            message:
+              coherence.reason ??
+              "Invalid Hermes admission limit configuration",
           });
         }
       }
 
-      const storedValue = input.isSensitive && input.value !== undefined
-        ? encrypt(input.value)
-        : input.value;
+      const storedValue =
+        input.isSensitive && input.value !== undefined
+          ? encrypt(input.value)
+          : input.value;
 
       const existing = await db
         .select()
         .from(systemSettings)
-        .where(and(
-          eq(systemSettings.category, input.category),
-          eq(systemSettings.key, input.key)
-        ))
+        .where(
+          and(
+            eq(systemSettings.category, input.category),
+            eq(systemSettings.key, input.key)
+          )
+        )
         .limit(1);
 
       if (existing.length > 0) {
@@ -988,12 +1147,15 @@ export const systemSettingsRouter = router({
       // Vertical Drama Render Queue plan §4.4 — live start/stop of the
       // in-server ffmpeg render worker when the admin flips the toggle.
       // Lazy `await import(...)` for cross-service wiring.
-      if (input.category === "infrastructure" && input.key === "web_process_render_worker_enabled") {
-        const { clearRenderWorkerSettingsCache } = await import("../services/renderWorkerSettings");
+      if (
+        input.category === "infrastructure" &&
+        input.key === "web_process_render_worker_enabled"
+      ) {
+        const { clearRenderWorkerSettingsCache } =
+          await import("../services/renderWorkerSettings");
         clearRenderWorkerSettingsCache();
-        const { startInlineRenderWorker, stopInlineRenderWorker } = await import(
-          "../services/inlineRenderWorker"
-        );
+        const { startInlineRenderWorker, stopInlineRenderWorker } =
+          await import("../services/inlineRenderWorker");
         if (input.value === "true") {
           startInlineRenderWorker();
         } else {
@@ -1007,10 +1169,12 @@ export const systemSettingsRouter = router({
       // in-web drainer start/stop for `web_process_hermes_worker_enabled`
       // is section 07's concern.
       if (
-        input.category === "infrastructure"
-        && (input.key.startsWith("hermes_") || input.key === "web_process_hermes_worker_enabled")
+        input.category === "infrastructure" &&
+        (input.key.startsWith("hermes_") ||
+          input.key === "web_process_hermes_worker_enabled")
       ) {
-        const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+        const { clearHermesWorkerSettingsCache } =
+          await import("../services/hermesWorkerSettings");
         clearHermesWorkerSettingsCache();
       }
 
@@ -1019,10 +1183,12 @@ export const systemSettingsRouter = router({
       // the `web_process_render_worker_enabled` block above exactly.
       // Production never runs this drainer regardless (see spec §8.1) —
       // this only affects local/dev usage of the flag.
-      if (input.category === "infrastructure" && input.key === "web_process_hermes_worker_enabled") {
-        const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } = await import(
-          "../services/hermesWorkerDevDrainer"
-        );
+      if (
+        input.category === "infrastructure" &&
+        input.key === "web_process_hermes_worker_enabled"
+      ) {
+        const { startHermesWorkerDevDrainer, stopHermesWorkerDevDrainer } =
+          await import("../services/hermesWorkerDevDrainer");
         if (input.value === "true") {
           startHermesWorkerDevDrainer();
         } else {
@@ -1040,10 +1206,15 @@ export const systemSettingsRouter = router({
    * control plane after a mid-sequence failure.
    */
   applyHermesSafePreset: adminProcedure
-    .input(z.object({
-      enabled: z.boolean(),
-      mode: z.enum(["private_only", "all"]).optional().default("private_only"),
-    }))
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        mode: z
+          .enum(["private_only", "all"])
+          .optional()
+          .default("private_only"),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -1052,11 +1223,15 @@ export const systemSettingsRouter = router({
         if (!ctx.tenantId) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
-            message: "Tenant context is required to enable the shared Hermes worker",
+            message:
+              "Tenant context is required to enable the shared Hermes worker",
           });
         }
-        const { getHermesAvailability } = await import("../services/hermesConnectionService");
-        const availability = await getHermesAvailability({ tenantId: ctx.tenantId });
+        const { getHermesAvailability } =
+          await import("../services/hermesConnectionService");
+        const availability = await getHermesAvailability({
+          tenantId: ctx.tenantId,
+        });
         if (!availability.tenantEnabled) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -1073,18 +1248,23 @@ export const systemSettingsRouter = router({
 
       const entries = input.enabled
         ? Object.entries(
-          input.mode === "all"
-            ? HERMES_WORKER_FULL_ENABLEMENT_PRESET
-            : HERMES_WORKER_SAFE_ENABLEMENT_PRESET,
-        )
+            input.mode === "all"
+              ? HERMES_WORKER_FULL_ENABLEMENT_PRESET
+              : HERMES_WORKER_SAFE_ENABLEMENT_PRESET
+          )
         : [[HERMES_WORKER_SETTINGS_KEYS.enabled, "false"] as const];
 
-      await db.transaction(async (tx) => {
+      await db.transaction(async tx => {
         for (const [key, value] of entries) {
           const existing = await tx
             .select({ id: systemSettings.id })
             .from(systemSettings)
-            .where(and(eq(systemSettings.category, "infrastructure"), eq(systemSettings.key, key)))
+            .where(
+              and(
+                eq(systemSettings.category, "infrastructure"),
+                eq(systemSettings.key, key)
+              )
+            )
             .limit(1);
 
           const description =
@@ -1116,12 +1296,14 @@ export const systemSettingsRouter = router({
         }
       });
 
-      const { clearHermesWorkerSettingsCache } = await import("../services/hermesWorkerSettings");
+      const { clearHermesWorkerSettingsCache } =
+        await import("../services/hermesWorkerSettings");
       clearHermesWorkerSettingsCache();
 
       // The safe preset always keeps the development-only web drainer off.
       if (input.enabled) {
-        const { stopHermesWorkerDevDrainer } = await import("../services/hermesWorkerDevDrainer");
+        const { stopHermesWorkerDevDrainer } =
+          await import("../services/hermesWorkerDevDrainer");
         stopHermesWorkerDevDrainer();
       }
 
@@ -1167,7 +1349,11 @@ export const systemSettingsRouter = router({
     let source: "db" | "none" = "none";
 
     for (const setting of settings) {
-      if ((setting.key === "google_api_key" || setting.key === "gemini_api_key") && setting.value) {
+      if (
+        (setting.key === "google_api_key" ||
+          setting.key === "gemini_api_key") &&
+        setting.value
+      ) {
         configured = true;
         source = "db";
         break;
@@ -1181,9 +1367,11 @@ export const systemSettingsRouter = router({
   }),
 
   updateGoogleAiSettings: adminProcedure
-    .input(z.object({
-      apiKey: z.string().min(1).max(512).optional(),
-    }))
+    .input(
+      z.object({
+        apiKey: z.string().min(1).max(512).optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       if (!input.apiKey?.trim()) {
         return { success: true, preservedExisting: true };
@@ -1195,7 +1383,8 @@ export const systemSettingsRouter = router({
         value: input.apiKey.trim(),
         sensitive: true,
         userId: ctx.user?.id,
-        description: "Google AI Studio API key for OCR and real-world vision enrichment",
+        description:
+          "Google AI Studio API key for OCR and real-world vision enrichment",
       });
       clearDocumentOcrSettingsCache();
 
@@ -1213,7 +1402,11 @@ export const systemSettingsRouter = router({
 
     let encryptedKey = "";
     for (const setting of settings) {
-      if ((setting.key === "google_api_key" || setting.key === "gemini_api_key") && setting.value) {
+      if (
+        (setting.key === "google_api_key" ||
+          setting.key === "gemini_api_key") &&
+        setting.value
+      ) {
         encryptedKey = setting.value;
         break;
       }
@@ -1233,13 +1426,24 @@ export const systemSettingsRouter = router({
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`,
-          { signal: controller.signal },
+          { signal: controller.signal }
         );
         if (!response.ok) {
-          if (response.status === 400 || response.status === 401 || response.status === 403) {
-            return { success: false, message: "Google AI API key is invalid or does not have access to Gemini APIs" };
+          if (
+            response.status === 400 ||
+            response.status === 401 ||
+            response.status === 403
+          ) {
+            return {
+              success: false,
+              message:
+                "Google AI API key is invalid or does not have access to Gemini APIs",
+            };
           }
-          return { success: false, message: `Google AI endpoint error (${response.status})` };
+          return {
+            success: false,
+            message: `Google AI endpoint error (${response.status})`,
+          };
         }
       } finally {
         clearTimeout(timeout);
@@ -1247,7 +1451,8 @@ export const systemSettingsRouter = router({
 
       return {
         success: true,
-        message: "Google AI API key is configured and Gemini endpoints are reachable",
+        message:
+          "Google AI API key is configured and Gemini endpoints are reachable",
       };
     } catch (error: any) {
       return {
@@ -1261,23 +1466,24 @@ export const systemSettingsRouter = router({
     .input(documentOcrTestConnectionSchema)
     .mutation(async ({ input, ctx }) => {
       const currentSettings = await getDocumentOcrSettings();
-      const apiKey = input.apiKey?.trim() || (
-        input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+      const apiKey =
+        input.apiKey?.trim() ||
+        (input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
           ? currentSettings.typhoonOcrApiKey
           : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
             ? currentSettings.landingAiApiKey
-            : currentSettings.googleAiApiKey
-      );
+            : currentSettings.googleAiApiKey);
 
       if (!apiKey) {
         const result: DocumentOcrTestConnectionResult = {
           success: false,
           providerId: input.providerId,
-          message: input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
-            ? "Typhoon OCR API key is not configured"
-            : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
-              ? "LandingAI ADE API key is not configured"
-              : "Google AI OCR key is not configured",
+          message:
+            input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+              ? "Typhoon OCR API key is not configured"
+              : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
+                ? "LandingAI ADE API key is not configured"
+                : "Google AI OCR key is not configured",
         };
         return result;
       }
@@ -1296,15 +1502,17 @@ export const systemSettingsRouter = router({
           method: "POST",
           body: {
             provider_id: input.providerId,
-            ...(input.providerId === DOCUMENT_OCR_PROVIDER_IDS.googleAiVision && input.apiKey?.trim()
+            ...(input.providerId === DOCUMENT_OCR_PROVIDER_IDS.googleAiVision &&
+            input.apiKey?.trim()
               ? { api_key: input.apiKey.trim() }
               : {}),
           },
-          headers: input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
-            ? { "x-typhoon-ocr-api-key": apiKey }
-            : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
-              ? { "x-landingai-ade-api-key": apiKey }
-              : undefined,
+          headers:
+            input.providerId === DOCUMENT_OCR_PROVIDER_IDS.typhoonOcr15
+              ? { "x-typhoon-ocr-api-key": apiKey }
+              : input.providerId === DOCUMENT_OCR_PROVIDER_IDS.landingAiAde
+                ? { "x-landingai-ade-api-key": apiKey }
+                : undefined,
         });
 
         const result: DocumentOcrTestConnectionResult = {
@@ -1332,43 +1540,47 @@ export const systemSettingsRouter = router({
   /**
    * Get user's Context7 API key (masked)
    */
-  getContext7Key: protectedProcedure
-    .query(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) return { configured: false, maskedKey: "" };
+  getContext7Key: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return { configured: false, maskedKey: "" };
 
-      const userId = ctx.user?.id;
-      if (!userId) return { configured: false, maskedKey: "" };
+    const userId = ctx.user?.id;
+    if (!userId) return { configured: false, maskedKey: "" };
 
-      const result = await db
-        .select()
-        .from(systemSettings)
-        .where(and(
+    const result = await db
+      .select()
+      .from(systemSettings)
+      .where(
+        and(
           eq(systemSettings.category, "context7"),
           eq(systemSettings.key, `api_key_user_${userId}`)
-        ))
-        .limit(1);
+        )
+      )
+      .limit(1);
 
-      if (result.length > 0 && result[0].value) {
-        // Decrypt the stored key for masking display
-        const { decrypt } = await import("../services/crypto");
-        const val = decrypt(result[0].value) || result[0].value;
-        const masked = val.length > 8
+    if (result.length > 0 && result[0].value) {
+      // Decrypt the stored key for masking display
+      const { decrypt } = await import("../services/crypto");
+      const val = decrypt(result[0].value) || result[0].value;
+      const masked =
+        val.length > 8
           ? val.substring(0, 4) + "••••••••" + val.substring(val.length - 4)
           : "••••••••";
-        return { configured: true, maskedKey: masked };
-      }
+      return { configured: true, maskedKey: masked };
+    }
 
-      return { configured: false, maskedKey: "" };
-    }),
+    return { configured: false, maskedKey: "" };
+  }),
 
   /**
    * Save user's Context7 API key
    */
   saveContext7Key: protectedProcedure
-    .input(z.object({
-      apiKey: z.string().min(1).max(256),
-    }))
+    .input(
+      z.object({
+        apiKey: z.string().min(1).max(256),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -1381,10 +1593,12 @@ export const systemSettingsRouter = router({
       const existing = await db
         .select()
         .from(systemSettings)
-        .where(and(
-          eq(systemSettings.category, "context7"),
-          eq(systemSettings.key, settingKey)
-        ))
+        .where(
+          and(
+            eq(systemSettings.category, "context7"),
+            eq(systemSettings.key, settingKey)
+          )
+        )
         .limit(1);
 
       // Encrypt the API key before storage
@@ -1417,23 +1631,24 @@ export const systemSettingsRouter = router({
   /**
    * Delete user's Context7 API key
    */
-  deleteContext7Key: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      const db = await getDb();
-      if (!db) throw new Error("Database not available");
+  deleteContext7Key: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new Error("Database not available");
 
-      const userId = ctx.user?.id;
-      if (!userId) throw new Error("User not found");
+    const userId = ctx.user?.id;
+    if (!userId) throw new Error("User not found");
 
-      await db
-        .delete(systemSettings)
-        .where(and(
+    await db
+      .delete(systemSettings)
+      .where(
+        and(
           eq(systemSettings.category, "context7"),
           eq(systemSettings.key, `api_key_user_${userId}`)
-        ));
+        )
+      );
 
-      return { success: true };
-    }),
+    return { success: true };
+  }),
 
   // ============================================================
   // OAuth Settings
@@ -1446,11 +1661,15 @@ export const systemSettingsRouter = router({
     const db = await getDb();
     if (!db) throw new Error("Database not available");
 
-    const [ settings, metaChannelSettings, runtimeConfig] = await Promise.all([ db
-      .select()
-      .from(systemSettings)
-      .where(eq(systemSettings.category, "oauth")),
-      db.select().from(systemSettings).where(eq(systemSettings.category, "meta_channels")),
+    const [settings, metaChannelSettings, runtimeConfig] = await Promise.all([
+      db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "oauth")),
+      db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "meta_channels")),
       getAppRuntimeConfig(),
     ]);
     const publicBaseUrl = (
@@ -1521,11 +1740,19 @@ export const systemSettingsRouter = router({
     }
 
     for (const setting of metaChannelSettings) {
-      if ((setting.key === "webhook_verify_token" || setting.key === "verify_token") && setting.value) {
+      if (
+        (setting.key === "webhook_verify_token" ||
+          setting.key === "verify_token") &&
+        setting.value
+      ) {
         result.metaWebhookVerifyToken = "****" + "*".repeat(20);
         result.metaWebhookVerifyTokenConfigured = true;
       }
-      if ((setting.key === "app_secret" || setting.key === "webhook_app_secret") && setting.value) {
+      if (
+        (setting.key === "app_secret" ||
+          setting.key === "webhook_app_secret") &&
+        setting.value
+      ) {
         result.metaAppSecretConfigured = true;
       }
     }
@@ -1537,23 +1764,31 @@ export const systemSettingsRouter = router({
    * Update OAuth settings
    */
   updateOAuthSettings: adminProcedure
-    .input(z.object({
-      googleClientId: z.string().optional(),
-      googleClientSecret: z.string().optional(),
-      googleRedirectUri: z.string().refine(
-        value => isValidGoogleRedirectUri(value, "/auth/callback/google"),
-        "Google login redirect URI must use /auth/callback/google",
-      ).optional(),
-      googleDriveRedirectUri: z.string().refine(
-        value => isValidGoogleRedirectUri(value, "/auth/callback/google-drive"),
-        "Google Drive redirect URI must use /auth/callback/google-drive",
-      ).optional(),
-      githubClientId: z.string().optional(),
-      githubClientSecret: z.string().optional(),
-      githubRedirectUri: z.string().optional(),
-      microsoftClientId: z.string().optional(),
-      microsoftClientSecret: z.string().optional(),
-      microsoftOneDriveRedirectUri: z.string().optional(),
+    .input(
+      z.object({
+        googleClientId: z.string().optional(),
+        googleClientSecret: z.string().optional(),
+        googleRedirectUri: z
+          .string()
+          .refine(
+            value => isValidGoogleRedirectUri(value, "/auth/callback/google"),
+            "Google login redirect URI must use /auth/callback/google"
+          )
+          .optional(),
+        googleDriveRedirectUri: z
+          .string()
+          .refine(
+            value =>
+              isValidGoogleRedirectUri(value, "/auth/callback/google-drive"),
+            "Google Drive redirect URI must use /auth/callback/google-drive"
+          )
+          .optional(),
+        githubClientId: z.string().optional(),
+        githubClientSecret: z.string().optional(),
+        githubRedirectUri: z.string().optional(),
+        microsoftClientId: z.string().optional(),
+        microsoftClientSecret: z.string().optional(),
+        microsoftOneDriveRedirectUri: z.string().optional(),
         metaAppId: z.string().trim().max(256).optional(),
         metaAppSecret: z.string().trim().max(4096).optional(),
         metaRedirectUri: z.string().trim().url().max(2048).optional(),
@@ -1563,22 +1798,62 @@ export const systemSettingsRouter = router({
           .regex(/^v\d+\.\d+$/, "Use a version such as v25.0")
           .optional(),
         metaWebhookVerifyToken: z.string().trim().max(4096).optional(),
-      }),)
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const updates = [
-        { key: "googleClientId", value: input.googleClientId, sensitive: false },
-        { key: "googleClientSecret", value: input.googleClientSecret, sensitive: true },
-        { key: "googleRedirectUri", value: input.googleRedirectUri, sensitive: false },
-        { key: "googleDriveRedirectUri", value: input.googleDriveRedirectUri, sensitive: false },
-        { key: "githubClientId", value: input.githubClientId, sensitive: false },
-        { key: "githubClientSecret", value: input.githubClientSecret, sensitive: true },
-        { key: "githubRedirectUri", value: input.githubRedirectUri, sensitive: false },
-        { key: "microsoftClientId", value: input.microsoftClientId, sensitive: false },
-        { key: "microsoftClientSecret", value: input.microsoftClientSecret, sensitive: true },
-        { key: "microsoftOneDriveRedirectUri", value: input.microsoftOneDriveRedirectUri, sensitive: false,
+        {
+          key: "googleClientId",
+          value: input.googleClientId,
+          sensitive: false,
+        },
+        {
+          key: "googleClientSecret",
+          value: input.googleClientSecret,
+          sensitive: true,
+        },
+        {
+          key: "googleRedirectUri",
+          value: input.googleRedirectUri,
+          sensitive: false,
+        },
+        {
+          key: "googleDriveRedirectUri",
+          value: input.googleDriveRedirectUri,
+          sensitive: false,
+        },
+        {
+          key: "githubClientId",
+          value: input.githubClientId,
+          sensitive: false,
+        },
+        {
+          key: "githubClientSecret",
+          value: input.githubClientSecret,
+          sensitive: true,
+        },
+        {
+          key: "githubRedirectUri",
+          value: input.githubRedirectUri,
+          sensitive: false,
+        },
+        {
+          key: "microsoftClientId",
+          value: input.microsoftClientId,
+          sensitive: false,
+        },
+        {
+          key: "microsoftClientSecret",
+          value: input.microsoftClientSecret,
+          sensitive: true,
+        },
+        {
+          key: "microsoftOneDriveRedirectUri",
+          value: input.microsoftOneDriveRedirectUri,
+          sensitive: false,
         },
         { key: "metaAppId", value: input.metaAppId, sensitive: false },
         { key: "metaAppSecret", value: input.metaAppSecret, sensitive: true },
@@ -1590,21 +1865,27 @@ export const systemSettingsRouter = router({
         {
           key: "metaGraphApiVersion",
           value: input.metaGraphApiVersion,
-          sensitive: false, },
+          sensitive: false,
+        },
       ];
 
       for (const update of updates) {
-        const shouldPreserveSensitiveValue = update.sensitive && update.value?.trim() === "";
+        const shouldPreserveSensitiveValue =
+          update.sensitive && update.value?.trim() === "";
         if (update.value !== undefined && !shouldPreserveSensitiveValue) {
-          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+          const storedValue = update.sensitive
+            ? encrypt(update.value)
+            : update.value;
 
           const existing = await db
             .select()
             .from(systemSettings)
-            .where(and(
-              eq(systemSettings.category, "oauth"),
-              eq(systemSettings.key, update.key)
-            ))
+            .where(
+              and(
+                eq(systemSettings.category, "oauth"),
+                eq(systemSettings.key, update.key)
+              )
+            )
             .limit(1);
 
           if (existing.length > 0) {
@@ -1641,7 +1922,12 @@ export const systemSettingsRouter = router({
         const existing = await db
           .select()
           .from(systemSettings)
-          .where(and(eq(systemSettings.category, "meta_channels"), eq(systemSettings.key, update.key)))
+          .where(
+            and(
+              eq(systemSettings.category, "meta_channels"),
+              eq(systemSettings.key, update.key)
+            )
+          )
           .limit(1);
         const storedValue = encrypt(update.value);
 
@@ -1724,9 +2010,15 @@ export const systemSettingsRouter = router({
     }
 
     // Decrypt and validate credentials format
-    const clientSecret = clientSecretEncrypted ? decrypt(clientSecretEncrypted) : "";
+    const clientSecret = clientSecretEncrypted
+      ? decrypt(clientSecretEncrypted)
+      : "";
     if (clientSecretEncrypted && !clientSecret) {
-      return { success: false, message: "Failed to decrypt Google Client Secret — check LLM_ENCRYPTION_KEY" };
+      return {
+        success: false,
+        message:
+          "Failed to decrypt Google Client Secret — check LLM_ENCRYPTION_KEY",
+      };
     }
 
     const validation = validateGoogleOAuthFormat(clientId, clientSecret);
@@ -1755,7 +2047,8 @@ export const systemSettingsRouter = router({
 
       return {
         success: true,
-        message: "Google OAuth credentials are configured and Google endpoints are reachable. Full credential validation will occur during the first user sign-in.",
+        message:
+          "Google OAuth credentials are configured and Google endpoints are reachable. Full credential validation will occur during the first user sign-in.",
       };
     } catch (error: any) {
       return {
@@ -1773,26 +2066,40 @@ export const systemSettingsRouter = router({
     if (!db) return { success: false, message: "Database not available" };
 
     const [oauthSettings, metaChannelSettings] = await Promise.all([
-      db.select().from(systemSettings).where(eq(systemSettings.category, "oauth")),
-      db.select().from(systemSettings).where(eq(systemSettings.category, "meta_channels")),
+      db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "oauth")),
+      db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "meta_channels")),
     ]);
-    const oauthMap = new Map(oauthSettings.map((setting) => [setting.key, setting]));
-    const metaChannelMap = new Map(metaChannelSettings.map((setting) => [setting.key, setting]));
+    const oauthMap = new Map(
+      oauthSettings.map(setting => [setting.key, setting])
+    );
+    const metaChannelMap = new Map(
+      metaChannelSettings.map(setting => [setting.key, setting])
+    );
     const appId = oauthMap.get("metaAppId")?.value?.trim() || "";
     const oauthAppSecret = oauthMap.get("metaAppSecret")?.value;
     const webhookAppSecret = metaChannelMap.get("app_secret")?.value;
     const appSecret =
-      (oauthAppSecret ? decrypt(oauthAppSecret) : "") || (webhookAppSecret ? decrypt(webhookAppSecret) : "");
-    const graphVersion = oauthMap.get("metaGraphApiVersion")?.value?.trim() || "v25.0";
+      (oauthAppSecret ? decrypt(oauthAppSecret) : "") ||
+      (webhookAppSecret ? decrypt(webhookAppSecret) : "");
+    const graphVersion =
+      oauthMap.get("metaGraphApiVersion")?.value?.trim() || "v25.0";
     const redirectUri = oauthMap.get("metaRedirectUri")?.value?.trim() || "";
     const verifyTokenConfigured = Boolean(
-      metaChannelMap.get("webhook_verify_token")?.value || metaChannelMap.get("verify_token")?.value,
+      metaChannelMap.get("webhook_verify_token")?.value ||
+      metaChannelMap.get("verify_token")?.value
     );
 
     if (!appId || !appSecret || !redirectUri) {
       return {
         success: false,
-        message: "Save the Meta App ID, App Secret, and OAuth Redirect URI before testing.",
+        message:
+          "Save the Meta App ID, App Secret, and OAuth Redirect URI before testing.",
       };
     }
     if (!/^v\d+\.\d+$/.test(graphVersion)) {
@@ -1812,16 +2119,19 @@ export const systemSettingsRouter = router({
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10_000);
       try {
-        const response = await fetch(`https://graph.facebook.com/${graphVersion}/oauth/access_token`, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: appId,
-            client_secret: appSecret,
-            grant_type: "client_credentials",
-          }),
-          signal: controller.signal,
-        });
+        const response = await fetch(
+          `https://graph.facebook.com/${graphVersion}/oauth/access_token`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: appId,
+              client_secret: appSecret,
+              grant_type: "client_credentials",
+            }),
+            signal: controller.signal,
+          }
+        );
         if (!response.ok) {
           return {
             success: false,
@@ -1834,10 +2144,12 @@ export const systemSettingsRouter = router({
 
       return {
         success: true,
-        message: "Meta credentials are valid and the webhook verification settings are ready.",
+        message:
+          "Meta credentials are valid and the webhook verification settings are ready.",
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown network error";
+      const message =
+        error instanceof Error ? error.message : "Unknown network error";
       return {
         success: false,
         message: `Cannot reach Meta Graph API: ${message}`,
@@ -1851,19 +2163,22 @@ export const systemSettingsRouter = router({
 
   getRegistrationSettings: domainAdminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return {
-      signupBonusCredits: 100,
-      firstUserBonusCredits: 10000,
-      autoAssignTenant: true,
-      registrationMode: "open" as const,
-      userInviteEnabled: false,
-      userReferralBonusCredits: 50,
-      allowedAuthMethods: ["email", "google", "github"] as string[],
-      inviteInactiveDaysLimit: 15,
-      maxRegistrationsPerDevice: 2,
-    };
+    if (!db)
+      return {
+        signupBonusCredits: 100,
+        firstUserBonusCredits: 10000,
+        autoAssignTenant: true,
+        registrationMode: "open" as const,
+        userInviteEnabled: false,
+        userReferralBonusCredits: 50,
+        allowedAuthMethods: ["email", "google", "github"] as string[],
+        inviteInactiveDaysLimit: 15,
+        maxRegistrationsPerDevice: 2,
+      };
 
-    const settings = await db.select().from(systemSettings)
+    const settings = await db
+      .select()
+      .from(systemSettings)
       .where(eq(systemSettings.category, "registration"));
 
     const result: Record<string, string | null> = {};
@@ -1876,40 +2191,67 @@ export const systemSettingsRouter = router({
       if (result.allowed_auth_methods) {
         allowedAuthMethods = JSON.parse(result.allowed_auth_methods);
       }
-    } catch { /* use default */ }
+    } catch {
+      /* use default */
+    }
 
     return {
       signupBonusCredits: parseInt(result.signup_bonus_credits || "100", 10),
-      firstUserBonusCredits: parseInt(result.first_user_bonus_credits || "10000", 10),
+      firstUserBonusCredits: parseInt(
+        result.first_user_bonus_credits || "10000",
+        10
+      ),
       autoAssignTenant: result.auto_assign_tenant !== "false",
-      registrationMode: (result.registration_mode === "invite_only" ? "invite_only" : "open") as "open" | "invite_only",
+      registrationMode: (result.registration_mode === "invite_only"
+        ? "invite_only"
+        : "open") as "open" | "invite_only",
       userInviteEnabled: result.user_invite_enabled === "true",
-      userReferralBonusCredits: parseInt(result.user_referral_bonus_credits || "50", 10),
+      userReferralBonusCredits: parseInt(
+        result.user_referral_bonus_credits || "50",
+        10
+      ),
       allowedAuthMethods,
-      inviteInactiveDaysLimit: parseInt(result.invite_inactive_days_limit || "15", 10),
-      maxRegistrationsPerDevice: parseInt(result.max_registrations_per_device || "2", 10),
+      inviteInactiveDaysLimit: parseInt(
+        result.invite_inactive_days_limit || "15",
+        10
+      ),
+      maxRegistrationsPerDevice: parseInt(
+        result.max_registrations_per_device || "2",
+        10
+      ),
     };
   }),
 
   updateRegistrationSettings: domainAdminProcedure
-    .input(z.object({
-      signupBonusCredits: z.number().min(0).max(1000000),
-      firstUserBonusCredits: z.number().min(0).max(1000000),
-      autoAssignTenant: z.boolean(),
-      registrationMode: z.enum(["open", "invite_only"]).optional(),
-      userInviteEnabled: z.boolean().optional(),
-      userReferralBonusCredits: z.number().min(0).max(1000000).optional(),
-      allowedAuthMethods: z.array(z.enum(["email", "google", "github"])).min(1).optional(),
-      inviteInactiveDaysLimit: z.number().min(0).max(365).optional(),
-      maxRegistrationsPerDevice: z.number().min(0).max(100).optional(),
-    }))
+    .input(
+      z.object({
+        signupBonusCredits: z.number().min(0).max(1000000),
+        firstUserBonusCredits: z.number().min(0).max(1000000),
+        autoAssignTenant: z.boolean(),
+        registrationMode: z.enum(["open", "invite_only"]).optional(),
+        userInviteEnabled: z.boolean().optional(),
+        userReferralBonusCredits: z.number().min(0).max(1000000).optional(),
+        allowedAuthMethods: z
+          .array(z.enum(["email", "google", "github"]))
+          .min(1)
+          .optional(),
+        inviteInactiveDaysLimit: z.number().min(0).max(365).optional(),
+        maxRegistrationsPerDevice: z.number().min(0).max(100).optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const pairs: Array<{ key: string; value: string }> = [
-        { key: "signup_bonus_credits", value: String(input.signupBonusCredits) },
-        { key: "first_user_bonus_credits", value: String(input.firstUserBonusCredits) },
+        {
+          key: "signup_bonus_credits",
+          value: String(input.signupBonusCredits),
+        },
+        {
+          key: "first_user_bonus_credits",
+          value: String(input.firstUserBonusCredits),
+        },
         { key: "auto_assign_tenant", value: String(input.autoAssignTenant) },
       ];
 
@@ -1918,28 +2260,51 @@ export const systemSettingsRouter = router({
         pairs.push({ key: "registration_mode", value: input.registrationMode });
       }
       if (input.userInviteEnabled !== undefined) {
-        pairs.push({ key: "user_invite_enabled", value: String(input.userInviteEnabled) });
+        pairs.push({
+          key: "user_invite_enabled",
+          value: String(input.userInviteEnabled),
+        });
       }
       if (input.userReferralBonusCredits !== undefined) {
-        pairs.push({ key: "user_referral_bonus_credits", value: String(input.userReferralBonusCredits) });
+        pairs.push({
+          key: "user_referral_bonus_credits",
+          value: String(input.userReferralBonusCredits),
+        });
       }
       if (input.allowedAuthMethods !== undefined) {
-        pairs.push({ key: "allowed_auth_methods", value: JSON.stringify(input.allowedAuthMethods) });
+        pairs.push({
+          key: "allowed_auth_methods",
+          value: JSON.stringify(input.allowedAuthMethods),
+        });
       }
       if (input.inviteInactiveDaysLimit !== undefined) {
-        pairs.push({ key: "invite_inactive_days_limit", value: String(input.inviteInactiveDaysLimit) });
+        pairs.push({
+          key: "invite_inactive_days_limit",
+          value: String(input.inviteInactiveDaysLimit),
+        });
       }
       if (input.maxRegistrationsPerDevice !== undefined) {
-        pairs.push({ key: "max_registrations_per_device", value: String(input.maxRegistrationsPerDevice) });
+        pairs.push({
+          key: "max_registrations_per_device",
+          value: String(input.maxRegistrationsPerDevice),
+        });
       }
 
       for (const { key, value } of pairs) {
-        const [existing] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "registration"), eq(systemSettings.key, key)))
+        const [existing] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(
+              eq(systemSettings.category, "registration"),
+              eq(systemSettings.key, key)
+            )
+          )
           .limit(1);
 
         if (existing) {
-          await db.update(systemSettings)
+          await db
+            .update(systemSettings)
             .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
             .where(eq(systemSettings.id, existing.id));
         } else {
@@ -1961,9 +2326,20 @@ export const systemSettingsRouter = router({
 
   getSmtpSettings: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { host: "", port: 587, secure: false, user: "", fromName: "SmartAIHub", fromEmail: "", configured: false };
+    if (!db)
+      return {
+        host: "",
+        port: 587,
+        secure: false,
+        user: "",
+        fromName: "SmartAIHub",
+        fromEmail: "",
+        configured: false,
+      };
 
-    const settings = await db.select().from(systemSettings)
+    const settings = await db
+      .select()
+      .from(systemSettings)
       .where(eq(systemSettings.category, "smtp"));
 
     const map: Record<string, string | null> = {};
@@ -1983,15 +2359,17 @@ export const systemSettingsRouter = router({
   }),
 
   updateSmtpSettings: adminProcedure
-    .input(z.object({
-      host: z.string().max(255),
-      port: z.number().min(1).max(65535),
-      secure: z.boolean(),
-      user: z.string().max(320),
-      pass: z.string().max(512).optional(),
-      fromName: z.string().max(255),
-      fromEmail: z.string().email().or(z.string().length(0)),
-    }))
+    .input(
+      z.object({
+        host: z.string().max(255),
+        port: z.number().min(1).max(65535),
+        secure: z.boolean(),
+        user: z.string().max(320),
+        pass: z.string().max(512).optional(),
+        fromName: z.string().max(255),
+        fromEmail: z.string().email().or(z.string().length(0)),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -2002,22 +2380,43 @@ export const systemSettingsRouter = router({
         { key: "secure", value: String(input.secure), sensitive: false },
         { key: "user", value: input.user, sensitive: false },
         { key: "from_name", value: input.fromName, sensitive: false },
-        { key: "from_email", value: input.fromEmail || input.user, sensitive: false },
+        {
+          key: "from_email",
+          value: input.fromEmail || input.user,
+          sensitive: false,
+        },
       ];
 
       // Only update password if provided (not empty)
       if (input.pass) {
-        pairs.push({ key: "pass", value: encrypt(input.pass), sensitive: true });
+        pairs.push({
+          key: "pass",
+          value: encrypt(input.pass),
+          sensitive: true,
+        });
       }
 
       for (const { key, value, sensitive } of pairs) {
-        const [existing] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "smtp"), eq(systemSettings.key, key)))
+        const [existing] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(
+              eq(systemSettings.category, "smtp"),
+              eq(systemSettings.key, key)
+            )
+          )
           .limit(1);
 
         if (existing) {
-          await db.update(systemSettings)
-            .set({ value, isSensitive: sensitive, updatedBy: ctx.user.id, updatedAt: new Date() })
+          await db
+            .update(systemSettings)
+            .set({
+              value,
+              isSensitive: sensitive,
+              updatedBy: ctx.user.id,
+              updatedAt: new Date(),
+            })
             .where(eq(systemSettings.id, existing.id));
         } else {
           await db.insert(systemSettings).values({
@@ -2043,7 +2442,9 @@ export const systemSettingsRouter = router({
     if (!db) return { success: false, message: "Database not available" };
 
     // Read actual SMTP config (with decrypted password)
-    const settings = await db.select().from(systemSettings)
+    const settings = await db
+      .select()
+      .from(systemSettings)
       .where(eq(systemSettings.category, "smtp"));
 
     const map: Record<string, string | null> = {};
@@ -2072,10 +2473,15 @@ export const systemSettingsRouter = router({
     }
 
     if (missing.length > 0) {
-      return { success: false, message: `SMTP not configured: missing ${missing.join(", ")}` };
+      return {
+        success: false,
+        message: `SMTP not configured: missing ${missing.join(", ")}`,
+      };
     }
 
-    console.log(`[SMTP Test] Testing connection to ${map.host}:${map.port || "587"} as ${map.user}`);
+    console.log(
+      `[SMTP Test] Testing connection to ${map.host}:${map.port || "587"} as ${map.user}`
+    );
 
     return testSmtpConnection({
       host: map.host!,
@@ -2092,9 +2498,17 @@ export const systemSettingsRouter = router({
 
   getSmsSettings: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { provider: "twilio", accountSid: "", fromNumber: "", configured: false };
+    if (!db)
+      return {
+        provider: "twilio",
+        accountSid: "",
+        fromNumber: "",
+        configured: false,
+      };
 
-    const settings = await db.select().from(systemSettings)
+    const settings = await db
+      .select()
+      .from(systemSettings)
       .where(eq(systemSettings.category, "sms"));
 
     const map: Record<string, string | null> = {};
@@ -2106,17 +2520,24 @@ export const systemSettingsRouter = router({
       provider: map.provider || "twilio",
       accountSid: map.account_sid || "",
       fromNumber: map.from_number || "",
-      configured: !!(map.provider && map.account_sid && map.auth_token && map.from_number),
+      configured: !!(
+        map.provider &&
+        map.account_sid &&
+        map.auth_token &&
+        map.from_number
+      ),
     };
   }),
 
   updateSmsSettings: adminProcedure
-    .input(z.object({
-      provider: z.enum(["twilio", "vonage"]),
-      accountSid: z.string().max(255),
-      authToken: z.string().max(512).optional(),
-      fromNumber: z.string().max(20),
-    }))
+    .input(
+      z.object({
+        provider: z.enum(["twilio", "vonage"]),
+        accountSid: z.string().max(255),
+        authToken: z.string().max(512).optional(),
+        fromNumber: z.string().max(20),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -2128,17 +2549,31 @@ export const systemSettingsRouter = router({
       ];
 
       if (input.authToken) {
-        pairs.push({ key: "auth_token", value: encrypt(input.authToken), sensitive: true });
+        pairs.push({
+          key: "auth_token",
+          value: encrypt(input.authToken),
+          sensitive: true,
+        });
       }
 
       for (const { key, value, sensitive } of pairs) {
-        const [existing] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "sms"), eq(systemSettings.key, key)))
+        const [existing] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(eq(systemSettings.category, "sms"), eq(systemSettings.key, key))
+          )
           .limit(1);
 
         if (existing) {
-          await db.update(systemSettings)
-            .set({ value, isSensitive: sensitive, updatedBy: ctx.user.id, updatedAt: new Date() })
+          await db
+            .update(systemSettings)
+            .set({
+              value,
+              isSensitive: sensitive,
+              updatedBy: ctx.user.id,
+              updatedAt: new Date(),
+            })
             .where(eq(systemSettings.id, existing.id));
         } else {
           await db.insert(systemSettings).values({
@@ -2164,28 +2599,42 @@ export const systemSettingsRouter = router({
       const db = await getDb();
       if (!db) return { success: false, message: "Database not available" };
 
-      const settings = await db.select().from(systemSettings)
+      const settings = await db
+        .select()
+        .from(systemSettings)
         .where(eq(systemSettings.category, "sms"));
 
       const map: Record<string, string | null> = {};
       for (const s of settings) {
         if (s.isSensitive && s.value) {
-          try { map[s.key] = decrypt(s.value); } catch { map[s.key] = s.value; }
+          try {
+            map[s.key] = decrypt(s.value);
+          } catch {
+            map[s.key] = s.value;
+          }
         } else {
           map[s.key] = s.value;
         }
       }
 
-      if (!map.provider || !map.account_sid || !map.auth_token || !map.from_number) {
+      if (
+        !map.provider ||
+        !map.account_sid ||
+        !map.auth_token ||
+        !map.from_number
+      ) {
         return { success: false, message: "SMS not fully configured" };
       }
 
-      return testSmsConnection({
-        provider: map.provider,
-        accountSid: map.account_sid,
-        authToken: map.auth_token,
-        fromNumber: map.from_number,
-      }, input.testNumber);
+      return testSmsConnection(
+        {
+          provider: map.provider,
+          accountSid: map.account_sid,
+          authToken: map.auth_token,
+          fromNumber: map.from_number,
+        },
+        input.testNumber
+      );
     }),
 
   // ============================================================
@@ -2194,9 +2643,17 @@ export const systemSettingsRouter = router({
 
   getTwoFaSettings: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return { enabled: true, enforced: false, issuer: "SmartAIHub", backupCodesCount: 10 };
+    if (!db)
+      return {
+        enabled: true,
+        enforced: false,
+        issuer: "SmartAIHub",
+        backupCodesCount: 10,
+      };
 
-    const settings = await db.select().from(systemSettings)
+    const settings = await db
+      .select()
+      .from(systemSettings)
       .where(eq(systemSettings.category, "2fa"));
 
     const map: Record<string, string | null> = {};
@@ -2213,12 +2670,14 @@ export const systemSettingsRouter = router({
   }),
 
   updateTwoFaSettings: adminProcedure
-    .input(z.object({
-      enabled: z.boolean(),
-      enforced: z.boolean(),
-      issuer: z.string().min(1).max(255),
-      backupCodesCount: z.number().min(5).max(50),
-    }))
+    .input(
+      z.object({
+        enabled: z.boolean(),
+        enforced: z.boolean(),
+        issuer: z.string().min(1).max(255),
+        backupCodesCount: z.number().min(5).max(50),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -2227,16 +2686,25 @@ export const systemSettingsRouter = router({
         { key: "enabled", value: String(input.enabled), sensitive: false },
         { key: "enforced", value: String(input.enforced), sensitive: false },
         { key: "issuer", value: input.issuer, sensitive: false },
-        { key: "backup_codes_count", value: String(input.backupCodesCount), sensitive: false },
+        {
+          key: "backup_codes_count",
+          value: String(input.backupCodesCount),
+          sensitive: false,
+        },
       ];
 
       for (const { key, value } of pairs) {
-        const [existing] = await db.select().from(systemSettings)
-          .where(and(eq(systemSettings.category, "2fa"), eq(systemSettings.key, key)))
+        const [existing] = await db
+          .select()
+          .from(systemSettings)
+          .where(
+            and(eq(systemSettings.category, "2fa"), eq(systemSettings.key, key))
+          )
           .limit(1);
 
         if (existing) {
-          await db.update(systemSettings)
+          await db
+            .update(systemSettings)
             .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
             .where(eq(systemSettings.id, existing.id));
         } else {
@@ -2261,8 +2729,15 @@ export const systemSettingsRouter = router({
     const db = await getDb();
     if (!db) return [];
 
-    const [row] = await db.select().from(systemSettings)
-      .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+    const [row] = await db
+      .select()
+      .from(systemSettings)
+      .where(
+        and(
+          eq(systemSettings.category, "menu_overrides"),
+          eq(systemSettings.key, "config")
+        )
+      )
       .limit(1);
 
     if (!row?.value) return [];
@@ -2282,28 +2757,39 @@ export const systemSettingsRouter = router({
   }),
 
   updateMenuOverrides: adminProcedure
-    .input(z.array(z.object({
-      menuItemId: z.string(),
-      web_admin: z.boolean(),
-      web_domain_admin: z.boolean(),
-      web_user: z.boolean(),
-      desktop_admin: z.boolean(),
-      desktop_domain_admin: z.boolean(),
-      desktop_user: z.boolean(),
-    }),
-      ),)
+    .input(
+      z.array(
+        z.object({
+          menuItemId: z.string(),
+          web_admin: z.boolean(),
+          web_domain_admin: z.boolean(),
+          web_user: z.boolean(),
+          desktop_admin: z.boolean(),
+          desktop_domain_admin: z.boolean(),
+          desktop_user: z.boolean(),
+        })
+      )
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const value = JSON.stringify(input);
 
-      const [existing] = await db.select().from(systemSettings)
-        .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+      const [existing] = await db
+        .select()
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, "menu_overrides"),
+            eq(systemSettings.key, "config")
+          )
+        )
         .limit(1);
 
       if (existing) {
-        await db.update(systemSettings)
+        await db
+          .update(systemSettings)
           .set({ value, updatedBy: ctx.user.id, updatedAt: new Date() })
           .where(eq(systemSettings.id, existing.id));
       } else {
@@ -2325,8 +2811,15 @@ export const systemSettingsRouter = router({
       const db = await getDb();
       if (!db) return [];
 
-      const [row] = await db.select().from(systemSettings)
-        .where(and(eq(systemSettings.category, "menu_overrides"), eq(systemSettings.key, "config")))
+      const [row] = await db
+        .select()
+        .from(systemSettings)
+        .where(
+          and(
+            eq(systemSettings.category, "menu_overrides"),
+            eq(systemSettings.key, "config")
+          )
+        )
         .limit(1);
 
       if (!row?.value) return [];
@@ -2350,12 +2843,17 @@ export const systemSettingsRouter = router({
       const platform = input.platform;
 
       // Map role to column key
-      const roleKey = role === "admin" ? "admin" : role === "domain_admin" ? "domain_admin" : "user";
-      const colKey = `${platform}_${roleKey}` as keyof ( typeof overrides)[0];
+      const roleKey =
+        role === "admin"
+          ? "admin"
+          : role === "domain_admin"
+            ? "domain_admin"
+            : "user";
+      const colKey = `${platform}_${roleKey}` as keyof (typeof overrides)[0];
 
       return overrides
-        .filter((o) => o[colKey] === false)
-        .map((o) => ({ menuItemId: o.menuItemId, visible: false }));
+        .filter(o => o[colKey] === false)
+        .map(o => ({ menuItemId: o.menuItemId, visible: false }));
     }),
 
   // ============================================================
@@ -2375,7 +2873,8 @@ export const systemSettingsRouter = router({
       .where(eq(systemSettings.category, "vectordb"));
 
     const result: Record<string, any> = {
-      provider: "chromadb", // chromadb, pgvector, or cloudflare_vectorize
+      provider: "pgvector", // pgvector remains active until cutover gates pass
+      preparedProvider: undefined,
       embeddingModel: "all-MiniLM-L6-v2",
       embeddingDimension: 384,
       chromaPersistDir: "~/.smartaihub/chroma",
@@ -2386,12 +2885,17 @@ export const systemSettingsRouter = router({
       openaiApiKeyConfigured: false,
       vectorizeAccountId: undefined,
       vectorizeIndexName: undefined,
+      vectorizeKnowledgeIndexName: undefined,
+      vectorizeMediaIndexName: undefined,
+      vectorizeAgentMemoryIndexName: undefined,
       vectorizeApiTokenConfigured: false,
     };
 
     for (const setting of settings) {
       if (setting.key === "provider") {
-        result.provider = setting.value || "chromadb";
+        result.provider = setting.value || "pgvector";
+      } else if (setting.key === "preparedProvider") {
+        result.preparedProvider = setting.value || undefined;
       } else if (setting.key === "embeddingModel") {
         result.embeddingModel = setting.value || "all-MiniLM-L6-v2";
       } else if (setting.key === "embeddingDimension") {
@@ -2414,9 +2918,24 @@ export const systemSettingsRouter = router({
         result.vectorizeAccountId = setting.value;
       } else if (setting.key === "vectorizeIndexName") {
         result.vectorizeIndexName = setting.value;
+      } else if (setting.key === "vectorizeKnowledgeIndexName") {
+        result.vectorizeKnowledgeIndexName = setting.value;
+      } else if (setting.key === "vectorizeMediaIndexName") {
+        result.vectorizeMediaIndexName = setting.value;
+      } else if (setting.key === "vectorizeAgentMemoryIndexName") {
+        result.vectorizeAgentMemoryIndexName = setting.value;
       } else if (setting.key === "vectorizeApiToken" && setting.value) {
         result.vectorizeApiTokenConfigured = true;
       }
+    }
+
+    // A legacy `provider` row is not cutover authority. Keep the settings
+    // surface conservative and expose that value as a prepared target only
+    // when the newer explicit field is absent.
+    const configuredProvider = result.provider;
+    result.provider = await getGovernedActiveVectorProvider(db);
+    if (!result.preparedProvider && configuredProvider !== "pgvector") {
+      result.preparedProvider = configuredProvider;
     }
 
     return result;
@@ -2426,21 +2945,31 @@ export const systemSettingsRouter = router({
    * Update Vector Database settings
    */
   updateVectorDbSettings: adminProcedure
-    .input(z.object({
-      provider: z.enum(["chromadb", "pgvector", "cloudflare_vectorize"]).optional(),
-      embeddingModel: z.string().optional(),
-      embeddingDimension: z.number().optional(),
-      chromaPersistDir: z.string().optional(),
-      pgvectorHost: z.string().optional(),
-      pgvectorPort: z.string().optional(),
-      pgvectorDatabase: z.string().optional(),
-      pgvectorUser: z.string().optional(),
-      pgvectorPassword: z.string().optional(),
-      openaiApiKey: z.string().optional(),
-      vectorizeAccountId: z.string().optional(),
-      vectorizeApiToken: z.string().optional(),
-      vectorizeIndexName: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        provider: z
+          .enum(["chromadb", "pgvector", "cloudflare_vectorize"])
+          .optional(),
+        preparedProvider: z
+          .enum(["chromadb", "pgvector", "cloudflare_vectorize"])
+          .optional(),
+        embeddingModel: z.string().optional(),
+        embeddingDimension: z.number().optional(),
+        chromaPersistDir: z.string().optional(),
+        pgvectorHost: z.string().optional(),
+        pgvectorPort: z.string().optional(),
+        pgvectorDatabase: z.string().optional(),
+        pgvectorUser: z.string().optional(),
+        pgvectorPassword: z.string().optional(),
+        openaiApiKey: z.string().optional(),
+        vectorizeAccountId: z.string().optional(),
+        vectorizeApiToken: z.string().optional(),
+        vectorizeIndexName: z.string().optional(),
+        vectorizeKnowledgeIndexName: z.string().optional(),
+        vectorizeMediaIndexName: z.string().optional(),
+        vectorizeAgentMemoryIndexName: z.string().optional(),
+      })
+    )
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
@@ -2448,37 +2977,102 @@ export const systemSettingsRouter = router({
         await assertVectorDbConfigEditAllowedOrThrow({
           userId: ctx.user.id,
           tenantId: null,
-          emergency: false,
+          // Updating the staged Vectorize credentials is a recovery action,
+          // not a read-provider activation. Allow it while a cutover is
+          // active so an operator can repair a failed target and retry.
+          emergency: input.preparedProvider === "cloudflare_vectorize",
         });
       }
 
+      // This mutation stores configuration and a prepared target only. The
+      // active read provider is changed exclusively by the gated cutover
+      // workflow, so a client cannot activate Vectorize by posting `provider`.
+      const activeProvider = "pgvector";
+      const preparedProvider = input.preparedProvider ?? input.provider;
+
       const updates = [
-        { key: "provider", value: input.provider, sensitive: false },
-        { key: "embeddingModel", value: input.embeddingModel, sensitive: false },
-        { key: "embeddingDimension", value: input.embeddingDimension?.toString(), sensitive: false },
-        { key: "chromaPersistDir", value: input.chromaPersistDir, sensitive: false },
+        { key: "provider", value: activeProvider, sensitive: false },
+        { key: "preparedProvider", value: preparedProvider, sensitive: false },
+        {
+          key: "embeddingModel",
+          value: input.embeddingModel,
+          sensitive: false,
+        },
+        {
+          key: "embeddingDimension",
+          value: input.embeddingDimension?.toString(),
+          sensitive: false,
+        },
+        {
+          key: "chromaPersistDir",
+          value: input.chromaPersistDir,
+          sensitive: false,
+        },
         { key: "pgvectorHost", value: input.pgvectorHost, sensitive: false },
         { key: "pgvectorPort", value: input.pgvectorPort, sensitive: false },
-        { key: "pgvectorDatabase", value: input.pgvectorDatabase, sensitive: false },
+        {
+          key: "pgvectorDatabase",
+          value: input.pgvectorDatabase,
+          sensitive: false,
+        },
         { key: "pgvectorUser", value: input.pgvectorUser, sensitive: false },
-        { key: "pgvectorPassword", value: input.pgvectorPassword, sensitive: true },
+        {
+          key: "pgvectorPassword",
+          value: input.pgvectorPassword,
+          sensitive: true,
+        },
         { key: "openaiApiKey", value: input.openaiApiKey, sensitive: true },
-        { key: "vectorizeAccountId", value: input.vectorizeAccountId, sensitive: false },
-        { key: "vectorizeApiToken", value: input.vectorizeApiToken, sensitive: true },
-        { key: "vectorizeIndexName", value: input.vectorizeIndexName, sensitive: false },
+        {
+          key: "vectorizeAccountId",
+          value: input.vectorizeAccountId,
+          sensitive: false,
+        },
+        {
+          key: "vectorizeApiToken",
+          value: input.vectorizeApiToken,
+          sensitive: true,
+        },
+        {
+          key: "vectorizeIndexName",
+          value: input.vectorizeIndexName,
+          sensitive: false,
+        },
+        {
+          key: "vectorizeKnowledgeIndexName",
+          value: input.vectorizeKnowledgeIndexName,
+          sensitive: false,
+        },
+        {
+          key: "vectorizeMediaIndexName",
+          value: input.vectorizeMediaIndexName,
+          sensitive: false,
+        },
+        {
+          key: "vectorizeAgentMemoryIndexName",
+          value: input.vectorizeAgentMemoryIndexName,
+          sensitive: false,
+        },
       ];
 
       for (const update of updates) {
-        if (update.value !== undefined && update.value !== null && update.value !== "") {
-          const storedValue = update.sensitive ? encrypt(update.value) : update.value;
+        if (
+          update.value !== undefined &&
+          update.value !== null &&
+          update.value !== ""
+        ) {
+          const storedValue = update.sensitive
+            ? encrypt(update.value)
+            : update.value;
 
           const existing = await db
             .select()
             .from(systemSettings)
-            .where(and(
-              eq(systemSettings.category, "vectordb"),
-              eq(systemSettings.key, update.key)
-            ))
+            .where(
+              and(
+                eq(systemSettings.category, "vectordb"),
+                eq(systemSettings.key, update.key)
+              )
+            )
             .limit(1);
 
           if (existing.length > 0) {
@@ -2504,127 +3098,207 @@ export const systemSettingsRouter = router({
         }
       }
 
+      clearVectorProviderConfigCache();
+
       return { success: true };
     }),
 
   /**
    * Test Vector Database connection
    */
-  testVectorDbConnection: adminProcedure.mutation(async () => {
-    const db = await getDb();
-    if (!db) throw new Error("Database not available");
+  testVectorDbConnection: adminProcedure
+    .input(
+      z
+        .object({
+          provider: z
+            .enum(["chromadb", "pgvector", "cloudflare_vectorize"])
+            .optional(),
+          embeddingModel: z.string().optional(),
+          embeddingDimension: z.number().optional(),
+          chromaPersistDir: z.string().optional(),
+          pgvectorHost: z.string().optional(),
+          pgvectorPort: z.string().optional(),
+          pgvectorDatabase: z.string().optional(),
+          pgvectorUser: z.string().optional(),
+          pgvectorPassword: z.string().optional(),
+          openaiApiKey: z.string().optional(),
+          vectorizeAccountId: z.string().optional(),
+          vectorizeApiToken: z.string().optional(),
+          vectorizeIndexName: z.string().optional(),
+          vectorizeKnowledgeIndexName: z.string().optional(),
+          vectorizeMediaIndexName: z.string().optional(),
+          vectorizeAgentMemoryIndexName: z.string().optional(),
+        })
+        .optional()
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
 
-    const settings = await db
-      .select()
-      .from(systemSettings)
-      .where(eq(systemSettings.category, "vectordb"));
+      const settings = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.category, "vectordb"));
 
-    const config: Record<string, string> = {};
-    for (const setting of settings) {
-      if (setting.value) {
-        config[setting.key] = setting.isSensitive ? decrypt(setting.value) || "" : setting.value;
-      }
-    }
-
-    const provider = config.provider || "chromadb";
-
-    try {
-      if (provider === "chromadb") {
-        // Test ChromaDB connection
-        const persistDir = config.chromaPersistDir || "~/.smartaihub/chroma";
-        return {
-          success: true,
-          message: `ChromaDB configured at: ${persistDir}`,
-          provider: "chromadb",
-          collections: ["episodic_memories", "code_snippets", "conversation_history"],
-        };
-      } else if (provider === "pgvector") {
-        // Test pgvector connection
-        if (!config.pgvectorHost || !config.pgvectorDatabase) {
-          return {
-            success: false,
-            message: "pgvector connection details are incomplete",
-          };
+      const config: Record<string, string> = {};
+      for (const setting of settings) {
+        if (setting.value) {
+          config[setting.key] = setting.isSensitive
+            ? decrypt(setting.value) || ""
+            : setting.value;
         }
+      }
 
-        // Try to connect to PostgreSQL
-        const { Pool } = await import("pg");
-        const pool = new Pool({
-          host: config.pgvectorHost,
-          port: parseInt(config.pgvectorPort || "5432", 10),
-          database: config.pgvectorDatabase,
-          user: config.pgvectorUser,
-          password: config.pgvectorPassword,
-        });
+      // Test draft form values without persisting or activating a provider.
+      // Empty secret fields intentionally keep the already configured secret.
+      for (const [key, value] of Object.entries(input ?? {})) {
+        if (value !== undefined && value !== null && value !== "") {
+          config[key] = String(value);
+        }
+      }
 
-        try {
-          const result = await pool.query("SELECT extname, extversion FROM pg_extension WHERE extname = 'vector'");
-          await pool.end();
+      const provider = config.provider || "pgvector";
 
-          if (result.rows.length > 0) {
-            return {
-              success: true,
-              message: `Connected to pgvector database (v${result.rows[0].extversion})`,
-              provider: "pgvector",
-              version: result.rows[0].extversion,
-            };
-          } else {
+      try {
+        if (provider === "chromadb") {
+          // Test ChromaDB connection
+          const persistDir = config.chromaPersistDir || "~/.smartaihub/chroma";
+          return {
+            success: true,
+            message: `ChromaDB configured at: ${persistDir}`,
+            provider: "chromadb",
+            collections: [
+              "episodic_memories",
+              "code_snippets",
+              "conversation_history",
+            ],
+          };
+        } else if (provider === "pgvector") {
+          // Test pgvector connection
+          if (!config.pgvectorHost || !config.pgvectorDatabase) {
             return {
               success: false,
-              message: "pgvector extension not installed in the database",
+              message: "pgvector connection details are incomplete",
             };
           }
-        } catch (error: any) {
-          await pool.end().catch(() => {});
-          throw error;
-        }
-      } else if (provider === "cloudflare_vectorize") {
-        // Test Cloudflare Vectorize connection
-        if (!config.vectorizeAccountId || !config.vectorizeApiToken || !config.vectorizeIndexName) {
+
+          // Try to connect to PostgreSQL
+          const { Pool } = await import("pg");
+          const pool = new Pool({
+            host: config.pgvectorHost,
+            port: parseInt(config.pgvectorPort || "5432", 10),
+            database: config.pgvectorDatabase,
+            user: config.pgvectorUser,
+            password: config.pgvectorPassword,
+          });
+
+          try {
+            const result = await pool.query(
+              "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector'"
+            );
+            await pool.end();
+
+            if (result.rows.length > 0) {
+              return {
+                success: true,
+                message: `Connected to pgvector database (v${result.rows[0].extversion})`,
+                provider: "pgvector",
+                version: result.rows[0].extversion,
+              };
+            } else {
+              return {
+                success: false,
+                message: "pgvector extension not installed in the database",
+              };
+            }
+          } catch (error: any) {
+            await pool.end().catch(() => {});
+            throw error;
+          }
+        } else if (provider === "cloudflare_vectorize") {
+          // Test Cloudflare Vectorize connection
+          const indexName =
+            config.vectorizeKnowledgeIndexName || config.vectorizeIndexName;
+          if (
+            !config.vectorizeAccountId ||
+            !config.vectorizeApiToken ||
+            !indexName
+          ) {
+            return {
+              success: false,
+              message:
+                "Cloudflare Vectorize configuration is incomplete (need Account ID, API Token, and Knowledge Index Name)",
+            };
+          }
+
+          const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${indexName}`;
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${config.vectorizeApiToken}` },
+          });
+
+          if (!response.ok) {
+            const status = response.status;
+            if (status === 401) {
+              return {
+                success: false,
+                message: "Authentication failed — check your API token",
+              };
+            } else if (status === 404) {
+              return {
+                success: false,
+                message: `Index '${indexName}' not found — create it in the Cloudflare dashboard first`,
+              };
+            }
+            return {
+              success: false,
+              message: `Cloudflare API error (${status}): ${response.statusText}`,
+            };
+          }
+
+          const data = (await response.json()) as any;
+          if (!data.success) {
+            return {
+              success: false,
+              message: `Cloudflare API error: ${JSON.stringify(data.errors)}`,
+            };
+          }
+
+          const indexConfig = data.result?.config || {};
+          const dimensions = Number(indexConfig.dimensions);
+          const metric = String(indexConfig.metric || "").toLowerCase();
+          if (
+            dimensions !== VECTORIZE_EMBEDDING_DIMENSIONS ||
+            metric !== "cosine"
+          ) {
+            return {
+              success: false,
+              provider: "cloudflare_vectorize",
+              dimensions: Number.isFinite(dimensions) ? dimensions : undefined,
+              metric: metric || undefined,
+              message:
+                `Vectorize index schema mismatch — expected ${VECTORIZE_EMBEDDING_DIMENSIONS}D/cosine, ` +
+                `got ${Number.isFinite(dimensions) ? `${dimensions}D` : "unknown dimensions"}/` +
+                `${metric || "unknown metric"}`,
+            };
+          }
+
           return {
-            success: false,
-            message: "Cloudflare Vectorize configuration is incomplete (need Account ID, API Token, and Index Name)",
+            success: true,
+            message: `Connected to Vectorize index '${indexName}' (${dimensions}D, ${metric})`,
+            provider: "cloudflare_vectorize",
+            dimensions,
+            metric,
           };
         }
 
-        const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${config.vectorizeIndexName}`;
-        const response = await fetch(url, {
-          headers: { Authorization: `Bearer ${config.vectorizeApiToken}` },
-        });
-
-        if (!response.ok) {
-          const status = response.status;
-          if (status === 401) {
-            return { success: false, message: "Authentication failed — check your API token" };
-          } else if (status === 404) {
-            return { success: false, message: `Index '${config.vectorizeIndexName}' not found — create it in the Cloudflare dashboard first` };
-          }
-          return { success: false, message: `Cloudflare API error (${status}): ${response.statusText}` };
-        }
-
-        const data = ( await response.json()) as any;
-        if (!data.success) {
-          return { success: false, message: `Cloudflare API error: ${JSON.stringify(data.errors)}` };
-        }
-
-        const indexConfig = data.result?.config || {};
+        return { success: false, message: "Unknown provider" };
+      } catch (error: any) {
         return {
-          success: true,
-          message: `Connected to Vectorize index '${config.vectorizeIndexName}' (${indexConfig.dimensions || "?"}D, ${indexConfig.metric || "cosine"})`,
-          provider: "cloudflare_vectorize",
-          dimensions: indexConfig.dimensions,
-          metric: indexConfig.metric,
+          success: false,
+          message: error.message || "Connection test failed",
         };
       }
-
-      return { success: false, message: "Unknown provider" };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.message || "Connection test failed",
-      };
-    }
-  }),
+    }),
 
   /**
    * Get Vector Database statistics
@@ -2641,11 +3315,15 @@ export const systemSettingsRouter = router({
     const config: Record<string, string> = {};
     for (const setting of settings) {
       if (setting.value) {
-        config[setting.key] = setting.isSensitive ? decrypt(setting.value) || "" : setting.value;
+        config[setting.key] = setting.isSensitive
+          ? decrypt(setting.value) || ""
+          : setting.value;
       }
     }
 
-    const provider = config.provider || "chromadb";
+    // Statistics describe the governed active store. A saved/prepared
+    // provider setting is not sufficient to switch this route to Vectorize.
+    const provider = await getGovernedActiveVectorProvider(db);
 
     try {
       if (provider === "chromadb") {
@@ -2653,9 +3331,21 @@ export const systemSettingsRouter = router({
           provider: "chromadb",
           totalCollections: 3,
           collections: [
-            { name: "episodic_memories", documentCount: 0, embeddingDimension: 384 },
-            { name: "code_snippets", documentCount: 0, embeddingDimension: 384 },
-            { name: "conversation_history", documentCount: 0, embeddingDimension: 384 },
+            {
+              name: "episodic_memories",
+              documentCount: 0,
+              embeddingDimension: 384,
+            },
+            {
+              name: "code_snippets",
+              documentCount: 0,
+              embeddingDimension: 384,
+            },
+            {
+              name: "conversation_history",
+              documentCount: 0,
+              embeddingDimension: 384,
+            },
           ],
           storageLocation: config.chromaPersistDir || "~/.smartaihub/chroma",
         };
@@ -2711,7 +3401,9 @@ export const systemSettingsRouter = router({
             totalVectors: parseInt(result.rows[0]?.total_vectors || "0", 10),
             indexedItems: parseInt(result.rows[0]?.indexed_items || "0", 10),
             activeItems: parseInt(activeItems.rows[0]?.active_items || "0", 10),
-            dimensions: parseInt(dimensions.rows[0]?.embedding_dimensions || "0", 10) || undefined,
+            dimensions:
+              parseInt(dimensions.rows[0]?.embedding_dimensions || "0", 10) ||
+              undefined,
             rlsEnabled: Boolean(rls.rows[0]?.relrowsecurity),
             forceRls: Boolean(rls.rows[0]?.relforcerowsecurity),
             storageType: "PostgreSQL with pgvector extension",
@@ -2725,7 +3417,13 @@ export const systemSettingsRouter = router({
         }
       } else if (provider === "cloudflare_vectorize") {
         // Get stats from Cloudflare Vectorize
-        if (!config.vectorizeAccountId || !config.vectorizeApiToken || !config.vectorizeIndexName) {
+        const indexName =
+          config.vectorizeKnowledgeIndexName || config.vectorizeIndexName;
+        if (
+          !config.vectorizeAccountId ||
+          !config.vectorizeApiToken ||
+          !indexName
+        ) {
           return {
             provider: "cloudflare_vectorize",
             error: "Configuration incomplete",
@@ -2733,7 +3431,7 @@ export const systemSettingsRouter = router({
         }
 
         try {
-          const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${config.vectorizeIndexName}`;
+          const url = `https://api.cloudflare.com/client/v4/accounts/${config.vectorizeAccountId}/vectorize/v2/indexes/${indexName}`;
           const response = await fetch(url, {
             headers: { Authorization: `Bearer ${config.vectorizeApiToken}` },
           });
@@ -2745,11 +3443,11 @@ export const systemSettingsRouter = router({
             };
           }
 
-          const data = ( await response.json()) as any;
+          const data = (await response.json()) as any;
           const result = data.result || {};
           return {
             provider: "cloudflare_vectorize",
-            indexName: config.vectorizeIndexName,
+            indexName,
             dimensions: result.config?.dimensions,
             metric: result.config?.metric || "cosine",
             vectorCount: result.vector_count,
@@ -2797,6 +3495,29 @@ export const systemSettingsRouter = router({
           failed: number;
           skipped: number;
         };
+        indexing_status: {
+          status: string;
+          scope: "projection" | "campaign";
+          provider: string;
+          coverage_known: boolean;
+          progress_ratio: number;
+          source_count: number | null;
+          indexed_count: number | null;
+          pending_count: number | null;
+          projection_failed_count: number | null;
+          queued_count: number;
+          processed_count: number;
+          campaign_failed_count: number;
+          skipped_count: number;
+          campaign_id: number | null;
+          campaign_status: string;
+          server_evidence: Record<string, unknown> | null;
+        };
+        automatic_promotion: {
+          cutover_applied: boolean;
+          failed_checks?: string[];
+          server_evidence?: Record<string, unknown>;
+        } | null;
         latency_status: {
           current_p95_ms: number;
           baseline_p95_ms: number;
@@ -2830,19 +3551,130 @@ export const systemSettingsRouter = router({
     }
   }),
 
+  getVectorDbCutoverState: adminProcedure.query(async ({ ctx }) => {
+    return await fetchPythonAdminJson<{
+      tenant_id: string | null;
+      switch_version: number;
+      status: string;
+      campaign_status: string;
+      current_read_provider: string;
+      previous_read_provider: string | null;
+      target_provider: string | null;
+      mirror_writes: boolean;
+      freeze_non_emergency_edits: boolean;
+      readiness_gate: string;
+      campaign_id: number | null;
+    }>({
+      path: "/api/admin/vectordb/provider-switch/state",
+      userId: ctx.user.id,
+    });
+  }),
+
+  requestVectorDbCutover: adminProcedure
+    .input(
+      z.object({
+        targetProvider: z.enum([
+          "cloudflare_vectorize",
+          "pgvector",
+          "chromadb",
+        ]),
+        campaignId: z.number().int().positive().optional(),
+        expectedVersion: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await fetchPythonAdminJson<{
+        tenant_id: string | null;
+        switch_version: number;
+        status: string;
+        campaign_status: string;
+        current_read_provider: string;
+        target_provider: string | null;
+        mirror_writes: boolean;
+        freeze_non_emergency_edits: boolean;
+        automatic_promotion?: {
+          cutover_applied: boolean;
+          failed_checks?: string[];
+        } | null;
+        preparation?: {
+          campaign_id: number | null;
+          campaign_created: boolean;
+          backfill_scheduled: boolean;
+          failed_jobs_reset: number;
+          retry_scheduled: boolean;
+        };
+      }>({
+        path: "/api/admin/vectordb/provider-switch/request",
+        method: "POST",
+        userId: ctx.user.id,
+        body: {
+          target_provider: input.targetProvider,
+          campaign_id: input.campaignId,
+          // The Python endpoint derives these values from its own probe and
+          // campaign lookup for Vectorize; they are not activation authority.
+          campaign_completed: true,
+          connectivity_ok: true,
+          expected_version: input.expectedVersion,
+        },
+      });
+      clearVectorProviderConfigCache();
+      return result;
+    }),
+
+  approveVectorDbCutover: adminProcedure
+    .input(
+      z.object({
+        coverageRatio: z.number().min(0).max(1),
+        smokePassed: z.boolean(),
+        parityRatio: z.number().min(0).max(1),
+        reconciliationReport: z.record(z.string(), z.unknown()).optional(),
+        expectedVersion: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const result = await fetchPythonAdminJson<{
+        cutover_applied: boolean;
+        current_read_provider: string;
+        target_provider: string | null;
+        mirror_writes: boolean;
+        failed_checks: string[];
+        gate: Record<string, unknown>;
+      }>({
+        path: "/api/admin/vectordb/provider-switch/approve",
+        method: "POST",
+        userId: ctx.user.id,
+        body: {
+          coverage_ratio: input.coverageRatio,
+          smoke_passed: input.smokePassed,
+          parity_ratio: input.parityRatio,
+          reconciliation_report: input.reconciliationReport ?? {},
+          expected_version: input.expectedVersion,
+        },
+      });
+      clearVectorProviderConfigCache();
+      return result;
+    }),
+
   /**
    * Trigger full reindex of all library items
    */
   triggerReindex: adminProcedure.mutation(async ({ ctx }) => {
     try {
-      return await fetchPythonAdminJson<{ task_id: string; status: string; message: string; }>({
+      return await fetchPythonAdminJson<{
+        task_id: string;
+        status: string;
+        message: string;
+      }>({
         path: "/api/admin/vectordb/reindex",
         userId: ctx.user.id,
         method: "POST",
         body: {},
       });
     } catch (error: any) {
-      return { status: "error", message: error.message || "Failed to trigger reindex" };
+      return {
+        status: "error",
+        message: error.message || "Failed to trigger reindex",
+      };
     }
   }),
 
@@ -2851,7 +3683,11 @@ export const systemSettingsRouter = router({
    */
   getReindexStatus: adminProcedure.query(async ({ ctx }) => {
     try {
-      return await fetchPythonAdminJson<{ status: string; task_id: string | null; result: any; }>({
+      return await fetchPythonAdminJson<{
+        status: string;
+        task_id: string | null;
+        result: any;
+      }>({
         path: "/api/admin/vectordb/reindex/status",
         userId: ctx.user.id,
       });

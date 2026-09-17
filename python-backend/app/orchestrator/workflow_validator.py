@@ -50,7 +50,6 @@ KNOWN_NODE_TYPES: frozenset[str] = frozenset({
     "rate_limiter", "idempotency",
     # Media / Skills / Human
     "generate_image", "generate_video", "skill", "approval_gate", "form_input",
-    "agency_run",
     # Worker runtime
     "dispatch_worker_job", "wait_for_worker_completion",
     "publish_worker_artifacts", "trigger_worker_rag_index",
@@ -73,7 +72,7 @@ TRIGGER_NODE_TYPES: frozenset[str] = frozenset({
 
 
 class NodeData(BaseModel):
-    """Data payload carried by each ReactFlow workflow node."""
+    """Data payload carried by a legacy workflow node."""
 
     nodeType: str
     label: str

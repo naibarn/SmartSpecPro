@@ -1,5 +1,5 @@
 "use strict";
-var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _v, _w, _x;
+var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s, _t, _u, _x;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ENV = void 0;
 // Security: All server-side env vars should use non-VITE_ names.
@@ -24,12 +24,6 @@ exports.ENV = {
     // OAuth and workflow backend endpoints
     oAuthServerUrl: (_s = (_r = process.env.OAUTH_SERVER_URL) !== null && _r !== void 0 ? _r : process.env.VITE_OAUTH_SERVER_URL) !== null && _s !== void 0 ? _s : "",
     pythonBackendUrl: (_u = (_t = process.env.PYTHON_BACKEND_URL) !== null && _t !== void 0 ? _t : process.env.VITE_PYTHON_BACKEND_URL) !== null && _u !== void 0 ? _u : "",
-    // OpenSandbox integration
-    opensandboxEnabled: process.env.OPENSANDBOX_ENABLED === "true",
-    opensandboxDispatchMode: (_v = process.env.OPENSANDBOX_DISPATCH_MODE) !== null && _v !== void 0 ? _v : "optional",
-    sandboxDefaultProfile: (_w = process.env.SANDBOX_DEFAULT_PROFILE) !== null && _w !== void 0 ? _w : "code-default",
-    sandboxRequireForSkills: process.env.SANDBOX_REQUIRE_FOR_SKILLS === "true",
-    sandboxRequireForMedia: process.env.SANDBOX_REQUIRE_FOR_MEDIA === "true",
     // Public API key HMAC secret (server pepper for key hashing)
     apiKeyHmacSecret: (_x = process.env.API_KEY_HMAC_SECRET) !== null && _x !== void 0 ? _x : "",
 };

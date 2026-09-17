@@ -19,6 +19,9 @@ const completeExpansion = {
   sceneDetail: "Warm dining room with a stable cozy composition",
   customActivity: "Taste food, share food, and laugh together",
   customNotes: "Keep the same characters, realistic hands, and vertical 9:16",
+  dialogueLines: [
+    { speaker: "เด็ก", text: "แบ่งกันนะ จะได้อร่อยด้วยกัน", language: "th" },
+  ],
 };
 
 beforeEach(() => {
@@ -36,13 +39,17 @@ describe("Storyboard idea expansion service", () => {
     const prompt = buildStoryboardIdeaExpansionPrompt({
       roughIdea: "เด็กสองคนแบ่งอาหารกันกิน",
       language: "th",
+      storyType: "dialogue",
+      totalShots: 9,
       skill,
     });
 
-    expect(prompt).toContain("exactly these five keys");
+    expect(prompt).toContain("exactly these six keys");
     expect(prompt).toContain("scene_detail");
     expect(prompt).toContain("custom_activity");
     expect(prompt).toContain("custom_notes");
+    expect(prompt).toContain("dialogueLines");
+    expect(prompt).toContain("approximately 9 shots");
     expect(prompt).toContain("เด็กสองคนแบ่งอาหารกันกิน");
   });
 
@@ -54,7 +61,7 @@ describe("Storyboard idea expansion service", () => {
         sceneDetail: "Warm dining room",
         customActivity: "Share food",
         customNotes: "Photorealistic",
-      }),
+      })
     ).not.toThrow();
     expect(() =>
       validateStoryboardSkillExpansionFields({
@@ -63,7 +70,7 @@ describe("Storyboard idea expansion service", () => {
         sceneDetail: "Warm dining room",
         customActivity: "",
         customNotes: "Photorealistic",
-      }),
+      })
     ).toThrow();
   });
 
@@ -74,6 +81,8 @@ describe("Storyboard idea expansion service", () => {
       idempotencyKey: "storyboard-idea-test-1",
       roughIdea: "เด็กสองคนแบ่งอาหารกันกิน",
       language: "th",
+      storyType: "dialogue",
+      totalShots: 9,
       selectedSkillId: "cute_child_image_generator",
     });
 
@@ -82,8 +91,62 @@ describe("Storyboard idea expansion service", () => {
     expect(call.runtimeOptions).toBeUndefined();
     expect(call.billingMetadata.skillSlug).toBeUndefined();
     expect(call.billingMetadata.selectedStoryboardSkillId).toBe(
-      "cute_child_image_generator",
+      "cute_child_image_generator"
     );
     expect(call.billingMetadata.idempotencyKey).toBe("storyboard-idea-test-1");
+  });
+
+  it("returns structured dialogue when the selected story type includes speech", async () => {
+    const result = await expandStoryboardIdea({
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "storyboard-idea-dialogue-1",
+      roughIdea: "เด็กสองคนแบ่งอาหารกันกิน",
+      language: "th",
+      storyType: "dialogue",
+      totalShots: 9,
+      selectedSkillId: "cute_child_image_generator",
+    });
+
+    expect(result.dialogueLines).toEqual(completeExpansion.dialogueLines);
+  });
+
+  it("passes an explicitly selected LLM model to the structured call", async () => {
+    await expandStoryboardIdea({
+      userId: 7,
+      tenantId: "tenant-1",
+      idempotencyKey: "storyboard-idea-model-1",
+      roughIdea: "เด็กสองคนแบ่งอาหารกันกิน",
+      language: "th",
+      storyType: "mime",
+      totalShots: 9,
+      selectedSkillId: "cute_child_image_generator",
+      llmModelId: "openai/gpt-4o-mini",
+    });
+
+    expect(mocks.callLLMStructured).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "openai/gpt-4o-mini" })
+    );
+  });
+
+  it("rejects a dialogue expansion that has no usable dialogue lines", async () => {
+    mocks.callLLMStructured.mockResolvedValueOnce({
+      data: { ...completeExpansion, dialogueLines: [] },
+      creditsUsed: 1,
+      modelId: "test-model",
+    });
+
+    await expect(
+      expandStoryboardIdea({
+        userId: 7,
+        tenantId: "tenant-1",
+        idempotencyKey: "storyboard-idea-dialogue-2",
+        roughIdea: "เด็กสองคนแบ่งอาหารกันกิน",
+        language: "th",
+        storyType: "dialogue",
+        totalShots: 9,
+        selectedSkillId: "cute_child_image_generator",
+      })
+    ).rejects.toThrow("must include dialogue lines");
   });
 });

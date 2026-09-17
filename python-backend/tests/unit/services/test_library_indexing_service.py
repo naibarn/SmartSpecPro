@@ -591,7 +591,17 @@ class TestLibraryIndexingService:
         assert result["failure_classification"] == "permanent"
 
     @pytest.mark.asyncio
-    async def test_delete_payload_executes_and_is_idempotent(self, indexing_db):
+    async def test_delete_payload_executes_and_is_idempotent(self, indexing_db, monkeypatch):
+        async def resolve_active_provider(_db, *, tenant_id):
+            assert tenant_id == "tenant-309"
+            return "chroma", {}
+
+        monkeypatch.setattr(
+            library_indexing_service,
+            "resolve_library_vector_provider_from_db",
+            resolve_active_provider,
+        )
+
         item = await _create_library_item(
             indexing_db,
             tenant_id="tenant-309",
@@ -764,8 +774,182 @@ def test_payload_parser_supports_v2_and_legacy_contracts():
         )
 
 
-def test_provider_resolution_falls_back_to_chroma(monkeypatch):
+def test_provider_resolution_falls_back_to_pgvector(monkeypatch):
     monkeypatch.delenv("LIBRARY_VECTOR_PROVIDER", raising=False)
     monkeypatch.delenv("VECTOR_DB_PROVIDER", raising=False)
     provider, _config = resolve_library_vector_provider()
-    assert provider == "chroma"
+    assert provider == "pgvector"
+
+
+def test_unknown_provider_does_not_fall_back_to_chroma():
+    with pytest.raises(ValueError, match="unsupported_vector_provider:unknown"):
+        library_indexing_service.get_vector_upsert_fn("unknown")
+
+
+def test_workers_ai_embedding_does_not_reuse_vectorize_token(monkeypatch):
+    captured = {}
+
+    def fake_workers_ai_embedding_service(**kwargs):
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(
+        library_indexing_service,
+        "get_cloudflare_workers_ai_embedding_service",
+        fake_workers_ai_embedding_service,
+    )
+
+    library_indexing_service.resolve_library_embedding_service(
+        provider="cloudflare_vectorize",
+        config={
+            "vectorizeAccountId": "account-1",
+            "vectorizeApiToken": "vectorize-only-token",
+            "cloudflareAiApiKey": "workers-ai-token",
+        },
+    )
+
+    assert captured == {
+        "account_id": "account-1",
+        "api_token": "workers-ai-token",
+    }
+
+
+@pytest.mark.asyncio
+async def test_db_provider_resolution_reads_saved_credentials_without_activating_prepared_target(monkeypatch):
+    class Result:
+        def mappings(self):
+            return self
+
+        def first(self):
+            return {"current_read_provider": "pgvector"}
+
+    class FakeDb:
+        async def execute(self, *_args, **_kwargs):
+            return Result()
+
+    async def fake_settings(_category, _db):
+        return {
+            "provider": "cloudflare_vectorize",
+            "preparedProvider": "cloudflare_vectorize",
+            "vectorizeAccountId": "account-from-settings",
+            "vectorizeApiToken": "token-from-settings",
+            "vectorizeIndexName": "smartaihub-library",
+        }
+
+    monkeypatch.setenv("LIBRARY_VECTOR_PROVIDER", "cloudflare_vectorize")
+    monkeypatch.setattr(library_indexing_service, "get_category_settings", fake_settings)
+
+    provider, config = await library_indexing_service.resolve_library_vector_provider_from_db(
+        FakeDb(),
+        tenant_id="tenant-194",
+    )
+
+    assert provider == "pgvector"
+    assert config["vectorizeAccountId"] == "account-from-settings"
+    assert config["vectorizeApiToken"] == "token-from-settings"
+    assert config["cloudflareAiApiKey"] == "token-from-settings"
+    assert config["vectorizeIndexName"] == "smartaihub-library"
+
+
+@pytest.mark.asyncio
+async def test_db_provider_resolution_ignores_legacy_vectorize_state_until_cutover(monkeypatch):
+    class Result:
+        def mappings(self):
+            return self
+
+        def first(self):
+            return {
+                "current_read_provider": "cloudflare_vectorize",
+                "status": "idle",
+            }
+
+    class FakeDb:
+        async def execute(self, *_args, **_kwargs):
+            return Result()
+
+    async def fake_settings(_category, _db):
+        return {"provider": "cloudflare_vectorize"}
+
+    monkeypatch.setattr(library_indexing_service, "get_category_settings", fake_settings)
+
+    provider, _config = await library_indexing_service.resolve_library_vector_provider_from_db(
+        FakeDb(),
+        tenant_id="tenant-legacy-state",
+    )
+
+    assert provider == "pgvector"
+
+
+@pytest.mark.asyncio
+async def test_db_provider_resolution_exposes_target_mirror_state_per_tenant(monkeypatch):
+    class Result:
+        def mappings(self):
+            return self
+
+        def first(self):
+            return {
+                "current_read_provider": "pgvector",
+                "target_provider": "cloudflare_vectorize",
+                "mirror_writes": True,
+                "status": "active",
+            }
+
+    class FakeDb:
+        async def execute(self, *_args, **_kwargs):
+            return Result()
+
+    async def fake_settings(_category, _db):
+        return {
+            "vectorizeAccountId": "account-1",
+            "vectorizeApiToken": "token-1",
+            "cloudflareAiApiKey": "workers-ai-1",
+            "vectorizeKnowledgeIndexName": "smartaihub-knowledge-v1",
+        }
+
+    monkeypatch.setattr(library_indexing_service, "get_category_settings", fake_settings)
+
+    provider, config = await library_indexing_service.resolve_library_vector_provider_from_db(
+        FakeDb(),
+        tenant_id="tenant-mirror",
+    )
+
+    assert provider == "pgvector"
+    assert config["targetProvider"] == "cloudflare_vectorize"
+    assert config["mirrorWrites"] == "true"
+
+
+@pytest.mark.asyncio
+async def test_db_provider_resolution_prioritizes_global_active_cutover_over_tenant_idle_row(monkeypatch):
+    executed = {}
+
+    class Result:
+        def mappings(self):
+            return self
+
+        def first(self):
+            return {
+                "current_read_provider": "pgvector",
+                "target_provider": "cloudflare_vectorize",
+                "mirror_writes": True,
+                "status": "active",
+            }
+
+    class FakeDb:
+        async def execute(self, statement, *_args, **_kwargs):
+            executed["statement"] = str(statement)
+            return Result()
+
+    async def fake_settings(_category, _db):
+        return {"vectorizeApiToken": "token-1"}
+
+    monkeypatch.setattr(library_indexing_service, "get_category_settings", fake_settings)
+
+    provider, config = await library_indexing_service.resolve_library_vector_provider_from_db(
+        FakeDb(),
+        tenant_id="tenant-with-idle-row",
+    )
+
+    assert provider == "pgvector"
+    assert config["targetProvider"] == "cloudflare_vectorize"
+    assert config["mirrorWrites"] == "true"
+    assert "status IN ('active', 'cutover_complete')" in executed["statement"]

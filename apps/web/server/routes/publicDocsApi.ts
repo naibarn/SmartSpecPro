@@ -205,7 +205,7 @@ const mcpGuideDescription = [
   "",
   "`tools/list` is principal-scoped. The actual list depends on the authenticated tenant, user, device, OAuth scopes, feature flags, ACL, and runtime availability. Do not hard-code tool counts or assume that every registry tool is available to every connection.",
   "",
-  "Current tool families include SmartAIHub gateway/chat, knowledge/library/RAG, skills, agencies, media generation/history/download, presentations, video projects, Hermes, Remotion, jobs, workspace, drive, orchestration, browser automation, and Marketplace Intelligence. Use `tools/list` for the exact canonical `smartspec.*` names and schemas for the current principal.",
+  "Current tool families include SmartAIHub gateway/chat, knowledge/library/RAG, skills, media generation/history/download, presentations, video projects, Hermes, Remotion, jobs, workspace, drive, browser automation, and Marketplace Intelligence. Use `tools/list` for the exact canonical `smartspec.*` names and schemas for the current principal.",
   "",
   "`tasks`, `subscriptions`, resource subscriptions, and `tools/listChanged` are not generally enabled. MCP resources are documentation resources; user files in Library, R2, and Media History must be accessed through ACL-checked tools and short-lived download references.",
   "",
@@ -2092,6 +2092,20 @@ export function buildOpenApiSpec() {
 
 export function registerPublicDocsRoutes(app: Express): void {
   const spec = buildOpenApiSpec();
+  // Retired surfaces must not remain discoverable through the public contract,
+  // even if an older schema fragment is still present in source history.
+  for (const path of Object.keys(spec.paths ?? {})) {
+    if (
+      path === "/v1/workflows" ||
+      path.startsWith("/v1/workflows/") ||
+      path === "/v1/workpacks" ||
+      path.startsWith("/v1/workpacks/") ||
+      path === "/v1/agencies" ||
+      path.startsWith("/v1/agencies/")
+    ) {
+      delete spec.paths[path];
+    }
+  }
 
   // GET /v1/openapi.json — raw spec (unauthenticated)
   app.get("/v1/openapi.json", (_req, res) => {

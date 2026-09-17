@@ -36,7 +36,7 @@ describe("Feature 192 startup timer policy", () => {
     const webRoot = join(import.meta.dirname, "../../..");
     for (const entry of feature192TimerInventorySummary().filter(item => item.hardCutoverAction === "skip")) {
       const source = readFileSync(join(webRoot, entry.source), "utf8");
-      expect(source, entry.initializer).toMatch(/FEATURE_186_HARD_CUTOVER|shouldRunFeature192InProcessTimer|isCloudflareHardCutoverEnabled/);
+      expect(source, entry.initializer).toMatch(/FEATURE_186_HARD_CUTOVER|shouldRunFeature192InProcessTimer|isCloudflareHardCutoverEnabled|isFeature186HardCutoverEnabled/);
     }
   });
 });

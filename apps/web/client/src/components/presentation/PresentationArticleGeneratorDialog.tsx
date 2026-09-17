@@ -1,6 +1,5 @@
 import { type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bot,
   Copy,
   Crop,
   Download,
@@ -27,7 +26,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
 import ImageSourcePicker from "@/components/media/ImageSourcePicker";
 import { ModelInputFieldsPanel } from "@/components/media/ModelInputFieldsPanel";
 import { ImageModelCombobox } from "@/components/presentation/ImageModelCombobox";
@@ -120,7 +118,7 @@ import {
   type EditorialPlannerTonePreset,
 } from "@shared/presentation/editorialLayoutPlanner";
 
-type ExecutionSource = "skill" | "agency";
+type ExecutionSource = "skill";
 export type ArticleInputMode = "generate" | "existing";
 type ArticleLanguage = "th" | "en";
 type SlideCanvasRatio = PresentationCanvasPresetId;
@@ -761,7 +759,7 @@ function isVideoPromptGenerationSkill(skill: SkillOption): boolean {
 }
 
 function supportsGeneratedSlideArtifacts(skill: SkillOption | null | undefined): boolean {
-  return String(skill?.executionMode ?? "").trim().toLowerCase() === "sandbox-command";
+  return false;
 }
 
 function requiresGeneratedSlideArtifact(format: SlideOutputFormat): boolean {
@@ -1246,8 +1244,6 @@ type PersistedArticleBuilderDraft = {
   article: string;
   executionSource: ExecutionSource;
   skillId: string;
-  agencyId: string;
-  agencyName: string;
   requiresWebSearch: boolean;
   requiresThinking: boolean;
   targetImageCount: number;
@@ -2658,14 +2654,11 @@ export function PresentationArticleGeneratorDialog({
   );
   const [topic, setTopic] = useState(initialTopic ?? "");
   const [article, setArticle] = useState(initialArticle ?? "");
-  const [executionSource, setExecutionSource] = useState<ExecutionSource>("skill");
+  const executionSource: ExecutionSource = "skill";
   const [skillId, setSkillId] = useState<string>("");
-  const [agencyId, setAgencyId] = useState<string>("");
-  const [agencyName, setAgencyName] = useState<string>("");
   const [requiresWebSearch, setRequiresWebSearch] = useState(false);
   const [requiresThinking, setRequiresThinking] = useState(false);
   const [targetImageCount, setTargetImageCount] = useState(8);
-  const [isAgencyModalOpen, setIsAgencyModalOpen] = useState(false);
   const [imageModel, setImageModel] = useState("");
   const [canvasRatio, setCanvasRatio] = useState<SlideCanvasRatio>(normalizeCanvasRatio(initialCanvasRatio));
   const [slideVisualMode, setSlideVisualMode] = useState<SlideVisualMode>(DEFAULT_SLIDE_VISUAL_MODE);
@@ -2807,14 +2800,6 @@ export function PresentationArticleGeneratorDialog({
   useEffect(() => {
     activeSlotVideoKeysRef.current = activeSlotVideoKeys;
   }, [activeSlotVideoKeys]);
-  const sandboxJobStatusQuery = trpc.sandbox.getJobStatus.useQuery(
-    { jobId: generatedSlideDraft?.artifactJobId ?? "" },
-    {
-      enabled: open && Boolean(generatedSlideDraft?.artifactJobId) && !generatedSlideDraft?.downloadUrl,
-      refetchInterval: 1500,
-    },
-  );
-
   const allSkillOptions = useMemo<SkillOption[]>(
     () => ((skillsQuery.data ?? []) as RawSkillOption[])
       .map((skill) => ({
@@ -4380,10 +4365,8 @@ export function PresentationArticleGeneratorDialog({
       setTopic(persistedDraft.topic);
       setArticle(persistedDraft.article);
       setArticleInputMode(persistedDraft.articleInputMode === "existing" ? "existing" : "generate");
-      setExecutionSource(persistedDraft.executionSource);
+      // Persisted Agency drafts are reopened as skill drafts.
       setSkillId(persistedDraft.skillId);
-      setAgencyId(persistedDraft.agencyId);
-      setAgencyName(persistedDraft.agencyName);
       setRequiresWebSearch(Boolean(persistedDraft.requiresWebSearch));
       setRequiresThinking(Boolean(persistedDraft.requiresThinking));
       setTargetImageCount(clampImageCount(persistedDraft.targetImageCount));
@@ -4510,10 +4493,7 @@ export function PresentationArticleGeneratorDialog({
     setTopic(initialTopic ?? "");
     setArticle(initialArticle ?? "");
     setArticleInputMode(initialArticle?.trim() ? "existing" : "generate");
-    setExecutionSource("skill");
     setSkillId("");
-    setAgencyId("");
-    setAgencyName("");
     setRequiresWebSearch(false);
     setRequiresThinking(false);
     setTargetImageCount(8);
@@ -4598,8 +4578,6 @@ export function PresentationArticleGeneratorDialog({
       article,
       executionSource,
       skillId,
-      agencyId,
-      agencyName,
       requiresWebSearch,
       requiresThinking,
       targetImageCount: clampImageCount(targetImageCount),
@@ -4654,8 +4632,6 @@ export function PresentationArticleGeneratorDialog({
   }, [
     articleInputMode,
     advancedMediaOptionsEnabled,
-    agencyId,
-    agencyName,
     article,
     articleStoryboardAudioStrategy,
     articleStoryboardCharacterReferenceUrlsByPageId,
@@ -4714,11 +4690,11 @@ export function PresentationArticleGeneratorDialog({
   ]);
 
   useEffect(() => {
-    if (!open || executionSource !== "skill" || skillId || articleSkillOptions.length === 0) {
+    if (!open || skillId || articleSkillOptions.length === 0) {
       return;
     }
     setSkillId(articleSkillOptions[0]!.id);
-  }, [articleSkillOptions, executionSource, open, skillId]);
+  }, [articleSkillOptions, open, skillId]);
 
   useEffect(() => {
     if (!open || slideSkillId || slideSkillOptions.length === 0) {
@@ -4772,62 +4748,6 @@ export function PresentationArticleGeneratorDialog({
       setGuidedFooterAction(null);
     }
   }, [generatedSlideDraft, hasImportableSlides, slideGenerationBlockedHint]);
-
-  useEffect(() => {
-    const artifacts = (sandboxJobStatusQuery.data?.artifacts ?? [])
-      .map(normalizeSlideArtifact)
-      .filter((artifact): artifact is SlideArtifact => Boolean(artifact));
-    if (!generatedSlideDraft?.artifactJobId || artifacts.length === 0) {
-      return;
-    }
-    const nextDownloadUrl = pickPreferredSlideArtifact(artifacts, slideOutputFormat)?.url ?? null;
-    setGeneratedSlideDraft((previous) => {
-      if (!previous || previous.artifactJobId !== generatedSlideDraft.artifactJobId) {
-        return previous;
-      }
-      return {
-        ...previous,
-        artifacts,
-        downloadUrl: previous.downloadUrl ?? nextDownloadUrl,
-      };
-    });
-  }, [generatedSlideDraft?.artifactJobId, sandboxJobStatusQuery.data?.artifacts, slideOutputFormat]);
-
-  useEffect(() => {
-    const activeArtifactJobId = generatedSlideDraft?.artifactJobId?.trim();
-    if (!activeArtifactJobId) {
-      return;
-    }
-    const status = String(sandboxJobStatusQuery.data?.status ?? "").trim().toLowerCase();
-    const queriedArtifacts = Array.isArray(sandboxJobStatusQuery.data?.artifacts)
-      ? sandboxJobStatusQuery.data.artifacts
-      : [];
-    const shouldClearPendingArtifactState = Boolean(sandboxJobStatusQuery.error)
-      || status === "failed"
-      || status === "error"
-      || status === "cancelled"
-      || (status === "completed" && queriedArtifacts.length === 0 && !generatedSlideDraft?.downloadUrl);
-    if (!shouldClearPendingArtifactState) {
-      return;
-    }
-    setGeneratedSlideDraft((previous) => {
-      if (!previous || previous.artifactJobId !== activeArtifactJobId) {
-        return previous;
-      }
-      return {
-        ...previous,
-        artifactJobId: null,
-        artifacts: previous.artifacts ?? [],
-        downloadUrl: previous.downloadUrl ?? null,
-      };
-    });
-  }, [
-    generatedSlideDraft?.artifactJobId,
-    generatedSlideDraft?.downloadUrl,
-    sandboxJobStatusQuery.data?.artifacts,
-    sandboxJobStatusQuery.data?.status,
-    sandboxJobStatusQuery.error,
-  ]);
 
   const applyNextImageModel = (nextModelId: string) => {
     setImageModel(nextModelId);
@@ -5673,19 +5593,13 @@ export function PresentationArticleGeneratorDialog({
       toast.error(t("dialog.articleBuilder.skillRequired"));
       return;
     }
-    if (executionSource === "agency" && !agencyId) {
-      toast.error(t("dialog.articleBuilder.agencyRequired"));
-      return;
-    }
-
     try {
       const result = await generateArticleMutation.mutateAsync({
         deckId,
         topic: trimmedTopic,
         preferredLanguage: detectedLanguage,
-        executionSource,
-        skillId: executionSource === "skill" ? skillId : null,
-        agencyId: executionSource === "agency" ? agencyId : null,
+        executionSource: "skill",
+        skillId,
         requiresWebSearch,
         requiresThinking,
         targetImageCount: clampImageCount(targetImageCount),
@@ -7244,30 +7158,19 @@ export function PresentationArticleGeneratorDialog({
                   <>
                   <div className="space-y-2">
                     <Label>{t("dialog.articleBuilder.sourceLabel")}</Label>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div>
                       <Button
                         type="button"
-                        variant={executionSource === "skill" ? "default" : "outline"}
+                        variant="default"
                         className="justify-start gap-2"
-                        onClick={() => setExecutionSource("skill")}
                       >
                         <Sparkles className="h-4 w-4" />
                         {t("dialog.articleBuilder.sourceSkill")}
                       </Button>
-                      <Button
-                        type="button"
-                        variant={executionSource === "agency" ? "default" : "outline"}
-                        className="justify-start gap-2"
-                        onClick={() => setExecutionSource("agency")}
-                      >
-                        <Bot className="h-4 w-4" />
-                        {t("dialog.articleBuilder.sourceAgency")}
-                      </Button>
                     </div>
                   </div>
 
-                  {executionSource === "skill" ? (
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                       <Label>{t("dialog.articleBuilder.skillLabel")}</Label>
                       <Select
                         value={skillId}
@@ -7289,24 +7192,6 @@ export function PresentationArticleGeneratorDialog({
                         <Badge variant="outline">{selectedArticleSkill.category}</Badge>
                       ) : null}
                     </div>
-                  ) : (
-                    <div className="space-y-2 rounded-xl border border-cyan-200 bg-cyan-50/70 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div>
-                          <div className="text-sm font-medium">{t("dialog.articleBuilder.agencyLabel")}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {agencyId ? (agencyName || agencyId) : t("dialog.articleBuilder.agencyPlaceholder")}
-                          </div>
-                        </div>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setIsAgencyModalOpen(true)}>
-                          <Bot className="mr-2 h-4 w-4" />
-                          {agencyId
-                            ? t("dialog.articleBuilder.changeAgency")
-                            : t("dialog.articleBuilder.pickAgency")}
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                   </>
                   ) : null}
 
@@ -10770,17 +10655,6 @@ export function PresentationArticleGeneratorDialog({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AgencyPickerModal
-        open={isAgencyModalOpen}
-        onClose={() => setIsAgencyModalOpen(false)}
-        currentUserId={user?.id ?? null}
-        requireRunnable
-        onSelect={(agency) => {
-          setAgencyId(agency.id);
-          setAgencyName(agency.name);
-          setIsAgencyModalOpen(false);
-        }}
-      />
     </>
   );
 }

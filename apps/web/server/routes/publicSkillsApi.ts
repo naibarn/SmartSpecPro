@@ -9,15 +9,12 @@ import {
   getAvailableSkillsAsync,
   getSkillByIdAsync,
 } from "../services/skillRegistry";
-import { executeSkill } from "../services/skillExecutor";
+import { startPythonSkillTask } from "../services/skillExecutor";
 import { detectSkill } from "../services/skillDetector";
 import {
   hasEnoughCredits,
-  getCreditBalance,
 } from "../services/creditService";
 import { normalizeSkillRevenuePricing } from "../services/skillRevenueBilling";
-import { incrementDailyCredits } from "../services/apiKeyRateLimiter";
-import { createInternalTokenFromAuth } from "../_core/tokens";
 import {
   assertDelegatedWorkerGrant,
   WorkerDelegationError,
@@ -251,8 +248,8 @@ export function createPublicSkillsRouter(): Router {
         const tenantId = (auth as any).tenantId as string;
 
         // Public API uses the same fixed price as every other skill entry point.
-        // The charge is committed only after execution succeeds; media/python
-        // paths settle internally and the same run id makes this idempotent.
+        // Execution is admitted to the canonical worker_jobs/outbox boundary;
+        // the provider call never runs in this HTTP request.
         const estimatedCost = normalizeSkillRevenuePricing(skill).totalCredits;
         const skillRunId = req.get("Idempotency-Key") || randomUUID();
         const sufficient = await hasEnoughCredits(userId, estimatedCost);
@@ -265,7 +262,7 @@ export function createPublicSkillsRouter(): Router {
           );
           return;
         }
-        const result = await runWithDelegatedWorkerExecution({
+        const queued = await runWithDelegatedWorkerExecution({
           auth,
           actionClass: "compute",
           estimatedCredits: estimatedCost,
@@ -280,53 +277,20 @@ export function createPublicSkillsRouter(): Router {
             extraParams: rest,
             runId: skillRunId,
           };
-          const execution = await executeSkill(
+          return startPythonSkillTask(
             skill,
             execParams as any,
             userId,
-            createInternalTokenFromAuth({ userId, tenantId }),
             tenantId,
           );
-          if (!execution.success) return execution;
-          incrementDailyCredits((auth as any).apiKeyId, execution.creditsUsed ?? estimatedCost).catch(() => {});
-          return execution;
         });
-
-        const creditsUsed = (result as any)?.success === false
-          ? 0
-          : (result as any)?.creditsUsed ?? estimatedCost;
-
-        // Get remaining balance
-        let remaining = 0;
-        try {
-          const bal = await getCreditBalance(userId);
-          remaining = bal?.credits ?? 0;
-        } catch {
-          // Non-fatal
-        }
-
-        res.setHeader("X-Credits-Used", String(creditsUsed));
-        res.setHeader("X-Credits-Remaining", String(remaining));
-
-        if (stream) {
-          res.setHeader("Content-Type", "text/event-stream");
-          res.setHeader("Cache-Control", "no-cache");
-          res.setHeader("Connection", "keep-alive");
-          res.setHeader("X-Accel-Buffering", "no");
-          const hb = setInterval(() => { if (!res.writableEnded) res.write(": heartbeat\n\n"); }, 15000);
-          req.on("close", () => clearInterval(hb));
-          res.write(
-            `data: ${JSON.stringify({ type: "result", data: result })}\n\n`,
-          );
-          clearInterval(hb);
-          res.write("data: [DONE]\n\n");
-          res.end();
-        } else {
-          res.json({
-            result,
-            credits_used: creditsUsed,
-          });
-        }
+        res.status(202).json({
+          status: "queued",
+          job_id: queued.taskId,
+          skill_id: skill.id,
+          poll: `/v1/jobs/${queued.taskId}`,
+          stream_requested: stream,
+        });
       } catch (err) {
         if (err instanceof WorkerDelegationError || err instanceof DelegatedWorkerPlatformError) {
           sendApiError(res, err.statusCode, err.code, err.message, err.type);

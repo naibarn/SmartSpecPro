@@ -57,6 +57,7 @@ with zipfile.ZipFile(zip_path) as archive:
     for marker in [
         "google_flow_drag_delivery",
         "grok_drag_delivery",
+        "meta_ai_drag_delivery",
         "grok_native_file_passthrough",
         "grok_main_world_file_delivery",
         "file_input_after_preview",
@@ -71,9 +72,14 @@ with zipfile.ZipFile(zip_path) as archive:
         fail("panel bundle missing same-origin image proxy fallback")
 
     host_permissions = set(manifest.get("host_permissions", []))
-    for grok_match in ["https://grok.com/*", "https://*.grok.com/*"]:
-        if grok_match not in host_permissions:
-            fail(f"manifest missing Grok host permission: {grok_match}")
+    for host_match, label in [
+        ("https://grok.com/*", "Grok"),
+        ("https://*.grok.com/*", "Grok"),
+        ("https://meta.ai/*", "Meta.ai"),
+        ("https://*.meta.ai/*", "Meta.ai"),
+    ]:
+        if host_match not in host_permissions:
+            fail(f"manifest missing {label} host permission: {host_match}")
 
     drag_bridge_matches = {
         match
@@ -81,13 +87,20 @@ with zipfile.ZipFile(zip_path) as archive:
         if "assets/dragBridge.js" in script.get("js", [])
         for match in script.get("matches", [])
     }
-    for grok_match in ["https://grok.com/*", "https://*.grok.com/*"]:
-        if grok_match not in drag_bridge_matches:
-            fail(f"drag bridge is not injected on Grok: {grok_match}")
+    for match, label in [
+        ("https://grok.com/*", "Grok"),
+        ("https://*.grok.com/*", "Grok"),
+        ("https://meta.ai/*", "Meta.ai"),
+        ("https://*.meta.ai/*", "Meta.ai"),
+    ]:
+        if match not in drag_bridge_matches:
+            fail(f"drag bridge is not injected on {label}: {match}")
 
     service_worker_js = archive.read("assets/serviceWorker.js").decode("utf-8", errors="ignore")
     if "grok.com" not in service_worker_js:
         fail("service worker does not activate the drag bridge on Grok")
+    if "meta.ai" not in service_worker_js:
+        fail("service worker does not activate the drag bridge on Meta.ai")
     if "MAIN" not in service_worker_js or "SMARTAIHUB_DELIVER_GROK_MEDIA_TO_MAIN_WORLD" not in service_worker_js:
         fail("service worker missing Grok main-world file delivery")
     if "native_files_setter" not in service_worker_js:

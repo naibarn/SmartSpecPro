@@ -23,6 +23,7 @@ logger = structlog.get_logger(__name__)
 CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4/accounts"
 VECTORIZE_DIMENSIONS = 768
 VECTORIZE_MAX_ID_BYTES = 64
+VECTORIZE_MAX_NAMESPACE_BYTES = 64
 VECTORIZE_MAX_METADATA_BYTES = 10 * 1024
 VECTORIZE_MAX_FILTER_BYTES = 2048
 VECTORIZE_MAX_INDEX_NAME_BYTES = 64
@@ -58,6 +59,16 @@ def validate_vectorize_index_name(index_name: str) -> None:
         or re.fullmatch(r"[A-Za-z0-9_-]+", index_name) is None
     ):
         raise VectorizeContractError("VECTORIZE_INDEX_NAME_INVALID")
+
+
+def validate_vectorize_namespace(namespace: str) -> None:
+    if (
+        not isinstance(namespace, str)
+        or not namespace.strip()
+        or namespace != namespace.strip()
+        or _utf8_size(namespace) > VECTORIZE_MAX_NAMESPACE_BYTES
+    ):
+        raise VectorizeContractError("VECTORIZE_NAMESPACE_INVALID")
 
 
 def validate_vectorize_ids(ids: list[str]) -> None:
@@ -97,6 +108,8 @@ def validate_vectorize_vector(vector: dict[str, Any]) -> None:
     vector_id = vector.get("id")
     if not isinstance(vector_id, str) or not vector_id or _utf8_size(vector_id) > VECTORIZE_MAX_ID_BYTES:
         raise VectorizeContractError("VECTORIZE_ID_INVALID")
+    if "namespace" in vector:
+        validate_vectorize_namespace(vector["namespace"])
     values = vector.get("values")
     if not isinstance(values, (list, tuple)) or len(values) != VECTORIZE_DIMENSIONS:
         raise VectorizeContractError("VECTORIZE_VALUES_INVALID")
@@ -112,6 +125,11 @@ def validate_vectorize_vector(vector: dict[str, Any]) -> None:
         raise VectorizeContractError("VECTORIZE_METADATA_INVALID") from exc
     if _utf8_size(encoded) > VECTORIZE_MAX_METADATA_BYTES:
         raise VectorizeContractError("VECTORIZE_METADATA_INVALID")
+    namespace = vector.get("namespace")
+    if namespace is not None:
+        tenant_id = str(metadata.get("tenantId") or metadata.get("tenant_id") or "").strip()
+        if not tenant_id or namespace != f"tenant:{tenant_id}":
+            raise VectorizeContractError("VECTORIZE_NAMESPACE_INVALID")
 
 
 def validate_vectorize_vectors(vectors: list[dict[str, Any]]) -> None:
@@ -128,7 +146,17 @@ def validate_vectorize_vectors(vectors: list[dict[str, Any]]) -> None:
         raise VectorizeContractError("VECTORIZE_UPLOAD_TOO_LARGE")
 
 
-def validate_vectorize_query(vector: list[float], top_k: int, filter_metadata: dict[str, Any] | None) -> None:
+def validate_vectorize_query(
+    vector: list[float],
+    top_k: int,
+    filter_metadata: dict[str, Any] | None,
+    namespace: str | None = None,
+) -> None:
+    if namespace is not None:
+        validate_vectorize_namespace(namespace)
+        if filter_metadata and filter_metadata.get("tenantId") is not None:
+            if namespace != f"tenant:{str(filter_metadata['tenantId']).strip()}":
+                raise VectorizeContractError("VECTORIZE_NAMESPACE_INVALID")
     if not isinstance(vector, list) or len(vector) != VECTORIZE_DIMENSIONS:
         raise VectorizeContractError("VECTORIZE_QUERY_VECTOR_INVALID")
     if any(not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(float(value)) for value in vector):
@@ -305,16 +333,19 @@ class CloudflareVectorizeStore:
         vector: list[float],
         top_k: int = 10,
         filter_metadata: dict[str, Any] | None = None,
+        namespace: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Query for similar vectors.
 
         Returns list of matches with id, score, and metadata.
         """
-        validate_vectorize_query(vector, top_k, filter_metadata)
+        validate_vectorize_query(vector, top_k, filter_metadata, namespace)
         url = f"{self._base_url}/{self._config.index_name}/query"
         payload: dict[str, Any] = {"vector": vector, "topK": top_k}
         payload["returnMetadata"] = "all"
+        if namespace is not None:
+            payload["namespace"] = namespace
         if filter_metadata:
             payload["filter"] = filter_metadata
         result = await self._request_json("POST", url, json_payload=payload)
@@ -337,6 +368,7 @@ class CloudflareVectorizeStore:
         ids: list[str],
         expected_tenant_id: str | None = None,
         expected_item_id: int | None = None,
+        allow_missing: bool = False,
     ) -> list[dict[str, Any]]:
         """Fetch vectors by their IDs."""
         validate_vectorize_ids(ids)
@@ -351,9 +383,10 @@ class CloudflareVectorizeStore:
                 for vector in vectors
                 if isinstance(vector, dict)
             ]
-            if (
+            if len(set(returned_ids)) != len(returned_ids):
+                raise PermissionError("vector_tenant_scope_invalid")
+            if not allow_missing and (
                 len(returned_ids) != len(requested_ids)
-                or len(set(returned_ids)) != len(returned_ids)
                 or set(returned_ids) != requested_ids
             ):
                 raise PermissionError("vector_tenant_scope_invalid")

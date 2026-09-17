@@ -310,6 +310,8 @@ export type EnhancedStoryboardShot = {
   durationSeconds: number;
 };
 
+export type EnhancedCharacterDescriptionOverrides = Record<string, string>;
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -749,6 +751,24 @@ export function getEnhancedPromptSemanticValidationError(
   if (/\bon\s+viewer-(?:left|right|center(?:-left|-right)?)\s+as\s+they\b/i.test(motionSection)) {
     return "motion timeline couples a canonical speaker anchor to an untrusted action";
   }
+  const rawCharacterDescriptionOverrides = input.shot.characterDescriptionOverrides;
+  const characterDescriptionOverrides =
+    rawCharacterDescriptionOverrides &&
+    typeof rawCharacterDescriptionOverrides === "object" &&
+    !Array.isArray(rawCharacterDescriptionOverrides)
+      ? (rawCharacterDescriptionOverrides as Record<string, unknown>)
+      : {};
+  const normalizedCharacterDescriptionOverrides = new Map(
+    Object.entries(characterDescriptionOverrides)
+      .filter(([, description]) => typeof description === "string")
+      .map(([key, description]) => [key.trim().toLowerCase(), description.trim()])
+      .filter(([, description]) => description.length > 0),
+  );
+  const customIdentityFor = (...identifiers: unknown[]): string | undefined =>
+    identifiers
+      .map(identifier => String(identifier ?? "").trim().toLowerCase())
+      .map(identifier => normalizedCharacterDescriptionOverrides.get(identifier))
+      .find((description): description is string => Boolean(description));
   for (const [index, rawLine] of input.dialogue.entries()) {
     if (!rawLine || typeof rawLine !== "object" || Array.isArray(rawLine)) {
       return `canonical dialogue line ${index + 1} must be an object`;
@@ -767,8 +787,17 @@ export function getEnhancedPromptSemanticValidationError(
     if (!prompt.includes(text)) {
       return `canonical dialogue line ${index + 1} is missing from the terminal prompt`;
     }
+    const customIdentity = customIdentityFor(
+      line.characterKey,
+      line.speakerId,
+      line.speaker,
+      line.speakerHint,
+    );
+    const speakerAnchor = customIdentity
+      ? `\\s+identified\\s+by\\s+${escapeRegExp(customIdentity)}`
+      : "(?:\\s+on\\s+viewer-[a-z-]+)?";
     const canonicalSpeech = new RegExp(
-      `${escapeRegExp(speaker)}(?:\\s+on\\s+viewer-[a-z-]+)?;\\s*${escapeRegExp(speaker)}\\s+says\\s+with[^\\n]{0,4096}${escapeRegExp(text)}`,
+      `${escapeRegExp(speaker)}${speakerAnchor};\\s*${escapeRegExp(speaker)}\\s+says\\s+with[^\\n]{0,4096}${escapeRegExp(text)}`,
       "i",
     );
     if (!canonicalSpeech.test(prompt)) {
@@ -877,6 +906,7 @@ export function buildEnhancedSkillInput(input: {
   continuity: Record<string, unknown>;
   mediaBundle: VideoShotMediaBundle;
   visionReferences?: Array<{ assetId: number; url: string; label: string }>;
+  characterDescriptionOverrides?: EnhancedCharacterDescriptionOverrides;
   targetVideoModel: EnhancedModelFacts;
   authoringModel: EnhancedModelFacts;
   researchMode?: "off" | "bounded";
@@ -889,7 +919,17 @@ export function buildEnhancedSkillInput(input: {
     input.videoPromptMaxChars,
   );
   return {
-    shot: { ...input.shot },
+    shot: {
+      ...input.shot,
+      ...(input.characterDescriptionOverrides &&
+      Object.keys(input.characterDescriptionOverrides).length > 0
+        ? {
+            characterDescriptionOverrides: {
+              ...input.characterDescriptionOverrides,
+            },
+          }
+        : {}),
+    },
     continuity: { ...input.continuity },
     dialogue,
     mediaBundle: input.mediaBundle,

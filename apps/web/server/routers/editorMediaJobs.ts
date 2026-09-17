@@ -18,6 +18,7 @@ import { refundReservation } from "../services/creditService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { isDesktopWorkerDispatchEnabled } from "../services/workerSchedulerService";
 import { mediaOperationClaimCapability } from "@smartspec/shared";
+import { enqueueCompositionScanJob, validateCompositionScanInput } from "../services/compositionScanJob";
 
 const envelopeSchema = z.record(z.string(), z.unknown());
 const idempotencyKeySchema = z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/);
@@ -244,5 +245,83 @@ export const editorMediaJobsRouter = router({
         if (billing?.reservationId) await refundReservation(billing.reservationId).catch(() => undefined);
         throw error;
       }
+    }),
+  submitCompositionScan: protectedProcedure
+    .input(z.object({
+      jobId: z.string().trim().min(8).max(256).optional(),
+      projectRevisionId: z.string().trim().min(1).max(160).optional(),
+      sourceFingerprint: z.string().trim().min(1).max(256),
+      markRevision: z.number().int().min(0),
+      policyFingerprint: z.string().trim().min(1).max(256),
+      capabilityProfileFingerprint: z.string().trim().min(1).max(256),
+      analysisMode: z.enum(["quick", "full_scan"]),
+      trimRange: z.object({ startMs: z.number().int().min(0), endMs: z.number().int().positive() }),
+      aspectProfile: z.string().trim().min(1).max(80),
+      durationMs: z.number().int().positive().max(86_400_000),
+      evidenceRef: z.string().trim().max(256).optional(),
+      compositionContractVersion: z.literal("feature-191.v1").optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const auth = requireEditorAuth(ctx);
+      const jobId = input.jobId || `editor-composition-${randomUUID().replaceAll("-", "")}`;
+      try {
+        validateCompositionScanInput({ ...input, jobId, tenantId: auth.tenantId, userId: auth.userId });
+        const createdJobId = await enqueueCompositionScanJob({ ...input, jobId, tenantId: auth.tenantId, userId: auth.userId });
+        return { created: true, job: { id: createdJobId, jobType: "video.composition_scan", status: "queued" as const } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Invalid composition scan request";
+        throw new TRPCError({ code: "BAD_REQUEST", message });
+      }
+    }),
+  getAnalysisStatus: protectedProcedure
+    .input(z.object({ jobId: z.string().trim().min(8).max(256) }))
+    .query(async ({ ctx, input }) => {
+      const auth = requireEditorAuth(ctx);
+      const db = getDb();
+      const rows = await db.select({
+        id: workerJobs.id,
+        jobType: workerJobs.jobType,
+        status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
+        outputJson: workerJobs.outputJson,
+        resultRef: workerJobs.resultRef,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        attempt: workerJobs.attempt,
+      }).from(workerJobs).where(and(eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.id, input.jobId))).limit(1);
+      const row = rows[0];
+      if (!row || row.jobType !== "video.composition_scan") throw new TRPCError({ code: "NOT_FOUND", message: "Composition scan job not found" });
+      const output = row.outputJson && typeof row.outputJson === "object" ? row.outputJson as Record<string, unknown> : null;
+      return {
+        jobId: row.id,
+        status: row.status,
+        statusReason: row.statusReason,
+        attempt: row.attempt,
+        evidence: output ? {
+          sourceFingerprint: typeof output.sourceFingerprint === "string" ? output.sourceFingerprint : null,
+          projectRevisionId: typeof output.projectRevisionId === "string" ? output.projectRevisionId : null,
+          evidenceRef: typeof output.evidenceRef === "string" ? output.evidenceRef : row.resultRef,
+          analysisMode: output.analysisMode === "quick" || output.analysisMode === "full_scan" ? output.analysisMode : null,
+          warnings: Array.isArray(output.warnings) ? output.warnings.slice(0, 10) : [],
+          status: output.status === "degraded" ? "degraded" : output ? "available" : "pending",
+        } : null,
+        error: row.errorCode || row.errorMessage ? { code: row.errorCode, message: row.errorMessage } : null,
+      };
+    }),
+  promoteCompositionScan: protectedProcedure
+    .input(z.object({ jobId: z.string().trim().min(8).max(256), expectedSourceFingerprint: z.string().trim().min(1).max(256), expectedRevisionId: z.string().trim().min(1).max(160) }))
+    .mutation(async ({ ctx, input }) => {
+      const auth = requireEditorAuth(ctx);
+      const db = getDb();
+      const rows = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType, status: workerJobs.status, outputJson: workerJobs.outputJson }).from(workerJobs).where(and(eq(workerJobs.tenantId, auth.tenantId), eq(workerJobs.id, input.jobId))).limit(1);
+      const row = rows[0];
+      if (!row || row.jobType !== "video.composition_scan") throw new TRPCError({ code: "NOT_FOUND", message: "Composition scan job not found" });
+      if (String(row.status) !== "completed" && String(row.status) !== "succeeded") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Composition scan is not complete" });
+      const output = row.outputJson && typeof row.outputJson === "object" ? row.outputJson as Record<string, unknown> : {};
+      if (output.sourceFingerprint !== input.expectedSourceFingerprint) throw new TRPCError({ code: "CONFLICT", message: "Composition evidence is stale for this source" });
+      if (typeof output.projectRevisionId === "string" && output.projectRevisionId !== input.expectedRevisionId) throw new TRPCError({ code: "CONFLICT", message: "Composition evidence is stale for this project revision" });
+      const evidenceRef = typeof output.evidenceRef === "string" && output.evidenceRef.trim() ? output.evidenceRef : null;
+      if (!evidenceRef) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Composition evidence reference is missing" });
+      return { promoted: true, jobId: row.id, revisionId: input.expectedRevisionId, evidenceRef, sourceFingerprint: input.expectedSourceFingerprint, warnings: Array.isArray(output.warnings) ? output.warnings.slice(0, 10) : [] };
     }),
 });

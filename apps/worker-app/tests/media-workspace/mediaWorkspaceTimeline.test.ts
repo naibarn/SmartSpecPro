@@ -5,7 +5,9 @@ import {
   canPlaceMediaOnTrack,
   chooseAudioTrackIndex,
   chooseAssetTargetTrack,
+  chooseRenderSourcePath,
   getAudioTrackLabel,
+  getPlaybackSilenceRanges,
   getNoiseThresholdDb,
   getPlayableTimeMs,
   getWaveformThresholdTopPercent,
@@ -29,6 +31,15 @@ describe("media workspace dead-air timeline", () => {
 
   it("advances over multiple dead-air ranges without changing playable duration", () => {
     expect(advancePlayableTimeMs(900, 2_200, cuts, 6_000)).toBe(5_102);
+  });
+
+  it("uses analyzed ranges for playback but preserves explicit manual cuts", () => {
+    const ranges = [
+      { startMs: 1_000, endMs: 2_000, isManual: false },
+      { startMs: 3_000, endMs: 3_500, isManual: true },
+    ];
+    expect(getPlaybackSilenceRanges(ranges, false)).toEqual([ranges[1]]);
+    expect(getPlaybackSilenceRanges(ranges, true)).toEqual(ranges);
   });
 
   it("keeps the visual threshold tied to the profile mapping", () => {
@@ -64,6 +75,12 @@ describe("media workspace dead-air timeline", () => {
     expect(withV1[0]?.trackId).toBe("track_v1");
   });
 
+  it("uses the exact timeline analysis source for render before falling back to the opened file", () => {
+    expect(chooseRenderSourcePath("D:/timeline-main.mp4", "D:/opened-project-source.mp4"))
+      .toBe("D:/timeline-main.mp4");
+    expect(chooseRenderSourcePath("", "D:/opened-source.mp4")).toBe("D:/opened-source.mp4");
+  });
+
   it("normalizes Media Bin payloads that use name and filePath", () => {
     expect(normalizeTimelineDropAsset({ name: "C3784.MP4", filePath: "D:/C3784.MP4", mediaType: "video", durationMs: 105600 }))
       .toEqual({ name: "C3784.MP4", path: "D:/C3784.MP4", mediaType: "video", durationMs: 105600 });
@@ -71,6 +88,13 @@ describe("media workspace dead-air timeline", () => {
       .toEqual({ name: "C3784.MP4", path: "D:/C3784.MP4", mediaType: "video", durationMs: undefined });
     expect(normalizeTimelineDropAsset({ title: "clip", sourceUrl: "https://example.test/clip.mp4" }))
       .toMatchObject({ name: "clip", path: "https://example.test/clip.mp4" });
+    expect(normalizeTimelineDropAsset({
+      name: "portrait.mp4",
+      filePath: "D:/portrait.mp4",
+      mediaType: "video",
+      width: 1080.4,
+      height: 1920.6,
+    })).toMatchObject({ width: 1080, height: 1921 });
   });
 
   it("keeps quiet or missing waveform data visibly rendered", () => {

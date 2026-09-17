@@ -1,31 +1,24 @@
-# Orchestra Plan — Feature 186/192 Spec-to-Code Convergence Review
+# Orchestra Plan — Enhanced virtual-screen continuity lock
 
-## Task analysis
+## Task Classification
+- Scope: small
+- Risk: low
+- Affected domains: Enhanced video prompt bridge and Python regression tests
+- Estimated file count: 3
+- Chosen route: direct-standard-light inline implementation
+- Bug route: true
+- Classification notes: The defect is isolated to the Enhanced bridge's deterministic terminal prompt and its focused regression coverage. No schema, provider, auth, or UI change is required.
 
-- Intent: explicit multi-round implementation review with immediate repair.
-- Scope: large; Feature 186 shared control-plane contracts plus Feature 192
-  Cloudflare-only local readiness, Python parity, timers, migration evidence,
-  and proof boundaries.
-- Risk: high; shared lifecycle, tenant scope, external adapters, migration
-  gates, and runtime retirement are in scope.
-- Route: direct-inline-waves in standard light mode. SocratiCode MCP was not
-  callable, so targeted shell discovery and existing verifiers are the fallback.
-- Required review depth: at least 10 rounds, followed by fresh gates after the
-  final repair.
+## Evidence Ledger
+- source: user screenshot and repository prompt-path inspection
+- observed failure: an Enhanced video prompt can create a new phone/device screen even when the approved start frame already contains the caller's virtual screen
+- root-cause evidence: `_build_visual_cast_lock` identifies a caller as `viewer-screen` but does not require reuse of the exact existing inset or forbid a new screen/window
+- authoritative input: `shot.visualCastPolicy.screenCallerCharacterRefs` plus the approved `START_FRAME_IMAGE`
+- verification boundary: focused Python bridge regression tests; provider output and browser playback remain unverified
 
-## Review waves
-
-1. Contract and ownership map: compare Feature 186 and Feature 192 invariants.
-2. Cloudflare-only runtime boundary and Google OAuth/Drive exception.
-3. Canonical job lifecycle, leases, fencing, retry, and outbox.
-4. Queue/Workflow/Container/Worker App adapter behavior.
-5. Timer/scheduler inventory and hard-cutover fail-closed paths.
-6. Python PostgreSQL-pull parity and provider polling/admission.
-7. Migration journal, status compatibility, call-site inventory, and drain.
-8. Security, tenant scope, callbacks, redaction, and idempotency.
-9. Local readiness versus target-account/production proof claims.
-10. Final acceptance matrix, impact closure, and regression verification.
-
-Each round records findings and fixes in `orchestra/review-findings.md` and
-the feature review artifacts. Safe in-scope findings are patched immediately;
-external target-account gates remain explicitly blocked rather than simulated.
+## Design
+- Add a deterministic Enhanced-only virtual-screen continuity block whenever server-authorized screen callers exist.
+- Bind each caller dialogue event to the same existing virtual screen visible in `START_FRAME_IMAGE`.
+- Explicitly forbid new phones, device displays, insets, floating windows, faces, physical callers, duplicates, and caller reassignment.
+- Include the same invariant in the compact prompt path so budget reduction cannot remove the protection.
+- Do not add schema fields or infer caller roles from dialogue text.

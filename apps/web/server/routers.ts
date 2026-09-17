@@ -102,8 +102,6 @@ import { mediaJobsRouter } from "./routers/mediaJobs";
 import { videoEditorProjectsRouter } from "./routers/videoEditorProjects";
 import { storyboardSkillFrameworkRouter } from "./routers/storyboardSkillFramework";
 import { telegramRouter } from "./routers/telegram";
-import { workflowRouter } from "./routers/workflow";
-import { workflowHealthRouter } from "./routers/workflow-health";
 import { approvalsRouter } from "./routers/approvals";
 import { libraryRouter } from "./routers/library";
 import { libraryOpsRouter } from "./routers/libraryOps";
@@ -125,13 +123,10 @@ import { funnelAnalyticsRouter } from "./routers/funnelAnalytics";
 import { infrastructureRouter } from "./routers/infrastructure";
 import { presentationRouter } from "./routers/presentation";
 import { presentationImportRouter } from "./routers/presentationImport";
-import { sandboxRouter } from "./routers/sandbox";
-import { agencyRouter } from "./routers/agency";
 import { personaRouter } from "./routers/persona";
 import { artifactRouter } from "./routers/artifact";
 import { widgetRouter } from "./routers/widget";
 import { webhookTriggersRouter } from "./routers/webhookTriggers";
-import { channelRouterRouter } from "./routers/channelRouter";
 import { tenantFeatureFlagsRouter } from "./routers/tenantFeatureFlags";
 import { agentRegistryRouter } from "./routers/agentRegistry";
 import { contentArtifactsRouter } from "./routers/contentArtifacts";
@@ -145,14 +140,12 @@ import { teamRouter } from "./routers/team";
 import { teamRoomRouter } from "./routers/teamRoom";
 import { teamRunRouter } from "./routers/teamRun";
 import { teamWorkItemRouter } from "./routers/teamWorkItem";
-import { workOsRouter } from "./routers/workOs";
 import { scopedMemoryRouter } from "./routers/scopedMemory";
 import { monitoringRouter } from "./routers/monitoring";
 import { mcpServersRouter } from "./routers/mcpServers";
 import { mcpConnectionsRouter } from "./routers/mcpConnections";
 import { hermesConnectionsRouter } from "./routers/hermesConnections";
 import { connectedDevicesRouter } from "./routers/connectedDevices";
-import { hybridOrchestrationRouter } from "./routers/hybridOrchestration";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
@@ -162,8 +155,6 @@ import { socialInboxRouter } from "./routers/socialInbox";
 import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
-import { workpackRouter } from "./routers/workpack";
-import { roleMonitorRouter } from "./routers/roleMonitor";
 import { workerJobsRouter } from "./routers/workerJobs";
 import { editorMediaJobsRouter } from "./routers/editorMediaJobs";
 import { videoProjectsRouter } from "./routers/videoProjects";
@@ -466,8 +457,8 @@ const galleryRouter = router({
   update: adminProcedure
     .input(
       z.object({
-      id: z.number(),
-      data: updateGalleryItemSchema,
+        id: z.number(),
+        data: updateGalleryItemSchema,
       })
     )
     .mutation(async ({ input }) => {
@@ -501,10 +492,10 @@ const galleryRouter = router({
   uploadFile: adminProcedure
     .input(
       z.object({
-      fileName: z.string(),
-      fileType: z.string(),
-      fileBase64: z.string(),
-      folder: z.enum(["images", "videos", "thumbnails", "websites"]),
+        fileName: z.string(),
+        fileType: z.string(),
+        fileBase64: z.string(),
+        folder: z.enum(["images", "videos", "thumbnails", "websites"]),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -531,9 +522,9 @@ const galleryRouter = router({
   importFromUrl: adminProcedure
     .input(
       z.object({
-      // Media History can already provide a durable root-relative storage URL.
-      url: z.string().trim().min(1),
-      folder: z.enum(["images", "videos", "thumbnails", "websites"]),
+        // Media History can already provide a durable root-relative storage URL.
+        url: z.string().trim().min(1),
+        folder: z.enum(["images", "videos", "thumbnails", "websites"]),
       })
     )
     .mutation(async ({ input }) => {
@@ -609,8 +600,8 @@ const galleryRouter = router({
     .input(
       z.array(
         z.object({
-      id: z.number(),
-      sortOrder: z.number(),
+          id: z.number(),
+          sortOrder: z.number(),
         })
       )
     )
@@ -1217,18 +1208,18 @@ const authRouter = router({
         const { decrypt } = await import("./services/crypto");
         const rows = await db
           .select({
-          key: systemSettings.key,
-          value: systemSettings.value,
-          isSensitive: systemSettings.isSensitive,
-        })
+            key: systemSettings.key,
+            value: systemSettings.value,
+            isSensitive: systemSettings.isSensitive,
+          })
           .from(systemSettings)
           .where(eq(systemSettings.category, "oauth"));
 
         for (const row of rows) {
           values[row.key] =
             row.isSensitive && row.value && row.key.endsWith("Secret")
-            ? decrypt(row.value)
-            : row.value;
+              ? decrypt(row.value)
+              : row.value;
         }
       }
     } catch {
@@ -1333,8 +1324,8 @@ const authRouter = router({
   login: loginProcedure
     .input(
       z.object({
-      email: authEmailSchema,
-      password: z.string().min(1),
+        email: authEmailSchema,
+        password: z.string().min(1),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1387,8 +1378,8 @@ const authRouter = router({
           code: "UNAUTHORIZED",
           message:
             user.disabledReason === "inactive"
-            ? "Account disabled due to free-credit inactivity"
-            : "Please verify your email before logging in",
+              ? "Account disabled due to free-credit inactivity"
+              : "Please verify your email before logging in",
         });
       }
 
@@ -1460,12 +1451,12 @@ const authRouter = router({
   register: registerProcedure
     .input(
       z.object({
-      name: z.string().min(1).max(255),
-      email: authEmailSchema,
-      password: strongPasswordSchema,
-      company: z.string().max(255).optional(),
-      // Kept for clients that still send this field; new accounts always use
-      // the server-managed monthly Free package below.
+        name: z.string().min(1).max(255),
+        email: authEmailSchema,
+        password: strongPasswordSchema,
+        company: z.string().max(255).optional(),
+        // Kept for clients that still send this field; new accounts always use
+        // the server-managed monthly Free package below.
         plan: z.enum(["free", "pro"]).default("free"),
         inviteCode: z
           .string()
@@ -1570,8 +1561,8 @@ const authRouter = router({
         await db
           .update(users)
           .set({
-          password: passwordHash,
-          name: input.name,
+            password: passwordHash,
+            name: input.name,
             loginMethod: "email",
           })
           .where(eq(users.id, existing.id));
@@ -1652,8 +1643,8 @@ const authRouter = router({
   verifyEmail: verifyEmailProcedure
     .input(
       z.object({
-      email: authEmailSchema,
-      code: z.string().length(6),
+        email: authEmailSchema,
+        code: z.string().length(6),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -1673,9 +1664,9 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, input.email),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.email, input.email),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -1745,7 +1736,7 @@ const authRouter = router({
   resendVerification: publicProcedure
     .input(
       z.object({
-      email: authEmailSchema,
+        email: authEmailSchema,
       })
     )
     .mutation(async ({ input }) => {
@@ -1769,8 +1760,8 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, input.email),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.email, input.email),
+            isNull(emailVerificationTokens.usedAt),
             gt(
               emailVerificationTokens.createdAt,
               new Date(Date.now() - 60 * 1000)
@@ -1803,9 +1794,9 @@ const authRouter = router({
   forgotPassword: resetPasswordProcedure
     .input(
       z.object({
-      email: authEmailSchema.optional(),
-      phone: z.string().optional(),
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
       })
     )
     .mutation(async ({ input }) => {
@@ -1870,9 +1861,9 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, tokenChannel),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, tokenChannel),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
           )
         )
@@ -1907,10 +1898,10 @@ const authRouter = router({
   verifyResetCode: verifyResetCodeProcedure
     .input(
       z.object({
-      email: authEmailSchema.optional(),
-      phone: z.string().optional(),
-      code: z.string().length(6),
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
       })
     )
     .mutation(async ({ input }) => {
@@ -1934,10 +1925,10 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, channelMap[input.channel]),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -1964,10 +1955,10 @@ const authRouter = router({
 
     const [user] = await db
       .select({
-      backupEmail: users.backupEmail,
-      backupEmailVerified: users.backupEmailVerified,
-      phone: users.phone,
-      phoneVerified: users.phoneVerified,
+        backupEmail: users.backupEmail,
+        backupEmailVerified: users.backupEmailVerified,
+        phone: users.phone,
+        phoneVerified: users.phoneVerified,
       })
       .from(users)
       .where(eq(users.id, ctx.user.id))
@@ -2021,9 +2012,9 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "backup_email"),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
           )
         )
@@ -2064,10 +2055,10 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "backup_email"),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "backup_email"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -2137,9 +2128,9 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "sms"),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.createdAt, new Date(Date.now() - 60_000))
           )
         )
@@ -2153,11 +2144,11 @@ const authRouter = router({
       const [token] = await db
         .insert(emailVerificationTokens)
         .values({
-        userId: ctx.user.id,
-        email: input.phone, // store phone in email field for SMS channel
-        code,
-        channel: "sms",
-        expiresAt,
+          userId: ctx.user.id,
+          email: input.phone, // store phone in email field for SMS channel
+          code,
+          channel: "sms",
+          expiresAt,
         })
         .returning({ id: emailVerificationTokens.id });
 
@@ -2189,10 +2180,10 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.userId, ctx.user.id),
-          eq(emailVerificationTokens.channel, "sms"),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.userId, ctx.user.id),
+            eq(emailVerificationTokens.channel, "sms"),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -2463,8 +2454,8 @@ const authRouter = router({
 
     const [user] = await db
       .select({
-      twoFactorEnabled: users.twoFactorEnabled,
-      recoveryCodesCount: users.recoveryCodes,
+        twoFactorEnabled: users.twoFactorEnabled,
+        recoveryCodesCount: users.recoveryCodes,
       })
       .from(users)
       .where(eq(users.id, ctx.user.id));
@@ -2483,8 +2474,8 @@ const authRouter = router({
   verify2FA: loginProcedure
     .input(
       z.object({
-      email: authEmailSchema,
-      code: z.string().min(1),
+        email: authEmailSchema,
+        code: z.string().min(1),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2565,10 +2556,10 @@ const authRouter = router({
   request2FAReset: publicProcedure
     .input(
       z.object({
-      email: authEmailSchema,
-      channel: z.enum(["backup_email", "sms"]),
-      backupEmail: authEmailSchema.optional(),
-      phone: z.string().optional(),
+        email: authEmailSchema,
+        channel: z.enum(["backup_email", "sms"]),
+        backupEmail: authEmailSchema.optional(),
+        phone: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -2646,9 +2637,9 @@ const authRouter = router({
   confirm2FAReset: publicProcedure
     .input(
       z.object({
-      email: authEmailSchema,
-      code: z.string().length(6),
-      channel: z.enum(["backup_email", "sms"]),
+        email: authEmailSchema,
+        code: z.string().length(6),
+        channel: z.enum(["backup_email", "sms"]),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2677,9 +2668,9 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, contactField),
-          eq(emailVerificationTokens.code, input.code),
-          eq(emailVerificationTokens.channel, channelKey),
+            eq(emailVerificationTokens.email, contactField),
+            eq(emailVerificationTokens.code, input.code),
+            eq(emailVerificationTokens.channel, channelKey),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -2734,11 +2725,11 @@ const authRouter = router({
   resetPassword: resetPasswordProcedure
     .input(
       z.object({
-      email: authEmailSchema.optional(),
-      phone: z.string().optional(),
-      code: z.string().length(6),
-      newPassword: strongPasswordSchema,
-      channel: z.enum(["email", "backup_email", "sms"]).default("email"),
+        email: authEmailSchema.optional(),
+        phone: z.string().optional(),
+        code: z.string().length(6),
+        newPassword: strongPasswordSchema,
+        channel: z.enum(["email", "backup_email", "sms"]).default("email"),
       })
     )
     .mutation(async ({ input }) => {
@@ -2764,10 +2755,10 @@ const authRouter = router({
         .from(emailVerificationTokens)
         .where(
           and(
-          eq(emailVerificationTokens.email, destination),
-          eq(emailVerificationTokens.channel, channelMap[input.channel]),
-          eq(emailVerificationTokens.code, input.code),
-          isNull(emailVerificationTokens.usedAt),
+            eq(emailVerificationTokens.email, destination),
+            eq(emailVerificationTokens.channel, channelMap[input.channel]),
+            eq(emailVerificationTokens.code, input.code),
+            isNull(emailVerificationTokens.usedAt),
             gt(emailVerificationTokens.expiresAt, new Date())
           )
         )
@@ -2817,9 +2808,9 @@ const authRouter = router({
   oauthExchangeSession: publicProcedure
     .input(
       z.object({
-      accessToken: z.string().min(1),
+        accessToken: z.string().min(1),
         provider: z.enum(["google", "github"]),
-      isNewUser: z.boolean().optional(),
+        isNewUser: z.boolean().optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
@@ -2964,7 +2955,7 @@ const authRouter = router({
               .from(systemSettings)
               .where(
                 and(
-                eq(systemSettings.category, "registration"),
+                  eq(systemSettings.category, "registration"),
                   eq(systemSettings.key, "auto_assign_tenant")
                 )
               )
@@ -3065,8 +3056,8 @@ const authRouter = router({
           await db
             .update(users)
             .set({
-            openId: sessionOpenId,
-            loginMethod: input.provider,
+              openId: sessionOpenId,
+              loginMethod: input.provider,
             })
             .where(eq(users.id, existing.id));
         }
@@ -3270,8 +3261,6 @@ type AppRouterShape = {
   billing: typeof billingRouter;
   adminBilling: typeof adminBillingRouter;
   localAi: typeof localAiRouter;
-  workpack: typeof workpackRouter;
-  roleMonitor: typeof roleMonitorRouter;
   workerJobs: typeof workerJobsRouter;
   tenantDataTransfer: typeof tenantDataTransferRouter;
   adminTenantOperations: typeof adminTenantOperationsRouter;
@@ -3295,7 +3284,6 @@ type AppRouterShape = {
   artifact: typeof artifactRouter;
   widget: typeof widgetRouter;
   webhookTriggers: typeof webhookTriggersRouter;
-  channelRouter: typeof channelRouterRouter;
   memory: typeof memoryRouter;
   media: typeof mediaRouter;
   library: typeof libraryRouter;
@@ -3331,11 +3319,7 @@ type AppRouterShape = {
   videoEditorProjects: typeof videoEditorProjectsRouter;
   storyboardSkillFramework: typeof storyboardSkillFrameworkRouter;
   telegram: typeof telegramRouter;
-  workflow: typeof workflowRouter;
-  workflowHealth: typeof workflowHealthRouter;
   approvals: typeof approvalsRouter;
-  sandbox: typeof sandboxRouter;
-  agency: typeof agencyRouter;
   ai: typeof aiRouter;
   gallery: typeof galleryRouter;
   search: typeof searchRouter;
@@ -3362,14 +3346,12 @@ type AppRouterShape = {
   teamRoom: typeof teamRoomRouter;
   teamRun: typeof teamRunRouter;
   teamWorkItem: typeof teamWorkItemRouter;
-  workOs: typeof workOsRouter;
   scopedMemory: typeof scopedMemoryRouter;
   monitoring: typeof monitoringRouter;
   mcpServers: typeof mcpServersRouter;
   mcpConnections: typeof mcpConnectionsRouter;
   hermesConnections: typeof hermesConnectionsRouter;
   connectedDevices: typeof connectedDevicesRouter;
-  hybridOrchestration: typeof hybridOrchestrationRouter;
   help: typeof helpRouter;
   databaseBackups: typeof databaseBackupsRouter;
 };
@@ -3380,8 +3362,6 @@ const appRouterInternal = router<AppRouterShape>({
   billing: billingRouter,
   adminBilling: adminBillingRouter,
   localAi: localAiRouter,
-  workpack: workpackRouter,
-  roleMonitor: roleMonitorRouter,
   workerJobs: workerJobsRouter,
   tenantDataTransfer: tenantDataTransferRouter,
   adminTenantOperations: adminTenantOperationsRouter,
@@ -3426,9 +3406,6 @@ const appRouterInternal = router<AppRouterShape>({
 
   // Inbound webhook trigger management
   webhookTriggers: webhookTriggersRouter,
-
-  // Channel routing rules (F10)
-  channelRouter: channelRouterRouter,
 
   // Memory system (entity memories, summaries, context)
   memory: memoryRouter,
@@ -3517,20 +3494,8 @@ const appRouterInternal = router<AppRouterShape>({
   // Telegram notifications
   telegram: telegramRouter,
 
-  // Workflow engine (LangGraph integration via Python backend)
-  workflow: workflowRouter,
-
-  // Workflow health monitoring
-  workflowHealth: workflowHealthRouter,
-
   // Approval Gate operations (proxies to Python backend)
   approvals: approvalsRouter,
-
-  // OpenSandbox integration
-  sandbox: sandboxRouter,
-
-  // Agency-Swarm multi-agent system
-  agency: agencyRouter,
 
   ai: aiRouter,
 
@@ -3561,14 +3526,12 @@ const appRouterInternal = router<AppRouterShape>({
   teamRoom: teamRoomRouter,
   teamRun: teamRunRouter,
   teamWorkItem: teamWorkItemRouter,
-  workOs: workOsRouter,
   scopedMemory: scopedMemoryRouter,
   monitoring: monitoringRouter,
   mcpServers: mcpServersRouter,
   mcpConnections: mcpConnectionsRouter,
   hermesConnections: hermesConnectionsRouter,
   connectedDevices: connectedDevicesRouter,
-  hybridOrchestration: hybridOrchestrationRouter,
   help: helpRouter,
   databaseBackups: databaseBackupsRouter,
 

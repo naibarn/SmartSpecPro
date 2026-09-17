@@ -135,27 +135,11 @@ async def on_tenant_disabled(redis_client, tenant_id: str):
             break
 
 
-def check_loop_detection(
-    agency_run_chain: list[str],
-    current_agency_id: str,
-    max_chain_length: int = MAX_CHAIN_LENGTH,
-) -> Optional[str]:
-    """Detect circular or excessively deep cross-agency MCP call chains."""
-    if current_agency_id in agency_run_chain:
-        return (
-            f"[MCP ERROR] Cross-boundary loop detected: "
-            f"{' → '.join(agency_run_chain)} → {current_agency_id}"
-        )
-    if len(agency_run_chain) >= max_chain_length:
-        return f"[MCP ERROR] Max agency call chain depth exceeded ({max_chain_length})"
-    return None
-
-
 def check_tool_chain_depth(
     current_depth: int,
     max_depth: int = 5,
 ) -> Optional[str]:
-    """Check tool chain depth to prevent infinite MCP→skill→agency chains."""
+    """Check tool chain depth to prevent unbounded nested tool calls."""
     if current_depth >= max_depth:
         return f"[MCP ERROR] Max tool chain depth exceeded ({max_depth})"
     return None

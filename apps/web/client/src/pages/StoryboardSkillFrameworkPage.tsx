@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  BookmarkPlus,
   Loader2,
   Plus,
   Sparkles,
@@ -16,8 +17,19 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
+import {
+  filterRecoverableStoryboardRuns,
+  isRecoverableStoryboardRun,
+} from "@/lib/storyboardRecovery";
 import {
   coerceStoryboardSkillInputValue,
   isNumericStoryboardSkillInput,
@@ -31,6 +43,7 @@ type StoryboardIdeaExpansion = {
   sceneDetail: string;
   customActivity: string;
   customNotes: string;
+  dialogueLines: Array<{ speaker: string; text: string; language: string }>;
 };
 type Model = {
   id: string;
@@ -38,20 +51,81 @@ type Model = {
   provider?: string;
   configJson?: unknown;
 };
+type LlmModel = {
+  id: string;
+  name: string;
+  provider?: string;
+  providerDisplayName?: string;
+  isDefault?: boolean;
+  isRecommended?: boolean;
+  sourceType?: string;
+};
 
 const STORYBOARD_IDEA_EXPANSION_LIMIT = 5_000;
 const STORYBOARD_RECOVERY_STORAGE_KEY = "storyboard-skill-framework:last-run";
 
-function readStoredStoryboardRunId(): string | null {
-  if (typeof window === "undefined") return null;
-  const value = window.localStorage.getItem(STORYBOARD_RECOVERY_STORAGE_KEY);
-  return value && /^[0-9a-f-]{36}$/i.test(value) ? value : null;
+function clearStoredStoryboardRunId(): void {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(STORYBOARD_RECOVERY_STORAGE_KEY);
+  }
 }
 
 function labelFor(key: string): string {
   return key
     .replaceAll("_", " ")
     .replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function skillInputErrorMessage(
+  error: unknown,
+  isThai: boolean
+): string | null {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  if (raw.includes("Dialogue story requires at least one dialogue line")) {
+    return isThai
+      ? "โหมดมีบทพูดต้องมีบทพูดอย่างน้อย 1 บรรทัด"
+      : "Dialogue mode requires at least one dialogue line.";
+  }
+  const match = raw.match(
+    /Skill input is (above maximum|below minimum|too long): ([a-zA-Z0-9_]+)/
+  );
+  if (!match) return null;
+  const field = labelFor(match[2]);
+  if (isThai) {
+    if (match[1] === "above maximum")
+      return `${field} สูงเกินค่าที่รองรับ กรุณาตรวจสอบช่วงอายุหรือค่าที่กรอก`;
+    if (match[1] === "below minimum")
+      return `${field} ต่ำกว่าค่าขั้นต่ำที่รองรับ`;
+    return `${field} ยาวเกินขนาดที่รองรับ`;
+  }
+  if (match[1] === "above maximum")
+    return `${field} is above the supported range. Check the value and try again.`;
+  if (match[1] === "below minimum")
+    return `${field} is below the supported minimum.`;
+  return `${field} is longer than the supported limit.`;
+}
+
+function ideaExpansionErrorMessage(
+  error: unknown,
+  isThai: boolean,
+  modelName?: string
+): string {
+  const raw = error instanceof Error ? error.message : String(error ?? "");
+  const modelLabel =
+    modelName?.trim() || (isThai ? "LLM ที่เลือก" : "the selected LLM");
+  if (/network_error|fetch failed|all providers failed/i.test(raw)) {
+    return isThai
+      ? `เชื่อมต่อ ${modelLabel} ไม่สำเร็จ กรุณาเลือก LLM อื่นที่มีป้าย “แนะนำ” แล้วลองใหม่`
+      : `Could not connect to ${modelLabel}. Choose another LLM marked “Recommended” and try again.`;
+  }
+  if (/no providers available|no structured llm model/i.test(raw)) {
+    return isThai
+      ? `${modelLabel} ยังไม่พร้อมใช้งาน กรุณาเลือก LLM อื่น`
+      : `${modelLabel} is not available. Choose another LLM and try again.`;
+  }
+  return isThai
+    ? "ขยายไอเดียไม่สำเร็จ กรุณาตรวจสอบ LLM ที่เลือกแล้วลองใหม่อีกครั้ง"
+    : "Could not expand the idea. Check the selected LLM and try again.";
 }
 
 function parseDialogueDraft(value: string, language: string) {
@@ -107,10 +181,21 @@ export default function StoryboardSkillFrameworkPage() {
     { type: "video" },
     { staleTime: 300_000 }
   );
+  const llmModelsQuery = trpc.llmProviders.availableModels.useQuery(undefined, {
+    staleTime: 300_000,
+  });
+  const [draftResult, setDraftResult] = useState<{
+    projectId: string;
+    runId: string;
+    confirmationFingerprint: string;
+  } | null>(null);
   const charactersQuery =
-    trpc.storyboardSkillFramework.getProjectCharacters.useQuery(undefined, {
-      staleTime: 60_000,
-    });
+    trpc.storyboardSkillFramework.getProjectCharacters.useQuery(
+      draftResult?.projectId ? { projectId: draftResult.projectId } : undefined,
+      {
+        staleTime: 60_000,
+      }
+    );
   const dramaCharactersQuery =
     trpc.storyboardSkillFramework.listDramaCharacterSources.useQuery(
       undefined,
@@ -134,6 +219,12 @@ export default function StoryboardSkillFrameworkPage() {
     trpc.storyboardSkillFramework.addCharacterLook.useMutation();
   const importDramaCharacter =
     trpc.storyboardSkillFramework.importDramaCharacter.useMutation();
+  const saveShotAsCharacter =
+    trpc.storyboardSkillFramework.saveShotAsCharacter.useMutation();
+  const bindProjectCharacter =
+    trpc.storyboardSkillFramework.bindProjectCharacter.useMutation();
+  const unbindProjectCharacter =
+    trpc.storyboardSkillFramework.unbindProjectCharacter.useMutation();
   const [tab, setTab] = useState<"story" | "characters">("story");
   const [title, setTitle] = useState("");
   const [idea, setIdea] = useState("");
@@ -149,16 +240,16 @@ export default function StoryboardSkillFrameworkPage() {
   const [imageModelId, setImageModelId] = useState("");
   const [imageQuality, setImageQuality] = useState("");
   const [videoModelId, setVideoModelId] = useState("");
+  const [llmModelId, setLlmModelId] = useState("");
   const [references, setReferences] = useState<string[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>([]);
-  const [draftResult, setDraftResult] = useState<{
-    projectId: string;
-    runId: string;
-    confirmationFingerprint: string;
-  } | null>(null);
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(
-    readStoredStoryboardRunId
-  );
+  const [selectedCharacterLookIds, setSelectedCharacterLookIds] = useState<
+    Record<string, string>
+  >({});
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [recoveryChoice, setRecoveryChoice] = useState<
+    "new" | "existing" | null
+  >(null);
   const [message, setMessage] = useState("");
   const [editingCharacterId, setEditingCharacterId] = useState<string | null>(
     null
@@ -166,12 +257,31 @@ export default function StoryboardSkillFrameworkPage() {
   const [characterNameDraft, setCharacterNameDraft] = useState("");
   const [lookNameDraft, setLookNameDraft] = useState("");
   const [showDramaPicker, setShowDramaPicker] = useState(false);
-  const [lightboxShotNumber, setLightboxShotNumber] = useState<number | null>(null);
+  const [lightboxShotNumber, setLightboxShotNumber] = useState<number | null>(
+    null
+  );
+  const [characterCapture, setCharacterCapture] = useState<{
+    runId: string;
+    shotNumber: number;
+    imageAssetId: number;
+    imageUrl: string;
+    characterId: string;
+    name: string;
+    role: "portrait" | "look";
+  } | null>(null);
   const [selectedDramaSeriesId, setSelectedDramaSeriesId] = useState("");
   const recoverableRunsQuery = trpc.storyboardSkillFramework.listRuns.useQuery(
     { limit: 20 },
-    { staleTime: 10_000 }
+    { staleTime: 10_000, refetchOnMount: "always", refetchOnWindowFocus: true }
   );
+  const recoverableRuns = useMemo(
+    () => filterRecoverableStoryboardRuns(recoverableRunsQuery.data ?? []),
+    [recoverableRunsQuery.data]
+  );
+  const recoveryDialogOpen =
+    recoveryChoice === null &&
+    recoverableRunsQuery.isFetched &&
+    recoverableRuns.length > 0;
   const activeRunId = draftResult?.runId ?? selectedRunId;
   const runQuery = trpc.storyboardSkillFramework.getRun.useQuery(
     { runId: activeRunId ?? "00000000-0000-0000-0000-000000000000" },
@@ -180,7 +290,8 @@ export default function StoryboardSkillFrameworkPage() {
       refetchInterval: query => {
         const status = query.state.data?.status;
         const controlPlaneStatus = query.state.data?.controlPlaneJob?.status;
-        const operatorReview = query.state.data?.controlPlaneJob?.operatorReviewRequired;
+        const operatorReview =
+          query.state.data?.controlPlaneJob?.operatorReviewRequired;
         if (
           status === "succeeded" ||
           status === "failed" ||
@@ -199,26 +310,88 @@ export default function StoryboardSkillFrameworkPage() {
       },
     }
   );
+  // React Query may retain the previous result while the active run key
+  // changes. Never let that stale result render as the new run's review.
+  const activeRun =
+    activeRunId && runQuery.data?.id === activeRunId ? runQuery.data : null;
+  const activeRunCanMutate = Boolean(
+    activeRun && isRecoverableStoryboardRun(activeRun)
+  );
   const completedImageShots = useMemo(
-    () => (runQuery.data?.shots ?? []).filter(
-      shot => shot.status === "succeeded" && Boolean(shot.imageUrl) && !shot.suppressedResult,
-    ),
-    [runQuery.data?.shots],
+    () =>
+      (activeRun?.shots ?? []).filter(
+        shot =>
+          shot.status === "succeeded" &&
+          Boolean(shot.imageUrl) &&
+          !shot.suppressedResult
+      ),
+    [activeRun?.shots]
   );
   const lightboxIndex = completedImageShots.findIndex(
-    shot => shot.shotNumber === lightboxShotNumber,
+    shot => shot.shotNumber === lightboxShotNumber
   );
-  const lightboxShot = lightboxIndex >= 0 ? completedImageShots[lightboxIndex] : null;
+  const lightboxShot =
+    lightboxIndex >= 0 ? completedImageShots[lightboxIndex] : null;
   const moveLightbox = (direction: -1 | 1) => {
     if (completedImageShots.length === 0) return;
-    const nextIndex = (lightboxIndex + direction + completedImageShots.length) % completedImageShots.length;
+    const nextIndex =
+      (lightboxIndex + direction + completedImageShots.length) %
+      completedImageShots.length;
     setLightboxShotNumber(completedImageShots[nextIndex]?.shotNumber ?? null);
+  };
+  const openCharacterCapture = (shot: {
+    shotNumber: number;
+    imageAssetId: number | null;
+    imageUrl: string | null;
+  }) => {
+    if (shot.imageAssetId == null || !shot.imageUrl || !activeRunId) return;
+    setCharacterCapture({
+      runId: activeRunId,
+      shotNumber: shot.shotNumber,
+      imageAssetId: shot.imageAssetId,
+      imageUrl: shot.imageUrl,
+      characterId: "__new__",
+      name: "",
+      role: "portrait",
+    });
   };
 
   useEffect(() => {
-    if (typeof window === "undefined" || !activeRunId) return;
-    window.localStorage.setItem(STORYBOARD_RECOVERY_STORAGE_KEY, activeRunId);
-  }, [activeRunId]);
+    if (!draftResult?.projectId || !charactersQuery.data) return;
+    setSelectedCharacters(
+      charactersQuery.data
+        .filter(character => character.isBoundToProject)
+        .map(character => character.id)
+    );
+    setSelectedCharacterLookIds(
+      Object.fromEntries(
+        charactersQuery.data
+          .filter(
+            character => character.isBoundToProject && character.boundLookId
+          )
+          .map(character => [character.id, character.boundLookId as string])
+      )
+    );
+  }, [draftResult?.projectId, charactersQuery.data]);
+
+  useEffect(() => {
+    if (!activeRunId || !activeRun) return;
+    if (["succeeded", "cancelled"].includes(activeRun.status)) {
+      clearStoredStoryboardRunId();
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(STORYBOARD_RECOVERY_STORAGE_KEY, activeRunId);
+    }
+  }, [activeRunId, activeRun]);
+
+  useEffect(() => {
+    if (!recoverableRunsQuery.isFetched || recoveryChoice !== null) return;
+    if (recoverableRuns.length === 0) {
+      clearStoredStoryboardRunId();
+      setRecoveryChoice("new");
+    }
+  }, [recoverableRunsQuery.isFetched, recoverableRuns.length, recoveryChoice]);
 
   const showMutationError = (error: unknown) => {
     setMessage(
@@ -238,6 +411,28 @@ export default function StoryboardSkillFrameworkPage() {
   const videoModels = ((
     videoModelsQuery.data as { models?: Model[] } | undefined
   )?.models ?? []) as Model[];
+  const llmModels = useMemo(() => {
+    const models = (
+      (llmModelsQuery.data as { models?: LlmModel[] } | undefined)?.models ?? []
+    ).filter(model => model.sourceType !== "worker_app");
+    return [...models].sort((left, right) => {
+      const recommendationOrder =
+        Number(right.isRecommended === true) -
+        Number(left.isRecommended === true);
+      if (recommendationOrder !== 0) return recommendationOrder;
+      const defaultOrder =
+        Number(right.isDefault === true) - Number(left.isDefault === true);
+      if (defaultOrder !== 0) return defaultOrder;
+      return left.name.localeCompare(right.name);
+    });
+  }, [llmModelsQuery.data]);
+  const recommendedLlmModels = llmModels.filter(
+    model => model.isRecommended === true
+  );
+  const otherLlmModels = llmModels.filter(
+    model => model.isRecommended !== true
+  );
+  const selectedLlmModel = llmModels.find(model => model.id === llmModelId);
   const selectedImageModel = imageModels.find(
     model => model.id === imageModelId
   );
@@ -251,8 +446,7 @@ export default function StoryboardSkillFrameworkPage() {
   >;
   const orderedFields =
     (selectedSkill?.uiSchema?.["ui:order"] as unknown as
-      | string[]
-      | undefined) ?? Object.keys(properties);
+      string[] | undefined) ?? Object.keys(properties);
   const dynamicFields = orderedFields.filter(
     key => properties[key] && !selectedSkill?.parentOwnedFields.includes(key)
   );
@@ -262,11 +456,32 @@ export default function StoryboardSkillFrameworkPage() {
       setSelectedSkillId(selectedSkill.skillId);
   }, [selectedSkill, selectedSkillId]);
   useEffect(() => {
-    if (!imageModelId && imageModels[0]) setImageModelId(imageModels[0].id);
-  }, [imageModelId, imageModels]);
+    if (!imageModelId && imageModels[0]) {
+      const configuredDefault = imageModelsQuery.data?.defaults?.image;
+      setImageModelId(
+        imageModels.find(model => model.id === configuredDefault)?.id ??
+          imageModels[0].id
+      );
+    }
+  }, [imageModelId, imageModels, imageModelsQuery.data?.defaults?.image]);
   useEffect(() => {
-    if (!videoModelId && videoModels[0]) setVideoModelId(videoModels[0].id);
-  }, [videoModelId, videoModels]);
+    if (!videoModelId && videoModels[0]) {
+      const configuredDefault = videoModelsQuery.data?.defaults?.video;
+      setVideoModelId(
+        videoModels.find(model => model.id === configuredDefault)?.id ??
+          videoModels[0].id
+      );
+    }
+  }, [videoModelId, videoModels, videoModelsQuery.data?.defaults?.video]);
+  useEffect(() => {
+    if (!llmModelId && llmModels.length > 0) {
+      setLlmModelId(
+        recommendedLlmModels[0]?.id ??
+          llmModels.find(model => model.isDefault === true)?.id ??
+          llmModels[0].id
+      );
+    }
+  }, [llmModelId, llmModels, recommendedLlmModels]);
   useEffect(() => {
     if (!selectedDramaSeriesId && dramaCharactersQuery.data?.[0])
       setSelectedDramaSeriesId(dramaCharactersQuery.data[0].seriesId);
@@ -298,11 +513,20 @@ export default function StoryboardSkillFrameworkPage() {
         fileType: file.type,
         fileBase64,
       });
-      setReferences(current => [
-        ...current,
-        `/api/storage/files/${encodeURIComponent(result.key)}`,
-      ].slice(0, 5));
+      setReferences(current =>
+        [
+          ...current,
+          `/api/storage/files/${encodeURIComponent(result.key)}`,
+        ].slice(0, 5)
+      );
     }
+  };
+  const getDraftDialogueLines = () => {
+    if (storyType === "mime") return [];
+    if (dialogueDraft.trim()) {
+      return parseDialogueDraft(dialogueDraft, i18n.language);
+    }
+    return expandedIdea?.dialogueLines ?? [];
   };
   const buildDraft = () => ({
     title:
@@ -322,11 +546,13 @@ export default function StoryboardSkillFrameworkPage() {
     videoModelSelection: { modelId: videoModelId },
     language: i18n.language,
     productContext: "",
-    dialogueLines:
-      storyType === "mime"
-        ? []
-        : parseDialogueDraft(dialogueDraft, i18n.language),
+    dialogueLines: getDraftDialogueLines(),
     characterIds: selectedCharacters,
+    characterLookIds: Object.fromEntries(
+      Object.entries(selectedCharacterLookIds).filter(([characterId]) =>
+        selectedCharacters.includes(characterId)
+      )
+    ),
     skillInputs: {
       ...skillInputs,
       character_reference_images: references.map(assetId => ({
@@ -336,8 +562,8 @@ export default function StoryboardSkillFrameworkPage() {
   });
   const handleCreateDraft = async () => {
     if (
-      runQuery.data &&
-      !["succeeded", "cancelled"].includes(runQuery.data.status)
+      activeRunCanMutate &&
+      !["succeeded", "cancelled"].includes(activeRun?.status ?? "")
     ) {
       setMessage(
         text(
@@ -356,23 +582,61 @@ export default function StoryboardSkillFrameworkPage() {
       );
       return;
     }
+    if (storyType !== "mime" && getDraftDialogueLines().length === 0) {
+      setMessage(
+        text(
+          "โหมดมีบทพูดต้องมีบทพูดอย่างน้อย 1 บรรทัด",
+          "Dialogue mode requires at least one dialogue line."
+        )
+      );
+      return;
+    }
+    const invalidNumericField = dynamicFields.find(key => {
+      const schema = properties[key];
+      const value = skillInputs[key];
+      if (typeof value !== "number" || !Number.isFinite(value)) return false;
+      return (
+        (typeof schema.minimum === "number" && value < schema.minimum) ||
+        (typeof schema.maximum === "number" && value > schema.maximum)
+      );
+    });
+    if (invalidNumericField) {
+      const schema = properties[invalidNumericField];
+      setMessage(
+        text(
+          `${labelFor(invalidNumericField)} ต้องอยู่ในช่วง ${schema.minimum ?? "ไม่จำกัด"}–${schema.maximum ?? "ไม่จำกัด"}`,
+          `${labelFor(invalidNumericField)} must be between ${schema.minimum ?? "unbounded"} and ${schema.maximum ?? "unbounded"}`
+        )
+      );
+      return;
+    }
     setMessage("");
-    const result = await createDraft.mutateAsync({
-      idempotencyKey: `ui-${crypto.randomUUID()}`,
-      draft: buildDraft(),
-    });
-    setDraftResult({
-      projectId: result.projectId,
-      runId: result.runId,
-      confirmationFingerprint: result.confirmationFingerprint,
-    });
-    setSelectedRunId(result.runId);
-    setMessage(
-      text(
-        "บันทึก draft แล้ว ตรวจสอบสรุปก่อนยืนยันสร้าง",
-        "Draft saved. Review the estimate before confirming."
-      )
-    );
+    try {
+      const result = await createDraft.mutateAsync({
+        idempotencyKey: `ui-${crypto.randomUUID()}`,
+        draft: buildDraft(),
+      });
+      setDraftResult({
+        projectId: result.projectId,
+        runId: result.runId,
+        confirmationFingerprint: result.confirmationFingerprint,
+      });
+      setSelectedRunId(result.runId);
+      setMessage(
+        text(
+          "บันทึก draft แล้ว ตรวจสอบสรุปก่อนยืนยันสร้าง",
+          "Draft saved. Review the estimate before confirming."
+        )
+      );
+    } catch (error) {
+      setMessage(
+        skillInputErrorMessage(error, isThai) ??
+          text(
+            "สร้าง draft ไม่สำเร็จ กรุณาตรวจสอบข้อมูลที่กรอกแล้วลองใหม่",
+            "Could not create the draft. Check the inputs and try again."
+          )
+      );
+    }
   };
   const handleExpandIdea = async () => {
     if (!selectedSkill) {
@@ -411,7 +675,10 @@ export default function StoryboardSkillFrameworkPage() {
         idempotencyKey: `storyboard-idea-${crypto.randomUUID()}`,
         roughIdea: sourceIdea,
         language: isThai ? "th" : "en",
+        storyType,
+        totalShots,
         selectedSkillId: selectedSkill.skillId,
+        ...(llmModelId ? { llmModelId } : {}),
       });
       setExpandedIdea({
         projectTitle: result.projectTitle,
@@ -419,19 +686,21 @@ export default function StoryboardSkillFrameworkPage() {
         sceneDetail: result.sceneDetail,
         customActivity: result.customActivity,
         customNotes: result.customNotes,
+        dialogueLines: result.dialogueLines,
       });
       setMessage(
         text(
-          "ขยายไอเดียแล้ว ตรวจสอบข้อมูลทั้ง 5 หัวข้อก่อนนำไปใช้",
-          "Idea expanded. Review all five sections before applying it"
+          storyType === "mime"
+            ? "ขยายไอเดียแล้ว ตรวจสอบข้อมูลทั้ง 5 หัวข้อก่อนนำไปใช้"
+            : "ขยายไอเดียแล้ว รวมบทพูดให้ตรวจสอบก่อนนำไปใช้",
+          storyType === "mime"
+            ? "Idea expanded. Review all five sections before applying it"
+            : "Idea expanded with dialogue. Review the script before applying it"
         )
       );
-    } catch {
+    } catch (error) {
       setMessage(
-        text(
-          "ขยายไอเดียไม่สำเร็จ กรุณาลองใหม่อีกครั้ง",
-          "Could not expand the idea. Please try again"
-        )
+        ideaExpansionErrorMessage(error, isThai, selectedLlmModel?.name)
       );
     }
   };
@@ -442,7 +711,9 @@ export default function StoryboardSkillFrameworkPage() {
         runId: draftResult.runId,
         confirmationFingerprint: draftResult.confirmationFingerprint,
       });
-      await utils.storyboardSkillFramework.getRun.invalidate({ runId: draftResult.runId });
+      await utils.storyboardSkillFramework.getRun.invalidate({
+        runId: draftResult.runId,
+      });
       setMessage(
         text(
           "เริ่มคิวสร้าง storyboard แล้ว รอ image worker ทำงานต่อ",
@@ -458,8 +729,15 @@ export default function StoryboardSkillFrameworkPage() {
     if (!activeRunId) return;
     try {
       await pauseRun.mutateAsync({ runId: activeRunId });
-      await utils.storyboardSkillFramework.getRun.invalidate({ runId: activeRunId });
-      setMessage(text("หยุดไว้แล้ว ผลที่มาช้าจะไม่ถูกนำไปใช้ต่อ", "Paused. Late provider results will not be used for continuity."));
+      await utils.storyboardSkillFramework.getRun.invalidate({
+        runId: activeRunId,
+      });
+      setMessage(
+        text(
+          "หยุดไว้แล้ว ผลที่มาช้าจะไม่ถูกนำไปใช้ต่อ",
+          "Paused. Late provider results will not be used for continuity."
+        )
+      );
     } catch (error) {
       showMutationError(error);
     }
@@ -469,8 +747,15 @@ export default function StoryboardSkillFrameworkPage() {
     if (!activeRunId) return;
     try {
       await resumeRun.mutateAsync({ runId: activeRunId });
-      await utils.storyboardSkillFramework.getRun.invalidate({ runId: activeRunId });
-      setMessage(text("ทำต่อจากช็อตแรกที่ยังไม่มีภาพที่ใช้ได้", "Resumed from the first shot without a valid image."));
+      await utils.storyboardSkillFramework.getRun.invalidate({
+        runId: activeRunId,
+      });
+      setMessage(
+        text(
+          "ทำต่อจากช็อตแรกที่ยังไม่มีภาพที่ใช้ได้",
+          "Resumed from the first shot without a valid image."
+        )
+      );
     } catch (error) {
       showMutationError(error);
     }
@@ -480,8 +765,15 @@ export default function StoryboardSkillFrameworkPage() {
     if (!activeRunId) return;
     try {
       await retryShots.mutateAsync({ runId: activeRunId, shotNumbers });
-      await utils.storyboardSkillFramework.getRun.invalidate({ runId: activeRunId });
-      setMessage(text("ส่งช็อตที่เลือกกลับไปซ่อมแล้ว", "Selected failed shots were queued for repair."));
+      await utils.storyboardSkillFramework.getRun.invalidate({
+        runId: activeRunId,
+      });
+      setMessage(
+        text(
+          "ส่งช็อตที่เลือกกลับไปซ่อมแล้ว",
+          "Selected failed shots were queued for repair."
+        )
+      );
     } catch (error) {
       showMutationError(error);
     }
@@ -492,21 +784,37 @@ export default function StoryboardSkillFrameworkPage() {
     projectId: string;
     confirmationFingerprint: string;
   }) => {
+    setRecoveryChoice("existing");
     setDraftResult(run);
     setSelectedRunId(run.runId);
     setMessage(text("โหลดงานเดิมแล้ว", "Existing storyboard job loaded."));
   };
 
-  const handleCancel = async () => {
-    if (!activeRunId) return;
+  const handleStartNewStoryboard = () => {
+    clearStoredStoryboardRunId();
+    setDraftResult(null);
+    setSelectedRunId(null);
+    setRecoveryChoice("new");
+    setMessage("");
+  };
+
+  const handleCancel = async (runId = activeRunId) => {
+    if (!runId) return;
     try {
-      const result = await cancelRun.mutateAsync({ runId: activeRunId });
-      const reviewId = typeof result === "object" && result !== null && "reviewId" in result
-        && typeof result.reviewId === "number"
-        ? result.reviewId
-        : null;
+      const result = await cancelRun.mutateAsync({ runId });
+      const reviewId =
+        typeof result === "object" &&
+        result !== null &&
+        "reviewId" in result &&
+        typeof result.reviewId === "number"
+          ? result.reviewId
+          : null;
+      utils.storyboardSkillFramework.listRuns.setData(
+        { limit: 20 },
+        current => current?.filter(run => run.runId !== runId) ?? []
+      );
       await Promise.all([
-        utils.storyboardSkillFramework.getRun.invalidate({ runId: activeRunId }),
+        utils.storyboardSkillFramework.getRun.invalidate({ runId }),
         utils.storyboardSkillFramework.listRuns.invalidate({ limit: 20 }),
       ]);
       setMessage(
@@ -517,6 +825,312 @@ export default function StoryboardSkillFrameworkPage() {
           reviewId
             ? "The job was cancelled. Completed images were kept in Storyboard and remaining shots will not be regenerated."
             : "The existing job was cancelled. You can now create a new storyboard."
+        )
+      );
+    } catch (error) {
+      const raw = error instanceof Error ? error.message : String(error ?? "");
+      if (
+        /Job cannot be cancelled in its current state|Job changed while requesting cancellation|Job changed while finalizing cancellation/i.test(
+          raw
+        )
+      ) {
+        await Promise.all([
+          utils.storyboardSkillFramework.getRun.invalidate({ runId }),
+          utils.storyboardSkillFramework.listRuns.invalidate({ limit: 20 }),
+        ]);
+        setMessage(
+          text(
+            "งานนี้เปลี่ยนสถานะหรือถูกยกเลิกไปแล้ว ระบบรีเฟรชสถานะล่าสุดให้แล้ว",
+            "This job changed state or was already cancelled. The latest status has been refreshed."
+          )
+        );
+        return;
+      }
+      showMutationError(error);
+    }
+  };
+
+  const replaceCharacterReference = (
+    previousAssetIds: Array<string | number | null | undefined>,
+    nextAssetId: string | number | null | undefined
+  ) => {
+    setReferences(current => {
+      const previous = new Set(
+        previousAssetIds.filter(value => value != null).map(String)
+      );
+      const next = current.filter(assetId => !previous.has(assetId));
+      if (nextAssetId != null && !next.includes(String(nextAssetId))) {
+        // Keep the selected character image in the provider payload even when
+        // the user already has five manual references. The newest explicit
+        // selection wins; the oldest trailing reference is evicted.
+        next.unshift(String(nextAssetId));
+      }
+      return next.slice(0, 5);
+    });
+  };
+
+  const handleCharacterToggle = async (character: {
+    id: string;
+    portraitAssetId: number | null;
+    looks?: Array<{ id: string; mediaAssetId: number | null }>;
+  }) => {
+    const characterAssetIds = [
+      character.portraitAssetId,
+      ...(character.looks ?? []).map(look => look.mediaAssetId),
+    ];
+    const isSelected = selectedCharacters.includes(character.id);
+    const firstImageBackedLook = character.looks?.find(
+      look => look.mediaAssetId != null
+    );
+    const selectedLookId =
+      selectedCharacterLookIds[character.id] ?? firstImageBackedLook?.id;
+    const selectedLook = character.looks?.find(
+      look => look.id === selectedLookId
+    );
+    const usableAssetId =
+      selectedLook?.mediaAssetId ?? character.portraitAssetId;
+    if (!isSelected && usableAssetId == null) {
+      setMessage(
+        text(
+          "ตัวละครนี้ยังไม่มีภาพ ใช้ภาพที่สร้างสำเร็จบันทึกเป็น portrait ก่อน",
+          "This character has no usable image. Save a completed shot as its portrait first."
+        )
+      );
+      return;
+    }
+    try {
+      if (draftResult?.projectId) {
+        if (activeRun?.status !== "awaiting_confirmation") {
+          setMessage(
+            text(
+              "เลือกตัวละครได้เฉพาะตอนกำลังตรวจสอบ draft ก่อนยืนยันสร้าง",
+              "Characters can only be changed while the draft is awaiting confirmation."
+            )
+          );
+          return;
+        }
+        if (isSelected) {
+          await unbindProjectCharacter.mutateAsync({
+            projectId: draftResult.projectId,
+            characterId: character.id,
+          });
+          setSelectedCharacters(current =>
+            current.filter(id => id !== character.id)
+          );
+          setSelectedCharacterLookIds(current => {
+            const next = { ...current };
+            delete next[character.id];
+            return next;
+          });
+          replaceCharacterReference(characterAssetIds, null);
+        } else {
+          await bindProjectCharacter.mutateAsync({
+            projectId: draftResult.projectId,
+            characterId: character.id,
+            ...(selectedLookId ? { lookId: selectedLookId } : {}),
+          });
+          setSelectedCharacters(current =>
+            current.includes(character.id)
+              ? current
+              : [...current, character.id]
+          );
+          if (selectedLookId && selectedLook?.mediaAssetId != null) {
+            setSelectedCharacterLookIds(current => ({
+              ...current,
+              [character.id]: selectedLookId,
+            }));
+          }
+          if (usableAssetId != null)
+            replaceCharacterReference([], usableAssetId);
+        }
+        await Promise.all([
+          utils.storyboardSkillFramework.getRun.invalidate({
+            runId: draftResult.runId,
+          }),
+          utils.storyboardSkillFramework.getProjectCharacters.invalidate({
+            projectId: draftResult.projectId,
+          }),
+        ]);
+      } else {
+        setSelectedCharacters(current =>
+          isSelected
+            ? current.filter(id => id !== character.id)
+            : [...current, character.id]
+        );
+        if (isSelected) {
+          setSelectedCharacterLookIds(current => {
+            const next = { ...current };
+            delete next[character.id];
+            return next;
+          });
+          replaceCharacterReference(characterAssetIds, null);
+        } else if (usableAssetId != null) {
+          if (selectedLookId && selectedLook?.mediaAssetId != null) {
+            setSelectedCharacterLookIds(current => ({
+              ...current,
+              [character.id]: selectedLookId,
+            }));
+          }
+          replaceCharacterReference([], usableAssetId);
+        }
+      }
+    } catch (error) {
+      showMutationError(error);
+    }
+  };
+
+  const handleCharacterLookChange = async (
+    character: {
+      id: string;
+      portraitAssetId: number | null;
+      looks?: Array<{ id: string; mediaAssetId: number | null }>;
+    },
+    lookId: string
+  ) => {
+    const nextLookId = lookId || undefined;
+    const selectedLook = character.looks?.find(look => look.id === nextLookId);
+    const characterAssetIds = [
+      character.portraitAssetId,
+      ...(character.looks ?? []).map(look => look.mediaAssetId),
+    ];
+    if (nextLookId && selectedLook?.mediaAssetId == null) {
+      setMessage(
+        text(
+          "Look นี้ยังไม่มีภาพที่ใช้ได้",
+          "This look does not have a usable image yet."
+        )
+      );
+      return;
+    }
+    if (!nextLookId && character.portraitAssetId == null) {
+      setMessage(
+        text(
+          "ตัวละครนี้ต้องเลือก Look ที่มีภาพ",
+          "This character must use a look with an image."
+        )
+      );
+      return;
+    }
+    const nextAssetId = selectedLook?.mediaAssetId ?? character.portraitAssetId;
+    try {
+      if (draftResult?.projectId) {
+        if (
+          activeRun?.status !== "awaiting_confirmation" ||
+          !selectedCharacters.includes(character.id)
+        ) {
+          setMessage(
+            text(
+              "เลือกภาพอ้างอิงได้ก่อนยืนยันสร้างเท่านั้น",
+              "Choose a reference image before confirming the draft."
+            )
+          );
+          return;
+        }
+        await bindProjectCharacter.mutateAsync({
+          projectId: draftResult.projectId,
+          characterId: character.id,
+          ...(nextLookId ? { lookId: nextLookId } : {}),
+        });
+        await utils.storyboardSkillFramework.getRun.invalidate({
+          runId: draftResult.runId,
+        });
+      }
+      setSelectedCharacterLookIds(current => {
+        const next = { ...current };
+        if (nextLookId) next[character.id] = nextLookId;
+        else delete next[character.id];
+        return next;
+      });
+      replaceCharacterReference(characterAssetIds, nextAssetId);
+    } catch (error) {
+      showMutationError(error);
+    }
+  };
+
+  const handleSaveShotAsCharacter = async () => {
+    if (!characterCapture) return;
+    const isNewCharacter = characterCapture.characterId === "__new__";
+    if (isNewCharacter && !characterCapture.name.trim()) {
+      setMessage(text("กรุณาระบุชื่อตัวละคร", "Enter a character name."));
+      return;
+    }
+    if (
+      !isNewCharacter &&
+      characterCapture.role === "look" &&
+      !characterCapture.name.trim()
+    ) {
+      setMessage(text("กรุณาระบุชื่อ Look", "Enter a look name."));
+      return;
+    }
+    try {
+      const result = await saveShotAsCharacter.mutateAsync({
+        runId: characterCapture.runId,
+        shotNumber: characterCapture.shotNumber,
+        ...(isNewCharacter
+          ? {}
+          : { characterId: characterCapture.characterId }),
+        ...(isNewCharacter
+          ? { characterName: characterCapture.name.trim() }
+          : {}),
+        role: characterCapture.role,
+        ...(characterCapture.role === "look"
+          ? { lookName: characterCapture.name.trim() }
+          : {}),
+      });
+      const character = charactersQuery.data?.find(
+        item => item.id === result.characterId
+      );
+      setSelectedCharacters(current =>
+        current.includes(result.characterId)
+          ? current
+          : [...current, result.characterId]
+      );
+      if (result.role === "look" && result.lookId) {
+        setSelectedCharacterLookIds(current => ({
+          ...current,
+          [result.characterId]: result.lookId as string,
+        }));
+      } else {
+        setSelectedCharacterLookIds(current => {
+          const next = { ...current };
+          delete next[result.characterId];
+          return next;
+        });
+      }
+      replaceCharacterReference(
+        [
+          character?.portraitAssetId,
+          ...(character?.looks ?? []).map(look => look.mediaAssetId),
+        ],
+        result.mediaAssetId
+      );
+      if (
+        draftResult?.projectId &&
+        activeRun?.status === "awaiting_confirmation"
+      ) {
+        await bindProjectCharacter.mutateAsync({
+          projectId: draftResult.projectId,
+          characterId: result.characterId,
+          ...(result.lookId ? { lookId: result.lookId } : {}),
+        });
+        await utils.storyboardSkillFramework.getRun.invalidate({
+          runId: draftResult.runId,
+        });
+      }
+      await utils.storyboardSkillFramework.getProjectCharacters.invalidate(
+        draftResult?.projectId
+          ? { projectId: draftResult.projectId }
+          : undefined
+      );
+      setCharacterCapture(null);
+      setMessage(
+        text(
+          result.role === "portrait"
+            ? "บันทึกภาพเป็น portrait ของตัวละครแล้ว"
+            : "บันทึกภาพเป็น look ของตัวละครแล้ว",
+          result.role === "portrait"
+            ? "Saved the image as the character portrait."
+            : "Saved the image as a character look."
         )
       );
     } catch (error) {
@@ -634,6 +1248,76 @@ export default function StoryboardSkillFrameworkPage() {
                       : text("ขยายไอเดียด้วย AI", "Expand idea with AI")}
                   </Button>
                 </div>
+                <label
+                  htmlFor="storyboard-expansion-llm"
+                  className="block space-y-1 text-sm font-medium"
+                >
+                  <span className="flex flex-wrap items-center gap-2">
+                    {text("LLM สำหรับขยายไอเดีย", "LLM for idea expansion")}
+                    {selectedLlmModel?.isRecommended ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
+                        {text("แนะนำ", "Recommended")}
+                      </span>
+                    ) : null}
+                  </span>
+                  <select
+                    id="storyboard-expansion-llm"
+                    className="h-10 w-full rounded-md border bg-white px-3 text-sm"
+                    value={llmModelId}
+                    onChange={event => setLlmModelId(event.target.value)}
+                    disabled={
+                      llmModelsQuery.isLoading || llmModels.length === 0
+                    }
+                  >
+                    {llmModels.length === 0 ? (
+                      <option value="">
+                        {llmModelsQuery.isLoading
+                          ? text("กำลังโหลดรายการ LLM…", "Loading LLM models…")
+                          : text(
+                              "ใช้โมเดลอัตโนมัติของระบบ",
+                              "Use the system automatic model"
+                            )}
+                      </option>
+                    ) : null}
+                    {recommendedLlmModels.length > 0 ? (
+                      <optgroup
+                        label={text("LLM ที่แนะนำ", "Recommended LLMs")}
+                      >
+                        {recommendedLlmModels.map(model => (
+                          <option key={model.id} value={model.id}>
+                            ★ {model.name} ·{" "}
+                            {model.providerDisplayName ??
+                              model.provider ??
+                              model.id}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                    {otherLlmModels.length > 0 ? (
+                      <optgroup
+                        label={text(
+                          "LLM อื่นที่ใช้งานได้",
+                          "Other available LLMs"
+                        )}
+                      >
+                        {otherLlmModels.map(model => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} ·{" "}
+                            {model.providerDisplayName ??
+                              model.provider ??
+                              model.id}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                  </select>
+                  <span className="block text-xs font-normal text-slate-500">
+                    {text(
+                      "ระบบเลือกโมเดลที่มีป้าย แนะนำ เป็นค่าเริ่มต้น คุณเปลี่ยนได้หากผู้ให้บริการเดิมเชื่อมต่อไม่ได้",
+                      "A Recommended model is selected by default. Choose another one if the current provider is unavailable."
+                    )}
+                  </span>
+                </label>
                 <Textarea
                   id="storyboard-video-idea"
                   value={idea}
@@ -678,10 +1362,21 @@ export default function StoryboardSkillFrameworkPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-sky-950">
-                        {text("ข้อมูลไอเดียที่ขยายแล้ว", "Expanded idea fields")}
+                        {text(
+                          "ข้อมูลไอเดียที่ขยายแล้ว",
+                          "Expanded idea fields"
+                        )}
                       </h3>
                       <span className="text-xs text-sky-700">
-                        {text("ครบ 5 หัวข้อ · ตรวจสอบก่อนใช้", "5 sections · Review before applying")}
+                        {storyType === "mime"
+                          ? text(
+                              "ครบ 5 หัวข้อ · ตรวจสอบก่อนใช้",
+                              "5 sections · Review before applying"
+                            )
+                          : text(
+                              "ครบ 6 หัวข้อ · รวมบทพูด · ตรวจสอบก่อนใช้",
+                              "6 sections including dialogue · Review before applying"
+                            )}
                       </span>
                     </div>
                     <label className="space-y-1 text-sm font-medium">
@@ -692,7 +1387,7 @@ export default function StoryboardSkillFrameworkPage() {
                           setExpandedIdea(current =>
                             current
                               ? { ...current, projectTitle: event.target.value }
-                              : current,
+                              : current
                           )
                         }
                       />
@@ -705,7 +1400,7 @@ export default function StoryboardSkillFrameworkPage() {
                           setExpandedIdea(current =>
                             current
                               ? { ...current, videoIdea: event.target.value }
-                              : current,
+                              : current
                           )
                         }
                         rows={5}
@@ -719,8 +1414,11 @@ export default function StoryboardSkillFrameworkPage() {
                           onChange={event =>
                             setExpandedIdea(current =>
                               current
-                                ? { ...current, sceneDetail: event.target.value }
-                                : current,
+                                ? {
+                                    ...current,
+                                    sceneDetail: event.target.value,
+                                  }
+                                : current
                             )
                           }
                           rows={4}
@@ -733,8 +1431,11 @@ export default function StoryboardSkillFrameworkPage() {
                           onChange={event =>
                             setExpandedIdea(current =>
                               current
-                                ? { ...current, customActivity: event.target.value }
-                                : current,
+                                ? {
+                                    ...current,
+                                    customActivity: event.target.value,
+                                  }
+                                : current
                             )
                           }
                           rows={4}
@@ -749,12 +1450,40 @@ export default function StoryboardSkillFrameworkPage() {
                           setExpandedIdea(current =>
                             current
                               ? { ...current, customNotes: event.target.value }
-                              : current,
+                              : current
                           )
                         }
                         rows={5}
                       />
                     </label>
+                    {storyType !== "mime" ? (
+                      <label className="space-y-1 text-sm font-medium">
+                        {text("6. บทพูด", "6. Dialogue")}
+                        <Textarea
+                          value={expandedIdea.dialogueLines
+                            .map(line => `${line.speaker}: ${line.text}`)
+                            .join("\n")}
+                          onChange={event =>
+                            setExpandedIdea(current =>
+                              current
+                                ? {
+                                    ...current,
+                                    dialogueLines: parseDialogueDraft(
+                                      event.target.value,
+                                      i18n.language
+                                    ),
+                                  }
+                                : current
+                            )
+                          }
+                          rows={5}
+                          placeholder={text(
+                            "ตัวละคร: ข้อความบทพูด",
+                            "Character: dialogue line"
+                          )}
+                        />
+                      </label>
+                    ) : null}
                     <div className="flex flex-wrap justify-end gap-2">
                       <Button
                         type="button"
@@ -773,7 +1502,9 @@ export default function StoryboardSkillFrameworkPage() {
                             !expandedIdea.videoIdea.trim() ||
                             !expandedIdea.sceneDetail.trim() ||
                             !expandedIdea.customActivity.trim() ||
-                            !expandedIdea.customNotes.trim()
+                            !expandedIdea.customNotes.trim() ||
+                            (storyType !== "mime" &&
+                              expandedIdea.dialogueLines.length === 0)
                           )
                             return;
                           if (!title.trim())
@@ -782,20 +1513,38 @@ export default function StoryboardSkillFrameworkPage() {
                           setSkillInputs(current => ({
                             ...current,
                             ...(properties.scene_detail
-                              ? { scene_detail: expandedIdea.sceneDetail.trim() }
+                              ? {
+                                  scene_detail: expandedIdea.sceneDetail.trim(),
+                                }
                               : {}),
                             ...(properties.custom_activity
-                              ? { custom_activity: expandedIdea.customActivity.trim() }
+                              ? {
+                                  custom_activity:
+                                    expandedIdea.customActivity.trim(),
+                                }
                               : {}),
                             ...(properties.custom_notes
-                              ? { custom_notes: expandedIdea.customNotes.trim() }
+                              ? {
+                                  custom_notes: expandedIdea.customNotes.trim(),
+                                }
                               : {}),
                           }));
+                          if (storyType !== "mime") {
+                            setDialogueDraft(
+                              expandedIdea.dialogueLines
+                                .map(line => `${line.speaker}: ${line.text}`)
+                                .join("\n")
+                            );
+                          }
                           setExpandedIdea(null);
                           setMessage(
                             text(
-                              "นำข้อมูลทั้ง 5 หัวข้อไปใส่ในช่องที่ตรงกันแล้ว",
-                              "All five sections were mapped to their matching fields"
+                              storyType === "mime"
+                                ? "นำข้อมูลทั้ง 5 หัวข้อไปใส่ในช่องที่ตรงกันแล้ว"
+                                : "นำข้อมูลทั้ง 6 หัวข้อ รวมบทพูด ไปใส่ในช่องที่ตรงกันแล้ว",
+                              storyType === "mime"
+                                ? "All five sections were mapped to their matching fields"
+                                : "All six sections, including dialogue, were mapped to the draft"
                             )
                           );
                         }}
@@ -804,7 +1553,9 @@ export default function StoryboardSkillFrameworkPage() {
                           !expandedIdea.videoIdea.trim() ||
                           !expandedIdea.sceneDetail.trim() ||
                           !expandedIdea.customActivity.trim() ||
-                          !expandedIdea.customNotes.trim()
+                          !expandedIdea.customNotes.trim() ||
+                          (storyType !== "mime" &&
+                            expandedIdea.dialogueLines.length === 0)
                         }
                       >
                         <Check className="mr-2 h-4 w-4" />
@@ -864,11 +1615,11 @@ export default function StoryboardSkillFrameworkPage() {
                 {text("Skill สร้างพรอมต์ตัวละคร", "Character prompt skill")}
                 <select
                   className="h-10 w-full rounded-md border bg-white px-3 text-sm"
-                      value={selectedSkill?.skillId ?? ""}
-                      onChange={event => {
-                        setSelectedSkillId(event.target.value);
-                        setExpandedIdea(null);
-                      }}
+                  value={selectedSkill?.skillId ?? ""}
+                  onChange={event => {
+                    setSelectedSkillId(event.target.value);
+                    setExpandedIdea(null);
+                  }}
                 >
                   {skills.map(skill => (
                     <option key={skill.skillId} value={skill.skillId}>
@@ -952,6 +1703,16 @@ export default function StoryboardSkillFrameworkPage() {
                           ) : isNumericInput ? (
                             <Input
                               type="number"
+                              min={
+                                typeof schema.minimum === "number"
+                                  ? schema.minimum
+                                  : undefined
+                              }
+                              max={
+                                typeof schema.maximum === "number"
+                                  ? schema.maximum
+                                  : undefined
+                              }
                               step={
                                 Array.isArray(schema.type) &&
                                 schema.type.includes("integer")
@@ -987,6 +1748,11 @@ export default function StoryboardSkillFrameworkPage() {
                               }
                             />
                           )}
+                          {typeof schema.description === "string" ? (
+                            <span className="block text-xs font-normal text-slate-500">
+                              {schema.description}
+                            </span>
+                          ) : null}
                         </label>
                       );
                     })}
@@ -1125,8 +1891,8 @@ export default function StoryboardSkillFrameworkPage() {
               </div>
               <p className="text-sm text-slate-500">
                 {text(
-                  "ตัวละครจาก library จะถูก snapshot เข้าโปรเจกต์เพื่อรักษาหน้าตาเดิม",
-                  "Library characters are snapshotted into the project to preserve identity."
+                  "กดเลือกตัวละครเพื่อใช้เป็นภาพอ้างอิงใน storyboard; ภาพที่สร้างเสร็จแล้วกด ‘บันทึกเป็นตัวละคร’ ได้จากรายการผลลัพธ์",
+                  "Select a character to use as a storyboard reference. Completed shots can be saved from the result list."
                 )}
               </p>
               {showDramaPicker ? (
@@ -1239,38 +2005,61 @@ export default function StoryboardSkillFrameworkPage() {
                   })()}
                 </section>
               ) : null}
+              {charactersQuery.isLoading ? (
+                <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
+                  {text(
+                    "กำลังโหลด Character Library...",
+                    "Loading Character Library..."
+                  )}
+                </p>
+              ) : null}
+              {charactersQuery.isError ? (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700"
+                >
+                  {text(
+                    "โหลดตัวละครไม่สำเร็จ ลองรีเฟรชแล้วตรวจสอบอีกครั้ง",
+                    "Characters could not be loaded. Refresh and try again."
+                  )}
+                </p>
+              ) : null}
+              {!charactersQuery.isLoading &&
+              !charactersQuery.isError &&
+              (charactersQuery.data ?? []).length === 0 ? (
+                <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-500">
+                  {text(
+                    "ยังไม่มีตัวละครที่ใช้ได้ สร้างตัวละครหรือบันทึกภาพสำเร็จจากผลลัพธ์ก่อน",
+                    "No usable characters yet. Create one or save a completed result first."
+                  )}
+                </p>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 {(charactersQuery.data ?? []).map(character => (
                   <div
                     key={character.id}
-                    className={`rounded-xl border p-3 ${selectedCharacters.includes(character.id) ? "border-sky-500 bg-sky-50" : ""}`}
+                    className={`rounded-xl border p-3 ${selectedCharacters.includes(character.id) ? "border-sky-500 bg-sky-50" : "bg-white"}`}
                   >
-                    <label className="flex items-start">
+                    <label className="flex items-start gap-2">
                       <input
                         type="checkbox"
-                        className="mr-2 mt-1"
+                        className="mt-1"
                         checked={selectedCharacters.includes(character.id)}
-                        onChange={() => {
-                          const isSelected = selectedCharacters.includes(
-                            character.id
-                          );
-                          setSelectedCharacters(current =>
-                            isSelected
-                              ? current.filter(id => id !== character.id)
-                              : [...current, character.id]
-                          );
-                          if (!isSelected)
-                            addReferenceAsset(character.portraitAssetId);
-                          else if (character.portraitAssetId != null)
-                            setReferences(current =>
-                              current.filter(
-                                assetId =>
-                                  assetId !== String(character.portraitAssetId)
-                              )
-                            );
-                        }}
+                        disabled={
+                          (character.portraitAssetId == null &&
+                            !(character.looks ?? []).some(
+                              look => look.mediaAssetId != null
+                            )) ||
+                          bindProjectCharacter.isPending ||
+                          unbindProjectCharacter.isPending
+                        }
+                        onChange={() => void handleCharacterToggle(character)}
+                        aria-label={text(
+                          `เลือกตัวละคร ${character.name}`,
+                          `Select ${character.name}`
+                        )}
                       />{" "}
-                      <span className="font-medium">
+                      <span className="min-w-0 flex-1 font-medium">
                         {character.portraitUrl ? (
                           <img
                             src={character.portraitUrl}
@@ -1302,8 +2091,104 @@ export default function StoryboardSkillFrameworkPage() {
                         <span className="mt-1 block text-xs text-slate-500">
                           {character.characterKey}
                         </span>
+                        {character.portraitAssetId == null &&
+                        !(character.looks ?? []).some(
+                          look => look.mediaAssetId != null
+                        ) ? (
+                          <span className="mt-1 block text-xs text-amber-700">
+                            {text(
+                              "ยังไม่มีภาพ ใช้ภาพช็อตที่สร้างสำเร็จบันทึกเป็น Portrait ก่อน",
+                              "No usable image yet. Save a completed shot as a portrait first."
+                            )}
+                          </span>
+                        ) : null}
+                        {character.isBoundToProject ? (
+                          <span className="mt-1 block text-xs font-semibold text-emerald-700">
+                            {text(
+                              "เลือกใช้ในโปรเจกต์นี้แล้ว",
+                              "Selected for this project"
+                            )}
+                          </span>
+                        ) : null}
                       </span>
                     </label>
+                    {selectedCharacters.includes(character.id) ? (
+                      <label className="mt-3 block text-xs font-medium text-slate-600">
+                        {text(
+                          "ภาพที่จะใช้กับตัวละครนี้",
+                          "Image used for this character"
+                        )}
+                        <select
+                          className="mt-1 h-9 w-full rounded-md border bg-white px-2 text-sm"
+                          value={
+                            selectedCharacterLookIds[character.id] ??
+                            (character.portraitAssetId == null
+                              ? (character.looks?.find(
+                                  look => look.mediaAssetId != null
+                                )?.id ?? "")
+                              : "")
+                          }
+                          onChange={event =>
+                            void handleCharacterLookChange(
+                              character,
+                              event.target.value
+                            )
+                          }
+                          disabled={
+                            Boolean(
+                              draftResult &&
+                              activeRun?.status !== "awaiting_confirmation"
+                            ) ||
+                            bindProjectCharacter.isPending ||
+                            unbindProjectCharacter.isPending
+                          }
+                        >
+                          {character.portraitAssetId != null ? (
+                            <option value="">
+                              {text("Portrait หลัก", "Main portrait")}
+                            </option>
+                          ) : null}
+                          {(character.looks ?? []).map(look => (
+                            <option
+                              key={look.id}
+                              value={look.id}
+                              disabled={look.mediaAssetId == null}
+                            >
+                              {text("Look: ", "Look: ")}
+                              {look.name}
+                              {look.mediaAssetId == null
+                                ? text(" (ยังไม่มีภาพ)", " (no image)")
+                                : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ) : null}
+                    {(character.looks ?? []).length > 0 ? (
+                      <div
+                        className="mt-3 flex gap-2 overflow-x-auto pb-1"
+                        aria-label={text("ลุคของตัวละคร", "Character looks")}
+                      >
+                        {(character.looks ?? []).map(look => (
+                          <div key={look.id} className="shrink-0 text-center">
+                            {look.url ? (
+                              <img
+                                src={look.url}
+                                alt={look.name}
+                                className="h-12 w-10 rounded object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-12 w-10 items-center justify-center rounded bg-slate-100 text-[10px] text-slate-400">
+                                {text("ไม่มีภาพ", "No image")}
+                              </span>
+                            )}
+                            <span className="mt-1 block max-w-16 truncate text-[10px] text-slate-500">
+                              {look.name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button
                         type="button"
@@ -1336,6 +2221,11 @@ export default function StoryboardSkillFrameworkPage() {
                               name: lookNameDraft,
                               look: {},
                             });
+                            await utils.storyboardSkillFramework.getProjectCharacters.invalidate(
+                              draftResult?.projectId
+                                ? { projectId: draftResult.projectId }
+                                : undefined
+                            );
                             setLookNameDraft("");
                             setEditingCharacterId(null);
                           }
@@ -1343,8 +2233,8 @@ export default function StoryboardSkillFrameworkPage() {
                       />
                       <span className="self-center text-xs text-slate-400">
                         {text(
-                          "กด Enter เพื่อเพิ่มลุค",
-                          "Press Enter to add look"
+                          "ลุคที่มีภาพให้เลือกจากรายการด้านบน",
+                          "Image-backed looks appear above"
                         )}
                       </span>
                     </div>
@@ -1392,6 +2282,71 @@ export default function StoryboardSkillFrameworkPage() {
               "Each shot gets a prompt first, then the complete generation_request is handed to Image Core."
             )}
           </p>
+          <p className="rounded-lg bg-sky-50 p-3 text-xs leading-5 text-sky-800">
+            {text(
+              "ทุกช็อตจะสร้างเป็นภาพเดี่ยวแนวตั้ง 9:16 เท่านั้น ไม่มี collage, grid หรือหลายภาพในเฟรมเดียว และภาพที่ได้จะถูกใช้เป็น Start Frame สำหรับวีดีโอของช็อตนั้น",
+              "Every shot is generated as one single vertical 9:16 image only—never a collage, grid, or multi-panel frame. The image becomes that shot's video Start Frame."
+            )}
+          </p>
+          <Dialog
+            open={recoveryDialogOpen}
+            onOpenChange={open => {
+              if (!open && recoveryChoice === null) {
+                handleStartNewStoryboard();
+              }
+            }}
+          >
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>
+                  {text(
+                    "พบงาน storyboard ที่ยังไม่จบ",
+                    "Unfinished storyboard jobs found"
+                  )}
+                </DialogTitle>
+                <DialogDescription>
+                  {text(
+                    "เลือกให้ชัดเจนว่าจะสร้างงานใหม่ หรือกลับไปดูงานเดิม งานที่ยกเลิกแล้วจะไม่ถูกเสนอให้ซ่อม",
+                    "Choose whether to create a new storyboard or continue an existing job. Cancelled jobs are not offered for repair."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                {recoverableRuns.map(run => (
+                  <div
+                    key={run.runId}
+                    className="flex items-center gap-3 rounded-lg border bg-slate-50 p-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {run.projectTitle}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {run.status} · {run.shots.completed}/{run.shots.total}{" "}
+                        {text("ช็อตสำเร็จ", "shots completed")}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleLoadRun(run)}
+                    >
+                      {text("ดูงานนี้", "View job")}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleStartNewStoryboard}
+                >
+                  {text("สร้าง storyboard ใหม่", "Create new storyboard")}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           {message ? (
             <p
               role="status"
@@ -1400,13 +2355,21 @@ export default function StoryboardSkillFrameworkPage() {
               {message}
             </p>
           ) : null}
-          {recoverableRunsQuery.data && recoverableRunsQuery.data.length > 0 ? (
-            <section className="space-y-2 rounded-xl border border-violet-100 bg-violet-50/60 p-3" aria-label={text("งาน storyboard ที่กู้คืนได้", "Recoverable storyboard jobs")}>
+          {recoverableRuns.length > 0 ? (
+            <section
+              className="space-y-2 rounded-xl border border-violet-100 bg-violet-50/60 p-3"
+              aria-label={text(
+                "งาน storyboard ที่กู้คืนได้",
+                "Recoverable storyboard jobs"
+              )}
+            >
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold">
                   {text("งานที่ยังไม่จบ", "Unfinished jobs")}
                 </h3>
-                <span className="text-xs text-slate-500">{recoverableRunsQuery.data.length}</span>
+                <span className="text-xs text-slate-500">
+                  {recoverableRuns.length}
+                </span>
               </div>
               <p className="text-xs text-slate-600">
                 {text(
@@ -1415,22 +2378,45 @@ export default function StoryboardSkillFrameworkPage() {
                 )}
               </p>
               <ul className="space-y-2">
-                {recoverableRunsQuery.data.slice(0, 5).map(run => (
-                  <li key={run.runId} className="flex items-center gap-2 rounded-lg border bg-white p-2 text-xs">
+                {recoverableRuns.slice(0, 5).map(run => (
+                  <li
+                    key={run.runId}
+                    className="flex items-center gap-2 rounded-lg border bg-white p-2 text-xs"
+                  >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{run.projectTitle}</span>
+                      <span className="block truncate font-semibold">
+                        {run.projectTitle}
+                      </span>
                       <span className="block text-slate-500">
-                        {run.status} · {run.shots.completed}/{run.shots.total} {text("ช็อต", "shots")}
+                        {run.status} · {run.shots.completed}/{run.shots.total}{" "}
+                        {text("ช็อต", "shots")}
                       </span>
                     </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={activeRunId === run.runId ? "secondary" : "outline"}
-                      onClick={() => handleLoadRun(run)}
-                    >
-                      {activeRunId === run.runId ? text("เปิดอยู่", "Loaded") : text("โหลด", "Load")}
-                    </Button>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          activeRunId === run.runId ? "secondary" : "outline"
+                        }
+                        onClick={() => handleLoadRun(run)}
+                      >
+                        {activeRunId === run.runId
+                          ? text("เปิดอยู่", "Loaded")
+                          : text("โหลด", "Load")}
+                      </Button>
+                      {!["cancelled", "succeeded"].includes(run.status) ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => void handleCancel(run.runId)}
+                          disabled={cancelRun.isPending}
+                        >
+                          {text("ยกเลิก", "Cancel")}
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1447,7 +2433,7 @@ export default function StoryboardSkillFrameworkPage() {
               )}
             </p>
           ) : null}
-          {runQuery.data ? (
+          {activeRun ? (
             <section
               className="space-y-3 rounded-xl border border-sky-100 bg-sky-50/50 p-3"
               aria-label={text(
@@ -1460,7 +2446,7 @@ export default function StoryboardSkillFrameworkPage() {
                   {text("ตรวจสอบผลลัพธ์", "Review results")}
                 </h3>
                 <span className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-sky-700">
-                  {runQuery.data.controlPlaneJob?.status ?? runQuery.data.status}
+                  {activeRun.controlPlaneJob?.status ?? activeRun.status}
                 </span>
               </div>
               <p className="text-xs text-slate-600">
@@ -1469,45 +2455,68 @@ export default function StoryboardSkillFrameworkPage() {
                   "Shots run sequentially; valid completed images are never regenerated."
                 )}
               </p>
-              {runQuery.data.error ? (
-                <p role="alert" className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800">
-                  <span className="font-semibold">{runQuery.data.error.code}</span>
-                  {runQuery.data.error.detail || runQuery.data.error.message
-                    ? ` — ${runQuery.data.error.detail || runQuery.data.error.message}`
+              {activeRun.error ? (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-rose-50 p-2 text-xs text-rose-800"
+                >
+                  <span className="font-semibold">{activeRun.error.code}</span>
+                  {activeRun.error.detail || activeRun.error.message
+                    ? ` — ${activeRun.error.detail || activeRun.error.message}`
                     : null}
                 </p>
               ) : null}
-              {runQuery.data.controlPlaneJob?.operatorReviewRequired ? (
-                <p role="alert" className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
-                  {text("งานหยุดเพื่อรอการตรวจสอบจากผู้ใช้", "The canonical job is held for operator review.")}
-                  {runQuery.data.controlPlaneJob.operatorReviewReason
-                    ? ` — ${runQuery.data.controlPlaneJob.operatorReviewReason}`
+              {activeRun.controlPlaneJob?.operatorReviewRequired ? (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900"
+                >
+                  {text(
+                    "งานหยุดเพื่อรอการตรวจสอบจากผู้ใช้",
+                    "The canonical job is held for operator review."
+                  )}
+                  {activeRun.controlPlaneJob.operatorReviewReason
+                    ? ` — ${activeRun.controlPlaneJob.operatorReviewReason}`
                     : null}
                 </p>
               ) : null}
-              {runQuery.data.controlPlaneJob ? (
+              {activeRun.controlPlaneJob ? (
                 <details className="rounded-lg border border-slate-200 bg-white p-2 text-xs">
                   <summary className="cursor-pointer font-semibold text-slate-700">
-                    {text("รายละเอียดการกู้คืนและ timeline", "Recovery details and timeline")}
+                    {text(
+                      "รายละเอียดการกู้คืนและ timeline",
+                      "Recovery details and timeline"
+                    )}
                   </summary>
                   <div className="mt-2 space-y-1 text-slate-600">
                     <p>
-                      {text("attempt", "Attempt")}: {runQuery.data.controlPlaneJob.attempt}/{runQuery.data.controlPlaneJob.maxAttempts}
-                      {runQuery.data.controlPlaneJob.errorCode ? ` · ${runQuery.data.controlPlaneJob.errorCode}` : ""}
+                      {text("attempt", "Attempt")}:{" "}
+                      {activeRun.controlPlaneJob.attempt}/
+                      {activeRun.controlPlaneJob.maxAttempts}
+                      {activeRun.controlPlaneJob.errorCode
+                        ? ` · ${activeRun.controlPlaneJob.errorCode}`
+                        : ""}
                     </p>
-                    {runQuery.data.controlPlaneJob.progressJson?.stage ? (
+                    {activeRun.controlPlaneJob.progressJson?.stage ? (
                       <p>
-                        {text("ขั้นตอนล่าสุด", "Last stage")}: {String(runQuery.data.controlPlaneJob.progressJson.stage)}
-                        {runQuery.data.controlPlaneJob.progressJson.message
-                          ? ` — ${String(runQuery.data.controlPlaneJob.progressJson.message)}`
+                        {text("ขั้นตอนล่าสุด", "Last stage")}:{" "}
+                        {String(activeRun.controlPlaneJob.progressJson.stage)}
+                        {activeRun.controlPlaneJob.progressJson.message
+                          ? ` — ${String(activeRun.controlPlaneJob.progressJson.message)}`
                           : ""}
                       </p>
                     ) : null}
                     <ol className="max-h-48 space-y-1 overflow-auto border-t border-slate-100 pt-1">
-                      {runQuery.data.controlPlaneEvents.map(event => (
-                        <li key={`${event.eventSequence ?? "na"}-${event.eventType}-${event.createdAt}`}>
-                          <span className="font-medium">{event.eventSequence ?? "?"}. {event.eventType}</span>
-                          <span className="ml-1 text-slate-400">{new Date(event.createdAt).toLocaleTimeString()}</span>
+                      {activeRun.controlPlaneEvents.map(event => (
+                        <li
+                          key={`${event.eventSequence ?? "na"}-${event.eventType}-${event.createdAt}`}
+                        >
+                          <span className="font-medium">
+                            {event.eventSequence ?? "?"}. {event.eventType}
+                          </span>
+                          <span className="ml-1 text-slate-400">
+                            {new Date(event.createdAt).toLocaleTimeString()}
+                          </span>
                         </li>
                       ))}
                     </ol>
@@ -1515,21 +2524,29 @@ export default function StoryboardSkillFrameworkPage() {
                 </details>
               ) : null}
               <ol className="space-y-2">
-                {runQuery.data.shots.map(shot => (
+                {activeRun.shots.map(shot => (
                   <li
                     key={shot.id}
                     className="flex items-center gap-2 rounded-lg border bg-white p-2 text-xs"
                   >
-                    {shot.status === "succeeded" && shot.imageUrl && !shot.suppressedResult ? (
+                    {shot.status === "succeeded" &&
+                    shot.imageUrl &&
+                    !shot.suppressedResult ? (
                       <button
                         type="button"
                         className="shrink-0 rounded focus:outline-none focus:ring-2 focus:ring-sky-500"
                         onClick={() => setLightboxShotNumber(shot.shotNumber)}
-                        aria-label={text(`เปิดดูภาพช็อต ${shot.shotNumber}`, `View shot ${shot.shotNumber}`)}
+                        aria-label={text(
+                          `เปิดดูภาพช็อต ${shot.shotNumber}`,
+                          `View shot ${shot.shotNumber}`
+                        )}
                       >
                         <img
                           src={shot.imageUrl}
-                          alt={text(`ภาพช็อต ${shot.shotNumber}`, `Shot ${shot.shotNumber}`)}
+                          alt={text(
+                            `ภาพช็อต ${shot.shotNumber}`,
+                            `Shot ${shot.shotNumber}`
+                          )}
                           className="h-10 w-8 rounded object-cover"
                         />
                       </button>
@@ -1544,12 +2561,34 @@ export default function StoryboardSkillFrameworkPage() {
                         {shot.status}
                       </span>
                       {shot.error?.detail || shot.error?.message ? (
-                        <span className="block truncate text-rose-700" title={shot.error.detail || shot.error.message}>
+                        <span
+                          className="block truncate text-rose-700"
+                          title={shot.error.detail || shot.error.message}
+                        >
                           {shot.error.detail || shot.error.message}
                         </span>
                       ) : null}
                     </span>
-                    {shot.status === "failed" || shot.status === "partial" ? (
+                    {shot.status === "succeeded" &&
+                    shot.imageUrl &&
+                    shot.imageAssetId != null &&
+                    !shot.suppressedResult ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openCharacterCapture(shot)}
+                        aria-label={text(
+                          `บันทึกภาพช็อต ${shot.shotNumber} เป็นตัวละคร`,
+                          `Save shot ${shot.shotNumber} as a character`
+                        )}
+                      >
+                        <BookmarkPlus className="mr-1 h-4 w-4" />
+                        {text("บันทึกเป็นตัวละคร", "Save as character")}
+                      </Button>
+                    ) : null}
+                    {activeRunCanMutate &&
+                    (shot.status === "failed" || shot.status === "partial") ? (
                       <Button
                         type="button"
                         size="sm"
@@ -1564,9 +2603,12 @@ export default function StoryboardSkillFrameworkPage() {
                   </li>
                 ))}
               </ol>
-              {runQuery.data.error?.class === "unknown" ||
-              runQuery.data.shots.some(shot => shot.error?.class === "unknown") ? (
-                <p role="alert" className="rounded-lg bg-amber-100 p-2 text-xs text-amber-900">
+              {activeRun.error?.class === "unknown" ||
+              activeRun.shots.some(shot => shot.error?.class === "unknown") ? (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-amber-100 p-2 text-xs text-amber-900"
+                >
                   {text(
                     "มีผลลัพธ์จาก provider ที่ยังยืนยันไม่ได้ ระบบจะไม่ทำซ้ำอัตโนมัติ ให้กดยืนยันซ่อมช็อตนี้ หรือยกเลิกงานเดิม",
                     "A provider result is ambiguous. It will not retry automatically; explicitly repair this shot or cancel the job."
@@ -1574,10 +2616,13 @@ export default function StoryboardSkillFrameworkPage() {
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                {(runQuery.data.status === "paused" ||
-                  runQuery.data.status === "partial") &&
-                !runQuery.data.shots.some(shot => shot.error?.class === "unknown") &&
-                runQuery.data.error?.class !== "unknown" ? (
+                {activeRunCanMutate &&
+                (activeRun.status === "paused" ||
+                  activeRun.status === "partial") &&
+                !activeRun.shots.some(
+                  shot => shot.error?.class === "unknown"
+                ) &&
+                activeRun.error?.class !== "unknown" ? (
                   <Button
                     type="button"
                     size="sm"
@@ -1587,8 +2632,9 @@ export default function StoryboardSkillFrameworkPage() {
                     <Check className="mr-1 h-4 w-4" />
                     {text("ทำต่อ", "Continue")}
                   </Button>
-                ) : runQuery.data.status === "queued" ||
-                  runQuery.data.status === "running" ? (
+                ) : activeRunCanMutate &&
+                  (activeRun.status === "queued" ||
+                    activeRun.status === "running") ? (
                   <Button
                     type="button"
                     size="sm"
@@ -1600,7 +2646,10 @@ export default function StoryboardSkillFrameworkPage() {
                     {text("หยุด", "Stop")}
                   </Button>
                 ) : null}
-                {!["succeeded", "cancel_requested", "cancelled"].includes(runQuery.data.status) ? (
+                {activeRunCanMutate &&
+                !["succeeded", "cancel_requested", "cancelled"].includes(
+                  activeRun.status
+                ) ? (
                   <Button
                     type="button"
                     size="sm"
@@ -1612,7 +2661,8 @@ export default function StoryboardSkillFrameworkPage() {
                     {text("ยกเลิกงานเดิม", "Cancel job")}
                   </Button>
                 ) : null}
-                {runQuery.data.shots.some(
+                {activeRunCanMutate &&
+                activeRun.shots.some(
                   shot => shot.status === "failed" || shot.status === "partial"
                 ) ? (
                   <Button
@@ -1635,7 +2685,10 @@ export default function StoryboardSkillFrameworkPage() {
                 <DialogContent className="max-w-4xl border-slate-700 bg-slate-950 p-3 text-white sm:p-5">
                   <DialogTitle className="sr-only">
                     {lightboxShot
-                      ? text(`ภาพตัวอย่างช็อต ${lightboxShot.shotNumber}`, `Shot ${lightboxShot.shotNumber} preview`)
+                      ? text(
+                          `ภาพตัวอย่างช็อต ${lightboxShot.shotNumber}`,
+                          `Shot ${lightboxShot.shotNumber} preview`
+                        )
                       : text("ภาพตัวอย่าง", "Image preview")}
                   </DialogTitle>
                   {lightboxShot?.imageUrl ? (
@@ -1653,7 +2706,10 @@ export default function StoryboardSkillFrameworkPage() {
                       </Button>
                       <img
                         src={lightboxShot.imageUrl}
-                        alt={text(`ภาพช็อต ${lightboxShot.shotNumber}`, `Shot ${lightboxShot.shotNumber}`)}
+                        alt={text(
+                          `ภาพช็อต ${lightboxShot.shotNumber}`,
+                          `Shot ${lightboxShot.shotNumber}`
+                        )}
                         className="max-h-[75vh] max-w-full rounded-lg object-contain"
                       />
                       <Button
@@ -1668,8 +2724,22 @@ export default function StoryboardSkillFrameworkPage() {
                         <ChevronRight className="h-5 w-5" />
                       </Button>
                       <p className="absolute bottom-1 rounded-full bg-slate-900/80 px-3 py-1 text-xs text-slate-200">
-                        {text("ช็อต", "Shot")} {lightboxShot.shotNumber} · {lightboxIndex + 1}/{completedImageShots.length}
+                        {text("ช็อต", "Shot")} {lightboxShot.shotNumber} ·{" "}
+                        {lightboxIndex + 1}/{completedImageShots.length}
                       </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="absolute bottom-1 right-2"
+                        onClick={() => {
+                          openCharacterCapture(lightboxShot);
+                          setLightboxShotNumber(null);
+                        }}
+                      >
+                        <BookmarkPlus className="mr-1 h-4 w-4" />
+                        {text("บันทึกเป็นตัวละคร", "Save as character")}
+                      </Button>
                     </div>
                   ) : null}
                 </DialogContent>
@@ -1677,7 +2747,7 @@ export default function StoryboardSkillFrameworkPage() {
             </section>
           ) : null}
           {draftResult ? (
-            runQuery.data?.status === "awaiting_confirmation" || !runQuery.data ? (
+            activeRun?.status === "awaiting_confirmation" || !activeRun ? (
               <Button
                 className="w-full"
                 onClick={() => void handleConfirm()}
@@ -1690,16 +2760,21 @@ export default function StoryboardSkillFrameworkPage() {
                 )}
                 {text("ยืนยันและเริ่มสร้าง", "Confirm and start")}
               </Button>
-            ) : ["succeeded", "cancelled"].includes(runQuery.data?.status ?? "") ? (
+            ) : ["succeeded", "cancelled"].includes(activeRun?.status ?? "") ? (
               <div className="space-y-2">
-                {runQuery.data.reviewId ? (
+                {activeRun.reviewId ? (
                   <Button
                     className="w-full"
-                    onClick={() => setLocation(`/storyboard-review/${runQuery.data.reviewId}`)}
+                    onClick={() =>
+                      setLocation(`/storyboard-review/${activeRun.reviewId}`)
+                    }
                   >
                     <ExternalLink className="mr-2 h-4 w-4" />
-                    {runQuery.data.status === "cancelled"
-                      ? text("เปิด Storyboard บางส่วน", "Open partial Storyboard")
+                    {activeRun.status === "cancelled"
+                      ? text(
+                          "เปิด Storyboard บางส่วน",
+                          "Open partial Storyboard"
+                        )
                       : text("เปิดในหน้า Storyboard", "Open in Storyboard")}
                   </Button>
                 ) : null}
@@ -1710,7 +2785,9 @@ export default function StoryboardSkillFrameworkPage() {
                     setDraftResult(null);
                     setSelectedRunId(null);
                     if (typeof window !== "undefined") {
-                      window.localStorage.removeItem(STORYBOARD_RECOVERY_STORAGE_KEY);
+                      window.localStorage.removeItem(
+                        STORYBOARD_RECOVERY_STORAGE_KEY
+                      );
                     }
                   }}
                 >
@@ -1738,6 +2815,156 @@ export default function StoryboardSkillFrameworkPage() {
           )}
         </aside>
       </section>
+      <Dialog
+        open={Boolean(characterCapture)}
+        onOpenChange={open => {
+          if (!open && !saveShotAsCharacter.isPending)
+            setCharacterCapture(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogTitle>
+            {text("บันทึกภาพเป็นตัวละคร", "Save image as character")}
+          </DialogTitle>
+          {characterCapture ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 rounded-lg bg-slate-50 p-3">
+                <img
+                  src={characterCapture.imageUrl}
+                  alt={text(
+                    `ภาพช็อต ${characterCapture.shotNumber}`,
+                    `Shot ${characterCapture.shotNumber}`
+                  )}
+                  className="h-24 w-16 rounded object-cover"
+                />
+                <p className="text-sm text-slate-600">
+                  {text(
+                    "ภาพนี้เป็นภาพที่สร้างสำเร็จและตรวจสอบได้แล้ว จึงนำเข้าคลังตัวละครได้",
+                    "This completed, verified shot can now be added to the Character Library."
+                  )}
+                </p>
+              </div>
+              <label className="block space-y-1 text-sm font-medium">
+                {text("บันทึกให้ตัวละคร", "Save to character")}
+                <select
+                  className="h-10 w-full rounded-md border bg-white px-3"
+                  value={characterCapture.characterId}
+                  onChange={event =>
+                    setCharacterCapture(current =>
+                      current
+                        ? {
+                            ...current,
+                            characterId: event.target.value,
+                            role:
+                              event.target.value === "__new__"
+                                ? "portrait"
+                                : current.role,
+                            name: "",
+                          }
+                        : current
+                    )
+                  }
+                >
+                  <option value="__new__">
+                    {text("สร้างตัวละครใหม่", "Create a new character")}
+                  </option>
+                  {(charactersQuery.data ?? []).map(character => (
+                    <option key={character.id} value={character.id}>
+                      {character.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block space-y-1 text-sm font-medium">
+                {text("ประเภทภาพ", "Image role")}
+                <select
+                  className="h-10 w-full rounded-md border bg-white px-3"
+                  value={characterCapture.role}
+                  disabled={characterCapture.characterId === "__new__"}
+                  onChange={event =>
+                    setCharacterCapture(current =>
+                      current
+                        ? {
+                            ...current,
+                            role: event.target.value as "portrait" | "look",
+                            name: "",
+                          }
+                        : current
+                    )
+                  }
+                >
+                  <option value="portrait">
+                    {text("Portrait — ภาพหลัก", "Portrait — main image")}
+                  </option>
+                  <option value="look">
+                    {text("Look — ลุคเพิ่มเติม", "Look — additional look")}
+                  </option>
+                </select>
+                {characterCapture.characterId === "__new__" ? (
+                  <span className="block text-xs font-normal text-slate-500">
+                    {text(
+                      "ตัวละครใหม่เริ่มจากภาพหลักก่อน แล้วค่อยเพิ่ม Look ได้ภายหลัง",
+                      "A new character starts with a portrait; add looks later."
+                    )}
+                  </span>
+                ) : null}
+              </label>
+              {characterCapture.characterId === "__new__" ||
+              characterCapture.role === "look" ? (
+                <label className="block space-y-1 text-sm font-medium">
+                  {characterCapture.characterId === "__new__"
+                    ? text("ชื่อตัวละคร", "Character name")
+                    : text("ชื่อ Look", "Look name")}
+                  <Input
+                    autoFocus
+                    value={characterCapture.name}
+                    onChange={event =>
+                      setCharacterCapture(current =>
+                        current
+                          ? { ...current, name: event.target.value }
+                          : current
+                      )
+                    }
+                    placeholder={
+                      characterCapture.characterId === "__new__"
+                        ? text("เช่น เด็กหญิงมะลิ", "e.g. Mali")
+                        : text("เช่น ชุดนักเรียน", "e.g. School uniform")
+                    }
+                    maxLength={160}
+                  />
+                </label>
+              ) : null}
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCharacterCapture(null)}
+                  disabled={saveShotAsCharacter.isPending}
+                >
+                  {text("ยกเลิก", "Cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleSaveShotAsCharacter()}
+                  disabled={
+                    saveShotAsCharacter.isPending ||
+                    (!characterCapture.name.trim() &&
+                      (characterCapture.characterId === "__new__" ||
+                        characterCapture.role === "look"))
+                  }
+                >
+                  {saveShotAsCharacter.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <BookmarkPlus className="mr-2 h-4 w-4" />
+                  )}
+                  {text("บันทึก", "Save")}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }

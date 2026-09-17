@@ -11,10 +11,30 @@ const PLAYWRIGHT_BACKED_FLAGS = new Set([
   "automationCopilot",
   "liveBrowser",
   "chatBrowserSessionEntry",
-  "agencyBrowserSessionUi",
-  "workflowBrowserSessionNodes",
 ]);
 const FALSE_ENV_VALUES = new Set(["0", "false", "no", "off", "disabled"]);
+const RETIRED_FEATURE_FLAGS = new Set([
+  "crossAgency",
+  "agencyBrowserSessionUi",
+  "workflowBrowserSessionNodes",
+  "agencyCustomTools",
+  "agencyGuardrails",
+  "agencyStreaming",
+  "agencyToolApi",
+  "agencyAgenticModeEnabled",
+  "agencyReactExecutorEnabled",
+  "agencyAutonomousAgentEnabled",
+  "agencyLongTermMemoryEnabled",
+  "agencyHybridAdk",
+  "agencyHybridAdkKillSwitch",
+  "agentExperienceAgencyPreview",
+  "taskPlannerAgencyEscalation",
+  "orchestratorEnabled",
+  "workpacksEnabled",
+  "workpackAutonomousPilot",
+  "workpackOpsConsole",
+  "mcpStdio",
+]);
 
 function isPlaywrightGloballyDisabled(): boolean {
   const raw = process.env.SMARTSPEC_PLAYWRIGHT_ENABLED ?? "true";
@@ -33,7 +53,7 @@ function isPlaywrightBackedFlag(flagName: string): boolean {
  * Returns false by default — features are opt-in unless explicitly enabled.
  */
 export async function getFeatureFlag(flagName: string): Promise<boolean> {
-  if (flagName === "USE_CLOUD_TASKS") {
+  if (flagName === "USE_CLOUD_TASKS" || RETIRED_FEATURE_FLAGS.has(flagName)) {
     // This flag belonged to the retired Google runtime. Keep reads
     // fail-closed so stale Redis/DB values cannot reactivate it.
     return false;
@@ -74,6 +94,9 @@ export async function setFeatureFlag(
   if (flagName === "USE_CLOUD_TASKS") {
     throw new Error("GOOGLE_CLOUD_RUNTIME_RETIRED");
   }
+  if (RETIRED_FEATURE_FLAGS.has(flagName)) {
+    throw new Error("RETIRED_FEATURE_FLAG");
+  }
   const redis = getRedisClient();
   await redis.set(`feature-flag:${flagName}`, value ? "true" : "false");
 }
@@ -88,6 +111,9 @@ export async function getTenantFeatureFlag(
   flagName: string,
   tenantId: string,
 ): Promise<boolean> {
+  if (RETIRED_FEATURE_FLAGS.has(flagName)) {
+    return false;
+  }
   if (isPlaywrightBackedFlag(flagName) && isPlaywrightGloballyDisabled()) {
     return false;
   }
@@ -116,6 +142,9 @@ export async function setTenantFeatureFlag(
   tenantId: string,
   value: boolean,
 ): Promise<void> {
+  if (RETIRED_FEATURE_FLAGS.has(flagName)) {
+    throw new Error("RETIRED_FEATURE_FLAG");
+  }
   const redis = getRedisClient();
   await redis.set(
     `feature-flag:${flagName}:${tenantId}`,

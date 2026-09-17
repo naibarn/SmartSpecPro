@@ -7,6 +7,7 @@ export type CompositionScanJobInput = {
   jobId: string;
   tenantId: string;
   userId?: number;
+  projectRevisionId?: string;
   sourceFingerprint: string;
   markRevision: number;
   policyFingerprint: string;
@@ -16,10 +17,12 @@ export type CompositionScanJobInput = {
   aspectProfile: string;
   durationMs: number;
   evidenceRef?: string;
+  compositionContractVersion?: "feature-191.v1";
 };
 
 export function validateCompositionScanInput(input: CompositionScanJobInput): void {
   if (!input.jobId || input.jobId.length > 256 || !input.tenantId || input.tenantId.length > 256
+    || (input.projectRevisionId !== undefined && (!input.projectRevisionId || input.projectRevisionId.length > 160))
     || !input.sourceFingerprint || input.sourceFingerprint.length > 256
     || !input.policyFingerprint || input.policyFingerprint.length > 256
     || !input.capabilityProfileFingerprint || input.capabilityProfileFingerprint.length > 256) {
@@ -35,13 +38,15 @@ export function validateCompositionScanInput(input: CompositionScanJobInput): vo
     throw new Error("COMPOSITION_SCAN_TRIM_RANGE_INVALID");
   }
   if (input.evidenceRef && input.evidenceRef.length > 256) throw new Error("COMPOSITION_SCAN_EVIDENCE_REF_INVALID");
+  if (input.compositionContractVersion && input.compositionContractVersion !== "feature-191.v1") throw new Error("COMPOSITION_SCAN_CONTRACT_VERSION_INVALID");
 }
 
 /** Creates the canonical Feature 186 row; transport selection remains server-owned. */
-export async function enqueueCompositionScanJob(input: CompositionScanJobInput): Promise<void> {
+export async function enqueueCompositionScanJob(input: CompositionScanJobInput): Promise<string> {
   validateCompositionScanInput(input);
   const idempotencyTuple = JSON.stringify({
     jobId: input.jobId,
+    projectRevisionId: input.projectRevisionId ?? null,
     sourceFingerprint: input.sourceFingerprint,
     trimRange: input.trimRange,
     aspectProfile: input.aspectProfile,
@@ -59,8 +64,10 @@ export async function enqueueCompositionScanJob(input: CompositionScanJobInput):
     executionClass: "long",
     idempotencyKey: `feature-191:composition-scan:${tupleDigest}`,
     payload: {
-      contractVersion: "feature-191.v1",
+      contractVersion: "feature-186-v1",
+      compositionContractVersion: "feature-191.v1",
       sourceFingerprint: input.sourceFingerprint,
+      projectRevisionId: input.projectRevisionId ?? null,
       markRevision: input.markRevision,
       policyFingerprint: input.policyFingerprint,
       capabilityProfileFingerprint: input.capabilityProfileFingerprint,
@@ -71,4 +78,5 @@ export async function enqueueCompositionScanJob(input: CompositionScanJobInput):
       evidenceRef: input.evidenceRef ?? null,
     },
   });
+  return input.jobId;
 }

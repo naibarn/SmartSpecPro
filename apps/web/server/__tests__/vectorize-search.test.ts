@@ -9,21 +9,30 @@ vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test-account-id");
 const mockQuery = vi.fn();
 
 vi.mock("../services/vectorize", () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(Array.from({ length: 768 }, () => 0.1)),
+  generateEmbedding: vi
+    .fn()
+    .mockResolvedValue(Array.from({ length: 768 }, () => 0.1)),
   chunkDocument: vi.fn().mockReturnValue(["chunk"]),
   generateImageDescription: vi.fn().mockResolvedValue("description"),
-  generateImageDescriptionFromBuffer: vi.fn().mockResolvedValue("query image description"),
+  generateImageDescriptionFromBuffer: vi
+    .fn()
+    .mockResolvedValue("query image description"),
 }));
 
 vi.mock("../services/vectorProvider", () => ({
   dispatchVectorOperation: vi.fn().mockImplementation(async () => ({
     matches: await mockQuery(),
   })),
-  getEffectiveVectorProviderConfig: vi.fn().mockResolvedValue({ provider: "cloudflare_vectorize" }),
-  getVectorProviderConfigFromEnv: vi.fn().mockReturnValue({ provider: "cloudflare_vectorize" }),
+  getEffectiveVectorProviderConfig: vi
+    .fn()
+    .mockResolvedValue({ provider: "cloudflare_vectorize" }),
+  getVectorProviderConfigFromEnv: vi
+    .fn()
+    .mockReturnValue({ provider: "cloudflare_vectorize" }),
 }));
 
-const { searchDocs, searchImages, searchImagesByBuffer } = await import("../services/vectorize-search");
+const { searchDocs, searchImages, searchImagesByBuffer } =
+  await import("../services/vectorize-search");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -33,31 +42,31 @@ describe("Search Endpoints", () => {
   describe("search.docs", () => {
     it("returns ranked results for text query", async () => {
       mockQuery.mockResolvedValueOnce([
-          {
-            id: "doc-1-chunk-0",
-            score: 0.92,
-            metadata: {
-              sourceId: "doc-1",
-              title: "Auth Guide",
-              type: "article",
-              sourceUrl: "/docs/auth",
-              createdAt: Date.now(),
-              tenantId: "t1",
-            },
+        {
+          id: "doc-1-chunk-0",
+          score: 0.92,
+          metadata: {
+            sourceId: "doc-1",
+            title: "Auth Guide",
+            type: "article",
+            sourceUrl: "/docs/auth",
+            createdAt: Date.now(),
+            tenantId: "t1",
           },
-          {
-            id: "doc-2-chunk-0",
-            score: 0.85,
-            metadata: {
-              sourceId: "doc-2",
-              title: "Login Flow",
-              type: "article",
-              sourceUrl: "/docs/login",
-              createdAt: Date.now(),
-              tenantId: "t1",
-            },
+        },
+        {
+          id: "doc-2-chunk-0",
+          score: 0.85,
+          metadata: {
+            sourceId: "doc-2",
+            title: "Login Flow",
+            type: "article",
+            sourceUrl: "/docs/login",
+            createdAt: Date.now(),
+            tenantId: "t1",
           },
-        ]);
+        },
+      ]);
 
       const results = await searchDocs({
         query: "user authentication flow",
@@ -73,18 +82,18 @@ describe("Search Endpoints", () => {
 
     it("filters results by tenantId", async () => {
       mockQuery.mockResolvedValueOnce([
-          {
-            id: "doc-3",
-            score: 0.88,
-            metadata: {
-              title: "Tenant Guide",
-              type: "article",
-              sourceUrl: "/docs/tenant",
-              createdAt: Date.now(),
-              tenantId: "tenant-42",
-            },
+        {
+          id: "doc-3",
+          score: 0.88,
+          metadata: {
+            title: "Tenant Guide",
+            type: "article",
+            sourceUrl: "/docs/tenant",
+            createdAt: Date.now(),
+            tenantId: "tenant-42",
           },
-        ]);
+        },
+      ]);
 
       const results = await searchDocs({
         query: "test",
@@ -94,16 +103,39 @@ describe("Search Endpoints", () => {
 
       expect(results).toHaveLength(1);
       // Verify the query was called with the tenant filter
-      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      const { dispatchVectorOperation } =
+        await import("../services/vectorProvider");
       expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
         expect.objectContaining({
           filter: expect.objectContaining({ tenantId: "tenant-42" }),
-        }),
+          namespace: "tenant:tenant-42",
+        })
+      );
+    });
+
+    it("uses the persisted Vectorize index setting for document reads", async () => {
+      mockQuery.mockResolvedValueOnce([]);
+      const { getEffectiveVectorProviderConfig, dispatchVectorOperation } =
+        await import("../services/vectorProvider");
+      vi.mocked(getEffectiveVectorProviderConfig).mockResolvedValueOnce({
+        provider: "cloudflare_vectorize",
+        vectorizeIndexName: "smartaihub-library",
+      });
+
+      await searchDocs({
+        query: "configured index",
+        tenantId: "t1",
+        limit: 10,
+      });
+
+      expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
+        expect.objectContaining({ indexName: "smartaihub-library" })
       );
     });
 
     it("limits results to topK", async () => {
-      mockQuery.mockResolvedValueOnce(Array.from({ length: 5 }, (_, i) => ({
+      mockQuery.mockResolvedValueOnce(
+        Array.from({ length: 5 }, (_, i) => ({
           id: `doc-${i}`,
           score: 0.9 - i * 0.1,
           metadata: {
@@ -113,13 +145,19 @@ describe("Search Endpoints", () => {
             createdAt: Date.now(),
             tenantId: "t1",
           },
-        })));
+        }))
+      );
 
-      const results = await searchDocs({ query: "test", tenantId: "t1", limit: 5 });
+      const results = await searchDocs({
+        query: "test",
+        tenantId: "t1",
+        limit: 5,
+      });
       expect(results.length).toBeLessThanOrEqual(5);
-      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      const { dispatchVectorOperation } =
+        await import("../services/vectorProvider");
       expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
-        expect.objectContaining({ topK: 5 }),
+        expect.objectContaining({ topK: 5 })
       );
     });
 
@@ -128,14 +166,19 @@ describe("Search Endpoints", () => {
 
       await searchDocs({ query: "test", tenantId: "t1", limit: 100 });
 
-      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      const { dispatchVectorOperation } =
+        await import("../services/vectorProvider");
       expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
-        expect.objectContaining({ topK: 50 }),
+        expect.objectContaining({ topK: 50 })
       );
     });
 
     it("returns empty array for empty query", async () => {
-      const results = await searchDocs({ query: "", tenantId: "t1", limit: 10 });
+      const results = await searchDocs({
+        query: "",
+        tenantId: "t1",
+        limit: 10,
+      });
       expect(results).toEqual([]);
       expect(mockQuery).not.toHaveBeenCalled();
     });
@@ -144,22 +187,26 @@ describe("Search Endpoints", () => {
   describe("search.images", () => {
     it("returns results with image metadata", async () => {
       mockQuery.mockResolvedValueOnce([
-          {
-            id: "img-1",
-            score: 0.88,
-            metadata: {
-              sourceId: "asset-1",
-              title: "screenshot.png",
-              type: "image",
-              sourceUrl: "https://cdn.example.com/screenshot.png",
-              createdAt: Date.now(),
-              tenantId: "t1",
-              description: "A dashboard screenshot",
-            },
+        {
+          id: "img-1",
+          score: 0.88,
+          metadata: {
+            sourceId: "asset-1",
+            title: "screenshot.png",
+            type: "image",
+            sourceUrl: "https://cdn.example.com/screenshot.png",
+            createdAt: Date.now(),
+            tenantId: "t1",
+            description: "A dashboard screenshot",
           },
-        ]);
+        },
+      ]);
 
-      const results = await searchImages({ query: "product screenshot", tenantId: "t1", limit: 10 });
+      const results = await searchImages({
+        query: "product screenshot",
+        tenantId: "t1",
+        limit: 10,
+      });
       expect(results).toHaveLength(1);
       expect(results[0].imageUrl).toBeTruthy();
       expect(results[0].filename).toBe("screenshot.png");
@@ -167,7 +214,11 @@ describe("Search Endpoints", () => {
     });
 
     it("returns empty array for empty query", async () => {
-      const results = await searchImages({ query: "", tenantId: "t1", limit: 10 });
+      const results = await searchImages({
+        query: "",
+        tenantId: "t1",
+        limit: 10,
+      });
       expect(results).toEqual([]);
     });
 
@@ -176,9 +227,9 @@ describe("Search Endpoints", () => {
         {
           id: "marketplace-asset_1",
           score: 0.91,
-            metadata: {
-              sourceId: "marketplace-asset_1",
-              title: "product_main_01",
+          metadata: {
+            sourceId: "marketplace-asset_1",
+            title: "product_main_01",
             type: "marketplace_image",
             sourceUrl: "https://cdn.example.com/product.png",
             createdAt: Date.now(),
@@ -197,14 +248,16 @@ describe("Search Endpoints", () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].id).toBe("marketplace-asset_1");
-      const { dispatchVectorOperation } = await import("../services/vectorProvider");
+      const { dispatchVectorOperation } =
+        await import("../services/vectorProvider");
       expect(vi.mocked(dispatchVectorOperation)).toHaveBeenCalledWith(
         expect.objectContaining({
           filter: expect.objectContaining({
             tenantId: "t1",
             type: "marketplace_image",
           }),
-        }),
+          namespace: "tenant:t1",
+        })
       );
     });
   });

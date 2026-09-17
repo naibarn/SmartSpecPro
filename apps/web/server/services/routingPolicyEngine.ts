@@ -33,8 +33,6 @@ export interface PolicyDecision {
 
 // ─── Signal Patterns ────────────────────────────────────────────────────────
 
-const AGENCY_SIGNAL_RE = /(agency|handoff|orchestrate|delegate|coordinate|escalate|escalation|multi[- ]agent|swarm)/i;
-
 const CHAT_SIGNAL_RE = /^(hi|hello|สวัสดี|ขอบคุณ|thanks|how are you|เป็นไง|คุย|chat|hey|yo)\s*[!?.]?$/i;
 
 const IMAGE_PROMPT_RE = /(prompt ภาพ|prompt รูป|สร้าง prompt|image prompt|photo prompt|create.+prompt.+(?:image|photo|visual))/i;
@@ -58,21 +56,14 @@ export function applyRoutingPolicies(
 
   const text = input.message.trim();
 
-  // Rule 1: Explicit agency signal → force agency route
-  if (AGENCY_SIGNAL_RE.test(text)) {
-    decision.forcedRoute = "agency";
-    decision.policyReasons.push("explicit_agency_signal");
-    return decision;
-  }
-
-  // Rule 2: Short greeting with no task signal → force chat
+  // Rule 1: Short greeting with no task signal → force chat
   if (CHAT_SIGNAL_RE.test(text)) {
     decision.forcedRoute = "chat";
     decision.policyReasons.push("greeting_detected");
     return decision;
   }
 
-  // Rule 3: Freshness required OR explicit web search request → must have web search
+  // Rule 2: Freshness required OR explicit web search request → must have web search
   if (profile.freshness === "required" || profile.capabilityNeeds.webSearchExplicit) {
     decision.forceWebSearch = true;
     if (!decision.requiredCapabilities.includes("web_search")) {

@@ -1,0 +1,78 @@
+# Feature 194 semantic media evaluation contract.
+# Thresholds are declared before backfill; no production activation evidence.
+
+contract_version: feature-194-media-evaluation-v1
+status: fixtures_and_target_probe_pending
+fixture_version: smartaihub-media-fixture-v1
+owner: media-search-platform
+production_activation_allowed: false
+
+common:
+  top_k: 10
+  negative_isolation_required: true
+  canonical_hydration_required: true
+  missing_hydration_result: omit
+  unsupported_language_behavior: explicit_failure
+  legacy_vector_values_read: false
+
+modes:
+  - mode: text_to_image
+    workload: media
+    index: smartaihub-media-v1
+    query_languages: [th, en]
+    metric: recall_at_k
+    minimum_threshold: 0.80
+    positive_cases:
+      - query: rabbit image
+        expected_labels: [rabbit]
+      - query: woman portrait
+        expected_labels: [woman, portrait]
+    negative_cases:
+      - query: rabbit image
+        forbidden_tenant: another_tenant
+
+  - mode: image_to_image
+    workload: media
+    index: smartaihub-media-v1
+    metric: recall_at_k
+    minimum_threshold: 0.85
+    required_path: preferred_multimodal_image_embedding
+    transitional_path: caption_to_text_embedding
+    transitional_status: not_visual_similarity_complete
+    positive_cases:
+      - query: product_reference_image
+        expected_relation: same_product_family_or_visual_variant
+    negative_cases:
+      - query: product_reference_image
+        expected_relation: unrelated_product_rejected
+
+  - mode: text_to_video_segment
+    workload: media
+    index: smartaihub-media-v1
+    metric: recall_at_k
+    minimum_threshold: 0.75
+    required_metadata: [asset_id, segment_id, start_ms, end_ms, source_revision]
+    positive_cases:
+      - query: rabbit
+        expected_time_range: declared_by_fixture
+    negative_cases:
+      - query: rabbit
+        forbidden_tenant: another_tenant
+
+  - mode: thai_english_cross_language
+    workload: media
+    index: smartaihub-media-v1
+    metric: recall_at_k
+    minimum_threshold: 0.70
+    status: blocked_until_model_capability_probe
+    required_behavior: do_not_claim_thai_support_from_bge_english_default
+
+gates:
+  - fixture_is_non_sensitive_and_versioned
+  - model_and_dimension_match_index
+  - target_account_probe_passes
+  - tenant_positive_and_negative_cases_pass
+  - acl_delete_and_stale_revision_cases_pass
+  - canonical_postgresql_r2_hydration_passes
+  - image_to_image_visual_path_is_not_caption_only_for_visual_claim
+  - declared_metrics_meet_thresholds

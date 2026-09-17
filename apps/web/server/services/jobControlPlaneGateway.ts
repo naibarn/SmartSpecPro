@@ -1,7 +1,24 @@
-import { JobControlPlaneError, type ExecutionClass, type JobDefinition, type JobRef, type RetryPolicy, type ScheduleDefinition, type TimeoutPolicy } from "./jobControlPlaneTypes";
-import { createJobControlPlane, type CreateJobOptions } from "./jobControlPlane";
-import { defaultJobExecutorRegistry, type JobExecutorRegistry } from "./jobExecutorRegistry";
-import { assertGoogleRuntimeDisabled, feature186RuntimeReadiness, isCloudflareHardCutoverEnabled } from "./cloudflareRuntimeTarget";
+import {
+  JobControlPlaneError,
+  type ExecutionClass,
+  type JobDefinition,
+  type JobRef,
+  type RetryPolicy,
+  type ScheduleDefinition,
+  type TimeoutPolicy,
+} from "./jobControlPlaneTypes";
+import {
+  createJobControlPlane,
+  type CreateJobOptions,
+} from "./jobControlPlane";
+import {
+  defaultJobExecutorRegistry,
+  type JobExecutorRegistry,
+} from "./jobExecutorRegistry";
+import {
+  assertGoogleRuntimeDisabled,
+  isFeature186HardCutoverEnabled,
+} from "./cloudflareRuntimeTarget";
 
 export type JobServerContext = {
   tenantId: string;
@@ -36,56 +53,99 @@ export type CreateControlPlaneJobInput = {
  * The only producer-facing job creation boundary. Tenant, actor, adapter, and
  * queue identity are derived here and never accepted from a transport payload.
  */
-export async function createControlPlaneJob(input: CreateControlPlaneJobInput): Promise<JobRef> {
+export async function createControlPlaneJob(
+  input: CreateControlPlaneJobInput
+): Promise<JobRef> {
   const { context, definition } = input;
   const tenantId = context.tenantId?.trim();
   const authorizationScope = context.authorizationScope?.trim();
   const correlationId = context.correlationId?.trim();
-  if (!['user', 'admin', 'system'].includes(context.actorType) || !tenantId || tenantId.length > 36 || !authorizationScope || authorizationScope.length > 160 || !correlationId || correlationId.length > 160) {
-    throw new JobControlPlaneError("JOB_CONTEXT_INVALID", "Authenticated server context is required");
+  if (
+    !["user", "admin", "system"].includes(context.actorType) ||
+    !tenantId ||
+    tenantId.length > 36 ||
+    !authorizationScope ||
+    authorizationScope.length > 160 ||
+    !correlationId ||
+    correlationId.length > 160
+  ) {
+    throw new JobControlPlaneError(
+      "JOB_CONTEXT_INVALID",
+      "Authenticated server context is required"
+    );
   }
-  if ((context.actorType === "user" || context.actorType === "admin") && (!Number.isSafeInteger(context.actorId) || context.actorId <= 0)) {
-    throw new JobControlPlaneError("JOB_CONTEXT_INVALID", "Authenticated user context requires a valid actor ID");
+  if (
+    (context.actorType === "user" || context.actorType === "admin") &&
+    (!Number.isSafeInteger(context.actorId) || context.actorId <= 0)
+  ) {
+    throw new JobControlPlaneError(
+      "JOB_CONTEXT_INVALID",
+      "Authenticated user context requires a valid actor ID"
+    );
   }
-  if (context.actorType === "system" && context.actorId !== undefined && (!Number.isSafeInteger(context.actorId) || context.actorId <= 0)) {
-    throw new JobControlPlaneError("JOB_CONTEXT_INVALID", "System actor ID must be a positive integer when supplied");
+  if (
+    context.actorType === "system" &&
+    context.actorId !== undefined &&
+    (!Number.isSafeInteger(context.actorId) || context.actorId <= 0)
+  ) {
+    throw new JobControlPlaneError(
+      "JOB_CONTEXT_INVALID",
+      "System actor ID must be a positive integer when supplied"
+    );
   }
   if (context.idempotencyKey !== undefined && !context.idempotencyKey.trim()) {
-    throw new JobControlPlaneError("JOB_CONTEXT_INVALID", "Idempotency key cannot be empty");
+    throw new JobControlPlaneError(
+      "JOB_CONTEXT_INVALID",
+      "Idempotency key cannot be empty"
+    );
   }
   const registry = input.executorRegistry ?? defaultJobExecutorRegistry;
   if (!registry.has(definition.jobType, definition.contractVersion)) {
-    throw new JobControlPlaneError("JOB_EXECUTOR_UNREGISTERED", "Job type is not registered for this contract version");
+    throw new JobControlPlaneError(
+      "JOB_EXECUTOR_UNREGISTERED",
+      "Job type is not registered for this contract version"
+    );
   }
-  if (isCloudflareHardCutoverEnabled()) {
+  if (isFeature186HardCutoverEnabled()) {
+    // Runtime readiness controls publication, not canonical admission. The
+    // job and its outbox must be durable before a temporarily unavailable
+    // transport can be repaired and retried. The startup/readiness gates
+    // still prevent selecting a retired runtime.
     assertGoogleRuntimeDisabled();
-    const readiness = feature186RuntimeReadiness();
-    if (!readiness.ready) {
-      throw new JobControlPlaneError(
-        "JOB_RUNTIME_NOT_READY",
-        "The configured job runtime is not ready; no canonical job was created",
-      );
-    }
   }
   const idempotencyKey = context.idempotencyKey;
   const canonicalDefinition: JobDefinition = {
     ...definition,
     tenantId,
-    requestedByUserId: context.actorType === "user" || context.actorType === "admin" ? context.actorId : undefined,
+    requestedByUserId:
+      context.actorType === "user" || context.actorType === "admin"
+        ? context.actorId
+        : undefined,
     idempotencyKey,
   };
-  return (input.controlPlane ?? createJobControlPlane()).create(canonicalDefinition, {
-    ...input.createOptions,
-    requestedBySystemComponent: context.actorType === "system" ? authorizationScope : undefined,
-  });
+  return (input.controlPlane ?? createJobControlPlane()).create(
+    canonicalDefinition,
+    {
+      ...input.createOptions,
+      requestedBySystemComponent:
+        context.actorType === "system" ? authorizationScope : undefined,
+    }
+  );
 }
 
-export function createControlPlaneJobGateway(dependencies: {
-  controlPlane?: ReturnType<typeof createJobControlPlane>;
-  executorRegistry?: JobExecutorRegistry;
-} = {}) {
+export function createControlPlaneJobGateway(
+  dependencies: {
+    controlPlane?: ReturnType<typeof createJobControlPlane>;
+    executorRegistry?: JobExecutorRegistry;
+  } = {}
+) {
   return {
-    create(input: Omit<CreateControlPlaneJobInput, "controlPlane" | "executorRegistry">) {
+    create(
+      input: Omit<
+        CreateControlPlaneJobInput,
+        "controlPlane" | "executorRegistry"
+      >
+    ) {
       return createControlPlaneJob({
         ...input,
         controlPlane: dependencies.controlPlane,

@@ -23,6 +23,7 @@ export interface VideoEditorProject {
     deadAirCutCount?: number;
     deadAirCutRanges?: Array<{ startTime: number; endTime: number }>;
     deadAirAudioStreamIndex?: number;
+    silenceCutMap?: import('@smartspec/shared').SilenceCutMap;
     [key: string]: unknown;
   };
 }
@@ -84,7 +85,8 @@ export interface Clip {
   };
 }
 
-export type SmartCameraMode = 'off' | 'auto_face' | 'auto_object' | 'manual_keyframes';
+export type SmartCameraMode = 'off' | 'auto_face' | 'auto_object' | 'face_focus' | 'face_activity' | 'manual_keyframes';
+export type SmartCameraAnalysisStatus = 'idle' | 'browser_running' | 'browser_ready' | 'browser_degraded' | 'worker_running' | 'stale' | 'unsupported' | 'error';
 
 export interface SmartCameraSettings {
   mode: SmartCameraMode;
@@ -93,6 +95,25 @@ export interface SmartCameraSettings {
   intensity: number;
   safeMargin: number;
   analysisRequested?: boolean;
+  analysisMode?: 'quick' | 'full_scan';
+  analysisStatus?: SmartCameraAnalysisStatus;
+  analysisProvenance?: 'browser' | 'worker' | 'manual' | 'legacy';
+  sourceFingerprint?: string;
+  projectRevisionId?: string;
+  markRevision?: number;
+  policyFingerprint?: string;
+  capabilityProfileFingerprint?: string;
+  planReference?: string;
+  planHash?: string;
+  planFingerprint?: string;
+  planRef?: string;
+  trimRange?: { startMs: number; endMs: number };
+  lastAnalysisJobId?: string;
+  warnings?: string[];
+  staleReason?: string;
+  facePointCount?: number;
+  activityEvidenceCount?: number;
+  plan?: import('@smartspec/shared').CameraMotionPlan;
 }
 
 export interface TextConfig {

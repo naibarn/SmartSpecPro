@@ -246,8 +246,10 @@ interface StoryboardReviewClip {
   statusDetail: string;
   durationSeconds: number | null;
   model: string | null;
+  imagePrompt: string;
   videoPrompt: string;
   videoUrl?: string;
+  imageUrl?: string;
   referenceImageUrl?: string;
   startFrameUrl?: string;
   stopFrameUrl?: string;
@@ -417,8 +419,8 @@ const DIAGNOSTIC_LOG_LIMIT = 200;
 const LOCAL_AI_CACHE_SCHEMA_VERSION = "1.3";
 const REVIEW_DRAFT_PREFIX = "marketplaceReviewDraft:";
 const TOKEN_RENEWAL_WARNING_MS = 24 * 60 * 60 * 1000;
-const EXTENSION_VERSION = "0.1.142";
-const EXTENSION_BUILD_LABEL = "2026-09-03 16:51 +07";
+const EXTENSION_VERSION = "0.1.146";
+const EXTENSION_BUILD_LABEL = "2026-09-16 15:40 +07";
 const CAPTURE_REVIEW_FOCUS_WINDOW_MS = 60_000;
 const MIN_AUTO_SELECTED_IMAGE_SIDE = 100;
 const SMARTAIHUB_DRAG_MEDIA_MIME = "application/x-smartaihub-drag-media-id";
@@ -4009,8 +4011,9 @@ export default function App() {
         setSelectedStoryboardProject(null);
       } else if (selectedStoryboardProjectId && projects.some((project) => project.id === selectedStoryboardProjectId)) {
         await loadStoryboardReviewProject(selectedStoryboardProjectId);
-      } else if (!selectedStoryboardProjectId || !projects.some((project) => project.id === selectedStoryboardProjectId)) {
-        await loadStoryboardReviewProject(projects[0].id);
+      } else {
+        setSelectedStoryboardProjectId(null);
+        setSelectedStoryboardProject(null);
       }
     } finally {
       setStoryboardProjectsBusy(false);
@@ -4036,6 +4039,9 @@ export default function App() {
       setSelectedStoryboardProject(project ?? null);
       if (project) {
         void prepareStoryboardReviewProjectMediaFiles(project);
+        window.setTimeout(() => {
+          document.querySelector<HTMLElement>(".storyboard-review-detail")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 0);
       }
       setStatus("Storyboard Review clips ready");
     } finally {
@@ -4601,6 +4607,7 @@ export default function App() {
     empty: string,
     collapsible = false,
     compact = false,
+    previewRows = 3,
   ) => {
     const prompt = value?.trim() ?? "";
     const promptContent = compact ? (
@@ -4608,7 +4615,7 @@ export default function App() {
         className="production-prompt-content production-prompt-textarea"
         aria-label={label}
         readOnly
-        rows={3}
+        rows={previewRows}
         value={prompt || empty}
       />
     ) : (
@@ -4820,7 +4827,7 @@ export default function App() {
   };
   const storyboardClipFrameUrls = (clip: StoryboardReviewClip, slot: "reference" | "start" | "stop") => {
     const referenceUrls = clip.referenceImages.map((image) => image.url);
-    if (slot === "reference") return [clip.referenceImageUrl, ...referenceUrls, clip.startFrameUrl, clip.stopFrameUrl];
+    if (slot === "reference") return [clip.imageUrl, clip.referenceImageUrl, ...referenceUrls, clip.startFrameUrl, clip.stopFrameUrl];
     if (slot === "start") return [clip.startFrameUrl, clip.referenceImageUrl, ...referenceUrls];
     return [clip.stopFrameUrl, referenceUrls[1], clip.referenceImageUrl, ...referenceUrls];
   };
@@ -5622,69 +5629,85 @@ export default function App() {
 
       {activeTab === "storyboard" ? (
       <div className="tab-panel" role="tabpanel" aria-label="Storyboard Review">
-        <div className="section">
-          <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div>
-              <strong>Storyboard Review Projects</strong>
-              <div className="muted">Recent Storyboard Review projects from SmartAIHub, newest first. Select a project to inspect clip frames and video prompts.</div>
+        {!selectedStoryboardProjectId ? (
+          <>
+            <div className="section">
+              <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div>
+                  <strong>Storyboard Review Projects</strong>
+                  <div className="muted">Recent Storyboard Review projects from SmartAIHub, newest first. Select a project to inspect its clips.</div>
+                </div>
+                <button className="button" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>
+                  {storyboardProjectsBusy ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+              {!settings.token ? (
+                <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Storyboard Review projects.</div>
+              ) : null}
+              <div className="production-search-row">
+                <input
+                  className="input"
+                  placeholder="Search project name"
+                  value={storyboardProjectSearch}
+                  onChange={(event) => setStoryboardProjectSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") run(() => loadStoryboardReviewProjects());
+                  }}
+                />
+                <button className="button primary" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>Search</button>
+              </div>
             </div>
-            <button className="button" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>
-              {storyboardProjectsBusy ? "Loading..." : "Refresh"}
-            </button>
-          </div>
-          {!settings.token ? (
-            <div className="warning" style={{ marginTop: 8 }}>Connect SmartAIHub first, then this tab can read your Storyboard Review projects.</div>
-          ) : null}
-          <div className="production-search-row">
-            <input
-              className="input"
-              placeholder="Search project name"
-              value={storyboardProjectSearch}
-              onChange={(event) => setStoryboardProjectSearch(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") run(() => loadStoryboardReviewProjects());
-              }}
-            />
-            <button className="button primary" disabled={storyboardProjectsBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProjects())}>Search</button>
-          </div>
-        </div>
 
-        <div className="production-layout">
-          <div className="section production-project-list">
-            <div className="compact-summary">
-              <strong>Projects ({storyboardProjects.length})</strong>
-              <span className="muted">max 30</span>
+            <div className="section production-project-list storyboard-project-list">
+              <div className="compact-summary">
+                <strong>Projects ({storyboardProjects.length})</strong>
+                <span className="muted">max 30</span>
+              </div>
+              {storyboardProjects.length > 0 ? storyboardProjects.map((project) => (
+                <button
+                  type="button"
+                  className="production-project-card"
+                  key={project.id}
+                  onClick={() => run(() => loadStoryboardReviewProject(project.id))}
+                >
+                  {project.thumbnailUrl ? draggableProductImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `storyboard-project-${project.id}`,
+                    className: "production-project-thumb",
+                  }) : <div className="production-project-thumb empty" />}
+                  <span className="production-project-body">
+                    <span className="production-project-title">{project.title || `Review ${project.id}`}</span>
+                    <span className="muted">{project.status} | {project.completedClipCount}/{project.clipCount} clips | {formatDateTime(project.updatedAt)}</span>
+                    <span className="production-project-open-label">Click to view clips</span>
+                  </span>
+                </button>
+              )) : (
+                <div className="muted">{storyboardProjectsBusy ? "Loading projects..." : "No Storyboard Review projects found."}</div>
+              )}
             </div>
-            {storyboardProjects.length > 0 ? storyboardProjects.map((project) => (
-              <button
-                type="button"
-                className={selectedStoryboardProjectId === project.id ? "production-project-card selected" : "production-project-card"}
-                key={project.id}
-                onClick={() => run(() => loadStoryboardReviewProject(project.id))}
-              >
-                {project.thumbnailUrl ? <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" /> : <div className="production-project-thumb empty" />}
-                <span className="production-project-body">
-                  <span className="production-project-title">{project.title || `Review ${project.id}`}</span>
-                  <span className="muted">{project.status} | {project.completedClipCount}/{project.clipCount} clips | {formatDateTime(project.updatedAt)}</span>
-                </span>
-              </button>
-            )) : (
-              <div className="muted">{storyboardProjectsBusy ? "Loading projects..." : "No Storyboard Review projects found."}</div>
-            )}
-          </div>
-
-          <div className="section production-storyboard-panel">
+          </>
+        ) : (
+          <div className="section production-storyboard-panel storyboard-review-detail">
             {storyboardProjectBusy ? (
               <div className="muted">Loading selected project...</div>
             ) : selectedStoryboardProject ? (
               <>
                 <div className="row" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
+                    <button className="button" type="button" onClick={() => {
+                      setSelectedStoryboardProjectId(null);
+                      setSelectedStoryboardProject(null);
+                      setProductionMediaFiles({});
+                    }}>← Projects</button>
                     <strong>{selectedStoryboardProject.title || `Review ${selectedStoryboardProject.id}`}</strong>
                     <div className="muted">
                       {selectedStoryboardProject.status} | {selectedStoryboardProject.completedClipCount}/{selectedStoryboardProject.clipCount} clips | {formatDateTime(selectedStoryboardProject.updatedAt)}
                     </div>
                   </div>
+                  <button className="button" type="button" disabled={storyboardProjectBusy || !settings.token} onClick={() => run(() => loadStoryboardReviewProject(selectedStoryboardProject.id))}>
+                    {storyboardProjectBusy ? "Loading..." : "Refresh"}
+                  </button>
                 </div>
                 <div className={selectedStoryboardProject.affiliateUrl ? "connection-summary" : "section muted"} style={{ marginTop: 8 }}>
                   <strong>Affiliate link</strong>
@@ -5771,7 +5794,8 @@ export default function App() {
                         {productionMediaCard({ label: "Start frame", urls: storyboardClipFrameUrls(clip, "start"), title: `Clip ${clip.order} start frame` })}
                         {productionMediaCard({ label: "Stop frame", urls: storyboardClipFrameUrls(clip, "stop"), title: `Clip ${clip.order} stop frame` })}
                       </div>
-                      {productionPromptBox("Video prompt", clip.videoPrompt, "No video prompt saved for this clip yet.")}
+                      {productionPromptBox("Image prompt", clip.imagePrompt, "No image prompt saved for this clip yet.", true, true, 5)}
+                      {productionPromptBox("Video prompt", clip.videoPrompt, "No video prompt saved for this clip yet.", false, true, 5)}
                     </div>
                   )) : (
                     <div className="muted">This project has no storyboard review clips yet.</div>
@@ -5779,10 +5803,10 @@ export default function App() {
                 </div>
               </>
             ) : (
-              <div className="muted">Select a Storyboard Review project to view clips.</div>
+              <div className="warning">Unable to load the selected Storyboard Review project.</div>
             )}
           </div>
-        </div>
+        )}
       </div>
       ) : null}
 
@@ -5826,7 +5850,7 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisodes(project))}
               >
                 {project.thumbnailUrl ? (
-                  authenticatedPreviewImage({
+                  draggableProductImage({
                     url: project.thumbnailUrl,
                     alt: "",
                     title: `drama-series-${project.id}`,
@@ -5884,7 +5908,7 @@ export default function App() {
                 onClick={() => run(() => loadDramaEpisode(episode))}
               >
                 {episode.thumbnailUrl ? (
-                  authenticatedPreviewImage({
+                  draggableProductImage({
                     url: episode.thumbnailUrl,
                     alt: "",
                     title: `drama-episode-${episode.id}`,
@@ -6153,7 +6177,12 @@ export default function App() {
                 onClick={() => run(() => loadAutoReviewProject(project.id))}
               >
                 {project.thumbnailUrl ? (
-                  <img className="production-project-thumb" src={resolveServerUrl(serverBaseUrl, project.thumbnailUrl)} alt="" />
+                  draggableProductImage({
+                    url: project.thumbnailUrl,
+                    alt: "",
+                    title: `product-review-${project.id}`,
+                    className: "production-project-thumb",
+                  })
                 ) : (
                   <div className="production-project-thumb empty" />
                 )}

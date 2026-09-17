@@ -650,6 +650,35 @@ describe("vertical drama Enhanced prompt boundary", () => {
     );
   });
 
+  it("accepts canonical lines bound by a shot-local character identity override", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        dialogue: [{
+          characterKey: "mother",
+          speaker: "แม่",
+          text: "ช่วยดูเอกสารนี้หน่อย",
+        }],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      characterDescriptionOverrides: {
+        mother: "ผู้หญิงที่นั่งอยู่ สวมเสื้อสีครีม",
+      },
+    });
+    const result = {
+      prompt:
+        'แม่ identified by ผู้หญิงที่นั่งอยู่ สวมเสื้อสีครีม; แม่ says with a clear voice: "ช่วยดูเอกสารนี้หน่อย"',
+      terminalPromptHash: "a".repeat(64),
+      skillVersion: "11.0.0",
+      adapterVersion: "1.0.0",
+      sdkVersion: "0.22.3",
+    };
+
+    expect(getEnhancedPromptSemanticValidationError(result, input)).toBeNull();
+  });
+
   it("rejects late results when revision or input fingerprint changed", () => {
     expect(
       isEnhancedJobResultApplicable({
@@ -742,6 +771,23 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect((input.dialogue as any[])[0].speaker).toBe("ธันวา");
     expect((input.dialogue as any[])[1].text).toBe("จ่ายแพง ก็หาเงินไป");
     expect((input.shot.dialogue as any[])[0].text).toBe("พอแล้ว วันนี้เป็นโชคเกินไปแบบนั้น");
+  });
+
+  it("carries shot-local character identity overrides into Enhanced skill input", () => {
+    const overrides = {
+      "character-2-look-casual_home":
+        "ผู้หญิงที่นั่งอยู่ viewer-left สวมเสื้อสีครีม",
+    };
+    const input = buildEnhancedSkillInput({
+      shot: { shot_number: 1, description: "A woman checks a folder" },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+      characterDescriptionOverrides: overrides,
+    } as any);
+
+    expect(input.shot.characterDescriptionOverrides).toEqual(overrides);
   });
 });
 

@@ -152,6 +152,19 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "worker.heartbeat_retention",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ reporter, lease }) => {
+    await reporter.assertActive(lease);
+    const { executeWorkerHeartbeatRetention } = await import("../jobs/workerHeartbeatRetentionJob");
+    const result = await executeWorkerHeartbeatRetention();
+    await reporter.assertActive(lease);
+    return result;
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "gdrive.edit_session_cleanup",
   executionClass: "short",
   contractVersions: new Set(["feature-186-v1"]),
@@ -190,6 +203,34 @@ defaultJobExecutorRegistry.register({
       tenantId: string;
       trigger: "manual" | "scheduled";
     });
+    await reporter.assertActive(lease);
+    return {};
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "skill.execute",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async (input) => {
+    const { executeSkillJob } = await import("./skillJobExecutor");
+    return executeSkillJob(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "scheduled.skill.execute",
+  executionClass: "long",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async ({ context, lease, reporter }) => {
+    await reporter.assertActive(lease);
+    const input = context.input as { scheduleId?: unknown };
+    const scheduleId = Number(input.scheduleId);
+    if (!Number.isSafeInteger(scheduleId) || scheduleId <= 0) {
+      throw new Error("SCHEDULED_SKILL_ID_INVALID");
+    }
+    const { deliverScheduledMessage } = await import("./scheduler");
+    await deliverScheduledMessage(scheduleId, { executeSkillInWorker: true });
     await reporter.assertActive(lease);
     return {};
   },
@@ -510,31 +551,47 @@ defaultJobExecutorRegistry.register({
   contractVersions: new Set(["feature-186-v1"]),
   executor: async ({ context, reporter, lease }) => {
     const input = context.input as Record<string, unknown>;
-    const sourceFingerprint = typeof input.sourceFingerprint === "string" ? input.sourceFingerprint : "";
-    const analysisMode = input.analysisMode === "quick" || input.analysisMode === "full_scan" ? input.analysisMode : null;
-    const markRevision = input.markRevision;
-    const trimRange = input.trimRange && typeof input.trimRange === "object" && !Array.isArray(input.trimRange)
-      ? input.trimRange as { startMs?: unknown; endMs?: unknown }
+    const operationOptions = input.operation === "media.composition_scan"
+      && input.options && typeof input.options === "object" && !Array.isArray(input.options)
+      ? input.options as Record<string, unknown>
+      : input;
+    if (operationOptions.contractVersion !== undefined && operationOptions.contractVersion !== "feature-186-v1") {
+      throw new Error("COMPOSITION_SCAN_TRANSPORT_CONTRACT_VERSION_INVALID");
+    }
+    if (operationOptions.compositionContractVersion !== undefined && operationOptions.compositionContractVersion !== "feature-191.v1") {
+      throw new Error("COMPOSITION_SCAN_CONTRACT_VERSION_INVALID");
+    }
+    const sourceFingerprint = typeof operationOptions.sourceFingerprint === "string" ? operationOptions.sourceFingerprint : "";
+    const projectRevisionId = operationOptions.projectRevisionId === undefined
+      ? null
+      : typeof operationOptions.projectRevisionId === "string" && operationOptions.projectRevisionId.length <= 160
+      ? operationOptions.projectRevisionId.trim() || "invalid"
+        : "invalid";
+    const analysisMode = operationOptions.analysisMode === "quick" || operationOptions.analysisMode === "full_scan" ? operationOptions.analysisMode : null;
+    const markRevision = operationOptions.markRevision;
+    const trimRange = operationOptions.trimRange && typeof operationOptions.trimRange === "object" && !Array.isArray(operationOptions.trimRange)
+      ? operationOptions.trimRange as { startMs?: unknown; endMs?: unknown }
       : null;
-    const aspectProfile = typeof input.aspectProfile === "string" ? input.aspectProfile : "";
-    if (!sourceFingerprint || sourceFingerprint.length > 256 || !analysisMode || !Number.isSafeInteger(markRevision) || Number(markRevision) < 0
+    const aspectProfile = typeof operationOptions.aspectProfile === "string" ? operationOptions.aspectProfile : "";
+    if (!sourceFingerprint || sourceFingerprint.length > 256 || projectRevisionId === "invalid" || !analysisMode || !Number.isSafeInteger(markRevision) || Number(markRevision) < 0
       || !trimRange || !Number.isSafeInteger(trimRange.startMs) || !Number.isSafeInteger(trimRange.endMs)
       || Number(trimRange.startMs) < 0 || Number(trimRange.endMs) <= Number(trimRange.startMs)
       || !aspectProfile.trim() || aspectProfile.length > 80
-      || typeof input.policyFingerprint !== "string" || input.policyFingerprint.length > 256
-      || typeof input.capabilityProfileFingerprint !== "string" || input.capabilityProfileFingerprint.length > 256) {
+      || typeof operationOptions.policyFingerprint !== "string" || operationOptions.policyFingerprint.length > 256
+      || typeof operationOptions.capabilityProfileFingerprint !== "string" || operationOptions.capabilityProfileFingerprint.length > 256) {
       throw new Error("COMPOSITION_SCAN_EVIDENCE_INVALID");
     }
-    const evidenceRef = typeof input.evidenceRef === "string" && input.evidenceRef.trim()
-      ? input.evidenceRef.trim().slice(0, 256)
+    const evidenceRef = typeof operationOptions.evidenceRef === "string" && operationOptions.evidenceRef.trim()
+      ? operationOptions.evidenceRef.trim().slice(0, 256)
       : `composition-evidence:${createHash("sha256").update(JSON.stringify({
         sourceFingerprint,
+        ...(projectRevisionId ? { projectRevisionId } : {}),
         trimRange,
         aspectProfile,
         markRevision,
         analysisMode,
-        policyFingerprint: input.policyFingerprint,
-        capabilityProfileFingerprint: input.capabilityProfileFingerprint,
+        policyFingerprint: operationOptions.policyFingerprint,
+        capabilityProfileFingerprint: operationOptions.capabilityProfileFingerprint,
       }), "utf8").digest("hex").slice(0, 32)}`;
     await reporter.progress(lease, {
       progress: 90,
@@ -545,6 +602,7 @@ defaultJobExecutorRegistry.register({
     return {
       output: {
         sourceFingerprint,
+        ...(projectRevisionId ? { projectRevisionId } : {}),
         evidenceRef,
         analysisMode,
         markRevision,

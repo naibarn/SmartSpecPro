@@ -1216,6 +1216,41 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
     },
 
     /**
+     * Persist the reconciler's evidence-backed decision without changing the
+     * lifecycle state. The event key is stable per attempt and reason, so a
+     * periodic sweep can safely repeat the observation.
+     */
+    async recordReconciliation(input: {
+      jobId: string;
+      action: string;
+      reasonCode: string;
+      explanation: string;
+      evidence?: Record<string, unknown>;
+    }): Promise<"recorded" | "ignored"> {
+      const action = sanitizeJobErrorMessage(input.action, 80, "inspect");
+      const reasonCode = sanitizeJobErrorMessage(input.reasonCode, 120, "unknown");
+      const explanation = sanitizeJobErrorMessage(input.explanation, 500, "No reconciliation explanation");
+      if (input.evidence) validateBoundedPayload(input.evidence, "reconciliation.evidence");
+      return repository.transaction(async repo => {
+        const job = await repo.findJob(input.jobId);
+        if (!job) return "ignored";
+        await repo.insertEvent({
+          workerJobId: job.id,
+          eventType: "RECONCILED",
+          attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+          eventIdempotencyKey: boundedEventKey("reconcile", job.id, job.attempt, action, reasonCode),
+          payloadJson: {
+            action,
+            reasonCode,
+            explanation,
+            evidence: input.evidence ?? {},
+          },
+        });
+        return "recorded";
+      });
+    },
+
+    /**
      * Reject an envelope that cannot be executed without claiming a lease.
      * This is intentionally a terminal, operator-visible outcome so an
      * unsupported message cannot loop forever in the transport.
@@ -2008,8 +2043,34 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
     },
 
     async cancel(jobId: string, reason = "cancelled_by_request", actionId?: string, actorId?: number, scope?: JobMutationScope): Promise<void> {
-      await this.requestCancel(jobId, reason, actionId, actorId, scope);
-      await this.finalizeCancel(jobId, reason, actionId, actorId, scope);
+      try {
+        await this.requestCancel(jobId, reason, actionId, actorId, scope);
+      } catch (error) {
+        if (!(error instanceof JobControlPlaneError) || error.code !== "JOB_STATE_CONFLICT") throw error;
+        const current = await this.getStatus(jobId, scope);
+        // Another actor may have completed/cancelled the job between the
+        // caller's read and this command. Cancellation is idempotent at the
+        // control-plane boundary; a terminal winner is already the desired
+        // outcome and must not become a user-visible failure.
+        if (!current || ["succeeded", "failed", "cancelled", "expired"].includes(current.status)) return;
+        if (current.statusReason?.startsWith("cancel_requested:")) {
+          await this.reconcileCancellationRequest(jobId);
+          return;
+        }
+        throw error;
+      }
+      try {
+        await this.finalizeCancel(jobId, reason, actionId, actorId, scope);
+      } catch (error) {
+        if (!(error instanceof JobControlPlaneError) || error.code !== "JOB_STATE_CONFLICT") throw error;
+        const current = await this.getStatus(jobId, scope);
+        if (!current || ["succeeded", "failed", "cancelled", "expired"].includes(current.status)) return;
+        if (current.statusReason?.startsWith("cancel_requested:")) {
+          await this.reconcileCancellationRequest(jobId);
+          return;
+        }
+        throw error;
+      }
     },
 
     async makeRetryDue(jobId: string, actionId?: string, actorId?: number, reason = "retry_due", scope?: JobMutationScope): Promise<boolean> {

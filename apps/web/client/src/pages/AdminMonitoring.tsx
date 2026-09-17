@@ -43,15 +43,11 @@ import {
   ChevronRight,
   BellRing,
   CheckCheck,
-  ClipboardList,
-  Copy,
-  BookOpen,
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 import {
   AreaChart,
   Area,
@@ -137,12 +133,6 @@ type OpsIncidentTimelineItem = {
     occurrenceCount: number;
     latestTitle: string | null;
   };
-};
-type WorkOsOverview = {
-  byState: Record<string, number>;
-  openExceptions: number;
-  overdueSla: number;
-  completed: number;
 };
 type AlertMetadata = {
   source?: string;
@@ -1931,27 +1921,6 @@ type ContextEngineRouteScope = {
   userId: number | null;
 };
 
-function buildWorkOsPath(timelineSource?: "role_routine" | "team_run" | "workpack_record" | "browser_automation"): string {
-  const params = new URLSearchParams();
-  if (timelineSource) {
-    params.set("timelineSource", timelineSource);
-  }
-  const query = params.toString();
-  return query ? `/admin/work-os?${query}` : "/admin/work-os";
-}
-
-function copyWorkOsLink(path: string, successMessage: string): void {
-  const url = `${window.location.origin}${path}`;
-  void navigator.clipboard
-    .writeText(url)
-    .then(() => {
-      toast.success(successMessage);
-    })
-    .catch(() => {
-      toast.error("Could not copy the Work OS link");
-    });
-}
-
 function AdminMonitoringDashboard() {
   const { user, loading: authLoading } = useAuth();
   const hermesFlags = useTenantFeatureFlags();
@@ -1978,34 +1947,6 @@ function AdminMonitoringDashboard() {
   const opsOverviewQuery = trpc.monitoring.getOpsOverview.useQuery(undefined, {
     refetchInterval: 30000,
     refetchOnWindowFocus: false,
-  });
-  const workOsOverviewQuery = trpc.monitoring.getWorkOsOverview.useQuery(undefined, {
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-  });
-  const browserAutomationHealthQuery = trpc.workOs.getBrowserAutomationHealth.useQuery(undefined, {
-    refetchInterval: 30000,
-    refetchOnWindowFocus: false,
-  });
-  const reconcileBrowserAutomationTasksMutation = trpc.workOs.reconcileBrowserAutomationTasks.useMutation({
-    onSuccess: async (result: {
-      processed: number;
-      completed: number;
-      failed: number;
-      cancelled: number;
-      pending: number;
-    }) => {
-      await Promise.all([
-        browserAutomationHealthQuery.refetch(),
-        workOsOverviewQuery.refetch(),
-      ]);
-      toast.success(
-        `Reconciled ${result.processed} browser claims (${result.completed} completed, ${result.failed} failed, ${result.cancelled} cancelled, ${result.pending} pending)`,
-      );
-    },
-    onError: (error: { message: string }) => {
-      toast.error(error.message || "Failed to reconcile browser automation tasks");
-    },
   });
   const focusedIncidentQuery = trpc.monitoring.getOpsIncidentTimeline.useQuery(
     routeState.incidentKey ? { limit: 1, groupKey: routeState.incidentKey } : undefined,
@@ -2063,7 +2004,6 @@ function AdminMonitoringDashboard() {
     },
   );
   const selectedWorkerBudget = (workerBudgetQuery.data as WorkerBudgetSummary | undefined) ?? null;
-  const browserAutomationHealth = browserAutomationHealthQuery.data ?? null;
   const [workerBudgetDrafts, setWorkerBudgetDrafts] = useState<Record<string, WorkerBudgetDraft>>({});
   const updateWorkerStateMutation = trpc.monitoring.updateWorkerState.useMutation({
     onSuccess: async () => {
@@ -2190,7 +2130,6 @@ function AdminMonitoringDashboard() {
   const lastCheck = statusQuery.data?.lastCheck ?? null;
   const focusedIncident = ((focusedIncidentQuery.data?.items as OpsIncidentTimelineItem[] | undefined) ?? [])[0] ?? null;
   const anomalies = opsOverviewQuery.data?.anomalies ?? [];
-  const workOsOverview = (workOsOverviewQuery.data as WorkOsOverview | undefined) ?? null;
   const workerFleet = (workerFleetQuery.data as WorkerFleetRow[] | undefined) ?? [];
   const workerQueueOverview = (workerQueueOverviewQuery.data as WorkerQueueOverview | undefined) ?? null;
   const tenantWorkerMcpOverview = (tenantWorkerMcpOverviewQuery.data as TenantWorkerMcpOverview | undefined) ?? null;
@@ -2439,62 +2378,6 @@ function AdminMonitoringDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "intake",
-                    }),
-                  )
-                }
-              >
-                Workpack Intake
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "discovery",
-                    }),
-                  )
-                }
-              >
-                Workpack Discovery
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "roi",
-                    }),
-                  )
-                }
-              >
-                Workpack ROI
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  setLocation(
-                    buildWorkpackEntrypointHref({
-                      entrypoint: "dashboard",
-                      surface: "exceptions",
-                    }),
-                  )
-                }
-              >
-                Workpack Exceptions
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={() => void Promise.all([
                   statusQuery.refetch(),
                   opsOverviewQuery.refetch(),
@@ -2625,17 +2508,10 @@ function AdminMonitoringDashboard() {
           isLoading={opsOverviewQuery.isLoading}
           showMonitoringLink={false}
           description="Normalized anomaly feed across service metrics, alert backlog, audit failures, and orchestration fallback patterns."
-          workOsOverview={workOsOverview ?? undefined}
-          browserAutomationHealth={browserAutomationHealth ? {
-            ...browserAutomationHealth,
-            latestClaimedAt: browserAutomationHealth.latestClaimedAt ? new Date(browserAutomationHealth.latestClaimedAt).toISOString() : null,
-            latestPolledAt: browserAutomationHealth.latestPolledAt ? new Date(browserAutomationHealth.latestPolledAt).toISOString() : null,
-            latestUpdatedAt: browserAutomationHealth.latestUpdatedAt ? new Date(browserAutomationHealth.latestUpdatedAt).toISOString() : null,
-            latestCompletedAt: browserAutomationHealth.latestCompletedAt ? new Date(browserAutomationHealth.latestCompletedAt).toISOString() : null,
-            nextPollAt: browserAutomationHealth.nextPollAt ? new Date(browserAutomationHealth.nextPollAt).toISOString() : null,
-          } : undefined}
         />
 
+        {/* Work OS coverage was retired with the legacy request/workpack system. */}
+        {/*
         <DashboardCard
           title="Work OS Coverage"
           description="Case ledger health, open exceptions, and SLA pressure for requests flowing through the Work OS pipeline."
@@ -2666,13 +2542,6 @@ function AdminMonitoringDashboard() {
               <Button variant="outline" size="sm" aria-label="Copy team evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("team_run"), "Team Run link copied")}>
                 <Copy className="mr-1 h-4 w-4" />
                 Copy team evidence
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("workpack_record"))}>
-                Workpack
-              </Button>
-              <Button variant="outline" size="sm" aria-label="Copy workpack evidence" onClick={() => copyWorkOsLink(buildWorkOsPath("workpack_record"), "Workpack link copied")}>
-                <Copy className="mr-1 h-4 w-4" />
-                Copy workpack evidence
               </Button>
               <Button variant="outline" size="sm" onClick={() => setLocation(buildWorkOsPath("browser_automation"))}>
                 Browser Automation
@@ -2768,6 +2637,7 @@ function AdminMonitoringDashboard() {
             </div>
           )}
         </DashboardCard>
+        */}
 
         <DashboardCard
           title="Claw Workers"

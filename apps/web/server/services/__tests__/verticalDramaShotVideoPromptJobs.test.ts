@@ -371,4 +371,40 @@ describe("vertical drama shot video prompt queue", () => {
       error: "Background job became stale; it was not retried automatically.",
     });
   });
+
+  it("reconciles an active Redis projection from a terminal canonical worker job", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(
+      getActiveVerticalDramaShotVideoPromptJobs(
+        {
+          tenantId: owner.tenantId,
+          userId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+        },
+        {
+          redis,
+          canonicalStatusReader: vi.fn().mockResolvedValue(
+            new Map([
+              [submitted.jobId, { status: "failed", reason: "worker lease expired" }],
+            ])
+          ),
+        }
+      )
+    ).resolves.toEqual([]);
+
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(submitted.jobId, owner, {
+        redis,
+      })
+    ).resolves.toMatchObject({
+      status: "failed",
+      error: "worker lease expired",
+    });
+  });
 });

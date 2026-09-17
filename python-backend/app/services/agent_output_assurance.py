@@ -20,7 +20,7 @@ FindingCode = Literal[
     "evidence_reference_unreadable", "evidence_identity_ambiguous", "evidence_extra_people_unresolved",
     "custom_identity_conflict", "speaker_face_visibility_required", "provider_budget_exceeded",
     "provider_capability_mismatch", "output_contract_mismatch", "budget_exceeded", "plan_cycle_detected",
-    "manifest_untrusted", "side_effect_unauthorized", "side_effect_token_replayed", "agency_origin_forbidden",
+    "manifest_untrusted", "side_effect_unauthorized", "side_effect_token_replayed",
 ]
 
 

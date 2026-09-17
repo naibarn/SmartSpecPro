@@ -4,7 +4,7 @@
   "version": "3.0.0",
   "category": "image_generation",
   "subcategory": "character_storyboard_source",
-  "description": "Generate cute child character images with optional identity-reference images, single prompt-ready output, and extensive scene modes.",
+  "description": "Generate cute, wholesome, age-appropriate character images from infant through adult with optional identity-reference images, single prompt-ready output, and extensive scene modes.",
   "supports": {
     "prompt_only": true,
     "generate_image": true,

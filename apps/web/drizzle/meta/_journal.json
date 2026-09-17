@@ -2206,6 +2206,27 @@
       "when": 1789351400000,
       "tag": "0328_feature_185_storyboard_active_run_fk",
       "breakpoints": true
+    },
+    {
+      "idx": 315,
+      "version": "7",
+      "when": 1789484400000,
+      "tag": "0329_feature_194_vector_index_registry",
+      "breakpoints": true
+    },
+    {
+      "idx": 316,
+      "version": "7",
+      "when": 1789590000000,
+      "tag": "0330_worker_heartbeat_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 317,
+      "version": "7",
+      "when": 1789590600000,
+      "tag": "0331_worker_heartbeat_retention_range",
+      "breakpoints": true
     }
   ]
 }

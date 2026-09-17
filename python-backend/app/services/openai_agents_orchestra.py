@@ -31,16 +31,6 @@ def preflight_orchestra_request(request: AgentRuntimeRequest) -> AssuranceReques
     assurance = request.assurance
     if assurance is None:
         return None
-    raw_origin = (request.originSurface or "").strip().lower()
-    context_origin = request.planContext.get("originSurface") if request.planContext else None
-    if raw_origin in {"agency", "agency_swarm", "agency-swarm"} or str(context_origin or "").strip().lower() in {
-        "agency",
-        "agency_swarm",
-        "agency-swarm",
-    }:
-        raise OrchestraAdmissionError(
-            AssuranceFinding(code="agency_origin_forbidden", severity="blocking", message="agency_swarm_active_execution_forbidden")
-        )
     finding = validate_evidence_bundle(assurance)
     if finding is not None:
         raise OrchestraAdmissionError(finding)

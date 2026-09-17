@@ -475,12 +475,24 @@ export class VideoEditorRenderService {
         uri: asset.path || asset.originalPath || '',
         durationMs: Math.round((asset.duration || 0) * 1000),
       }));
+      const cameraMotionPlans = Object.fromEntries(
+        rawProject.timeline.tracks.flatMap((track) => track.clips)
+          .filter((clip) => clip.smartCamera?.plan)
+          .map((clip) => [clip.id, clip.smartCamera?.plan]),
+      );
 
       const jobId = await client.submitJob({
         specVersion: "0.1",
         jobType: "render_mp4_h264",
         inputs: { project: timeline, assets },
-        ...(params && Object.keys(params).length > 0 ? { params } : {}),
+        params: {
+          ...(params || {}),
+          canonicalOperation: 'video.render',
+          controlPlaneContractVersion: 'feature-186-v1',
+          projectRevisionId: rawProject.modifiedAt,
+          ...(Object.keys(cameraMotionPlans).length > 0 ? { cameraMotionPlans } : {}),
+          ...(rawProject.metadata?.silenceCutMap ? { silenceCutMap: rawProject.metadata.silenceCutMap } : {}),
+        },
         output: { mode: "file", target: safeOutputPath },
       } as any);
       return jobId;

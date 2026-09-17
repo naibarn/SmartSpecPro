@@ -21884,11 +21884,13 @@ export default function MediaStudio() {
             url: task.url,
             model: task.model,
             durationSeconds: task.durationSeconds,
+            mediaType: task.type === "image" ? "image" : "video",
             generationModelId: context?.model || task.model,
             referenceUrls: context?.referenceImages.map(image => image.url),
             generationAspectRatio: context?.aspectRatio,
             generationExtraParams:
               Object.keys(extraParams).length > 0 ? extraParams : undefined,
+            canRegenerate: Boolean(context),
             referenceFrameRoles: Array.isArray(extraParams.referenceFrameRoles)
               ? extraParams.referenceFrameRoles.filter(
                   (role): role is "start" | "stop" | "reference" =>
@@ -22421,9 +22423,109 @@ export default function MediaStudio() {
     [isThaiLocale, setGenerationTasks, setStoryboardCompoundStatus]
   );
 
+  const regenerateStoryboardImage = useCallback(
+    async (taskId: string, prompt: string) => {
+      const task = generationTasks.find(item => item.id === taskId);
+      if (!task?.storyboardContext) {
+        toast.error("Storyboard image context not found");
+        return;
+      }
+      const normalizedPrompt = prompt.trim();
+      if (!normalizedPrompt) {
+        toast.error("Prompt cannot be empty");
+        return;
+      }
+      const staleDeferredTaskIds = getGenerationQueueIdentityCandidates(task).filter(id => id.startsWith("deferred-"));
+      setRegeneratingStoryboardTaskId(taskId);
+      setStoryboardCompoundStatus(`Regenerating image ${task.index + 1}...`);
+      const updateTask = (updates: Partial<GenerationTask>) => {
+        setGenerationTasks(prev => prev.map(item => item.id === taskId
+          ? { ...item, ...updates, prompt: normalizedPrompt, updatedAt: Date.now() }
+          : item));
+      };
+      try {
+        updateTask({ status: "generating", error: undefined, statusDetail: "Generating image..." });
+        const payload = buildMediaStudioCommonPayload({
+          prompt: normalizedPrompt,
+          model: task.storyboardContext.model || task.model,
+          aspectRatio: task.storyboardContext.aspectRatio,
+          referenceImages: task.storyboardContext.referenceImages,
+          referenceVideos: [],
+          extraParams: {
+            ...(task.storyboardContext.extraParams ?? {}),
+            generationType: "image",
+          },
+          apiConfig: task.storyboardContext.apiConfig,
+          resolution: task.storyboardContext.resolution,
+        });
+        const taskResult = await generateImageAsyncMutation.mutateAsync({
+          ...payload,
+          transport: "gateway_api",
+          originSurface: "storyboard_review",
+          numImages: 1,
+        } as any);
+        const resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+        const startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+        const backendTaskId = taskResult.id || taskResult.backendTaskId || undefined;
+        const providerTaskId = taskResult.taskId || taskResult.providerTaskId || undefined;
+        if (resultUrl) {
+          deleteDeferredTaskIds(staleDeferredTaskIds);
+          updateTask({
+            status: "completed",
+            url: resultUrl,
+            backendTaskId,
+            providerTaskId,
+            statusDetail: t("mediaStudio.generationStatus.completed"),
+          });
+          openPreview(resultUrl, "image", task.marketplaceProduct ?? null);
+          setStoryboardCompoundStatus(`Image ${task.index + 1} regenerated.`);
+          void refetchMediaHistory();
+          return;
+        }
+        if (!startedAsyncTask || !providerTaskId && !backendTaskId) {
+          throw new Error("No image output URL was returned");
+        }
+        updateTask({ backendTaskId, providerTaskId, statusDetail: t("mediaStudio.generationStatus.waitingForProviderCompletion") });
+        const pollId = providerTaskId || backendTaskId!;
+        let completedTask: any = null;
+        for (let attempt = 0; attempt < 90; attempt += 1) {
+          const currentTask = await trpcUtils.media.getTask.fetch({ taskId: pollId });
+          const status = String(currentTask?.status || "").toLowerCase();
+          if (status === "completed" || status === "failed" || status === "cancelled") {
+            completedTask = currentTask;
+            break;
+          }
+          await sleepMs(2000);
+        }
+        if (!completedTask) throw new Error("Image generation timeout. Please try again.");
+        if (String(completedTask.status).toLowerCase() !== "completed") {
+          throw new Error(completedTask.error || "Image generation failed");
+        }
+        const completedUrl = extractTaskResultUrl(completedTask as any) || undefined;
+        if (!completedUrl) throw new Error("No image output URL was returned");
+        updateTask({ status: "completed", url: completedUrl, backendTaskId, providerTaskId, statusDetail: t("mediaStudio.generationStatus.completed") });
+        openPreview(completedUrl, "image", task.marketplaceProduct ?? null);
+        setStoryboardCompoundStatus(`Image ${task.index + 1} regenerated.`);
+        void refetchMediaHistory();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to regenerate image";
+        updateTask({ status: "error", error: message, statusDetail: message });
+        toast.error(message);
+        setStoryboardCompoundStatus(`Image regeneration failed for shot ${task.index + 1}`);
+      } finally {
+        setRegeneratingStoryboardTaskId(null);
+      }
+    },
+    [deleteDeferredTaskIds, generateImageAsyncMutation, generationTasks, openPreview, refetchMediaHistory, setStoryboardCompoundStatus, t, trpcUtils.media.getTask]
+  );
+
   const regenerateStoryboardClip = useCallback(
     async (taskId: string, prompt: string) => {
       const task = generationTasks.find(item => item.id === taskId);
+      if (task?.type === "image") {
+        await regenerateStoryboardImage(taskId, prompt);
+        return;
+      }
       if (!task?.storyboardContext) {
         toast.error("Storyboard clip context not found");
         return;
@@ -22604,6 +22706,7 @@ export default function MediaStudio() {
       getMarketplaceContextFromReferenceImages,
       generateVideoAsyncMutation,
       openPreview,
+      regenerateStoryboardImage,
       refetchMediaHistory,
       selectedModel,
       setStoryboardCompoundStatus,
@@ -45563,6 +45666,7 @@ export default function MediaStudio() {
           onSelectAll={selectAllStoryboardTasks}
           onSelectNone={selectNoStoryboardTasks}
           onRegenerateTask={regenerateStoryboardClip}
+          onRegenerateImageTask={regenerateStoryboardImage}
           onUpdateTaskDuration={updateStoryboardTaskDuration}
           conceptDetails={activeProductionConceptDetails}
           onConceptDetailsChange={value => {

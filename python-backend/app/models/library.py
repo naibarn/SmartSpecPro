@@ -1,6 +1,7 @@
 """Library and indexing schema models for unified media/document retrieval."""
 
 from datetime import datetime
+from uuid import uuid4
 
 from sqlalchemy import (
     Boolean,
@@ -15,6 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
 
@@ -134,6 +136,55 @@ class LibraryChunk(Base):
         super().__init__(**kwargs)
 
 
+class VectorIndexRecord(Base):
+    """Rebuildable Vectorize projection registry; SQL/R2 remains canonical."""
+
+    __tablename__ = "vector_index_records"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id = Column(String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    workspace_id = Column(String(128), nullable=True)
+    plugin_id = Column(String(128), nullable=True)
+
+    source_family = Column(String(96), nullable=False)
+    source_table = Column(String(128), nullable=False)
+    source_id = Column(String(256), nullable=False)
+    chunk_id = Column(String(256), nullable=True)
+    asset_id = Column(String(256), nullable=True)
+
+    vector_id = Column(String(128), nullable=False)
+    vector_index = Column(String(128), nullable=False)
+    namespace = Column(String(128), nullable=False)
+    embedding_model = Column(String(256), nullable=False)
+    embedding_dimensions = Column(Integer, nullable=False)
+    embedding_version = Column(String(64), nullable=False)
+    metric = Column(String(32), nullable=False, default="cosine")
+    chunking_version = Column(String(64), nullable=False)
+    normalization_version = Column(String(64), nullable=True)
+
+    content_hash = Column(String(64), nullable=False)
+    source_revision = Column(String(256), nullable=False)
+    indexed_at = Column(DateTime(timezone=True), nullable=True)
+    last_mutation_id = Column(String(256), nullable=True)
+    input_hash = Column(String(64), nullable=True)
+    source_locator_kind = Column(String(64), nullable=True)
+    status = Column(String(24), nullable=False, default="queued")
+    failure_code = Column(String(96), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("vector_index", "vector_id", name="vector_index_records_index_vector_unique"),
+        Index("vector_index_records_index_namespace_idx", "vector_index", "namespace"),
+        Index("vector_index_records_tenant_source_idx", "tenant_id", "source_family", "source_id"),
+        Index("vector_index_records_tenant_hash_version_idx", "tenant_id", "content_hash", "embedding_version"),
+        Index("vector_index_records_index_status_idx", "vector_index", "status"),
+        Index("vector_index_records_source_revision_idx", "source_revision"),
+    )
+
+
 class LibraryPermission(Base):
     """ACL extension table for per-item sharing controls."""
 
@@ -244,7 +295,7 @@ class LibraryProviderSwitchState(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(String(36), nullable=True, index=True)
 
-    current_read_provider = Column(String(64), nullable=False, default="cloudflare_vectorize")
+    current_read_provider = Column(String(64), nullable=False, default="pgvector")
     target_provider = Column(String(64), nullable=True)
     previous_read_provider = Column(String(64), nullable=True)
 

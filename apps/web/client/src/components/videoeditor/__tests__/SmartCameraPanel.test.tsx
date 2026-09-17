@@ -19,7 +19,7 @@ describe('SmartCameraPanel', () => {
     );
     fireEvent.click(getByRole('button', { name: 'ติดตามใบหน้า' }));
     expect(onChange).toHaveBeenCalledWith('clip-1', expect.objectContaining({ mode: 'auto_face' }));
-    fireEvent.click(getByText('🔍 วิเคราะห์ใบหน้า/วัตถุใน Worker'));
+    fireEvent.click(getByText('🔍 วิเคราะห์ใน browser (Quick)'));
     expect(onRequestAnalysis).toHaveBeenCalledWith('clip-1');
   });
 });

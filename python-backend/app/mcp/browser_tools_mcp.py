@@ -80,31 +80,7 @@ BROWSER_EXECUTE_ACTIONS_TOOL = {
     },
 }
 
-SANDBOX_EXEC_COMMAND_TOOL = {
-    "name": "sandbox.exec_command",
-    "description": "Execute an approved command in a sandboxed environment.",
-    "inputSchema": {
-        "type": "object",
-        "properties": {
-            "command": {
-                "type": "string",
-                "description": "Command to execute (must be in allowlist)",
-            },
-            "working_dir": {
-                "type": "string",
-                "description": "Working directory for the command",
-            },
-            "timeout_seconds": {
-                "type": "integer",
-                "default": 300,
-                "description": "Max execution time",
-            },
-        },
-        "required": ["command"],
-    },
-}
-
-BROWSER_TOOLS = [BROWSER_EXECUTE_ACTIONS_TOOL, SANDBOX_EXEC_COMMAND_TOOL]
+BROWSER_TOOLS = [BROWSER_EXECUTE_ACTIONS_TOOL]
 
 # ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -165,65 +141,8 @@ async def handle_browser_execute_actions(
     return resp.json()
 
 
-async def handle_sandbox_exec_command(
-    command: str,
-    user_id: int,
-    tenant_id: str,
-    working_dir: str | None = None,
-    timeout_seconds: int = 300,
-    node_config: dict | None = None,
-    **kwargs: Any,
-) -> dict:
-    """Execute an approved command in the sandbox."""
-    # Capability check
-    if node_config is not None:
-        capabilities = node_config.get("capabilities", {})
-        if not capabilities.get("sandbox_command"):
-            raise ToolError("capability_required", "sandbox_command capability is required")
-
-    # Command allowlist + dangerous flag check
-    parts = shlex.split(command.strip()) if command.strip() else []
-    base_command = parts[0] if parts else ""
-    if base_command not in ALLOWED_COMMANDS:
-        raise ToolError("command_not_allowed", f"Command '{base_command}' is not in the allowed commands list")
-    for flag in parts[1:]:
-        if flag in BLOCKED_FLAGS:
-            raise ToolError("command_not_allowed", f"Flag '{flag}' is not allowed")
-        if ".." in flag:
-            raise ToolError("command_not_allowed", "Path traversal not allowed in command arguments")
-
-    # Clamp timeout
-    effective_timeout = min(timeout_seconds, MAX_EXEC_TIMEOUT)
-
-    logger.info(
-        "sandbox_exec_command user_id=%d tenant_id=%s command=%s timeout=%d",
-        user_id, tenant_id, base_command, effective_timeout,
-    )
-
-    # Dispatch to sandbox
-    from app.core.database import get_db_context
-
-    async with get_db_context() as db:
-        from app.services.sandbox_dispatcher import SandboxDispatcher
-
-        dispatcher = SandboxDispatcher(db)
-        job_id = await dispatcher.dispatch(
-            feature_type="connector",
-            execution_mode="command",
-            tenant_id=tenant_id,
-            user_id=user_id,
-            inputs={"command": command, "working_dir": working_dir, "timeout": effective_timeout},
-        )
-
-    if job_id is None:
-        raise ToolError("sandbox_unavailable", "Sandbox execution is not available")
-
-    return {"job_id": job_id, "status": "dispatched"}
-
-
 # ── Export ─────────────────────────────────────────────────────────────────
 
 TOOL_HANDLERS = {
     "browser.execute_actions": handle_browser_execute_actions,
-    "sandbox.exec_command": handle_sandbox_exec_command,
 }

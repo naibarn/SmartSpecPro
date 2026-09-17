@@ -293,6 +293,8 @@ function isDragBridgeTargetUrl(url: unknown): boolean {
       || parsed.hostname.endsWith(".higgsfield.ai")
       || parsed.hostname === "grok.com"
       || parsed.hostname.endsWith(".grok.com")
+      || parsed.hostname === "meta.ai"
+      || parsed.hostname.endsWith(".meta.ai")
     );
   } catch {
     return false;

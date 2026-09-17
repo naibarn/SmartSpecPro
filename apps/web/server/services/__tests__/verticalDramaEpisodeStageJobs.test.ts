@@ -16,7 +16,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockMarkFailed, mockSweep } = vi.hoisted(() => ({
+const { mockCreateFeature, mockMarkFailed, mockSweep } = vi.hoisted(() => ({
+  mockCreateFeature: vi.fn().mockResolvedValue(undefined),
   mockMarkFailed: vi.fn().mockResolvedValue(true),
   mockSweep: vi.fn().mockResolvedValue([]),
 }));
@@ -26,6 +27,12 @@ const { mockMarkFailed, mockSweep } = vi.hoisted(() => ({
 vi.mock("../verticalDramaEpisodePipeline", () => ({
   markStoryboardShotgridRunFailed: mockMarkFailed,
   sweepStaleStoryboardShotgridRuns: mockSweep,
+}));
+vi.mock("../feature186VerticalDramaJobAdapter", async importOriginal => ({
+  ...(await importOriginal<
+    typeof import("../feature186VerticalDramaJobAdapter")
+  >()),
+  createFeature186VerticalDramaJob: mockCreateFeature,
 }));
 vi.mock("../redis", () => ({ getRedisClient: vi.fn(() => ({})) }));
 vi.mock("bullmq", () => ({
@@ -55,6 +62,7 @@ const jobData: VerticalDramaEpisodeStageJobData = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  delete process.env.FEATURE_186_HARD_CUTOVER;
 });
 
 afterEach(async () => {
@@ -64,6 +72,26 @@ afterEach(async () => {
 });
 
 describe("enqueueVerticalDramaEpisodeStageJob — fail-fast (bug #127 hardening)", () => {
+  it("uses the canonical worker_jobs contract when hard cutover is enabled", async () => {
+    process.env.FEATURE_186_HARD_CUTOVER = "true";
+    const enqueueBullmqJob = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      enqueueVerticalDramaEpisodeStageJob(jobData, enqueueBullmqJob)
+    ).resolves.toEqual({ enqueued: true });
+
+    expect(mockCreateFeature).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "vd_episode_stage_501",
+        jobType: "vertical_drama.episode_stage",
+        tenantId: "t1",
+        userId: 1,
+      })
+    );
+    expect(enqueueBullmqJob).not.toHaveBeenCalled();
+    expect(mockMarkFailed).not.toHaveBeenCalled();
+  });
+
   it("reports { enqueued: true } and never touches the run row when the BullMQ add succeeds", async () => {
     const result = await enqueueVerticalDramaEpisodeStageJob(
       jobData,
@@ -109,12 +137,16 @@ describe("orphaned-run sweep wiring (bug #127 hardening)", () => {
     // Immediate first tick — heals orphans from before a restart right away.
     expect(mockSweep).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(
+      STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS
+    );
     expect(mockSweep).toHaveBeenCalledTimes(2);
 
     // Idempotent re-init: no second timer, no extra immediate tick.
     await initVerticalDramaEpisodeStageJobsQueue();
-    await vi.advanceTimersByTimeAsync(STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(
+      STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS
+    );
     expect(mockSweep).toHaveBeenCalledTimes(3);
 
     await closeVerticalDramaEpisodeStageJobsQueue();
@@ -132,7 +164,9 @@ describe("orphaned-run sweep wiring (bug #127 hardening)", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(mockSweep).toHaveBeenCalledTimes(1);
 
-    await vi.advanceTimersByTimeAsync(STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS);
+    await vi.advanceTimersByTimeAsync(
+      STORYBOARD_SHOTGRID_RUN_SWEEP_INTERVAL_MS
+    );
     expect(mockSweep).toHaveBeenCalledTimes(2);
   });
 });

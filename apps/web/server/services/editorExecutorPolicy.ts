@@ -1,4 +1,4 @@
-export type EditorExecutorOperation = "media.probe" | "media.proxy" | "media.waveform" | "media.thumbnail" | "media.analysis" | "media.silence_detect" | "media.reframe" | "media.speaker_scan" | "media.transcribe" | "media.align" | "media.audio_mix" | "media.audio_extract" | "media.audio_export" | "media.ai_music" | "media.ai_media_studio" | "media.privacy_track" | "media.recording_normalize" | "video.render_still" | "video.render";
+export type EditorExecutorOperation = "media.probe" | "media.proxy" | "media.waveform" | "media.thumbnail" | "media.analysis" | "media.silence_detect" | "media.reframe" | "media.composition_scan" | "media.speaker_scan" | "media.transcribe" | "media.align" | "media.audio_mix" | "media.audio_extract" | "media.audio_export" | "media.ai_music" | "media.ai_media_studio" | "media.privacy_track" | "media.recording_normalize" | "video.render_still" | "video.render";
 type EditorExecutorExecutable = "ffprobe" | "ffmpeg" | "remotion" | "analysis-worker" | "builtin-editor-media";
 
 const operationExecutable: Record<EditorExecutorOperation, EditorExecutorExecutable> = {
@@ -9,6 +9,7 @@ const operationExecutable: Record<EditorExecutorOperation, EditorExecutorExecuta
   "media.analysis": "builtin-editor-media",
   "media.silence_detect": "builtin-editor-media",
   "media.reframe": "analysis-worker",
+  "media.composition_scan": "analysis-worker",
   "media.speaker_scan": "analysis-worker",
   "media.transcribe": "analysis-worker",
   "media.align": "analysis-worker",
@@ -24,6 +25,7 @@ const operationExecutable: Record<EditorExecutorOperation, EditorExecutorExecuta
 };
 const ANALYSIS_OPERATIONS = new Set<EditorExecutorOperation>([
   "media.reframe",
+  "media.composition_scan",
   "media.speaker_scan",
   "media.transcribe",
   "media.align",

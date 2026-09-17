@@ -97,7 +97,22 @@ type SkillFieldDependency = {
 // Schema Types
 export interface SkillInputField {
   id: string;
-  type: "text" | "textarea" | "select" | "multiselect" | "number" | "slider" | "boolean" | "image" | "images" | "imageUpload" | "file" | "files" | "model-search" | "workflow-selector" | "array" | "hidden";
+  type:
+    | "text"
+    | "textarea"
+    | "select"
+    | "multiselect"
+    | "number"
+    | "slider"
+    | "boolean"
+    | "image"
+    | "images"
+    | "imageUpload"
+    | "file"
+    | "files"
+    | "model-search"
+    | "array"
+    | "hidden";
   label: string;
   labelTh?: string;
   placeholder?: string;
@@ -131,11 +146,14 @@ export interface SkillInputField {
   searchable?: boolean;
   dependsOn?: SkillFieldDependency;
   /** Options grouped by parent field value for cascading selects */
-  optionGroups?: Record<string, Array<{
-    value: string;
-    label: string;
-    labelTh?: string;
-  }>>;
+  optionGroups?: Record<
+    string,
+    Array<{
+      value: string;
+      label: string;
+      labelTh?: string;
+    }>
+  >;
 }
 
 export interface SkillInputSection {
@@ -168,12 +186,16 @@ interface ReferenceImage {
   };
 }
 
-export function resolveSkillUiLanguage(explicitLanguage?: "en" | "th"): "en" | "th" {
+export function resolveSkillUiLanguage(
+  explicitLanguage?: "en" | "th"
+): "en" | "th" {
   if (explicitLanguage) {
     return explicitLanguage;
   }
 
-  const normalize = (value: string | null | undefined): "en" | "th" | undefined => {
+  const normalize = (
+    value: string | null | undefined
+  ): "en" | "th" | undefined => {
     if (!value) {
       return undefined;
     }
@@ -206,18 +228,20 @@ export function resolveSkillUiLanguage(explicitLanguage?: "en" | "th"): "en" | "
 
 export function evaluateFieldDependency(
   dependency: SkillFieldDependency | undefined,
-  values: Record<string, any>,
+  values: Record<string, any>
 ): boolean {
   if (!dependency) {
     return true;
   }
 
   if (Array.isArray(dependency.all) && dependency.all.length > 0) {
-    return dependency.all.every((child) => evaluateFieldDependency(child, values));
+    return dependency.all.every(child =>
+      evaluateFieldDependency(child, values)
+    );
   }
 
   if (Array.isArray(dependency.any) && dependency.any.length > 0) {
-    return dependency.any.some((child) => evaluateFieldDependency(child, values));
+    return dependency.any.some(child => evaluateFieldDependency(child, values));
   }
 
   if (!dependency.field) {
@@ -231,7 +255,10 @@ export function evaluateFieldDependency(
   }
 
   if (dependency.minItems !== undefined) {
-    return Array.isArray(dependentValue) && dependentValue.length >= dependency.minItems;
+    return (
+      Array.isArray(dependentValue) &&
+      dependentValue.length >= dependency.minItems
+    );
   }
 
   if (dependency.value !== undefined) {
@@ -247,13 +274,13 @@ export function evaluateFieldDependency(
 
 function getContextualFieldDefault(
   field: SkillInputField,
-  uiLanguage: "en" | "th",
+  uiLanguage: "en" | "th"
 ): any {
   if (field.id !== "language" && field.id !== "output_language") {
     return undefined;
   }
 
-  const optionValues = new Set((field.options || []).map((opt) => opt.value));
+  const optionValues = new Set((field.options || []).map(opt => opt.value));
   if (optionValues.has(uiLanguage)) {
     return uiLanguage;
   }
@@ -264,12 +291,12 @@ function getContextualFieldDefault(
 export function buildEffectiveFieldValues(
   schema: SkillInputSchema,
   values: Record<string, any>,
-  uiLanguage: "en" | "th",
+  uiLanguage: "en" | "th"
 ): Record<string, any> {
   const effectiveValues = { ...values };
 
-  schema.sections.forEach((section) => {
-    section.fields.forEach((field) => {
+  schema.sections.forEach(section => {
+    section.fields.forEach(field => {
       if (effectiveValues[field.id] !== undefined) {
         return;
       }
@@ -314,13 +341,13 @@ function ModelSearchField({
     trpc.multiProvider.getAvailableModelsWithProviders.useQuery();
 
   const filtered = models.filter(
-    (m) =>
+    m =>
       !search ||
       m.modelId.toLowerCase().includes(search.toLowerCase()) ||
       m.modelName.toLowerCase().includes(search.toLowerCase())
   );
 
-  const selected = models.find((m) => m.modelId === value);
+  const selected = models.find(m => m.modelId === value);
 
   return (
     <div className="space-y-1.5">
@@ -351,7 +378,7 @@ function ModelSearchField({
             <span className="truncate text-sm">
               {selected
                 ? selected.modelName
-                : (field.placeholder || "Search models...")}
+                : field.placeholder || "Search models..."}
             </span>
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -376,11 +403,11 @@ function ModelSearchField({
                 <>
                   <CommandEmpty>No models found.</CommandEmpty>
                   <CommandGroup>
-                    {filtered.map((model) => (
+                    {filtered.map(model => (
                       <CommandItem
                         key={model.modelId}
                         value={model.modelId}
-                        onSelect={(selected) => {
+                        onSelect={selected => {
                           onChange(selected === value ? "" : selected);
                           setOpen(false);
                           setSearch("");
@@ -411,169 +438,6 @@ function ModelSearchField({
           </Command>
         </PopoverContent>
       </Popover>
-    </div>
-  );
-}
-
-/** Combobox that lists the user's saved workflows and auto-fills the JSON textarea on selection. */
-function WorkflowSelectorField({
-  field,
-  value,
-  onChange,
-  label,
-  description,
-}: {
-  field: SkillInputField;
-  value: string;
-  onChange: (v: string) => void;
-  label: string;
-  description: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  type WfItem = { id: number; name: string; description: string | null; workflowJson: Record<string, unknown>; status: string };
-  const { data: _rawWorkflows, isLoading } = trpc.workflow.listSaved.useQuery({});
-  const workflows = (_rawWorkflows ?? []) as WfItem[];
-
-  const filtered = workflows.filter(
-    (w: WfItem) =>
-      !search ||
-      w.name.toLowerCase().includes(search.toLowerCase()) ||
-      (w.description ?? "").toLowerCase().includes(search.toLowerCase())
-  );
-
-  const selected = workflows.find((w: WfItem) => w.id === selectedId);
-
-  // Clear selection when the value is cleared externally (e.g. form reset)
-  if (!value && selectedId !== null) {
-    setSelectedId(null);
-  }
-
-  // Auto-select by ID when value is a bare numeric string (e.g. passed programmatically)
-  useEffect(() => {
-    if (!value || isLoading || !workflows.length || selectedId !== null) return;
-    const numericId = /^\d+$/.test(value.trim()) ? Number(value.trim()) : null;
-    if (numericId === null) return;
-    const wf = workflows.find((w) => w.id === numericId);
-    if (wf) {
-      setSelectedId(numericId);
-      onChange(JSON.stringify(wf.workflowJson, null, 2));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workflows, isLoading]);
-
-  return (
-    <div className="space-y-2">
-      <Label className="flex items-center gap-1.5">
-        {label}
-        {field.required && <span className="text-red-500">*</span>}
-        {description && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Info className="h-3 w-3 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="max-w-[200px] text-xs">{description}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </Label>
-
-      {/* Saved workflow combobox */}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between font-normal h-9"
-          >
-            <span className="truncate text-sm">
-              {selected
-                ? selected.name
-                : (field.placeholder || "Select a saved workflow...")}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-          align="start"
-        >
-          <Command>
-            <CommandInput
-              placeholder="Search workflows..."
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              {isLoading ? (
-                <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Loading workflows...
-                </div>
-              ) : (
-                <>
-                  <CommandEmpty>No saved workflows found.</CommandEmpty>
-                  <CommandGroup>
-                    {filtered.map((w) => (
-                      <CommandItem
-                        key={w.id}
-                        value={String(w.id)}
-                        onSelect={() => {
-                          setSelectedId(w.id);
-                          onChange(JSON.stringify(w.workflowJson, null, 2));
-                          setOpen(false);
-                          setSearch("");
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4 shrink-0",
-                            selectedId === w.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm truncate">{w.name}</span>
-                          {w.description && (
-                            <span className="text-xs text-muted-foreground truncate">
-                              {w.description}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {(w.workflowJson as any)?.nodes?.length ?? 0} nodes
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-
-      {/* Manual JSON textarea */}
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">
-          Or paste exported workflow JSON manually:
-        </p>
-        <Textarea
-          value={value}
-          rows={field.rows ?? 6}
-          placeholder="Paste exported workflow JSON here..."
-          onChange={(e) => {
-            setSelectedId(null);
-            onChange(e.target.value);
-          }}
-          className="font-mono text-xs resize-y"
-        />
-      </div>
     </div>
   );
 }
@@ -616,22 +480,25 @@ export default function DynamicSkillForm({
   const previousAutoDefaultsRef = useRef<Record<string, any>>({});
   const effectiveValues = useMemo(
     () => buildEffectiveFieldValues(schema, values, uiLanguage),
-    [schema, values, uiLanguage],
+    [schema, values, uiLanguage]
   );
 
   // Track collapsed state for each section
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
+  const [collapsedSections, setCollapsedSections] = useState<
+    Record<string, boolean>
+  >(() => {
     const initial: Record<string, boolean> = {};
-    schema.sections.forEach((section) => {
+    schema.sections.forEach(section => {
       // Use collapsed or defaultCollapsed from schema
-      initial[section.id] = section.collapsed ?? section.defaultCollapsed ?? false;
+      initial[section.id] =
+        section.collapsed ?? section.defaultCollapsed ?? false;
     });
     return initial;
   });
 
   // Toggle section collapse state
   const toggleSection = (sectionId: string) => {
-    setCollapsedSections((prev) => ({
+    setCollapsedSections(prev => ({
       ...prev,
       [sectionId]: !prev[sectionId],
     }));
@@ -639,19 +506,19 @@ export default function DynamicSkillForm({
 
   // Reset dependent field values when parent changes (for cascading selects)
   useEffect(() => {
-    schema.sections.forEach((section) => {
-      section.fields.forEach((field) => {
+    schema.sections.forEach(section => {
+      section.fields.forEach(field => {
         if (field.optionGroups && field.dependsOn?.field) {
           const parentValue = effectiveValues[field.dependsOn.field];
           const currentValue = values[field.id];
 
           // If parent changed, check if current value is still valid
           const validOptions = field.optionGroups[parentValue] || [];
-          const isValid = validOptions.some((opt) => opt.value === currentValue);
+          const isValid = validOptions.some(opt => opt.value === currentValue);
 
           if (!isValid && currentValue) {
             // Reset to empty
-            onChange({ ...values, [field.id]: '' });
+            onChange({ ...values, [field.id]: "" });
           }
         }
       });
@@ -663,13 +530,14 @@ export default function DynamicSkillForm({
   useEffect(() => {
     const nextValues: Record<string, any> = {};
 
-    schema.sections.forEach((section) => {
-      section.fields.forEach((field) => {
+    schema.sections.forEach(section => {
+      section.fields.forEach(field => {
         if (excludeFields.includes(field.id)) {
           return;
         }
         const contextualDefault = getContextualFieldDefault(field, uiLanguage);
-        const defaultValue = contextualDefault ?? field.default ?? field.defaultValue;
+        const defaultValue =
+          contextualDefault ?? field.default ?? field.defaultValue;
         if (defaultValue === undefined) {
           return;
         }
@@ -679,7 +547,8 @@ export default function DynamicSkillForm({
         const shouldSeed =
           currentValue === undefined ||
           currentValue === null ||
-          (contextualDefault !== undefined && currentValue === previousAutoValue);
+          (contextualDefault !== undefined &&
+            currentValue === previousAutoValue);
 
         if (shouldSeed && currentValue !== defaultValue) {
           nextValues[field.id] = defaultValue;
@@ -737,10 +606,13 @@ export default function DynamicSkillForm({
       // For single image field, use first URL
       // For multiple images, append to existing
       const field = schema.sections
-        .flatMap((s) => s.fields)
-        .find((f) => f.id === fieldId);
+        .flatMap(s => s.fields)
+        .find(f => f.id === fieldId);
 
-      if (field?.type === "images" || field?.type === "imageUpload" && field?.multiple) {
+      if (
+        field?.type === "images" ||
+        (field?.type === "imageUpload" && field?.multiple)
+      ) {
         const existing = values[fieldId] || [];
         updateValue(fieldId, [...existing, ...urls]);
       } else {
@@ -769,14 +641,18 @@ export default function DynamicSkillForm({
     const value = effectiveValues[field.id] ?? "";
     const label = getText(field.label, field.labelTh);
     const placeholder = getText(field.placeholder, field.placeholderTh);
-    const description = getText(field.description || field.helpText, field.descriptionTh || field.helpTextTh);
+    const description = getText(
+      field.description || field.helpText,
+      field.descriptionTh || field.helpTextTh
+    );
 
     switch (field.type) {
       case "hidden":
         return null;
 
       case "text":
-        const isProductSourceUrlField = field.id === "product_source_url" && String(value || "").trim();
+        const isProductSourceUrlField =
+          field.id === "product_source_url" && String(value || "").trim();
         return (
           <div key={field.id} className="space-y-1.5">
             <Label htmlFor={field.id} className="flex items-center gap-1.5">
@@ -799,7 +675,7 @@ export default function DynamicSkillForm({
               <Input
                 id={field.id}
                 value={value}
-                onChange={(e) => updateValue(field.id, e.target.value)}
+                onChange={e => updateValue(field.id, e.target.value)}
                 placeholder={placeholder}
               />
               {isProductSourceUrlField && (
@@ -808,8 +684,16 @@ export default function DynamicSkillForm({
                   variant="outline"
                   size="icon"
                   className="shrink-0"
-                  title={language === "th" ? "เปิดหน้าสินค้า" : "Open product page"}
-                  onClick={() => window.open(String(value).trim(), "_blank", "noopener,noreferrer")}
+                  title={
+                    language === "th" ? "เปิดหน้าสินค้า" : "Open product page"
+                  }
+                  onClick={() =>
+                    window.open(
+                      String(value).trim(),
+                      "_blank",
+                      "noopener,noreferrer"
+                    )
+                  }
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
@@ -840,14 +724,17 @@ export default function DynamicSkillForm({
             <Textarea
               id={field.id}
               value={value}
-              onChange={(e) => updateValue(field.id, e.target.value)}
+              onChange={e => updateValue(field.id, e.target.value)}
               placeholder={placeholder}
               className="min-h-[80px]"
               rows={field.rows}
             />
             {field.id === "referenceNotes" && (
               <div className="rounded-md border border-amber-200 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
-                For character reference images, describe the face, hair, outfit, accessories, pose, and signature props here. If you leave this blank, the skill will infer a continuity bible from the idea and reference images automatically.
+                For character reference images, describe the face, hair, outfit,
+                accessories, pose, and signature props here. If you leave this
+                blank, the skill will infer a continuity bible from the idea and
+                reference images automatically.
               </div>
             )}
           </div>
@@ -855,7 +742,8 @@ export default function DynamicSkillForm({
 
       case "select":
         const selectOptions = getSelectOptions(field);
-        const isDisabled = field.optionGroups && field.dependsOn && selectOptions.length === 0;
+        const isDisabled =
+          field.optionGroups && field.dependsOn && selectOptions.length === 0;
 
         return (
           <div key={field.id} className="space-y-1.5">
@@ -877,7 +765,7 @@ export default function DynamicSkillForm({
             </Label>
             <Select
               value={value || undefined}
-              onValueChange={(v) => updateValue(field.id, v)}
+              onValueChange={v => updateValue(field.id, v)}
               disabled={isDisabled}
             >
               <SelectTrigger id={field.id}>
@@ -885,20 +773,24 @@ export default function DynamicSkillForm({
                   placeholder={
                     isDisabled
                       ? `Select ${field.dependsOn?.field} first`
-                      : (placeholder || "Select...")
+                      : placeholder || "Select..."
                   }
                 />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                {selectOptions.filter((opt) => opt.value != null && opt.value !== "").map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {getText(opt.label, opt.labelTh)}
-                  </SelectItem>
-                ))}
+                {selectOptions
+                  .filter(opt => opt.value != null && opt.value !== "")
+                  .map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {getText(opt.label, opt.labelTh)}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {description && (
-              <p className="text-xs leading-snug text-muted-foreground">{description}</p>
+              <p className="text-xs leading-snug text-muted-foreground">
+                {description}
+              </p>
             )}
           </div>
         );
@@ -924,7 +816,7 @@ export default function DynamicSkillForm({
               )}
             </Label>
             <div className="flex flex-wrap gap-1.5 p-2 border rounded-md min-h-[40px] max-h-[120px] overflow-y-auto">
-              {field.options?.map((opt) => {
+              {field.options?.map(opt => {
                 const isSelected = selectedValues.includes(opt.value);
                 return (
                   <Badge
@@ -938,7 +830,7 @@ export default function DynamicSkillForm({
                     )}
                     onClick={() => {
                       const newValues = isSelected
-                        ? selectedValues.filter((v) => v !== opt.value)
+                        ? selectedValues.filter(v => v !== opt.value)
                         : [...selectedValues, opt.value];
                       updateValue(field.id, newValues);
                     }}
@@ -974,7 +866,7 @@ export default function DynamicSkillForm({
               id={field.id}
               type="number"
               value={value}
-              onChange={(e) => updateValue(field.id, Number(e.target.value))}
+              onChange={e => updateValue(field.id, Number(e.target.value))}
               placeholder={placeholder}
               min={field.min}
               max={field.max}
@@ -984,7 +876,8 @@ export default function DynamicSkillForm({
         );
 
       case "slider":
-        const sliderDefault = field.default ?? field.defaultValue ?? field.min ?? 0;
+        const sliderDefault =
+          field.default ?? field.defaultValue ?? field.min ?? 0;
         const sliderValue = typeof value === "number" ? value : sliderDefault;
         return (
           <div key={field.id} className="space-y-1.5">
@@ -1035,7 +928,7 @@ export default function DynamicSkillForm({
             <Switch
               id={field.id}
               checked={!!value}
-              onCheckedChange={(checked) => updateValue(field.id, checked)}
+              onCheckedChange={checked => updateValue(field.id, checked)}
             />
           </div>
         );
@@ -1048,7 +941,10 @@ export default function DynamicSkillForm({
         const stringItemField = field.itemFields?.[0];
 
         return (
-          <div key={field.id} className="space-y-3 p-4 border rounded-lg bg-muted/20">
+          <div
+            key={field.id}
+            className="space-y-3 p-4 border rounded-lg bg-muted/20"
+          >
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5 font-semibold">
                 {label} ({items.length}/{maxItems})
@@ -1060,7 +956,12 @@ export default function DynamicSkillForm({
                   size="sm"
                   onClick={() => {
                     if (isStringArray) {
-                      updateValue(field.id, [...items, stringItemField?.default ?? stringItemField?.defaultValue ?? ""]);
+                      updateValue(field.id, [
+                        ...items,
+                        stringItemField?.default ??
+                          stringItemField?.defaultValue ??
+                          "",
+                      ]);
                       return;
                     }
 
@@ -1082,9 +983,14 @@ export default function DynamicSkillForm({
 
             <div className="space-y-4">
               {items.map((item, index) => (
-                <div key={index} className="relative p-4 border rounded-md bg-background shadow-sm space-y-4">
+                <div
+                  key={index}
+                  className="relative p-4 border rounded-md bg-background shadow-sm space-y-4"
+                >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">{field.itemLabel || "Item"} {index + 1}</span>
+                    <span className="text-sm font-medium">
+                      {field.itemLabel || "Item"} {index + 1}
+                    </span>
                     {items.length > minItems && (
                       <Button
                         variant="ghost"
@@ -1115,7 +1021,10 @@ export default function DynamicSkillForm({
                     // For nested file uploads, we need to pass a custom handler
                     if (subField.type === "file" || subField.type === "image") {
                       return (
-                        <div key={`${field.id}-${index}-${subField.id}`} className="space-y-1.5">
+                        <div
+                          key={`${field.id}-${index}-${subField.id}`}
+                          className="space-y-1.5"
+                        >
                           <Label className="text-sm">{subField.label}</Label>
                           <div className="flex items-center gap-3">
                             {item[subField.id] ? (
@@ -1124,8 +1033,16 @@ export default function DynamicSkillForm({
                                   src={item[subField.id]}
                                   alt="Uploaded"
                                   className="h-16 w-16 object-cover border rounded-md"
-                                  loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                                  errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                                  loadingLabel={
+                                    language === "th"
+                                      ? "กำลังโหลดภาพ..."
+                                      : "Loading image..."
+                                  }
+                                  errorLabel={
+                                    language === "th"
+                                      ? "โหลดภาพไม่สำเร็จ"
+                                      : "Image unavailable"
+                                  }
                                 />
                                 <button
                                   onClick={() => updateSubValue("")}
@@ -1143,9 +1060,14 @@ export default function DynamicSkillForm({
                                   const input = document.createElement("input");
                                   input.type = "file";
                                   input.accept = subField.accept || "image/*";
-                                  input.onchange = async (e) => {
-                                    const files = (e.target as HTMLInputElement).files;
-                                    if (files && files.length > 0 && onImageUpload) {
+                                  input.onchange = async e => {
+                                    const files = (e.target as HTMLInputElement)
+                                      .files;
+                                    if (
+                                      files &&
+                                      files.length > 0 &&
+                                      onImageUpload
+                                    ) {
                                       const urls = await onImageUpload(files);
                                       if (urls.length > 0) {
                                         updateSubValue(urls[0]);
@@ -1155,41 +1077,75 @@ export default function DynamicSkillForm({
                                   input.click();
                                 }}
                               >
-                                {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" />}
+                                {isUploading ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <ImagePlus className="h-5 w-5" />
+                                )}
                               </Button>
                             )}
                           </div>
-                          {subField.helpText && <p className="text-xs text-muted-foreground">{subField.helpText}</p>}
+                          {subField.helpText && (
+                            <p className="text-xs text-muted-foreground">
+                              {subField.helpText}
+                            </p>
+                          )}
                         </div>
-                      )
+                      );
                     }
 
                     // For text/other inputs, render basic version inline to avoid complex context passing
-                    if (subField.type === "text" || subField.type === "textarea") {
+                    if (
+                      subField.type === "text" ||
+                      subField.type === "textarea"
+                    ) {
                       return (
-                        <div key={`${field.id}-${index}-${subField.id}`} className="space-y-1.5">
+                        <div
+                          key={`${field.id}-${index}-${subField.id}`}
+                          className="space-y-1.5"
+                        >
                           <Label className="text-sm">{subField.label}</Label>
                           {subField.type === "textarea" ? (
                             <Textarea
-                              value={isStringArray ? String(item ?? "") : item[subField.id] || ""}
+                              value={
+                                isStringArray
+                                  ? String(item ?? "")
+                                  : item[subField.id] || ""
+                              }
                               onChange={e => updateSubValue(e.target.value)}
                               readOnly={subField.readOnly as boolean}
                               className={subField.readOnly ? "bg-muted/50" : ""}
                             />
                           ) : (
                             <Input
-                              value={isStringArray ? String(item ?? "") : item[subField.id] || ""}
+                              value={
+                                isStringArray
+                                  ? String(item ?? "")
+                                  : item[subField.id] || ""
+                              }
                               onChange={e => updateSubValue(e.target.value)}
                               readOnly={subField.readOnly as boolean}
                               className={subField.readOnly ? "bg-muted/50" : ""}
                             />
                           )}
-                          {subField.helpText && <p className="text-xs text-muted-foreground">{subField.helpText}</p>}
+                          {subField.helpText && (
+                            <p className="text-xs text-muted-foreground">
+                              {subField.helpText}
+                            </p>
+                          )}
                         </div>
-                      )
+                      );
                     }
 
-                    return <div key={`${field.id}-${index}-${subField.id}`} className="text-xs text-red-500">Sub-field type {subField.type} not supported in inline arrays yet</div>;
+                    return (
+                      <div
+                        key={`${field.id}-${index}-${subField.id}`}
+                        className="text-xs text-red-500"
+                      >
+                        Sub-field type {subField.type} not supported in inline
+                        arrays yet
+                      </div>
+                    );
                   })}
                 </div>
               ))}
@@ -1212,8 +1168,14 @@ export default function DynamicSkillForm({
                     src={value}
                     alt="Uploaded"
                     className="h-20 w-20 rounded-lg object-cover border"
-                    loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                    errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                    loadingLabel={
+                      language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."
+                    }
+                    errorLabel={
+                      language === "th"
+                        ? "โหลดภาพไม่สำเร็จ"
+                        : "Image unavailable"
+                    }
                   />
                   <button
                     onClick={() => updateValue(field.id, "")}
@@ -1230,7 +1192,7 @@ export default function DynamicSkillForm({
                     const input = document.createElement("input");
                     input.type = "file";
                     input.accept = field.accept || "image/*";
-                    input.onchange = (e) =>
+                    input.onchange = e =>
                       handleFileChange(
                         e as unknown as React.ChangeEvent<HTMLInputElement>,
                         field.id
@@ -1257,12 +1219,13 @@ export default function DynamicSkillForm({
       case "images":
       case "imageUpload": {
         const imageUrls: string[] = Array.isArray(value) ? value : [];
-        const maxImages = field.maxImages || field.maxCount || field.maxItems || 5;
+        const maxImages =
+          field.maxImages || field.maxCount || field.maxItems || 5;
         return (
           <ImageSourcePicker
             key={field.id}
             value={imageUrls}
-            onChange={(urls) => updateValue(field.id, urls)}
+            onChange={urls => updateValue(field.id, urls)}
             maxImages={maxImages}
             isUploading={isUploading}
             onUpload={onImageUpload}
@@ -1280,19 +1243,7 @@ export default function DynamicSkillForm({
             key={field.id}
             field={field}
             value={value}
-            onChange={(v) => updateValue(field.id, v)}
-            label={label}
-            description={description}
-          />
-        );
-
-      case "workflow-selector":
-        return (
-          <WorkflowSelectorField
-            key={field.id}
-            field={field}
-            value={String(values[field.id] ?? "")}
-            onChange={(v) => updateValue(field.id, v)}
+            onChange={v => updateValue(field.id, v)}
             label={label}
             description={description}
           />
@@ -1319,16 +1270,26 @@ export default function DynamicSkillForm({
                 src={img.url}
                 alt={img.name}
                 className="h-12 w-12 rounded-lg object-cover border"
-                loadingLabel={language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."}
-                errorLabel={language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"}
+                loadingLabel={
+                  language === "th" ? "กำลังโหลดภาพ..." : "Loading image..."
+                }
+                errorLabel={
+                  language === "th" ? "โหลดภาพไม่สำเร็จ" : "Image unavailable"
+                }
               />
               {img.marketplaceProduct?.sourceUrl && (
                 <button
                   type="button"
-                  title={language === "th" ? "เปิดหน้าสินค้า" : "Open product page"}
-                  onClick={(event) => {
+                  title={
+                    language === "th" ? "เปิดหน้าสินค้า" : "Open product page"
+                  }
+                  onClick={event => {
                     event.stopPropagation();
-                    window.open(img.marketplaceProduct?.sourceUrl || img.url, "_blank", "noopener,noreferrer");
+                    window.open(
+                      img.marketplaceProduct?.sourceUrl || img.url,
+                      "_blank",
+                      "noopener,noreferrer"
+                    );
                   }}
                   className="absolute -bottom-1 -right-1 rounded-full bg-white p-0.5 text-slate-700 opacity-0 shadow transition-opacity hover:bg-slate-50 group-hover:opacity-100"
                 >
@@ -1359,21 +1320,27 @@ export default function DynamicSkillForm({
   // Render a section with optional collapsible behavior
   const renderSection = (section: SkillInputSection) => {
     const isCollapsed = collapsedSections[section.id];
-    const hasCollapsible = section.collapsible !== false && (section.collapsed !== undefined || section.defaultCollapsed !== undefined);
+    const hasCollapsible =
+      section.collapsible !== false &&
+      (section.collapsed !== undefined ||
+        section.defaultCollapsed !== undefined);
     const sectionTitle = getText(section.title, section.titleTh);
-    const sectionDescription = getText(section.description, section.descriptionTh);
+    const sectionDescription = getText(
+      section.description,
+      section.descriptionTh
+    );
     const sectionIcon = getSectionIcon(section.icon);
 
     // Filter visible fields and exclude specified fields
     const visibleFields = section.fields
       .filter(isFieldVisible)
-      .filter((field) => field.type !== "hidden")
-      .filter((field) => !excludeFields.includes(field.id));
+      .filter(field => field.type !== "hidden")
+      .filter(field => !excludeFields.includes(field.id));
     if (visibleFields.length === 0) return null;
 
     const sectionContent = (
       <div className="grid gap-3">
-        {visibleFields.map((field) => renderField(field))}
+        {visibleFields.map(field => renderField(field))}
       </div>
     );
 
@@ -1400,7 +1367,9 @@ export default function DynamicSkillForm({
             <CollapsibleContent>
               <div className="p-3 pt-0 space-y-3">
                 {sectionDescription && (
-                  <p className="text-xs text-muted-foreground">{sectionDescription}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {sectionDescription}
+                  </p>
                 )}
                 {sectionContent}
               </div>
@@ -1422,7 +1391,9 @@ export default function DynamicSkillForm({
               </h4>
             </div>
             {sectionDescription && (
-              <p className="text-xs text-muted-foreground">{sectionDescription}</p>
+              <p className="text-xs text-muted-foreground">
+                {sectionDescription}
+              </p>
             )}
           </div>
         )}

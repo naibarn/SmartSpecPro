@@ -77,7 +77,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 interface CreateRoomState {
   teamId: string;
@@ -3052,21 +3051,6 @@ export default function Teams() {
               title={t("teams.page.closeSidebar")}
             >
               <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Open workpack discovery"
-              onClick={() =>
-                setLocation(
-                  buildWorkpackEntrypointHref({
-                    entrypoint: "teams",
-                    surface: "discovery",
-                  })
-                )
-              }
-            >
-              <Bot className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"

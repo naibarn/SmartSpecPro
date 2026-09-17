@@ -62,3 +62,46 @@ does not expose provider credentials or raw provider responses.
 - Build and focused Vitest suites must pass. A browser-level manual check is
   recommended after deployment: complete one shot, open it in the lightbox,
   cancel, refresh, and verify that only missing shots remain resumable.
+
+## Follow-up closure: recovery index and spoken-story expansion
+
+- The unfinished-jobs index is a recoverability projection, not a history
+  list. It excludes terminal storyboard runs and also excludes rows whose
+  canonical control-plane job is already `succeeded`, `cancelled`, or
+  `expired`, even when an older domain row still says `queued` or `running`.
+  The client applies the same defensive filter and removes a cancelled row
+  optimistically after an idempotent cancel action. Each actionable row has
+  its own Cancel button; `cancel_requested` remains actionable until the
+  durable terminal transition completes.
+- Idea expansion receives the selected story type and shot count. Its strict
+  structured response includes `dialogueLines`; mime mode requires an empty
+  array, while dialogue/hybrid mode requires at least one structured
+  speaker/text/language line. The preview exposes the generated script for
+  editing, and applying the preview writes it into the canonical dialogue
+  draft before confirmation. This keeps the user-authored story mode and the
+  generation contract aligned instead of relying on a prose-only expansion.
+
+## Follow-up closure: character capture and project binding
+
+The Character tab now has an explicit, user-controlled capture path. A durable
+completed storyboard shot can be saved as a portrait for a new/existing library
+character or as a named look for an existing character. Saving is never
+automatic: the user must open the action from a completed shot, preview it, and
+confirm the target character and role. The server rechecks run ownership, shot
+success, suppression state, managed media ownership, and character ownership in
+one transaction.
+
+Character library responses include the current portrait and saved look
+thumbnails. Before confirmation, the checkbox selects a usable character and a
+small image selector chooses Portrait or one of its saved looks. Once a draft
+exists, the same controls call the guarded bind/unbind boundary so the project
+snapshot, normalized run input, and reference image list stay synchronized.
+The selected look is stored in the existing `lookJson` plus the existing
+`character_library_assets` role `look`; no second character/job ledger or new
+provider path is introduced.
+
+Repeated capture is idempotent by the deterministic source shot and role for
+new characters and by the existing character/media/role uniqueness constraint
+for existing characters. A missing portrait/look is shown as an actionable
+empty state and cannot be selected as a visual reference. Failed, pending, or
+suppressed shots are never offered as character sources.

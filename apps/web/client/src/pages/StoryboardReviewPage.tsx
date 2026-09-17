@@ -19,7 +19,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
-import { AuthenticatedMediaImage, AuthenticatedMediaVideo } from "@/components/media/AuthenticatedMediaImage";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+  getAuthenticatedMediaUrl,
+} from "@/components/media/AuthenticatedMediaImage";
 import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions, type StoryboardSourceTrimRange } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
@@ -499,6 +503,9 @@ function getStoryboardReviewVideoOptionValues(
   return {
     videoModel:
       normalizeStoryboardReviewVideoModelId(plan?.videoModelId) ||
+      normalizeStoryboardReviewVideoModelId(draft?.modelProvenance?.video?.requestedModelId) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.modelProvenance?.video?.requestedModelId) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.videoModelId) ||
       normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.model) ||
       normalizeStoryboardReviewVideoModelId(firstTask?.model) ||
       STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS[0].value,
@@ -732,24 +739,25 @@ function findStoryboardImageUrl(value: unknown, visited = new WeakSet<object>())
 
 function toCanvasSafeStoryboardImageUrl(imageUrl: string): string {
   if (!imageUrl || typeof window === "undefined") return imageUrl;
+  // Keep managed media on the authenticated same-origin storage route. The
+  // image proxy is intended for remote CORS sources and cannot forward the
+  // browser session required by `/api/storage/files/*`.
+  const authenticatedUrl = getAuthenticatedMediaUrl(imageUrl) || imageUrl;
   if (
-    imageUrl.startsWith("data:") ||
-    imageUrl.startsWith("blob:") ||
-    imageUrl.startsWith("/api/media/image-proxy?")
+    authenticatedUrl.startsWith("data:") ||
+    authenticatedUrl.startsWith("blob:") ||
+    authenticatedUrl.startsWith("/api/media/image-proxy?")
   ) {
-    return imageUrl;
+    return authenticatedUrl;
   }
 
   try {
-    const parsed = new URL(imageUrl, window.location.origin);
-    if (parsed.origin === window.location.origin && parsed.pathname.startsWith("/api/storage/files/") && parsed.protocol === "https:") {
-      return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
-    }
+    const parsed = new URL(authenticatedUrl, window.location.origin);
     if (parsed.origin === window.location.origin) return parsed.toString();
     if (parsed.protocol !== "https:") return parsed.toString();
     return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
   } catch {
-    return imageUrl;
+    return authenticatedUrl;
   }
 }
 
@@ -3200,6 +3208,7 @@ function normalizeLegacyStoryboardReviewTask(
       ? "image"
       : "video",
     prompt,
+    videoPrompt: asLegacyReviewValue(task.videoPrompt),
     model: asLegacyReviewValue(task.model) ?? "",
     durationSeconds: asNumberValue(task.durationSeconds) ?? asNumberValue(task.duration) ?? undefined,
     createdAt: asNumberValue(task.createdAt) ?? asNumberValue(task.created_at) ?? Date.now(),
@@ -3410,6 +3419,7 @@ function getStoryboardDraftContentSignature(draft: StoryboardReviewDraft | null 
       storyboardGuide: draft.storyboardGuide ?? null,
       voiceoverFullScript: draft.voiceoverFullScript ?? null,
       useVoiceoverScriptAsConcept: Boolean(draft.useVoiceoverScriptAsConcept),
+      modelProvenance: draft.modelProvenance ?? null,
       videoSegmentState: draft.videoSegmentState ?? null,
       companionAudio: companionAudio.map((audio) => ({
         id: audio.id,
@@ -3441,6 +3451,7 @@ function getStoryboardDraftContentSignature(draft: StoryboardReviewDraft | null 
         statusDetail: task.statusDetail ?? null,
         source: task.source ?? null,
         aspectRatio: task.aspectRatio ?? null,
+        modelProvenance: task.modelProvenance ?? null,
         storyboardContext: task.storyboardContext ?? null,
         transportMetadata: task.transportMetadata ?? null,
         marketplaceProduct: task.marketplaceProduct ?? null,
@@ -4479,6 +4490,7 @@ export default function StoryboardReviewPage() {
   const saveProjectMutation = trpc.videoEditorProjects.save.useMutation();
   const uploadMutation = trpc.ai.upload.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
   const cancelMediaTaskMutation = trpc.media.cancelTask.useMutation();
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
@@ -9722,7 +9734,7 @@ export default function StoryboardReviewPage() {
   const pollStoryboardGenerationTask = useCallback(async (
     taskId: string,
     pollId: string,
-    options?: { cancelRef?: MutableRefObject<boolean> },
+    options?: { cancelRef?: MutableRefObject<boolean>; mediaKind?: "image" | "video" },
   ): Promise<boolean> => {
     const normalizedPollId = pollId.trim();
     if (!normalizedPollId) return false;
@@ -9737,6 +9749,7 @@ export default function StoryboardReviewPage() {
         if (!latestTask || latestTask.status !== "generating" || !storyboardTaskTracksPollId(latestTask, normalizedPollId)) {
           return true;
         }
+        const mediaKind = options?.mediaKind ?? (latestTask.type === "image" ? "image" : "video");
 
         if (options?.cancelRef?.current) {
           await cancelMediaTaskMutation.mutateAsync({ taskId: normalizedPollId }).catch(() => undefined);
@@ -9758,7 +9771,7 @@ export default function StoryboardReviewPage() {
 
         const status = normalizeStoryboardProviderTaskStatus((currentTask as Record<string, unknown> | null)?.status);
         if (status === "completed") {
-          const completedUrl = extractStoryboardMediaUrl(currentTask, "video");
+          const completedUrl = extractStoryboardMediaUrl(currentTask, mediaKind);
           const taskArtifacts = Array.isArray((currentTask as Record<string, unknown> | null)?.artifacts)
             ? (currentTask as Record<string, unknown>).artifacts
             : undefined;
@@ -9784,7 +9797,12 @@ export default function StoryboardReviewPage() {
         }
 
         if (status === "failed") {
-          const message = extractStoryboardProviderTaskError(currentTask, t("mediaStudio.storyboardReviewVideoGenerationFailed"));
+          const message = extractStoryboardProviderTaskError(
+            currentTask,
+            mediaKind === "image"
+              ? (locale === "th" ? "สร้างภาพไม่สำเร็จ" : "Image generation failed")
+              : t("mediaStudio.storyboardReviewVideoGenerationFailed"),
+          );
           setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
             status: "error",
             error: message,
@@ -9822,7 +9840,7 @@ export default function StoryboardReviewPage() {
     }
 
     return false;
-  }, [cancelMediaTaskMutation, setAndSaveDraft, t, trpcUtils.media.getTask]);
+  }, [cancelMediaTaskMutation, locale, setAndSaveDraft, t, trpcUtils.media.getTask]);
 
   useEffect(() => {
     if (!activeDraft) return;
@@ -9950,7 +9968,7 @@ export default function StoryboardReviewPage() {
       toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
       return true;
     }
-    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft);
+    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft, "video");
     const effectiveModel = optionalStoryboardRouteString(effectiveContext?.model);
     if (!effectiveContext || !effectiveModel) {
       toast.error(
@@ -10223,6 +10241,130 @@ export default function StoryboardReviewPage() {
       setIsCancellingGeneration(false);
     }
   }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, locale, optimizeStoryboardReviewVideoPromptMutation, pollStoryboardGenerationTask, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft, t]);
+
+  const regenerateImageTask = useCallback(async (taskId: string, prompt: string): Promise<boolean> => {
+    const currentDraft = draftRef.current ?? draft;
+    if (!currentDraft || generationCancelRequestedRef.current) return false;
+    const task = currentDraft.tasks.find((item) => item.id === taskId);
+    if (!task?.storyboardContext) {
+      toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
+      return true;
+    }
+    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft, "image");
+    const effectiveModel = optionalStoryboardRouteString(effectiveContext?.model);
+    if (!effectiveContext || !effectiveModel) {
+      toast.error(locale === "th" ? "ไม่พบโมเดลสร้างภาพสำหรับช็อตนี้" : "No image model is selected for this shot.");
+      return true;
+    }
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt) {
+      toast.error(t("mediaStudio.storyboardReviewPromptRequired"));
+      return true;
+    }
+
+    activeGenerationTaskIdRef.current = null;
+    setRegeneratingTaskId(taskId);
+    setIsCancellingGeneration(false);
+    setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+      status: "generating",
+      prompt: normalizedPrompt,
+      storyboardContext: effectiveContext,
+      error: undefined,
+      backendTaskId: undefined,
+      providerTaskId: undefined,
+      statusDetail: locale === "th" ? "กำลังสร้างภาพ..." : "Generating image...",
+    }));
+
+    const transportMetadata = effectiveContext.transportMetadata;
+    const transportRecord = transportMetadata && typeof transportMetadata === "object" && !Array.isArray(transportMetadata)
+      ? transportMetadata as Record<string, unknown>
+      : {};
+    const transportPayload = transportMetadata?.transport === "mcp"
+      ? {
+          transport: "mcp" as const,
+          mcpConnectionId: optionalStoryboardRouteString(transportRecord.mcpConnectionId) ?? optionalStoryboardRouteString(transportRecord.connectionId),
+          sharedGroupId: transportMetadata.sharedGroupId,
+          mcpApprovalId: optionalStoryboardRouteString(transportRecord.mcpApprovalId) ?? optionalStoryboardRouteString(transportRecord.approvalId),
+          mcpProviderKey: optionalStoryboardRouteString(transportRecord.providerKey),
+          mcpProviderModelId: optionalStoryboardRouteString(transportRecord.providerModelId),
+          mcpToolName: optionalStoryboardRouteString(transportRecord.toolName),
+          mcpArgumentShape: optionalStoryboardRouteString(transportRecord.argumentShape),
+          originSurface: "storyboard_review" as const,
+          idempotencyKey: `storyboard-review-image-${taskId}-${Date.now()}`,
+        }
+      : {
+          transport: "gateway_api" as const,
+          originSurface: "storyboard_review" as const,
+        };
+
+    try {
+      const payload = buildMediaStudioCommonPayload({
+        prompt: normalizedPrompt,
+        model: effectiveModel,
+        aspectRatio: effectiveContext.aspectRatio,
+        referenceImages: effectiveContext.referenceImages,
+        referenceVideos: [],
+        extraParams: {
+          ...(effectiveContext.extraParams ?? {}),
+          generationType: "image",
+        },
+        apiConfig: effectiveContext.apiConfig,
+        resolution: effectiveContext.resolution,
+      });
+      const taskResult = await generateImageAsyncMutation.mutateAsync({
+        ...payload,
+        ...transportPayload,
+        numImages: 1,
+      } as any);
+      const immediateUrl = extractStoryboardMediaUrl(taskResult as any, "image");
+      const immediateArtifacts = Array.isArray((taskResult as unknown as Record<string, unknown>)?.artifacts)
+        ? (taskResult as unknown as Record<string, unknown>).artifacts
+        : undefined;
+      const pollId = (taskResult as any)?.taskId || (taskResult as any)?.id;
+      if (pollId) {
+        activeGenerationTaskIdRef.current = String(pollId);
+        setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+          backendTaskId: String(pollId),
+          providerTaskId: String((taskResult as any)?.taskId ?? pollId),
+          statusDetail: t("mediaStudio.storyboardReviewGenerationTaskStarted"),
+        }));
+      }
+      if (generationCancelRequestedRef.current) {
+        if (pollId) await cancelMediaTaskMutation.mutateAsync({ taskId: String(pollId) }).catch(() => undefined);
+        setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+          status: "queued",
+          error: undefined,
+          statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
+        }));
+        return false;
+      }
+      if (!immediateUrl && pollId) {
+        return await pollStoryboardGenerationTask(taskId, String(pollId), {
+          cancelRef: generationCancelRequestedRef,
+          mediaKind: "image",
+        });
+      }
+      if (!immediateUrl) throw new Error(t("mediaStudio.storyboardReviewNoOutputUrl"));
+      setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+        status: "completed",
+        url: immediateUrl,
+        ...(immediateArtifacts ? { artifacts: immediateArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
+        error: undefined,
+        statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
+      }));
+      toast.success(locale === "th" ? "สร้างภาพสำเร็จ" : "Image generated.");
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("mediaStudio.storyboardReviewRegenerateFailed");
+      setAndSaveDraft((current) => updateDraftTask(current, taskId, { status: "error", error: message, statusDetail: message }));
+      toast.error(message);
+      return true;
+    } finally {
+      activeGenerationTaskIdRef.current = null;
+      setRegeneratingTaskId(null);
+      setIsCancellingGeneration(false);
+    }
+  }, [cancelMediaTaskMutation, draft, generateImageAsyncMutation, locale, pollStoryboardGenerationTask, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
     try {
@@ -14106,6 +14248,7 @@ export default function StoryboardReviewPage() {
               onSelectAll={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: current.taskIds }))}
               onSelectNone={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: [] }))}
               onRegenerateTask={regenerateTask}
+              onRegenerateImageTask={regenerateImageTask}
               onRegenerateVideoSegmentPrompt={regenerateVideoSegmentPromptForTask}
               onSplitVideoSegmentToPerShot={requestSplitVideoSegmentToPerShot}
               onUpdateTaskPrompt={updateTaskPrompt}

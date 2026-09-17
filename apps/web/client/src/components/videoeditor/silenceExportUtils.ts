@@ -439,6 +439,20 @@ export function processExportToTimeline(
 
   // Recalculate project duration
   newProject.settings.duration = calculateProjectDuration(newProject.timeline);
+  // Camera keyframes are source-time evidence. A ripple cut changes the
+  // source-to-edited mapping, so keep the plan for review but fence it from
+  // playback/render until Quick or Full Scan regenerates it against this map.
+  for (const track of newProject.timeline.tracks) {
+    for (const clip of track.clips) {
+      if (!clip.smartCamera?.plan) continue;
+      clip.smartCamera = {
+        ...clip.smartCamera,
+        analysisStatus: 'stale',
+        staleReason: 'silence_cut_map_changed',
+        warnings: [...(clip.smartCamera.warnings ?? []), 'camera_plan_requires_reanalysis_after_silence_cut'].slice(-8),
+      };
+    }
+  }
   newProject.metadata = {
     ...newProject.metadata,
     deadAirCutCount: globalCuts.length,

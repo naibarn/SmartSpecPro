@@ -450,6 +450,49 @@ function storyboardMediaFromRecord(record: Record<string, unknown> | undefined, 
   return "";
 }
 
+function storyboardVideoPromptFromTask(task: Record<string, unknown>, context: Record<string, unknown> | undefined): string {
+  const generationExtraParams = asStoryboardRecord(task.generationExtraParams);
+  const contextExtraParams = asStoryboardRecord(context?.extraParams);
+  const promptKeys = [
+    "videoPrompt",
+    "video_prompt",
+    "videoGenerationPrompt",
+    "video_generation_prompt",
+    "videoSegmentPrompt",
+    "video_segment_prompt",
+  ];
+  return storyboardTextFromRecord(task, promptKeys, 12000)
+    || storyboardTextFromRecord(context, promptKeys, 12000)
+    || storyboardTextFromRecord(generationExtraParams, promptKeys, 12000)
+    || storyboardTextFromRecord(contextExtraParams, promptKeys, 12000);
+}
+
+function storyboardImagePromptFromTask(
+  task: Record<string, unknown>,
+  context: Record<string, unknown> | undefined,
+  isImageTask: boolean,
+): string {
+  const generationExtraParams = asStoryboardRecord(task.generationExtraParams);
+  const contextExtraParams = asStoryboardRecord(context?.extraParams);
+  const imagePromptKeys = [
+    "imagePrompt",
+    "image_prompt",
+    "imageGenerationPrompt",
+    "image_generation_prompt",
+    "storyboardImagePrompt",
+    "storyboard_image_prompt",
+  ];
+  const explicitPrompt = storyboardTextFromRecord(task, imagePromptKeys, 12000)
+    || storyboardTextFromRecord(context, imagePromptKeys, 12000)
+    || storyboardTextFromRecord(generationExtraParams, imagePromptKeys, 12000)
+    || storyboardTextFromRecord(contextExtraParams, imagePromptKeys, 12000);
+  if (explicitPrompt || !isImageTask) return explicitPrompt;
+  return storyboardTextFromRecord(task, ["prompt"], 12000)
+    || storyboardTextFromRecord(context, ["prompt"], 12000)
+    || storyboardTextFromRecord(generationExtraParams, ["prompt"], 12000)
+    || storyboardTextFromRecord(contextExtraParams, ["prompt"], 12000);
+}
+
 function isStoryboardVideoMedia(value: string): boolean {
   const text = value.trim().toLowerCase();
   if (!text) return false;
@@ -629,9 +672,26 @@ function storyboardReferenceImagesFromTask(task: Record<string, unknown> | undef
     .filter((item): item is NonNullable<typeof item> => Boolean(item));
 }
 
-function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIndex: number) {
+export function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIndex: number) {
   const context = asStoryboardRecord(task.storyboardContext);
   const referenceImages = storyboardReferenceImagesFromTask(task);
+  const taskType = compactProductionText(task.type ?? task.mediaType, 40).toLowerCase();
+  const taskUrl = storyboardMediaFromRecord(task, ["url", "resultUrl", "result_url", "outputUrl", "output_url"]);
+  const isImageTask = taskType === "image"
+    || taskType === "img"
+    || taskType === "image_generation"
+    || taskType.endsWith("_image");
+  const isImageTaskWithFallback = isImageTask || (!taskType && isStoryboardImageMedia(taskUrl));
+  const imageUrl = storyboardMediaFromRecord(task, [
+    "imageUrl",
+    "image_url",
+    "storyboardImageUrl",
+    "storyboard_image_url",
+  ]) || (
+    isImageTaskWithFallback
+      ? taskUrl
+      : ""
+  );
   const startReferenceImage = referenceImages.find((image) => image.role === "start") ?? referenceImages[0];
   const stopReferenceImage = referenceImages.find((image) => image.role === "stop") ?? referenceImages[1];
   const referenceUrls = Array.isArray(task.referenceUrls)
@@ -648,6 +708,7 @@ function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIn
     || referenceUrls[1]
     || "";
   const referenceImageUrl = storyboardMediaFromRecord(task, ["referenceImageUrl", "thumbnailUrl", "posterUrl"])
+    || imageUrl
     || referenceImages[0]?.url
     || referenceUrls[0]
     || startFrameUrl
@@ -659,8 +720,10 @@ function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIn
     statusDetail: compactProductionText(task.statusDetail, 240) || "",
     durationSeconds: Number.isFinite(Number(task.durationSeconds ?? context?.duration)) ? Number(task.durationSeconds ?? context?.duration) : null,
     model: compactProductionText(task.model ?? context?.model, 120) || null,
-    videoPrompt: storyboardTextFromRecord(task, ["prompt", "videoPrompt", "finalPrompt", "generationPrompt"], 12000),
+    imagePrompt: storyboardImagePromptFromTask(task, context, isImageTaskWithFallback),
+    videoPrompt: storyboardVideoPromptFromTask(task, context),
     videoUrl: storyboardMediaFromRecord(task, ["url", "videoUrl", "resultUrl"]),
+    imageUrl: imageUrl || undefined,
     referenceImageUrl,
     startFrameUrl,
     stopFrameUrl,
@@ -670,7 +733,11 @@ function buildStoryboardReviewClipView(task: Record<string, unknown>, fallbackIn
 
 function storyboardTasksFromReviewData(reviewData: unknown): Record<string, unknown>[] {
   const data = asStoryboardRecord(reviewData);
-  const rawTasks = Array.isArray(data?.tasks) ? data?.tasks : [];
+  const rawTasks = Array.isArray(data?.tasks)
+    ? data.tasks
+    : Array.isArray(data?.clips)
+      ? data.clips
+      : [];
   const taskById = new Map(rawTasks
     .map((task) => asStoryboardRecord(task))
     .filter((task): task is Record<string, unknown> => Boolean(task))
@@ -697,9 +764,10 @@ function buildStoryboardReviewProjectSummary(row: {
   updatedAt: Date;
 }) {
   const clips = storyboardTasksFromReviewData(row.reviewData).map(buildStoryboardReviewClipView);
-  const firstImage = clips.find((clip) => [clip.referenceImageUrl, clip.startFrameUrl, clip.stopFrameUrl].some((url) => url && isStoryboardImageMedia(url)));
+  const firstImage = clips.find((clip) => [clip.imageUrl, clip.referenceImageUrl, clip.startFrameUrl, clip.stopFrameUrl].some((url) => url && isStoryboardImageMedia(url)));
   const thumbnailUrl = [
     row.thumbnailUrl,
+    firstImage?.imageUrl,
     firstImage?.referenceImageUrl,
     firstImage?.startFrameUrl,
     firstImage?.stopFrameUrl,

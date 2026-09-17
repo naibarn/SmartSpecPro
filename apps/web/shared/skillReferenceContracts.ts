@@ -28,7 +28,7 @@ const NON_EXECUTABLE_SKILL_REFERENCES = {
     "presentation-custom-block-governance",
   ]),
   diagnostic: new Set(["debug-evidence-gate"]),
-  runtime: new Set(["agency-swarm"]),
+  runtime: new Set<string>(),
 } as const;
 
 export type SkillReferenceKind =

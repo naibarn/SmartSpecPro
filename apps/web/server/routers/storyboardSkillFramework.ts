@@ -4,6 +4,7 @@ import { protectedProcedure, router } from "../_core/trpc";
 import {
   buildStoryboardConfirmationFingerprint,
   normalizeStoryboardGlobalInput,
+  storyboardStoryTypeSchema,
 } from "../services/storyboardSkillFrameworkContracts";
 import {
   getStoryboardSkillSchema,
@@ -28,6 +29,7 @@ import {
   retryStoryboardSkillShots,
   pauseStoryboardSkillRun,
   resumeStoryboardSkillRun,
+  saveStoryboardShotAsCharacter,
   unbindStoryboardProjectCharacter,
   updateStoryboardSkillDraft,
   updateStoryboardCharacterName,
@@ -73,7 +75,10 @@ export const storyboardSkillFrameworkRouter = router({
         idempotencyKey: z.string().trim().min(8).max(160),
         roughIdea: z.string().trim().min(1).max(5000),
         language: z.enum(["th", "en"]),
+        storyType: storyboardStoryTypeSchema,
+        totalShots: z.number().int().min(2).max(12),
         selectedSkillId: z.string().trim().min(1).max(160),
+        llmModelId: z.string().trim().min(1).max(200).optional(),
       })
     )
     .mutation(async ({ ctx, input }) =>
@@ -156,7 +161,9 @@ export const storyboardSkillFrameworkRouter = router({
       })
     ),
   listRuns: protectedProcedure
-    .input(z.object({ limit: z.number().int().min(1).max(50).optional() }).optional())
+    .input(
+      z.object({ limit: z.number().int().min(1).max(50).optional() }).optional()
+    )
     .query(async ({ ctx, input }) =>
       listStoryboardSkillRuns({
         userId: ctx.user.id,
@@ -291,6 +298,24 @@ export const storyboardSkillFrameworkRouter = router({
     )
     .mutation(async ({ ctx, input }) =>
       addStoryboardCharacterLook({
+        userId: ctx.user.id,
+        tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
+        ...input,
+      })
+    ),
+  saveShotAsCharacter: protectedProcedure
+    .input(
+      z.object({
+        runId: z.string().uuid(),
+        shotNumber: z.number().int().min(1).max(50),
+        characterId: z.string().uuid().optional(),
+        characterName: z.string().trim().max(160).optional(),
+        role: z.enum(["portrait", "look"]),
+        lookName: z.string().trim().max(160).optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) =>
+      saveStoryboardShotAsCharacter({
         userId: ctx.user.id,
         tenantId: tenant(ctx.tenantId, ctx.user.currentTenantId),
         ...input,

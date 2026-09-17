@@ -1589,7 +1589,7 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     input: VerticalDramaStartFrameDropInput
   ) => Promise<void>;
-  /** Runs `start_frame_render_plan` for real (mode "full", spends credits) — generates every shot's image prompt at once. Shown only while no plan exists yet. */
+  /** Generates every shot's image prompt through the canonical per-shot prompt queue. Shown only while no plan exists yet. */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
   /** Opens the AI adjust dialog for `start_frame_render_plan` (or generic repair if opened without shotImageUrl). */
@@ -1638,6 +1638,10 @@ interface VerticalDramaStoryboardPanelProps {
   /** Fires `onGenerateStartFrameImage` for every shot missing an approved
    *  image, concurrently — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
+  /** Generates and renders every storyboard shot, including shots that already
+   *  have an approved image, through the same per-shot prompt + image path. */
+  onGenerateAllPromptAndImages?: (shotNumbers: number[]) => void;
+  generatingAllPromptAndImages?: boolean;
   /** Submits a 3x3 multi-angle-variations grid render for this shot; resolves to a 9-candidate picker (see `onPickAngleVariationCandidate`). */
   onGenerateAngleVariations?: (shotNumber: number) => void;
   generatingAngleVariationsForShot?: number | null;
@@ -2391,6 +2395,8 @@ export function VerticalDramaStoryboardPanel({
   generatingVideoSafeStartFrameForShot = null,
   onClearVideoStartFrame,
   onGenerateAllStartFrameImages,
+  onGenerateAllPromptAndImages,
+  generatingAllPromptAndImages = false,
   onGenerateAngleVariations,
   generatingAngleVariationsForShot = null,
   angleVariationGridUrlByShot = {},
@@ -2820,6 +2826,10 @@ export function VerticalDramaStoryboardPanel({
   ] = useState<number | null>(null);
   const [confirmingGenerateAllImages, setConfirmingGenerateAllImages] =
     useState(false);
+  const [
+    confirmingGenerateAllPromptAndImages,
+    setConfirmingGenerateAllPromptAndImages,
+  ] = useState(false);
   const { requestConfirmation, creditConfirmDialog } =
     useVerticalDramaCreditConfirmation();
   const [lightboxShot, setLightboxShot] = useState<number | null>(null);
@@ -3330,6 +3340,9 @@ export function VerticalDramaStoryboardPanel({
         !(assetId && assetUrls[assetId])
       );
     });
+  const allShotNumbers = shots.map(
+    (shot, index) => shot.shot_number ?? index + 1
+  );
 
   const storyboardHeaderTitle = (
     <h3 className="flex items-center gap-2 text-base font-semibold">
@@ -3971,8 +3984,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  `จะสร้างภาพ ${shotsNeedingImages.length} ช็อตพร้อมกัน (แบบ async ภาพไหนเสร็จก่อนแสดงก่อน)`,
-                  `Generates ${shotsNeedingImages.length} shots at once (async — each shows as soon as it's ready).`
+                  `จะสร้างภาพสำหรับ ${shotsNeedingImages.length} ช็อตที่ยังไม่มีภาพ (แบบ async ภาพไหนเสร็จก่อนแสดงก่อน)`,
+                  `Generates images for ${shotsNeedingImages.length} shots without an approved image (async — each shows as soon as it's ready).`
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -4022,9 +4035,90 @@ export function VerticalDramaStoryboardPanel({
               <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
               {t(
                 locale,
-                `สร้างภาพทุกช็อต (${shotsNeedingImages.length} ช็อต, มีค่าใช้จ่าย)`,
-                `Generate all shot images (${shotsNeedingImages.length} shots, paid)`
+                `สร้างภาพสำหรับช็อตที่ยังไม่มีภาพ (${shotsNeedingImages.length})`,
+                `Generate images for shots without images (${shotsNeedingImages.length})`
               )}
+            </Button>
+          )}
+        </div>
+      ) : null}
+
+      {onGenerateAllPromptAndImages && allShotNumbers.length > 0 ? (
+        <div>
+          {confirmingGenerateAllPromptAndImages ? (
+            <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
+              <p className="font-medium">
+                {t(
+                  locale,
+                  "ใช้ AI จริง มีค่าใช้จ่าย",
+                  "Uses real AI, spends credits."
+                )}
+              </p>
+              <p className="text-muted-foreground">
+                {t(
+                  locale,
+                  `จะสร้างพรอมต์และภาพใหม่สำหรับทุกช็อต (${allShotNumbers.length} ช็อต) แม้ช็อตนั้นจะมีภาพอยู่แล้ว`,
+                  `Creates a new prompt and image for every shot (${allShotNumbers.length}), including shots that already have an image.`
+                )}
+              </p>
+              <div className="mt-2 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmingGenerateAllPromptAndImages(false)}
+                  disabled={generatingAllPromptAndImages}
+                >
+                  {t(locale, "ยกเลิก", "Cancel")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setConfirmingGenerateAllPromptAndImages(false);
+                    onGenerateAllPromptAndImages(allShotNumbers);
+                  }}
+                  disabled={generatingAllPromptAndImages}
+                  data-testid="vd-storyboard-confirm-generate-all-prompt-images"
+                >
+                  {generatingAllPromptAndImages
+                    ? t(locale, "กำลังสร้าง…", "Generating…")
+                    : t(locale, "สร้างเลย", "Generate")}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => {
+                if (!selectedImageModelId) {
+                  toast.error(t2.selectImageModelFirst);
+                  setIsImageModelDialogOpen(true);
+                  return;
+                }
+                setConfirmingGenerateAllPromptAndImages(true);
+              }}
+              disabled={generatingAllPromptAndImages}
+              title={
+                !selectedImageModelId ? t2.selectImageModelFirst : undefined
+              }
+              data-testid="vd-storyboard-generate-all-prompt-images"
+            >
+              <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
+              {generatingAllPromptAndImages
+                ? t(
+                    locale,
+                    "กำลังสร้างพรอมต์และภาพ…",
+                    "Generating prompts + images…"
+                  )
+                : t(
+                    locale,
+                    "สร้างพรอมต์และภาพทุกช็อต",
+                    "Generate prompts + images for all shots"
+                  )}
             </Button>
           )}
         </div>
@@ -4044,8 +4138,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  "ดำเนินการต่อเฉพาะเมื่อต้องการ prompt ภาพเริ่มต้นจริงของทุกช็อต",
-                  "Continue only if you want real start-frame image prompts for every shot."
+                  "ดำเนินการต่อเพื่อสร้างพรอมต์ภาพสำหรับทุกช็อต",
+                  "Continue to generate image prompts for every shot."
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -4072,8 +4166,8 @@ export function VerticalDramaStoryboardPanel({
                     ? t(locale, "กำลังสร้าง…", "Generating…")
                     : t(
                         locale,
-                        "สร้าง prompt ภาพเริ่มต้น (มีค่าใช้จ่าย)",
-                        "Generate start-frame prompts (paid)"
+                        "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
+                        "Generate image prompts for all shots (paid)"
                       )}
                 </Button>
               </div>
@@ -4091,8 +4185,8 @@ export function VerticalDramaStoryboardPanel({
                 ? t(locale, "กำลังสร้าง…", "Generating…")
                 : t(
                     locale,
-                    "สร้าง prompt ภาพเริ่มต้น (มีค่าใช้จ่าย)",
-                    "Generate start-frame prompts (paid)"
+                    "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
+                    "Generate image prompts for all shots (paid)"
                   )}
             </Button>
           )}
@@ -4725,12 +4819,12 @@ export function VerticalDramaStoryboardPanel({
                               {imageDisplayState.promptReady
                                 ? t(
                                     locale,
-                                    "สร้าง prompt แล้ว กำลังสร้างภาพ…",
+                                    "สร้างพรอมต์แล้ว กำลังสร้างภาพ…",
                                     "Prompt ready, generating image…"
                                   )
                                 : t(
                                     locale,
-                                    "กำลังเตรียม prompt และสร้างภาพ…",
+                                    "กำลังเตรียมพรอมต์และสร้างภาพ…",
                                     "Preparing prompt and generating image…"
                                   )}
                             </span>
@@ -4753,7 +4847,7 @@ export function VerticalDramaStoryboardPanel({
                                     )
                                   : t(
                                       locale,
-                                      "สร้าง prompt แล้ว แต่สร้างภาพไม่สำเร็จ",
+                                      "สร้างพรอมต์แล้ว แต่สร้างภาพไม่สำเร็จ",
                                       "Prompt ready, but image generation failed"
                                     )}
                             </span>
@@ -5446,17 +5540,17 @@ export function VerticalDramaStoryboardPanel({
                             requestConfirmation({
                               title: t(
                                 locale,
-                                "ยืนยันสร้าง prompt + ภาพ",
+                                "ยืนยันสร้างพรอมต์และภาพ",
                                 "Confirm prompt + image generation"
                               ),
                               description: t(
                                 locale,
-                                "การทำงานนี้จะสร้าง prompt และภาพด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
+                                "การทำงานนี้จะสร้างพรอมต์และภาพด้วย AI และอาจหักเครดิต ต้องการดำเนินการต่อหรือไม่?",
                                 "This generates an AI prompt and image and may spend credits. Continue?"
                               ),
                               confirmLabel: t(
                                 locale,
-                                "สร้าง prompt + ภาพ",
+                                "สร้างพรอมต์และภาพ",
                                 "Generate prompt + image"
                               ),
                               cancelLabel: t(locale, "ยกเลิก", "Cancel"),
@@ -5484,12 +5578,12 @@ export function VerticalDramaStoryboardPanel({
                             requestConfirmation({
                               title: t(
                                 locale,
-                                "ยืนยันสร้าง prompt + ภาพหลายมุม",
+                                "ยืนยันสร้างพรอมต์และภาพหลายมุม",
                                 "Confirm multi-angle prompt + image generation"
                               ),
                               description: t(
                                 locale,
-                                "การทำงานนี้จะสร้าง prompt และภาพหลายมุมด้วย AI และอาจหักเครดิตมากกว่าปกติ ต้องการดำเนินการต่อหรือไม่?",
+                                "การทำงานนี้จะสร้างพรอมต์และภาพหลายมุมด้วย AI และอาจหักเครดิตมากกว่าปกติ ต้องการดำเนินการต่อหรือไม่?",
                                 "This generates multi-angle AI prompts and images and may spend more credits than usual. Continue?"
                               ),
                               confirmLabel: t(

@@ -11,6 +11,7 @@ export const MEDIA_OPERATIONS = [
   "media.analysis",
   "media.silence_detect",
   "media.reframe",
+  "media.composition_scan",
   "media.speaker_scan",
   "media.transcribe",
   "media.align",
@@ -25,7 +26,7 @@ export const MEDIA_OPERATIONS = [
   "video.render",
 ] as const;
 export type MediaOperation = (typeof MEDIA_OPERATIONS)[number];
-export const MEDIA_ANALYSIS_KINDS = ["silence_detect", "reframe", "speaker_scan", "transcribe", "align", "audio_mix"] as const;
+export const MEDIA_ANALYSIS_KINDS = ["silence_detect", "reframe", "composition_scan", "speaker_scan", "transcribe", "align", "audio_mix"] as const;
 
 /**
  * Claim-time capability token for one editor operation.  The protocol token

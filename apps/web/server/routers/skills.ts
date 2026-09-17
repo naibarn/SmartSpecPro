@@ -413,11 +413,6 @@ const SKILL_EXECUTION_MODE_VALUES = [
   "media-generate",
   "enhance-prompt",
   "python",
-  "sandbox-code",
-  "sandbox-command",
-  "sandbox-browser",
-  "sandbox-file",
-  "sandbox-media",
 ] as const;
 const skillExecutionModeSchema = z.enum(SKILL_EXECUTION_MODE_VALUES);
 const nativeBundleRelativePathSchema = z
@@ -498,36 +493,11 @@ const localSkillOriginSchema = z
     "chat",
     "team_room",
     "team_run",
-    "agency",
     "public_api",
     "scheduler",
-    "workflow_background",
     "channel_bridge",
   ])
   .default("chat");
-
-function isSandboxExecutionMode(mode: string | null | undefined): boolean {
-  return typeof mode === "string" && mode.startsWith("sandbox-");
-}
-
-function getDefaultSandboxProfileSlug(
-  executionMode: string | null | undefined,
-  category: string,
-): string {
-  if (executionMode === "sandbox-browser" || executionMode === "sandbox-command") {
-    return "browser-default";
-  }
-  if (executionMode === "sandbox-file") {
-    return "file-parser";
-  }
-  if (executionMode === "sandbox-media") {
-    return "media-processing";
-  }
-  if (category === "slide_generation") {
-    return "browser-default";
-  }
-  return "code-default";
-}
 
 function attachLocalExecutionPolicy<T extends Record<string, unknown>>(
   data: T,
@@ -2764,9 +2734,6 @@ export const skillsRouter = router({
             enabledByDefault: skill.enabledByDefault,
             priority: skill.priority,
             hasSkillFile: !!skill.skillFilePath,
-            // Sandbox metadata
-            sandboxRequired: !!skill.executionMode?.startsWith("sandbox-"),
-            sandboxProfileSlug: skill.sandboxProfileSlug ?? null,
             executionMode: skill.executionMode ?? null,
           },
           skill,
@@ -5688,11 +5655,6 @@ export const skillsRouter = router({
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
         executionMode: skillExecutionModeSchema.optional(),
-        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
-        requiresNetwork: z.boolean().nullable().optional(),
-        requiresBrowser: z.boolean().nullable().optional(),
-        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
-        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         bundleType: z.enum(["native", "legacy"]).default("native"),
         bundleProfile: z.enum(["general", "research", "workflow", "media", "custom"]).default("general"),
         subagents: z.array(nativeSubagentInputSchema).optional(),
@@ -5743,8 +5705,6 @@ export const skillsRouter = router({
           message: `Category '${normalizedCategory}' is not compatible with executionMode '${effectiveExecutionMode}'.`,
         });
       }
-      const shouldUseSandbox = isSandboxExecutionMode(effectiveExecutionMode);
-
       // Check if slug already exists
       const [existing] = await dbInstance
         .select({ id: skills.id })
@@ -5824,25 +5784,11 @@ export const skillsRouter = router({
             preferredProviderId: input.preferredProviderId ?? null,
             strictProviderPin: input.strictProviderPin ?? false,
             executionMode: effectiveExecutionMode,
-            sandboxProfileSlug: shouldUseSandbox
-              ? (input.sandboxProfileSlug ?? getDefaultSandboxProfileSlug(effectiveExecutionMode, normalizedCategory))
-              : null,
-            requiresNetwork: shouldUseSandbox
-              ? (input.requiresNetwork ?? (
-                  effectiveExecutionMode === "sandbox-command"
-                  || effectiveExecutionMode === "sandbox-browser"
-                  || normalizedCategory === "slide_generation"
-                ))
-              : null,
-            requiresBrowser: shouldUseSandbox
-              ? (input.requiresBrowser ?? (effectiveExecutionMode === "sandbox-browser"))
-              : null,
-            maxRuntimeSeconds: shouldUseSandbox
-              ? (input.maxRuntimeSeconds ?? (normalizedCategory === "slide_generation" ? 600 : 300))
-              : null,
-            maxInputMb: shouldUseSandbox
-              ? (input.maxInputMb ?? (normalizedCategory === "slide_generation" ? 50 : 25))
-              : null,
+            sandboxProfileSlug: null,
+            requiresNetwork: null,
+            requiresBrowser: null,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
             configJson: nextConfigJson,
             folderPath: createNativeBundle ? `skills/${input.slug}` : null,
             importSource: createNativeBundle ? "native_bundle" : "manual",
@@ -5919,11 +5865,6 @@ export const skillsRouter = router({
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
         executionMode: skillExecutionModeSchema.optional(),
-        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
-        requiresNetwork: z.boolean().nullable().optional(),
-        requiresBrowser: z.boolean().nullable().optional(),
-        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
-        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),
@@ -6029,6 +5970,13 @@ export const skillsRouter = router({
         ? updateData.executionMode
         : currentSkill.executionMode;
 
+      if (typeof effectiveExecutionMode === "string" && effectiveExecutionMode.startsWith("sandbox-")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Retired sandbox skill runtimes cannot be enabled or retained; migrate the skill to an approved worker runtime.",
+        });
+      }
+
       if (
         effectiveExecutionMode
         && !isExecutionModeCompatibleWithSkillCategory(effectiveCategory, effectiveExecutionMode)
@@ -6074,11 +6022,6 @@ export const skillsRouter = router({
       }
       if (updateData.strictProviderPin !== undefined) updateObj.strictProviderPin = updateData.strictProviderPin;
       if (updateData.executionMode !== undefined) updateObj.executionMode = updateData.executionMode;
-      if (updateData.sandboxProfileSlug !== undefined) updateObj.sandboxProfileSlug = updateData.sandboxProfileSlug;
-      if (updateData.requiresNetwork !== undefined) updateObj.requiresNetwork = updateData.requiresNetwork;
-      if (updateData.requiresBrowser !== undefined) updateObj.requiresBrowser = updateData.requiresBrowser;
-      if (updateData.maxRuntimeSeconds !== undefined) updateObj.maxRuntimeSeconds = updateData.maxRuntimeSeconds;
-      if (updateData.maxInputMb !== undefined) updateObj.maxInputMb = updateData.maxInputMb;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
@@ -6091,30 +6034,7 @@ export const skillsRouter = router({
         }
       }
 
-      if (isSandboxExecutionMode(effectiveExecutionMode)) {
-        if (updateData.sandboxProfileSlug === undefined && currentSkill.sandboxProfileSlug == null) {
-          updateObj.sandboxProfileSlug = getDefaultSandboxProfileSlug(
-            effectiveExecutionMode,
-            effectiveCategory,
-          );
-        }
-        if (updateData.requiresNetwork === undefined && currentSkill.requiresNetwork == null) {
-          updateObj.requiresNetwork = (
-            effectiveExecutionMode === "sandbox-command"
-            || effectiveExecutionMode === "sandbox-browser"
-            || effectiveCategory === "slide_generation"
-          );
-        }
-        if (updateData.requiresBrowser === undefined && currentSkill.requiresBrowser == null) {
-          updateObj.requiresBrowser = effectiveExecutionMode === "sandbox-browser";
-        }
-        if (updateData.maxRuntimeSeconds === undefined && currentSkill.maxRuntimeSeconds == null) {
-          updateObj.maxRuntimeSeconds = effectiveCategory === "slide_generation" ? 600 : 300;
-        }
-        if (updateData.maxInputMb === undefined && currentSkill.maxInputMb == null) {
-          updateObj.maxInputMb = effectiveCategory === "slide_generation" ? 50 : 25;
-        }
-      } else if (updateData.executionMode !== undefined) {
+      if (updateData.executionMode !== undefined) {
         updateObj.sandboxProfileSlug = null;
         updateObj.requiresNetwork = null;
         updateObj.requiresBrowser = null;
@@ -6178,10 +6098,6 @@ export const skillsRouter = router({
           .find((candidate) => !!resolveSkillManifestPath(candidate));
 
         if (skillDir) {
-          const shouldClearSandboxManifestFields = (
-            updateData.executionMode !== undefined
-            && !isSandboxExecutionMode(updateData.executionMode)
-          );
           const manifestResult = updateSkillManifestFiles(
             skillDir,
             {
@@ -6198,11 +6114,11 @@ export const skillsRouter = router({
               credit_multiplier: updateData.creditMultiplier,
               priority: updateData.priority,
               execution_mode: updateData.executionMode,
-              sandbox_profile: shouldClearSandboxManifestFields ? null : updateData.sandboxProfileSlug,
-              requires_network: shouldClearSandboxManifestFields ? null : updateData.requiresNetwork,
-              requires_browser: shouldClearSandboxManifestFields ? null : updateData.requiresBrowser,
-              max_runtime_seconds: shouldClearSandboxManifestFields ? null : updateData.maxRuntimeSeconds,
-              max_input_mb: shouldClearSandboxManifestFields ? null : updateData.maxInputMb,
+              sandbox_profile: null,
+              requires_network: null,
+              requires_browser: null,
+              max_runtime_seconds: null,
+              max_input_mb: null,
               default_model: updateData.defaultModel,
               llm_model_id: updateData.llmModelId,
               preferred_provider_id: updateData.preferredProviderId,

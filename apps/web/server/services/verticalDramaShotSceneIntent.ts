@@ -32,6 +32,32 @@ import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 export const VERTICAL_DRAMA_SHOT_SCENE_INTENT_VERSION =
   "vd-shot-scene-intent-v1" as const;
 
+/**
+ * The output contract is repeated in the user prompt and on every schema
+ * retry.  The skill manifest's numeric `contract_version: 1` is metadata;
+ * it is never the value of the JSON response field.
+ */
+export const VERTICAL_DRAMA_SHOT_SCENE_INTENT_CONTRACT = `
+OUTPUT CONTRACT (the response itself, not skill metadata):
+- Root object: {"contract_version":"vd-shot-scene-intent-v1","shots":[...]}.
+- shots must contain exactly 9 objects, numbered 1 through 9.
+- Every shot must contain a nested scene_intent object.
+- Every scene_intent must contain:
+  contract_version:"vd-shot-scene-intent-v1";
+  physical_character_refs:string[];
+  screen_caller_refs:string[];
+  offscreen_speaker_refs:string[];
+  mentioned_only_refs:string[];
+  supporting_presence:object[] (each object has role:string and may have count:number, visibility:"visible"|"background", action:string);
+  communication_mode:"none"|"phone_call"|"video_call"|"text_message"|"shout_through_barrier"|"barrier_dialogue"|"separate_locations"|"voice_only";
+  visual_plan:object with mode:"single_view"|"device_screen"|"dual_view"|"text_ui"|"voice_only"|"no_character", reason_codes:string[], primary_character_refs:string[], secondary_character_refs:string[], and optional primary_location_key/secondary_location_key:string;
+  dialogue_routing:object[] (each object has line_index:number, role:"physical"|"screen_caller"|"offscreen"|"mentioned_only"|"unknown", visual_target:"body"|"virtual_screen"|"none"|"text_ui", must_be_on_screen:boolean, must_not_appear_physically:boolean, and optional speaker_ref:string);
+  confidence:"high"|"medium"|"low"; needs_review:boolean; reason_codes:string[].
+- All *_refs values must be exact character IDs from the supplied roster.
+- The numeric metadata value contract_version: 1 must NOT be copied into the response. Use the exact string "vd-shot-scene-intent-v1" at both root and scene_intent levels.
+- Return one complete JSON object only; do not return markdown, prose, a partial patch, or JSON-encoded arrays/objects.
+`.trim();
+
 const communicationModes = [
   "none",
   "phone_call",
@@ -121,7 +147,7 @@ export const verticalDramaShotSceneIntentOutputSchema = z
     shots: z
       .array(
         z.object({
-          shot_number: z.number().int().positive(),
+          shot_number: z.number().int().positive().max(9),
           scene_intent: sceneIntentSchema,
         })
       )
@@ -133,6 +159,208 @@ export type VerticalDramaShotSceneIntent = z.infer<typeof sceneIntentSchema>;
 export type VerticalDramaShotSceneIntentOutput = z.infer<
   typeof verticalDramaShotSceneIntentOutputSchema
 >;
+
+type SceneIntentNormalizationChange = {
+  path: string;
+  action: string;
+};
+
+type SceneIntentNormalizationResult = {
+  value: unknown;
+  changes: SceneIntentNormalizationChange[];
+};
+
+const sceneIntentArrayFields = [
+  "physical_character_refs",
+  "screen_caller_refs",
+  "offscreen_speaker_refs",
+  "mentioned_only_refs",
+  "supporting_presence",
+  "dialogue_routing",
+  "reason_codes",
+] as const;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function parseJsonContainer(
+  value: unknown,
+  expected: "array" | "object"
+): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    const parsed = JSON.parse(value);
+    return expected === "array"
+      ? Array.isArray(parsed)
+        ? parsed
+        : value
+      : isRecord(parsed)
+        ? parsed
+        : value;
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * Repairs only deterministic transport/serialization drift. It never invents
+ * a character reference, a location, or a dialogue speaker, so semantic
+ * mistakes still reach the strict schema/semantic gates.
+ */
+export function normalizeVerticalDramaShotSceneIntentCandidate(
+  candidate: unknown
+): SceneIntentNormalizationResult {
+  const changes: SceneIntentNormalizationChange[] = [];
+  if (!isRecord(candidate)) return { value: candidate, changes };
+
+  const root: Record<string, unknown> = { ...candidate };
+  if (root.contract_version === 1) {
+    root.contract_version = VERTICAL_DRAMA_SHOT_SCENE_INTENT_VERSION;
+    changes.push({
+      path: "contract_version",
+      action: "converted numeric metadata version to response contract string",
+    });
+  }
+
+  if (Array.isArray(root.shots)) {
+    root.shots = root.shots.map((rawShot, shotIndex) => {
+      if (!isRecord(rawShot)) return rawShot;
+      const shot: Record<string, unknown> = { ...rawShot };
+      const shotPath = `shots.${shotIndex}`;
+
+      // A few models place the nested intent fields beside scene_intent. Move
+      // only exact known keys; no inference or value rewriting is performed.
+      if (!isRecord(shot.scene_intent)) {
+        const nested: Record<string, unknown> = {};
+        for (const field of [
+          "contract_version",
+          ...sceneIntentArrayFields,
+          "communication_mode",
+          "visual_plan",
+          "confidence",
+          "needs_review",
+        ]) {
+          if (field in shot) {
+            nested[field] = shot[field];
+            delete shot[field];
+          }
+        }
+        if (Object.keys(nested).length > 0) {
+          shot.scene_intent = nested;
+          changes.push({
+            path: `${shotPath}.scene_intent`,
+            action: "nested exact scene-intent fields under scene_intent",
+          });
+        }
+      }
+
+      if (!isRecord(shot.scene_intent)) return shot;
+      const scene: Record<string, unknown> = { ...shot.scene_intent };
+      const scenePath = `${shotPath}.scene_intent`;
+      if (scene.contract_version === 1) {
+        scene.contract_version = VERTICAL_DRAMA_SHOT_SCENE_INTENT_VERSION;
+        changes.push({
+          path: `${scenePath}.contract_version`,
+          action:
+            "converted numeric metadata version to response contract string",
+        });
+      }
+
+      for (const field of sceneIntentArrayFields) {
+        const parsed = parseJsonContainer(scene[field], "array");
+        if (parsed !== scene[field]) {
+          scene[field] = parsed;
+          changes.push({
+            path: `${scenePath}.${field}`,
+            action: "parsed JSON-encoded array",
+          });
+        }
+      }
+      const parsedVisualPlan = parseJsonContainer(scene.visual_plan, "object");
+      if (parsedVisualPlan !== scene.visual_plan) {
+        scene.visual_plan = parsedVisualPlan;
+        changes.push({
+          path: `${scenePath}.visual_plan`,
+          action: "parsed JSON-encoded object",
+        });
+      }
+
+      if (!Array.isArray(scene.supporting_presence)) {
+        // Keep missing values visible to the schema when they are genuinely
+        // absent. Only a valid JSON array string was normalized above.
+      } else {
+        const hadStringEntry = scene.supporting_presence.some(
+          entry => typeof entry === "string"
+        );
+        scene.supporting_presence = scene.supporting_presence.map(entry =>
+          typeof entry === "string" ? { role: entry } : entry
+        );
+        if (hadStringEntry) {
+          changes.push({
+            path: `${scenePath}.supporting_presence`,
+            action: "wrapped string entries as role objects",
+          });
+        }
+      }
+
+      if (isRecord(scene.visual_plan)) {
+        const visualPlan: Record<string, unknown> = { ...scene.visual_plan };
+        for (const field of [
+          "reason_codes",
+          "primary_character_refs",
+          "secondary_character_refs",
+        ]) {
+          if (!(field in visualPlan)) {
+            visualPlan[field] = [];
+            changes.push({
+              path: `${scenePath}.visual_plan.${field}`,
+              action: "defaulted missing structural array to empty array",
+            });
+          }
+        }
+        scene.visual_plan = visualPlan;
+      }
+      return { ...shot, scene_intent: scene };
+    });
+  }
+
+  return { value: root, changes };
+}
+
+function buildVerticalDramaShotSceneIntentValidationSchema(
+  validCharacterIds: Set<string>
+) {
+  return {
+    safeParse(value: unknown) {
+      const structural = verticalDramaShotSceneIntentOutputSchema.safeParse(
+        normalizeVerticalDramaShotSceneIntentCandidate(value).value
+      );
+      if (!structural.success) return structural;
+
+      const semanticIssues = structural.data.shots.flatMap((entry, index) =>
+        validateSceneIntent(
+          entry.shot_number,
+          entry.scene_intent,
+          validCharacterIds
+        ).map(message => ({ index, message }))
+      );
+      if (semanticIssues.length > 0) {
+        return {
+          success: false as const,
+          error: new z.ZodError(
+            semanticIssues.map(({ index, message }) => ({
+              code: "custom" as const,
+              path: ["shots", index, "scene_intent"],
+              message,
+            }))
+          ),
+        };
+      }
+      return structural;
+    },
+  };
+}
 
 export type VerticalDramaShotSceneIntentShotInput = {
   shotNumber: number;
@@ -189,6 +417,68 @@ export class VerticalDramaShotSceneIntentReviewRequiredError extends Error {
     );
     this.name = "VerticalDramaShotSceneIntentReviewRequiredError";
   }
+}
+
+function formatSceneIntentSchemaIssues(issues: unknown): string[] {
+  const rawIssues =
+    isRecord(issues) && Array.isArray(issues.issues) ? issues.issues : [];
+  return rawIssues.slice(0, 24).map(issue => {
+    if (!isRecord(issue)) return "(root): invalid value";
+    const pathValue =
+      Array.isArray(issue.path) && issue.path.length > 0
+        ? issue.path.join(".")
+        : "(root)";
+    const message =
+      typeof issue.message === "string" ? issue.message : "invalid value";
+    const hint = pathValue.endsWith("contract_version")
+      ? `use exactly ${VERTICAL_DRAMA_SHOT_SCENE_INTENT_VERSION}`
+      : pathValue.includes("supporting_presence")
+        ? "use an array of objects with role"
+        : pathValue.includes("dialogue_routing")
+          ? "use an array of routing objects"
+          : pathValue.includes("visual_plan")
+            ? "use an object with mode, reason_codes, primary_character_refs, and secondary_character_refs"
+            : message.includes("call mode has no screen caller")
+              ? "add an exact remote caller ID to screen_caller_refs, or use voice_only with offscreen_speaker_refs"
+              : pathValue.includes("scene_intent")
+                ? "nest all intent fields under scene_intent"
+                : "return the required value with the exact schema type";
+    return `${pathValue}: ${message} (${hint})`;
+  });
+}
+
+/** A user-facing, repairable error for the critical shot-intent preflight. */
+export class VerticalDramaShotSceneIntentSchemaValidationError extends Error {
+  readonly code = "VD_SHOT_SCENE_INTENT_SCHEMA_VALIDATION_FAILED" as const;
+  readonly diagnostics: string[];
+
+  constructor(
+    readonly issues: unknown,
+    readonly parsedJson?: unknown,
+    readonly rawResponse?: unknown
+  ) {
+    const diagnostics = formatSceneIntentSchemaIssues(issues);
+    super(
+      diagnostics.length > 0
+        ? `Shot scene intent output failed its contract: ${diagnostics.join("; ")}`
+        : "Shot scene intent output failed its contract; return the complete JSON object matching the scene-intent schema."
+    );
+    this.name = "VerticalDramaShotSceneIntentSchemaValidationError";
+    this.diagnostics = diagnostics;
+  }
+}
+
+function isSchemaValidationError(error: unknown): error is {
+  code?: unknown;
+  issues?: unknown;
+  parsedJson?: unknown;
+  rawResponse?: unknown;
+} {
+  return (
+    isRecord(error) &&
+    error.code === "VD_SCHEMA_VALIDATION_FAILED" &&
+    "issues" in error
+  );
 }
 
 const SKILL_FOLDER_PATH = path.join(
@@ -292,7 +582,7 @@ export function buildVerticalDramaShotSceneIntentPrompt(
     "A person named in narration, backstory, gossip, a remembered event, a news/TV reference, or a text message is mentioned-only unless the shot explicitly places them visibly or makes them a remote caller.",
     "A phone/video caller is not physically present. A text-message sender is not a caller. A voice through a closed door/wall is offscreen or barrier dialogue, not a visible body unless the shot explicitly says to show them.",
     "When two people talk from different places, across a closed barrier, or through a video call and the image must show both environments, use dual_view. Use device_screen for a caller shown only inside a phone/tablet/monitor.",
-    "Do not use character names as a reason to include them. Only use exact character ids from the roster. If the wording is ambiguous or categories contradict one another, set needs_review=true and confidence=low.",
+    "Do not use character names as a reason to include them. Only use exact character ids from the roster. For phone_call/video_call, include an exact remote caller ID in screen_caller_refs; if there is no identifiable caller or no device/call view is shown, use voice_only with offscreen_speaker_refs instead. If the wording is ambiguous or categories contradict one another, set needs_review=true and confidence=low.",
     "Return exactly nine shot interpretations and preserve shot numbers.",
     `CHARACTER ROSTER:\n${roster}`,
     previousEpisode,
@@ -300,6 +590,7 @@ export function buildVerticalDramaShotSceneIntentPrompt(
     `CURRENT SHOTS:\n${currentShots}`,
     `PREVIOUS-SHOT CONTEXT:\n${previousShotContext}`,
     "Output fields are mandatory: physical_character_refs, screen_caller_refs, offscreen_speaker_refs, mentioned_only_refs, supporting_presence, communication_mode, visual_plan, dialogue_routing, confidence, needs_review, reason_codes. The image planner will use only the explicit physical/screen/visual_plan fields.",
+    VERTICAL_DRAMA_SHOT_SCENE_INTENT_CONTRACT,
   ].join("\n\n");
 }
 
@@ -320,32 +611,51 @@ export async function generateVerticalDramaShotSceneIntent(
   }
 
   const model = await resolveStoryboardModel(params.seriesId);
-  const result = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt: loadSkillSystemPrompt(),
-    userPrompt: buildVerticalDramaShotSceneIntentPrompt(params),
-    temperature: 0.1,
-    userId: params.userId,
-    maxTokens: 7000,
-    schema: verticalDramaShotSceneIntentOutputSchema,
-    label: "Vertical Drama shot scene intent",
-    planningAttemptObserver: params.planningAttemptObserver,
-    verticalDramaContext: {
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      taskClass: "semantic_quality_review",
-      settings: params.episodeGenerationSettings,
-    },
-  });
+  let result;
+  try {
+    result = await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt: loadSkillSystemPrompt(),
+      userPrompt: buildVerticalDramaShotSceneIntentPrompt(params),
+      temperature: 0.1,
+      userId: params.userId,
+      maxTokens: 7000,
+      schema: buildVerticalDramaShotSceneIntentValidationSchema(
+        new Set(params.characters.map(character => character.characterId))
+      ),
+      label: "Vertical Drama shot scene intent",
+      modelFallbackOnSchema: true,
+      modelFallbackPolicy: "recommended",
+      modelFallbackMaxAttempts: 1,
+      schemaRetryContract: VERTICAL_DRAMA_SHOT_SCENE_INTENT_CONTRACT,
+      planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "semantic_quality_review",
+        settings: params.episodeGenerationSettings,
+      },
+    });
+  } catch (error) {
+    if (isSchemaValidationError(error)) {
+      throw new VerticalDramaShotSceneIntentSchemaValidationError(
+        error.issues,
+        error.parsedJson,
+        error.rawResponse
+      );
+    }
+    throw error;
+  }
+  const actualModel = result.model ?? model;
   const usage = result.response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
     usage?.completion_tokens ?? 0,
-    model
+    actualModel
   );
   const creditCharge: CreditCharge = {
     amount: creditsUsed,
-    model,
+    model: actualModel,
     inputTokens: usage?.prompt_tokens ?? 0,
     outputTokens: usage?.completion_tokens ?? 0,
     skillSlug: "vertical-drama-shot-scene-intent",
@@ -360,8 +670,8 @@ export async function generateVerticalDramaShotSceneIntent(
       skillSlug: creditCharge.skillSlug,
       sourceType: "skill",
       metadata: {
-        model,
-        llmModel: model,
+        model: actualModel,
+        llmModel: actualModel,
         feature: "vertical_drama_series",
         seriesId: params.seriesId,
         episodeId: params.episodeId,
@@ -373,7 +683,7 @@ export async function generateVerticalDramaShotSceneIntent(
   return {
     intent: result.data,
     creditsUsed,
-    model,
+    model: actualModel,
     ...(params.deferCreditDeduction ? { creditCharge } : {}),
   };
 }

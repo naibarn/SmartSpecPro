@@ -12,6 +12,7 @@ import {
   applyCanonicalJobAction,
   getCanonicalJobOverview,
   getCanonicalJobTimeline,
+  getWorkerJobDashboardSummary,
   listCanonicalJobs,
 } from "../services/jobControlPlaneMonitor";
 
@@ -71,6 +72,12 @@ export const workerJobsRouter = router({
       });
     }),
 
+  dashboardSummary: protectedProcedure
+    .query(async ({ ctx }) => {
+      const auth = requireWorkerJobAuth(ctx);
+      return getWorkerJobDashboardSummary(auth);
+    }),
+
   cancelQueued: protectedProcedure
     .input(z.object({ jobId: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
@@ -111,6 +118,10 @@ export const workerJobsRouter = router({
   controlPlaneOverview: adminProcedure
     .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
     .query(({ input }) => getCanonicalJobOverview(input?.tenantId)),
+
+  adminDashboardSummary: adminProcedure
+    .input(z.object({ tenantId: z.string().uuid().optional() }).optional())
+    .query(({ input }) => getWorkerJobDashboardSummary({ tenantId: input?.tenantId })),
 
   controlPlaneAction: rateLimitedAdminProcedure
     .input(z.object({ jobId: z.string().uuid(), action: z.enum(["cancel", "requeue", "force_fail"]), reason: z.string().trim().min(1).max(500), actionId: z.string().uuid() }))

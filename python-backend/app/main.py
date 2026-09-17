@@ -27,7 +27,6 @@ from app.api import (
     virtual_admin,
     llm_proxy,
     orchestrator,
-    workflows,
     autopilot,
     auth,
     credits,
@@ -76,7 +75,6 @@ from app.api import (
      admin_alerts,  # Admin alert threshold checking
      internal_library,  # Internal library scope propagation API
     internal_vertical_drama,  # Vertical Drama clip QC media-worker API
-    internal_sandbox,  # Internal sandbox dispatch/cancel API
     internal_guardrails,  # Internal guardrails test API
     internal_openai_agents_runtime,  # Internal OpenAI Agents runtime API
     scheduled_jobs,  # Scheduled job monitoring (internal)
@@ -413,7 +411,6 @@ app.include_router(system_health.router, tags=["System Health"])
 app.include_router(audit_logs.router, tags=["Audit Logs"])
 app.include_router(support_tickets.router, tags=["Support Tickets"])
 app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["Orchestrator"])
-app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["Workflows"])
 app.include_router(autopilot.router, prefix="/api/v1/autopilot", tags=["Autopilot"])
 app.include_router(skills.router, prefix="/api/v1", tags=["Skills"])
 app.include_router(admin_skills.router, prefix="/api/v1", tags=["Admin - Skills"])
@@ -485,7 +482,6 @@ app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
 app.include_router(internal_vertical_drama.router, tags=["Internal Vertical Drama"])
-app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
 app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
 app.include_router(internal_openai_agents_runtime.router, tags=["Internal OpenAI Agents Runtime"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])

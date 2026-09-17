@@ -12,30 +12,52 @@ const upsertCalls: unknown[][] = [];
 const deleteCalls: string[][] = [];
 
 // Mock fetch at global level to intercept Vectorize API calls
-const mockFetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
-  const urlStr = String(url);
-  if (urlStr.includes("/vectorize/") && urlStr.includes("/upsert")) {
-    // Parse NDJSON body to track what was upserted
-    const body = String(init?.body || "");
-    const vectors = body
-      .split("\n")
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
-    upsertCalls.push(vectors);
-    return { ok: true, json: async () => ({ success: true, result: { count: vectors.length, mutationId: "mutation-1" } }) };
-  }
-  if (urlStr.includes("/vectorize/") && urlStr.includes("/delete_by_ids")) {
-    const body = JSON.parse(String(init?.body || "{}"));
-    deleteCalls.push(body.ids);
-    return { ok: true, json: async () => ({ success: true, result: { count: body.ids.length, mutationId: "mutation-2" } }) };
-  }
-  // Default: return 200 for any other API call
-  return { ok: true, json: async () => ({ result: { data: [Array.from({ length: 768 }, () => 0.1)] }, success: true }) };
-});
+const mockFetch = vi
+  .fn()
+  .mockImplementation(async (url: string, init?: RequestInit) => {
+    const urlStr = String(url);
+    if (urlStr.includes("/vectorize/") && urlStr.includes("/upsert")) {
+      // Parse NDJSON body to track what was upserted
+      const body = String(init?.body || "");
+      const vectors = body
+        .split("\n")
+        .filter(Boolean)
+        .map(line => JSON.parse(line));
+      upsertCalls.push(vectors);
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          result: { count: vectors.length, mutationId: "mutation-1" },
+        }),
+      };
+    }
+    if (urlStr.includes("/vectorize/") && urlStr.includes("/delete_by_ids")) {
+      const body = JSON.parse(String(init?.body || "{}"));
+      deleteCalls.push(body.ids);
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          result: { count: body.ids.length, mutationId: "mutation-2" },
+        }),
+      };
+    }
+    // Default: return 200 for any other API call
+    return {
+      ok: true,
+      json: async () => ({
+        result: { data: [Array.from({ length: 768 }, () => 0.1)] },
+        success: true,
+      }),
+    };
+  });
 vi.stubGlobal("fetch", mockFetch);
 
 vi.mock("../services/vectorize", () => ({
-  generateEmbedding: vi.fn().mockResolvedValue(Array.from({ length: 768 }, () => 0.1)),
+  generateEmbedding: vi
+    .fn()
+    .mockResolvedValue(Array.from({ length: 768 }, () => 0.1)),
   chunkDocument: vi.fn().mockImplementation((text: string) => {
     const chunks: string[] = [];
     for (let i = 0; i < text.length; i += 1800) {
@@ -43,20 +65,23 @@ vi.mock("../services/vectorize", () => ({
     }
     return chunks.length > 0 ? chunks : [text];
   }),
-  generateImageDescription: vi.fn().mockResolvedValue("A test image description"),
+  generateImageDescription: vi
+    .fn()
+    .mockResolvedValue("A test image description"),
 }));
 
 vi.mock("../services/vectorProvider", async () => {
   const actual = await vi.importActual("../services/vectorProvider");
   return {
     ...actual,
-    getEffectiveVectorProviderConfig: vi.fn().mockResolvedValue({ provider: "cloudflare_vectorize" }),
+    getEffectiveVectorProviderConfig: vi
+      .fn()
+      .mockResolvedValue({ provider: "cloudflare_vectorize" }),
   };
 });
 
-const { indexDocument, indexImage, removeDocument, removeVector } = await import(
-  "../services/vectorize-indexing"
-);
+const { indexDocument, indexImage, removeDocument, removeVector } =
+  await import("../services/vectorize-indexing");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -80,15 +105,38 @@ describe("Vectorize Indexing", () => {
     expect(vectors.length).toBeGreaterThan(1);
     expect(vectors[0].id).toContain("doc-1-chunk-");
     expect(vectors[0].values).toHaveLength(768);
+    expect(vectors[0].namespace).toBe("tenant:tenant-1");
     expect(vectors[0].metadata.tenantId).toBe("tenant-1");
     expect(vectors[0].metadata.sourceId).toBe("doc-1");
     expect(evidence).toEqual({ mutationIds: ["mutation-1"], vectorCount: 3 });
   });
 
+  it("uses the persisted Vectorize index setting for document writes", async () => {
+    const { getEffectiveVectorProviderConfig } =
+      await import("../services/vectorProvider");
+    vi.mocked(getEffectiveVectorProviderConfig).mockResolvedValueOnce({
+      provider: "cloudflare_vectorize",
+      vectorizeIndexName: "smartaihub-library",
+    });
+
+    await indexDocument({
+      id: "configured-doc",
+      text: "configured index",
+      tenantId: "tenant-1",
+      title: "Configured Doc",
+      type: "article",
+      sourceUrl: "/docs/configured",
+    });
+
+    expect(String(mockFetch.mock.calls[0]?.[0])).toContain(
+      "/vectorize/v2/indexes/smartaihub-library/upsert"
+    );
+  });
+
   it("batch upserts vectors in groups of 1000", async () => {
     const { chunkDocument: mockChunk } = await import("../services/vectorize");
     vi.mocked(mockChunk).mockReturnValueOnce(
-      Array.from({ length: 1500 }, (_, i) => `chunk-${i}`),
+      Array.from({ length: 1500 }, (_, i) => `chunk-${i}`)
     );
 
     await indexDocument({
@@ -121,6 +169,7 @@ describe("Vectorize Indexing", () => {
     expect(vectors[0].metadata.type).toBe("image");
     expect(vectors[0].metadata.description).toBeTruthy();
     expect(vectors[0].metadata.sourceId).toBe("img-1");
+    expect(vectors[0].namespace).toBe("tenant:tenant-1");
     expect(evidence).toEqual({ mutationIds: ["mutation-1"], vectorCount: 1 });
   });
 
@@ -163,17 +212,22 @@ describe("Vectorize Indexing", () => {
     await removeDocument(documentId, 2);
     expect(deleteCalls).toHaveLength(1);
     expect(deleteCalls[0]).toHaveLength(2);
-    expect(deleteCalls[0].every((id) => new TextEncoder().encode(id).byteLength <= 64)).toBe(true);
+    expect(
+      deleteCalls[0].every(id => new TextEncoder().encode(id).byteLength <= 64)
+    ).toBe(true);
     expect(deleteCalls[0]).not.toContain(`${documentId}-chunk-0`);
   });
 
   it("rejects duplicate IDs in a Vectorize deletion request", async () => {
-    const { dispatchVectorOperation } = await import("../services/vectorProvider");
-    await expect(dispatchVectorOperation({
-      operation: "delete",
-      indexName: "images-index",
-      ids: ["img-1", "img-1"],
-      providerConfig: { provider: "cloudflare_vectorize" },
-    })).rejects.toMatchObject({ code: "VECTORIZE_IDS_INVALID" });
+    const { dispatchVectorOperation } =
+      await import("../services/vectorProvider");
+    await expect(
+      dispatchVectorOperation({
+        operation: "delete",
+        indexName: "images-index",
+        ids: ["img-1", "img-1"],
+        providerConfig: { provider: "cloudflare_vectorize" },
+      })
+    ).rejects.toMatchObject({ code: "VECTORIZE_IDS_INVALID" });
   });
 });

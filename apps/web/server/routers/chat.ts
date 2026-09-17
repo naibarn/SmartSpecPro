@@ -39,31 +39,72 @@ import {
   readStoredChatModelSelectionState,
   writeStoredChatModelSelectionState,
 } from "../services/chatModelSelection";
-import { hasEnoughCredits, calculateCreditsForLLM } from "../services/creditService";
+import {
+  hasEnoughCredits,
+  calculateCreditsForLLM,
+} from "../services/creditService";
 import { TRPCError } from "@trpc/server";
-import { getAvailableSkills, getSkillById, getSkillByIdOrType, getDefaultEnabledSkills, syncSingleSkillIfChanged } from "../services/skillRegistry";
-import { detectSkill, extractSkillParams, getSkillDetectionSummary } from "../services/skillDetector";
+import {
+  getAvailableSkills,
+  getSkillById,
+  getSkillByIdOrType,
+  getDefaultEnabledSkills,
+  syncSingleSkillIfChanged,
+} from "../services/skillRegistry";
+import {
+  detectSkill,
+  extractSkillParams,
+  getSkillDetectionSummary,
+} from "../services/skillDetector";
 import { getSlashCommands as _getSlashCommands } from "../services/userSkillService";
-import { executeSkill, startPythonSkillTask, estimateSkillCost, canAutoExecute, type SkillCreateAction, type SkillExecutionResult } from "../services/skillExecutor";
+import {
+  executeSkill,
+  startSkillTask,
+  estimateSkillCost,
+  canAutoExecute,
+  type SkillCreateAction,
+  type SkillExecutionResult,
+} from "../services/skillExecutor";
 import { signBearerToken } from "../_core/tokens";
-import { skillDetectionLimiter, skillExecutionLimiter } from "../services/rateLimiter";
+import {
+  skillDetectionLimiter,
+  skillExecutionLimiter,
+} from "../services/rateLimiter";
 import { debugLog, debugError } from "../_core/logger";
-import { ENABLE_FUNNEL_TRACKING, trackFirstConversation } from "../services/funnelMilestones";
+import {
+  ENABLE_FUNNEL_TRACKING,
+  trackFirstConversation,
+} from "../services/funnelMilestones";
 import { getDb } from "../db";
-import { skills as skillsTable, userSkillVisibility, conversations, skillPermissions, groupMembers } from "../../drizzle/schema";
+import {
+  skills as skillsTable,
+  userSkillVisibility,
+  conversations,
+  skillPermissions,
+  groupMembers,
+  workerJobs,
+} from "../../drizzle/schema";
 import { eq, and, like } from "drizzle-orm";
 import { checkRateLimit } from "../middleware/distributedRateLimit";
 import { auditLogger } from "../services/auditLogger";
 import { checkAbuseGuard, hashPrompt } from "../services/abuseGuard";
-import { orchestrateSkill } from "../services/skillOrchestrator";
 import { resolveSkillExecutionPolicy } from "../services/skillExecutionPolicy";
-import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
-import { classifyArtifactIntent, selectExecutionRoute } from "../services/artifactRouter";
+import {
+  runPlanner,
+  recordStepAttempt,
+} from "../services/taskPlannerMiddleware";
+import {
+  classifyArtifactIntent,
+  selectExecutionRoute,
+} from "../services/artifactRouter";
 import { updateTaskRunArtifact } from "../services/taskRunStore";
 import type { UnifiedExecutionRequest } from "../services/executors/types";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
-import { normalizeSkillRevenuePricing, settleSkillRun } from "../services/skillRevenueBilling";
+import {
+  normalizeSkillRevenuePricing,
+  settleSkillRun,
+} from "../services/skillRevenueBilling";
 import { clientMessageRuntimeMetadataInputSchema } from "../services/localAiRuntimeMetadata";
 import { resolveEffectiveLocalSkillExecutionPolicy } from "../services/localAiSkillPolicy";
 import { getRequesterLocalAiSurfaceContext } from "../services/localAiUserContext";
@@ -83,7 +124,10 @@ import {
 } from "../services/contextEngineAdapter";
 import { executeChatRuntimeTurn } from "../services/agentRuntime/chatRuntimeOrchestrator";
 import { recordContextEngineMetric } from "../services/monitoringService";
-import { getModelsByTypeAsync, mapToApiModelId } from "../services/modelRegistry";
+import {
+  getModelsByTypeAsync,
+  mapToApiModelId,
+} from "../services/modelRegistry";
 import {
   buildSmartCharacterLlmPrompt,
   validateSmartCharacterPromptOutput,
@@ -96,10 +140,8 @@ const localSkillOriginSchema = z
     "chat",
     "team_room",
     "team_run",
-    "agency",
     "public_api",
     "scheduler",
-    "workflow_background",
     "channel_bridge",
   ])
   .default("chat");
@@ -117,24 +159,26 @@ function normalizeMediaModelIntentText(value: string): string {
 
 async function inferMediaModelFromIntentText(
   text: string | undefined,
-  type: "image" | "video" | "audio",
+  type: "image" | "video" | "audio"
 ): Promise<string | undefined> {
   const normalizedText = normalizeMediaModelIntentText(text ?? "");
   if (!normalizedText) return undefined;
 
   const models = await getModelsByTypeAsync(type).catch(() => []);
   const candidates = models
-    .flatMap((model) => {
+    .flatMap(model => {
       const aliases = Array.isArray(model.aliases) ? model.aliases : [];
-      return [model.id, model.name, ...aliases].map((candidate) => ({
+      return [model.id, model.name, ...aliases].map(candidate => ({
         id: model.id,
         normalized: normalizeMediaModelIntentText(candidate),
       }));
     })
-    .filter((candidate) => candidate.normalized.length > 0)
+    .filter(candidate => candidate.normalized.length > 0)
     .sort((a, b) => b.normalized.length - a.normalized.length);
 
-  const match = candidates.find((candidate) => normalizedText.includes(candidate.normalized));
+  const match = candidates.find(candidate =>
+    normalizedText.includes(candidate.normalized)
+  );
   return match?.id ? mapToApiModelId(match.id) : undefined;
 }
 
@@ -155,13 +199,17 @@ const CHAT_IMAGE_ASPECT_RATIO_VALUES = new Set([
 function normalizeChatImageAspectRatio(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const normalized = value.replace(/\s+/g, "");
-  return CHAT_IMAGE_ASPECT_RATIO_VALUES.has(normalized) ? normalized : undefined;
+  return CHAT_IMAGE_ASPECT_RATIO_VALUES.has(normalized)
+    ? normalized
+    : undefined;
 }
 
-function inferImageAspectRatioFromText(text: string | undefined): string | undefined {
+function inferImageAspectRatioFromText(
+  text: string | undefined
+): string | undefined {
   if (!text) return undefined;
   const labeledMatch = text.match(
-    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i,
+    /(?:สัดส่วนภาพ|อัตราส่วนภาพ|image\s*ratio|aspect\s*ratio|ratio)\s*[:：]?\s*(\d{1,2}\s*:\s*\d{1,2})/i
   );
   const labeledRatio = normalizeChatImageAspectRatio(labeledMatch?.[1]);
   if (labeledRatio) return labeledRatio;
@@ -177,17 +225,18 @@ function inferImageAspectRatioFromText(text: string | undefined): string | undef
 
 // ── Security: forbidden patterns in LLM-generated skillContent ───────────────
 const ISC_FORBIDDEN_PATTERNS = [
-  /\bSELECT\b.*\bFROM\b/i,           // SQL queries
-  /\bINSERT INTO\b|\bDROP TABLE\b/i,  // destructive SQL
-  /open\s*\(|readFile|writeFile/,     // file access
-  /process\.env|os\.environ/,         // env access
-  /eval\s*\(|exec\s*\(/,              // code execution
-  /import\s+os|import\s+subprocess/,  // dangerous Python imports
+  /\bSELECT\b.*\bFROM\b/i, // SQL queries
+  /\bINSERT INTO\b|\bDROP TABLE\b/i, // destructive SQL
+  /open\s*\(|readFile|writeFile/, // file access
+  /process\.env|os\.environ/, // env access
+  /eval\s*\(|exec\s*\(/, // code execution
+  /import\s+os|import\s+subprocess/, // dangerous Python imports
   /require\s*\(['"](fs|child_process|path)['"]\)/, // dangerous Node imports
 ];
 
 function _validateSkillContent(content: string): string | null {
-  if (content.length > 50_000) return "skillContent too long (max 50 000 chars)";
+  if (content.length > 50_000)
+    return "skillContent too long (max 50 000 chars)";
   for (const pat of ISC_FORBIDDEN_PATTERNS) {
     if (pat.test(content)) {
       return `skillContent contains forbidden pattern: ${pat.source}`;
@@ -205,17 +254,23 @@ function _validateSkillContent(content: string): string | null {
  */
 async function handleIscCreateSkill(
   action: SkillCreateAction,
-  userId: number,
+  userId: number
 ): Promise<{ ok: true; skillId: number } | { ok: false; reason: string }> {
   // 1. Rate limiting (hourly / daily / burst)
   const [hourly, daily, burst] = await Promise.all([
-    checkRateLimit(`isc_create:${userId}`,       3,   3_600),
-    checkRateLimit(`isc_create_daily:${userId}`, 10,  86_400),
-    checkRateLimit(`isc_create_burst:${userId}`, 5,   600),
+    checkRateLimit(`isc_create:${userId}`, 3, 3_600),
+    checkRateLimit(`isc_create_daily:${userId}`, 10, 86_400),
+    checkRateLimit(`isc_create_burst:${userId}`, 5, 600),
   ]);
-  if (!hourly.allowed) return { ok: false, reason: "Rate limit: max 3 skills per hour" };
-  if (!daily.allowed)  return { ok: false, reason: "Rate limit: max 10 skills per day" };
-  if (!burst.allowed)  return { ok: false, reason: "Rate limit: too many skills created in 10 minutes" };
+  if (!hourly.allowed)
+    return { ok: false, reason: "Rate limit: max 3 skills per hour" };
+  if (!daily.allowed)
+    return { ok: false, reason: "Rate limit: max 10 skills per day" };
+  if (!burst.allowed)
+    return {
+      ok: false,
+      reason: "Rate limit: too many skills created in 10 minutes",
+    };
 
   // 2. Security validation
   const secErr = _validateSkillContent(action.skillContent);
@@ -234,9 +289,14 @@ async function handleIscCreateSkill(
   const existingRows = await db
     .select({ slug: skillsTable.slug })
     .from(skillsTable)
-    .where(and(like(skillsTable.slug, `${safeSlug}%`), eq(skillsTable.createdBy, userId)));
+    .where(
+      and(
+        like(skillsTable.slug, `${safeSlug}%`),
+        eq(skillsTable.createdBy, userId)
+      )
+    );
 
-  const slugSet = new Set(existingRows.map((r) => r.slug));
+  const slugSet = new Set(existingRows.map(r => r.slug));
 
   let finalSlug = safeSlug;
   let finalName = action.name.slice(0, 255);
@@ -255,30 +315,35 @@ async function handleIscCreateSkill(
       counter++;
     }
     if (!found) {
-      return { ok: false, reason: `Too many skills with the name '${safeSlug}' — please delete some before creating more.` };
+      return {
+        ok: false,
+        reason: `Too many skills with the name '${safeSlug}' — please delete some before creating more.`,
+      };
     }
-    console.log(`[ISC] Slug '${safeSlug}' already exists for user ${userId} — using '${finalSlug}' instead`);
+    console.log(
+      `[ISC] Slug '${safeSlug}' already exists for user ${userId} — using '${finalSlug}' instead`
+    );
   }
 
   // 4. Insert skill (user-private: visibleByDefault=false, enabledByDefault=false)
   const [newSkill] = await db
     .insert(skillsTable)
     .values({
-      slug:               finalSlug,
-      name:               finalName,
-      description:        action.description.slice(0, 1000),
-      skillContent:       action.skillContent,
-      systemPrompt:       action.skillContent,
-      executionMode:      "llm-only",   // ALWAYS — no code execution
-      importSource:       "isc-user",
-      createdBy:          userId,
-      isEnabled:          true,
-      enabledByDefault:   false,        // not in global defaults
-      visibleByDefault:   false,        // not in lazy-init for other users
-      isAutoTrigger:      false,
-      triggerPatterns:    action.triggerPatterns ?? [],
-      category:           "other" as any,
-      priority:           30,
+      slug: finalSlug,
+      name: finalName,
+      description: action.description.slice(0, 1000),
+      skillContent: action.skillContent,
+      systemPrompt: action.skillContent,
+      executionMode: "llm-only", // ALWAYS — no code execution
+      importSource: "isc-user",
+      createdBy: userId,
+      isEnabled: true,
+      enabledByDefault: false, // not in global defaults
+      visibleByDefault: false, // not in lazy-init for other users
+      isAutoTrigger: false,
+      triggerPatterns: action.triggerPatterns ?? [],
+      category: "other" as any,
+      priority: 30,
     })
     .returning({ id: skillsTable.id });
 
@@ -287,25 +352,30 @@ async function handleIscCreateSkill(
     .insert(userSkillVisibility)
     .values({
       userId,
-      skillId:            newSkill.id,
-      visible:            true,
-      autoTriggerEnabled: false,  // user must invoke explicitly
+      skillId: newSkill.id,
+      visible: true,
+      autoTriggerEnabled: false, // user must invoke explicitly
     })
     .onConflictDoNothing();
 
-  console.log(`[ISC] Created private skill '${finalSlug}' (id=${newSkill.id}) for user ${userId}`);
+  console.log(
+    `[ISC] Created private skill '${finalSlug}' (id=${newSkill.id}) for user ${userId}`
+  );
   return { ok: true, skillId: newSkill.id };
 }
 
 // Helper to create secure token for skill execution
 function createSkillToken(userId: number, tenantId?: string | null): string {
-  return signBearerToken({
-    sub: String(userId),
-    ...(tenantId ? { tenantId } : {}),
-    type: "access", // Required by Python backend for token validation
-    scopes: ["skill:execute"],
-    jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
-  }, "15m");
+  return signBearerToken(
+    {
+      sub: String(userId),
+      ...(tenantId ? { tenantId } : {}),
+      type: "access", // Required by Python backend for token validation
+      scopes: ["skill:execute"],
+      jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
+    },
+    "15m"
+  );
 }
 
 function stringifyChatContent(value: unknown): string {
@@ -352,36 +422,51 @@ export function buildChatSkillContextState(input: {
     updatedAt?: Date | string;
   }>;
 }): ContextStateHints {
-  const conversationScope = input.conversationId != null
-    ? `conversation:${input.conversationId}`
-    : "conversation:unknown";
+  const conversationScope =
+    input.conversationId != null
+      ? `conversation:${input.conversationId}`
+      : "conversation:unknown";
   const recentMessages = input.recentMessages
-    .filter((message) => message.role !== "system")
+    .filter(message => message.role !== "system")
     .slice(-4)
     .map((message, index) => ({
       title: `${message.role === "assistant" ? "Assistant" : "User"} note ${index + 1}`,
       content: stringifyChatContent(message.content),
       source: conversationScope,
       freshness: "recent" as const,
-      trust: message.role === "assistant" ? "derived" as const : "trusted" as const,
+      trust:
+        message.role === "assistant"
+          ? ("derived" as const)
+          : ("trusted" as const),
     }))
-    .filter((block) => block.content.trim().length > 0);
+    .filter(block => block.content.trim().length > 0);
 
-  const latestSummary = [...input.summaries].reverse().find((summary) =>
-    typeof summary.summary === "string" && summary.summary.trim().length > 0,
-  );
+  const latestSummary = [...input.summaries]
+    .reverse()
+    .find(
+      summary =>
+        typeof summary.summary === "string" && summary.summary.trim().length > 0
+    );
 
   const recentAssistant = [...input.recentMessages]
     .reverse()
-    .find((message) => message.role === "assistant" && stringifyChatContent(message.content).trim().length > 0);
+    .find(
+      message =>
+        message.role === "assistant" &&
+        stringifyChatContent(message.content).trim().length > 0
+    );
 
   const workingSummaryText =
     latestSummary?.summary?.trim() ||
     stringifyChatContent(recentAssistant?.content);
 
   const projectStateParts = [
-    input.conversationTitle ? `Conversation title: ${input.conversationTitle}` : null,
-    input.conversationModel ? `Conversation model: ${input.conversationModel}` : null,
+    input.conversationTitle
+      ? `Conversation title: ${input.conversationTitle}`
+      : null,
+    input.conversationModel
+      ? `Conversation model: ${input.conversationModel}`
+      : null,
     input.activePersonaId ? `Active persona: ${input.activePersonaId}` : null,
     `Skill: ${input.skillName}`,
     `Current room: chat`,
@@ -397,7 +482,9 @@ export function buildChatSkillContextState(input: {
         input.activePersonaId ? `Persona: ${input.activePersonaId}` : null,
         `Skill: ${input.skillName}`,
         `Surface: chat`,
-      ].filter((part): part is string => Boolean(part)).join("\n"),
+      ]
+        .filter((part): part is string => Boolean(part))
+        .join("\n"),
       source: "chat.executeSkill",
       trust: "trusted",
       freshness: "fresh",
@@ -438,14 +525,19 @@ const messageRoleSchema = z.enum(["user", "assistant", "system"]);
 const attachmentSchema = z.object({
   type: z.enum(["image", "file", "audio", "video"]),
   // Allow both full URLs (http/https) and relative paths (/uploads/... or /api/storage/files/...)
-  url: z.string().refine(
-    (val) =>
-      val.startsWith("http://") ||
-      val.startsWith("https://") ||
-      val.startsWith("/uploads/") ||
-      val.startsWith("/api/storage/files/"),
-    { message: "URL must be a valid http/https URL or a relative /uploads/ or /api/storage/files/ path" }
-  ),
+  url: z
+    .string()
+    .refine(
+      val =>
+        val.startsWith("http://") ||
+        val.startsWith("https://") ||
+        val.startsWith("/uploads/") ||
+        val.startsWith("/api/storage/files/"),
+      {
+        message:
+          "URL must be a valid http/https URL or a relative /uploads/ or /api/storage/files/ path",
+      }
+    ),
   key: z.string().optional(),
   name: z.string().optional(),
   size: z.number().optional(),
@@ -455,7 +547,21 @@ const attachmentSchema = z.object({
 
 const artifactSchema = z.object({
   id: z.string(),
-  type: z.enum(["code", "markdown", "image", "video", "pdf", "file", "slideshow", "chart", "table", "mermaid", "svg", "react", "html"]),
+  type: z.enum([
+    "code",
+    "markdown",
+    "image",
+    "video",
+    "pdf",
+    "file",
+    "slideshow",
+    "chart",
+    "table",
+    "mermaid",
+    "svg",
+    "react",
+    "html",
+  ]),
   title: z.string().optional(),
   content: z.union([z.string(), z.array(z.string())]),
   language: z.string().optional(),
@@ -464,7 +570,14 @@ const artifactSchema = z.object({
 
 // Skill execution parameter validation
 const skillAspectRatioSchema = z.enum(["1:1", "16:9", "9:16", "4:3", "3:4"]);
-const skillVoiceSchema = z.enum(["alloy", "echo", "fable", "onyx", "nova", "shimmer"]);
+const skillVoiceSchema = z.enum([
+  "alloy",
+  "echo",
+  "fable",
+  "onyx",
+  "nova",
+  "shimmer",
+]);
 const skillQualitySchema = z.enum(["low", "medium", "high"]);
 const skillStyleSchema = z.string().max(50); // Accept any style value (cinematic, realistic, artistic, etc.)
 const localAiExecutionModeSchema = z.enum(LOCAL_AI_EXECUTION_MODES);
@@ -485,17 +598,22 @@ const skillSettingsSchema = z.object({
   autoDetect: z.boolean().default(true),
   enabledSkills: z.array(z.string()).default([]),
   detectionMode: z.enum(["ask", "auto", "explicit"]).default("auto"),
-  llmSelection: z.object({
-    mode: z.enum(["explicit", "auto-global", "auto-provider"]),
-    modelId: z.string().max(100).nullable().optional(),
-    providerId: z.number().int().positive().nullable().optional(),
-    providerName: z.string().max(120).nullable().optional(),
-    lastResolvedModelId: z.string().max(100).nullable().optional(),
-    lastResolvedProviderId: z.number().int().positive().nullable().optional(),
-    lastResolvedProviderName: z.string().max(120).nullable().optional(),
-    lastResolvedRouteFamily: z.enum(["chat-completions", "messages", "responses", "unknown"]).nullable().optional(),
-    updatedAt: z.string().max(64).nullable().optional(),
-  }).optional(),
+  llmSelection: z
+    .object({
+      mode: z.enum(["explicit", "auto-global", "auto-provider"]),
+      modelId: z.string().max(100).nullable().optional(),
+      providerId: z.number().int().positive().nullable().optional(),
+      providerName: z.string().max(120).nullable().optional(),
+      lastResolvedModelId: z.string().max(100).nullable().optional(),
+      lastResolvedProviderId: z.number().int().positive().nullable().optional(),
+      lastResolvedProviderName: z.string().max(120).nullable().optional(),
+      lastResolvedRouteFamily: z
+        .enum(["chat-completions", "messages", "responses", "unknown"])
+        .nullable()
+        .optional(),
+      updatedAt: z.string().max(64).nullable().optional(),
+    })
+    .optional(),
   localAiConversation: localAiConversationOverrideSchema,
 });
 
@@ -518,10 +636,7 @@ const chatModelSelectionSchema = z.discriminatedUnion("mode", [
 
 async function assertChatAutoModelSelectionEnabled(
   tenantId: string,
-  modelSelection:
-    | z.infer<typeof chatModelSelectionSchema>
-    | null
-    | undefined,
+  modelSelection: z.infer<typeof chatModelSelectionSchema> | null | undefined
 ): Promise<void> {
   if (!modelSelection || modelSelection.mode === "explicit") {
     return;
@@ -537,7 +652,7 @@ async function assertChatAutoModelSelectionEnabled(
 }
 
 function assertNoClientManagedLlmSelectionPayload(
-  skillSettings: z.infer<typeof skillSettingsSchema> | undefined,
+  skillSettings: z.infer<typeof skillSettingsSchema> | undefined
 ): void {
   if (!skillSettings) {
     return;
@@ -546,7 +661,8 @@ function assertNoClientManagedLlmSelectionPayload(
   if (readStoredChatModelSelectionState(skillSettings)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "skillSettings.llmSelection must not be sent by clients; use modelSelection instead",
+      message:
+        "skillSettings.llmSelection must not be sent by clients; use modelSelection instead",
     });
   }
 }
@@ -587,19 +703,19 @@ function validateDynamicParams(
 
     // Type validation
     switch (fieldDef.type) {
-      case 'number':
-        if (typeof value !== 'number') {
+      case "number":
+        if (typeof value !== "number") {
           errors.push(`${key} must be a number`);
         }
         break;
-      case 'boolean':
-        if (typeof value !== 'boolean') {
+      case "boolean":
+        if (typeof value !== "boolean") {
           errors.push(`${key} must be a boolean`);
         }
         break;
-      case 'text':
-      case 'textarea':
-        if (typeof value !== 'string') {
+      case "text":
+      case "textarea":
+        if (typeof value !== "string") {
           errors.push(`${key} must be a string`);
         } else {
           // XSS prevention
@@ -608,19 +724,21 @@ function validateDynamicParams(
           }
           // Max length check
           if (fieldDef.maxLength && value.length > fieldDef.maxLength) {
-            errors.push(`${key} exceeds maximum length of ${fieldDef.maxLength}`);
+            errors.push(
+              `${key} exceeds maximum length of ${fieldDef.maxLength}`
+            );
           }
         }
         break;
-      case 'select':
+      case "select":
         // Validate option exists
         const validOptions = (fieldDef.options || []).map((o: any) => o.value);
         if (validOptions.length > 0 && !validOptions.includes(value)) {
           errors.push(`${key} has invalid value`);
         }
         break;
-      case 'imageUpload':
-      case 'images':
+      case "imageUpload":
+      case "images":
         // Validate URLs
         if (Array.isArray(value)) {
           for (const url of value) {
@@ -628,7 +746,7 @@ function validateDynamicParams(
               errors.push(`${key} contains invalid URL: ${url}`);
             }
           }
-        } else if (typeof value === 'string' && !isValidUploadUrl(value)) {
+        } else if (typeof value === "string" && !isValidUploadUrl(value)) {
           errors.push(`${key} has invalid URL`);
         }
         break;
@@ -646,7 +764,7 @@ function validateDynamicParams(
  * - Reject dangerous protocols like javascript: and non-image data: URLs
  */
 function isValidUploadUrl(url: string): boolean {
-  if (!url || typeof url !== 'string') return false;
+  if (!url || typeof url !== "string") return false;
 
   // Reject dangerous protocols
   if (/^(javascript|vbscript):/i.test(url)) {
@@ -658,13 +776,13 @@ function isValidUploadUrl(url: string): boolean {
   }
 
   // Allow relative URLs
-  if (url.startsWith('/uploads/')) return true;
-  if (url.startsWith('/')) return true; // Other relative paths
+  if (url.startsWith("/uploads/")) return true;
+  if (url.startsWith("/")) return true; // Other relative paths
 
   // Allow http/https from any domain (images are served from CDN)
   try {
     const urlObj = new URL(url);
-    return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    return urlObj.protocol === "http:" || urlObj.protocol === "https:";
   } catch {
     return false;
   }
@@ -690,7 +808,10 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", input.modelSelection);
+      await assertChatAutoModelSelectionEnabled(
+        ctx.tenantId || "default",
+        input.modelSelection
+      );
 
       if (input.projectId === PERSONAL_PROJECT_ID) {
         throw new TRPCError({
@@ -702,15 +823,27 @@ export const chatRouter = router({
       const initialSkillSettings = input.modelSelection
         ? writeStoredChatModelSelectionState(undefined, {
             mode: input.modelSelection.mode,
-            modelId: input.modelSelection.mode === "explicit" ? input.modelSelection.modelId : null,
-            providerId: "providerId" in input.modelSelection ? input.modelSelection.providerId ?? null : null,
-            providerName: "providerName" in input.modelSelection ? input.modelSelection.providerName ?? null : null,
+            modelId:
+              input.modelSelection.mode === "explicit"
+                ? input.modelSelection.modelId
+                : null,
+            providerId:
+              "providerId" in input.modelSelection
+                ? (input.modelSelection.providerId ?? null)
+                : null,
+            providerName:
+              "providerName" in input.modelSelection
+                ? (input.modelSelection.providerName ?? null)
+                : null,
           })
         : undefined;
       const conversation = await createConversation({
         userId: ctx.user.id,
         title: input.title,
-        model: input.modelSelection?.mode === "explicit" ? input.modelSelection.modelId : input.model,
+        model:
+          input.modelSelection?.mode === "explicit"
+            ? input.modelSelection.modelId
+            : input.model,
         skillSettings: initialSkillSettings as any,
         systemPrompt: input.systemPrompt,
         projectId: input.projectId,
@@ -726,7 +859,7 @@ export const chatRouter = router({
           userId: ctx.user.id,
           source: "chat.createConversation",
           channel: "web",
-        }).catch((err) => {
+        }).catch(err => {
           console.warn("[Funnel] trackFirstConversation failed:", err);
         });
       }
@@ -735,7 +868,9 @@ export const chatRouter = router({
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
-        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
+        modelSelection: readStoredChatModelSelectionState(
+          conversation.skillSettings
+        ),
         projectId: (conversation as any).projectId,
         createdAt: conversation.createdAt,
       };
@@ -755,20 +890,35 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", input.modelSelection);
+      await assertChatAutoModelSelectionEnabled(
+        ctx.tenantId || "default",
+        input.modelSelection
+      );
 
       const initialSkillSettings = input.modelSelection
         ? writeStoredChatModelSelectionState(undefined, {
             mode: input.modelSelection.mode,
-            modelId: input.modelSelection.mode === "explicit" ? input.modelSelection.modelId : null,
-            providerId: "providerId" in input.modelSelection ? input.modelSelection.providerId ?? null : null,
-            providerName: "providerName" in input.modelSelection ? input.modelSelection.providerName ?? null : null,
+            modelId:
+              input.modelSelection.mode === "explicit"
+                ? input.modelSelection.modelId
+                : null,
+            providerId:
+              "providerId" in input.modelSelection
+                ? (input.modelSelection.providerId ?? null)
+                : null,
+            providerName:
+              "providerName" in input.modelSelection
+                ? (input.modelSelection.providerName ?? null)
+                : null,
           })
         : undefined;
       const conversation = await createPersonalConversation({
         userId: ctx.user.id,
         title: input.title || "Personal Chat",
-        model: input.modelSelection?.mode === "explicit" ? input.modelSelection.modelId : input.model,
+        model:
+          input.modelSelection?.mode === "explicit"
+            ? input.modelSelection.modelId
+            : input.model,
         skillSettings: initialSkillSettings as any,
         systemPrompt: input.systemPrompt,
         tenantId: ctx.tenantId || null,
@@ -782,7 +932,7 @@ export const chatRouter = router({
           userId: ctx.user.id,
           source: "chat.createPersonalConversation",
           channel: "web",
-        }).catch((err) => {
+        }).catch(err => {
           console.warn("[Funnel] trackFirstConversation failed:", err);
         });
       }
@@ -791,7 +941,9 @@ export const chatRouter = router({
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
-        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
+        modelSelection: readStoredChatModelSelectionState(
+          conversation.skillSettings
+        ),
         projectId: (conversation as any).projectId,
         createdAt: conversation.createdAt,
       };
@@ -818,10 +970,13 @@ export const chatRouter = router({
         offset: input.offset,
       });
 
-      const total = await getConversationCount(ctx.user.id, input.isArchived ?? false);
+      const total = await getConversationCount(
+        ctx.user.id,
+        input.isArchived ?? false
+      );
 
       return {
-        conversations: conversations.map((c) => ({
+        conversations: conversations.map(c => ({
           id: c.id,
           title: c.title,
           model: c.model,
@@ -842,31 +997,32 @@ export const chatRouter = router({
   /**
    * Resolve the user's locked personal conversation without relying on list pagination.
    */
-  getPersonalConversation: protectedProcedure
-    .query(async ({ ctx }) => {
-      const conversation = await getPersonalConversation({
-        userId: ctx.user.id,
-        tenantId: ctx.tenantId || ctx.user.currentTenantId?.toString?.() || null,
-      });
+  getPersonalConversation: protectedProcedure.query(async ({ ctx }) => {
+    const conversation = await getPersonalConversation({
+      userId: ctx.user.id,
+      tenantId: ctx.tenantId || ctx.user.currentTenantId?.toString?.() || null,
+    });
 
-      if (!conversation) {
-        return null;
-      }
+    if (!conversation) {
+      return null;
+    }
 
-      return {
-        id: conversation.id,
-        title: conversation.title,
-        model: conversation.model,
-        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
-        messageCount: conversation.messageCount,
-        isPinned: conversation.isPinned,
-        isArchived: conversation.isArchived,
-        totalCreditsUsed: conversation.totalCreditsUsed,
-        projectId: (conversation as any).projectId || null,
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
-      };
-    }),
+    return {
+      id: conversation.id,
+      title: conversation.title,
+      model: conversation.model,
+      modelSelection: readStoredChatModelSelectionState(
+        conversation.skillSettings
+      ),
+      messageCount: conversation.messageCount,
+      isPinned: conversation.isPinned,
+      isArchived: conversation.isArchived,
+      totalCreditsUsed: conversation.totalCreditsUsed,
+      projectId: (conversation as any).projectId || null,
+      createdAt: conversation.createdAt,
+      updatedAt: conversation.updatedAt,
+    };
+  }),
 
   /**
    * Get a single conversation with settings
@@ -887,8 +1043,12 @@ export const chatRouter = router({
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
-        modelSelection: readStoredChatModelSelectionState(conversation.skillSettings),
-        temperature: conversation.temperature ? parseFloat(conversation.temperature) : 0.7,
+        modelSelection: readStoredChatModelSelectionState(
+          conversation.skillSettings
+        ),
+        temperature: conversation.temperature
+          ? parseFloat(conversation.temperature)
+          : 0.7,
         systemPrompt: conversation.systemPrompt,
         skillSettings: conversation.skillSettings,
         messageCount: conversation.messageCount,
@@ -926,7 +1086,10 @@ export const chatRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { id, modelSelection, ...data } = input;
       assertNoClientManagedLlmSelectionPayload(data.skillSettings);
-      await assertChatAutoModelSelectionEnabled(ctx.tenantId || "default", modelSelection);
+      await assertChatAutoModelSelectionEnabled(
+        ctx.tenantId || "default",
+        modelSelection
+      );
       const currentConversation = await getConversationById(id, ctx.user.id);
       if (!currentConversation) {
         throw new TRPCError({
@@ -943,7 +1106,8 @@ export const chatRouter = router({
 
       if (data.skillSettings !== undefined) {
         const existingModelSelection = readStoredChatModelSelectionState(
-          currentConversation.skillSettings as Record<string, unknown> | null | undefined,
+          currentConversation.skillSettings as
+            Record<string, unknown> | null | undefined
         );
         updateData.skillSettings = existingModelSelection
           ? writeStoredChatModelSelectionState(
@@ -952,36 +1116,48 @@ export const chatRouter = router({
                 mode: existingModelSelection.mode,
                 modelId:
                   existingModelSelection.mode === "explicit"
-                    ? existingModelSelection.modelId ?? null
+                    ? (existingModelSelection.modelId ?? null)
                     : null,
                 providerId:
                   "providerId" in existingModelSelection
-                    ? existingModelSelection.providerId ?? null
+                    ? (existingModelSelection.providerId ?? null)
                     : null,
                 providerName:
                   "providerName" in existingModelSelection
-                    ? existingModelSelection.providerName ?? null
+                    ? (existingModelSelection.providerName ?? null)
                     : null,
-              },
+              }
             )
           : data.skillSettings;
       }
 
       if (modelSelection !== undefined) {
         updateData.skillSettings = writeStoredChatModelSelectionState(
-          (updateData.skillSettings as Record<string, unknown> | null | undefined)
-            ?? (currentConversation.skillSettings as Record<string, unknown> | null | undefined)
-            ?? {},
+          (updateData.skillSettings as
+            Record<string, unknown> | null | undefined) ??
+            (currentConversation.skillSettings as
+              Record<string, unknown> | null | undefined) ??
+            {},
           modelSelection
             ? {
                 mode: modelSelection.mode,
-                modelId: modelSelection.mode === "explicit" ? modelSelection.modelId : null,
-                providerId: "providerId" in modelSelection ? modelSelection.providerId ?? null : null,
-                providerName: "providerName" in modelSelection ? modelSelection.providerName ?? null : null,
+                modelId:
+                  modelSelection.mode === "explicit"
+                    ? modelSelection.modelId
+                    : null,
+                providerId:
+                  "providerId" in modelSelection
+                    ? (modelSelection.providerId ?? null)
+                    : null,
+                providerName:
+                  "providerName" in modelSelection
+                    ? (modelSelection.providerName ?? null)
+                    : null,
               }
-            : null,
+            : null
         ) as any;
-        updateData.model = modelSelection?.mode === "explicit" ? modelSelection.modelId : null;
+        updateData.model =
+          modelSelection?.mode === "explicit" ? modelSelection.modelId : null;
       }
 
       await updateConversation(id, ctx.user.id, updateData);
@@ -1002,11 +1178,10 @@ export const chatRouter = router({
   /**
    * Delete all empty conversations (0 messages)
    */
-  deleteEmptyConversations: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      const count = await deleteEmptyConversations(ctx.user.id);
-      return { deletedCount: count };
-    }),
+  deleteEmptyConversations: protectedProcedure.mutation(async ({ ctx }) => {
+    const count = await deleteEmptyConversations(ctx.user.id);
+    return { deletedCount: count };
+  }),
 
   /**
    * Delete multiple conversations by IDs
@@ -1027,15 +1202,14 @@ export const chatRouter = router({
   /**
    * List trashed conversations
    */
-  listTrashedConversations: protectedProcedure
-    .query(async ({ ctx }) => {
-      const trashedConversations = await getConversations({
-        userId: ctx.user.id,
-        trashedOnly: true,
-        limit: 100,
-      } as any);
-      return { conversations: trashedConversations };
-    }),
+  listTrashedConversations: protectedProcedure.query(async ({ ctx }) => {
+    const trashedConversations = await getConversations({
+      userId: ctx.user.id,
+      trashedOnly: true,
+      limit: 100,
+    } as any);
+    return { conversations: trashedConversations };
+  }),
 
   /**
    * Restore a trashed conversation
@@ -1072,11 +1246,10 @@ export const chatRouter = router({
   /**
    * Empty trash — permanently delete all trashed conversations
    */
-  emptyTrash: protectedProcedure
-    .mutation(async ({ ctx }) => {
-      const count = await emptyTrash(ctx.user.id);
-      return { deletedCount: count };
-    }),
+  emptyTrash: protectedProcedure.mutation(async ({ ctx }) => {
+    const count = await emptyTrash(ctx.user.id);
+    return { deletedCount: count };
+  }),
 
   // ==================== Messages ====================
 
@@ -1094,7 +1267,10 @@ export const chatRouter = router({
     )
     .query(async ({ ctx, input }) => {
       // Verify conversation ownership
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1108,7 +1284,7 @@ export const chatRouter = router({
         beforeId: input.beforeId,
       });
 
-      return messages.map((m) => ({
+      return messages.map(m => ({
         id: m.id,
         role: m.role,
         content: m.content,
@@ -1147,7 +1323,10 @@ export const chatRouter = router({
           throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
         }
         if (err.message === "NOT_FOUND") {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Message not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Message not found",
+          });
         }
         throw err;
       }
@@ -1167,7 +1346,10 @@ export const chatRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Verify conversation ownership
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1211,54 +1393,80 @@ export const chatRouter = router({
       // --- Multimodal memory ingestion hook (section 08 / 09) ---
       // Fire-and-forget: errors here MUST NOT block message creation.
       // Gate 1 (section 09): only run when multimodalMemory feature flag is enabled.
-      const imageAttachments = (input.attachments || []).filter((a) => a.type === "image");
+      const imageAttachments = (input.attachments || []).filter(
+        a => a.type === "image"
+      );
       if (imageAttachments.length > 0) {
         (async () => {
           try {
-            const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
+            const { getTenantFeatureFlags } =
+              await import("../services/tenantFeatureFlagService");
             const tenantId = (ctx.user as any).tenantId || "";
             const tenantFlags = await getTenantFeatureFlags(tenantId);
             if (!tenantFlags.multimodalMemory) return;
 
-            const { createAssetFromAttachment } = await import("../services/mediaAssetService");
-            const { addRecentAsset } = await import("../services/visualStateService");
+            const { createAssetFromAttachment } =
+              await import("../services/mediaAssetService");
+            const { addRecentAsset } =
+              await import("../services/visualStateService");
 
             for (const attachment of imageAttachments) {
               try {
-                const asset = await createAssetFromAttachment(attachment as any, {
-                  userId: ctx.user.id,
-                  tenantId: (ctx.user as any).tenantId || "",
-                  conversationId: input.conversationId,
-                  messageId: userMessage.id,
-                  projectId: (conversation as any).projectId,
-                });
+                const asset = await createAssetFromAttachment(
+                  attachment as any,
+                  {
+                    userId: ctx.user.id,
+                    tenantId: (ctx.user as any).tenantId || "",
+                    conversationId: input.conversationId,
+                    messageId: userMessage.id,
+                    projectId: (conversation as any).projectId,
+                  }
+                );
 
                 // Register in visual state (enables context packing in section 07)
-                await addRecentAsset(input.conversationId, asset.assetId).catch((err: unknown) => {
-                  debugLog("Chat", "addRecentAsset failed (non-fatal)", err);
-                });
+                await addRecentAsset(input.conversationId, asset.assetId).catch(
+                  (err: unknown) => {
+                    debugLog("Chat", "addRecentAsset failed (non-fatal)", err);
+                  }
+                );
 
                 // Credit pre-check (0.5 credits per image for full vision pipeline)
                 const VISION_PIPELINE_COST = 0.5;
-                const canAfford = await hasEnoughCredits(ctx.user.id, VISION_PIPELINE_COST);
+                const canAfford = await hasEnoughCredits(
+                  ctx.user.id,
+                  VISION_PIPELINE_COST
+                );
 
                 if (canAfford) {
                   // Dispatch async vision analysis to Python backend (fire-and-forget)
-                  getAppRuntimeConfig().then((runtime) => fetch(`${runtime.pythonBackendUrl}/api/v1/vision/analyze`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      ...(runtime.webGatewayToken ? { "x-proxy-token": runtime.webGatewayToken } : {}),
-                    },
-                    body: JSON.stringify({
-                      asset_id: asset.assetId,
-                      image_url: attachment.url,
-                      tenant_id: (ctx.user as any).tenantId || "",
-                      user_id: ctx.user.id,
-                    }),
-                  })).catch((err: unknown) => {
-                    debugLog("Chat", "Vision analysis dispatch failed (non-fatal)", { assetId: asset.assetId, err });
-                  });
+                  getAppRuntimeConfig()
+                    .then(runtime =>
+                      fetch(
+                        `${runtime.pythonBackendUrl}/api/v1/vision/analyze`,
+                        {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(runtime.webGatewayToken
+                              ? { "x-proxy-token": runtime.webGatewayToken }
+                              : {}),
+                          },
+                          body: JSON.stringify({
+                            asset_id: asset.assetId,
+                            image_url: attachment.url,
+                            tenant_id: (ctx.user as any).tenantId || "",
+                            user_id: ctx.user.id,
+                          }),
+                        }
+                      )
+                    )
+                    .catch((err: unknown) => {
+                      debugLog(
+                        "Chat",
+                        "Vision analysis dispatch failed (non-fatal)",
+                        { assetId: asset.assetId, err }
+                      );
+                    });
                 } else {
                   debugLog("Chat", "Insufficient credits for vision analysis", {
                     userId: ctx.user.id,
@@ -1266,14 +1474,22 @@ export const chatRouter = router({
                   });
                 }
               } catch (err) {
-                debugLog("Chat", "Asset ingestion failed for attachment (non-fatal)", {
-                  url: attachment.url,
-                  err,
-                });
+                debugLog(
+                  "Chat",
+                  "Asset ingestion failed for attachment (non-fatal)",
+                  {
+                    url: attachment.url,
+                    err,
+                  }
+                );
               }
             }
           } catch (err) {
-            debugLog("Chat", "Multimodal ingestion hook failed (non-fatal)", err);
+            debugLog(
+              "Chat",
+              "Multimodal ingestion hook failed (non-fatal)",
+              err
+            );
           }
         })();
       }
@@ -1317,7 +1533,10 @@ export const chatRouter = router({
       });
 
       // Verify conversation ownership
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         debugLog("Chat", "Conversation not found for user", ctx.user.id);
         throw new TRPCError({
@@ -1325,12 +1544,18 @@ export const chatRouter = router({
           message: "Conversation not found",
         });
       }
-      debugLog("Chat", "Found conversation", { id: conversation.id, title: conversation.title });
+      debugLog("Chat", "Found conversation", {
+        id: conversation.id,
+        title: conversation.title,
+      });
 
       // Calculate credits for tracking purposes only
       // NOTE: Credits are already deducted by the streaming endpoint (/api/llm/stream)
       // This is just for recording the credit usage on the message
-      const creditsUsed = calculateCreditsForLLM(input.inputTokens, input.outputTokens);
+      const creditsUsed = calculateCreditsForLLM(
+        input.inputTokens,
+        input.outputTokens
+      );
       debugLog("Chat", "Calculated credits for tracking", creditsUsed);
 
       // Update conversation total credits (tracking only, not deducting)
@@ -1341,9 +1566,8 @@ export const chatRouter = router({
       // Create assistant message with traceId for cost correlation
       debugLog("Chat", "Creating assistant message...");
       const { getTraceId } = await import("../services/traceContext");
-      const { sanitizeMessageRuntimeMetadata } = await import(
-        "../services/localAiRuntimeMetadata"
-      );
+      const { sanitizeMessageRuntimeMetadata } =
+        await import("../services/localAiRuntimeMetadata");
       const message = await createMessage({
         conversationId: input.conversationId,
         role: "assistant",
@@ -1370,7 +1594,7 @@ export const chatRouter = router({
         const { channelGateway } = await import("../services/channelGateway");
         const hasChannels = await channelGateway.hasActiveChannels(
           input.conversationId,
-          "chat",
+          "chat"
         );
         if (hasChannels) {
           await channelGateway.emitEgress({
@@ -1411,7 +1635,10 @@ export const chatRouter = router({
       }
 
       // Verify conversation ownership (prevents IDOR — user must own the conversation)
-      const conversation = await getConversationById(message.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        message.conversationId,
+        ctx.user.id
+      );
       if (!conversation || conversation.userId !== ctx.user.id) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -1431,7 +1658,10 @@ export const chatRouter = router({
   getChatContext: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1443,7 +1673,7 @@ export const chatRouter = router({
         input.conversationId,
         ctx.user.id,
         conversation.systemPrompt || undefined,
-        ctx.tenantId || undefined,
+        ctx.tenantId || undefined
       );
 
       return context;
@@ -1461,7 +1691,7 @@ export const chatRouter = router({
     .query(async ({ ctx, input }) => {
       const memories = await getEntityMemories(ctx.user.id, input.entityType);
 
-      return memories.map((m) => ({
+      return memories.map(m => ({
         id: m.id,
         entityType: m.entityType,
         entityName: m.entityName,
@@ -1520,7 +1750,10 @@ export const chatRouter = router({
   getSkillPreferences: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1545,7 +1778,10 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1567,7 +1803,10 @@ export const chatRouter = router({
   getSummaries: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1577,7 +1816,7 @@ export const chatRouter = router({
 
       const summaries = await getSummaries(input.conversationId);
 
-      return summaries.map((s) => ({
+      return summaries.map(s => ({
         id: s.id,
         summary: s.summary,
         messageRangeStart: s.messageRangeStart,
@@ -1609,7 +1848,7 @@ export const chatRouter = router({
         platform: input?.platform ?? "web",
       });
 
-      return skills.map((s) => ({
+      return skills.map(s => ({
         id: s.id,
         name: s.name,
         description: s.description,
@@ -1721,7 +1960,10 @@ export const chatRouter = router({
       // Get conversation skill settings if conversationId provided
       let skillSettings = null;
       if (input.conversationId) {
-        const conversation = await getConversationById(input.conversationId, ctx.user.id);
+        const conversation = await getConversationById(
+          input.conversationId,
+          ctx.user.id
+        );
         if (conversation) {
           skillSettings = conversation.skillSettings;
         }
@@ -1733,10 +1975,14 @@ export const chatRouter = router({
           input.message,
           input.conversationId,
           skillSettings as any,
-          ctx.user.id,
+          ctx.user.id
         );
       } catch (error) {
-        debugError("Chat", "detectSkill failed; falling back to no-skill match", error);
+        debugError(
+          "Chat",
+          "detectSkill failed; falling back to no-skill match",
+          error
+        );
         return {
           detected: false,
           skill: null,
@@ -1786,7 +2032,7 @@ export const chatRouter = router({
 
   /**
    * Analyze user intent using the same routing pipeline as Teams (routeRoomIntent).
-   * Returns routing decision: chat / skill / agency / hybrid, plus skill metadata.
+   * Returns routing decision for chat or skill execution.
    * Both Chat and Teams share this intent analysis logic for consistency.
    */
   analyzeIntent: protectedProcedure
@@ -1811,13 +2057,16 @@ export const chatRouter = router({
           hasImages: input.hasImages,
         });
       } catch (error) {
-        debugError("Chat", "analyzeIntent failed; falling back to chat route", error);
+        debugError(
+          "Chat",
+          "analyzeIntent failed; falling back to chat route",
+          error
+        );
         decision = {
           route: "chat" as const,
           reason: "intent_analysis_unavailable",
           confidence: 0,
           source: "fallback" as const,
-          agencyEscalation: false,
         };
       }
 
@@ -1849,11 +2098,9 @@ export const chatRouter = router({
         selectedSkillId: decision.selectedSkillId ?? null,
         confidence: decision.confidence,
         source: decision.source,
-        agencyEscalation: decision.agencyEscalation ?? false,
         routingStrategy: decision.routingStrategy ?? null,
         taskProfile: decision.taskProfile ?? null,
         candidateSkills: decision.candidateSkills ?? null,
-        hybridPlan: decision.hybridPlan ?? null,
         skillMeta,
       };
     }),
@@ -1864,7 +2111,10 @@ export const chatRouter = router({
   getSkillSummary: protectedProcedure
     .input(z.object({ conversationId: z.number() }))
     .query(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1875,13 +2125,13 @@ export const chatRouter = router({
       const summary = await getSkillDetectionSummary(input.conversationId);
 
       return {
-        enabledSkills: summary.enabledSkills.map((s) => ({
+        enabledSkills: summary.enabledSkills.map(s => ({
           id: s.id,
           name: s.name,
           icon: s.icon,
           type: s.type,
         })),
-        disabledSkills: summary.disabledSkills.map((s) => ({
+        disabledSkills: summary.disabledSkills.map(s => ({
           id: s.id,
           name: s.name,
           icon: s.icon,
@@ -1908,7 +2158,10 @@ export const chatRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -1985,44 +2238,55 @@ export const chatRouter = router({
       // When user selects "skill-orchestrator", use LLM classification to find
       // the right skill, then re-route to the normal skill execution flow.
       if (input.skillId === "skill-orchestrator") {
-        const userPrompt = input.prompt
-          || (input.extraParams?.request as string)
-          || (input.dynamicParams?.request as string)
-          || (input.extraParams?.prompt as string)
-          || (input.dynamicParams?.prompt as string)
-          || "";
+        const userPrompt =
+          input.prompt ||
+          (input.extraParams?.request as string) ||
+          (input.dynamicParams?.request as string) ||
+          (input.extraParams?.prompt as string) ||
+          (input.dynamicParams?.prompt as string) ||
+          "";
         if (!userPrompt.trim()) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: "Please describe what you need so the orchestrator can find the right skill.",
+            message:
+              "Please describe what you need so the orchestrator can find the right skill.",
           });
         }
 
         // Use orchestrator for CLASSIFICATION ONLY — find the best skill
-        const hasImages = (input.referenceImageUrls && input.referenceImageUrls.length > 0);
-        const { classifyIntent } = await import("../services/skillIntentClassifier");
+        const hasImages =
+          input.referenceImageUrls && input.referenceImageUrls.length > 0;
+        const { classifyIntent } =
+          await import("../services/skillIntentClassifier");
         const classification = await classifyIntent(
           userPrompt,
           ctx.user.id,
           ctx.tenantId ?? "default",
           input.conversationId,
           undefined, // traceId
-          { hasImages: !!hasImages },
+          { hasImages: !!hasImages }
         );
 
-        if (!classification || classification.skills.length === 0 || classification.skills[0].confidence < 0.5) {
+        if (
+          !classification ||
+          classification.skills.length === 0 ||
+          classification.skills[0].confidence < 0.5
+        ) {
           return {
             success: false,
             skillId: input.skillId,
             type: "text" as const,
-            message: "ไม่พบ Skill ที่ตรงกับคำขอ กรุณาลองอธิบายเพิ่มเติม หรือเลือก Skill โดยตรง",
+            message:
+              "ไม่พบ Skill ที่ตรงกับคำขอ กรุณาลองอธิบายเพิ่มเติม หรือเลือก Skill โดยตรง",
             resultUrl: undefined as string | undefined,
             resultUrls: undefined as string[] | undefined,
           };
         }
 
         const matchedSkill = classification.skills[0];
-        console.log(`[Orchestrator] classified → ${matchedSkill.skillId} (confidence: ${matchedSkill.confidence})`);
+        console.log(
+          `[Orchestrator] classified → ${matchedSkill.skillId} (confidence: ${matchedSkill.confidence})`
+        );
 
         // Auto-detect language from prompt — Thai chars present = Thai, otherwise English
         const hasThai = /[\u0E00-\u0E7F]/.test(userPrompt);
@@ -2077,33 +2341,36 @@ export const chatRouter = router({
               eq(userSkillVisibility.userId, ctx.user.id)
             )
           )
-          .where(and(eq(skillsTable.slug, input.skillId), eq(skillsTable.isEnabled, true)))
+          .where(
+            and(
+              eq(skillsTable.slug, input.skillId),
+              eq(skillsTable.isEnabled, true)
+            )
+          )
           .limit(1);
 
         const [groupShare] = accessCheck
           ? await db
-            .select({ id: skillPermissions.id })
-            .from(skillPermissions)
-            .innerJoin(
-              groupMembers,
-              and(
-                eq(groupMembers.groupId, skillPermissions.groupId),
-                eq(groupMembers.userId, ctx.user.id),
-                eq(groupMembers.status, "active"),
-              ),
-            )
-            .where(eq(skillPermissions.skillId, accessCheck.id))
-            .limit(1)
+              .select({ id: skillPermissions.id })
+              .from(skillPermissions)
+              .innerJoin(
+                groupMembers,
+                and(
+                  eq(groupMembers.groupId, skillPermissions.groupId),
+                  eq(groupMembers.userId, ctx.user.id),
+                  eq(groupMembers.status, "active")
+                )
+              )
+              .where(eq(skillPermissions.skillId, accessCheck.id))
+              .limit(1)
           : [];
 
         const hasSkillAccess = Boolean(
-          accessCheck
-          && accessCheck.explicitVisible !== false
-          && (
-            accessCheck.visibility === "public"
-            || accessCheck.createdBy === ctx.user.id
-            || (accessCheck.visibility === "private" && groupShare)
-          ),
+          accessCheck &&
+          accessCheck.explicitVisible !== false &&
+          (accessCheck.visibility === "public" ||
+            accessCheck.createdBy === ctx.user.id ||
+            (accessCheck.visibility === "private" && groupShare))
         );
 
         if (accessCheck && !hasSkillAccess) {
@@ -2114,11 +2381,16 @@ export const chatRouter = router({
         }
       }
 
-      let conversationRecord: Awaited<ReturnType<typeof getConversationById>> | null = null;
+      let conversationRecord: Awaited<
+        ReturnType<typeof getConversationById>
+      > | null = null;
       let conversationModel: string | undefined;
       let activePersonaId: string | null = null;
       if (input.conversationId) {
-        conversationRecord = await getConversationById(input.conversationId, ctx.user.id);
+        conversationRecord = await getConversationById(
+          input.conversationId,
+          ctx.user.id
+        );
         conversationModel = conversationRecord?.model ?? undefined;
         activePersonaId = (conversationRecord as any)?.activePersonaId ?? null;
       }
@@ -2131,17 +2403,15 @@ export const chatRouter = router({
       const conversationLocalAiOverride =
         typeof input.conversationId === "number" && input.conversationId > 0
           ? readLocalAiConversationOverride(
-              conversationRecord?.skillSettings?.localAiConversation,
+              conversationRecord?.skillSettings?.localAiConversation
             )
           : null;
       const effectiveLocalAiExecutionMode =
         (input.origin ?? "chat") === "chat"
-          ? resolveExplicitChatSessionLocalAiMode(
-              conversationLocalAiOverride,
-            )
+          ? resolveExplicitChatSessionLocalAiMode(conversationLocalAiOverride)
           : resolveConversationLocalAiMode(
               localAiContext.syncedPreferences,
-              conversationLocalAiOverride,
+              conversationLocalAiOverride
             );
       const effectiveLocalPolicy = resolveEffectiveLocalSkillExecutionPolicy({
         skill,
@@ -2174,7 +2444,8 @@ export const chatRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            effectiveLocalPolicy.reason === "local_only_requires_local_safe_skill"
+            effectiveLocalPolicy.reason ===
+            "local_only_requires_local_safe_skill"
               ? "This skill is not approved for Local Only mode. Switch Local AI mode away from local_only or use a reviewed local-safe skill."
               : "Local Only mode is enabled for this account, so cloud skill execution is blocked for this request.",
         });
@@ -2198,30 +2469,36 @@ export const chatRouter = router({
           ? mergedExtraParams.modelIntentText
           : input.prompt;
       const mediaIntentType =
-        skill.type === "video-generation" || skill.type === "image-video-generation"
+        skill.type === "video-generation" ||
+        skill.type === "image-video-generation"
           ? "video"
           : skill.type === "audio-generation"
             ? "audio"
             : "image";
       const requestedSkillModel =
-        input.model
-        ?? dynamicModel
-        ?? (executionMode === "media-generate"
+        input.model ??
+        dynamicModel ??
+        (executionMode === "media-generate"
           ? await inferMediaModelFromIntentText(intentText, mediaIntentType)
           : undefined);
       const inferredAspectRatio =
-        normalizeChatImageAspectRatio(input.aspectRatio)
-        ?? normalizeChatImageAspectRatio(mergedExtraParams.aspectRatio)
-        ?? normalizeChatImageAspectRatio(mergedExtraParams.aspect_ratio)
-        ?? inferImageAspectRatioFromText(`${input.prompt ?? ""}\n${intentText ?? ""}`);
+        normalizeChatImageAspectRatio(input.aspectRatio) ??
+        normalizeChatImageAspectRatio(mergedExtraParams.aspectRatio) ??
+        normalizeChatImageAspectRatio(mergedExtraParams.aspect_ratio) ??
+        inferImageAspectRatioFromText(
+          `${input.prompt ?? ""}\n${intentText ?? ""}`
+        );
 
       // Validate dynamicParams if provided
       if (Object.keys(mergedExtraParams).length > 0) {
-        const validationErrors = validateDynamicParams(mergedExtraParams, skill as any);
+        const validationErrors = validateDynamicParams(
+          mergedExtraParams,
+          skill as any
+        );
         if (validationErrors.length > 0) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `Validation failed: ${validationErrors.join(', ')}`,
+            message: `Validation failed: ${validationErrors.join(", ")}`,
           });
         }
       }
@@ -2240,17 +2517,20 @@ export const chatRouter = router({
         updatedAt?: Date | string;
       }> = [];
       if (input.conversationId) {
-        recentConversationMessages = await getRecentMessages(input.conversationId, 8);
+        recentConversationMessages = await getRecentMessages(
+          input.conversationId,
+          8
+        );
         conversationSummaries = await getSummaries(input.conversationId);
       }
 
       const skillRequestPrompt =
-        input.prompt
-        || (input.extraParams?.request as string)
-        || (input.dynamicParams?.request as string)
-        || (input.extraParams?.prompt as string)
-        || (input.dynamicParams?.prompt as string)
-        || "";
+        input.prompt ||
+        (input.extraParams?.request as string) ||
+        (input.dynamicParams?.request as string) ||
+        (input.extraParams?.prompt as string) ||
+        (input.dynamicParams?.prompt as string) ||
+        "";
 
       const chatContextBuildStartMs = Date.now();
       const chatContextState = buildChatSkillContextState({
@@ -2263,9 +2543,8 @@ export const chatRouter = router({
         recentMessages: recentConversationMessages,
         summaries: conversationSummaries,
       });
-      const incomingContextState = extractContextHintsFromDynamicParams(
-        mergedExtraParams,
-      );
+      const incomingContextState =
+        extractContextHintsFromDynamicParams(mergedExtraParams);
       const executionDynamicParams = {
         ...mergedExtraParams,
         contextState:
@@ -2274,7 +2553,8 @@ export const chatRouter = router({
       };
 
       // Check execution mode for LLM-based skills (enhance-prompt, llm-only)
-      const isLLMSkill = executionMode === "enhance-prompt" || executionMode === "llm-only";
+      const isLLMSkill =
+        executionMode === "enhance-prompt" || executionMode === "llm-only";
 
       // Check if skill can be auto-executed
       // Python-mode skills are always executable (they handle their own subprocess)
@@ -2293,6 +2573,67 @@ export const chatRouter = router({
         };
       }
 
+      // All server-side skill execution is admitted to the canonical worker
+      // control plane. This closes the old request-direct LLM/media path and
+      // keeps provider calls serialized by the shared worker capacity policy.
+      const queuedReferenceImageUrls =
+        input.referenceImageUrls && input.referenceImageUrls.length > 0
+          ? input.referenceImageUrls
+          : Array.isArray(mergedExtraParams.reference_images)
+            ? (mergedExtraParams.reference_images as unknown[]).filter(
+                (value): value is string =>
+                  typeof value === "string" && value.length > 0
+              )
+            : undefined;
+      const { taskId } = await startSkillTask(
+        skill,
+        {
+          prompt: skillRequestPrompt,
+          conversationId: input.conversationId?.toString(),
+          context: {
+            conversationModel: conversationModel ?? null,
+            activePersonaId,
+            contextState: executionDynamicParams.contextState,
+          },
+          model: requestedSkillModel,
+          aspectRatio: inferredAspectRatio,
+          numImages:
+            input.numImages ??
+            (mergedExtraParams.numImages !== undefined
+              ? Number(mergedExtraParams.numImages)
+              : undefined),
+          duration:
+            input.duration ??
+            (mergedExtraParams.duration !== undefined
+              ? Number(mergedExtraParams.duration)
+              : undefined),
+          voice: input.voice,
+          quality: (input.quality ?? mergedExtraParams.quality) as
+            string | undefined,
+          style: (input.style ?? mergedExtraParams.style) as string | undefined,
+          referenceImageUrls: queuedReferenceImageUrls,
+          referenceStyleUrl: input.referenceStyleUrl,
+          resolution: input.resolution,
+          apiConfig: input.apiConfig,
+          extraParams: executionDynamicParams as Record<string, any>,
+          publicUrl: ctx.publicUrl ?? undefined,
+          runId: skillRunId,
+        },
+        ctx.user.id,
+        ctx.tenantId ?? ""
+      );
+
+      return {
+        success: true,
+        skillId: input.skillId,
+        type: "text" as const,
+        isAsync: true,
+        taskId,
+        message: "⏳ งานถูกส่งเข้าคิวกลางแล้ว กำลังรอ worker ประมวลผล...",
+        resultUrl: undefined as string | undefined,
+        resultUrls: undefined as string[] | undefined,
+      };
+
       // ── LLM-based skills: call LLM with skill system prompt + user form data ──
       if (isLLMSkill) {
         // ── Unified Orchestrator Path (feature-flagged) ─────────────────
@@ -2301,31 +2642,39 @@ export const chatRouter = router({
         // error, fall through to the existing path as a safety net.
         let handledByUnified = false;
         try {
-          const { getTenantFeatureFlags } = await import("../services/tenantFeatureFlagService");
-          const tenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+          const { getTenantFeatureFlags } =
+            await import("../services/tenantFeatureFlagService");
+          const tenantId =
+            ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
           const flags = await getTenantFeatureFlags(tenantId);
 
           const shouldUseUnifiedSkillExecution =
-            flags.unifiedSkillExecution && input.skillId !== "smart-character-creator-pro";
+            flags.unifiedSkillExecution &&
+            input.skillId !== "smart-character-creator-pro";
 
           if (!shouldUseUnifiedSkillExecution && flags.unifiedSkillExecution) {
-            console.info("[executeSkill] Skipping unified skill execution for specialized skill", {
-              skillId: input.skillId,
-              reason: "requires specialized LLM prompt validation",
-            });
+            console.info(
+              "[executeSkill] Skipping unified skill execution for specialized skill",
+              {
+                skillId: input.skillId,
+                reason: "requires specialized LLM prompt validation",
+              }
+            );
           }
 
           if (shouldUseUnifiedSkillExecution) {
-            const { executeUnified } = await import("../services/unifiedOrchestrator");
+            const { executeUnified } =
+              await import("../services/unifiedOrchestrator");
 
             // Build attachments from reference images
-            const refImages = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
-              ? input.referenceImageUrls
-              : (Array.isArray(mergedExtraParams.reference_images)
-                ? (mergedExtraParams.reference_images as unknown[]).filter(
-                    (u): u is string => typeof u === "string" && u.length > 0,
-                  )
-                : []);
+            const refImages =
+              input.referenceImageUrls && input.referenceImageUrls.length > 0
+                ? input.referenceImageUrls
+                : Array.isArray(mergedExtraParams.reference_images)
+                  ? (mergedExtraParams.reference_images as unknown[]).filter(
+                      (u): u is string => typeof u === "string" && u.length > 0
+                    )
+                  : [];
             const attachments = refImages.map((url: string) => ({
               type: "image" as const,
               url,
@@ -2358,10 +2707,12 @@ export const chatRouter = router({
             const result = await executeUnified(request);
             handledByUnified = true;
             const unifiedSucceeded = result.metadata?.success !== false;
-            const unifiedError = typeof result.metadata?.error === "string"
-              ? result.metadata.error
-              : "Unified skill execution failed.";
-            const textContent = result.result.type === "text" ? result.result.content.trim() : "";
+            const unifiedError =
+              typeof result.metadata?.error === "string"
+                ? result.metadata.error
+                : "Unified skill execution failed.";
+            const textContent =
+              result.result.type === "text" ? result.result.content.trim() : "";
 
             if (!unifiedSucceeded) {
               return {
@@ -2414,7 +2765,10 @@ export const chatRouter = router({
                   skillUsed: input.skillId,
                 });
               } catch (err) {
-                console.error("[executeSkill] Failed to save unified skill message:", err);
+                console.error(
+                  "[executeSkill] Failed to save unified skill message:",
+                  err
+                );
               }
             }
 
@@ -2433,7 +2787,11 @@ export const chatRouter = router({
           if (handledByUnified) {
             throw err; // Re-throw if we already committed to unified path
           }
-          debugError("Chat", "[executeSkill] Unified orchestrator failed, falling back:", err);
+          debugError(
+            "Chat",
+            "[executeSkill] Unified orchestrator failed, falling back:",
+            err
+          );
           auditLogger.log({
             eventType: "unified_fallback" as any,
             userId: ctx.user.id,
@@ -2447,7 +2805,8 @@ export const chatRouter = router({
         // ── END Unified Orchestrator Path ───────────────────────────────
 
         const { getProviderForModel } = await import("../services/llmRouter");
-        const { executeSkillLlmWithFallback } = await import("../services/skillModelFallback");
+        const { executeSkillLlmWithFallback } =
+          await import("../services/skillModelFallback");
 
         // Load skill's systemPrompt and knowledgebase from DB
         const skillDb = await getDb();
@@ -2458,30 +2817,60 @@ export const chatRouter = router({
           });
         }
         const [skillRow] = await skillDb
-          .select({ systemPrompt: skillsTable.systemPrompt, knowledgebase: skillsTable.knowledgebase })
+          .select({
+            systemPrompt: skillsTable.systemPrompt,
+            knowledgebase: skillsTable.knowledgebase,
+          })
           .from(skillsTable)
-          .where(and(eq(skillsTable.slug, input.skillId), eq(skillsTable.isEnabled, true)))
+          .where(
+            and(
+              eq(skillsTable.slug, input.skillId),
+              eq(skillsTable.isEnabled, true)
+            )
+          )
           .limit(1);
 
         // Build LLM messages — content can be string or multimodal array
-        const llmMessages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
+        const llmMessages: Array<{
+          role: string;
+          content:
+            | string
+            | Array<{
+                type: string;
+                text?: string;
+                image_url?: { url: string };
+              }>;
+        }> = [];
         let userPrompt = skillRequestPrompt;
 
         // For image_prompt_engineer, use the specialized prompt builder
-        if (input.skillId === "image_prompt_engineer" || input.skillId === "create-image-prompt") {
+        if (
+          input.skillId === "image_prompt_engineer" ||
+          input.skillId === "create-image-prompt"
+        ) {
           try {
-            const { buildSystemPrompt, buildUserPrompt } = await import("../services/promptEnhancementService");
+            const { buildSystemPrompt, buildUserPrompt } =
+              await import("../services/promptEnhancementService");
             const request = {
               userInput: mergedExtraParams.request || skillRequestPrompt || "",
               ...mergedExtraParams,
             };
-            llmMessages.push({ role: "system", content: buildSystemPrompt(request) });
+            llmMessages.push({
+              role: "system",
+              content: buildSystemPrompt(request),
+            });
             userPrompt = buildUserPrompt(request);
           } catch (err) {
-            console.error("[executeSkill] Failed to build prompt enhancement prompts:", err);
+            console.error(
+              "[executeSkill] Failed to build prompt enhancement prompts:",
+              err
+            );
             // Fallback to generic skill system prompt
             if (skillRow?.systemPrompt) {
-              llmMessages.push({ role: "system", content: skillRow.systemPrompt });
+              llmMessages.push({
+                role: "system",
+                content: skillRow.systemPrompt,
+              });
             }
           }
         } else if (input.skillId === "smart-character-creator-pro") {
@@ -2494,7 +2883,9 @@ export const chatRouter = router({
               "Return plain text only. Never output JSON, tables, code blocks, or command suffixes such as --ar 9:16.",
             ].join("\n"),
           });
-          userPrompt = buildSmartCharacterLlmPrompt(executionDynamicParams as Record<string, unknown>);
+          userPrompt = buildSmartCharacterLlmPrompt(
+            executionDynamicParams as Record<string, unknown>
+          );
         } else {
           // Generic LLM skill: use DB systemPrompt + knowledgebase
           if (skillRow?.systemPrompt) {
@@ -2509,8 +2900,17 @@ export const chatRouter = router({
           // Exclude reference_images — they are sent as multimodal image_url content parts instead
           if (Object.keys(mergedExtraParams).length > 0) {
             const paramSummary = Object.entries(mergedExtraParams)
-              .filter(([k, v]) => v !== undefined && v !== null && v !== "" && k !== "reference_images")
-              .map(([k, v]) => `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`)
+              .filter(
+                ([k, v]) =>
+                  v !== undefined &&
+                  v !== null &&
+                  v !== "" &&
+                  k !== "reference_images"
+              )
+              .map(
+                ([k, v]) =>
+                  `- ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`
+              )
               .join("\n");
             if (paramSummary) {
               userPrompt += `\n\nForm inputs:\n${paramSummary}`;
@@ -2528,60 +2928,84 @@ export const chatRouter = router({
 
         // Build user message — multimodal with images when referenceImageUrls provided
         // Also check dynamicParams.reference_images (from ImageSourcePicker / skill form)
-        const refImageUrls: string[] = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
-          ? input.referenceImageUrls
-          : (Array.isArray(mergedExtraParams.reference_images)
-            ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
-            : []);
-        const resolvedRefImageUrls = await resolveExternalMediaReferenceUrls(
-          refImageUrls,
-          ctx.tenantId
-            ? { userId: ctx.user.id, tenantId: ctx.tenantId }
-            : undefined,
-          ctx.publicUrl,
-        ) ?? [];
+        const refImageUrls: string[] =
+          input.referenceImageUrls && input.referenceImageUrls.length > 0
+            ? input.referenceImageUrls
+            : Array.isArray(mergedExtraParams.reference_images)
+              ? (mergedExtraParams.reference_images as unknown[]).filter(
+                  (u): u is string => typeof u === "string" && u.length > 0
+                )
+              : [];
+        const resolvedRefImageUrls =
+          (await resolveExternalMediaReferenceUrls(
+            refImageUrls,
+            ctx.tenantId
+              ? { userId: ctx.user.id, tenantId: ctx.tenantId }
+              : undefined,
+            ctx.publicUrl
+          )) ?? [];
         const hasRefImages = resolvedRefImageUrls.length > 0;
         const attachments = hasRefImages
-          ? resolvedRefImageUrls.map((url: string) => ({ type: "image" as const, url }))
+          ? resolvedRefImageUrls.map((url: string) => ({
+              type: "image" as const,
+              url,
+            }))
           : undefined;
         if (hasRefImages) {
           const baseUrl = (ctx.publicUrl || "").replace(/\/+$/, "");
-          const contentParts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-            { type: "text", text: userPrompt || `Use ${skill.name}` },
-          ];
+          const contentParts: Array<{
+            type: string;
+            text?: string;
+            image_url?: { url: string };
+          }> = [{ type: "text", text: userPrompt || `Use ${skill.name}` }];
           for (const imgUrl of resolvedRefImageUrls) {
             // Convert relative URLs (e.g. /uploads/...) to absolute for external LLM API
-            const absoluteUrl = (
-              imgUrl.startsWith("http")
-              || /^data:image\//i.test(imgUrl)
-            )
-              ? imgUrl
-              : `${baseUrl}${imgUrl}`;
-            contentParts.push({ type: "image_url", image_url: { url: absoluteUrl } });
+            const absoluteUrl =
+              imgUrl.startsWith("http") || /^data:image\//i.test(imgUrl)
+                ? imgUrl
+                : `${baseUrl}${imgUrl}`;
+            contentParts.push({
+              type: "image_url",
+              image_url: { url: absoluteUrl },
+            });
           }
           llmMessages.push({ role: "user", content: contentParts });
         } else if (input.skillId === "smart-character-creator-pro") {
           // This skill already receives a compact, purpose-built prompt above.
           // Avoid adding the full skill knowledge/context pack here; it can push
           // execution beyond Cloudflare's request timeout.
-          llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
+          llmMessages.push({
+            role: "user",
+            content: userPrompt || `Use ${skill.name}`,
+          });
         } else {
-          llmMessages.push({ role: "user", content: userPrompt || `Use ${skill.name}` });
+          llmMessages.push({
+            role: "user",
+            content: userPrompt || `Use ${skill.name}`,
+          });
         }
 
-        const fallbackContextState: ContextStateHints =
-          mergeContextStateHints(incomingContextState, {
+        const fallbackContextState: ContextStateHints = mergeContextStateHints(
+          incomingContextState,
+          {
             ...chatContextState,
             activeNote: fallbackActiveNote,
-          }) ?? {
-            ...chatContextState,
-            activeNote: fallbackActiveNote,
-          };
+          }
+        ) ?? {
+          ...chatContextState,
+          activeNote: fallbackActiveNote,
+        };
 
-        if (input.skillId === "image_prompt_engineer" || input.skillId === "create-image-prompt") {
-          const contextStateMessages = buildContextStateMessages(fallbackContextState);
+        if (
+          input.skillId === "image_prompt_engineer" ||
+          input.skillId === "create-image-prompt"
+        ) {
+          const contextStateMessages =
+            buildContextStateMessages(fallbackContextState);
           if (contextStateMessages.length > 0) {
-            const insertAt = llmMessages.findIndex((message) => message.role !== "system");
+            const insertAt = llmMessages.findIndex(
+              message => message.role !== "system"
+            );
             const position = insertAt === -1 ? llmMessages.length : insertAt;
             llmMessages.splice(position, 0, ...contextStateMessages);
           }
@@ -2598,10 +3022,14 @@ export const chatRouter = router({
               {
                 channel: "chat",
                 userId: ctx.user.id,
-                tenantId: ctx.tenantId ?? String(ctx.user.currentTenantId ?? ""),
+                tenantId:
+                  ctx.tenantId ?? String(ctx.user.currentTenantId ?? ""),
                 userMessage: userPrompt || `Use ${skill.name}`,
                 attachments,
-                dynamicParams: executionDynamicParams as Record<string, unknown>,
+                dynamicParams: executionDynamicParams as Record<
+                  string,
+                  unknown
+                >,
                 conversationContext: {
                   conversationId: input.conversationId,
                   conversationModel,
@@ -2612,17 +3040,26 @@ export const chatRouter = router({
               {
                 skillSystemPrompt: effectiveSkillSystemPrompt,
                 knowledgebase: null,
-                dynamicParams: { ...executionDynamicParams, contextState: fallbackContextState },
+                dynamicParams: {
+                  ...executionDynamicParams,
+                  contextState: fallbackContextState,
+                },
                 label: "chat.executeSkill",
-              },
+              }
             );
             llmMessages.length = 0;
             llmMessages.push(...fallbackContextPack.messages);
           } catch (err) {
-            console.warn("[executeSkill] shared chat context pack failed, falling back to legacy state injection:", err);
-            const contextStateMessages = buildContextStateMessages(fallbackContextState);
+            console.warn(
+              "[executeSkill] shared chat context pack failed, falling back to legacy state injection:",
+              err
+            );
+            const contextStateMessages =
+              buildContextStateMessages(fallbackContextState);
             if (contextStateMessages.length > 0) {
-              const insertAt = llmMessages.findIndex((message) => message.role !== "system");
+              const insertAt = llmMessages.findIndex(
+                message => message.role !== "system"
+              );
               const position = insertAt === -1 ? llmMessages.length : insertAt;
               llmMessages.splice(position, 0, ...contextStateMessages);
             }
@@ -2638,7 +3075,7 @@ export const chatRouter = router({
           projectId: input.projectId ?? null,
           skillId: input.skillId,
           latencyMs: Date.now() - chatContextBuildStartMs,
-        }).catch((err) => {
+        }).catch(err => {
           console.warn("[executeSkill] context-engine metric failed:", err);
         });
 
@@ -2647,8 +3084,15 @@ export const chatRouter = router({
         // skill.executionPolicy may be a raw JSON string from DB — parse if needed
         let parsedPolicy: Record<string, any> | null = null;
         if (typeof skill.executionPolicy === "string") {
-          try { parsedPolicy = JSON.parse(skill.executionPolicy); } catch { /* ignore */ }
-        } else if (typeof skill.executionPolicy === "object" && skill.executionPolicy) {
+          try {
+            parsedPolicy = JSON.parse(skill.executionPolicy);
+          } catch {
+            /* ignore */
+          }
+        } else if (
+          typeof skill.executionPolicy === "object" &&
+          skill.executionPolicy
+        ) {
           parsedPolicy = skill.executionPolicy as Record<string, any>;
         }
         const baseReqs = parsedPolicy?.requirements || {};
@@ -2661,32 +3105,49 @@ export const chatRouter = router({
         }
 
         // When skill needs web search (e.g., product reviewers), require web-search model
-        if (skillPolicy?.requires_web_search || skillPolicy?.requires_citations) {
+        if (
+          skillPolicy?.requires_web_search ||
+          skillPolicy?.requires_citations
+        ) {
           dynamicReqs.supportsWebSearch = true;
         }
 
         // When skill needs thinking mode, require thinking-capable model
-        if (skillPolicy?.requires_thinking || skillPolicy?.thinking_level_hint === "high" || skillPolicy?.thinking_level_hint === "medium") {
+        if (
+          skillPolicy?.requires_thinking ||
+          skillPolicy?.thinking_level_hint === "high" ||
+          skillPolicy?.thinking_level_hint === "medium"
+        ) {
           dynamicReqs.supportsThinking = true;
         }
 
         // For product reviews and complex skills: prefer newer, high-capability models
         // by requiring large context + web search + thinking
-        const isReviewSkill = (skill.category || "").includes("review") || (skill.type || "").includes("review");
-        const isComplexTask = isReviewSkill || skillPolicy?.thinking_level_hint === "high";
+        const isReviewSkill =
+          (skill.category || "").includes("review") ||
+          (skill.type || "").includes("review");
+        const isComplexTask =
+          isReviewSkill || skillPolicy?.thinking_level_hint === "high";
         if (isComplexTask) {
           dynamicReqs.supportsWebSearch = true;
           dynamicReqs.supportsThinking = true;
           // Require 500K+ context to skip gpt-4o-mini (128K) and select
           // newer models like gemini-3-flash (1M) or gpt-5.4 (1M)
-          if (!dynamicReqs.contextLength || (dynamicReqs.contextLength as number) < 500_000) {
+          if (
+            !dynamicReqs.contextLength ||
+            (dynamicReqs.contextLength as number) < 500_000
+          ) {
             dynamicReqs.contextLength = 500_000;
           }
         }
 
-        const hasOverrides = JSON.stringify(dynamicReqs) !== JSON.stringify(baseReqs);
+        const hasOverrides =
+          JSON.stringify(dynamicReqs) !== JSON.stringify(baseReqs);
         if (hasOverrides) {
-          console.log(`[Orchestrator] model requirements override:`, dynamicReqs);
+          console.log(
+            `[Orchestrator] model requirements override:`,
+            dynamicReqs
+          );
         }
         const skillForPolicy = hasOverrides
           ? {
@@ -2704,7 +3165,8 @@ export const chatRouter = router({
         });
 
         // Wire task planner for skill execution tracking
-        const skillTenantId = ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
+        const skillTenantId =
+          ctx.tenantId ?? String(ctx.user!.currentTenantId ?? "");
         const plannerResult = await runPlanner({
           sourceType: "skill",
           userId: ctx.user.id,
@@ -2749,7 +3211,10 @@ export const chatRouter = router({
         let llmModel: string | null;
         if (hasOverrides && executionPolicy.modelId) {
           llmModel = executionPolicy.modelId;
-          debugLog("Chat", `[executeSkill] model from requirements override: ${llmModel} (matched: ${JSON.stringify(executionPolicy.matchedCapabilities)})`);
+          debugLog(
+            "Chat",
+            `[executeSkill] model from requirements override: ${llmModel} (matched: ${JSON.stringify(executionPolicy.matchedCapabilities)})`
+          );
         } else if (plannerResult?.resolvedModel) {
           llmModel = plannerResult.resolvedModel;
         } else {
@@ -2760,14 +3225,18 @@ export const chatRouter = router({
             success: false,
             skillId: input.skillId,
             type: "text" as const,
-            error: "No enabled LLM model available. Please check model settings.",
+            error:
+              "No enabled LLM model available. Please check model settings.",
             message: undefined as string | undefined,
             resultUrl: undefined as string | undefined,
             resultUrls: undefined as string[] | undefined,
           };
         }
 
-        debugLog("Chat", `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, refImages=${refImageUrls.length}`);
+        debugLog(
+          "Chat",
+          `[executeSkill] LLM skill '${input.skillId}' mode='${executionMode}', model=${llmModel}, modelSource=${executionPolicy.modelSource}, refImages=${refImageUrls.length}`
+        );
         if (input.skillId === "smart-character-creator-pro") {
           console.info("[executeSkill] smart-character LLM dispatch", {
             model: executionPolicy.modelId,
@@ -2782,94 +3251,111 @@ export const chatRouter = router({
 
         // Execute with intelligent model-level fallback (tries up to 5 models)
         // Enable thinking mode when skill requires it (sends reasoning.effort="high")
-        const skillRequiresThinking = parsedPolicy?.requires_thinking === true
-          || parsedPolicy?.thinking_level_hint === "high"
-          || parsedPolicy?.thinking_level_hint === "medium";
-        const fallbackResult = input.skillId === "smart-character-creator-pro"
-          ? await Promise.race([
-            executeSkillLlmWithFallback({
-              messages: llmMessages,
-              skillSlug: input.skillId,
-              userId: ctx.user.id,
-              executionPolicy,
-              enableThinking: false,
-              maxModelAttempts: 1,
-              maxTokens: 2200,
-              temperature: 0.35,
-            }),
-            new Promise<Awaited<ReturnType<typeof executeSkillLlmWithFallback>>>((resolve) => {
-              setTimeout(() => {
-                resolve({
-                  success: false,
-                  error: "LLM prompt generation timed out before returning a usable prompt.",
-                  inputTokens: 0,
-                  outputTokens: 0,
-                  attempts: [],
-                  totalDurationMs: 85_000,
-                  rawData: { usage: { cost: 0 }, timedOut: true },
-                });
-              }, 85_000);
-            }),
-          ])
-          : (await executeChatRuntimeTurn({
-            tenantId: skillTenantId,
-            userId: ctx.user.id,
-            objective: userPrompt || `Use ${skill.name}`,
-            skillSlug: input.skillId,
-            executionPolicy,
-            contextPackRequest: {
-              surface: "chat",
-              request: {
-                channel: "chat",
-                userId: ctx.user.id,
-                tenantId: skillTenantId,
-                userMessage: userPrompt || `Use ${skill.name}`,
-                attachments,
-                dynamicParams: executionDynamicParams as Record<string, unknown>,
-                conversationContext: {
-                  conversationId: input.conversationId,
-                  conversationModel,
-                  activePersonaId,
-                  publicUrl: ctx.publicUrl ?? undefined,
-                },
-              },
-              tenantId: skillTenantId,
-              skillSystemPrompt: skillRow?.systemPrompt
-                ? skillRow.systemPrompt.substring(0, 12000)
-                : null,
-              knowledgebase: skillRow?.knowledgebase
-                ? skillRow.knowledgebase.substring(0, 8000)
-                : null,
-              dynamicParams: {
-                ...executionDynamicParams,
-                contextState: fallbackContextState,
-              },
-              label: "chat.executeSkill",
-            },
-            requestLabel: `chat:${input.skillId}`,
-            legacyExecute: async () =>
-              executeSkillLlmWithFallback({
-                messages: llmMessages,
-                skillSlug: input.skillId,
-                userId: ctx.user.id,
-                executionPolicy,
-                enableThinking: skillRequiresThinking || undefined,
-                maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
-              }),
-          })).value;
+        const skillRequiresThinking =
+          parsedPolicy?.requires_thinking === true ||
+          parsedPolicy?.thinking_level_hint === "high" ||
+          parsedPolicy?.thinking_level_hint === "medium";
+        const fallbackResult =
+          input.skillId === "smart-character-creator-pro"
+            ? await Promise.race([
+                executeSkillLlmWithFallback({
+                  messages: llmMessages,
+                  skillSlug: input.skillId,
+                  userId: ctx.user.id,
+                  executionPolicy,
+                  enableThinking: false,
+                  maxModelAttempts: 1,
+                  maxTokens: 2200,
+                  temperature: 0.35,
+                }),
+                new Promise<
+                  Awaited<ReturnType<typeof executeSkillLlmWithFallback>>
+                >(resolve => {
+                  setTimeout(() => {
+                    resolve({
+                      success: false,
+                      error:
+                        "LLM prompt generation timed out before returning a usable prompt.",
+                      inputTokens: 0,
+                      outputTokens: 0,
+                      attempts: [],
+                      totalDurationMs: 85_000,
+                      rawData: { usage: { cost: 0 }, timedOut: true },
+                    });
+                  }, 85_000);
+                }),
+              ])
+            : (
+                await executeChatRuntimeTurn({
+                  tenantId: skillTenantId,
+                  userId: ctx.user.id,
+                  objective: userPrompt || `Use ${skill.name}`,
+                  skillSlug: input.skillId,
+                  executionPolicy,
+                  contextPackRequest: {
+                    surface: "chat",
+                    request: {
+                      channel: "chat",
+                      userId: ctx.user.id,
+                      tenantId: skillTenantId,
+                      userMessage: userPrompt || `Use ${skill.name}`,
+                      attachments,
+                      dynamicParams: executionDynamicParams as Record<
+                        string,
+                        unknown
+                      >,
+                      conversationContext: {
+                        conversationId: input.conversationId,
+                        conversationModel,
+                        activePersonaId,
+                        publicUrl: ctx.publicUrl ?? undefined,
+                      },
+                    },
+                    tenantId: skillTenantId,
+                    skillSystemPrompt: skillRow?.systemPrompt
+                      ? skillRow.systemPrompt.substring(0, 12000)
+                      : null,
+                    knowledgebase: skillRow?.knowledgebase
+                      ? skillRow.knowledgebase.substring(0, 8000)
+                      : null,
+                    dynamicParams: {
+                      ...executionDynamicParams,
+                      contextState: fallbackContextState,
+                    },
+                    label: "chat.executeSkill",
+                  },
+                  requestLabel: `chat:${input.skillId}`,
+                  legacyExecute: async () =>
+                    executeSkillLlmWithFallback({
+                      messages: llmMessages,
+                      skillSlug: input.skillId,
+                      userId: ctx.user.id,
+                      executionPolicy,
+                      enableThinking: skillRequiresThinking || undefined,
+                      maxTokens: parsedPolicy?.max_tokens_hint ?? undefined,
+                    }),
+                })
+              ).value;
 
         if (!fallbackResult.success) {
           // Log attempt history summary
           const attemptSummary = fallbackResult.attempts
-            .map((a) => `#${a.attempt} ${a.providerName}/${a.modelId} → ${a.errorType || "no_provider"} (${a.durationMs}ms)`)
+            .map(
+              a =>
+                `#${a.attempt} ${a.providerName}/${a.modelId} → ${a.errorType || "no_provider"} (${a.durationMs}ms)`
+            )
             .join("; ");
-          console.error(`[executeSkill] All models failed for '${input.skillId}': ${attemptSummary}`);
+          console.error(
+            `[executeSkill] All models failed for '${input.skillId}': ${attemptSummary}`
+          );
 
           return {
             success: false,
             skillId: input.skillId,
             type: "text" as const,
-            error: fallbackResult.error || "LLM skill execution failed after all model attempts",
+            error:
+              fallbackResult.error ||
+              "LLM skill execution failed after all model attempts",
             message: undefined as string | undefined,
             resultUrl: undefined as string | undefined,
             resultUrls: undefined as string[] | undefined,
@@ -2878,9 +3364,10 @@ export const chatRouter = router({
 
         // Success — extract results from the successful attempt
         const rawContent = fallbackResult.content ?? "";
-        const smartCharacterValidation = input.skillId === "smart-character-creator-pro"
-          ? validateSmartCharacterPromptOutput(rawContent)
-          : null;
+        const smartCharacterValidation =
+          input.skillId === "smart-character-creator-pro"
+            ? validateSmartCharacterPromptOutput(rawContent)
+            : null;
         if (smartCharacterValidation && !smartCharacterValidation.ok) {
           console.error(
             `[executeSkill] Smart character skill returned invalid prompt output: ${smartCharacterValidation.reason}`,
@@ -2889,7 +3376,7 @@ export const chatRouter = router({
               providerName: fallbackResult.provider?.providerName,
               contentLength: rawContent.length,
               contentPreview: rawContent.slice(0, 240),
-            },
+            }
           );
 
           return {
@@ -2911,16 +3398,22 @@ export const chatRouter = router({
 
         // Log if fallback was needed
         if (fallbackResult.attempts.length > 1) {
-          const failedAttempts = fallbackResult.attempts.filter((a) => !a.success);
+          const failedAttempts = fallbackResult.attempts.filter(
+            a => !a.success
+          );
           console.info(
             `[executeSkill] Skill '${input.skillId}' succeeded on attempt ${fallbackResult.attempts.length} ` +
-            `(${provider.providerName}/${usedModel}) after ${failedAttempts.length} failed attempt(s): ` +
-            failedAttempts.map((a) => `${a.providerName}/${a.modelId}→${a.errorType}`).join(", "),
+              `(${provider.providerName}/${usedModel}) after ${failedAttempts.length} failed attempt(s): ` +
+              failedAttempts
+                .map(a => `${a.providerName}/${a.modelId}→${a.errorType}`)
+                .join(", ")
           );
         }
 
         // Settle the fixed skill price once the model result is successful.
-        const usageCost = (fallbackResult.rawData?.usage as { cost?: number } | undefined)?.cost;
+        const usageCost = (
+          fallbackResult.rawData?.usage as { cost?: number } | undefined
+        )?.cost;
         const settlement = await settleSkillRun({
           runId: skillRunId,
           userId: ctx.user.id,
@@ -2968,7 +3461,10 @@ export const chatRouter = router({
               skillUsed: input.skillId,
             });
           } catch (err) {
-            console.error("[executeSkill] Failed to save LLM skill message:", err);
+            console.error(
+              "[executeSkill] Failed to save LLM skill message:",
+              err
+            );
           }
         }
 
@@ -2986,22 +3482,29 @@ export const chatRouter = router({
 
       // Use the user's session token for media generation (from context)
       // This ensures the Python backend receives a valid token signed with the same secret
-      const userToken = ctx.userToken || createSkillToken(ctx.user.id, ctx.tenantId);
+      const userToken =
+        ctx.userToken || createSkillToken(ctx.user.id, ctx.tenantId);
 
       // Resolve referenceImageUrls: prefer top-level input, fall back to dynamicParams.reference_images
-      const resolvedRefImageUrls: string[] | undefined = (input.referenceImageUrls && input.referenceImageUrls.length > 0)
-        ? input.referenceImageUrls
-        : (Array.isArray(mergedExtraParams.reference_images)
-          ? (mergedExtraParams.reference_images as unknown[]).filter((u): u is string => typeof u === "string" && u.length > 0)
-          : undefined)
-        || undefined;
+      const resolvedRefImageUrls: string[] | undefined =
+        input.referenceImageUrls && input.referenceImageUrls.length > 0
+          ? input.referenceImageUrls
+          : (Array.isArray(mergedExtraParams.reference_images)
+              ? (mergedExtraParams.reference_images as unknown[]).filter(
+                  (u): u is string => typeof u === "string" && u.length > 0
+                )
+              : undefined) || undefined;
 
       // Python skills: run asynchronously to prevent HTTP timeout (Cloudflare 100s limit).
       // We return a taskId immediately; the client polls chat.getSkillTaskResult until done.
       if (isPythonMode) {
-        const skillCreditCost = normalizeSkillRevenuePricing(skill).totalCredits;
+        const skillCreditCost =
+          normalizeSkillRevenuePricing(skill).totalCredits;
         if (skillCreditCost > 0) {
-          const hasCredits = await hasEnoughCredits(ctx.user.id, skillCreditCost);
+          const hasCredits = await hasEnoughCredits(
+            ctx.user.id,
+            skillCreditCost
+          );
           if (!hasCredits) {
             return {
               success: false,
@@ -3019,10 +3522,19 @@ export const chatRouter = router({
           prompt: input.prompt || "",
           model: requestedSkillModel,
           aspectRatio: inferredAspectRatio,
-          numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
-          duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
+          numImages:
+            input.numImages ??
+            (mergedExtraParams.numImages !== undefined
+              ? Number(mergedExtraParams.numImages)
+              : undefined),
+          duration:
+            input.duration ??
+            (mergedExtraParams.duration !== undefined
+              ? Number(mergedExtraParams.duration)
+              : undefined),
           voice: input.voice,
-          quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
+          quality: (input.quality ?? mergedExtraParams.quality) as
+            string | undefined,
           style: (input.style ?? mergedExtraParams.style) as string | undefined,
           referenceImageUrls: resolvedRefImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
@@ -3038,73 +3550,7 @@ export const chatRouter = router({
           skill,
           skillParams,
           userId,
-          userToken,
-          async (result) => {
-            // Post-process ISC create_skill actions
-            let finalResult = result;
-            if (result.success && result._action?.type === "create_skill") {
-              const createResult = await handleIscCreateSkill(result._action, userId);
-              finalResult = {
-                ...result,
-                message:
-                  (result.message ?? "") +
-                  (createResult.ok
-                    ? `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`
-                    : `\n\n⚠️ **Could not save skill**: ${createResult.reason}`),
-              };
-            }
-
-            if (finalResult.success) {
-              try {
-                const settlement = await settleSkillRun({
-                  runId: skillRunId,
-                  userId: ctx.user.id,
-                  tenantId: ctx.tenantId,
-                  skillSlug: input.skillId,
-                  description: `Skill run: ${skill.name}`,
-                  metadata: {
-                    runtimeKind: "python",
-                    originSurface: "chat",
-                  },
-                });
-                finalResult = {
-                  ...finalResult,
-                  creditsUsed: settlement.totalCredits,
-                };
-              } catch (err) {
-                console.error("[executeSkill] Failed to deduct async Python skill credits:", err);
-                finalResult = {
-                  ...finalResult,
-                  success: false,
-                  error: err instanceof Error ? err.message : "Failed to deduct skill credits",
-                  message: err instanceof Error ? err.message : "Failed to deduct skill credits",
-                };
-              }
-            }
-
-            // Async Python skills finish after the HTTP request has closed, so
-            // persist their final output here instead of relying on the client.
-            if (input.conversationId) {
-              try {
-                const content =
-                  finalResult.message ||
-                  finalResult.error ||
-                  (finalResult.success ? "Skill completed successfully." : "Skill execution failed.");
-
-                await createMessage({
-                  conversationId: input.conversationId,
-                  role: "assistant",
-                  content,
-                  skillUsed: input.skillId,
-                  creditsUsed: finalResult.creditsUsed ? String(finalResult.creditsUsed) : undefined,
-                });
-              } catch (err) {
-                console.error("[executeSkill] Failed to save async Python skill message:", err);
-              }
-            }
-
-            return finalResult;
-          },
+          ctx.tenantId ?? ""
         );
 
         return {
@@ -3113,7 +3559,8 @@ export const chatRouter = router({
           type: "text" as const,
           isAsync: true,
           taskId,
-          message: "⏳ กำลังประมวลผล — Python skill กำลังทำงานในพื้นหลัง กรุณารอสักครู่...",
+          message:
+            "⏳ กำลังประมวลผล — Python skill กำลังทำงานในพื้นหลัง กรุณารอสักครู่...",
           resultUrl: undefined as string | undefined,
           resultUrls: undefined as string[] | undefined,
         };
@@ -3126,13 +3573,22 @@ export const chatRouter = router({
       let result = await executeSkill(
         skill,
         {
-          prompt: input.prompt || '',
+          prompt: input.prompt || "",
           model: requestedSkillModel,
           aspectRatio: inferredAspectRatio,
-          numImages: input.numImages ?? (mergedExtraParams.numImages !== undefined ? Number(mergedExtraParams.numImages) : undefined),
-          duration: input.duration ?? (mergedExtraParams.duration !== undefined ? Number(mergedExtraParams.duration) : undefined),
+          numImages:
+            input.numImages ??
+            (mergedExtraParams.numImages !== undefined
+              ? Number(mergedExtraParams.numImages)
+              : undefined),
+          duration:
+            input.duration ??
+            (mergedExtraParams.duration !== undefined
+              ? Number(mergedExtraParams.duration)
+              : undefined),
           voice: input.voice,
-          quality: (input.quality ?? mergedExtraParams.quality) as string | undefined,
+          quality: (input.quality ?? mergedExtraParams.quality) as
+            string | undefined,
           style: (input.style ?? mergedExtraParams.style) as string | undefined,
           referenceImageUrls: resolvedRefImageUrls,
           referenceStyleUrl: input.referenceStyleUrl,
@@ -3144,47 +3600,27 @@ export const chatRouter = router({
         },
         ctx.user.id,
         userToken,
-        ctx.tenantId ?? undefined,
+        ctx.tenantId ?? undefined
       );
-
-      // Handle sandbox job result -- return job ID for client polling
-      if (result.type === "sandbox-job" && result.jobId) {
-        if (input.conversationId) {
-          try {
-            await createMessage({
-              conversationId: input.conversationId,
-              role: "assistant",
-              content: `Executing "${skill.name}" in a secure sandbox environment. Job ID: ${result.jobId}`,
-              skillUsed: input.skillId,
-            });
-          } catch (err) {
-            console.error("[executeSkill] Failed to save sandbox job message:", err);
-          }
-        }
-
-        return {
-          success: true,
-          skillId: input.skillId,
-          type: "sandbox-job" as const,
-          jobId: result.jobId,
-          message: result.message || "Job dispatched to secure sandbox",
-          isAsync: true,
-        };
-      }
 
       // Handle structured actions from Python skills (e.g. ISC create_skill)
       if (result.success && result._action?.type === "create_skill") {
-        const createResult = await handleIscCreateSkill(result._action, ctx.user.id);
+        const createResult = await handleIscCreateSkill(
+          result._action,
+          ctx.user.id
+        );
         if (createResult.ok) {
           result = {
             ...result,
-            message: (result.message ?? "") +
+            message:
+              (result.message ?? "") +
               `\n\n✅ **Skill saved** (id: ${createResult.skillId}) — visible in your Skills panel.`,
           };
         } else {
           result = {
             ...result,
-            message: (result.message ?? "") +
+            message:
+              (result.message ?? "") +
               `\n\n⚠️ **Could not save skill**: ${createResult.reason}`,
           };
         }
@@ -3196,7 +3632,11 @@ export const chatRouter = router({
           let content = "";
           let attachments: MessageAttachment[] = [];
 
-          if (result.type === "image" && result.resultUrls && result.resultUrls.length > 0) {
+          if (
+            result.type === "image" &&
+            result.resultUrls &&
+            result.resultUrls.length > 0
+          ) {
             content = `Generated image${result.resultUrls.length > 1 ? "s" : ""}:\n\n${result.resultUrls.map((url: string) => `![Generated Image](${url})`).join("\n\n")}`;
             attachments = result.resultUrls.map((url: string, i: number) => ({
               type: "image" as const,
@@ -3206,11 +3646,18 @@ export const chatRouter = router({
           } else if (result.type === "video" && result.isAsync) {
             content = `Video generation started. ${result.message || ""}\n\nYou can check the progress in the Media History page.`;
           } else if (result.resultUrl) {
-            content = result.type === "image"
-              ? `Generated image:\n\n![Generated Image](${result.resultUrl})`
-              : `Generated ${result.type}:\n\n[View ${result.type}](${result.resultUrl})`;
+            content =
+              result.type === "image"
+                ? `Generated image:\n\n![Generated Image](${result.resultUrl})`
+                : `Generated ${result.type}:\n\n[View ${result.type}](${result.resultUrl})`;
             if (result.type === "image") {
-              attachments = [{ type: "image", url: result.resultUrl, name: "generated-image.png" }];
+              attachments = [
+                {
+                  type: "image",
+                  url: result.resultUrl,
+                  name: "generated-image.png",
+                },
+              ];
             }
           } else {
             content = result.message || "Media generated successfully!";
@@ -3226,7 +3673,9 @@ export const chatRouter = router({
             content,
             attachments: attachments.length > 0 ? attachments : undefined,
             skillUsed: input.skillId,
-            creditsUsed: result.creditsUsed ? String(result.creditsUsed) : undefined,
+            creditsUsed: result.creditsUsed
+              ? String(result.creditsUsed)
+              : undefined,
           });
         } catch (err) {
           console.error("[executeSkill] Failed to save media message:", err);
@@ -3288,7 +3737,10 @@ export const chatRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Verify conversation ownership
-      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      const conversation = await getConversationById(
+        input.conversationId,
+        ctx.user.id
+      );
       if (!conversation) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -3298,7 +3750,10 @@ export const chatRouter = router({
 
       // Update conversation total credits
       if (input.creditsUsed > 0) {
-        await updateConversationCredits(input.conversationId, input.creditsUsed);
+        await updateConversationCredits(
+          input.conversationId,
+          input.creditsUsed
+        );
         debugLog("Chat", "Added skill credits to conversation", {
           conversationId: input.conversationId,
           creditsUsed: input.creditsUsed,
@@ -3309,32 +3764,67 @@ export const chatRouter = router({
       return { success: true, creditsAdded: input.creditsUsed };
     }),
 
-  /**
-   * Poll the result of an async Python skill task.
-   * The task is stored in Redis by startPythonSkillTask().
-   */
+  /** Poll the canonical worker_jobs result of an async skill task. */
   getSkillTaskResult: protectedProcedure
     .input(z.object({ taskId: z.string().max(200) }))
     .query(async ({ ctx, input }) => {
-      const { getRedisClient } = await import("../services/redis");
-      const redis = getRedisClient();
-      const raw = await redis.get(`skill:task:${input.taskId}`);
-      if (!raw) {
+      const db = await getDb();
+      if (!db)
+        return { status: "not_found" as const, skillId: "", result: null };
+      const [job] = await db
+        .select({
+          status: workerJobs.status,
+          inputJson: workerJobs.inputJson,
+          outputJson: workerJobs.outputJson,
+          failureReason: workerJobs.failureReason,
+        })
+        .from(workerJobs)
+        .where(
+          and(
+            eq(workerJobs.id, input.taskId),
+            eq(
+              workerJobs.tenantId,
+              ctx.tenantId ?? String(ctx.user.currentTenantId ?? "")
+            ),
+            eq(workerJobs.requestedByUserId, ctx.user.id),
+            eq(workerJobs.jobType, "skill.execute")
+          )
+        )
+        .limit(1);
+      if (!job) {
         return { status: "not_found" as const, skillId: "", result: null };
       }
-      const task = JSON.parse(raw) as {
-        status: "running" | "done";
-        skillId: string;
-        userId: number;
-        result?: SkillExecutionResult;
-      };
-      if (task.userId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Access denied" });
-      }
+      const inputJson =
+        job.inputJson && typeof job.inputJson === "object"
+          ? (job.inputJson as Record<string, unknown>)
+          : {};
+      const outputJson =
+        job.outputJson && typeof job.outputJson === "object"
+          ? (job.outputJson as Record<string, unknown>)
+          : {};
+      const result = outputJson.skillExecutionResult as
+        SkillExecutionResult | undefined;
+      const status = ["succeeded", "failed", "cancelled", "expired"].includes(
+        job.status
+      )
+        ? "done"
+        : "running";
       return {
-        status: task.status,
-        skillId: task.skillId,
-        result: task.result ?? null,
+        status,
+        skillId: typeof inputJson.skillId === "string" ? inputJson.skillId : "",
+        result:
+          result ??
+          (job.failureReason
+            ? {
+                success: false,
+                skillId:
+                  typeof inputJson.skillId === "string"
+                    ? inputJson.skillId
+                    : "",
+                type: "text" as const,
+                error: job.failureReason,
+              }
+            : null),
       };
     }),
 
@@ -3351,11 +3841,11 @@ export const chatRouter = router({
         params: z
           .record(z.unknown())
           .refine(
-            (v) => JSON.stringify(v).length < 50_000,
-            "Params payload too large (max 50 KB)",
+            v => JSON.stringify(v).length < 50_000,
+            "Params payload too large (max 50 KB)"
           ),
         traceId: z.string(),
-      }),
+      })
     )
     .mutation(async ({ ctx, input }) => {
       // 1. Verify conversation ownership
@@ -3368,21 +3858,27 @@ export const chatRouter = router({
         .where(
           and(
             eq(conversations.id, input.conversationId),
-            eq(conversations.userId, ctx.user.id),
-          ),
+            eq(conversations.userId, ctx.user.id)
+          )
         )
         .limit(1);
 
       if (!conv) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Conversation not found" });
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Conversation not found",
+        });
       }
 
       // 2. Look up skill and execute
       const { getSkillByIdAsync } = await import("../services/skillRegistry");
-      const { executeSkill } = await import("../services/skillExecutor");
+      const { startSkillTask } = await import("../services/skillExecutor");
       const skillDef = await getSkillByIdAsync(input.skillId);
       if (!skillDef) {
-        throw new TRPCError({ code: "NOT_FOUND", message: `Skill not found: ${input.skillId}` });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Skill not found: ${input.skillId}`,
+        });
       }
 
       // 3. Execute skill with confirmed params
@@ -3397,13 +3893,11 @@ export const chatRouter = router({
         traceId: input.traceId,
       };
 
-      const userToken = ctx.userToken || createSkillToken(ctx.user.id, ctx.tenantId);
-      const result = await executeSkill(
+      const { taskId } = await startSkillTask(
         skillDef,
         execParams,
         ctx.user.id,
-        userToken,
-        ctx.tenantId ?? undefined,
+        ctx.tenantId ?? ""
       );
 
       return {
@@ -3411,14 +3905,14 @@ export const chatRouter = router({
         sections: [
           {
             skillId: input.skillId,
-            type: result.success ? (result.type === "text" ? "text" : "image") : "error",
-            content: result.message,
-            urls: result.resultUrls ?? (result.resultUrl ? [result.resultUrl] : undefined),
-            creditsUsed: result.creditsUsed ?? 0,
+            type: "text",
+            content: `งานถูกส่งเข้าคิวกลางแล้ว (taskId: ${taskId})`,
+            urls: undefined,
+            creditsUsed: 0,
             durationMs: 0,
           },
         ],
-        totalCreditsUsed: result.creditsUsed ?? 0,
+        totalCreditsUsed: 0,
         traceId: input.traceId,
       };
     }),

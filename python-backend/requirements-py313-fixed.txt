@@ -126,6 +126,3 @@ ruff>=0.1.0
 
 # Utilities
 tenacity>=8.2.0
-
-# Workspace & Docker
-docker>=7.0.0

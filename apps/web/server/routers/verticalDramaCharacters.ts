@@ -2785,16 +2785,28 @@ export const verticalDramaCharactersRouter = router({
         });
       }
 
-      const durable = await ingestVerticalDramaMediaAsset({
-        tenantId,
-        userId,
-        seriesId,
-        mediaType: "image",
-        sourceUrl: task.resultUrl,
-        mimeType: "image/jpeg",
-        identity: task.id,
-        purpose: "character_portrait",
-      });
+      let durable: Awaited<ReturnType<typeof ingestVerticalDramaMediaAsset>>;
+      try {
+        durable = await ingestVerticalDramaMediaAsset({
+          tenantId,
+          userId,
+          seriesId,
+          mediaType: "image",
+          sourceUrl: task.resultUrl,
+          mimeType: "image/jpeg",
+          identity: task.id,
+          purpose: "character_portrait",
+        });
+      } catch (error) {
+        const transientPoll = getTransientMediaPollRetryHint(error);
+        if (!transientPoll) throw error;
+        return {
+          assetLinkId: input.assetLinkId,
+          taskId,
+          status: "queued" as const,
+          retryAfterMs: transientPoll.retryAfterSeconds * 1000,
+        };
+      }
       const assetId = durable.mediaAssetId;
       let asset;
       try {

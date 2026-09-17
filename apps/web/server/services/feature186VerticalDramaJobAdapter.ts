@@ -1,10 +1,7 @@
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+export { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
 
 export const FEATURE_186_CONTRACT_VERSION = "feature-186-v1";
-
-export function isFeature186HardCutoverEnabled(): boolean {
-  return process.env.FEATURE_186_HARD_CUTOVER === "true";
-}
 
 /**
  * TypeScript optional properties are represented as `undefined` in memory,
@@ -68,7 +65,7 @@ export async function createFeature186VerticalDramaJob(input: {
   executionClass: "short" | "long" | "external" | "cpu";
   payload: Record<string, unknown>;
   idempotencyKey?: string;
-}): Promise<void> {
+}): Promise<string> {
   await createControlPlaneJob({
     context: {
       tenantId: input.tenantId,
@@ -110,4 +107,5 @@ export async function createFeature186VerticalDramaJob(input: {
       admissionMode: "durable_queue",
     },
   });
+  return input.jobId;
 }

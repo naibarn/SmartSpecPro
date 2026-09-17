@@ -1,6 +1,5 @@
 import { TRPCError } from "@trpc/server";
 
-import { agencyBridge } from "./agencyBridge";
 import { createLibraryItem } from "./libraryService";
 import { mediaGenerationService } from "./mediaGenerationService";
 import { durabilizeMediaGenerationResponse } from "./durableMediaAssetService";
@@ -32,19 +31,16 @@ import type {
 } from "../../drizzle/schema";
 
 const DEFAULT_CONTENT_SKILL_ID = "general-article-writer";
-const AUTOMATION_STEP_IDEMPOTENCY_CACHE = new Map<string, ExecuteAutomationStepResult>();
-const SUPPORTED_REPLAY_ADAPTER_KINDS = new Set<ExecuteAutomationStepResult["adapterKind"]>([
-  "browser",
-  "skill",
-  "agency",
-  "document",
-  "media",
-  "video",
-  "manual",
-  "work_os",
-]);
+const AUTOMATION_STEP_IDEMPOTENCY_CACHE = new Map<
+  string,
+  ExecuteAutomationStepResult
+>();
+const SUPPORTED_REPLAY_ADAPTER_KINDS = new Set<
+  ExecuteAutomationStepResult["adapterKind"]
+>(["browser", "skill", "document", "media", "video", "manual", "work_os"]);
 
-type WorkAutomationExecutionStatus = "succeeded" | "failed" | "awaiting_approval";
+type WorkAutomationExecutionStatus =
+  "succeeded" | "failed" | "awaiting_approval";
 
 export interface ExecuteAutomationStepInput {
   tenantId: string;
@@ -60,10 +56,6 @@ export interface ExecuteAutomationStepInput {
   idempotencyKey?: string | null;
   inputRefsJson?: string[];
   skillId?: string | null;
-  agencyId?: string | null;
-  agencyConversationId?: string | null;
-  agencyRecipientAgent?: string | null;
-  agencyAdditionalInstructions?: string | null;
   libraryItemType?: string | null;
   librarySource?: string | null;
   libraryTitle?: string | null;
@@ -86,11 +78,11 @@ export interface ExecuteAutomationStepResult {
   checkpoint: WorkAutomationRunCheckpoint | null;
   surface: WorkAutomationSurface;
   outputRefsJson: string[];
-  adapterKind: "browser" | "skill" | "agency" | "document" | "media" | "video" | "manual" | "work_os";
+  adapterKind:
+    "browser" | "skill" | "document" | "media" | "video" | "manual" | "work_os";
   adapterDetail: Record<string, unknown>;
   libraryItemId: number | null;
   deckId: number | null;
-  agencyRunId: string | null;
   skillId: string | null;
 }
 
@@ -112,10 +104,6 @@ interface StepExecutionContext {
   idempotencyKey?: string | null;
   inputRefsJson?: string[];
   skillId?: string | null;
-  agencyId?: string | null;
-  agencyConversationId?: string | null;
-  agencyRecipientAgent?: string | null;
-  agencyAdditionalInstructions?: string | null;
   libraryItemType?: string | null;
   librarySource?: string | null;
   libraryTitle?: string | null;
@@ -172,18 +160,23 @@ function buildAutomationArtifactMetadata(input: {
 }
 
 function buildExecutionPrompt(context: StepExecutionContext): string {
-  return normalizeText(context.prompt)
-    || normalizeText(context.objective)
-    || context.title;
+  return (
+    normalizeText(context.prompt) ||
+    normalizeText(context.objective) ||
+    context.title
+  );
 }
 
 function buildStepVerificationDetail(input: {
   route: ReturnType<typeof resolveAutomationStepRoute>;
   approvalState?: "pending" | "approved" | "rejected" | "not_required" | null;
 }) {
-  const policy = resolveVerificationPolicyForRiskClass(input.route.riskTier ?? "medium", {
-    requiresHumanApproval: input.route.requiresApproval ?? false,
-  });
+  const policy = resolveVerificationPolicyForRiskClass(
+    input.route.riskTier ?? "medium",
+    {
+      requiresHumanApproval: input.route.requiresApproval ?? false,
+    }
+  );
   return buildVerificationPolicyEvidence(policy, {
     routeRiskTier: input.route.riskTier ?? "medium",
     routeSurface: input.route.surface,
@@ -192,21 +185,30 @@ function buildStepVerificationDetail(input: {
   });
 }
 
-function buildOutputRef(prefix: string, value: string | number | null | undefined): string | null {
+function buildOutputRef(
+  prefix: string,
+  value: string | number | null | undefined
+): string | null {
   if (value === null || value === undefined) return null;
   const normalized = String(value).trim();
   return normalized ? `${prefix}:${normalized}` : null;
 }
 
-function parseOutputRefValue(outputRefs: string[], prefix: string): string | null {
-  const match = outputRefs.find((ref) => ref.startsWith(`${prefix}:`));
+function parseOutputRefValue(
+  outputRefs: string[],
+  prefix: string
+): string | null {
+  const match = outputRefs.find(ref => ref.startsWith(`${prefix}:`));
   if (!match) {
     return null;
   }
   return match.slice(prefix.length + 1).trim() || null;
 }
 
-function parseNumericOutputRefValue(outputRefs: string[], prefix: string): number | null {
+function parseNumericOutputRefValue(
+  outputRefs: string[],
+  prefix: string
+): number | null {
   const raw = parseOutputRefValue(outputRefs, prefix);
   if (!raw) {
     return null;
@@ -215,14 +217,26 @@ function parseNumericOutputRefValue(outputRefs: string[], prefix: string): numbe
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function parseReplayAdapterKind(value: unknown): ExecuteAutomationStepResult["adapterKind"] {
-  if (typeof value === "string" && SUPPORTED_REPLAY_ADAPTER_KINDS.has(value as ExecuteAutomationStepResult["adapterKind"])) {
+function parseReplayAdapterKind(
+  value: unknown
+): ExecuteAutomationStepResult["adapterKind"] {
+  if (
+    typeof value === "string" &&
+    SUPPORTED_REPLAY_ADAPTER_KINDS.has(
+      value as ExecuteAutomationStepResult["adapterKind"]
+    )
+  ) {
     return value as ExecuteAutomationStepResult["adapterKind"];
   }
   return "work_os";
 }
 
-function buildIdempotencyCacheKey(input: Pick<ExecuteAutomationStepInput, "tenantId" | "runId" | "stepKey" | "idempotencyKey">): string | null {
+function buildIdempotencyCacheKey(
+  input: Pick<
+    ExecuteAutomationStepInput,
+    "tenantId" | "runId" | "stepKey" | "idempotencyKey"
+  >
+): string | null {
   const idempotencyKey = normalizeText(input.idempotencyKey);
   if (!idempotencyKey) {
     return null;
@@ -230,24 +244,28 @@ function buildIdempotencyCacheKey(input: Pick<ExecuteAutomationStepInput, "tenan
   return `${input.tenantId}:${input.runId}:${input.stepKey}:${idempotencyKey}`;
 }
 
-function browserTaskIdForStep(input: Pick<ExecuteAutomationStepInput, "runId" | "stepKey">): string {
+function browserTaskIdForStep(
+  input: Pick<ExecuteAutomationStepInput, "runId" | "stepKey">
+): string {
   return `${input.runId}:${input.stepKey}`;
 }
 
 function buildReplayResultFromExistingStep(
   existingStep: WorkAutomationRunStep,
   run: WorkAutomationRun,
-  checkpoint: WorkAutomationRunCheckpoint | null,
+  checkpoint: WorkAutomationRunCheckpoint | null
 ): ExecuteAutomationStepResult {
-  const detailJson = (existingStep.detailJson && typeof existingStep.detailJson === "object")
-    ? existingStep.detailJson as Record<string, unknown>
-    : {};
-  const adapterDetail = (detailJson.adapterDetail && typeof detailJson.adapterDetail === "object")
-    ? detailJson.adapterDetail as Record<string, unknown>
-    : {
-        idempotentReplay: true,
-        stepId: existingStep.id,
-      };
+  const detailJson =
+    existingStep.detailJson && typeof existingStep.detailJson === "object"
+      ? (existingStep.detailJson as Record<string, unknown>)
+      : {};
+  const adapterDetail =
+    detailJson.adapterDetail && typeof detailJson.adapterDetail === "object"
+      ? (detailJson.adapterDetail as Record<string, unknown>)
+      : {
+          idempotentReplay: true,
+          stepId: existingStep.id,
+        };
   const adapterKind = parseReplayAdapterKind(detailJson.adapterKind);
   const outputRefsJson = existingStep.outputRefsJson ?? [];
 
@@ -261,12 +279,14 @@ function buildReplayResultFromExistingStep(
     adapterDetail,
     libraryItemId: parseNumericOutputRefValue(outputRefsJson, "library-item"),
     deckId: parseNumericOutputRefValue(outputRefsJson, "presentation-deck"),
-    agencyRunId: parseOutputRefValue(outputRefsJson, "agency-run"),
     skillId: parseOutputRefValue(outputRefsJson, "skill"),
   };
 }
 
-function buildActor(tenantId: string, actorUserId: number): { userId: number; tenantId: string; role: string } {
+function buildActor(
+  tenantId: string,
+  actorUserId: number
+): { userId: number; tenantId: string; role: string } {
   return {
     userId: actorUserId,
     tenantId,
@@ -274,14 +294,22 @@ function buildActor(tenantId: string, actorUserId: number): { userId: number; te
   };
 }
 
-async function loadPolicyProjection(input: ExecuteAutomationStepInput): Promise<{
+async function loadPolicyProjection(
+  input: ExecuteAutomationStepInput
+): Promise<{
   projection: Awaited<ReturnType<typeof getWorkCaseProjection>>;
-  runProjection: Awaited<ReturnType<typeof automationFabricService.getAutomationRunProjection>>;
+  runProjection: Awaited<
+    ReturnType<typeof automationFabricService.getAutomationRunProjection>
+  >;
   policy: WorkAutomationLaunchPolicy;
   route: ReturnType<typeof resolveAutomationStepRoute>;
 }> {
   const projection = await getWorkCaseProjection(input.caseId, input.tenantId);
-  const runProjection = await automationFabricService.getAutomationRunProjection(input.runId, input.tenantId);
+  const runProjection =
+    await automationFabricService.getAutomationRunProjection(
+      input.runId,
+      input.tenantId
+    );
   if (runProjection.run.caseId !== input.caseId) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -309,49 +337,58 @@ async function recordAwaitingApprovalStep(
   route: ReturnType<typeof resolveAutomationStepRoute>,
   checkpoint: WorkAutomationRunCheckpoint | null,
   reason: string,
-  cacheKey: string | null,
+  cacheKey: string | null
 ): Promise<ExecuteAutomationStepResult> {
-  const stepResult = await automationFabricService.recordAutomationRunStepProgress({
-    tenantId: context.tenantId,
-    caseId: context.caseId,
-    runId: context.runId,
-    stepKey: context.stepKey,
-    stepIndex: context.stepIndex,
-    title: context.title,
-    status: "awaiting_approval",
-    riskTier: route.riskTier,
-    surface: route.surface,
-    inputRefsJson: context.inputRefsJson ?? [],
-    outputRefsJson: checkpoint ? [buildOutputRef("automation-checkpoint", checkpoint.id)].filter(Boolean) as string[] : [],
-    idempotencyKey: context.idempotencyKey ?? null,
-    summary: reason,
-    detailJson: {
-      adapterKind: "manual",
-      reason,
-      checkpointId: checkpoint?.id ?? null,
-      checkpointKey: checkpoint?.checkpointKey ?? null,
-      route: {
-        stepKey: route.stepKey,
-        surface: route.surface,
-        checkpointKey: route.checkpointKey,
-        requiresApproval: route.requiresApproval,
+  const stepResult =
+    await automationFabricService.recordAutomationRunStepProgress({
+      tenantId: context.tenantId,
+      caseId: context.caseId,
+      runId: context.runId,
+      stepKey: context.stepKey,
+      stepIndex: context.stepIndex,
+      title: context.title,
+      status: "awaiting_approval",
+      riskTier: route.riskTier,
+      surface: route.surface,
+      inputRefsJson: context.inputRefsJson ?? [],
+      outputRefsJson: checkpoint
+        ? ([buildOutputRef("automation-checkpoint", checkpoint.id)].filter(
+            Boolean
+          ) as string[])
+        : [],
+      idempotencyKey: context.idempotencyKey ?? null,
+      summary: reason,
+      detailJson: {
+        adapterKind: "manual",
+        reason,
+        checkpointId: checkpoint?.id ?? null,
+        checkpointKey: checkpoint?.checkpointKey ?? null,
+        route: {
+          stepKey: route.stepKey,
+          surface: route.surface,
+          checkpointKey: route.checkpointKey,
+          requiresApproval: route.requiresApproval,
+        },
+        verificationPolicy: buildStepVerificationDetail({
+          route,
+          approvalState: "pending",
+        }),
       },
-      verificationPolicy: buildStepVerificationDetail({
-        route,
-        approvalState: "pending",
-      }),
-    },
-    runStatus: "waiting_for_approval",
-    createdByUserId: context.actorUserId,
-    createdByAssistantId: context.actorAssistantId ?? null,
-  });
+      runStatus: "waiting_for_approval",
+      createdByUserId: context.actorUserId,
+      createdByAssistantId: context.actorAssistantId ?? null,
+    });
 
   const result: ExecuteAutomationStepResult = {
     run: stepResult.run,
     step: stepResult.step,
     checkpoint,
     surface: route.surface,
-    outputRefsJson: checkpoint ? [buildOutputRef("automation-checkpoint", checkpoint.id)].filter(Boolean) as string[] : [],
+    outputRefsJson: checkpoint
+      ? ([buildOutputRef("automation-checkpoint", checkpoint.id)].filter(
+          Boolean
+        ) as string[])
+      : [],
     adapterKind: "manual",
     adapterDetail: {
       reason,
@@ -360,7 +397,6 @@ async function recordAwaitingApprovalStep(
     },
     libraryItemId: null,
     deckId: null,
-    agencyRunId: null,
     skillId: null,
   };
   if (cacheKey) {
@@ -369,11 +405,20 @@ async function recordAwaitingApprovalStep(
   return result;
 }
 
-async function executeSkillStep(context: StepExecutionContext, policy: WorkAutomationLaunchPolicy): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
-  const resolvedSkillId = normalizeText(context.skillId) || defaultSkillIdForStep(context.stepKey);
-  const skill = await getSkillByIdAsync(resolvedSkillId) ?? await getSkillByIdAsync(DEFAULT_CONTENT_SKILL_ID);
+async function executeSkillStep(
+  context: StepExecutionContext,
+  policy: WorkAutomationLaunchPolicy
+): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
+  const resolvedSkillId =
+    normalizeText(context.skillId) || defaultSkillIdForStep(context.stepKey);
+  const skill =
+    (await getSkillByIdAsync(resolvedSkillId)) ??
+    (await getSkillByIdAsync(DEFAULT_CONTENT_SKILL_ID));
   if (!skill) {
-    throw new TRPCError({ code: "NOT_FOUND", message: `Skill not found: ${resolvedSkillId}` });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: `Skill not found: ${resolvedSkillId}`,
+    });
   }
 
   const result = await executeSkill(
@@ -392,43 +437,53 @@ async function executeSkillStep(context: StepExecutionContext, policy: WorkAutom
     },
     context.actorUserId,
     context.userToken,
-    context.tenantId,
+    context.tenantId
   );
 
-  const text = normalizeText(result.message ?? result.error ?? result.resultUrl ?? "");
-  const item = await createLibraryItem({
-    itemType: result.type === "image" || result.type === "video" || result.type === "audio" ? result.type : "document",
-    source: "work_automation_skill",
-    title: context.title,
-    description: text || buildExecutionPrompt(context),
-    status: "ready",
-    visibility: "private",
-    metadata: buildAutomationArtifactMetadata({
-      tenantId: context.tenantId,
-      caseId: context.caseId,
-      runId: context.runId,
-      stepKey: context.stepKey,
-      routeSurface: context.route.surface,
-      policy,
-      adapterKind: "skill",
-      extra: {
-        skillId: skill.id,
-        executionMode: skill.executionMode ?? null,
-        resultType: result.type,
-        result: {
-          success: result.success,
-          creditsUsed: result.creditsUsed ?? 0,
-          taskId: result.taskId ?? null,
-          isAsync: result.isAsync ?? false,
+  const text = normalizeText(
+    result.message ?? result.error ?? result.resultUrl ?? ""
+  );
+  const item = await createLibraryItem(
+    {
+      itemType:
+        result.type === "image" ||
+        result.type === "video" ||
+        result.type === "audio"
+          ? result.type
+          : "document",
+      source: "work_automation_skill",
+      title: context.title,
+      description: text || buildExecutionPrompt(context),
+      status: "ready",
+      visibility: "private",
+      metadata: buildAutomationArtifactMetadata({
+        tenantId: context.tenantId,
+        caseId: context.caseId,
+        runId: context.runId,
+        stepKey: context.stepKey,
+        routeSurface: context.route.surface,
+        policy,
+        adapterKind: "skill",
+        extra: {
+          skillId: skill.id,
+          executionMode: skill.executionMode ?? null,
+          resultType: result.type,
+          result: {
+            success: result.success,
+            creditsUsed: result.creditsUsed ?? 0,
+            taskId: result.taskId ?? null,
+            isAsync: result.isAsync ?? false,
+          },
         },
+      }),
+      sourceLink: {
+        linkType: "work_automation_step",
+        linkId: `${context.runId}:${context.stepKey}`,
+        providerTaskId: result.taskId ?? null,
       },
-    }),
-    sourceLink: {
-      linkType: "work_automation_step",
-      linkId: `${context.runId}:${context.stepKey}`,
-      providerTaskId: result.taskId ?? null,
     },
-  }, buildActor(context.tenantId, context.actorUserId));
+    buildActor(context.tenantId, context.actorUserId)
+  );
 
   const outputRefs = [
     buildOutputRef("library-item", item.item.id),
@@ -447,131 +502,65 @@ async function executeSkillStep(context: StepExecutionContext, policy: WorkAutom
     },
     libraryItemId: item.item.id,
     deckId: null,
-    agencyRunId: null,
     skillId: skill.id,
   };
 }
 
-async function executeAgencyStep(context: StepExecutionContext, policy: WorkAutomationLaunchPolicy): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
-  const agencyId = normalizeText(context.agencyId);
-  if (!agencyId) {
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Agency step ${context.stepKey} requires an agencyId`,
-    });
-  }
-
-  const result = await agencyBridge.executeRun({
-    agencyId,
-    conversationId: normalizeText(context.agencyConversationId) || `${context.runId}:${context.stepKey}`,
-    message: normalizeText(context.prompt) || normalizeText(context.objective) || context.title,
-    userToken: context.userToken,
-    tenantId: context.tenantId,
-    userId: context.actorUserId,
-    taskMetadata: {
-      source: "work_automation",
-      caseId: context.caseId,
-      runId: context.runId,
-      stepKey: context.stepKey,
-      templateKey: policy.templateKey,
-      templateFamily: policy.templateFamily,
-    } as any,
-    recipientAgent: normalizeText(context.agencyRecipientAgent) || undefined,
-    additionalInstructions: normalizeText(context.agencyAdditionalInstructions) || undefined,
-  });
-
-  const item = await createLibraryItem({
-    itemType: "document",
-    source: "work_automation_agency",
-    title: context.title,
-    description: normalizeText(result.response) || normalizeText(context.objective) || context.title,
-    status: "ready",
-    visibility: "private",
-    metadata: buildAutomationArtifactMetadata({
-      tenantId: context.tenantId,
-      caseId: context.caseId,
-      runId: context.runId,
-      stepKey: context.stepKey,
-      routeSurface: context.route.surface,
-      policy,
-      adapterKind: "agency",
-      extra: {
-        agencyId,
-        agencyRunId: result.runId,
-        structuredResult: result.structuredResult,
-        hybridSummary: result.hybridSummary,
-        previewArtifacts: result.previewArtifacts,
-      },
-    }),
-    sourceLink: {
-      linkType: "work_automation_step",
-      linkId: `${context.runId}:${context.stepKey}`,
-      providerTaskId: result.runId,
-    },
-  }, buildActor(context.tenantId, context.actorUserId));
-
-  const outputRefs = [
-    buildOutputRef("library-item", item.item.id),
-    buildOutputRef("agency-run", result.runId),
-  ].filter(Boolean) as string[];
-
-  return {
-    surface: context.route.surface,
-    outputRefsJson: outputRefs,
-    adapterKind: "agency",
-    adapterDetail: {
-      agencyId,
-      agencyRunId: result.runId,
-      status: result.status,
-      creditsUsed: result.creditsUsed,
-    },
-    libraryItemId: item.item.id,
-    deckId: null,
-    agencyRunId: result.runId,
-    skillId: null,
-  };
-}
-
-async function executeDocumentStep(context: StepExecutionContext, policy: WorkAutomationLaunchPolicy): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
-  const libraryType = normalizeText(context.libraryItemType) || (context.stepKey === "storyboard" ? "presentation" : "document");
-  const librarySource = normalizeText(context.librarySource) || "work_automation";
+async function executeDocumentStep(
+  context: StepExecutionContext,
+  policy: WorkAutomationLaunchPolicy
+): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
+  const libraryType =
+    normalizeText(context.libraryItemType) ||
+    (context.stepKey === "storyboard" ? "presentation" : "document");
+  const librarySource =
+    normalizeText(context.librarySource) || "work_automation";
   const title = normalizeText(context.libraryTitle) || context.title;
-  const description = normalizeText(context.prompt) || normalizeText(context.objective) || context.title;
+  const description =
+    normalizeText(context.prompt) ||
+    normalizeText(context.objective) ||
+    context.title;
 
-  const item = await createLibraryItem({
-    itemType: libraryType,
-    source: librarySource,
-    title,
-    description,
-    status: "ready",
-    visibility: "private",
-    metadata: buildAutomationArtifactMetadata({
-      tenantId: context.tenantId,
-      caseId: context.caseId,
-      runId: context.runId,
-      stepKey: context.stepKey,
-      routeSurface: context.route.surface,
-      policy,
-      adapterKind: "document",
-      extra: {
-        source: librarySource,
-        itemType: libraryType,
+  const item = await createLibraryItem(
+    {
+      itemType: libraryType,
+      source: librarySource,
+      title,
+      description,
+      status: "ready",
+      visibility: "private",
+      metadata: buildAutomationArtifactMetadata({
+        tenantId: context.tenantId,
+        caseId: context.caseId,
+        runId: context.runId,
+        stepKey: context.stepKey,
+        routeSurface: context.route.surface,
+        policy,
+        adapterKind: "document",
+        extra: {
+          source: librarySource,
+          itemType: libraryType,
+        },
+      }),
+      sourceLink: {
+        linkType: "work_automation_step",
+        linkId: `${context.runId}:${context.stepKey}`,
+        providerTaskId: null,
       },
-    }),
-    sourceLink: {
-      linkType: "work_automation_step",
-      linkId: `${context.runId}:${context.stepKey}`,
-      providerTaskId: null,
     },
-  }, buildActor(context.tenantId, context.actorUserId));
+    buildActor(context.tenantId, context.actorUserId)
+  );
 
   let deckId: number | null = null;
   if (context.stepKey === "storyboard" || libraryType === "presentation") {
-    const deck = await createPresentationDeckForLibraryItem({
-      libraryItemId: item.item.id,
-      title,
-      description,
-    }, buildActor(context.tenantId, context.actorUserId));
+    const deck = await createPresentationDeckForLibraryItem(
+      {
+        libraryItemId: item.item.id,
+        title,
+        description,
+      },
+      buildActor(context.tenantId, context.actorUserId)
+    );
     deckId = deck.deck.id;
   }
 
@@ -591,18 +580,22 @@ async function executeDocumentStep(context: StepExecutionContext, policy: WorkAu
     },
     libraryItemId: item.item.id,
     deckId,
-    agencyRunId: null,
     skillId: null,
   };
 }
 
-async function executeMediaStep(context: StepExecutionContext, policy: WorkAutomationLaunchPolicy, mediaType: "image" | "video"): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
+async function executeMediaStep(
+  context: StepExecutionContext,
+  policy: WorkAutomationLaunchPolicy,
+  mediaType: "image" | "video"
+): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
   const prompt = buildExecutionPrompt(context);
   const commonRequest = {
     prompt,
-    model: mediaType === "image"
-      ? normalizeText(context.mediaModel) || undefined
-      : normalizeText(context.videoModel) || undefined,
+    model:
+      mediaType === "image"
+        ? normalizeText(context.mediaModel) || undefined
+        : normalizeText(context.videoModel) || undefined,
     aspectRatio: normalizeText(context.aspectRatio) || undefined,
     publicUrl: context.publicUrl ?? undefined,
     referenceImageUrls: context.referenceImageUrls ?? undefined,
@@ -616,16 +609,26 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
     },
   } as const;
 
-  const response = mediaType === "image"
-    ? await mediaGenerationService.generateImage({
-        ...commonRequest,
-        size: normalizeText(context.size) || undefined,
-      } as any, context.userToken)
-    : await mediaGenerationService.generateVideo({
-        ...commonRequest,
-        duration: typeof context.duration === "number" ? context.duration : undefined,
-        referenceVideoUrls: context.referenceVideoUrls ?? undefined,
-      } as any, context.userToken);
+  const response =
+    mediaType === "image"
+      ? await mediaGenerationService.generateImage(
+          {
+            ...commonRequest,
+            size: normalizeText(context.size) || undefined,
+          } as any,
+          context.userToken
+        )
+      : await mediaGenerationService.generateVideo(
+          {
+            ...commonRequest,
+            duration:
+              typeof context.duration === "number"
+                ? context.duration
+                : undefined,
+            referenceVideoUrls: context.referenceVideoUrls ?? undefined,
+          } as any,
+          context.userToken
+        );
 
   const durableResponse = await durabilizeMediaGenerationResponse(response, {
     tenantId: context.tenantId,
@@ -635,37 +638,40 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
   });
   const firstResult = durableResponse.data[0] ?? null;
   const sourceUrl = firstResult?.url ?? null;
-  const item = await createLibraryItem({
-    itemType: mediaType,
-    source: `work_automation_${mediaType}`,
-    title: context.title,
-    description: prompt,
-    status: "ready",
-    visibility: "private",
-    metadata: buildAutomationArtifactMetadata({
-      tenantId: context.tenantId,
-      caseId: context.caseId,
-      runId: context.runId,
-      stepKey: context.stepKey,
-      routeSurface: context.route.surface,
-      policy,
-      adapterKind: mediaType,
-      extra: {
-        mediaType,
-        model: durableResponse.model,
-        creditsUsed: durableResponse.creditsUsed,
-        creditsBalance: response.creditsBalance,
-        mediaResult: firstResult,
+  const item = await createLibraryItem(
+    {
+      itemType: mediaType,
+      source: `work_automation_${mediaType}`,
+      title: context.title,
+      description: prompt,
+      status: "ready",
+      visibility: "private",
+      metadata: buildAutomationArtifactMetadata({
+        tenantId: context.tenantId,
+        caseId: context.caseId,
+        runId: context.runId,
+        stepKey: context.stepKey,
+        routeSurface: context.route.surface,
+        policy,
+        adapterKind: mediaType,
+        extra: {
+          mediaType,
+          model: durableResponse.model,
+          creditsUsed: durableResponse.creditsUsed,
+          creditsBalance: response.creditsBalance,
+          mediaResult: firstResult,
+        },
+      }),
+      sourceUrl,
+      thumbnailUrl: mediaType === "image" ? sourceUrl : null,
+      sourceLink: {
+        linkType: "work_automation_step",
+        linkId: `${context.runId}:${context.stepKey}`,
+        providerTaskId: firstResult?.id ?? null,
       },
-    }),
-    sourceUrl,
-    thumbnailUrl: mediaType === "image" ? sourceUrl : null,
-    sourceLink: {
-      linkType: "work_automation_step",
-      linkId: `${context.runId}:${context.stepKey}`,
-      providerTaskId: firstResult?.id ?? null,
     },
-  }, buildActor(context.tenantId, context.actorUserId));
+    buildActor(context.tenantId, context.actorUserId)
+  );
 
   const outputRefs = [
     buildOutputRef("library-item", item.item.id),
@@ -684,12 +690,14 @@ async function executeMediaStep(context: StepExecutionContext, policy: WorkAutom
     },
     libraryItemId: item.item.id,
     deckId: null,
-    agencyRunId: null,
     skillId: null,
   };
 }
 
-async function executeBrowserStep(context: StepExecutionContext, policy: WorkAutomationLaunchPolicy): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
+async function executeBrowserStep(
+  context: StepExecutionContext,
+  policy: WorkAutomationLaunchPolicy
+): Promise<Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint">> {
   const taskId = `${context.runId}:${context.stepKey}`;
   const executionId = `${context.runId}:${context.stepKey}:browser`;
   const intentJson = JSON.stringify({
@@ -732,21 +740,23 @@ async function executeBrowserStep(context: StepExecutionContext, policy: WorkAut
     },
     libraryItemId: null,
     deckId: null,
-    agencyRunId: null,
     skillId: null,
   };
 }
 
-export async function executeAutomationStep(input: ExecuteAutomationStepInput): Promise<ExecuteAutomationStepResult> {
-  const { projection, runProjection, policy, route } = await loadPolicyProjection(input);
+export async function executeAutomationStep(
+  input: ExecuteAutomationStepInput
+): Promise<ExecuteAutomationStepResult> {
+  const { projection, runProjection, policy, route } =
+    await loadPolicyProjection(input);
   const cacheKey = buildIdempotencyCacheKey(input);
   if (cacheKey && AUTOMATION_STEP_IDEMPOTENCY_CACHE.has(cacheKey)) {
     return AUTOMATION_STEP_IDEMPOTENCY_CACHE.get(cacheKey)!;
   }
-  const requiresUserToken = route.surface === "skill"
-    || route.surface === "agency"
-    || route.surface === "media_studio"
-    || route.surface === "video_editor";
+  const requiresUserToken =
+    route.surface === "skill" ||
+    route.surface === "media_studio" ||
+    route.surface === "video_editor";
   if (requiresUserToken && !normalizeText(input.userToken)) {
     throw new TRPCError({
       code: "BAD_REQUEST",
@@ -754,13 +764,19 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     });
   }
   const existingStep = input.idempotencyKey
-    ? runProjection.steps.find((step) => step.idempotencyKey === input.idempotencyKey && step.stepKey === input.stepKey)
+    ? runProjection.steps.find(
+        step =>
+          step.idempotencyKey === input.idempotencyKey &&
+          step.stepKey === input.stepKey
+      )
     : null;
   if (existingStep) {
     const replayResult = buildReplayResultFromExistingStep(
       existingStep,
       runProjection.run,
-      runProjection.checkpoints.find((checkpoint) => checkpoint.stepKey === input.stepKey) ?? null,
+      runProjection.checkpoints.find(
+        checkpoint => checkpoint.stepKey === input.stepKey
+      ) ?? null
     );
     if (cacheKey) {
       AUTOMATION_STEP_IDEMPOTENCY_CACHE.set(cacheKey, replayResult);
@@ -769,7 +785,10 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
   }
   if (route.surface === "browser") {
     const browserTaskId = browserTaskIdForStep(input);
-    const existingBrowserClaim = await getBrowserAutomationTaskClaimByTaskId(input.tenantId, browserTaskId);
+    const existingBrowserClaim = await getBrowserAutomationTaskClaimByTaskId(
+      input.tenantId,
+      browserTaskId
+    );
     if (existingBrowserClaim) {
       throw new TRPCError({
         code: "CONFLICT",
@@ -786,7 +805,11 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     stepIndex: input.stepIndex,
     title: input.title,
     objective: normalizeText(input.objective),
-    prompt: normalizeText(input.prompt) || normalizeText(input.objective) || projection.case.summary || projection.case.title,
+    prompt:
+      normalizeText(input.prompt) ||
+      normalizeText(input.objective) ||
+      projection.case.summary ||
+      projection.case.title,
     route,
     policy,
     actorUserId: input.actorUserId,
@@ -796,10 +819,6 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     idempotencyKey: input.idempotencyKey ?? null,
     inputRefsJson: input.inputRefsJson ?? [],
     skillId: input.skillId ?? null,
-    agencyId: input.agencyId ?? null,
-    agencyConversationId: input.agencyConversationId ?? null,
-    agencyRecipientAgent: input.agencyRecipientAgent ?? null,
-    agencyAdditionalInstructions: input.agencyAdditionalInstructions ?? null,
     libraryItemType: input.libraryItemType ?? null,
     librarySource: input.librarySource ?? null,
     libraryTitle: input.libraryTitle ?? null,
@@ -813,10 +832,18 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
   };
 
   let checkpoint: ExecuteAutomationStepResult["checkpoint"] = null;
-  let adapterResult: Omit<ExecuteAutomationStepResult, "run" | "step" | "checkpoint"> | null = null;
+  let adapterResult: Omit<
+    ExecuteAutomationStepResult,
+    "run" | "step" | "checkpoint"
+  > | null = null;
   let finalStatus: WorkAutomationExecutionStatus = "succeeded";
-  let runStatus: "running" | "waiting_for_approval" | "waiting_for_input" | "completed" = "running";
-  let summary = normalizeText(input.prompt) || normalizeText(input.objective) || input.title;
+  let runStatus:
+    "running" | "waiting_for_approval" | "waiting_for_input" | "completed" =
+    "running";
+  let summary =
+    normalizeText(input.prompt) ||
+    normalizeText(input.objective) ||
+    input.title;
   let finalDisposition: string | null = null;
   let finalDispositionReason: string | null = null;
   let outputRefs: string[] = [];
@@ -824,37 +851,42 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
 
   try {
     if (route.requiresApproval || route.surface === "manual") {
-      const checkpointRecord = await automationFabricService.recordAutomationCheckpoint({
-        tenantId: input.tenantId,
-        caseId: input.caseId,
-        runId: input.runId,
-        stepKey: input.stepKey,
-        checkpointKey: route.checkpointKey ?? `${input.stepKey}-approval`,
-        resumeCursor: `${input.runId}:${input.stepKey}`,
-        approvalState: input.approvalState ?? "pending",
-        checkpointStatus: input.approvalState === "approved" ? "approved" : "open",
-        editSnapshotRefsJson: input.inputRefsJson ?? [],
-        snapshotJson: {
-          route: {
-            stepKey: route.stepKey,
+      const checkpointRecord =
+        await automationFabricService.recordAutomationCheckpoint({
+          tenantId: input.tenantId,
+          caseId: input.caseId,
+          runId: input.runId,
+          stepKey: input.stepKey,
+          checkpointKey: route.checkpointKey ?? `${input.stepKey}-approval`,
+          resumeCursor: `${input.runId}:${input.stepKey}`,
+          approvalState: input.approvalState ?? "pending",
+          checkpointStatus:
+            input.approvalState === "approved" ? "approved" : "open",
+          editSnapshotRefsJson: input.inputRefsJson ?? [],
+          snapshotJson: {
+            route: {
+              stepKey: route.stepKey,
+              surface: route.surface,
+              checkpointKey: route.checkpointKey,
+              requiresApproval: route.requiresApproval,
+            },
+            input: {
+              prompt: executionContext.prompt,
+              objective: executionContext.objective,
+              title: executionContext.title,
+            },
+          },
+          detailJson: {
+            reason: route.requiresApproval
+              ? "approval_required"
+              : "manual_surface",
             surface: route.surface,
-            checkpointKey: route.checkpointKey,
-            requiresApproval: route.requiresApproval,
           },
-          input: {
-            prompt: executionContext.prompt,
-            objective: executionContext.objective,
-            title: executionContext.title,
-          },
-        },
-        detailJson: {
-          reason: route.requiresApproval ? "approval_required" : "manual_surface",
-          surface: route.surface,
-        },
-        requestedByUserId: input.actorUserId,
-        approvedByUserId: input.approvalState === "approved" ? input.actorUserId : null,
-        actorAssistantId: input.actorAssistantId ?? null,
-      });
+          requestedByUserId: input.actorUserId,
+          approvedByUserId:
+            input.approvalState === "approved" ? input.actorUserId : null,
+          actorAssistantId: input.actorAssistantId ?? null,
+        });
       checkpoint = checkpointRecord.checkpoint;
 
       if (input.approvalState !== "approved" && route.surface === "manual") {
@@ -866,7 +898,7 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           route,
           checkpoint,
           summary,
-          cacheKey,
+          cacheKey
         );
       }
 
@@ -879,7 +911,7 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           route,
           checkpoint,
           summary,
-          cacheKey,
+          cacheKey
         );
       }
     }
@@ -887,7 +919,11 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     if (route.surface === "manual") {
       adapterResult = {
         surface: route.surface,
-        outputRefsJson: checkpoint ? [buildOutputRef("automation-checkpoint", checkpoint.id)].filter(Boolean) as string[] : [],
+        outputRefsJson: checkpoint
+          ? ([buildOutputRef("automation-checkpoint", checkpoint.id)].filter(
+              Boolean
+            ) as string[])
+          : [],
         adapterKind: "manual",
         adapterDetail: {
           approved: input.approvalState === "approved",
@@ -896,13 +932,10 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
         },
         libraryItemId: null,
         deckId: null,
-        agencyRunId: null,
         skillId: null,
       };
     } else if (route.surface === "skill") {
       adapterResult = await executeSkillStep(executionContext, policy);
-    } else if (route.surface === "agency") {
-      adapterResult = await executeAgencyStep(executionContext, policy);
     } else if (route.surface === "document_management") {
       adapterResult = await executeDocumentStep(executionContext, policy);
     } else if (route.surface === "media_studio") {
@@ -947,7 +980,10 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           tenantId: input.tenantId,
           claimId: browserClaim.claim.id,
           status: "failed",
-          errorMessage: error instanceof Error ? error.message : "Browser automation enqueue failed",
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Browser automation enqueue failed",
           detailJson: {
             ...(browserClaim.claim.detailJson ?? {}),
             enqueueFailed: true,
@@ -959,54 +995,68 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       browserQueued = true;
       finalDisposition = "queued";
       outputRefs = adapterResult.outputRefsJson;
-      const browserStepRecord = await automationFabricService.recordAutomationRunStepProgress({
-        tenantId: input.tenantId,
-        caseId: input.caseId,
-        runId: input.runId,
-        stepKey: input.stepKey,
-        stepIndex: input.stepIndex,
-        title: input.title,
-        status: "running",
-        riskTier: route.riskTier,
-        surface: route.surface,
-        inputRefsJson: input.inputRefsJson ?? [],
-        outputRefsJson: adapterResult.outputRefsJson,
-        idempotencyKey: input.idempotencyKey ?? null,
-        summary: "Browser automation queued",
-        detailJson: {
-          route: {
-            stepKey: route.stepKey,
-            surface: route.surface,
-            checkpointKey: route.checkpointKey,
-            requiresApproval: route.requiresApproval,
+      const browserStepRecord =
+        await automationFabricService.recordAutomationRunStepProgress({
+          tenantId: input.tenantId,
+          caseId: input.caseId,
+          runId: input.runId,
+          stepKey: input.stepKey,
+          stepIndex: input.stepIndex,
+          title: input.title,
+          status: "running",
+          riskTier: route.riskTier,
+          surface: route.surface,
+          inputRefsJson: input.inputRefsJson ?? [],
+          outputRefsJson: adapterResult.outputRefsJson,
+          idempotencyKey: input.idempotencyKey ?? null,
+          summary: "Browser automation queued",
+          detailJson: {
+            route: {
+              stepKey: route.stepKey,
+              surface: route.surface,
+              checkpointKey: route.checkpointKey,
+              requiresApproval: route.requiresApproval,
+            },
+            adapterKind: adapterResult.adapterKind,
+            adapterDetail: adapterResult.adapterDetail,
+            checkpointId: checkpoint?.id ?? null,
+            browserClaimId: browserClaim.claim.id,
+            browserTaskId,
+            browserExecutionId,
           },
-          adapterKind: adapterResult.adapterKind,
-          adapterDetail: adapterResult.adapterDetail,
-          checkpointId: checkpoint?.id ?? null,
-          browserClaimId: browserClaim.claim.id,
-          browserTaskId,
-          browserExecutionId,
-        },
-        runStatus,
-        finalDisposition,
-        finalDispositionReason,
-        createdByUserId: input.actorUserId,
-        createdByAssistantId: input.actorAssistantId ?? null,
-      });
+          runStatus,
+          finalDisposition,
+          finalDispositionReason,
+          createdByUserId: input.actorUserId,
+          createdByAssistantId: input.actorAssistantId ?? null,
+        });
 
       await updateBrowserAutomationTaskClaim({
         tenantId: input.tenantId,
         claimId: browserClaim.claim.id,
         status: "queued",
-        taskId: adapterResult.adapterDetail && typeof adapterResult.adapterDetail === "object"
-          ? String((adapterResult.adapterDetail as Record<string, unknown>).taskId ?? browserTaskId)
-          : browserTaskId,
-        executionId: adapterResult.adapterDetail && typeof adapterResult.adapterDetail === "object"
-          ? String((adapterResult.adapterDetail as Record<string, unknown>).executionId ?? browserExecutionId)
-          : browserExecutionId,
-        reservationId: adapterResult.adapterDetail && typeof adapterResult.adapterDetail === "object"
-          ? (adapterResult.adapterDetail as Record<string, unknown>).reservationId as string | null | undefined
-          : null,
+        taskId:
+          adapterResult.adapterDetail &&
+          typeof adapterResult.adapterDetail === "object"
+            ? String(
+                (adapterResult.adapterDetail as Record<string, unknown>)
+                  .taskId ?? browserTaskId
+              )
+            : browserTaskId,
+        executionId:
+          adapterResult.adapterDetail &&
+          typeof adapterResult.adapterDetail === "object"
+            ? String(
+                (adapterResult.adapterDetail as Record<string, unknown>)
+                  .executionId ?? browserExecutionId
+              )
+            : browserExecutionId,
+        reservationId:
+          adapterResult.adapterDetail &&
+          typeof adapterResult.adapterDetail === "object"
+            ? ((adapterResult.adapterDetail as Record<string, unknown>)
+                .reservationId as string | null | undefined)
+            : null,
         stepId: browserStepRecord.step.id,
         inputRefsJson: input.inputRefsJson ?? [],
         outputRefsJson: adapterResult.outputRefsJson,
@@ -1016,9 +1066,12 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
           browserStepId: browserStepRecord.step.id,
           browserTaskId,
           browserExecutionId,
-          browserReservationId: adapterResult.adapterDetail && typeof adapterResult.adapterDetail === "object"
-            ? (adapterResult.adapterDetail as Record<string, unknown>).reservationId ?? null
-            : null,
+          browserReservationId:
+            adapterResult.adapterDetail &&
+            typeof adapterResult.adapterDetail === "object"
+              ? ((adapterResult.adapterDetail as Record<string, unknown>)
+                  .reservationId ?? null)
+              : null,
         },
         nextPollAt: new Date(Date.now() + 15_000),
         pollCount: 0,
@@ -1040,7 +1093,6 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
         },
         libraryItemId: null,
         deckId: null,
-        agencyRunId: null,
         skillId: null,
       };
       if (cacheKey) {
@@ -1048,41 +1100,49 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       }
       return browserResult;
     } else if (route.surface === "work_os") {
-      const item = await createLibraryItem({
-        itemType: normalizeText(input.libraryItemType) || "document",
-        source: normalizeText(input.librarySource) || "work_automation_export",
-        title: normalizeText(input.libraryTitle) || input.title,
-        description: normalizeText(input.prompt) || normalizeText(input.objective) || input.title,
-        status: "ready",
-        visibility: "private",
-        metadata: buildAutomationArtifactMetadata({
-          tenantId: input.tenantId,
-          caseId: input.caseId,
-          runId: input.runId,
-          stepKey: input.stepKey,
-          routeSurface: route.surface,
-          policy,
-          adapterKind: "work_os",
-          extra: {
-            export: true,
+      const item = await createLibraryItem(
+        {
+          itemType: normalizeText(input.libraryItemType) || "document",
+          source:
+            normalizeText(input.librarySource) || "work_automation_export",
+          title: normalizeText(input.libraryTitle) || input.title,
+          description:
+            normalizeText(input.prompt) ||
+            normalizeText(input.objective) ||
+            input.title,
+          status: "ready",
+          visibility: "private",
+          metadata: buildAutomationArtifactMetadata({
+            tenantId: input.tenantId,
+            caseId: input.caseId,
+            runId: input.runId,
+            stepKey: input.stepKey,
+            routeSurface: route.surface,
+            policy,
+            adapterKind: "work_os",
+            extra: {
+              export: true,
+            },
+          }),
+          sourceLink: {
+            linkType: "work_automation_step",
+            linkId: `${input.runId}:${input.stepKey}`,
+            providerTaskId: null,
           },
-        }),
-        sourceLink: {
-          linkType: "work_automation_step",
-          linkId: `${input.runId}:${input.stepKey}`,
-          providerTaskId: null,
         },
-      }, buildActor(input.tenantId, input.actorUserId));
+        buildActor(input.tenantId, input.actorUserId)
+      );
       adapterResult = {
         surface: route.surface,
-        outputRefsJson: [buildOutputRef("library-item", item.item.id)].filter(Boolean) as string[],
+        outputRefsJson: [buildOutputRef("library-item", item.item.id)].filter(
+          Boolean
+        ) as string[],
         adapterKind: "work_os",
         adapterDetail: {
           itemId: item.item.id,
         },
         libraryItemId: item.item.id,
         deckId: null,
-        agencyRunId: null,
         skillId: null,
       };
       finalDisposition = "exported";
@@ -1094,9 +1154,19 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     }
 
     outputRefs = adapterResult.outputRefsJson;
-    summary = normalizeText(input.prompt) || normalizeText(input.objective) || input.title;
-    if (route.surface === "skill" && adapterResult.adapterDetail && typeof adapterResult.adapterDetail === "object") {
-      const skillDetail = adapterResult.adapterDetail as Record<string, unknown>;
+    summary =
+      normalizeText(input.prompt) ||
+      normalizeText(input.objective) ||
+      input.title;
+    if (
+      route.surface === "skill" &&
+      adapterResult.adapterDetail &&
+      typeof adapterResult.adapterDetail === "object"
+    ) {
+      const skillDetail = adapterResult.adapterDetail as Record<
+        string,
+        unknown
+      >;
       summary = normalizeText(String(skillDetail.resultType ?? "")) || summary;
     }
 
@@ -1104,42 +1174,43 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       finalStatus = "succeeded";
       runStatus = "running";
       finalDispositionReason = null;
-      const recordedBrowser = await automationFabricService.recordAutomationRunStepProgress({
-        tenantId: input.tenantId,
-        caseId: input.caseId,
-        runId: input.runId,
-        stepKey: input.stepKey,
-        stepIndex: input.stepIndex,
-        title: input.title,
-        status: "running",
-        surface: route.surface,
-        inputRefsJson: input.inputRefsJson ?? [],
-        outputRefsJson: outputRefs,
-        idempotencyKey: input.idempotencyKey ?? null,
-        summary: "Browser automation queued",
-        detailJson: {
-          route: {
-            stepKey: route.stepKey,
-            surface: route.surface,
-            checkpointKey: route.checkpointKey,
-            requiresApproval: route.requiresApproval,
+      const recordedBrowser =
+        await automationFabricService.recordAutomationRunStepProgress({
+          tenantId: input.tenantId,
+          caseId: input.caseId,
+          runId: input.runId,
+          stepKey: input.stepKey,
+          stepIndex: input.stepIndex,
+          title: input.title,
+          status: "running",
+          surface: route.surface,
+          inputRefsJson: input.inputRefsJson ?? [],
+          outputRefsJson: outputRefs,
+          idempotencyKey: input.idempotencyKey ?? null,
+          summary: "Browser automation queued",
+          detailJson: {
+            route: {
+              stepKey: route.stepKey,
+              surface: route.surface,
+              checkpointKey: route.checkpointKey,
+              requiresApproval: route.requiresApproval,
+            },
+            adapterKind: adapterResult.adapterKind,
+            adapterDetail: adapterResult.adapterDetail,
+            checkpointId: checkpoint?.id ?? null,
+            verificationPolicy: buildStepVerificationDetail({
+              route,
+              approvalState: input.approvalState ?? "approved",
+            }),
+            verificationResult: "passed",
+            verificationEvidenceRefs: outputRefs,
           },
-          adapterKind: adapterResult.adapterKind,
-          adapterDetail: adapterResult.adapterDetail,
-          checkpointId: checkpoint?.id ?? null,
-          verificationPolicy: buildStepVerificationDetail({
-            route,
-            approvalState: input.approvalState ?? "approved",
-          }),
-          verificationResult: "passed",
-          verificationEvidenceRefs: outputRefs,
-        },
-        runStatus,
-        finalDisposition,
-        finalDispositionReason,
-        createdByUserId: input.actorUserId,
-        createdByAssistantId: input.actorAssistantId ?? null,
-      });
+          runStatus,
+          finalDisposition,
+          finalDispositionReason,
+          createdByUserId: input.actorUserId,
+          createdByAssistantId: input.actorAssistantId ?? null,
+        });
 
       const browserResult: ExecuteAutomationStepResult = {
         run: recordedBrowser.run,
@@ -1151,7 +1222,6 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
         adapterDetail: adapterResult.adapterDetail,
         libraryItemId: null,
         deckId: null,
-        agencyRunId: null,
         skillId: null,
       };
       if (cacheKey) {
@@ -1166,7 +1236,8 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
   } catch (error) {
     runStatus = "running";
     finalDisposition = "failed";
-    finalDispositionReason = error instanceof Error ? error.message : "Automation step failed";
+    finalDispositionReason =
+      error instanceof Error ? error.message : "Automation step failed";
     await automationFabricService.recordAutomationRunStepProgress({
       tenantId: input.tenantId,
       caseId: input.caseId,
@@ -1202,49 +1273,52 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
       createdByAssistantId: input.actorAssistantId ?? null,
     });
 
-    throw error instanceof TRPCError ? error : new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: finalDispositionReason,
-    });
+    throw error instanceof TRPCError
+      ? error
+      : new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: finalDispositionReason,
+        });
   }
 
-  const recorded = await automationFabricService.recordAutomationRunStepProgress({
-    tenantId: input.tenantId,
-    caseId: input.caseId,
-    runId: input.runId,
-    stepKey: input.stepKey,
-    stepIndex: input.stepIndex,
-    title: input.title,
-    status: "succeeded",
-    riskTier: route.riskTier,
-    surface: route.surface,
-    inputRefsJson: input.inputRefsJson ?? [],
-    outputRefsJson: outputRefs,
-    idempotencyKey: input.idempotencyKey ?? null,
-    summary,
-    detailJson: {
-      route: {
-        stepKey: route.stepKey,
-        surface: route.surface,
-        checkpointKey: route.checkpointKey,
-        requiresApproval: route.requiresApproval,
+  const recorded =
+    await automationFabricService.recordAutomationRunStepProgress({
+      tenantId: input.tenantId,
+      caseId: input.caseId,
+      runId: input.runId,
+      stepKey: input.stepKey,
+      stepIndex: input.stepIndex,
+      title: input.title,
+      status: "succeeded",
+      riskTier: route.riskTier,
+      surface: route.surface,
+      inputRefsJson: input.inputRefsJson ?? [],
+      outputRefsJson: outputRefs,
+      idempotencyKey: input.idempotencyKey ?? null,
+      summary,
+      detailJson: {
+        route: {
+          stepKey: route.stepKey,
+          surface: route.surface,
+          checkpointKey: route.checkpointKey,
+          requiresApproval: route.requiresApproval,
+        },
+        adapterKind: adapterResult.adapterKind,
+        adapterDetail: adapterResult.adapterDetail,
+        checkpointId: checkpoint?.id ?? null,
+        verificationPolicy: buildStepVerificationDetail({
+          route,
+          approvalState: input.approvalState ?? "approved",
+        }),
+        verificationResult: "passed",
+        verificationEvidenceRefs: outputRefs,
       },
-      adapterKind: adapterResult.adapterKind,
-      adapterDetail: adapterResult.adapterDetail,
-      checkpointId: checkpoint?.id ?? null,
-      verificationPolicy: buildStepVerificationDetail({
-        route,
-        approvalState: input.approvalState ?? "approved",
-      }),
-      verificationResult: "passed",
-      verificationEvidenceRefs: outputRefs,
-    },
-    runStatus,
-    finalDisposition,
-    finalDispositionReason,
-    createdByUserId: input.actorUserId,
-    createdByAssistantId: input.actorAssistantId ?? null,
-  });
+      runStatus,
+      finalDisposition,
+      finalDispositionReason,
+      createdByUserId: input.actorUserId,
+      createdByAssistantId: input.actorAssistantId ?? null,
+    });
 
   const result: ExecuteAutomationStepResult = {
     run: recorded.run,
@@ -1256,7 +1330,6 @@ export async function executeAutomationStep(input: ExecuteAutomationStepInput): 
     adapterDetail: adapterResult.adapterDetail,
     libraryItemId: adapterResult.libraryItemId,
     deckId: adapterResult.deckId,
-    agencyRunId: adapterResult.agencyRunId,
     skillId: adapterResult.skillId,
   };
   if (cacheKey) {

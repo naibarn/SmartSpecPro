@@ -1,14 +1,13 @@
 /**
  * Pending Approval Daily Alert Job
  *
- * Sends a daily notification to all admin users when there are
- * items (Skills, Agencies, Workflow Templates) awaiting approval.
+ * Sends a daily notification to all admin users when Skills are awaiting approval.
  * Runs at 9 AM server time via setInterval.
  */
 
 import { eq, count } from "drizzle-orm";
 import { getDb } from "../db";
-import { skills, agencies, workflowTemplates, users } from "../../drizzle/schema";
+import { skills, users } from "../../drizzle/schema";
 import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const MS_PER_DAY = 86_400_000;
@@ -21,13 +20,8 @@ async function executePendingApprovalAlert(): Promise<void> {
   if (!db) return;
 
   const [skillRow] = await db.select({ cnt: count() }).from(skills).where(eq(skills.visibility, "pending_approval"));
-  const [agencyRow] = await db.select({ cnt: count() }).from(agencies).where(eq(agencies.visibility, "pending_approval"));
-  const [templateRow] = await db.select({ cnt: count() }).from(workflowTemplates).where(eq(workflowTemplates.status, "pending_review"));
-
   const s = Number(skillRow?.cnt ?? 0);
-  const a = Number(agencyRow?.cnt ?? 0);
-  const t = Number(templateRow?.cnt ?? 0);
-  const total = s + a + t;
+  const total = s;
 
   if (total === 0) {
     console.log("[approval-alert] No pending items, skipping notification");
@@ -37,8 +31,6 @@ async function executePendingApprovalAlert(): Promise<void> {
   // Build readable content
   const parts: string[] = [];
   if (s > 0) parts.push(`${s} skill${s !== 1 ? "s" : ""}`);
-  if (a > 0) parts.push(`${a} agenc${a !== 1 ? "ies" : "y"}`);
-  if (t > 0) parts.push(`${t} workflow template${t !== 1 ? "s" : ""}`);
 
   const content = `There are ${total} items awaiting your review: ${parts.join(", ")}. Visit Admin > Approvals to review.`;
 

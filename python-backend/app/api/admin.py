@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, text
+from sqlalchemy import select, func, desc, text, update
 from jose import jwt, JWTError
 
 logger = logging.getLogger(__name__)
@@ -29,7 +29,7 @@ from app.api.internal_library import (
     _merge_reindex_batch_outcome,
     _store_reindex_batch_metadata,
 )
-from app.models.library import LibraryIndexJob
+from app.models.library import LibraryBackfillCampaign, LibraryIndexJob
 from app.models.user import User
 from app.models.credit import CreditTransaction
 from app.models.payment import PaymentTransaction
@@ -37,6 +37,7 @@ from app.services.credit_service import CreditService
 from app.services.audit_service import AuditService
 from app.services.library_vector_observability_service import (
     build_admin_vector_health_snapshot,
+    build_indexing_status,
     build_provider_settings_diagnostics,
     evaluate_vector_alert_policies,
 )
@@ -45,7 +46,19 @@ from app.services.library_cutover_service import (
     apply_either_trigger_rollback,
     assert_config_edit_allowed,
     get_or_create_switch_state,
+    maybe_auto_promote_vectorize_cutover,
+    evaluate_server_vectorize_readiness,
     request_provider_cutover,
+)
+from app.services.library_backfill_service import (
+    create_backfill_campaign,
+    run_backfill_campaign_batch,
+)
+from app.services.library_indexing_service import resolve_library_vector_provider_from_db
+from app.services.embedding_service import CloudflareWorkersAIEmbedding
+from app.orchestrator.vector_store.cloudflare_vectorize_store import (
+    CloudflareVectorizeStore,
+    VectorizeConfig,
 )
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -244,11 +257,196 @@ class CutoverRollbackPayload(BaseModel):
     expected_version: Optional[int] = None
 
 
+class VectorBackfillCampaignPayload(BaseModel):
+    tenant_id: Optional[str] = None
+    domain: str = "library"
+    rebuild_from_canonical: bool = True
+
+
+class VectorBackfillBatchPayload(BaseModel):
+    campaign_id: int
+    batch_size: int = Field(default=100, ge=1, le=500)
+    max_enqueue: int = Field(default=25, ge=1, le=100)
+    dry_run: bool = True
+    paused: bool = False
+
+
+def _schedule_vector_db_backfill_campaign(campaign_id: int) -> bool:
+    """Start durable backfill processing without blocking the admin request."""
+    from app.tasks.vector_db_backfill_tasks import run_vector_db_backfill_campaign
+
+    run_vector_db_backfill_campaign.delay(int(campaign_id))
+    return True
+
+
+async def _reset_failed_vector_db_index_jobs_for_retry(db: AsyncSession) -> int:
+    """Requeue only credential-blocked backfill jobs after target repair."""
+    credential_blocked_errors = (
+        "Cloudflare Workers AI embedding credentials not configured",
+        "Cloudflare Workers AI embedding request failed",
+    )
+    result = await db.execute(
+        update(LibraryIndexJob)
+        .where(
+            LibraryIndexJob.status == "failed",
+            LibraryIndexJob.job_type == "backfill_index",
+            LibraryIndexJob.last_error.in_(credential_blocked_errors),
+        )
+        .values(
+            status="retry_pending",
+            next_retry_at=datetime.utcnow(),
+            completed_at=None,
+            last_error=None,
+            updated_at=datetime.utcnow(),
+        )
+        .returning(LibraryIndexJob.id)
+    )
+    await db.commit()
+    return len(result.fetchall())
+
+
+def _schedule_vector_db_index_retry() -> bool:
+    """Wake the existing bounded library-index retry worker immediately."""
+    from app.tasks.media_tasks import retry_library_index_jobs
+
+    retry_library_index_jobs.delay()
+    return True
+
+
 def _status_for_cutover_runtime_error(exc: RuntimeError) -> int:
     message = str(exc)
     if "switch_state_version_conflict" in message:
         return status.HTTP_409_CONFLICT
     return status.HTTP_400_BAD_REQUEST
+
+
+async def _probe_vectorize_cutover_target(
+    db: AsyncSession,
+    *,
+    tenant_id: str | None,
+) -> dict[str, Any]:
+    """Verify the saved Vectorize target before a cutover request is accepted."""
+    _active_provider, config = await resolve_library_vector_provider_from_db(
+        db,
+        tenant_id=tenant_id,
+    )
+    account_id = str(config.get("vectorizeAccountId") or "").strip()
+    api_token = str(config.get("vectorizeApiToken") or "").strip()
+    index_name = str(
+        config.get("vectorizeKnowledgeIndexName")
+        or config.get("vectorizeIndexName")
+        or ""
+    ).strip()
+    if not account_id or not api_token or not index_name:
+        raise RuntimeError("target_connectivity_check_failed:vectorize_config_incomplete")
+
+    store = CloudflareVectorizeStore(
+        VectorizeConfig(
+            account_id=account_id,
+            api_token=api_token,
+            index_name=index_name,
+        )
+    )
+    probe = await store.test_connection()
+    if not probe.get("success"):
+        raise RuntimeError("target_connectivity_check_failed:vectorize_probe_failed")
+
+    index_config = probe.get("config") if isinstance(probe.get("config"), dict) else {}
+    dimensions = int(index_config.get("dimensions") or 0)
+    metric = str(index_config.get("metric") or "").strip().lower()
+    if dimensions != 768 or metric != "cosine":
+        raise RuntimeError(
+            "target_connectivity_check_failed:vectorize_schema_mismatch"
+        )
+
+    embedding_token = str(
+        config.get("cloudflareAiApiKey")
+        or config.get("vectorizeApiToken")
+        or ""
+    ).strip()
+    if not embedding_token:
+        raise RuntimeError(
+            "target_connectivity_check_failed:workers_ai_embedding_credentials_missing"
+        )
+    try:
+        embedder = CloudflareWorkersAIEmbedding(
+            account_id=account_id,
+            api_token=embedding_token,
+        )
+        embedding = await asyncio.to_thread(
+            embedder.embed_text,
+            "SmartAIHub Vectorize readiness probe",
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise RuntimeError(
+            "target_connectivity_check_failed:workers_ai_embedding_probe_failed"
+        ) from exc
+    if len(embedding) != 768:
+        raise RuntimeError(
+            "target_connectivity_check_failed:workers_ai_embedding_schema_mismatch"
+        )
+
+    return {
+        "index_name": index_name,
+        "dimensions": dimensions,
+        "metric": metric,
+        "embedding_dimensions": len(embedding),
+    }
+
+
+@router.post("/vectordb/backfill/campaign")
+async def create_vectordb_backfill_campaign(
+    payload: VectorBackfillCampaignPayload,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a resumable canonical SQL/R2 rebuild campaign."""
+    try:
+        campaign = await create_backfill_campaign(
+            db,
+            domain=payload.domain,
+            tenant_id=payload.tenant_id,
+            rebuild_from_canonical=payload.rebuild_from_canonical,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return {
+        "campaign_id": int(campaign.id),
+        "tenant_id": campaign.tenant_id,
+        "domain": campaign.domain,
+        "status": campaign.status,
+        "rebuild_from_canonical": bool(
+            (campaign.checkpoint_json or {}).get("rebuild_from_canonical", False)
+        ),
+        "snapshot_id": (campaign.checkpoint_json or {}).get("snapshot_id"),
+        "source_high_water_mark": (campaign.checkpoint_json or {}).get("source_high_water_mark", 0),
+        "legacy_vector_values_read": 0,
+    }
+
+
+@router.post("/vectordb/backfill/campaign/batch")
+async def run_vectordb_backfill_campaign_batch(
+    payload: VectorBackfillBatchPayload,
+    request: Request,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Run one bounded campaign batch; repeat until the campaign is complete."""
+    try:
+        return await run_backfill_campaign_batch(
+            db,
+            campaign_id=payload.campaign_id,
+            batch_size=payload.batch_size,
+            max_enqueue=payload.max_enqueue,
+            dry_run=payload.dry_run,
+            paused=payload.paused,
+        )
+    except LookupError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 # ============================================================
@@ -953,20 +1151,135 @@ async def request_vectordb_provider_cutover(
     db: AsyncSession = Depends(get_db),
 ):
     """Request staged provider cutover with campaign/connectivity prechecks."""
-    try:
-        state = await request_provider_cutover(
-            db,
-            target_provider=payload.target_provider,
-            tenant_id=payload.tenant_id,
-            campaign_id=payload.campaign_id,
-            campaign_completed=payload.campaign_completed,
-            connectivity_ok=payload.connectivity_ok,
-            expected_version=payload.expected_version,
+    target_provider = str(payload.target_provider or "").strip().lower()
+    campaign_completed = bool(payload.campaign_completed)
+    connectivity_ok = bool(payload.connectivity_ok)
+    target_probe: dict[str, Any] | None = None
+    campaign_id = payload.campaign_id
+    campaign_was_created = False
+    cutover_was_already_staged = False
+    if target_provider == "cloudflare_vectorize":
+        try:
+            target_probe = await _probe_vectorize_cutover_target(
+                db,
+                tenant_id=payload.tenant_id,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+
+        current_state = await get_or_create_switch_state(db, tenant_id=payload.tenant_id)
+        if (
+            campaign_id is None
+            and current_state.target_provider == target_provider
+            and current_state.campaign_id is not None
+        ):
+            campaign_id = int(current_state.campaign_id)
+
+        campaign = None
+        if campaign_id is not None:
+            campaign = await db.scalar(
+                select(LibraryBackfillCampaign).where(
+                    LibraryBackfillCampaign.id == campaign_id,
+                    LibraryBackfillCampaign.tenant_id == payload.tenant_id,
+                    LibraryBackfillCampaign.domain == "library",
+                )
+            )
+        if campaign is None and campaign_id is None:
+            campaign = await create_backfill_campaign(
+                db,
+                domain="library",
+                tenant_id=payload.tenant_id,
+                rebuild_from_canonical=True,
+            )
+            campaign_id = int(campaign.id)
+            campaign_was_created = True
+        campaign_status = str(campaign.status).strip().lower() if campaign else ""
+        if campaign is None or campaign_status not in {"queued", "running", "paused", "completed"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="campaign_prerequisite_incomplete:campaign_not_ready",
+            )
+        # Requesting the staged state enables bounded mirror writes while
+        # pgvector remains authoritative. Automatic promotion waits for the
+        # target projection to be acknowledged by the registry.
+        campaign_completed = True
+        connectivity_ok = True
+        cutover_was_already_staged = (
+            current_state.status in {"active", "ready_for_cutover"}
+            and current_state.target_provider == target_provider
+            and current_state.campaign_id == campaign_id
         )
-    except RuntimeError as exc:
-        raise HTTPException(status_code=_status_for_cutover_runtime_error(exc), detail=str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if cutover_was_already_staged:
+        state = current_state
+    else:
+        try:
+            state = await request_provider_cutover(
+                db,
+                target_provider=target_provider,
+                tenant_id=payload.tenant_id,
+                campaign_id=campaign_id,
+                campaign_completed=campaign_completed,
+                connectivity_ok=connectivity_ok,
+                expected_version=payload.expected_version,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(status_code=_status_for_cutover_runtime_error(exc), detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    backfill_scheduled = False
+    failed_jobs_reset = 0
+    retry_scheduled = False
+    state_campaign_id = getattr(state, "campaign_id", None)
+    if (
+        target_provider == "cloudflare_vectorize"
+        and state_campaign_id is not None
+        and not cutover_was_already_staged
+    ):
+        try:
+            backfill_scheduled = _schedule_vector_db_backfill_campaign(int(state_campaign_id))
+        except Exception as exc:  # noqa: BLE001
+            # The cutover state remains durable and observable. A later retry
+            # from the UI can schedule the same idempotent campaign again.
+            logger.error(
+                "vector_db_backfill_schedule_failed",
+                campaign_id=state_campaign_id,
+                error=str(exc),
+            )
+    if target_provider == "cloudflare_vectorize" and cutover_was_already_staged:
+        try:
+            failed_jobs_reset = await _reset_failed_vector_db_index_jobs_for_retry(db)
+            if failed_jobs_reset:
+                retry_scheduled = _schedule_vector_db_index_retry()
+        except Exception as exc:  # noqa: BLE001
+            logger.error(
+                "vector_db_index_retry_schedule_failed",
+                error=str(exc),
+            )
+
+    auto_promotion: dict[str, Any] | None = None
+    if target_provider == "cloudflare_vectorize" and target_probe is not None:
+        # The request stages mirror writes while pgvector remains authoritative.
+        # If the campaign/projection gates are already complete, promote in the
+        # same request; otherwise the health/job completion hooks retry it.
+        try:
+            auto_promotion = await maybe_auto_promote_vectorize_cutover(
+                db,
+                tenant_id=payload.tenant_id,
+                target_index=target_probe["index_name"],
+                smoke_passed=True,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=_status_for_cutover_runtime_error(exc),
+                detail=str(exc),
+            ) from exc
+        if auto_promotion.get("cutover_applied"):
+            state = await get_or_create_switch_state(db, tenant_id=payload.tenant_id)
 
     return {
         "tenant_id": state.tenant_id,
@@ -977,6 +1290,14 @@ async def request_vectordb_provider_cutover(
         "target_provider": state.target_provider,
         "mirror_writes": bool(state.mirror_writes),
         "freeze_non_emergency_edits": bool(state.freeze_non_emergency_edits),
+        "automatic_promotion": auto_promotion,
+        "preparation": {
+            "campaign_id": int(state_campaign_id) if state_campaign_id is not None else None,
+            "campaign_created": campaign_was_created,
+            "backfill_scheduled": backfill_scheduled,
+            "failed_jobs_reset": failed_jobs_reset,
+            "retry_scheduled": retry_scheduled,
+        },
     }
 
 
@@ -988,12 +1309,60 @@ async def approve_vectordb_provider_cutover(
     db: AsyncSession = Depends(get_db),
 ):
     """Evaluate readiness gate and apply read-provider cutover when thresholds pass."""
+    state = await get_or_create_switch_state(db, tenant_id=payload.tenant_id)
+    if state.target_provider == "cloudflare_vectorize":
+        try:
+            target_probe = await _probe_vectorize_cutover_target(
+                db,
+                tenant_id=payload.tenant_id,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        if state.campaign_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="campaign_prerequisite_incomplete:campaign_id_required",
+            )
+        campaign = await db.scalar(
+            select(LibraryBackfillCampaign).where(
+                LibraryBackfillCampaign.id == state.campaign_id,
+                LibraryBackfillCampaign.tenant_id == payload.tenant_id,
+                LibraryBackfillCampaign.domain == "library",
+            )
+        )
+        if campaign is None or str(campaign.status).strip().lower() != "completed":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="campaign_prerequisite_incomplete:campaign_not_completed",
+            )
+
+        # Keep this endpoint backward-compatible for existing callers, but do
+        # not trust client-reported ratios. Automatic promotion uses the same
+        # server-measured evidence and therefore needs no manual approval.
+        try:
+            return await maybe_auto_promote_vectorize_cutover(
+                db,
+                tenant_id=payload.tenant_id,
+                target_index=target_probe["index_name"],
+                smoke_passed=True,
+            )
+        except RuntimeError as exc:
+            raise HTTPException(
+                status_code=_status_for_cutover_runtime_error(exc),
+                detail=str(exc),
+            ) from exc
+
     try:
         result = await approve_read_cutover(
             db,
             tenant_id=payload.tenant_id,
             coverage_ratio=payload.coverage_ratio,
-            smoke_passed=payload.smoke_passed,
+            # A successful server-side target probe is the smoke evidence for
+            # Vectorize; do not let the client assert it independently.
+            smoke_passed=True if state.target_provider == "cloudflare_vectorize" else payload.smoke_passed,
             parity_ratio=payload.parity_ratio,
             reconciliation_report=payload.reconciliation_report,
             expected_version=payload.expected_version,
@@ -1218,19 +1587,63 @@ async def get_vectordb_health(
 ):
     """Return vector provider, queue, campaign, and alert diagnostics for admin operations."""
     snapshot = await build_admin_vector_health_snapshot(db, tenant_id=tenant_id)
+    automatic_promotion: dict[str, Any] | None = None
+    snapshot_provider_status = dict(snapshot.get("provider_status") or {})
+    if (
+        str(snapshot_provider_status.get("switch_status") or "").strip().lower()
+        in {"active", "ready_for_cutover"}
+        and str(snapshot_provider_status.get("target_provider") or "").strip().lower()
+        == "cloudflare_vectorize"
+    ):
+        try:
+            target_probe = await _probe_vectorize_cutover_target(
+                db,
+                tenant_id=tenant_id,
+            )
+            automatic_promotion = await maybe_auto_promote_vectorize_cutover(
+                db,
+                tenant_id=tenant_id,
+                target_index=target_probe["index_name"],
+                smoke_passed=True,
+            )
+            if automatic_promotion.get("cutover_applied"):
+                snapshot = await build_admin_vector_health_snapshot(
+                    db,
+                    tenant_id=tenant_id,
+                )
+        except RuntimeError as exc:
+            # Health must remain observable when the external target is down;
+            # it must never promote based on a stale successful probe.
+            automatic_promotion = {
+                "cutover_applied": False,
+                "automatic": True,
+                "failed_checks": [str(exc)],
+            }
 
-    provider = snapshot["provider_status"]["current_read_provider"]
+    provider, resolved_config = await resolve_library_vector_provider_from_db(
+        db,
+        tenant_id=tenant_id,
+    )
+    snapshot = {
+        **snapshot,
+        "provider_status": {
+            **dict(snapshot.get("provider_status") or {}),
+            "current_read_provider": provider,
+        },
+    }
     provider_config: Dict[str, Any]
     provider_capabilities: Dict[str, Any]
     connection_health: Dict[str, Any]
 
     if provider == "pgvector":
         provider_config = {
-            "host": os.getenv("PGVECTOR_HOST"),
-            "port": os.getenv("PGVECTOR_PORT"),
-            "database": os.getenv("PGVECTOR_DATABASE"),
-            "user": os.getenv("PGVECTOR_USER"),
-            "password_configured": bool(os.getenv("PGVECTOR_PASSWORD")),
+            "host": resolved_config.get("pgvectorHost") or os.getenv("PGVECTOR_HOST"),
+            "port": resolved_config.get("pgvectorPort") or os.getenv("PGVECTOR_PORT"),
+            "database": resolved_config.get("pgvectorDatabase") or os.getenv("PGVECTOR_DATABASE"),
+            "user": resolved_config.get("pgvectorUser") or os.getenv("PGVECTOR_USER"),
+            "password_configured": bool(
+                resolved_config.get("pgvectorPassword") or os.getenv("PGVECTOR_PASSWORD")
+            ),
         }
         connection_health = {
             "healthy": bool(provider_config["host"] and provider_config["database"]),
@@ -1245,16 +1658,20 @@ async def get_vectordb_health(
     elif provider == "cloudflare_vectorize":
         provider_config = {
             "account_id_configured": bool(
-                os.getenv("VECTORIZE_ACCOUNT_ID")
+                resolved_config.get("vectorizeAccountId")
+                or os.getenv("VECTORIZE_ACCOUNT_ID")
                 or os.getenv("CF_ACCOUNT_ID")
                 or os.getenv("CLOUDFLARE_ACCOUNT_ID")
             ),
             "api_token_configured": bool(
-                os.getenv("VECTORIZE_API_TOKEN")
+                resolved_config.get("vectorizeApiToken")
+                or os.getenv("VECTORIZE_API_TOKEN")
                 or os.getenv("CF_VECTORIZE_API_TOKEN")
             ),
             "index_name": (
-                os.getenv("VECTORIZE_INDEX_NAME")
+                resolved_config.get("vectorizeKnowledgeIndexName")
+                or resolved_config.get("vectorizeIndexName")
+                or os.getenv("VECTORIZE_INDEX_NAME")
                 or os.getenv("VECTORIZE_LIBRARY_INDEX")
                 or os.getenv("CF_VECTORIZE_INDEX")
             ),
@@ -1288,6 +1705,72 @@ async def get_vectordb_health(
             "supports_hybrid_search": False,
         }
 
+    # Campaign counters show durable scheduling progress, while this evidence
+    # confirms that the target projection is actually acknowledged by
+    # Vectorize. Reuse persisted evidence after cutover and measure once when
+    # older cutovers do not have it yet.
+    indexing_status = snapshot.get("indexing_status")
+    if not isinstance(indexing_status, dict):
+        indexing_status = build_indexing_status(
+            campaign_progress=snapshot.get("campaign_progress") or {},
+            provider_status=snapshot.get("provider_status") or {},
+        )
+    server_evidence = None
+    if isinstance(automatic_promotion, dict):
+        server_evidence = automatic_promotion.get("server_evidence")
+        if not isinstance(server_evidence, dict):
+            gate = automatic_promotion.get("gate")
+            if isinstance(gate, dict):
+                server_evidence = gate.get("server_evidence")
+
+    vectorize_index_name = str(
+        resolved_config.get("vectorizeKnowledgeIndexName")
+        or resolved_config.get("vectorizeIndexName")
+        or ""
+    ).strip()
+    switch_status = str(
+        (snapshot.get("provider_status") or {}).get("switch_status") or ""
+    ).strip().lower()
+    target_is_vectorize = str(
+        (snapshot.get("provider_status") or {}).get("target_provider") or ""
+    ).strip().lower() == "cloudflare_vectorize"
+    can_measure_vectorize_projection = (
+        provider == "cloudflare_vectorize" or target_is_vectorize
+    ) and switch_status in {"active", "ready_for_cutover", "cutover_complete"}
+    if (
+        not isinstance(server_evidence, dict)
+        and can_measure_vectorize_projection
+        and vectorize_index_name
+    ):
+        try:
+            readiness = await evaluate_server_vectorize_readiness(
+                db,
+                tenant_id=tenant_id,
+                target_index=vectorize_index_name,
+                smoke_passed=True,
+            )
+            server_evidence = (readiness.get("gate") or {}).get("server_evidence")
+            if (
+                provider == "cloudflare_vectorize"
+                and switch_status == "cutover_complete"
+                and isinstance(server_evidence, dict)
+            ):
+                state = await get_or_create_switch_state(db, tenant_id=tenant_id)
+                state.readiness_json = {
+                    **dict(state.readiness_json or {}),
+                    "server_evidence": server_evidence,
+                }
+                await db.commit()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("vectorize_indexing_evidence_unavailable", exc_info=exc)
+
+    if isinstance(server_evidence, dict):
+        indexing_status = build_indexing_status(
+            campaign_progress=snapshot.get("campaign_progress") or {},
+            provider_status=snapshot.get("provider_status") or {},
+            server_evidence=server_evidence,
+        )
+
     diagnostics = build_provider_settings_diagnostics(
         provider_name=provider,
         config=provider_config,
@@ -1317,6 +1800,12 @@ async def get_vectordb_health(
 
     return {
         **snapshot,
+        "indexing_status": indexing_status,
+        # Keep health fields at the same level consumed by the admin UI. The
+        # diagnostics object remains the masked/configuration detail view.
+        "connection_health": connection_health,
+        "provider_capabilities": provider_capabilities,
+        "automatic_promotion": automatic_promotion,
         "alerts": alerts,
         "provider_diagnostics": diagnostics,
     }

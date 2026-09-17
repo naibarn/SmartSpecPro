@@ -21,6 +21,7 @@ import { linkMediaTaskArtifactToAsset } from "./mediaTaskArtifactService";
 const DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000;
 const MAX_IMAGE_BYTES = 100 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+const DOWNLOAD_RETRY_DELAYS_MS = [250, 1_000] as const;
 
 export type VerticalDramaMediaType = "image" | "video";
 
@@ -372,6 +373,29 @@ function safeTaskPart(value: string | undefined): string {
   return (value || "unknown").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 80);
 }
 
+function isRetryableMediaDownloadStatus(status: number): boolean {
+  return (
+    status === 408 ||
+    status === 425 ||
+    status === 429 ||
+    (status >= 500 && status <= 599)
+  );
+}
+
+function isRetryableMediaDownloadError(error: unknown): boolean {
+  if (!(error instanceof Error) || error.name === "AbortError") return false;
+  const cause = (error as { cause?: unknown }).cause;
+  const causeText =
+    cause instanceof Error
+      ? `${cause.name} ${cause.message}`
+      : typeof cause === "string"
+        ? cause
+        : "";
+  return /fetch failed|network|econnreset|econnrefused|etimedout|eai_again|socket/i.test(
+    `${error.name} ${error.message} ${causeText}`,
+  );
+}
+
 export async function downloadMediaToTempFile(
   sourceUrl: string,
   mediaType: VerticalDramaMediaType,
@@ -406,18 +430,48 @@ export async function downloadMediaToTempFile(
     // Kie and other media providers occasionally redirect their result URL.
     let currentUrl = sourceUrl;
     let response: Response | null = null;
-    for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
-      await validateReferenceUrls([currentUrl]);
-      response = await fetch(currentUrl, {
-        signal: controller.signal,
-        redirect: "manual",
-        headers: { Accept: mediaType === "image" ? "image/*" : "video/*" },
-      });
-      if (![301, 302, 303, 307, 308].includes(response.status)) break;
-      const location = response.headers.get("location");
-      if (!location) throw new Error("Vertical Drama media redirect had no location");
-      if (redirectCount === 5) throw new Error("Vertical Drama media has too many redirects");
-      currentUrl = new URL(location, currentUrl).toString();
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        for (let redirectCount = 0; redirectCount <= 5; redirectCount += 1) {
+          await validateReferenceUrls([currentUrl]);
+          response = await fetch(currentUrl, {
+            signal: controller.signal,
+            redirect: "manual",
+            headers: { Accept: mediaType === "image" ? "image/*" : "video/*" },
+          });
+          if (![301, 302, 303, 307, 308].includes(response.status)) break;
+          const location = response.headers.get("location");
+          if (!location) throw new Error("Vertical Drama media redirect had no location");
+          if (redirectCount === 5) throw new Error("Vertical Drama media has too many redirects");
+          currentUrl = new URL(location, currentUrl).toString();
+        }
+      } catch (error) {
+        if (
+          !isRetryableMediaDownloadError(error) ||
+          attempt >= DOWNLOAD_RETRY_DELAYS_MS.length
+        ) {
+          throw error;
+        }
+        await new Promise(resolve =>
+          setTimeout(resolve, DOWNLOAD_RETRY_DELAYS_MS[attempt]),
+        );
+        continue;
+      }
+
+      if (
+        response &&
+        isRetryableMediaDownloadStatus(response.status) &&
+        attempt < DOWNLOAD_RETRY_DELAYS_MS.length
+      ) {
+        if (response.body) {
+          await response.body.cancel().catch(() => undefined);
+        }
+        await new Promise(resolve =>
+          setTimeout(resolve, DOWNLOAD_RETRY_DELAYS_MS[attempt]),
+        );
+        continue;
+      }
+      break;
     }
     if (!response || !response.ok || !response.body) {
       throw new Error(`Vertical Drama media download failed (${response?.status ?? 0})`);

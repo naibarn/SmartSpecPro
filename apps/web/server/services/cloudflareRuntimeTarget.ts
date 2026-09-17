@@ -1,55 +1,123 @@
 /**
  * Feature 186 production runtime target.
  *
- * Google Cloud Tasks/Cloud Run was an earlier deployment shape. It is not a
- * selectable runtime after the Cloudflare hard cutover. Canonical jobs are
- * published through the PostgreSQL outbox and consumed by the Cloudflare
- * runtime boundary (Hyperdrive/Queues/Containers/Worker App according to the
- * target-account rollout manifest).
+ * Google Cloud Tasks/Cloud Run was an earlier deployment shape. Canonical jobs
+ * are published through the PostgreSQL outbox. PostgreSQL-pull is the current
+ * local/Node-worker transport, while Cloudflare is an explicit migration
+ * target selected only after its target-account readiness gates pass.
  */
 
 export const CLOUDFLARE_RUNTIME_TARGET = "cloudflare" as const;
-export const CLOUDFLARE_HARD_CUTOVER_FLAG = "FEATURE_186_CLOUDFLARE_HARD_CUTOVER" as const;
-export const POSTGRES_PULL_HARNESS_FLAG = "FEATURE_186_POSTGRES_PULL_HARNESS" as const;
+export const CLOUDFLARE_HARD_CUTOVER_FLAG =
+  "FEATURE_186_CLOUDFLARE_HARD_CUTOVER" as const;
+export const POSTGRES_PULL_HARNESS_FLAG =
+  "FEATURE_186_POSTGRES_PULL_HARNESS" as const;
+export const FEATURE_186_HARD_CUTOVER_FLAG =
+  "FEATURE_186_HARD_CUTOVER" as const;
 
 export type Feature186RuntimeReadiness = {
   target: typeof CLOUDFLARE_RUNTIME_TARGET;
   hardCutover: boolean;
-  mode: "disabled" | "cloudflare" | "postgres-pull-harness" | "misconfigured";
+  mode:
+    | "disabled"
+    | "postgres-pull"
+    | "cloudflare"
+    | "postgres-pull-harness"
+    | "misconfigured";
   ready: boolean;
-  reason?: "hard_cutover_disabled" | "cloudflare_url_missing" | "cloudflare_token_missing" | "postgres_pull_harness_forbidden";
+  reason?:
+    | "hard_cutover_disabled"
+    | "cloudflare_url_missing"
+    | "cloudflare_token_missing"
+    | "postgres_pull_harness_forbidden";
 };
 
 /**
- * Feature 186 hard cutover is the production-mode switch. The explicit
- * Cloudflare flag may be used by deployment tooling, but cannot opt out when
- * the canonical hard cutover is enabled.
+ * Feature 186 hard cutover enables the canonical worker_jobs/outbox contract.
+ * It does not select a remote transport. This lets the existing Node worker
+ * run the same canonical envelope while Cloudflare migration is in progress.
  */
-export function isCloudflareHardCutoverEnabled(): boolean {
-  return process.env.FEATURE_186_HARD_CUTOVER === "true"
-    && process.env.FEATURE_186_CLOUDFLARE_HARD_CUTOVER !== "false";
+export function isFeature186HardCutoverEnabled(): boolean {
+  return process.env[FEATURE_186_HARD_CUTOVER_FLAG] === "true";
 }
 
 /**
- * PostgreSQL-pull is a local/recovery harness only. It must be explicit and
- * can never silently become a production runtime target.
+ * Cloudflare transport activation is an explicit, reversible migration step.
+ * Missing URL/token therefore means local PostgreSQL-pull mode, not startup
+ * failure, unless this flag has deliberately been enabled.
+ */
+export function isCloudflareHardCutoverEnabled(): boolean {
+  return (
+    isFeature186HardCutoverEnabled() &&
+    process.env[CLOUDFLARE_HARD_CUTOVER_FLAG] === "true"
+  );
+}
+
+/**
+ * This flag is only for non-production harness labeling. Normal PostgreSQL-
+ * pull is the supported local Node-worker runtime when canonical hard cutover
+ * is enabled; the harness flag must never be used to bypass production gates.
  */
 export function isPostgresPullHarnessEnabled(): boolean {
-  return process.env[POSTGRES_PULL_HARNESS_FLAG] === "true"
-    && process.env.NODE_ENV !== "production";
+  return (
+    process.env[POSTGRES_PULL_HARNESS_FLAG] === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
 }
 
 export function feature186RuntimeReadiness(): Feature186RuntimeReadiness {
-  const hardCutover = isCloudflareHardCutoverEnabled();
+  const hardCutover = isFeature186HardCutoverEnabled();
   if (!hardCutover) {
-    return { target: CLOUDFLARE_RUNTIME_TARGET, hardCutover, mode: "disabled", ready: true, reason: "hard_cutover_disabled" };
+    return {
+      target: CLOUDFLARE_RUNTIME_TARGET,
+      hardCutover,
+      mode: "disabled",
+      ready: true,
+      reason: "hard_cutover_disabled",
+    };
+  }
+  if (!isCloudflareHardCutoverEnabled()) {
+    if (
+      process.env[POSTGRES_PULL_HARNESS_FLAG] === "true" &&
+      process.env.NODE_ENV === "production"
+    ) {
+      return {
+        target: CLOUDFLARE_RUNTIME_TARGET,
+        hardCutover,
+        mode: "misconfigured",
+        ready: false,
+        reason: "postgres_pull_harness_forbidden",
+      };
+    }
+    if (isPostgresPullHarnessEnabled()) {
+      return {
+        target: CLOUDFLARE_RUNTIME_TARGET,
+        hardCutover,
+        mode: "postgres-pull-harness",
+        ready: true,
+      };
+    }
+    return {
+      target: CLOUDFLARE_RUNTIME_TARGET,
+      hardCutover,
+      mode: "postgres-pull",
+      ready: true,
+    };
   }
   const runtimeUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim();
   const runtimeToken = process.env.CLOUDFLARE_RUNTIME_TOKEN?.trim();
   if (runtimeUrl && runtimeToken) {
-    return { target: CLOUDFLARE_RUNTIME_TARGET, hardCutover, mode: "cloudflare", ready: true };
+    return {
+      target: CLOUDFLARE_RUNTIME_TARGET,
+      hardCutover,
+      mode: "cloudflare",
+      ready: true,
+    };
   }
-  if (process.env[POSTGRES_PULL_HARNESS_FLAG] === "true" && process.env.NODE_ENV === "production") {
+  if (
+    process.env[POSTGRES_PULL_HARNESS_FLAG] === "true" &&
+    process.env.NODE_ENV === "production"
+  ) {
     return {
       target: CLOUDFLARE_RUNTIME_TARGET,
       hardCutover,
@@ -59,7 +127,12 @@ export function feature186RuntimeReadiness(): Feature186RuntimeReadiness {
     };
   }
   if (isPostgresPullHarnessEnabled()) {
-    return { target: CLOUDFLARE_RUNTIME_TARGET, hardCutover, mode: "postgres-pull-harness", ready: true };
+    return {
+      target: CLOUDFLARE_RUNTIME_TARGET,
+      hardCutover,
+      mode: "postgres-pull-harness",
+      ready: true,
+    };
   }
   return {
     target: CLOUDFLARE_RUNTIME_TARGET,
@@ -88,7 +161,10 @@ export function assertGoogleRuntimeDisabled(): void {
     process.env.CLOUD_RUN_NODE_URL,
     process.env.CLOUD_RUN_PYTHON_URL,
     process.env.CLOUD_RUN_SA_EMAIL,
-  ].some(value => value === "true" || (typeof value === "string" && value.trim().length > 0));
+  ].some(
+    value =>
+      value === "true" || (typeof value === "string" && value.trim().length > 0)
+  );
 
   if (legacyRuntimeEnabled) {
     throw new Error("GOOGLE_CLOUD_RUNTIME_RETIRED");
@@ -100,7 +176,7 @@ export function cloudflareRuntimeStatus() {
   return {
     target: CLOUDFLARE_RUNTIME_TARGET,
     hardCutover: readiness.hardCutover,
-    activation: process.env.CLOUDFLARE_ACTIVATION === "enabled" ? "enabled" : "disabled",
+    activation: isCloudflareHardCutoverEnabled() ? "enabled" : "disabled",
     googleRuntime: "retired" as const,
     googleOauthAndDrive: "product-integrations-only" as const,
     runtimeMode: readiness.mode,

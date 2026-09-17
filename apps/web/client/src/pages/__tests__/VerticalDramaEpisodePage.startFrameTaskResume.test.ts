@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { shouldResumeStartFramePoll } from "../VerticalDramaEpisodePage";
+import {
+  shouldAutoRepairFrameSync,
+  shouldRefetchEpisodeDetailForPendingFrameTasks,
+  shouldResumeStartFramePoll,
+} from "../VerticalDramaEpisodePage";
 
 describe("shouldResumeStartFramePoll", () => {
   it("resumes a submitted image task after reload", () => {
@@ -11,6 +15,28 @@ describe("shouldResumeStartFramePoll", () => {
         new Set()
       )
     ).toBe(true);
+  });
+
+  it("auto-repairs a submitted task when the browser missed the completion callback", () => {
+    expect(
+      shouldAutoRepairFrameSync(
+        { pendingTaskId: "kie-task-1", status: "submitted" },
+        undefined
+      )
+    ).toBe(true);
+  });
+
+  it("keeps the episode detail query alive while a frame task is pending", () => {
+    expect(
+      shouldRefetchEpisodeDetailForPendingFrameTasks({
+        frames: [{ shotNumber: 8, imageTask: { pendingTaskId: "task-1" } }],
+      })
+    ).toBe(true);
+    expect(
+      shouldRefetchEpisodeDetailForPendingFrameTasks({
+        frames: [{ shotNumber: 8, approvedMediaAssetId: "7024" }],
+      })
+    ).toBe(false);
   });
 
   it("does not resume a frame without a durable pending task", () => {

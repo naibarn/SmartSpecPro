@@ -8,7 +8,6 @@ import type { SkillDefinition } from "@smartspec/skills";
 import { createInternalTokenFromAuth } from "../_core/tokens";
 import { getDb } from "../db";
 import { storageReadText } from "../storage";
-import { agencyBridge } from "./agencyBridge";
 import { deductCredits, deductCreditsForModel } from "./creditService";
 import {
   compileModernEditorialDeck,
@@ -23,8 +22,6 @@ import {
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
 import type { SkillExecutionPolicyResult } from "./skillExecutionPolicy";
 import { getSkillByIdAsync, syncSingleSkillIfChanged } from "./skillRegistry";
-import { getJobArtifactUrls } from "./sandbox/artifactAccess";
-import { agencies, agencyConversations, sandboxJobs } from "../../drizzle/schema";
 import {
   buildEditorialLayoutPlannerPayload,
   type EditorialPlannerAudiencePreset,
@@ -39,7 +36,7 @@ import {
   inspectGeneratedSlideImportability,
 } from "@shared/presentation/generatedSlideImportability";
 
-type ArticleExecutionSource = "skill" | "agency";
+type ArticleExecutionSource = "skill";
 const MAX_PRESENTATION_ARTICLE_CHARS = 19_500;
 const MAX_PRESENTATION_SLIDE_JSON_CHARS = 120_000;
 const SUPPORTED_SLIDE_CANVAS_RATIOS = ["16:9", "9:16", "4:3", "3:4", "4:5", "5:4", "1:1"] as const;
@@ -97,7 +94,6 @@ export interface GeneratePresentationArticleInput {
   preferredLanguage?: "th" | "en";
   executionSource: ArticleExecutionSource;
   skillId?: string | null;
-  agencyId?: string | null;
   requiresWebSearch?: boolean;
   requiresThinking?: boolean;
   targetImageCount: number;
@@ -345,47 +341,8 @@ function inferArtifactFormatFromRecord(input: { key: string; mimeType: string })
   return "unknown";
 }
 
-async function waitForSlideArtifacts(params: {
-  tenantId: string;
-  jobId: string;
-  maxAttempts?: number;
-  delayMs?: number;
-}): Promise<PresentationSlideArtifact[]> {
-  const maxAttempts = params.maxAttempts ?? 20;
-  const delayMs = params.delayMs ?? 1_500;
-  const db = await getDb();
-  if (!db) {
-    return [];
-  }
-
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const rows = await db
-      .select({
-        status: sandboxJobs.status,
-      })
-      .from(sandboxJobs)
-      .where(and(eq(sandboxJobs.id, params.jobId), eq(sandboxJobs.tenantId, params.tenantId)))
-      .limit(1);
-
-    const status = String(rows[0]?.status ?? "").trim().toLowerCase();
-    if (status === "completed") {
-      const artifacts = await getJobArtifactUrls({
-        jobId: params.jobId,
-        tenantId: params.tenantId,
-      });
-      return artifacts.map((artifact) => ({
-        ...artifact,
-        format: inferArtifactFormatFromRecord(artifact),
-      }));
-    }
-    if (status === "failed" || status === "error" || status === "cancelled") {
-      throw new Error(`Slide artifact generation failed (${status || "unknown"})`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
-  }
-
-  return [];
+async function waitForSlideArtifacts(): Promise<PresentationSlideArtifact[]> {
+  throw new Error("Isolated presentation artifacts must run in the approved Cloudflare Container runtime");
 }
 
 function stripOuterCodeFences(raw: string): string {
@@ -3245,7 +3202,7 @@ export async function generatePresentationSlideDraft(
       ? String((slidePayload as Record<string, unknown>).output_format)
       : null;
   const expectsRenderManifest = requestedStructuredOutputFormat === "render_manifest_json";
-  const usesSandboxSkill = String(executionSkill.executionMode ?? "").trim().toLowerCase() === "sandbox-command";
+  const usesSandboxSkill = false;
   const runtimeAliasApplied = (
     String(runtimeBundleSkill.id ?? "").trim() !== String(skill.id ?? "").trim()
     || String(runtimeBundleSkill.skillFilePath ?? "").trim() !== String(skill.skillFilePath ?? "").trim()
@@ -3534,6 +3491,9 @@ export async function generatePresentationSlideDraft(
   const requestedArtifactFormats = input.outputFormats.filter((format) => format === "pptx" || format === "pdf");
   try {
     if (usesSandboxSkill) {
+      throw new Error(
+        "SANDBOX_SKILL_RETIRED: risky presentation skill execution must use the approved Cloudflare Container runtime",
+      );
       const sandboxTrace: Record<string, unknown> = {
         requestedArtifactFormats,
       };
@@ -3759,85 +3719,8 @@ async function generateArticleWithSkill(
   };
 }
 
-async function generateArticleWithAgency(
-  input: GeneratePresentationArticleInput,
-): Promise<GeneratePresentationArticleResult> {
-  const agencyId = input.agencyId?.trim();
-  if (!agencyId) {
-    throw new Error("Agency must be selected");
-  }
-
-  const db = await getDb();
-  if (!db) {
-    throw new Error("Database not available");
-  }
-
-  const [agency] = await db
-    .select({
-      id: agencies.id,
-      name: agencies.name,
-      description: agencies.description,
-      systemPrompt: agencies.systemPrompt,
-      status: agencies.status,
-      visibility: agencies.visibility,
-      createdBy: agencies.createdBy,
-    })
-    .from(agencies)
-    .where(and(eq(agencies.id, agencyId), eq(agencies.tenantId, input.tenantId)))
-    .limit(1);
-
-  if (!agency) {
-    throw new Error("Agency not found");
-  }
-
-  const isTemplate = agency.visibility === "template";
-  const isOwnAgency = agency.createdBy === input.userId;
-  const isRunnable = agency.status === "published" || isTemplate || isOwnAgency;
-  if (!isRunnable || agency.status === "archived") {
-    throw new Error("Agency is not ready to run yet");
-  }
-
-  const conversationId = crypto.randomUUID();
-  await db.insert(agencyConversations).values({
-    id: conversationId,
-    agencyId: agency.id,
-    tenantId: input.tenantId,
-    userId: input.userId,
-    title: `Presentation Article: ${input.topic.slice(0, 120) || "Article"}`,
-    source: "web",
-  });
-
-  const userToken = createInternalTokenFromAuth({ userId: input.userId, tenantId: input.tenantId }, ["agency:run"]);
-  const result = await agencyBridge.executeRun({
-    agencyId: agency.id,
-    conversationId,
-    message: buildPresentationArticlePrompt(input),
-    userToken,
-    tenantId: input.tenantId,
-    userId: input.userId,
-    additionalInstructions: [
-      `Selected agency: ${agency.name}`,
-      agency.systemPrompt?.trim() ? `Agency system prompt:\n${agency.systemPrompt.trim()}` : "",
-      "Return only the final plain-text article.",
-    ].filter(Boolean).join("\n\n"),
-  });
-
-  const article = trimArticleForDeckNotes(normalizeGeneratedPresentationArticle(result.response || ""));
-  if (!article) {
-    throw new Error("Agency returned an empty article");
-  }
-
-  return {
-    article,
-    sourceLabel: agency.name,
-  };
-}
-
 export async function generatePresentationArticle(
   input: GeneratePresentationArticleInput,
 ): Promise<GeneratePresentationArticleResult> {
-  if (input.executionSource === "agency") {
-    return generateArticleWithAgency(input);
-  }
   return generateArticleWithSkill(input);
 }

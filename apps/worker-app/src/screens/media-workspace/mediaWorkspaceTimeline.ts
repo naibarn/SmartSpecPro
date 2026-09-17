@@ -26,6 +26,13 @@ export interface TimelineVideoSource {
   path: string;
 }
 
+/** Full Scan and render must read the same timeline-selected source. */
+export function chooseRenderSourcePath(analysisSourcePath: string, openedFilePath: string): string {
+  const timelinePath = analysisSourcePath.trim();
+  if (timelinePath) return timelinePath;
+  return openedFilePath.trim();
+}
+
 export interface WaveformBin {
   min: number;
   max: number;
@@ -161,6 +168,8 @@ export function normalizeTimelineDropAsset(asset: unknown): {
   path: string;
   mediaType?: string;
   durationMs?: number;
+  width?: number;
+  height?: number;
 } | null {
   if (!asset || typeof asset !== "object") return null;
   const value = asset as Record<string, unknown>;
@@ -172,11 +181,18 @@ export function normalizeTimelineDropAsset(asset: unknown): {
     ?.trim();
   if (!name || !path) return null;
 
+  const width = typeof value.width === "number" && Number.isFinite(value.width) && value.width > 0
+    ? Math.round(value.width)
+    : undefined;
+  const height = typeof value.height === "number" && Number.isFinite(value.height) && value.height > 0
+    ? Math.round(value.height)
+    : undefined;
   return {
     name,
     path,
     mediaType: typeof value.mediaType === "string" ? value.mediaType : undefined,
     durationMs: typeof value.durationMs === "number" && Number.isFinite(value.durationMs) ? value.durationMs : undefined,
+    ...(width && height ? { width, height } : {}),
   };
 }
 
@@ -286,6 +302,21 @@ export interface DeadAirRenderSelection {
   softeningBufferSec: number;
   silenceSegments: SilenceRange[];
   cameraMotionPlan?: CameraMotionPlan | null;
+}
+
+/**
+ * Return only cut ranges that are allowed to affect interactive playback.
+ *
+ * A silence result is not authoritative merely because segments exist in
+ * state: a failed or still-running analysis must leave Play/Scan on the full
+ * source timeline. Manual cuts remain explicit user intent even before an
+ * audio analysis has completed.
+ */
+export function getPlaybackSilenceRanges(
+  ranges: SilenceRange[],
+  deadAirAnalysisReady: boolean,
+): SilenceRange[] {
+  return deadAirAnalysisReady ? ranges : ranges.filter((range) => range.isManual === true);
 }
 
 export function normalizeSilenceRanges(

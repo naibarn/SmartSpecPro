@@ -1,5 +1,8 @@
 import { createHash, randomUUID } from "crypto";
+import { inArray } from "drizzle-orm";
 import { debugError } from "../_core/logger";
+import { getDb } from "../db";
+import { workerJobs } from "../../drizzle/schema";
 import { isTransientGenerationError } from "../../shared/transientGenerationError";
 import { getRedisClient } from "./redis";
 import {
@@ -139,7 +142,17 @@ export interface VerticalDramaShotVideoPromptJobStoreDependencies {
   redis: VerticalDramaShotVideoPromptJobRedisAdapter;
   now: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
+  canonicalStatusReader?: CanonicalPromptJobStatusReader;
 }
+
+export type CanonicalPromptJobStatus = {
+  status: string;
+  reason?: string | null;
+};
+
+export type CanonicalPromptJobStatusReader = (
+  jobIds: readonly string[]
+) => Promise<ReadonlyMap<string, CanonicalPromptJobStatus>>;
 
 export interface VerticalDramaShotVideoPromptJobEnqueueDependencies extends Partial<VerticalDramaShotVideoPromptJobStoreDependencies> {
   enqueueBullmqJob?: (jobId: string) => Promise<void>;
@@ -176,7 +189,39 @@ function resolveDependencies(
       dependencies?.sleep ??
       (milliseconds =>
         new Promise(resolve => setTimeout(resolve, milliseconds))),
+    canonicalStatusReader:
+      dependencies?.canonicalStatusReader ??
+      (process.env.NODE_ENV !== "test"
+        ? readCanonicalPromptJobStatuses
+        : undefined),
   };
+}
+
+async function readCanonicalPromptJobStatuses(
+  jobIds: readonly string[]
+): Promise<ReadonlyMap<string, CanonicalPromptJobStatus>> {
+  if (jobIds.length === 0) return new Map();
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: workerJobs.id,
+      status: workerJobs.status,
+      failureReason: workerJobs.failureReason,
+      errorCode: workerJobs.errorCode,
+      errorMessage: workerJobs.errorMessage,
+    })
+    .from(workerJobs)
+    .where(inArray(workerJobs.id, [...jobIds]));
+  return new Map(
+    rows.map(row => [
+      row.id,
+      {
+        status: row.status,
+        reason:
+          row.failureReason ?? row.errorMessage ?? row.errorCode ?? undefined,
+      },
+    ])
+  );
 }
 
 function scopeKey(
@@ -486,7 +531,8 @@ export async function getVerticalDramaShotVideoPromptJobStatus(
   // A worker/process can disappear without emitting BullMQ's failed event.
   // Reconcile that orphan on the read path so the browser cannot poll an
   // active status forever and later shots cannot remain blocked behind it.
-  const reconciled = await reconcileStaleActiveJob(record, deps);
+  const canonicalReconciled = await reconcileCanonicalActiveJob(record, deps);
+  const reconciled = await reconcileStaleActiveJob(canonicalReconciled, deps);
   return toSummary(reconciled, deps);
 }
 
@@ -500,7 +546,7 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
   const deps = resolveDependencies(dependencies);
   const next = Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1);
   const last = Number((await deps.redis.get(sequenceKey(owner))) ?? 0);
-  const jobs: VerticalDramaShotVideoPromptJobSummary[] = [];
+  const activeRecords: VerticalDramaShotVideoPromptJobRecord[] = [];
   for (
     let sequence = next;
     sequence <= last && sequence < next + 100;
@@ -518,12 +564,38 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
       }) &&
       isActive(record.status)
     ) {
-      // The active-jobs query is also a recovery boundary: a page refresh can
-      // otherwise keep rendering a stale Redis pointer indefinitely.
-      const reconciled = await reconcileStaleActiveJob(record, deps);
-      if (isActive(reconciled.status)) {
-        jobs.push(await toSummary(reconciled, deps));
-      }
+      activeRecords.push(record);
+    }
+  }
+
+  let canonicalStatuses: ReadonlyMap<string, CanonicalPromptJobStatus> =
+    new Map();
+  if (deps.canonicalStatusReader && activeRecords.length > 0) {
+    try {
+      canonicalStatuses = await deps.canonicalStatusReader(
+        activeRecords.map(record => record.jobId)
+      );
+    } catch (error) {
+      debugError(
+        "verticalDramaShotVideoPromptJobs",
+        `Unable to batch-reconcile canonical worker statuses for episode ${owner.episodeId}`,
+        error
+      );
+    }
+  }
+
+  const jobs: VerticalDramaShotVideoPromptJobSummary[] = [];
+  for (const record of activeRecords) {
+    // The active-jobs query is also a recovery boundary: a page refresh can
+    // otherwise keep rendering a stale Redis pointer indefinitely.
+    const canonicalReconciled = await applyCanonicalStatusToActiveJob(
+      record,
+      canonicalStatuses.get(record.jobId),
+      deps
+    );
+    const reconciled = await reconcileStaleActiveJob(canonicalReconciled, deps);
+    if (isActive(reconciled.status)) {
+      jobs.push(await toSummary(reconciled, deps));
     }
   }
   return jobs;
@@ -719,6 +791,69 @@ async function reconcileStaleActiveJob(
     error: STALE_JOB_ERROR,
     updatedAt: new Date(deps.now()).toISOString(),
   };
+}
+
+function isCanonicalTerminalStatus(status: string): boolean {
+  return [
+    "completed",
+    "succeeded",
+    "failed",
+    "canceled",
+    "cancelled",
+    "expired",
+  ].includes(status);
+}
+
+async function applyCanonicalStatusToActiveJob(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  canonical: CanonicalPromptJobStatus | undefined,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies,
+): Promise<VerticalDramaShotVideoPromptJobRecord> {
+  if (!isActive(record.status)) return record;
+
+  if (!canonical || !isCanonicalTerminalStatus(canonical.status)) return record;
+
+  const succeeded =
+    canonical.status === "completed" || canonical.status === "succeeded";
+  const error = succeeded
+    ? null
+    : canonical.reason || `Canonical worker job ended with status=${canonical.status}`;
+  await markTerminalAndAdvance(
+    record,
+    succeeded ? "succeeded" : "failed",
+    null,
+    error,
+    deps
+  );
+  return {
+    ...record,
+    status: succeeded ? "succeeded" : "failed",
+    result: null,
+    error,
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+}
+
+async function reconcileCanonicalActiveJob(
+  record: VerticalDramaShotVideoPromptJobRecord,
+  deps: VerticalDramaShotVideoPromptJobStoreDependencies
+): Promise<VerticalDramaShotVideoPromptJobRecord> {
+  if (!deps.canonicalStatusReader || !isActive(record.status)) return record;
+
+  let canonical: CanonicalPromptJobStatus | undefined;
+  try {
+    canonical = (await deps.canonicalStatusReader([record.jobId])).get(
+      record.jobId
+    );
+  } catch (error) {
+    debugError(
+      "verticalDramaShotVideoPromptJobs",
+      `Unable to reconcile canonical worker status for ${record.jobId}`,
+      error
+    );
+    return record;
+  }
+  return applyCanonicalStatusToActiveJob(record, canonical, deps);
 }
 
 /** Reconcile BullMQ terminal failures with the durable Redis job record. */

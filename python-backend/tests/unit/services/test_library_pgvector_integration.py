@@ -78,6 +78,7 @@ async def test_delete_library_item_vectors_calls_pgvector_cleanup(monkeypatch):
         "removed_chunks": 3,
         "removed_vector_refs": 2,
         "removed_pgvector_rows": 7,
+        "removed_cloudflare_vectors": 0,
         "soft_delete_item": False,
         "not_found": False,
     }

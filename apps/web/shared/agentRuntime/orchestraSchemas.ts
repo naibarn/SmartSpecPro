@@ -48,7 +48,6 @@ export const ORCHESTRA_FINDING_CODES = [
   "manifest_untrusted",
   "side_effect_unauthorized",
   "side_effect_token_replayed",
-  "agency_origin_forbidden",
 ] as const;
 
 export const OrchestraTaskKindSchema = z.enum(ORCHESTRA_TASK_KINDS);

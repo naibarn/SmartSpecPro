@@ -347,6 +347,96 @@ def build_provider_settings_diagnostics(
     }
 
 
+def build_indexing_status(
+    *,
+    campaign_progress: dict[str, Any],
+    provider_status: dict[str, Any],
+    server_evidence: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build an honest indexing status for the admin UI.
+
+    Campaign counters describe durable work scheduling. Server evidence is
+    the stronger signal because it confirms acknowledged target projections.
+    Keep both scopes in the response so the UI never presents enqueued work as
+    completed target indexing.
+    """
+    campaign_status = str(campaign_progress.get("status") or "idle").strip().lower()
+    queued = max(int(campaign_progress.get("queued") or 0), 0)
+    processed = max(int(campaign_progress.get("processed") or 0), 0)
+    campaign_failed = max(int(campaign_progress.get("failed") or 0), 0)
+    skipped = max(int(campaign_progress.get("skipped") or 0), 0)
+
+    evidence = dict(server_evidence or {})
+    has_server_evidence = "source_count" in evidence and "indexed_count" in evidence
+    source_count = (
+        max(int(evidence.get("source_count") or 0), 0)
+        if has_server_evidence
+        else None
+    )
+    indexed_count = (
+        max(int(evidence.get("indexed_count") or 0), 0)
+        if has_server_evidence
+        else None
+    )
+    pending_count = (
+        max(int(evidence.get("pending_count") or 0), 0)
+        if has_server_evidence
+        else None
+    )
+    projection_failed_count = (
+        max(int(evidence.get("failed_count") or 0), 0)
+        if has_server_evidence
+        else None
+    )
+
+    if has_server_evidence:
+        progress_ratio = (
+            float(indexed_count) / float(source_count)
+            if source_count
+            else 1.0
+        )
+        if projection_failed_count or campaign_failed:
+            status = "failed"
+        elif pending_count or indexed_count < source_count:
+            status = "reindexing"
+        elif campaign_status == "completed" or provider_status.get("switch_status") == "cutover_complete":
+            status = "complete"
+        else:
+            status = "reindexing"
+    else:
+        progress_ratio = min(float(processed) / float(queued), 1.0) if queued else 0.0
+        if campaign_failed:
+            status = "failed"
+        elif campaign_status in {"queued", "running"} or processed < queued:
+            status = "reindexing"
+        elif campaign_status == "completed":
+            status = "complete"
+        else:
+            status = "idle"
+
+    return {
+        "status": status,
+        "scope": "projection" if has_server_evidence else "campaign",
+        "provider": (
+            str(provider_status.get("target_provider") or "").strip()
+            or str(provider_status.get("current_read_provider") or "unknown").strip()
+        ),
+        "coverage_known": has_server_evidence,
+        "progress_ratio": max(0.0, min(progress_ratio, 1.0)),
+        "source_count": source_count,
+        "indexed_count": indexed_count,
+        "pending_count": pending_count,
+        "projection_failed_count": projection_failed_count,
+        "queued_count": queued,
+        "processed_count": processed,
+        "campaign_failed_count": campaign_failed,
+        "skipped_count": skipped,
+        "campaign_id": campaign_progress.get("campaign_id"),
+        "campaign_status": campaign_status,
+        "server_evidence": evidence if has_server_evidence else None,
+    }
+
+
 async def build_admin_vector_health_snapshot(
     db: AsyncSession,
     *,
@@ -451,12 +541,20 @@ async def build_admin_vector_health_snapshot(
         "skipped": int(campaign.skipped_count or 0) if campaign is not None else 0,
     }
 
+    current_provider = "pgvector"
+    if state is not None:
+        candidate_provider = str(state.current_read_provider or "").strip().lower()
+        candidate_status = str(state.status or "").strip().lower()
+        if candidate_provider == "pgvector":
+            current_provider = "pgvector"
+        elif candidate_provider in {"cloudflare_vectorize", "chromadb"} and candidate_status in {
+            "active",
+            "cutover_complete",
+        }:
+            current_provider = candidate_provider
+
     provider_status = {
-        "current_read_provider": (
-            str(state.current_read_provider)
-            if state is not None
-            else "cloudflare_vectorize"
-        ),
+        "current_read_provider": current_provider,
         "target_provider": (
             str(state.target_provider)
             if state is not None and state.target_provider
@@ -465,6 +563,10 @@ async def build_admin_vector_health_snapshot(
         "switch_status": str(state.status) if state is not None else "idle",
         "mirror_writes": bool(state.mirror_writes) if state is not None else False,
     }
+    readiness = dict(state.readiness_json or {}) if state is not None else {}
+    persisted_server_evidence = readiness.get("server_evidence")
+    if not isinstance(persisted_server_evidence, dict):
+        persisted_server_evidence = None
     latency_status = compute_search_latency_telemetry(now=now_ts, tenant_id=tenant_value)
 
     return {
@@ -476,6 +578,11 @@ async def build_admin_vector_health_snapshot(
             "lag_window_minutes": float(QUEUE_LAG_WINDOW_MINUTES),
         },
         "campaign_progress": campaign_progress,
+        "indexing_status": build_indexing_status(
+            campaign_progress=campaign_progress,
+            provider_status=provider_status,
+            server_evidence=persisted_server_evidence,
+        ),
         "latency_status": latency_status,
         "recent_failures": recent_failures,
         "timestamp": now_ts.isoformat(),

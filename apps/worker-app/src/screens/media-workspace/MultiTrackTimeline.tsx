@@ -53,6 +53,7 @@ export interface MultiTrackTimelineProps {
   onCloseMediaBin?: () => void;
   isDuckingActive?: boolean;
   onDropAsset?: (trackId: string, asset: any, dropTimeMs?: number) => void;
+  onAddAssetClip?: (trackId: string, clip: NleClip) => void | Promise<void>;
 }
 
 function formatTimecode(ms: number): string {
@@ -92,6 +93,7 @@ export function MultiTrackTimeline({
   onCloseMediaBin,
   isDuckingActive = false,
   onDropAsset,
+  onAddAssetClip,
 }: MultiTrackTimelineProps) {
   const locale = useWorkerLocale();
   const t = (th: string, en: string) => locale === "th" ? th : en;
@@ -126,8 +128,16 @@ export function MultiTrackTimeline({
     return maxEnd;
   }, [project.tracks]);
 
-  // Expand timeline with 30s tail padding so user can scroll horizontally and drop clips after existing video!
-  const effectiveDurationMs = Math.max(1000, durationMs || project.canvas.durationMs || 60000, maxClipEndMs + 30000);
+  // The canvas duration is the edited timeline duration. Prefer it over the
+  // source-player duration so a dead-air cut does not leave a ruler that is
+  // longer than the clips shown below it. A clip placed beyond the canvas is
+  // still allowed to extend the visible range, but never gets an arbitrary
+  // 30-second tail that makes clip lengths look wrong.
+  const effectiveDurationMs = Math.max(
+    1000,
+    project.canvas.durationMs || durationMs || 60000,
+    maxClipEndMs,
+  );
 
   useEffect(() => {
     setSelectedTargetTrackId((current) => {
@@ -454,7 +464,11 @@ export function MultiTrackTimeline({
       return t;
     });
 
-    onUpdateProject({ ...project, tracks: nextTracks });
+    if (onAddAssetClip) {
+      void onAddAssetClip(targetTrackId, newClip);
+    } else {
+      onUpdateProject({ ...project, tracks: nextTracks });
+    }
     setSelectedTargetTrackId(targetTrackId);
   };
 

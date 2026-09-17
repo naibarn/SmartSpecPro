@@ -478,7 +478,7 @@ export interface VerticalDramaStoryboardPanelData {
   imageGenerationErrorByShot?: Record<number, string>;
   onRetryStartFrameImage?: (shotNumber: number, error?: string) => void;
   onRetryStartFrameSync?: (shotNumber: number) => void;
-  /** Runs `start_frame_render_plan` for real (mode "full", spends credits). */
+  /** Generates every shot's image prompt through the canonical per-shot prompt queue. */
   onGenerateStartFramePlan?: () => void;
   generatingStartFramePlan?: boolean;
   /** Opens the repair dialog for `start_frame_render_plan`, prefilled with the current image prompt. */
@@ -523,6 +523,10 @@ export interface VerticalDramaStoryboardPanelData {
   /** Fires `onGenerateStartFrameImage` for every shot missing an approved
    *  image, concurrently (redesign, 2026-07-05) — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
+  /** Generates and renders every storyboard shot, including shots that already
+   *  have an approved image, through the same per-shot prompt + image path. */
+  onGenerateAllPromptAndImages?: (shotNumbers: number[]) => void;
+  generatingAllPromptAndImages?: boolean;
   characterPortraits?: VerticalDramaCharacterPortraitMap;
   /** See `VerticalDramaStoryboardPanelProps.episodeLocations` — the series'
    *  full location roster (Phase D, location visual bible). */
@@ -1704,6 +1708,12 @@ export function VerticalDramaEpisodeWorkspace({
           onClearVideoStartFrame={storyboardPanel?.onClearVideoStartFrame}
           onGenerateAllStartFrameImages={
             storyboardPanel?.onGenerateAllStartFrameImages
+          }
+          onGenerateAllPromptAndImages={
+            storyboardPanel?.onGenerateAllPromptAndImages
+          }
+          generatingAllPromptAndImages={
+            storyboardPanel?.generatingAllPromptAndImages
           }
           characterPortraits={storyboardPanel?.characterPortraits}
           episodeLocations={storyboardPanel?.episodeLocations}

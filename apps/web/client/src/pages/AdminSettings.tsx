@@ -94,7 +94,6 @@ import StorageSettingsPanel from "@/components/admin/StorageSettingsPanel";
 import InfrastructureSettingsPanel from "@/components/admin/InfrastructureSettingsPanel";
 import AdminPlatformOperations from "./AdminPlatformOperations";
 import PublicContactProtectionSettingsPanel from "@/components/admin/PublicContactProtectionSettingsPanel";
-import AgencyAdminPanel from "@/components/admin/AgencyAdminPanel";
 import DocumentOcrSettingsPanel from "@/components/admin/DocumentOcrSettingsPanel";
 import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPanel";
 import { TenantAutomationPolicyPanel } from "@/components/settings/TenantAutomationPolicyPanel";
@@ -175,10 +174,7 @@ interface PromptPayDirectRuntimeForm {
   PROMPTPAY_DIRECT_ENABLED: boolean;
   PROMPTPAY_DIRECT_RECIPIENT_ID: string;
   PROMPTPAY_DIRECT_RECIPIENT_TYPE:
-    | "phone"
-    | "national_id"
-    | "tax_id"
-    | "ewallet";
+    "phone" | "national_id" | "tax_id" | "ewallet";
   PROMPTPAY_DIRECT_ACCOUNT_DISPLAY_NAME: string;
   PROMPTPAY_DIRECT_ORDER_EXPIRY_MINUTES: string;
   PROMPTPAY_DIRECT_FX_MAX_RATE_AGE_HOURS: string;
@@ -271,6 +267,21 @@ const BEAM_PAYMENT_LINK_GUIDE_URL =
 const BEAM_PAYMENT_LINK_API_GUIDE_URL =
   "https://docs.beamcheckout.com/payment-links/payment-links-api";
 
+type VectorDbProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
+
+const VECTOR_DB_PROVIDER_LABELS: Record<VectorDbProvider, string> = {
+  chromadb: "ChromaDB",
+  pgvector: "pgvector",
+  cloudflare_vectorize: "Cloudflare Vectorize",
+};
+
+function vectorDbProviderLabel(provider: string | null | undefined): string {
+  if (!provider) return "None";
+  return (
+    VECTOR_DB_PROVIDER_LABELS[provider as VectorDbProvider] || provider
+  );
+}
+
 const DEFAULT_VECTOR_DB_HEALTH = {
   provider_status: {
     current_read_provider: "unknown",
@@ -292,6 +303,24 @@ const DEFAULT_VECTOR_DB_HEALTH = {
     succeeded: 0,
     failed: 0,
     skipped: 0,
+  },
+  indexing_status: {
+    status: "unknown",
+    scope: "campaign" as "projection" | "campaign",
+    provider: "unknown",
+    coverage_known: false,
+    progress_ratio: 0,
+    source_count: null as number | null,
+    indexed_count: null as number | null,
+    pending_count: null as number | null,
+    projection_failed_count: null as number | null,
+    queued_count: 0,
+    processed_count: 0,
+    campaign_failed_count: 0,
+    skipped_count: 0,
+    campaign_id: null as number | null,
+    campaign_status: "idle",
+    server_evidence: null as Record<string, unknown> | null,
   },
   latency_status: {
     current_p95_ms: 0,
@@ -344,18 +373,25 @@ function normalizeVectorDbHealthPayload(data: any) {
       ...DEFAULT_VECTOR_DB_HEALTH.campaign_progress,
       ...(data.campaign_progress ?? {}),
     },
+    indexing_status: {
+      ...DEFAULT_VECTOR_DB_HEALTH.indexing_status,
+      ...(data.indexing_status ?? {}),
+    },
     latency_status: {
       ...DEFAULT_VECTOR_DB_HEALTH.latency_status,
       ...(data.latency_status ?? {}),
     },
     connection_health: {
       ...DEFAULT_VECTOR_DB_HEALTH.connection_health,
-      ...(data.connection_health ?? {}),
+      ...(data.connection_health ?? data.provider_diagnostics?.connection_health ?? {}),
     },
     provider_capabilities:
       data.provider_capabilities &&
       typeof data.provider_capabilities === "object"
         ? data.provider_capabilities
+        : data.provider_diagnostics?.capabilities &&
+            typeof data.provider_diagnostics.capabilities === "object"
+          ? data.provider_diagnostics.capabilities
         : DEFAULT_VECTOR_DB_HEALTH.provider_capabilities,
     recent_failures: Array.isArray(data.recent_failures)
       ? data.recent_failures
@@ -1127,10 +1163,6 @@ export default function AdminSettings() {
         label: isThai ? "Worker Runtime" : "Worker Runtime",
         sublabel: isThai ? "อัปเดต / signing key" : "Updates / signing key",
       },
-      agencies: {
-        label: isThai ? "เอเจนซี" : "Agencies",
-        sublabel: isThai ? "Multi-Agent Swarm" : "Multi-Agent Swarm",
-      },
       automation: {
         label: isThai ? "อัตโนมัติ" : "Automation",
         sublabel: isThai ? "ตั้งค่า Copilot" : "Copilot Settings",
@@ -1754,9 +1786,8 @@ export default function AdminSettings() {
   });
 
   // Vector Database settings
-  type VectorDbProvider = "chromadb" | "pgvector" | "cloudflare_vectorize";
   const [vectorDbForm, setVectorDbForm] = useState({
-    provider: "chromadb" as VectorDbProvider,
+    provider: "pgvector" as VectorDbProvider,
     embeddingModel: "all-MiniLM-L6-v2",
     embeddingDimension: 384,
     chromaPersistDir: "~/.smartaihub/chroma",
@@ -1769,6 +1800,9 @@ export default function AdminSettings() {
     vectorizeAccountId: "",
     vectorizeApiToken: "",
     vectorizeIndexName: "",
+    vectorizeKnowledgeIndexName: "",
+    vectorizeMediaIndexName: "",
+    vectorizeAgentMemoryIndexName: "",
   });
   const [showPgvectorPassword, setShowPgvectorPassword] = useState(false);
   const [showOpenaiApiKey, setShowOpenaiApiKey] = useState(false);
@@ -1782,6 +1816,8 @@ export default function AdminSettings() {
     useState(false);
   const [pendingProvider, setPendingProvider] =
     useState<VectorDbProvider | null>(null);
+  const [isStartingProviderSwitch, setIsStartingProviderSwitch] =
+    useState(false);
   const [showReindexConfirm, setShowReindexConfirm] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
 
@@ -1796,9 +1832,74 @@ export default function AdminSettings() {
   const { data: vectorDbHealth, refetch: refetchVectorDbHealth } =
     trpc.systemSettings.getVectorDbHealth.useQuery(undefined, {
       enabled: !!user && user.role === "admin",
+      // Health polling also drives the server-side automatic promotion check
+      // while a staged Vectorize projection is still being acknowledged.
+      refetchInterval: 5000,
+    });
+  const { data: vectorDbCutoverState, refetch: refetchVectorDbCutoverState } =
+    trpc.systemSettings.getVectorDbCutoverState.useQuery(undefined, {
+      enabled: !!user && user.role === "admin",
     });
   const normalizedVectorDbHealth =
     normalizeVectorDbHealthPayload(vectorDbHealth);
+  const healthActiveVectorDbProvider =
+    normalizedVectorDbHealth?.provider_status.current_read_provider;
+  const activeVectorDbProvider =
+    healthActiveVectorDbProvider && healthActiveVectorDbProvider !== "unknown"
+      ? healthActiveVectorDbProvider
+      : vectorDbSettings?.provider || "unknown";
+  const persistedPreparedProvider =
+    (vectorDbSettings?.preparedProvider as VectorDbProvider | undefined) ||
+    (vectorDbSettings?.provider as VectorDbProvider | undefined) ||
+    "pgvector";
+  const cutoverTargetProvider =
+    (vectorDbCutoverState?.target_provider as VectorDbProvider | null) ||
+    (persistedPreparedProvider !== activeVectorDbProvider
+      ? persistedPreparedProvider
+      : null);
+  const selectedProviderIsDraft =
+    vectorDbForm.provider !== persistedPreparedProvider;
+  const cutoverIsInProgress = ["active", "ready_for_cutover"].includes(
+    vectorDbCutoverState?.status || ""
+  );
+  const vectorDbIndexingStatus =
+    normalizedVectorDbHealth?.indexing_status ||
+    DEFAULT_VECTOR_DB_HEALTH.indexing_status;
+  const indexingCoverageKnown = vectorDbIndexingStatus.coverage_known;
+  const indexingTotal =
+    indexingCoverageKnown && vectorDbIndexingStatus.source_count !== null
+      ? vectorDbIndexingStatus.source_count
+      : vectorDbIndexingStatus.queued_count;
+  const indexingCompleted =
+    indexingCoverageKnown && vectorDbIndexingStatus.indexed_count !== null
+      ? vectorDbIndexingStatus.indexed_count
+      : vectorDbIndexingStatus.processed_count;
+  const indexingPending = indexingCoverageKnown
+    ? vectorDbIndexingStatus.pending_count || 0
+    : Math.max(indexingTotal - indexingCompleted, 0);
+  const indexingFailed = indexingCoverageKnown
+    ? vectorDbIndexingStatus.projection_failed_count || 0
+    : vectorDbIndexingStatus.campaign_failed_count;
+  const indexingStatusLabel =
+    vectorDbIndexingStatus.status === "complete"
+      ? indexingCoverageKnown
+        ? "Index complete"
+        : "Campaign complete"
+      : vectorDbIndexingStatus.status === "reindexing"
+        ? "Reindexing in progress"
+        : vectorDbIndexingStatus.status === "failed"
+          ? "Indexing needs attention"
+          : vectorDbIndexingStatus.status === "idle"
+            ? "No active indexing"
+            : "Index status unavailable";
+  const indexingStatusClassName =
+    vectorDbIndexingStatus.status === "complete"
+      ? "border-emerald-200 bg-emerald-50/70 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-200"
+      : vectorDbIndexingStatus.status === "failed"
+        ? "border-amber-200 bg-amber-50/70 text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-200"
+        : vectorDbIndexingStatus.status === "reindexing"
+          ? "border-blue-200 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-200"
+          : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/30 dark:text-slate-200";
 
   const updateVectorDbMutation =
     trpc.systemSettings.updateVectorDbSettings.useMutation({
@@ -1817,6 +1918,25 @@ export default function AdminSettings() {
       onError: (err: any) => toast.error(`Failed: ${err.message}`),
     });
 
+  const requestVectorDbCutoverMutation =
+    trpc.systemSettings.requestVectorDbCutover.useMutation({
+      onSuccess: data => {
+        if (data.automatic_promotion?.cutover_applied) {
+          toast.success(
+            `${vectorDbProviderLabel(data.current_read_provider)} is now the active default`
+          );
+        } else {
+          toast.success(
+            `${vectorDbProviderLabel(data.target_provider)} preparation started (${data.status}). It will activate automatically when readiness checks pass.`
+          );
+        }
+        refetchVectorDbCutoverState();
+        refetchVectorDbHealth();
+      },
+      onError: (err: any) =>
+        toast.error(`Cutover request failed: ${err.message}`),
+    });
+
   const testVectorDbMutation =
     trpc.systemSettings.testVectorDbConnection.useMutation({
       onSuccess: data => {
@@ -1828,6 +1948,46 @@ export default function AdminSettings() {
       },
       onError: (err: any) => toast.error(`Test failed: ${err.message}`),
     });
+
+  const handleConfirmProviderSwitch = async () => {
+    const targetProvider = pendingProvider;
+    if (!targetProvider || targetProvider === activeVectorDbProvider) return;
+
+    if (targetProvider !== "cloudflare_vectorize") {
+      toast.error(
+        "Governed automatic switching is currently available for Cloudflare Vectorize only"
+      );
+      return;
+    }
+
+    setIsStartingProviderSwitch(true);
+    try {
+      await updateVectorDbMutation.mutateAsync({
+        ...vectorDbForm,
+        provider: activeVectorDbProvider as VectorDbProvider,
+        preparedProvider: targetProvider,
+      });
+
+      const testResult = await testVectorDbMutation.mutateAsync({
+        ...vectorDbForm,
+        provider: targetProvider,
+      });
+      if (!testResult.success) {
+        throw new Error(testResult.message);
+      }
+
+      await requestVectorDbCutoverMutation.mutateAsync({
+        targetProvider,
+        expectedVersion: vectorDbCutoverState?.switch_version ?? undefined,
+      });
+      setShowProviderSwitchWarning(false);
+      setPendingProvider(null);
+    } catch (error: any) {
+      toast.error(`Unable to start provider preparation: ${error.message}`);
+    } finally {
+      setIsStartingProviderSwitch(false);
+    }
+  };
 
   const triggerReindexMutation = trpc.systemSettings.triggerReindex.useMutation(
     {
@@ -1852,9 +2012,7 @@ export default function AdminSettings() {
   );
 
   const reindexResult = reindexStatus?.result as
-    | Record<string, any>
-    | null
-    | undefined;
+    Record<string, any> | null | undefined;
   const reindexExpectedJobs = Number(
     reindexResult?.expected_enqueued_jobs ??
       reindexResult?.enqueued_jobs ??
@@ -1926,11 +2084,20 @@ export default function AdminSettings() {
 
   useEffect(() => {
     if (vectorDbSettings) {
+      const preparedProvider =
+        (vectorDbSettings.preparedProvider as VectorDbProvider) ||
+        (vectorDbSettings.provider as VectorDbProvider) ||
+        "pgvector";
+      const isCloudflareVectorize = preparedProvider === "cloudflare_vectorize";
       setVectorDbForm(prev => ({
         ...prev,
-        provider: (vectorDbSettings.provider as VectorDbProvider) || "chromadb",
-        embeddingModel: vectorDbSettings.embeddingModel || "all-MiniLM-L6-v2",
-        embeddingDimension: vectorDbSettings.embeddingDimension || 384,
+        provider: preparedProvider,
+        embeddingModel: isCloudflareVectorize
+          ? "@cf/baai/bge-base-en-v1.5"
+          : vectorDbSettings.embeddingModel || "all-MiniLM-L6-v2",
+        embeddingDimension: isCloudflareVectorize
+          ? 768
+          : vectorDbSettings.embeddingDimension || 384,
         chromaPersistDir:
           vectorDbSettings.chromaPersistDir || "~/.smartaihub/chroma",
         pgvectorHost: vectorDbSettings.pgvectorHost || "",
@@ -1939,6 +2106,11 @@ export default function AdminSettings() {
         pgvectorUser: vectorDbSettings.pgvectorUser || "",
         vectorizeAccountId: vectorDbSettings.vectorizeAccountId || "",
         vectorizeIndexName: vectorDbSettings.vectorizeIndexName || "",
+        vectorizeKnowledgeIndexName:
+          vectorDbSettings.vectorizeKnowledgeIndexName || "",
+        vectorizeMediaIndexName: vectorDbSettings.vectorizeMediaIndexName || "",
+        vectorizeAgentMemoryIndexName:
+          vectorDbSettings.vectorizeAgentMemoryIndexName || "",
       }));
       setPgvectorPasswordConfigured(
         !!vectorDbSettings.pgvectorPasswordConfigured
@@ -2368,7 +2540,9 @@ export default function AdminSettings() {
     {
       key: "platform_operations",
       label: isThai ? "ปฏิบัติการแพลตฟอร์ม" : "Platform Operations",
-      sublabel: isThai ? "หลักฐาน cutover / rollback" : "Cutover evidence & rollback",
+      sublabel: isThai
+        ? "หลักฐาน cutover / rollback"
+        : "Cutover evidence & rollback",
       icon: Shield,
     },
     {
@@ -2382,12 +2556,6 @@ export default function AdminSettings() {
       label: isThai ? "ป้องกัน Contact" : "Contact Protection",
       sublabel: isThai ? "Turnstile และ Anti-spam" : "Turnstile & Anti-spam",
       icon: Shield,
-    },
-    {
-      key: "agencies",
-      label: copy.nav.agencies.label,
-      sublabel: copy.nav.agencies.sublabel,
-      icon: Zap,
     },
     {
       key: "automation",
@@ -6894,8 +7062,8 @@ export default function AdminSettings() {
                         icon={Database}
                         label="Provider"
                         value={
-                          <span className="capitalize">
-                            {vectorDbStats.provider}
+                          <span>
+                            {vectorDbProviderLabel(vectorDbStats.provider)}
                           </span>
                         }
                         subLabel={
@@ -6953,13 +7121,16 @@ export default function AdminSettings() {
                           icon={Cloud}
                           label="Vectors"
                           value={
-                            vectorDbStats.vectorCount?.toLocaleString() ?? "—"
+                            vectorDbStats.vectorCount !== undefined &&
+                            vectorDbStats.vectorCount !== null
+                              ? vectorDbStats.vectorCount.toLocaleString()
+                              : "Not reported"
                           }
                           subLabel={
                             <span className="text-xs text-slate-500">
                               {vectorDbStats.dimensions
                                 ? `${vectorDbStats.dimensions}D • ${vectorDbStats.metric || "cosine"}`
-                                : "Index info"}
+                                : "Index metadata; count not exposed by API"}
                             </span>
                           }
                         />
@@ -6991,11 +7162,11 @@ export default function AdminSettings() {
                           icon={Database}
                           label="Active Read Provider"
                           value={
-                            <span className="capitalize">
-                              {
+                            <span>
+                              {vectorDbProviderLabel(
                                 normalizedVectorDbHealth.provider_status
                                   .current_read_provider
-                              }
+                              )}
                             </span>
                           }
                           subLabel={
@@ -7028,9 +7199,11 @@ export default function AdminSettings() {
                           icon={Database}
                           label="Cutover Target"
                           value={
-                            <span className="capitalize">
-                              {normalizedVectorDbHealth.provider_status
-                                .target_provider || "None"}
+                            <span>
+                              {vectorDbProviderLabel(
+                                normalizedVectorDbHealth.provider_status
+                                  .target_provider
+                              )}
                             </span>
                           }
                           subLabel={
@@ -7043,7 +7216,7 @@ export default function AdminSettings() {
 
                         <DashboardKpiCard
                           icon={AlertCircle}
-                          label="Connection Health"
+                          label="Provider Configuration"
                           value={
                             <Badge
                               variant={
@@ -7137,16 +7310,25 @@ export default function AdminSettings() {
                     <Select
                       value={vectorDbForm.provider}
                       onValueChange={(value: VectorDbProvider) => {
-                        // Show warning if switching from currently saved provider
-                        if (
-                          vectorDbSettings?.provider &&
-                          value !== vectorDbSettings.provider
-                        ) {
-                          setPendingProvider(value);
-                          setShowProviderSwitchWarning(true);
-                        } else {
-                          setVectorDbForm({ ...vectorDbForm, provider: value });
-                        }
+                        // Selecting a provider prepares a draft configuration.
+                        // Activation is an explicit action below, after the
+                        // administrator has entered and tested its settings.
+                        setVectorDbForm({
+                          ...vectorDbForm,
+                          provider: value,
+                          ...(value === "cloudflare_vectorize"
+                            ? {
+                                embeddingModel: "@cf/baai/bge-base-en-v1.5",
+                                embeddingDimension: 768,
+                              }
+                            : vectorDbForm.embeddingModel ===
+                                "@cf/baai/bge-base-en-v1.5"
+                              ? {
+                                  embeddingModel: "all-MiniLM-L6-v2",
+                                  embeddingDimension: 384,
+                                }
+                              : {}),
+                        });
                       }}
                     >
                       <SelectTrigger id="provider" className="max-w-md">
@@ -7190,6 +7372,196 @@ export default function AdminSettings() {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+
+                    <DashboardCard
+                      className="border-blue-200 bg-blue-50/70 dark:border-blue-800 dark:bg-blue-950/30"
+                      bodyClassName="space-y-3 p-4"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-blue-950 dark:text-blue-100">
+                            <Check className="h-4 w-4 text-emerald-600" />
+                            Default provider status
+                          </div>
+                          <p className="mt-1 text-xs text-blue-800/80 dark:text-blue-200/80">
+                            The active provider is the one used for live RAG and
+                            semantic search. Saving a configuration does not
+                            change it.
+                          </p>
+                        </div>
+                        {vectorDbForm.provider !== activeVectorDbProvider && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="gap-2"
+                            onClick={() => {
+                              setPendingProvider(vectorDbForm.provider);
+                              setShowProviderSwitchWarning(true);
+                            }}
+                            disabled={
+                              isStartingProviderSwitch ||
+                              vectorDbForm.provider !== "cloudflare_vectorize"
+                            }
+                            title={
+                              vectorDbForm.provider === "cloudflare_vectorize"
+                                ? "Start governed preparation and switch automatically when ready"
+                                : "Governed automatic switching is currently available for Cloudflare Vectorize"
+                            }
+                          >
+                            <Zap className="h-4 w-4" />
+                            {cutoverIsInProgress
+                              ? "Retry Vectorize Preparation"
+                              : `Change Default to ${vectorDbProviderLabel(vectorDbForm.provider)}`}
+                          </Button>
+                        )}
+                        {vectorDbForm.provider !== activeVectorDbProvider &&
+                          vectorDbForm.provider !== "cloudflare_vectorize" && (
+                            <p className="max-w-sm text-right text-xs text-amber-700 dark:text-amber-300">
+                              Governed automatic switching is enabled for
+                              Cloudflare Vectorize first. This provider remains
+                              configuration-only until its migration gate is
+                              available.
+                            </p>
+                          )}
+                      </div>
+
+                      <div className="grid gap-3 text-sm md:grid-cols-3">
+                        <div className="rounded-lg border border-emerald-200 bg-white/80 p-3 dark:border-emerald-800 dark:bg-slate-900/50">
+                          <p className="text-xs text-muted-foreground">
+                            Active Default
+                          </p>
+                          <p className="mt-1 font-semibold text-emerald-700 dark:text-emerald-300">
+                            {vectorDbProviderLabel(activeVectorDbProvider)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-blue-200 bg-white/80 p-3 dark:border-blue-800 dark:bg-slate-900/50">
+                          <p className="text-xs text-muted-foreground">
+                            Prepared Target
+                          </p>
+                          <p className="mt-1 font-semibold text-blue-700 dark:text-blue-300">
+                            {vectorDbProviderLabel(cutoverTargetProvider)}
+                          </p>
+                          {selectedProviderIsDraft && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              Unsaved selection: {vectorDbProviderLabel(vectorDbForm.provider)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-white/80 p-3 dark:border-slate-700 dark:bg-slate-900/50">
+                          <p className="text-xs text-muted-foreground">
+                            Readiness
+                          </p>
+                          <p className="mt-1 font-semibold capitalize text-slate-800 dark:text-slate-100">
+                            {cutoverIsInProgress
+                              ? `Preparing (${vectorDbCutoverState?.status})`
+                              : cutoverTargetProvider
+                                ? vectorDbCutoverState?.status === "cutover_complete"
+                                  ? "Active"
+                                  : "Ready to prepare"
+                                : "Not started"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {vectorDbForm.provider !== activeVectorDbProvider && (
+                        <p className="text-xs text-muted-foreground">
+                          Preparation mode: saving and testing these values will
+                          not change the Active Default until the governed
+                          readiness gate passes.
+                        </p>
+                      )}
+                    </DashboardCard>
+
+                    {normalizedVectorDbHealth && (
+                      <DashboardCard
+                        className={indexingStatusClassName}
+                        bodyClassName="space-y-4 p-4"
+                      >
+                        <div
+                          className="flex flex-wrap items-start justify-between gap-3"
+                          role="status"
+                          aria-live="polite"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              {vectorDbIndexingStatus.status === "reindexing" ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : vectorDbIndexingStatus.status === "failed" ? (
+                                <AlertTriangle className="h-4 w-4" />
+                              ) : vectorDbIndexingStatus.status === "complete" ? (
+                                <Check className="h-4 w-4" />
+                              ) : (
+                                <Info className="h-4 w-4" />
+                              )}
+                              Indexing status
+                            </div>
+                            <p className="mt-1 text-xs opacity-80">
+                              {indexingCoverageKnown
+                                ? `Confirmed from ${vectorDbProviderLabel(vectorDbIndexingStatus.provider)} projection registry.`
+                                : "Showing durable campaign progress; target coverage is not confirmed yet."}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="border-current/30">
+                            {indexingStatusLabel}
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="font-medium">
+                              {indexingCoverageKnown
+                                ? "Sources indexed"
+                                : "Jobs acknowledged"}
+                            </span>
+                            <span className="font-semibold tabular-nums">
+                              {indexingCompleted.toLocaleString()} /{" "}
+                              {indexingTotal.toLocaleString()}
+                            </span>
+                          </div>
+                          <Progress
+                            value={vectorDbIndexingStatus.progress_ratio * 100}
+                            className="h-2"
+                            aria-label={`${indexingStatusLabel}: ${Math.round(vectorDbIndexingStatus.progress_ratio * 100)} percent`}
+                          />
+                        </div>
+
+                        <div className="grid gap-2 text-xs sm:grid-cols-4">
+                          <div>
+                            <span className="opacity-70">
+                              {indexingCoverageKnown ? "Indexed" : "Processed"}
+                            </span>
+                            <div className="mt-1 text-sm font-semibold tabular-nums">
+                              {indexingCompleted.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="opacity-70">Pending</span>
+                            <div className="mt-1 text-sm font-semibold tabular-nums">
+                              {indexingPending.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="opacity-70">
+                              {indexingCoverageKnown
+                                ? "Projection failures"
+                                : "Campaign failures"}
+                            </span>
+                            <div className="mt-1 text-sm font-semibold tabular-nums">
+                              {indexingFailed.toLocaleString()}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="opacity-70">Campaign</span>
+                            <div className="mt-1 text-sm font-semibold">
+                              {vectorDbIndexingStatus.campaign_status}
+                              {vectorDbIndexingStatus.campaign_id
+                                ? ` #${vectorDbIndexingStatus.campaign_id}`
+                                : ""}
+                            </div>
+                          </div>
+                        </div>
+                      </DashboardCard>
+                    )}
 
                     <DashboardCard
                       className="border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/30"
@@ -7255,7 +7627,11 @@ export default function AdminSettings() {
                           ...vectorDbForm,
                           embeddingModel: value,
                           embeddingDimension:
-                            value === "all-MiniLM-L6-v2" ? 384 : 1536,
+                            value === "all-MiniLM-L6-v2"
+                              ? 384
+                              : value === "@cf/baai/bge-base-en-v1.5"
+                                ? 768
+                                : 1536,
                         })
                       }
                     >
@@ -7270,6 +7646,16 @@ export default function AdminSettings() {
                             </div>
                             <div className="text-xs text-muted-foreground">
                               FREE • Local • Fast
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="@cf/baai/bge-base-en-v1.5">
+                          <div>
+                            <div className="font-medium">
+                              bge-base-en-v1.5 (768D)
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Cloudflare Workers AI • Vectorize compatible
                             </div>
                           </div>
                         </SelectItem>
@@ -7295,7 +7681,10 @@ export default function AdminSettings() {
                         •{" "}
                         {vectorDbForm.embeddingModel === "all-MiniLM-L6-v2"
                           ? "MiniLM runs locally, no API key needed"
-                          : "OpenAI embeddings require API key below"}
+                          : vectorDbForm.embeddingModel ===
+                              "@cf/baai/bge-base-en-v1.5"
+                            ? "Cloudflare Workers AI • 768D required by Vectorize"
+                            : "OpenAI embeddings require API key below"}
                       </div>
                     </div>
                   </div>
@@ -7522,11 +7911,65 @@ export default function AdminSettings() {
                             className="font-mono text-sm"
                           />
                         </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="vectorizeKnowledgeIndexName">
+                            Knowledge Index (optional)
+                          </Label>
+                          <Input
+                            id="vectorizeKnowledgeIndexName"
+                            value={vectorDbForm.vectorizeKnowledgeIndexName}
+                            onChange={e =>
+                              setVectorDbForm({
+                                ...vectorDbForm,
+                                vectorizeKnowledgeIndexName: e.target.value,
+                              })
+                            }
+                            placeholder="smartaihub-knowledge-v1"
+                            className="font-mono text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="vectorizeMediaIndexName">
+                            Media Index (optional)
+                          </Label>
+                          <Input
+                            id="vectorizeMediaIndexName"
+                            value={vectorDbForm.vectorizeMediaIndexName}
+                            onChange={e =>
+                              setVectorDbForm({
+                                ...vectorDbForm,
+                                vectorizeMediaIndexName: e.target.value,
+                              })
+                            }
+                            placeholder="smartaihub-media-v1"
+                            className="font-mono text-sm"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="vectorizeAgentMemoryIndexName">
+                            Agent Memory Index (optional)
+                          </Label>
+                          <Input
+                            id="vectorizeAgentMemoryIndexName"
+                            value={vectorDbForm.vectorizeAgentMemoryIndexName}
+                            onChange={e =>
+                              setVectorDbForm({
+                                ...vectorDbForm,
+                                vectorizeAgentMemoryIndexName: e.target.value,
+                              })
+                            }
+                            placeholder="smartaihub-agent-memory-v1"
+                            className="font-mono text-sm"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="vectorizeApiToken">
-                          API Token{" "}
+                          Cloudflare API Token (Vectorize + Workers AI){" "}
                           {vectorizeApiTokenConfigured &&
                             "(leave empty to keep current)"}
                         </Label>
@@ -7568,6 +8011,11 @@ export default function AdminSettings() {
                             API token configured
                           </Badge>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                          This token must include both Vectorize Write and
+                          Workers AI Run permissions. The same token is used to
+                          generate the 768D embeddings during backfill.
+                        </p>
                       </div>
 
                       <DashboardCard
@@ -7679,9 +8127,18 @@ export default function AdminSettings() {
                   {/* Action Buttons */}
                   <div className="flex gap-3 border-t pt-4">
                     <Button
-                      onClick={() =>
-                        updateVectorDbMutation.mutate(vectorDbForm)
-                      }
+                      onClick={() => {
+                        const activeProvider =
+                          (vectorDbSettings?.provider as VectorDbProvider) ||
+                          "pgvector";
+                        updateVectorDbMutation.mutate({
+                          ...vectorDbForm,
+                          // Save credentials/index details as preparation only.
+                          // The current read provider remains authoritative.
+                          provider: activeProvider,
+                          preparedProvider: vectorDbForm.provider,
+                        });
+                      }}
                       disabled={updateVectorDbMutation.isPending}
                       className="min-w-32"
                     >
@@ -7690,12 +8147,14 @@ export default function AdminSettings() {
                       ) : (
                         <Save className="w-4 h-4 mr-2" />
                       )}
-                      Save Configuration
+                      {vectorDbForm.provider !== activeVectorDbProvider
+                        ? "Save Prepared Configuration"
+                        : "Save Configuration"}
                     </Button>
 
                     <Button
                       variant="outline"
-                      onClick={() => testVectorDbMutation.mutate()}
+                      onClick={() => testVectorDbMutation.mutate(vectorDbForm)}
                       disabled={testVectorDbMutation.isPending}
                     >
                       {testVectorDbMutation.isPending ? (
@@ -7715,8 +8174,9 @@ export default function AdminSettings() {
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       Re-process all library documents and rebuild the vector
-                      index for the active provider. This is required after
-                      switching providers or changing embedding models.
+                      index for the active provider ({activeVectorDbProvider}).
+                      This is required after switching providers or changing
+                      embedding models.
                     </p>
 
                     {(isReindexing || reindexStatus?.status === "running") &&
@@ -7772,59 +8232,73 @@ export default function AdminSettings() {
                   </div>
                 </DashboardCard>
 
-                {/* Provider Switch Warning Dialog */}
+                {/* Governed Provider Switch Confirmation */}
                 <AlertDialog
                   open={showProviderSwitchWarning}
-                  onOpenChange={setShowProviderSwitchWarning}
+                  onOpenChange={open => {
+                    if (!isStartingProviderSwitch) {
+                      setShowProviderSwitchWarning(open);
+                      if (!open) setPendingProvider(null);
+                    }
+                  }}
                 >
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle className="flex items-center gap-2">
                         <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        Switch Vector Database Provider?
+                        Change the Active Default Provider?
                       </AlertDialogTitle>
                       <AlertDialogDescription className="space-y-2">
                         <p>
-                          Switching from{" "}
-                          <strong>
-                            {vectorDbSettings?.provider || "current provider"}
-                          </strong>{" "}
-                          to{" "}
-                          <strong>
-                            {pendingProvider === "cloudflare_vectorize"
-                              ? "Cloudflare Vectorize"
-                              : pendingProvider}
-                          </strong>{" "}
-                          requires reindexing all documents.
+                          This will prepare{" "}
+                          <strong>{vectorDbProviderLabel(pendingProvider)}</strong>{" "}
+                          as the new default instead of{" "}
+                          <strong>{vectorDbProviderLabel(activeVectorDbProvider)}</strong>.
                         </p>
                         <p>
-                          Your existing index data on the previous provider will
-                          be preserved but inactive. After saving, use the
-                          "Reindex All Documents" button to rebuild the index on
-                          the new provider.
+                          The system will save the prepared configuration, verify
+                          the target connection and schema, start or continue the
+                          canonical backfill, enable temporary mirror writes,
+                          and switch reads automatically only after coverage,
+                          parity, and reconciliation checks pass.
+                        </p>
+                        <p>
+                          Until then, {vectorDbProviderLabel(activeVectorDbProvider)}
+                          remains the active default. Existing data is preserved;
+                          the target depends on its external service and may add
+                          usage costs. If a gate fails, the switch is not applied
+                          and the blocker remains visible in this page.
+                        </p>
+                        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-800">
+                          Switching is currently automated for Cloudflare
+                          Vectorize. Make sure its Account ID, API token, index,
+                          and 768D cosine schema are configured before confirming.
                         </p>
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel
+                        disabled={isStartingProviderSwitch}
                         onClick={() => setPendingProvider(null)}
                       >
                         Cancel
                       </AlertDialogCancel>
                       <AlertDialogAction
-                        className="bg-amber-600 hover:bg-amber-700"
-                        onClick={() => {
-                          if (pendingProvider) {
-                            setVectorDbForm({
-                              ...vectorDbForm,
-                              provider: pendingProvider,
-                            });
-                          }
-                          setPendingProvider(null);
-                          setShowProviderSwitchWarning(false);
+                        className="bg-blue-600 hover:bg-blue-700"
+                        disabled={isStartingProviderSwitch}
+                        onClick={event => {
+                          event.preventDefault();
+                          void handleConfirmProviderSwitch();
                         }}
                       >
-                        Switch Provider
+                        {isStartingProviderSwitch ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="mr-2 h-4 w-4" />
+                        )}
+                        {cutoverIsInProgress
+                          ? "Retry Preparation & Auto-switch"
+                          : "Start Preparation & Auto-switch"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -7846,9 +8320,9 @@ export default function AdminSettings() {
                           This will reindex all library documents using the
                           currently active vector database provider (
                           <strong>
-                            {vectorDbForm.provider === "cloudflare_vectorize"
+                            {activeVectorDbProvider === "cloudflare_vectorize"
                               ? "Cloudflare Vectorize"
-                              : vectorDbForm.provider}
+                              : activeVectorDbProvider}
                           </strong>
                           ).
                         </p>
@@ -7895,10 +8369,6 @@ export default function AdminSettings() {
 
               <TabsContent value="public_contact">
                 <PublicContactProtectionSettingsPanel />
-              </TabsContent>
-
-              <TabsContent value="agencies">
-                <AgencyAdminPanel />
               </TabsContent>
 
               <TabsContent value="menu">

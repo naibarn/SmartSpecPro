@@ -3,6 +3,66 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("VerticalDramaEpisodePage prompt + image flow", () => {
+  it("routes episode-level prompt generation through the canonical per-shot queue", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const handler = source.slice(
+      source.indexOf("async function handleGenerateAllStartFramePrompts()"),
+      source.indexOf(
+        "/**\n   * Run the canonical per-shot prompt + image chain",
+        source.indexOf("async function handleGenerateAllStartFramePrompts()")
+      )
+    );
+
+    expect(handler).not.toContain("runStageMutation");
+    expect(handler).toContain("submitAndWaitForShotStartFramePrompt");
+    expect(handler).toContain("promptSource:");
+    expect(handler).toContain("workerCount = Math.min(3");
+  });
+
+  it("routes the all-shot prompt + image action through the existing per-shot handler", () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
+      "utf8"
+    );
+    const handler = source.slice(
+      source.indexOf("async function handleGenerateAllPromptAndImages("),
+      source.indexOf(
+        '/**\n   * One-click "generate prompt + image"',
+        source.indexOf("async function handleGenerateAllPromptAndImages(")
+      )
+    );
+
+    expect(handler).toContain(
+      'handleGeneratePromptAndImage(shotNumber, "single")'
+    );
+    expect(handler).toContain("normalizedShotNumbers");
+    expect(handler).toContain("setGeneratingAllPromptAndImages");
+  });
+
+  it("exposes bilingual all-shot prompt and prompt + image actions", () => {
+    const panelSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../components/verticalDramaSeries/VerticalDramaStoryboardPanel.tsx"
+      ),
+      "utf8"
+    );
+
+    expect(panelSource).toContain("สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)");
+    expect(panelSource).toContain(
+      "Generate image prompts for all shots (paid)"
+    );
+    expect(panelSource).toContain("สร้างพรอมต์และภาพทุกช็อต");
+    expect(panelSource).toContain("Generate prompts + images for all shots");
+    expect(panelSource).toContain("onGenerateAllPromptAndImages");
+    expect(panelSource).toContain(
+      'data-testid="vd-storyboard-generate-all-prompt-images"'
+    );
+  });
+
   it("does not run the whole-episode start-frame planning stage from the per-shot button", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
@@ -34,11 +94,18 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     expect(storyboardProps).toContain("imageModels,");
     expect(storyboardProps).toContain("videoModels,");
-    expect(storyboardProps).toContain("onSelectImageModel: handleSelectImageModel");
-    expect(storyboardProps).toContain("onSelectVideoModel: handleSelectVideoModel");
+    expect(storyboardProps).toContain(
+      "onSelectImageModel: handleSelectImageModel"
+    );
+    expect(storyboardProps).toContain(
+      "onSelectVideoModel: handleSelectVideoModel"
+    );
 
     const routerSource = fs.readFileSync(
-      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      path.resolve(
+        __dirname,
+        "../../../../server/routers/verticalDramaEpisodes.ts"
+      ),
       "utf8"
     );
     const selectionMutation = routerSource.slice(
@@ -68,7 +135,10 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     const storyboardProps = pageSource.slice(
       pageSource.lastIndexOf("storyboardPanel={{"),
-      pageSource.indexOf("qualityReview:", pageSource.lastIndexOf("storyboardPanel={{"))
+      pageSource.indexOf(
+        "qualityReview:",
+        pageSource.lastIndexOf("storyboardPanel={{")
+      )
     );
 
     expect(storyboardProps).toContain(
@@ -88,7 +158,9 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       ),
       "utf8"
     );
-    expect(panelSource).toContain("onGenerateStartFrameImage &&\n                  frame?.imagePrompt");
+    expect(panelSource).toMatch(
+      /onGenerateStartFrameImage\s*&&\s*frame\?\.imagePrompt/
+    );
 
     const handler = pageSource.slice(
       pageSource.indexOf("async function handleGeneratePromptAndImage("),
@@ -98,8 +170,12 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       )
     );
     expect(handler).toContain("if (shouldReauthor) {");
-    expect(handler).toContain("frame?.imageStaleReason === \"character_references_changed\"");
-    expect(handler).toContain("ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน");
+    expect(handler).toContain(
+      'frame?.imageStaleReason === "character_references_changed"'
+    );
+    expect(handler).toContain(
+      "ยังไม่มีพรอมต์ภาพ กรุณากด ‘สร้างพรอมต์และภาพ’ ก่อน"
+    );
   });
 
   it("keeps episode storyboard rebuild feedback visible after the fast async submit", () => {
@@ -110,9 +186,7 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
 
     expect(source).toContain("storyboardRebuildPersistedInFlight");
     expect(source).toContain("episodeContentRebuildInFlight");
-    expect(source).toContain(
-      'data-testid="vd-episode-content-rebuild-status"'
-    );
+    expect(source).toContain('data-testid="vd-episode-content-rebuild-status"');
     expect(source).toContain("ล้าง storyboard เดิมแล้ว");
     const submitHandler = source.slice(
       source.indexOf("function submitEpisodeContentRebuild()"),
@@ -232,11 +306,14 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
         source.indexOf("async function handleGeneratePromptAndImage(")
       )
     );
-    expect(handler).toContain("reauthor && selectedImageQuality !== \"auto\"");
+    expect(handler).toContain('reauthor && selectedImageQuality !== "auto"');
     expect(handler).toContain('"shot_synopsis_direct"');
 
     const routerSource = fs.readFileSync(
-      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      path.resolve(
+        __dirname,
+        "../../../../server/routers/verticalDramaEpisodes.ts"
+      ),
       "utf8"
     );
     expect(routerSource).toContain(
@@ -248,7 +325,10 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
 
   it("carries a completed prompt across a missing-frame recovery boundary", () => {
     const routerSource = fs.readFileSync(
-      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      path.resolve(
+        __dirname,
+        "../../../../server/routers/verticalDramaEpisodes.ts"
+      ),
       "utf8"
     );
     const imageRoute = routerSource.slice(
@@ -278,7 +358,9 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain(
       "trpc.verticalDramaEpisodes.persistStartFrameImageTask.useMutation()"
     );
-    expect(source).toContain("await persistStartFrameTask(variables.shotNumber");
+    expect(source).toMatch(
+      /await persistStartFrameTask\(\s*variables\.shotNumber/
+    );
     expect(source).toContain('status: "submitted"');
     expect(source).toContain("shouldResumeStartFramePoll(");
     expect(source).toContain("activeStartFrameShots");
@@ -291,17 +373,15 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       "utf8"
     );
 
-    expect(source).toContain("failureStage: \"admission\"");
-    expect(source).toContain("failureStage: \"provider\"");
-    expect(source).toContain("failureStage: \"sync\"");
+    expect(source).toContain('failureStage: "admission"');
+    expect(source).toContain('failureStage: "provider"');
+    expect(source).toContain('failureStage: "sync"');
     expect(source).toContain("onRetryStartFrameImage");
     expect(source).toContain("onRetryStartFrameSync");
     expect(source).toContain(
       "shouldReauthorStartFrameImageRetry(errorMessage)"
     );
-    expect(source).toContain(
-      "shouldReauthorStartFrameImageRetry(err.message)"
-    );
+    expect(source).toContain("shouldReauthorStartFrameImageRetry(err.message)");
     expect(source).toContain("autoRecoveringCompositionShotsRef");
     expect(source).toContain("กำลังซิงก์ข้อมูลจัดองค์ประกอบช็อตใหม่");
     expect(source).toContain("async function handleRetryStartFrameSync(");
@@ -317,7 +397,7 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("readVerticalDramaTaskMediaAssetId");
     expect(source).toContain("shouldAutoRepairFrameSync");
     expect(source).toContain("autoRepairPersistedFrameSync");
-    expect(source).toContain("task.failureStage === \"sync\"");
+    expect(source).toContain('task.failureStage === "sync"');
     expect(source).toContain("verticalDramaMediaAssetId");
     expect(source).toContain("never starts a new provider generation");
   });
@@ -329,7 +409,10 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     const getTask = source.slice(
       source.indexOf("getTask: protectedProcedure"),
-      source.indexOf("// Persist a failed provider-capacity task", source.indexOf("getTask: protectedProcedure"))
+      source.indexOf(
+        "// Persist a failed provider-capacity task",
+        source.indexOf("getTask: protectedProcedure")
+      )
     );
     expect(getTask).toContain("return task;");
     expect(getTask).not.toContain("ensureMediaTaskArtifactsForPolling({");
@@ -342,15 +425,24 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     );
     const startFramePoll = source.slice(
       source.indexOf("async function pollStartFrameTask("),
-      source.indexOf("/** Retry the non-paid result-linking step", source.indexOf("async function pollStartFrameTask("))
+      source.indexOf(
+        "/** Retry the non-paid result-linking step",
+        source.indexOf("async function pollStartFrameTask(")
+      )
     );
     const anglePoll = source.slice(
       source.indexOf("async function pollAngleVariationsTask("),
-      source.indexOf("const generateAngleVariationsMutation", source.indexOf("async function pollAngleVariationsTask("))
+      source.indexOf(
+        "const generateAngleVariationsMutation",
+        source.indexOf("async function pollAngleVariationsTask(")
+      )
     );
     const repairPoll = source.slice(
       source.indexOf("async function pollRepairImageTask("),
-      source.indexOf("function handleSubmitRepairImage", source.indexOf("async function pollRepairImageTask("))
+      source.indexOf(
+        "function handleSubmitRepairImage",
+        source.indexOf("async function pollRepairImageTask(")
+      )
     );
 
     expect(startFramePoll).toContain("shouldAutoRetryPolicyFailure");
@@ -359,7 +451,9 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(startFramePoll).toContain("hasRetried: softenLevel !== undefined");
     expect(source).toContain("softenLevel: taskSoftenLevel");
     expect(source).toContain("imageTask?.softenLevel");
-    expect(source).toContain("false,\n                false,\n                1");
+    expect(source).toContain(
+      "false,\n                false,\n                1"
+    );
     for (const poll of [anglePoll, repairPoll]) {
       expect(poll).not.toContain("crypto.randomUUID()");
       expect(poll).not.toContain("softenLevel: 1");
@@ -438,14 +532,21 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       "utf8"
     );
     expect(source).toContain("const enhancedReadinessShotNumbers = useMemo(");
-    expect(source).toContain("filter(frame => Number(frame.approvedMediaAssetId) > 0)");
+    expect(source).toContain(
+      "filter(frame => Number(frame.approvedMediaAssetId) > 0)"
+    );
     expect(source).toContain("enhancedReadinessShotNumbers.length === 0");
-    expect(source).toContain("Promise.all(enhancedReadinessShotNumbers.map");
+    expect(source).toMatch(
+      /Promise\.all\(\s*enhancedReadinessShotNumbers\.map/
+    );
   });
 
   it("keeps the display-only Enhanced readiness read non-throwing", () => {
     const routerSource = fs.readFileSync(
-      path.resolve(__dirname, "../../../../server/routers/verticalDramaEpisodes.ts"),
+      path.resolve(
+        __dirname,
+        "../../../../server/routers/verticalDramaEpisodes.ts"
+      ),
       "utf8"
     );
     const readiness = routerSource.slice(

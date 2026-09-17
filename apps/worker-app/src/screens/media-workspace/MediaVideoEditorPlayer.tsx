@@ -36,17 +36,36 @@ import { VoiceoverRecordModal } from "./VoiceoverRecordModal";
 import { AiMediaStudioModal } from "./AiMediaStudioModal";
 import {
   buildDominantFaceTrack,
+  buildFallbackFaceTrack,
+  detectAttachedMotionPoint,
+  detectGlobalMotionPoint,
+  hasFaceRenderEvidence,
+  hasRenderableFaceCameraPlan,
+  hasRenderableFaceScanCoverage,
+  observedFaceLandmarks,
+  selectFallbackFaceCandidate,
+  selectFreshOrPreviousCameraPlan,
   selectTrackedFaceCandidate,
+  shouldResumeLiveFaceProbeAfterFullScan,
   stableFaceCenter,
   type TimedFaceDetectionFrame,
+  type MotionFramePixels,
   type TrackedFaceCandidate,
 } from "./cameraTracking";
 import { useWorkerLocale } from "../../app/workerContext";
 import { applyVoiceGuidedVisualPlan } from "./voiceGuidedVisualMatch";
 import { normalizeDisplayPath } from "./sourcePath";
 import {
+  applySourceGeometryDecision,
+  evaluateSourceGeometry,
+  normalizeSourceGeometry,
+  type SourceVideoGeometry,
+} from "./sourceGeometry";
+import {
   advancePlayableTimeMs,
   chooseAudioTrackIndex,
+  chooseRenderSourcePath,
+  getPlaybackSilenceRanges,
   getTimelineVideoSources,
   getPlayableTimeMs,
   getAudioTrackLabel,
@@ -55,6 +74,7 @@ import {
   getDeadAirCutFingerprint,
   getNoiseThresholdDb,
   getWaveformThresholdTopPercent,
+  normalizeSilenceRanges,
   type AudioTrackInfo,
   type DeadAirRenderSelection,
   type WaveformBin,
@@ -121,6 +141,39 @@ interface CustomSilenceDetectionResult {
 
 type FaceDetectorStatus = "idle" | "loading" | "ready" | "tracking" | "not_found" | "error";
 
+type FaceFrameDiagnostic = {
+  timeMs: number;
+  status: "found" | "no_face" | "landmarks_missing" | "unselected";
+  detectionCount: number;
+  landmarkCount: number;
+  box?: { x: number; y: number; width: number; height: number };
+  landmarks: Array<{ x: number; y: number }>;
+  confidence?: number;
+};
+
+type FaceScanSummary = {
+  sampledFrames: number;
+  detectedFrames: number;
+  landmarkFrames: number;
+  selectedFrames: number;
+  faceSpanMs: number;
+  usedFallbackFaceTrack: boolean;
+};
+
+type FullCameraScanResult = {
+  points: CameraMotionTrackPoint[];
+  activityIntervals: CameraMotionActivityInterval[];
+  summary: FaceScanSummary | null;
+  cameraMotionPlan: CameraMotionPlan | null;
+};
+
+const EMPTY_CAMERA_SCAN_RESULT: FullCameraScanResult = {
+  points: [],
+  activityIntervals: [],
+  summary: null,
+  cameraMotionPlan: null,
+};
+
 interface InteractiveProcessResult {
   outputPath: string;
   outputRelativeName: string;
@@ -132,6 +185,12 @@ interface InteractiveProcessResult {
   checksum: string;
   silenceCutCount: number;
   timeSavedMs: number;
+  cameraPlanApplied?: boolean;
+  cameraPlanKeyframes?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  sourceRotationDegrees?: number;
+  mediaDebugLogPath?: string;
 }
 
 export interface VideoMarkPin {
@@ -328,6 +387,7 @@ export function MediaVideoEditorPlayer({
   const [softeningBuffer, setSofteningBuffer] = useState<number>(0.2); // 0.05 - 0.5s
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [hasAnalyzedDeadAir, setHasAnalyzedDeadAir] = useState(false);
   const [silenceSegments, setSilenceSegments] = useState<LocalMediaAnalysisSegment[]>([]);
   const [waveformBins, setWaveformBins] = useState<WaveformBin[]>([]);
   const [audioTracks, setAudioTracks] = useState<AudioTrackInfo[]>([]);
@@ -341,6 +401,17 @@ export function MediaVideoEditorPlayer({
   const deadAirAnalysisBaseVideoPathRef = useRef<string | null>(null);
   const [detectedCutCount, setCutCount] = useState<number>(0);
   const [timeSavedMs, setTimeSavedMs] = useState<number>(0);
+  const playbackSilenceSegments = useMemo(
+    () => getPlaybackSilenceRanges(
+      silenceSegments.map((segment) => ({
+        startMs: segment.startMs,
+        endMs: segment.endMs ?? null,
+        isManual: segment.classification === "manual",
+      })),
+      hasAnalyzedDeadAir,
+    ),
+    [hasAnalyzedDeadAir, silenceSegments],
+  );
 
   // Timeline view controls
   const [timelineZoom, setTimelineZoom] = useState<number>(1); // 1x to 3x
@@ -359,6 +430,11 @@ export function MediaVideoEditorPlayer({
     propsReframe9x16 === false ? "source" : "9:16"
   );
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  // Keep the dimensions tied to the media element's current source. A draft
+  // can legitimately retain the job's original geometry after another clip
+  // is loaded, but camera coordinates must be interpreted in the active file's
+  // coordinate space for preview, Full Scan, and native render alike.
+  const loadedSourceGeometryRef = useRef<SourceVideoGeometry | null>(null);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState<boolean>(false);
   const [isRenderModalOpen, setIsRenderModalOpen] = useState<boolean>(false);
   const videoStageRef = useRef<HTMLDivElement | null>(null);
@@ -425,6 +501,9 @@ export function MediaVideoEditorPlayer({
   });
   const mountedRef = useRef(true);
   const [faceDetectorStatus, setFaceDetectorStatus] = useState<FaceDetectorStatus>("idle");
+  const [faceFrameDiagnostic, setFaceFrameDiagnostic] = useState<FaceFrameDiagnostic | null>(null);
+  const [faceScanSummary, setFaceScanSummary] = useState<FaceScanSummary | null>(null);
+  const faceProbePendingRef = useRef(false);
   const faceDetectorStatusIcon = faceDetectorStatus === "tracking"
     ? "🟢"
     : faceDetectorStatus === "loading"
@@ -458,6 +537,8 @@ export function MediaVideoEditorPlayer({
     trackedFaceCandidateRef.current = null;
     startupPersonLockRef.current = true;
     mediaPipeLastTimestampRef.current = -1;
+    setFaceFrameDiagnostic(null);
+    setFaceScanSummary(null);
     if (mediaPipeFaceDetectorRef.current) setFaceDetectorStatus("ready");
   }, [videoFile?.name, videoFile?.path]);
 
@@ -490,7 +571,7 @@ export function MediaVideoEditorPlayer({
 
     const next = { x: nextX, y: nextY };
     personAnchorRef.current = next;
-    if (isStartupLock) startupPersonLockRef.current = false;
+    if (isStartupLock || centerTarget) startupPersonLockRef.current = false;
     focusXRef.current = nextX;
     focusYRef.current = nextY;
     setFocusX(nextX);
@@ -524,7 +605,10 @@ export function MediaVideoEditorPlayer({
       const options = {
         baseOptions: { modelAssetPath: modelPath, delegate: "GPU" as const },
         runningMode: "VIDEO" as const,
-        minDetectionConfidence: 0.45,
+        // Long-shot faces in a 16:9 source can be low-contrast after seeking
+        // and downsampling. Persistent-track and area guards below still
+        // reject isolated background/printed-face detections.
+        minDetectionConfidence: 0.35,
         minSuppressionThreshold: 0.3,
       };
 
@@ -737,17 +821,45 @@ export function MediaVideoEditorPlayer({
   // analysis source instead of continuing to probe the old V1/videoFile path.
   const analysisSourcePath = selectedAnalysisSource?.path || videoFile?.path || "";
 
+  // Packaged Worker builds do not provide a dependable DevTools console. Keep
+  // one bounded native JSONL trace for the actual media boundary so a failed
+  // render can be compared with the Full Scan that produced its plan.
+  const mediaDebugSessionIdRef = useRef(`media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const mediaDebugLogPathRef = useRef<string | null>(null);
+  const writeMediaDebugEvent = useCallback((event: string, details: Record<string, unknown>) => {
+    const payload = {
+      debugSessionId: mediaDebugSessionIdRef.current,
+      component: "MediaVideoEditorPlayer",
+      ...details,
+    };
+    void invoke<string>("worker_app_append_media_debug_event", { event, details: payload })
+      .then((path) => {
+        mediaDebugLogPathRef.current = path;
+      })
+      .catch((error) => {
+        console.warn("Media debug event could not be persisted:", error);
+      });
+  }, []);
+
   // A project entry can still be carried as `videoFile` while its real source
-  // lives on the NLE timeline. Native FFmpeg/ffprobe must receive the resolved
-  // media path, never the project JSON path. Keep the normal selected source
-  // as the first choice, then fall back to the timeline analysis source for
-  // project-only openings.
+  // lives on the NLE timeline. Native FFmpeg/ffprobe must receive the exact
+  // media path selected for Full Scan, never a stale project/file context.
   const renderSourcePath = useMemo(() => {
-    const selectedPath = videoFile?.path?.trim();
-    if (selectedPath && !isProjectFilePath(selectedPath)) return selectedPath;
-    const timelinePath = analysisSourcePath.trim();
-    return timelinePath && !isProjectFilePath(timelinePath) ? timelinePath : "";
+    const selectedPath = chooseRenderSourcePath(analysisSourcePath, videoFile?.path ?? "");
+    return selectedPath && !isProjectFilePath(selectedPath) ? selectedPath : "";
   }, [analysisSourcePath, videoFile?.path]);
+
+  // Source geometry is the coordinate space shared by preview, Full Scan, and
+  // native render. It must never be replaced by the output canvas dimensions.
+  const canonicalSourceGeometry = nleProject?.metadata?.sourceGeometry ?? null;
+  const loadedSourceGeometry = loadedSourceGeometryRef.current;
+  const activeSourceGeometry = loadedSourceGeometry
+    && loadedSourceGeometry.sourcePath === analysisSourcePath
+    ? loadedSourceGeometry
+    : canonicalSourceGeometry;
+  const activeSourceDimensions = activeSourceGeometry
+    ? { width: activeSourceGeometry.width, height: activeSourceGeometry.height }
+    : videoDimensions;
 
   const displayedWaveformBins = useMemo(
     () => waveformBins.length > 0
@@ -773,6 +885,7 @@ export function MediaVideoEditorPlayer({
     setSelectedAudioStreamIndex(null);
     setWaveformBins([]);
     setSilenceSegments([]);
+    setHasAnalyzedDeadAir(false);
     setAnalysisError(null);
   }, [analysisSourcePath]);
   const [isAutoSubModalOpen, setIsAutoSubModalOpen] = useState(false);
@@ -829,13 +942,42 @@ export function MediaVideoEditorPlayer({
   const [cameraScanStatus, setCameraScanStatus] = useState<"idle" | "quick" | "scanning" | "approved" | "degraded" | "stale">("idle");
   const [cameraTrackPoints, setCameraTrackPoints] = useState<CameraMotionTrackPoint[]>([]);
   const [cameraActivityIntervals, setCameraActivityIntervals] = useState<CameraMotionActivityInterval[]>([]);
-  const cameraScanPromiseRef = useRef<Promise<CameraMotionTrackPoint[]> | null>(null);
+  const cameraScanPromiseRef = useRef<Promise<FullCameraScanResult> | null>(null);
+  // Keeps the just-completed scan available synchronously for the preview
+  // during the same render turn in which React is still committing the
+  // evidence arrays. Render requests also use this exact object directly.
+  const authoritativeCameraPlanRef = useRef<CameraMotionPlan | null>(null);
+  const cameraScanGenerationRef = useRef(0);
+  const cameraSourceKey = [
+    videoFile?.path ?? "",
+    analysisSourcePath,
+    nleProject?.metadata?.originalSourceVideo ?? "",
+    videoFile ? `${videoFile.sizeBytes}:${videoFile.modifiedUnixMs}` : "",
+  ].join("|");
+  const cameraSourceKeyRef = useRef(cameraSourceKey);
   const cameraAnalysisModeRef = useRef(cameraAnalysisMode);
   const cameraScanStatusRef = useRef(cameraScanStatus);
+  useEffect(() => {
+    cameraSourceKeyRef.current = cameraSourceKey;
+    cameraScanGenerationRef.current += 1;
+    // An old scan cannot be cancelled while MediaPipe is seeking the native
+    // video element. Drop its promise here; the generation guard below makes
+    // its eventual result harmless when it resolves.
+    cameraScanPromiseRef.current = null;
+    authoritativeCameraPlanRef.current = null;
+    setCameraTrackPoints([]);
+    setCameraActivityIntervals([]);
+    setFaceScanSummary(null);
+    setCameraAnalysisMode("quick");
+    setCameraScanStatus("idle");
+  }, [cameraSourceKey]);
   useEffect(() => {
     cameraAnalysisModeRef.current = cameraAnalysisMode;
     cameraScanStatusRef.current = cameraScanStatus;
   }, [cameraAnalysisMode, cameraScanStatus]);
+  useEffect(() => {
+    authoritativeCameraPlanRef.current = null;
+  }, [aspectRatio, cameraSourceKey, smartDirectorMode]);
   const cameraMarkRevisionStorageKey = videoFile ? `smartspec_camera_mark_revision_v1_${videoFile.path}` : null;
   const [cameraMarkRevision, setCameraMarkRevision] = useState(() => {
     try {
@@ -947,17 +1089,60 @@ export function MediaVideoEditorPlayer({
       evidence: {
         analysisMode: cameraAnalysisMode,
         status: cameraScanStatus === "approved" ? "approved" : cameraAnalysisMode === "full_scan" ? "degraded" : "provisional",
-        sourceFingerprint: videoFile ? `${videoFile.name}:${videoFile.sizeBytes}:${videoFile.modifiedUnixMs}` : undefined,
+        sourceFingerprint: cameraSourceKey || undefined,
         markRevision: cameraMarkRevision,
         policyFingerprint: `${aspectRatio}:${manualScale.toFixed(3)}`,
-        capabilityProfileFingerprint: "mediapipe-face-quick",
+        capabilityProfileFingerprint: "mediapipe-face-attached-motion",
       },
       outputAspectRatio: renderAspectRatio ?? undefined,
-      sourceAspectRatio: videoDimensions.width > 0 && videoDimensions.height > 0
-        ? videoDimensions.width / videoDimensions.height
+      sourceAspectRatio: activeSourceDimensions.width > 0 && activeSourceDimensions.height > 0
+        ? activeSourceDimensions.width / activeSourceDimensions.height
         : undefined,
     });
-  }, [aspectRatio, cameraActivityIntervals, cameraAnalysisMode, cameraMarkRevision, cameraScanStatus, cameraTrackPoints, effectiveDuration, focusX, focusY, manualScale, productPins, renderAspectRatio, smartDirectorMode, videoDimensions.height, videoDimensions.width, videoFile]);
+  }, [activeSourceDimensions.height, activeSourceDimensions.width, aspectRatio, cameraActivityIntervals, cameraAnalysisMode, cameraMarkRevision, cameraScanStatus, cameraSourceKey, cameraTrackPoints, effectiveDuration, focusX, focusY, manualScale, productPins, renderAspectRatio, smartDirectorMode]);
+
+  // Full Scan is the single source of truth for Face + Activity. Build the
+  // plan once from its evidence and share that exact object with preview and
+  // every render path; render must never create a second plan or use a live
+  // face fallback that was not part of the scan.
+  const createFullScanCameraPlan = useCallback((
+    scan: Pick<FullCameraScanResult, "points" | "activityIntervals">,
+    sourceDurationMs: number,
+  ): CameraMotionPlan | null => {
+    if (!hasFaceRenderEvidence(scan.points)) return null;
+    const plan = createCameraMotionPlan({
+      durationMs: Math.max(0, Math.round(sourceDurationMs)),
+      mode: smartDirectorMode === "face_focus" ? "face_focus" : "face_activity",
+      focusX,
+      focusY,
+      baseScale: 1.16,
+      marks: productPins,
+      analysisMode: "full_scan",
+      trackPoints: scan.points,
+      activityIntervals: scan.activityIntervals,
+      evidence: {
+        analysisMode: "full_scan",
+        status: scan.activityIntervals.length > 0 ? "approved" : "degraded",
+        sourceFingerprint: cameraSourceKey || undefined,
+        markRevision: cameraMarkRevision,
+        policyFingerprint: `${aspectRatio}:${manualScale.toFixed(3)}`,
+        capabilityProfileFingerprint: "mediapipe-face-attached-motion-full-scan",
+      },
+      outputAspectRatio: renderAspectRatio ?? undefined,
+      sourceAspectRatio: activeSourceDimensions.width > 0 && activeSourceDimensions.height > 0
+        ? activeSourceDimensions.width / activeSourceDimensions.height
+        : undefined,
+    });
+    authoritativeCameraPlanRef.current = plan;
+    setNleProject((previous) => previous
+      ? {
+        ...previous,
+        updatedAt: new Date().toISOString(),
+        metadata: { ...previous.metadata, cameraMotionPlan: plan },
+      }
+      : previous);
+    return plan;
+  }, [activeSourceDimensions.height, activeSourceDimensions.width, aspectRatio, cameraMarkRevision, cameraSourceKey, focusX, focusY, manualScale, productPins, renderAspectRatio, setNleProject, smartDirectorMode]);
 
   useEffect(() => {
     if (!cameraMotionPlan) return;
@@ -1037,6 +1222,35 @@ export function MediaVideoEditorPlayer({
   const [viewportZoom, setViewportZoom] = useState<number | "fit">("fit");
   const [isFullscreenPreview, setIsFullscreenPreview] = useState(false);
   const [overrideVideoSrc, setOverrideVideoSrc] = useState<string | null>(null);
+  const faceDiagnosticVisible = !overrideVideoSrc
+    && (smartDirectorMode === "face_activity" || smartDirectorMode === "auto" || focusMode === "auto_person");
+  const currentFaceDiagnostic = faceFrameDiagnostic
+    && Math.abs(Math.round(currentTime * 1000) - faceFrameDiagnostic.timeMs) <= 1_600
+    ? faceFrameDiagnostic
+    : null;
+  const faceScanRenderable = Boolean(faceScanSummary && hasRenderableFaceScanCoverage(
+    faceScanSummary.selectedFrames,
+    faceScanSummary.faceSpanMs,
+    Math.round(effectiveDuration * 1000),
+  ));
+  const faceDiagnosticLabel = currentFaceDiagnostic?.status === "found"
+    ? t(
+      `พบใบหน้า · จุดโมเดล ${currentFaceDiagnostic.landmarkCount} · มั่นใจ ${Math.round((currentFaceDiagnostic.confidence ?? 0) * 100)}% · X ${Math.round((currentFaceDiagnostic.box!.x + currentFaceDiagnostic.box!.width / 2) * 100)}% Y ${Math.round((currentFaceDiagnostic.box!.y + currentFaceDiagnostic.box!.height / 2) * 100)}%${cameraScanStatus === "scanning" ? " · กำลังสแกน" : ""}`,
+      `Face found · ${currentFaceDiagnostic.landmarkCount} model points · ${Math.round((currentFaceDiagnostic.confidence ?? 0) * 100)}% confidence · X ${Math.round((currentFaceDiagnostic.box!.x + currentFaceDiagnostic.box!.width / 2) * 100)}% Y ${Math.round((currentFaceDiagnostic.box!.y + currentFaceDiagnostic.box!.height / 2) * 100)}%${cameraScanStatus === "scanning" ? " · scanning" : ""}`,
+    )
+    : currentFaceDiagnostic?.status === "landmarks_missing"
+      ? t(`พบกรอบ แต่จุดโมเดลน้อยกว่า 5 (${currentFaceDiagnostic.landmarkCount})`, `Face box found; fewer than five model points (${currentFaceDiagnostic.landmarkCount})`)
+      : currentFaceDiagnostic?.status === "unselected"
+        ? t("พบใบหน้า แต่กำลังใช้จุดสำรองเพื่อจัดกรอบ", "Face detected; using fallback lock for framing")
+        : currentFaceDiagnostic?.status === "no_face"
+          ? t("ไม่พบใบหน้าในเฟรมนี้", "No face in this frame")
+          : cameraScanStatus === "scanning"
+            ? t("กำลังสแกนใบหน้าทั้งคลิป…", "Scanning faces across the clip…")
+            : faceDetectorStatus === "error"
+      ? t("ตัวตรวจจับใบหน้าขัดข้อง", "Face detector error")
+              : faceDetectorStatus === "loading"
+                ? t("กำลังโหลดตัวตรวจจับใบหน้า…", "Loading face detector…")
+                : t("รอตรวจจับใบหน้าในเฟรมนี้", "Waiting to inspect this frame");
 
   const previewFrameLabel = useMemo(() => {
     if (aspectRatio === "source") return t("ต้นฉบับ", "Original");
@@ -1257,13 +1471,20 @@ export function MediaVideoEditorPlayer({
             aspectRatio: aspectRatio,
             focusX: focusX,
             focusY: focusY,
+            sourceGeometry: videoDimensions.width > 0 && videoDimensions.height > 0
+              ? normalizeSourceGeometry({
+                sourcePath: videoFile.path,
+                width: videoDimensions.width,
+                height: videoDimensions.height,
+              }) ?? undefined
+              : undefined,
             deadAirSegments: validSilenceSegs,
           });
         }
         return prev;
       });
     }
-  }, [videoFile, duration, silenceSegments, aspectRatio, focusX, focusY, loadedProjectDraft, draftStorageKey]);
+  }, [videoFile, duration, silenceSegments, aspectRatio, focusX, focusY, loadedProjectDraft, draftStorageKey, videoDimensions.height, videoDimensions.width]);
 
   // Audio Ducking simulation during playback: detect voice in A1/V1 and duck A2
   useEffect(() => {
@@ -1569,7 +1790,7 @@ export function MediaVideoEditorPlayer({
     }
   };
 
-  const handleAddAssetClip = (trackId: string, clip: NleClip) => {
+  const handleAddAssetClip = async (trackId: string, clip: NleClip) => {
     if (!nleProject) return;
     const targetTrack = nleProject.tracks.find((track) => track.id === trackId);
     if (!targetTrack) {
@@ -1582,15 +1803,68 @@ export function MediaVideoEditorPlayer({
       setTimeout(() => setProjectStatusMsg(null), 4000);
       return;
     }
+    let nextSourceGeometry: SourceVideoGeometry | null = nleProject.metadata?.sourceGeometry ?? null;
+    const isVideoClip = clip.sourceType === "local_file" && !trackId.startsWith("track_a");
+    if (isVideoClip && clip.sourcePath && !/^https?:\/\//i.test(clip.sourcePath)) {
+      try {
+        setProjectStatusMsg(`🔎 ตรวจสอบขนาดวิดีโอ "${clip.name}" ก่อนวางลง Timeline…`);
+        const probe = await invoke<{ width?: number; height?: number; rotationDegrees?: number }>("worker_app_probe_media", {
+          sourcePath: clip.sourcePath,
+        });
+        const candidate = normalizeSourceGeometry({
+          sourcePath: clip.sourcePath,
+          width: Number(probe?.width || 0),
+          height: Number(probe?.height || 0),
+          rotationDegrees: Number(probe?.rotationDegrees || 0),
+        });
+        if (candidate) {
+          const decision = evaluateSourceGeometry(nextSourceGeometry, candidate);
+          if (decision.kind === "confirm") {
+            const { confirm } = await import("@tauri-apps/plugin-dialog");
+            const accepted = await confirm(
+              `วิดีโอใหม่มีขนาด ${candidate.width}×${candidate.height} ต่างจากขนาดงานเดิม ${decision.current.width}×${decision.current.height}\n\nต้องการเปลี่ยนขนาดต้นฉบับสำหรับงานนี้ตามไฟล์ล่าสุดหรือไม่?\nกด No เพื่อยึดขนาดเดิม`,
+              { title: "ยืนยันขนาดวิดีโอต้นฉบับ", kind: "warning" },
+            );
+            nextSourceGeometry = applySourceGeometryDecision(
+              nextSourceGeometry,
+              candidate,
+              accepted ? "accept-latest" : "keep-current",
+            );
+          } else if (decision.kind === "initialize") {
+            nextSourceGeometry = candidate;
+          }
+        }
+      } catch (error) {
+        console.warn("Unable to probe timeline video dimensions", error);
+        setProjectStatusMsg(`⚠️ ตรวจสอบขนาดวิดีโอ "${clip.name}" ไม่สำเร็จ แต่ยังวางคลิปให้แล้ว`);
+      }
+    }
+
     const updatedTracks = nleProject.tracks.map((t) => {
       if (t.id === trackId) {
         return { ...t, clips: [...t.clips, clip] };
       }
       return t;
     });
-    setNleProject({ ...nleProject, tracks: updatedTracks });
+    const updatedMediaPool = nleProject.mediaPool?.map((asset) => (
+      asset.filePath === clip.sourcePath && nextSourceGeometry && asset.mediaType === "video"
+        ? { ...asset, width: nextSourceGeometry.width, height: nextSourceGeometry.height }
+        : asset
+    ));
+    setNleProject({
+      ...nleProject,
+      tracks: updatedTracks,
+      mediaPool: updatedMediaPool,
+      metadata: {
+        ...nleProject.metadata,
+        ...(nextSourceGeometry ? { sourceGeometry: nextSourceGeometry } : {}),
+      },
+    });
     setIsAssetDrawerOpen(false);
-    setProjectStatusMsg(`📦 เพิ่มสื่อ "${clip.name}" ลงใน Timeline แล้ว`);
+    const sourceSizeLabel = nextSourceGeometry && isVideoClip
+      ? ` · source ${nextSourceGeometry.width}×${nextSourceGeometry.height}`
+      : "";
+    setProjectStatusMsg(`📦 เพิ่มสื่อ "${clip.name}" ลงใน Timeline แล้ว${sourceSizeLabel}`);
     setTimeout(() => setProjectStatusMsg(null), 4000);
   };
 
@@ -1600,6 +1874,12 @@ export function MediaVideoEditorPlayer({
   };
 
   const videoSrc = useMemo(() => {
+    // Full Scan samples this video element. Keep it on the exact source that
+    // renderSourcePath will send to native FFmpeg; otherwise an old videoFile
+    // can be scanned while a different timeline clip is rendered.
+    if (analysisSourcePath && !isProjectFilePath(analysisSourcePath)) {
+      return safeConvertFileSrc(analysisSourcePath);
+    }
     if (videoFile && !isProjectFilePath(videoFile.path)) {
       return safeConvertFileSrc(videoFile.path);
     }
@@ -1623,7 +1903,7 @@ export function MediaVideoEditorPlayer({
       }
     }
     return "";
-  }, [videoFile, nleProject]);
+  }, [analysisSourcePath, videoFile, nleProject]);
 
   // Derived dB from Volume Threshold Percentage
   const thresholdDb = useMemo(() => {
@@ -1876,6 +2156,7 @@ export function MediaVideoEditorPlayer({
       }
 
       setSilenceSegments(finalSegs);
+      setHasAnalyzedDeadAir(true);
       setCutCount(count);
       setTimeSavedMs(savedMs);
       setDuration(decodedDur);
@@ -1924,16 +2205,16 @@ export function MediaVideoEditorPlayer({
   const detectPersonCenter = useCallback((immediate: boolean = false) => {
     const video = videoRef.current;
     if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) return;
-    // Face + Activity uses either a fixed centre in Quick mode or the
-    // dominant track from an explicit Full Scan. Feeding per-frame quick
-    // detections into this mode made playback jump to one false detection and
-    // then persisted that bad crop for render.
-    if (smartDirectorModeRef.current === "face_activity" || smartDirectorModeRef.current === "auto") return;
+    const diagnosticOnly = smartDirectorModeRef.current === "face_activity" || smartDirectorModeRef.current === "auto";
+    // Full Scan seeks this same video element. Never read its intermediate
+    // frames as if they belonged to normal playback.
+    if (cameraScanPromiseRef.current || cameraScanStatusRef.current === "scanning") return;
     // Once a full scan has produced the render plan, the live quick detector
     // must not append a second stream of observations. Mixing those points
     // rebuilds the plan while playback/render is active and can reintroduce a
     // slow pan from detector noise after the scan already settled composition.
     if (
+      !diagnosticOnly &&
       cameraAnalysisModeRef.current === "full_scan"
       && (cameraScanStatusRef.current === "approved" || cameraScanStatusRef.current === "degraded")
     ) return;
@@ -1943,12 +2224,15 @@ export function MediaVideoEditorPlayer({
       video.addEventListener("loadeddata", onReady, { once: true });
       return;
     }
+    if (faceProbePendingRef.current) return;
+    faceProbePendingRef.current = true;
 
     void (async () => {
-      const detector = await initializeMediaPipeFaceDetector();
-      if (!detector || videoRef.current !== video) return;
-
       try {
+        const requestedTimeMs = Math.round(video.currentTime * 1000);
+        const detector = await initializeMediaPipeFaceDetector();
+        if (!detector || videoRef.current !== video || cameraScanPromiseRef.current
+          || Math.abs(Math.round(video.currentTime * 1000) - requestedTimeMs) > 400) return;
         const timestamp = Math.max(
           Math.round(video.currentTime * 1000),
           mediaPipeLastTimestampRef.current + 1,
@@ -1960,13 +2244,14 @@ export function MediaVideoEditorPlayer({
           y: focusYRef.current ?? 0.5,
         };
 
-        const candidates = result.detections
-          .map((detection: Detection): TrackedFaceCandidate | null => {
+        const observations = result.detections
+          .map((detection: Detection) => {
             const box = detection.boundingBox;
             if (!box || box.width <= 0 || box.height <= 0) return null;
-
-            const keypoints = detection.keypoints.filter(
-              (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
+            const keypoints = observedFaceLandmarks(detection.keypoints);
+            const visibleLandmarks = (detection.keypoints ?? []).filter((point) =>
+              Number.isFinite(point.x) && Number.isFinite(point.y)
+              && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1,
             );
             const boxCenter = {
               x: (box.originX + box.width / 2) / video.videoWidth,
@@ -1975,23 +2260,57 @@ export function MediaVideoEditorPlayer({
             // MediaPipe keypoints are already normalized to image dimensions;
             // dividing them by videoWidth/videoHeight would collapse every
             // tracked face toward (0, 0) and make native render framing miss.
-            const center = stableFaceCenter(keypoints, boxCenter);
+            const center = stableFaceCenter(keypoints ?? [], boxCenter);
             return {
-              x: center.x,
-              y: center.y,
-              width: box.width / video.videoWidth,
-              height: box.height / video.videoHeight,
-              confidence: detection.categories[0]?.score ?? 0,
+              candidate: {
+                x: center.x,
+                y: center.y,
+                width: box.width / video.videoWidth,
+                height: box.height / video.videoHeight,
+                confidence: detection.categories[0]?.score ?? 0,
+              } as TrackedFaceCandidate,
+              box: {
+                x: box.originX / video.videoWidth,
+                y: box.originY / video.videoHeight,
+                width: box.width / video.videoWidth,
+                height: box.height / video.videoHeight,
+              },
+              landmarks: visibleLandmarks.map((point) => ({ x: point.x, y: point.y })),
+              hasFivePoints: Boolean(keypoints),
             };
           })
-          .filter((candidate): candidate is TrackedFaceCandidate => Boolean(candidate));
+          .filter((observation): observation is NonNullable<typeof observation> => Boolean(observation));
+
+        const candidates = observations
+          .filter((observation) => !diagnosticOnly || observation.hasFivePoints)
+          .map((observation) => observation.candidate);
 
         const primary = selectTrackedFaceCandidate(candidates, trackedFaceCandidateRef.current);
-        if (!primary) {
+        const fallbackPrimary = diagnosticOnly
+          ? selectFallbackFaceCandidate(observations.map((observation) => observation.candidate), trackedFaceCandidateRef.current)
+          : null;
+        const selected = primary ?? fallbackPrimary;
+        const primaryObservation = observations.find((observation) => observation.candidate === selected);
+        const visibleObservation = primaryObservation
+          ?? [...observations].sort((left, right) => right.candidate.confidence - left.candidate.confidence)[0];
+        const selectedHasFivePoints = Boolean(primaryObservation?.hasFivePoints);
+        setFaceFrameDiagnostic({
+          timeMs: Math.round(video.currentTime * 1000),
+          status: selected && selectedHasFivePoints ? "found" : observations.length === 0
+            ? "no_face" : observations.some((observation) => observation.hasFivePoints)
+              ? "unselected" : "landmarks_missing",
+          detectionCount: observations.length,
+          landmarkCount: visibleObservation?.landmarks.length ?? 0,
+          box: visibleObservation?.box,
+          landmarks: visibleObservation?.landmarks ?? [],
+          confidence: visibleObservation?.candidate.confidence,
+        });
+        if (!selected) {
           setFaceDetectorStatus("not_found");
           return;
         }
-        trackedFaceCandidateRef.current = primary;
+        trackedFaceCandidateRef.current = selected;
+        setFaceDetectorStatus("tracking");
 
         const trackingConfig = faceTrackingConfigRef.current;
         let cropWidth = 1;
@@ -2018,101 +2337,235 @@ export function MediaVideoEditorPlayer({
         // Hold the current composition after startup while the face remains
         // inside the inner safe zone. Only request enough pan to bring the
         // face back from the edge; startup is the one intentional fast lock.
-        const normalizedFaceHalfWidth = primary.width / 2;
-        const normalizedFaceHalfHeight = primary.height / 2;
+        const normalizedFaceHalfWidth = selected.width / 2;
+        const normalizedFaceHalfHeight = selected.height / 2;
         const safeMarginX = Math.max(0.018, Math.min(0.06, cropWidth * 0.12));
         const safeMarginY = Math.max(0.018, Math.min(0.06, cropHeight * 0.12));
         const availableHalfX = Math.max(0.01, cropWidth / 2 - normalizedFaceHalfWidth - safeMarginX);
         const availableHalfY = Math.max(0.01, cropHeight / 2 - normalizedFaceHalfHeight - safeMarginY);
-        const isStartupLock = immediate && startupPersonLockRef.current;
-        const startupTargetX = Math.max(cropWidth / 2, Math.min(1 - cropWidth / 2, primary.x));
-        const startupTargetY = Math.max(cropHeight / 2, Math.min(1 - cropHeight / 2, primary.y));
-        const targetX = isStartupLock
+        // The first valid face detection must establish the composition before
+        // the safe-zone hold policy is allowed to keep the current frame. Do
+        // not require the detector callback to be marked `immediate`: a first
+        // result can arrive from a normal playback tick after the mode switch.
+        const isInitialFaceCenter = startupPersonLockRef.current
+          // A strict track can briefly break while the same visible face is
+          // still detected. Re-centre that face as a new composition anchor;
+          // otherwise the old anchor may keep the crop on empty background.
+          || (!primary && selectedHasFivePoints);
+        const startupTargetX = Math.max(cropWidth / 2, Math.min(1 - cropWidth / 2, selected.x));
+        const startupTargetY = Math.max(cropHeight / 2, Math.min(1 - cropHeight / 2, selected.y));
+        const targetX = isInitialFaceCenter
           ? startupTargetX
-          : cropWidth >= 0.98
-            ? current.x
-            : Math.max(primary.x - availableHalfX, Math.min(primary.x + availableHalfX, current.x));
-        const targetY = isStartupLock
+            : cropWidth >= 0.98
+              ? current.x
+            : Math.max(selected.x - availableHalfX, Math.min(selected.x + availableHalfX, current.x));
+        const targetY = isInitialFaceCenter
           ? startupTargetY
-          : cropHeight >= 0.98
-            ? current.y
-            : Math.max(primary.y - availableHalfY, Math.min(primary.y + availableHalfY, current.y));
+            : cropHeight >= 0.98
+              ? current.y
+            : Math.max(selected.y - availableHalfY, Math.min(selected.y + availableHalfY, current.y));
 
-        setFaceDetectorStatus("tracking");
         if (videoRef.current === video) {
-          setCameraTrackPoints((previous) => {
-            const nextPoint: CameraMotionTrackPoint = {
-              timeMs: Math.max(0, Math.round(video.currentTime * 1000)),
-              x: Math.max(0, Math.min(1, primary.x)),
-              y: Math.max(0, Math.min(1, primary.y)),
-              width: Math.max(0, Math.min(1, primary.width)),
-              height: Math.max(0, Math.min(1, primary.height)),
-              confidence: Math.max(0, Math.min(1, primary.confidence)),
-              kind: "face",
-              trackId: "quick-face",
-            };
-            const withoutNearby = previous.filter((point) => Math.abs(point.timeMs - nextPoint.timeMs) > 120);
-            return [...withoutNearby, nextPoint].sort((a, b) => a.timeMs - b.timeMs).slice(-256);
-          });
+          if (!diagnosticOnly) {
+            setCameraTrackPoints((previous) => {
+              const nextPoint: CameraMotionTrackPoint = {
+                timeMs: Math.max(0, Math.round(video.currentTime * 1000)),
+                x: Math.max(0, Math.min(1, selected.x)),
+                y: Math.max(0, Math.min(1, selected.y)),
+                width: Math.max(0, Math.min(1, selected.width)),
+                height: Math.max(0, Math.min(1, selected.height)),
+                confidence: Math.max(0, Math.min(1, selected.confidence)),
+                kind: "face",
+                trackId: "quick-face",
+              };
+              const withoutNearby = previous.filter((point) => Math.abs(point.timeMs - nextPoint.timeMs) > 120);
+              return [...withoutNearby, nextPoint].sort((a, b) => a.timeMs - b.timeMs).slice(-256);
+            });
+          }
           applyPersonAnchor(
             Math.max(0.05, Math.min(0.95, targetX)),
             Math.max(0.05, Math.min(0.95, targetY)),
             immediate,
-            false,
+            isInitialFaceCenter,
           );
         }
       } catch (error) {
         console.warn("MediaPipe Face Detector frame failed:", error);
-        setFaceDetectorStatus("error");
+        // A live probe may have started just before Full Scan took ownership
+        // of the video element. Do not let that stale async failure overwrite
+        // the scan's tracking/degraded result after the source has been
+        // seeked through the clip.
+        const fullScanOwnsVideo = Boolean(cameraScanPromiseRef.current)
+          || cameraScanStatusRef.current === "scanning"
+          || (
+            cameraAnalysisModeRef.current === "full_scan"
+            && (cameraScanStatusRef.current === "approved" || cameraScanStatusRef.current === "degraded")
+          );
+        if (!fullScanOwnsVideo) setFaceDetectorStatus("error");
+      } finally {
+        faceProbePendingRef.current = false;
       }
     })();
   }, [applyPersonAnchor, initializeMediaPipeFaceDetector]);
 
-  const scanFullVideoForCameraPlan = useCallback(async (): Promise<CameraMotionTrackPoint[]> => {
+  const scanFullVideoForCameraPlan = useCallback(async (): Promise<FullCameraScanResult> => {
     const activeScan = cameraScanPromiseRef.current;
     if (activeScan) return activeScan;
 
-    const scanPromise = (async (): Promise<CameraMotionTrackPoint[]> => {
+    const scanPromise = (async (): Promise<FullCameraScanResult> => {
     setCameraAnalysisMode("full_scan");
+    cameraScanStatusRef.current = "scanning";
+    setCameraScanStatus("scanning");
+    authoritativeCameraPlanRef.current = null;
+    // A new scan is authoritative. Do not leave the previous plan/evidence
+    // visible or let a render accidentally reuse it while this pass seeks
+    // through the source video.
+    setCameraTrackPoints([]);
+    setCameraActivityIntervals([]);
+    setFaceScanSummary(null);
+    setFaceFrameDiagnostic(null);
     const video = videoRef.current;
+    writeMediaDebugEvent("media.full_scan.started", {
+      sourcePath: analysisSourcePath,
+      renderSourcePath,
+      elementCurrentSrc: video?.currentSrc ?? null,
+      videoWidth: video?.videoWidth ?? 0,
+      videoHeight: video?.videoHeight ?? 0,
+      durationSec: video?.duration ?? 0,
+      currentTimeSec: video?.currentTime ?? 0,
+      canonicalSourceGeometry,
+      loadedSourceGeometry: loadedSourceGeometryRef.current,
+      activeSourceDimensions,
+      playbackSilenceSegments,
+      smartDirectorMode: smartDirectorModeRef.current,
+    });
+    const scanGeneration = cameraScanGenerationRef.current;
+    const scanSourceKey = cameraSourceKeyRef.current;
+    const isCurrentScan = () => (
+      cameraScanGenerationRef.current === scanGeneration
+      && cameraSourceKeyRef.current === scanSourceKey
+      && videoRef.current === video
+    );
     if (!video || video.videoWidth <= 0 || video.duration <= 0) {
+      writeMediaDebugEvent("media.full_scan.aborted", {
+        reason: "video_not_ready",
+        hasVideo: Boolean(video),
+        videoWidth: video?.videoWidth ?? 0,
+        videoHeight: video?.videoHeight ?? 0,
+        durationSec: video?.duration ?? 0,
+      });
+      cameraScanStatusRef.current = "degraded";
       setCameraScanStatus("degraded");
-      return [];
+      return EMPTY_CAMERA_SCAN_RESULT;
     }
     const detector = await initializeMediaPipeFaceDetector();
-    if (!detector || videoRef.current !== video) {
-      setCameraScanStatus("degraded");
-      return [];
+    if (!detector || !isCurrentScan()) {
+      writeMediaDebugEvent("media.full_scan.aborted", {
+        reason: detector ? "scan_generation_changed" : "face_detector_unavailable",
+        detectorReady: Boolean(detector),
+        isCurrentScan: isCurrentScan(),
+      });
+      if (isCurrentScan()) {
+        cameraScanStatusRef.current = "degraded";
+        setCameraScanStatus("degraded");
+      }
+      return EMPTY_CAMERA_SCAN_RESULT;
     }
     const wasPlaying = !video.paused;
     const originalTime = video.currentTime;
+    // Full Scan seeks the same video element through the source timeline. The
+    // element is paused below, so the React playback state must be paused too;
+    // otherwise directorState samples stale smoothTime while the scan frame
+    // itself has already moved to a different timestamp.
+    setIsPlaying(false);
     const durationMs = Math.round(video.duration * 1000);
     const stepMs = Math.max(250, Math.ceil(durationMs / 120));
+    const skippedRanges = normalizeSilenceRanges(playbackSilenceSegments, durationMs);
+    const scanTimesMs: number[] = [];
+    for (let timeMs = 0; timeMs <= durationMs && scanTimesMs.length < 256; timeMs += stepMs) {
+      if (!skippedRanges.some((range) => timeMs >= range.startMs && timeMs < range.endMs)) {
+        scanTimesMs.push(timeMs);
+      }
+    }
+    if (
+      durationMs > 0
+      && scanTimesMs.length < 256
+      && !skippedRanges.some((range) => durationMs >= range.startMs && durationMs < range.endMs)
+      && scanTimesMs[scanTimesMs.length - 1] !== durationMs
+    ) {
+      scanTimesMs.push(durationMs);
+    }
     const points: CameraMotionTrackPoint[] = [];
     const faceFrames: TimedFaceDetectionFrame[] = [];
+    const motionFrames: MotionFramePixels[] = [];
+    const scanFrameDiagnostics: Array<Record<string, unknown>> = [];
+    const scanPreviewPoints: CameraMotionTrackPoint[] = [];
+    let scanPreviewFace: TrackedFaceCandidate | null = null;
+    let detectedFrames = 0;
+    let landmarkFrames = 0;
+    const motionCanvas = document.createElement("canvas");
+    motionCanvas.width = 64;
+    motionCanvas.height = 36;
+    let motionContext: CanvasRenderingContext2D | null = null;
+    let motionEvidenceAvailable = true;
+    try {
+      motionContext = motionCanvas.getContext("2d", { willReadFrequently: true });
+      motionEvidenceAvailable = Boolean(motionContext);
+    } catch (error) {
+      // Pixel access is an optional activity signal. Some local/codec paths
+      // can play normally but reject canvas reads; face tracking must survive.
+      console.warn("Attached activity scan unavailable; continuing with face evidence:", error);
+      motionEvidenceAvailable = false;
+    }
     const waitForDecodedFrame = () => new Promise<void>((resolve) => {
       // `seeked` can fire before the next decoded frame is available to
       // MediaPipe. Align the evidence with the frame that was actually
       // presented so render does not follow mis-timed detector samples.
       let settled = false;
-      const timeout = window.setTimeout(() => {
-        settled = true;
-        resolve();
-      }, 80);
+      let frameReady = false;
+      let playSettled = !video.paused;
+      let timeout: number | undefined;
+      const pauseAfterFrame = () => {
+        if (frameReady && playSettled) video.pause();
+      };
       const finish = () => {
         if (settled) return;
         settled = true;
-        window.clearTimeout(timeout);
+        if (timeout !== undefined) window.clearTimeout(timeout);
+        frameReady = true;
+        pauseAfterFrame();
         resolve();
       };
+      timeout = window.setTimeout(finish, 80);
       const requestFrame = (video as HTMLVideoElement & {
         requestVideoFrameCallback?: (callback: () => void) => number;
       }).requestVideoFrameCallback;
       if (typeof requestFrame === "function") {
         requestFrame.call(video, finish);
+        // Some WebView/codec combinations do not present a newly seeked
+        // frame while paused. Resume only long enough for one compositor
+        // frame, then pause again; the scan remains seek-based and does not
+        // turn into uncontrolled playback.
+        if (video.paused) {
+          void video.play()
+            .catch(() => undefined)
+            .finally(() => {
+              playSettled = true;
+              pauseAfterFrame();
+            });
+        }
         return;
       }
-      window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+      if (video.paused) {
+        void video.play()
+          .catch(() => undefined)
+          .finally(() => {
+            playSettled = true;
+            window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+          });
+      } else {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+      }
     });
     const seek = (time: number) => new Promise<void>((resolve) => {
       let timeout: number | undefined;
@@ -2134,47 +2587,174 @@ export function MediaVideoEditorPlayer({
       // decoded frame while remaining monotonic within this scan.
       mediaPipeLastTimestampRef.current = 0;
       let sampleIndex = 0;
-      for (let timeMs = 0; timeMs <= durationMs && faceFrames.length < 256; timeMs += stepMs) {
+      for (const timeMs of scanTimesMs) {
+        if (faceFrames.length >= 256) break;
+        if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
         await seek(timeMs);
+        if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
         sampleIndex += 1;
         if (sampleIndex === 1 || sampleIndex % 5 === 0) {
           const percent = Math.min(99, Math.round((timeMs / Math.max(1, durationMs)) * 100));
-          setProjectStatusMsg(t(
-            `กำลังสแกนทั้งคลิปเพื่อวางแผนกล้อง… ${percent}%`,
-            `Scanning the full clip for camera planning… ${percent}%`,
-          ));
+          if (isCurrentScan()) {
+            setProjectStatusMsg(t(
+              `กำลังสแกนทั้งคลิปเพื่อวางแผนกล้อง… ${percent}%`,
+              `Scanning the full clip for camera planning… ${percent}%`,
+            ));
+          }
         }
         const observedTimeMs = Math.max(0, Math.round(video.currentTime * 1000));
+        if (isCurrentScan()) setCurrentTime(observedTimeMs / 1000);
         const timestamp = Math.max(observedTimeMs, mediaPipeLastTimestampRef.current + 1);
         mediaPipeLastTimestampRef.current = timestamp;
         const result = detector.detectForVideo(video, timestamp);
-        const faceCandidates = result.detections
-          .map((detection): TrackedFaceCandidate | null => {
+        if (result.detections.some((detection) => Boolean(detection.boundingBox))) detectedFrames += 1;
+        if (result.detections.some((detection) => Boolean(detection.boundingBox && observedFaceLandmarks(detection.keypoints)))) landmarkFrames += 1;
+        const detectedFaceCandidates = result.detections
+          .map((detection): {
+            candidate: TrackedFaceCandidate;
+            hasFivePoints: boolean;
+            box: { x: number; y: number; width: number; height: number };
+            landmarks: Array<{ x: number; y: number }>;
+          } | null => {
             const box = detection.boundingBox;
             if (!box || box.width <= 0 || box.height <= 0) return null;
+            const keypoints = observedFaceLandmarks(detection.keypoints);
+            const visibleLandmarks = (detection.keypoints ?? []).filter((point) =>
+              Number.isFinite(point.x) && Number.isFinite(point.y)
+              && point.x >= 0 && point.x <= 1 && point.y >= 0 && point.y <= 1,
+            ).map((point) => ({ x: point.x, y: point.y }));
             const boxCenter = {
               x: (box.originX + box.width / 2) / video.videoWidth,
               y: (box.originY + box.height / 2) / video.videoHeight,
             };
             const center = stableFaceCenter(
-              detection.keypoints?.filter(
-                (point) => Number.isFinite(point.x) && Number.isFinite(point.y),
-              ) ?? [],
+              keypoints ?? [],
               boxCenter,
             );
             return {
-              x: center.x,
-              y: center.y,
-              width: Math.max(0, Math.min(1, box.width / video.videoWidth)),
-              height: Math.max(0, Math.min(1, box.height / video.videoHeight)),
-              confidence: Math.max(0, Math.min(1, detection.categories[0]?.score ?? 0)),
+              candidate: {
+                x: center.x,
+                y: center.y,
+                width: Math.max(0, Math.min(1, box.width / video.videoWidth)),
+                height: Math.max(0, Math.min(1, box.height / video.videoHeight)),
+                confidence: Math.max(0, Math.min(1, detection.categories[0]?.score ?? 0)),
+              },
+              hasFivePoints: Boolean(keypoints),
+              box: {
+                x: box.originX / video.videoWidth,
+                y: box.originY / video.videoHeight,
+                width: box.width / video.videoWidth,
+                height: box.height / video.videoHeight,
+              },
+              landmarks: visibleLandmarks,
             };
           })
-          .filter((candidate): candidate is TrackedFaceCandidate => Boolean(candidate));
-        faceFrames.push({ timeMs: observedTimeMs, candidates: faceCandidates });
+          .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
+        const strictPreviewCandidates = detectedFaceCandidates
+          .filter((entry) => entry.hasFivePoints)
+          .map((entry) => entry.candidate);
+        const previewFace: TrackedFaceCandidate | null = selectTrackedFaceCandidate(strictPreviewCandidates, scanPreviewFace)
+          ?? selectFallbackFaceCandidate(
+            detectedFaceCandidates.map((entry) => entry.candidate),
+            scanPreviewFace,
+          );
+        const previewObservation = detectedFaceCandidates.find((entry) => entry.candidate === previewFace)
+          ?? [...detectedFaceCandidates].sort((left, right) => right.candidate.confidence - left.candidate.confidence)[0];
+        scanFrameDiagnostics.push({
+          requestedTimeMs: timeMs,
+          observedTimeMs,
+          videoCurrentTimeSec: video.currentTime,
+          detectorTimestamp: timestamp,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          detectionCount: detectedFaceCandidates.length,
+          landmarkCount: previewObservation?.landmarks.length ?? 0,
+          selectedFace: previewFace,
+          selectedHasFivePoints: Boolean(previewObservation?.hasFivePoints),
+          candidates: detectedFaceCandidates.map((entry) => ({
+            candidate: entry.candidate,
+            hasFivePoints: entry.hasFivePoints,
+            box: entry.box,
+            landmarkCount: entry.landmarks.length,
+          })),
+        });
+        setFaceFrameDiagnostic({
+          timeMs: observedTimeMs,
+          status: previewFace && previewObservation?.hasFivePoints ? "found" : detectedFaceCandidates.length === 0
+            ? "no_face" : detectedFaceCandidates.some((entry) => entry.hasFivePoints)
+              ? "unselected" : "landmarks_missing",
+          detectionCount: detectedFaceCandidates.length,
+          landmarkCount: previewObservation?.landmarks.length ?? 0,
+          box: previewObservation?.box,
+          landmarks: previewObservation?.landmarks ?? [],
+          confidence: previewObservation?.candidate.confidence,
+        });
+        if (previewFace) {
+          scanPreviewFace = previewFace;
+          scanPreviewPoints.push({
+            timeMs: observedTimeMs,
+            x: previewFace.x,
+            y: previewFace.y,
+            width: previewFace.width,
+            height: previewFace.height,
+            confidence: previewFace.confidence,
+            kind: "face",
+            trackId: "full-scan-preview-face",
+          });
+          // Keep the crop guide and camera target responsive while the full
+          // scan is still running. The completed scan replaces this
+          // provisional track below with the final dominant/activity plan.
+          if (isCurrentScan()) setCameraTrackPoints(scanPreviewPoints.slice(-256));
+          setFaceDetectorStatus("tracking");
+        } else if (isCurrentScan()) {
+          setFaceDetectorStatus("not_found");
+        }
+        faceFrames.push({
+          timeMs: observedTimeMs,
+          candidates: detectedFaceCandidates
+            .filter((entry) => entry.hasFivePoints)
+            .map((entry) => entry.candidate),
+          fallbackCandidates: detectedFaceCandidates.map((entry) => entry.candidate),
+        });
+        if (motionContext && motionEvidenceAvailable) {
+          try {
+            motionContext.drawImage(video, 0, 0, motionCanvas.width, motionCanvas.height);
+            const image = motionContext.getImageData(0, 0, motionCanvas.width, motionCanvas.height);
+            motionFrames.push({
+              timeMs: observedTimeMs,
+              width: motionCanvas.width,
+              height: motionCanvas.height,
+              pixels: image.data,
+            });
+          } catch (error) {
+            console.warn("Attached activity pixel read failed; continuing with face evidence:", error);
+            motionEvidenceAvailable = false;
+            motionContext = null;
+            motionFrames.length = 0;
+          }
+        }
       }
+      if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
       const dominantTrack = buildDominantFaceTrack(faceFrames);
-      points.push(...dominantTrack.map((primary) => ({
+      const fallbackFaceTrack = dominantTrack.length > 0 ? [] : buildFallbackFaceTrack(faceFrames);
+      const selectedFaceTrack = dominantTrack.length > 0 ? dominantTrack : fallbackFaceTrack;
+      const usedFallbackFaceTrack = dominantTrack.length === 0 && fallbackFaceTrack.length > 0;
+      const summary: FaceScanSummary = {
+        sampledFrames: faceFrames.length,
+        detectedFrames,
+        landmarkFrames,
+        selectedFrames: selectedFaceTrack.length,
+        faceSpanMs: selectedFaceTrack.length > 1
+          ? selectedFaceTrack[selectedFaceTrack.length - 1].timeMs - selectedFaceTrack[0].timeMs
+          : 0,
+        usedFallbackFaceTrack,
+      };
+      setFaceScanSummary(summary);
+      // Preserve the detector's source timestamps. The camera planner owns
+      // the safe opening hold when the first credible face appears later in
+      // the clip; synthesizing a face at time zero here would make preview
+      // and FFmpeg render a future face position across the opening.
+      points.push(...selectedFaceTrack.map((primary) => ({
         // A timeout can leave the previous decoded frame on screen. Label
         // the point with its actual source time rather than the requested
         // seek time; otherwise FFmpeg receives a camera path that appears
@@ -2188,43 +2768,269 @@ export function MediaVideoEditorPlayer({
         kind: "face" as const,
         trackId: "full-scan-dominant-face",
       })));
-      const reducedPoints = reduceCameraMotionTrackPoints(points);
-      setCameraTrackPoints(reducedPoints);
-      const intervals: CameraMotionActivityInterval[] = [];
-      for (let index = 1; index < reducedPoints.length; index += 1) {
-        const previous = reducedPoints[index - 1];
-        const current = reducedPoints[index];
-        const movement = Math.hypot(current.x - previous.x, current.y - previous.y);
-        if (movement >= 0.02) {
-          intervals.push({ startMs: previous.timeMs, endMs: current.timeMs, score: Math.min(1, movement * 8), kind: "camera_motion" });
+      if (selectedFaceTrack.length > 0 && motionEvidenceAvailable && motionFrames.length > 1) {
+        for (let index = 1; index < motionFrames.length; index += 1) {
+          const currentFrame = motionFrames[index];
+          const face = selectedFaceTrack.reduce((closest, candidate) => (
+            Math.abs(candidate.timeMs - currentFrame.timeMs) < Math.abs(closest.timeMs - currentFrame.timeMs)
+              ? candidate
+              : closest
+          ));
+          // Motion can be associated with this presenter only while face
+          // evidence is nearby in time. A stale face from the opening must
+          // not authorize activity elsewhere in the clip.
+          if (Math.abs(face.timeMs - currentFrame.timeMs) > 2_500) continue;
+          // A skipped Dead Air interval is a discontinuity in source time.
+          // Never infer activity from the two frames on opposite sides of it.
+          const previousFrame = motionFrames[index - 1];
+          const crossedSkippedRange = skippedRanges.some((range) => (
+            previousFrame.timeMs < range.startMs
+            && currentFrame.timeMs >= range.endMs
+          ));
+          if (
+            crossedSkippedRange
+            || currentFrame.timeMs - previousFrame.timeMs > stepMs * 2.5
+          ) continue;
+          const attachedMotion = detectAttachedMotionPoint(
+            motionFrames[index - 1],
+            currentFrame,
+            face,
+          );
+          const motion = attachedMotion ?? detectGlobalMotionPoint(
+            motionFrames[index - 1],
+            currentFrame,
+            face,
+          );
+          if (!motion) continue;
+          points.push({
+            timeMs: currentFrame.timeMs,
+            x: motion.x,
+            y: motion.y,
+            width: motion.width,
+            height: motion.height,
+            confidence: motion.confidence,
+            kind: "activity",
+            trackId: attachedMotion
+              ? "full-scan-attached-motion"
+              : "full-scan-global-motion",
+          });
         }
       }
+      // Reduce each evidence family independently. Face and activity samples
+      // often share the same timestamp; reducing one mixed list can discard a
+      // valid hand/toy motion point merely because the face point sorted first.
+      const faceEvidence = points.filter((point) => point.kind === "face");
+      const activityEvidence = points.filter((point) => point.kind === "activity");
+      const reducedFacePoints = reduceCameraMotionTrackPoints(faceEvidence);
+      // Preserve a face sample beside every activity sample. A static face is
+      // normally coalesced by the jitter reducer, but the activity confirmer
+      // still needs a face timestamp close to a moving hand/toy event.
+      for (const activityPoint of activityEvidence) {
+        const nearestFace = faceEvidence.length > 0
+          ? faceEvidence.reduce((closest, candidate) => (
+            Math.abs(candidate.timeMs - activityPoint.timeMs) < Math.abs(closest.timeMs - activityPoint.timeMs)
+              ? candidate
+              : closest
+          ))
+          : undefined;
+        if (nearestFace && !reducedFacePoints.some((point) => point.timeMs === nearestFace.timeMs)) {
+          reducedFacePoints.push(nearestFace);
+        }
+      }
+      const reducedPoints = [
+        ...reducedFacePoints,
+        ...reduceCameraMotionTrackPoints(activityEvidence),
+      ].sort((left, right) => left.timeMs - right.timeMs || (left.kind === "face" ? -1 : 1));
+      if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
+      setCameraTrackPoints(reducedPoints);
+      const intervals: CameraMotionActivityInterval[] = [];
+      const reducedActivityPoints = reducedPoints.filter((point) => point.kind === "activity");
+      for (const activityPoint of reducedActivityPoints) {
+        intervals.push({
+          startMs: Math.max(0, activityPoint.timeMs - 900),
+          endMs: Math.min(durationMs, activityPoint.timeMs + 1_800),
+          score: activityPoint.confidence,
+          kind: "attached_activity",
+        });
+      }
       setCameraActivityIntervals(intervals.slice(0, 256));
-      // This local scanner currently provides face and motion evidence only;
-      // it has no object/hand model, so it must never claim an approved
-      // Face + Activity plan. Full Scan remains visibly degraded until a
-      // capability-gated object/interaction detector supplies evidence.
-      setCameraScanStatus("degraded");
-      setProjectStatusMsg(points.length > 0
-        ? t("สแกนทั้งคลิปเสร็จแล้ว แต่ยังไม่มีตัวตรวจจับวัตถุ จึงเป็นแผนแบบลดความสามารถ", "Full video scan completed with face-only evidence; object detection is unavailable, so the plan is degraded.")
-        : t("ไม่พบหลักฐานใบหน้า ใช้จุดมาร์กหรือกรอบคงที่แทน", "No face evidence found; using Marks or a fixed frame."));
-      return reducedPoints;
+      const hasActivityEvidence = reducedPoints.some((point) => point.kind === "activity");
+      const scanEvidence = {
+        points: reducedPoints,
+        activityIntervals: intervals.slice(0, 256),
+      };
+      const scannedPlan = createFullScanCameraPlan(scanEvidence, durationMs);
+      const nextScanStatus = dominantTrack.length > 0 && hasActivityEvidence ? "approved" : "degraded";
+      cameraScanStatusRef.current = nextScanStatus;
+      setCameraScanStatus(nextScanStatus);
+      setFaceDetectorStatus(selectedFaceTrack.length > 0 ? "tracking" : "not_found");
+      setProjectStatusMsg(selectedFaceTrack.length > 0
+        ? hasActivityEvidence
+          ? t("สแกนทั้งคลิปเสร็จแล้ว ระบบจะติดตามจุดเคลื่อนไหวใกล้บุคคลโดยรักษาใบหน้าให้อยู่ในเฟรม", "Full video scan completed; the camera will follow nearby activity while keeping the face inside the frame.")
+          : usedFallbackFaceTrack
+            ? t("สแกนเสร็จแล้ว แต่หลักฐานไม่ครบ ใช้ใบหน้าที่พบล็อกกรอบเป็นหลัก", "Scan completed with limited evidence; using the detected face as the primary lock.")
+            : t("สแกนทั้งคลิปเสร็จแล้ว แต่ไม่พบจุดเคลื่อนไหวใกล้บุคคล ใช้การล็อกใบหน้า", "Full video scan completed; no nearby moving activity was found, so face lock is used.")
+        : t(
+          `สแกน ${faceFrames.length} เฟรม แต่ไม่พบใบหน้าที่มีจุดโมเดลอย่างน้อย 5 จุดและติดตามได้ (พบกรอบ ${detectedFrames} เฟรม, จุดครบ ${landmarkFrames} เฟรม) ตรวจดูสัญลักษณ์บนภาพหรือปรับกรอบเองก่อน Render`,
+          `Scanned ${faceFrames.length} frames but found no trackable face with at least five model points (boxes in ${detectedFrames}, points in ${landmarkFrames}). Check the on-video markers or set the crop manually before rendering.`,
+        ));
+      writeMediaDebugEvent("media.full_scan.completed", {
+        sourcePath: analysisSourcePath,
+        renderSourcePath,
+        elementCurrentSrc: video.currentSrc,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        durationMs,
+        stepMs,
+        scanTimesMs,
+        skippedRanges,
+        summary,
+        scanStatus: nextScanStatus,
+        points: reducedPoints,
+        activityIntervals: intervals.slice(0, 256),
+        initialFaceLock: reducedPoints.find((point) => point.kind === "face") ?? null,
+        cameraMotionPlan: scannedPlan,
+        cameraPlanInitialKeyframe: scannedPlan?.keyframes[0] ?? null,
+        frameDiagnostics: scanFrameDiagnostics,
+      });
+      return { ...scanEvidence, summary, cameraMotionPlan: scannedPlan };
     } catch (error) {
       console.warn("Full camera scan failed:", error);
-      setCameraScanStatus("degraded");
-      return [];
+      writeMediaDebugEvent("media.full_scan.failed", {
+        sourcePath: analysisSourcePath,
+        renderSourcePath,
+        error: error instanceof Error ? error.message : String(error),
+        frameDiagnostics: scanFrameDiagnostics,
+      });
+      if (isCurrentScan()) {
+        cameraScanStatusRef.current = "degraded";
+        setCameraScanStatus("degraded");
+      }
+      return EMPTY_CAMERA_SCAN_RESULT;
     } finally {
-      await seek(originalTime * 1000);
-      if (wasPlaying) void video.play().catch(() => undefined);
+      if (isCurrentScan()) {
+        const restoredTimeMs = getPlayableTimeMs(originalTime * 1000, playbackSilenceSegments, durationMs);
+        await seek(restoredTimeMs);
+        setCurrentTime(restoredTimeMs / 1000);
+        writeMediaDebugEvent("media.full_scan.restored_preview", {
+          sourcePath: analysisSourcePath,
+          elementCurrentSrc: video.currentSrc,
+          restoredTimeMs,
+          wasPlaying,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+        });
+        if (wasPlaying) {
+          void video.play()
+            .then(() => {
+              if (videoRef.current === video) setIsPlaying(!video.paused);
+            })
+            .catch(() => {
+              if (videoRef.current === video) setIsPlaying(false);
+            });
+        } else {
+          setIsPlaying(false);
+        }
+      }
     }
     })();
     cameraScanPromiseRef.current = scanPromise;
     try {
       return await scanPromise;
     } finally {
-      if (cameraScanPromiseRef.current === scanPromise) cameraScanPromiseRef.current = null;
+      if (cameraScanPromiseRef.current === scanPromise) {
+        cameraScanPromiseRef.current = null;
+        if (
+          smartDirectorModeRef.current === "face_activity"
+          && shouldResumeLiveFaceProbeAfterFullScan(cameraScanStatusRef.current)
+        ) {
+          trackedFaceCandidateRef.current = null;
+          window.setTimeout(() => detectPersonCenter(true), 0);
+        }
+      }
     }
-  }, [initializeMediaPipeFaceDetector, t]);
+  }, [activeSourceDimensions, analysisSourcePath, canonicalSourceGeometry, createFullScanCameraPlan, detectPersonCenter, initializeMediaPipeFaceDetector, playbackSilenceSegments, renderSourcePath, t, writeMediaDebugEvent]);
+
+  // Every export surface must use the same authoritative evidence pass. The
+  // direct FFmpeg button used to refresh this plan, while the Remotion/queue
+  // button could submit the last React state snapshot instead. That made the
+  // preview follow the latest scan but allowed the exported video to fall
+  // back to the old centre crop.
+  const buildFreshCameraMotionPlanForRender = useCallback(async (): Promise<CameraMotionPlan | null> => {
+    if (
+      !videoRef.current
+      || !(
+        smartDirectorMode === "face_activity"
+        || smartDirectorMode === "face_focus"
+        || smartDirectorMode === "auto"
+      )
+    ) {
+      return null;
+    }
+
+    setProjectStatusMsg(t(
+      "กำลังสแกนทั้งคลิปใหม่เพื่อยืนยันตำแหน่งก่อน Render…",
+      "Running a fresh full-clip scan before rendering…",
+    ));
+    const previousPlanCandidate = authoritativeCameraPlanRef.current ?? cameraMotionPlan;
+    const previousPlanSourceFingerprint = previousPlanCandidate?.evidence
+      && typeof previousPlanCandidate.evidence === "object"
+      && "sourceFingerprint" in previousPlanCandidate.evidence
+      ? previousPlanCandidate.evidence.sourceFingerprint
+      : null;
+    const previousPlan = previousPlanSourceFingerprint === cameraSourceKeyRef.current
+      ? previousPlanCandidate
+      : null;
+    const scannedEvidence = await scanFullVideoForCameraPlan();
+    const selectedPlan = selectFreshOrPreviousCameraPlan(
+      scannedEvidence.cameraMotionPlan,
+      previousPlan,
+    );
+    if (!selectedPlan) {
+      throw new Error(t(
+        "Render แบบ Face + Activity หยุดแล้ว: Full Scan ไม่มีแผนกล้องที่ใช้งานได้ กรุณาตรวจสถานะบนภาพแล้วลองใหม่",
+        "Face-focused render stopped: Full Scan did not produce a usable camera plan. Check the on-video status and try again.",
+      ));
+    }
+    if (!hasRenderableFaceCameraPlan(scannedEvidence.cameraMotionPlan)) {
+      writeMediaDebugEvent("media.render.reused_previous_full_scan_plan", {
+        sourcePath: analysisSourcePath,
+        sourceKey: cameraSourceKeyRef.current,
+        scanStatus: cameraScanStatusRef.current,
+        previousPlan,
+        reason: "fresh_scan_returned_no_renderable_plan",
+      });
+      setProjectStatusMsg(t(
+        "สแกนรอบใหม่ยังไม่คืนผล ใช้แผน Full Scan ล่าสุดของ source เดิมเพื่อ Render ต่อ",
+        "The refresh scan returned no plan; continuing with the latest validated Full Scan plan for this source.",
+      ));
+    }
+    return selectedPlan;
+  }, [
+    analysisSourcePath,
+    cameraMotionPlan,
+    scanFullVideoForCameraPlan,
+    t,
+    writeMediaDebugEvent,
+  ]);
+
+  const prepareQueuedRender = useCallback(async (
+    submit: (selection: DeadAirRenderSelection) => void,
+  ) => {
+    try {
+      const freshPlan = await buildFreshCameraMotionPlanForRender();
+      submit({
+        ...deadAirRenderSelection,
+        // A fresh Full Scan is authoritative for this submission. When the
+        // director is off, preserve the manual/previous selection unchanged.
+        cameraMotionPlan: freshPlan ?? deadAirRenderSelection.cameraMotionPlan,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setProcessError(message);
+      setProjectStatusMsg(message);
+    }
+  }, [buildFreshCameraMotionPlanForRender, deadAirRenderSelection]);
 
   // Run Custom Silence Detection
   const runCustomSilenceDetection = async (
@@ -2243,6 +3049,7 @@ export function MediaVideoEditorPlayer({
     setAnalysisError(null);
     setWaveformBins([]);
     setSilenceSegments([]);
+    setHasAnalyzedDeadAir(false);
     setCutCount(0);
     setTimeSavedMs(0);
 
@@ -2280,6 +3087,7 @@ export function MediaVideoEditorPlayer({
       setSelectedAudioStreamIndex(resolvedAudioStreamIndex);
       if (hasNativeTrackCatalog && returnedAudioTracks.length === 0) {
         setSilenceSegments([]);
+        setHasAnalyzedDeadAir(false);
         setWaveformBins([]);
         setCutCount(0);
         setTimeSavedMs(0);
@@ -2310,6 +3118,7 @@ export function MediaVideoEditorPlayer({
         usableWaveformData.length > 0
       ) {
         setSilenceSegments(res.silenceSegments);
+        setHasAnalyzedDeadAir(true);
         setWaveformBins(usableWaveformData);
         setCutCount(res.cutCount);
         setTimeSavedMs(res.timeSavedMs);
@@ -2428,6 +3237,7 @@ export function MediaVideoEditorPlayer({
       setSelectedAudioStreamIndex(null);
       setWaveformBins([]);
       setSilenceSegments([]);
+      setHasAnalyzedDeadAir(false);
       setCameraTrackPoints([]);
       setCameraActivityIntervals([]);
       setCameraAnalysisMode("quick");
@@ -2499,6 +3309,61 @@ export function MediaVideoEditorPlayer({
       const vh = videoRef.current.videoHeight || 1080;
       setDuration(dur);
       setVideoDimensions({ width: vw, height: vh });
+      const loadedSourcePath = analysisSourcePath && !isProjectFilePath(analysisSourcePath)
+        ? analysisSourcePath
+        : videoFile?.path || analysisSourcePath;
+      const knownRotation = canonicalSourceGeometry
+        && canonicalSourceGeometry.sourcePath === loadedSourcePath
+        && canonicalSourceGeometry.width === vw
+        && canonicalSourceGeometry.height === vh
+        ? canonicalSourceGeometry.rotationDegrees
+        : 0;
+      const loadedGeometry = normalizeSourceGeometry({
+        sourcePath: loadedSourcePath,
+        width: vw,
+        height: vh,
+        rotationDegrees: knownRotation,
+      });
+      writeMediaDebugEvent("media.preview.loaded_metadata", {
+        sourcePath: loadedSourcePath,
+        elementCurrentSrc: videoRef.current.currentSrc,
+        videoWidth: vw,
+        videoHeight: vh,
+        durationSec: dur,
+        canonicalSourceGeometry,
+        loadedSourceGeometry: loadedGeometry,
+        analysisSourcePath,
+        renderSourcePath,
+      });
+      if (loadedGeometry) {
+        loadedSourceGeometryRef.current = loadedGeometry;
+        setNleProject((previous) => {
+          if (!previous) return previous;
+          const currentGeometry = previous.metadata?.sourceGeometry;
+          // Repair an old draft that recorded the output canvas or another
+          // stale size for this same source. Do not silently replace the
+          // canonical geometry of a different timeline source here; adding
+          // another file goes through the explicit size confirmation path.
+          if (
+            currentGeometry
+            && currentGeometry.sourcePath !== loadedGeometry.sourcePath
+          ) return previous;
+          if (
+            currentGeometry
+            && currentGeometry.width === loadedGeometry.width
+            && currentGeometry.height === loadedGeometry.height
+            && currentGeometry.rotationDegrees === loadedGeometry.rotationDegrees
+          ) return previous;
+          return {
+            ...previous,
+            updatedAt: new Date().toISOString(),
+            metadata: { ...previous.metadata, sourceGeometry: loadedGeometry },
+            mediaPool: previous.mediaPool?.map((asset) => asset.filePath === loadedSourcePath
+              ? { ...asset, width: vw, height: vh }
+              : asset),
+          };
+        });
+      }
       if (trimEnd === 0 || trimEnd > dur) {
         setTrimEnd(dur);
       }
@@ -2509,10 +3374,14 @@ export function MediaVideoEditorPlayer({
   };
 
   const handleTimeUpdate = () => {
+    // Full Scan owns seeking until it restores the original playback time.
+    // Dead-air playback skipping here would silently redirect scan seeks and
+    // associate detector results with the wrong source frames.
+    if (cameraScanPromiseRef.current || cameraScanStatusRef.current === "scanning") return;
     if (videoRef.current) {
       const cur = videoRef.current.currentTime;
       const durationMs = Math.max(0, (videoRef.current.duration || duration || 0) * 1000);
-      const playableMs = getPlayableTimeMs(cur * 1000, silenceSegments, durationMs);
+      const playableMs = getPlayableTimeMs(cur * 1000, playbackSilenceSegments, durationMs);
       if (playableMs > cur * 1000 + 20) {
         skipSeekTargetRef.current = playableMs / 1000;
         videoRef.current.currentTime = playableMs / 1000;
@@ -2527,16 +3396,16 @@ export function MediaVideoEditorPlayer({
         skipSeekTargetRef.current = null;
       }
       setCurrentTime(cur);
-      if (focusMode === "auto_person") {
-        const shouldTrackPerson = smartDirectorMode !== "face_activity"
-          && smartDirectorMode !== "auto"
-          && (smartDirectorMode !== "product_focus" || productPins.length === 0);
-        if (shouldTrackPerson) {
-          const nowMs = performance.now();
-          if (nowMs - lastTrackTimeRef.current > 850) {
-            lastTrackTimeRef.current = nowMs;
-            detectPersonCenter(false);
-          }
+      const inspectFace = !overrideVideoSrc && (
+        smartDirectorMode === "face_activity"
+        || smartDirectorMode === "auto"
+        || (focusMode === "auto_person" && (smartDirectorMode !== "product_focus" || productPins.length === 0))
+      );
+      if (inspectFace) {
+        const nowMs = performance.now();
+        if (nowMs - lastTrackTimeRef.current > 850) {
+          lastTrackTimeRef.current = nowMs;
+          detectPersonCenter(false);
         }
       }
     }
@@ -2553,7 +3422,7 @@ export function MediaVideoEditorPlayer({
       lastTime = now;
       setCurrentTime((prev) => {
         const maxDur = effectiveDuration > 0 ? effectiveDuration : (nleProject?.canvas?.durationMs ? nleProject.canvas.durationMs / 1000 : 30);
-        const next = advancePlayableTimeMs(prev * 1000, deltaSec * 1000, silenceSegments, maxDur * 1000) / 1000;
+        const next = advancePlayableTimeMs(prev * 1000, deltaSec * 1000, playbackSilenceSegments, maxDur * 1000) / 1000;
         if (next >= maxDur) {
           setIsPlaying(false);
           return maxDur;
@@ -2565,7 +3434,7 @@ export function MediaVideoEditorPlayer({
 
     frameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frameId);
-  }, [isPlaying, videoSrc, playbackRate, effectiveDuration, nleProject, silenceSegments]);
+  }, [isPlaying, videoSrc, playbackRate, effectiveDuration, nleProject, playbackSilenceSegments]);
 
   // Sync Master Video Volume & Mute States
   useEffect(() => {
@@ -2594,7 +3463,7 @@ export function MediaVideoEditorPlayer({
         const video = videoRef.current;
         const playable = getPlayableTimeMs(
           video.currentTime * 1000,
-          silenceSegments,
+          playbackSilenceSegments,
           Math.max(duration, video.duration || 0) * 1000,
         ) / 1000;
         if (playable > video.currentTime + 0.02) {
@@ -2748,7 +3617,7 @@ export function MediaVideoEditorPlayer({
   const handleSeek = (timeSec: number) => {
     const maxDur = effectiveDuration > 0 ? effectiveDuration : (duration > 0 ? duration : 3600);
     const clamped = Math.max(0, Math.min(maxDur, timeSec));
-    const playable = getPlayableTimeMs(clamped * 1000, silenceSegments, maxDur * 1000) / 1000;
+    const playable = getPlayableTimeMs(clamped * 1000, playbackSilenceSegments, maxDur * 1000) / 1000;
     if (videoRef.current && videoSrc) {
       try {
         videoRef.current.currentTime = playable;
@@ -3036,6 +3905,66 @@ export function MediaVideoEditorPlayer({
     // no-op
   };
 
+  // A successful render switches the preview video to the generated output so
+  // the user can inspect it immediately. The next Face + Activity render must
+  // never scan that output while native FFmpeg renders the original timeline
+  // source; doing so creates a valid-looking plan with the wrong time/source
+  // coordinate space. Restore and wait for the original media before any
+  // fresh Full Scan.
+  const restoreOriginalPreviewSourceForRender = useCallback(async () => {
+    if (!overrideVideoSrc || !videoSrc) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    setProjectStatusMsg(t(
+      "กำลังสลับกลับไปวิดีโอต้นฉบับก่อนสแกน…",
+      "Switching back to the original video before scanning…",
+    ));
+    setOverrideVideoSrc(null);
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const timeout = window.setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        if (video.readyState >= 1 && video.duration > 0) resolve();
+        else reject(new Error(t(
+          "โหลดวิดีโอต้นฉบับกลับมาไม่สำเร็จ จึงหยุด Render เพื่อป้องกันการใช้แผนจากไฟล์ผิด",
+          "The original video could not be restored, so rendering stopped to prevent using a plan from the wrong file.",
+        )));
+      }, 4_000);
+      const cleanup = () => {
+        window.clearTimeout(timeout);
+        video.removeEventListener("loadedmetadata", onReady);
+        video.removeEventListener("canplay", onReady);
+        video.removeEventListener("error", onError);
+      };
+      const onReady = () => {
+        if (settled || video.duration <= 0) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new Error(t(
+          "โหลดวิดีโอต้นฉบับกลับมาไม่สำเร็จ จึงหยุด Render เพื่อป้องกันการใช้แผนจากไฟล์ผิด",
+          "The original video could not be restored, so rendering stopped to prevent using a plan from the wrong file.",
+        )));
+      };
+      video.addEventListener("loadedmetadata", onReady, { once: true });
+      video.addEventListener("canplay", onReady, { once: true });
+      video.addEventListener("error", onError, { once: true });
+      // React will update src on the next commit. Set it immediately as well
+      // so the scan cannot observe the previous rendered file in the gap.
+      video.src = videoSrc;
+      video.load();
+    });
+  }, [overrideVideoSrc, t, videoSrc]);
+
   // Process Video with FFmpeg
   const handleProcessVideo = async (removeDeadAir: boolean = true) => {
     if ((!videoFile && !nleProject) || isProcessing) return;
@@ -3067,70 +3996,55 @@ export function MediaVideoEditorPlayer({
           return;
         }
       }
-    // Quick tracking is intentionally lightweight, but a render must not
-    // depend on whether the user happened to play every frame first. When no
-    // face evidence exists, scan once and build the plan locally for this
-    // render so React state timing cannot send a stale fallback focus to Rust.
+      await restoreOriginalPreviewSourceForRender();
+    // Quick tracking is intentionally lightweight, but every Face + Activity
+    // render must use a fresh whole-clip scan. Never reuse a completed scan or
+    // the currently persisted camera plan: the source, edits, or detector
+    // result may have changed since that plan was produced.
     let renderCameraMotionPlan = cameraMotionPlan;
-    const sortedCameraEvidence = [...cameraTrackPoints].sort((left, right) => left.timeMs - right.timeMs);
-    const evidenceSpanMs = sortedCameraEvidence.length > 1
-      ? sortedCameraEvidence[sortedCameraEvidence.length - 1].timeMs - sortedCameraEvidence[0].timeMs
-      : 0;
-    const requiredEvidenceSpanMs = Math.min(
-      15_000,
-      Math.max(1_000, Math.round(effectiveDuration * 1000 * 0.45)),
-    );
-    const hasCompletedFullScan = cameraAnalysisMode === "full_scan"
-      && (cameraScanStatus === "approved" || cameraScanStatus === "degraded");
-    const hasRenderCoverage = hasCompletedFullScan
-      && (sortedCameraEvidence.length === 0 || (sortedCameraEvidence.length >= 5 && evidenceSpanMs >= requiredEvidenceSpanMs));
     if (
       (smartDirectorMode === "face_activity" || smartDirectorMode === "face_focus" || smartDirectorMode === "auto")
-      && !hasRenderCoverage
       && videoRef.current
     ) {
-      setProjectStatusMsg(t("กำลังสแกนทั้งคลิปเพื่อวางแผนกล้องก่อน Render…", "Scanning the full clip before rendering…"));
-      const scannedPoints = await scanFullVideoForCameraPlan();
-      if (scannedPoints.length > 0) {
-        const scannedPlan = createCameraMotionPlan({
-          durationMs: Math.round(effectiveDuration * 1000),
-          mode: smartDirectorMode === "face_focus" ? "face_focus" : "face_activity",
-          focusX,
-          focusY,
-          baseScale: 1.16,
-          marks: productPins,
-          analysisMode: "full_scan",
-          trackPoints: scannedPoints,
-          activityIntervals: [],
-          evidence: {
-            analysisMode: "full_scan",
-            status: "degraded",
-            sourceFingerprint: videoFile ? `${videoFile.name}:${videoFile.sizeBytes}:${videoFile.modifiedUnixMs}` : undefined,
-            markRevision: cameraMarkRevision,
-            policyFingerprint: `${aspectRatio}:${manualScale.toFixed(3)}`,
-            capabilityProfileFingerprint: "mediapipe-face-full-scan",
-          },
-          outputAspectRatio: renderAspectRatio ?? undefined,
-          sourceAspectRatio: videoDimensions.width > 0 && videoDimensions.height > 0
-            ? videoDimensions.width / videoDimensions.height
-            : undefined,
-        });
-        renderCameraMotionPlan = scannedPlan;
-        // Persist the exact full-scan plan before invoking Rust. The render
-        // request uses the local value above, while this write makes the
-        // captured camera positions available to playback and the next
-        // render even if React has not committed the state update yet.
-        setNleProject((previous) => previous
-          ? {
-            ...previous,
-            updatedAt: new Date().toISOString(),
-            metadata: { ...previous.metadata, cameraMotionPlan: scannedPlan },
-          }
-          : previous);
-      }
+      renderCameraMotionPlan = await buildFreshCameraMotionPlanForRender();
     }
 
-    setProjectStatusMsg(t("กำลังส่งคำสั่ง FFmpeg และตัด Dead Air…", "Sending FFmpeg render command…"));
+    if (
+      (smartDirectorMode === "face_activity" || smartDirectorMode === "face_focus" || smartDirectorMode === "auto")
+      && !hasRenderableFaceCameraPlan(renderCameraMotionPlan)
+    ) {
+      throw new Error(t(
+        "Render แบบโฟกัสใบหน้าหยุดแล้ว: ไม่มีหลักฐานใบหน้าจาก Full Scan กรุณาตรวจสถานะบนภาพ หรือตั้งกรอบด้วยมือ",
+        "Face-focused render stopped: Full Scan has no face evidence. Check the on-video status, or set the crop manually.",
+      ));
+    }
+
+    const planKeyframes = renderCameraMotionPlan?.keyframes.length ?? 0;
+    setProjectStatusMsg(renderCameraMotionPlan
+      ? t(`กำลังส่ง Render ด้วยแผน Full Scan (${planKeyframes} จุดกล้อง)…`, `Sending render with the Full Scan camera plan (${planKeyframes} keyframes)…`)
+      : t("กำลังส่งคำสั่ง FFmpeg และตัด Dead Air…", "Sending FFmpeg render command…"));
+    writeMediaDebugEvent("media.render.frontend_request", {
+      sourcePath: renderSourcePath,
+      analysisSourcePath,
+      elementCurrentSrc: videoRef.current?.currentSrc ?? null,
+      elementVideoWidth: videoRef.current?.videoWidth ?? 0,
+      elementVideoHeight: videoRef.current?.videoHeight ?? 0,
+      elementDurationSec: videoRef.current?.duration ?? 0,
+      activeSourceGeometry,
+      activeSourceDimensions,
+      aspectRatio,
+      targetWidth: nleProject?.canvas?.width || 1080,
+      targetHeight: nleProject?.canvas?.height || 1920,
+      removeDeadAir,
+      trimStartMs: Math.round(trimStart * 1000),
+      trimEndMs: Math.round(trimEnd * 1000),
+      cameraPlanKeyframes: planKeyframes,
+      cameraMotionPlan: renderCameraMotionPlan,
+      cameraAnalysisMode,
+      cameraScanStatus,
+      cameraScanSummary: faceScanSummary,
+      customSilenceSegments: removeDeadAir ? silenceSegments : [],
+    });
     const res = await invoke<InteractiveProcessResult>("worker_app_process_media_interactive", {
         request: {
           sourcePath: renderSourcePath,
@@ -3143,7 +4057,11 @@ export function MediaVideoEditorPlayer({
           focusY,
           // Manual crop resizing uses the same scale path as the automated
           // camera so FFmpeg receives the exact framing shown in the preview.
-          autoPanZoom: aspectRatio !== "source" && (smartDirectorMode !== "off" || manualScale > 1.0),
+          autoPanZoom: aspectRatio !== "source" && (
+            smartDirectorMode !== "off"
+            || manualScale > 1.0
+            || Boolean(renderCameraMotionPlan)
+          ),
           autoPanZoomMode: smartDirectorMode === "off" ? "manual_region" : smartDirectorMode,
           autoPanZoomScale: smartDirectorMode === "face_focus"
             ? 1.18
@@ -3151,6 +4069,19 @@ export function MediaVideoEditorPlayer({
               ? Math.max(1.0, manualScale || 1.18)
               : Math.max(1.0, manualScale || 1.0),
           cameraMotionPlan: renderCameraMotionPlan,
+          sourceGeometry: activeSourceGeometry
+            ? {
+              width: activeSourceGeometry.width,
+              height: activeSourceGeometry.height,
+              rotationDegrees: activeSourceGeometry.rotationDegrees,
+            }
+            : activeSourceDimensions.width > 0 && activeSourceDimensions.height > 0
+              ? {
+                width: activeSourceDimensions.width,
+                height: activeSourceDimensions.height,
+                rotationDegrees: 0,
+              }
+              : null,
           seriesId: seriesId || null,
           volumeThresholdPct: volumeThreshold,
           minDurationSec: minDuration,
@@ -3166,6 +4097,11 @@ export function MediaVideoEditorPlayer({
           targetWidth: nleProject?.canvas?.width || 1080,
           targetHeight: nleProject?.canvas?.height || 1920,
         },
+      });
+      writeMediaDebugEvent("media.render.frontend_completed", {
+        sourcePath: renderSourcePath,
+        result: res,
+        cameraMotionPlan: renderCameraMotionPlan,
       });
       setProcessResult(res);
       setIsRenderPanelCollapsed(false);
@@ -3193,9 +4129,22 @@ export function MediaVideoEditorPlayer({
       } catch (e) {
         console.warn("Save history failed:", e);
       }
-      setProjectStatusMsg(t(`Render เสร็จแล้ว: ${res.fileName}`, `Render complete: ${res.fileName}`));
+      const planResultLabel = res.cameraPlanApplied
+        ? t(`ใช้ Full Scan ${res.cameraPlanKeyframes ?? planKeyframes} จุดกล้อง`, `Full Scan applied (${res.cameraPlanKeyframes ?? planKeyframes} keyframes)`)
+        : renderCameraMotionPlan
+          ? t("คำเตือน: native render ไม่ยืนยันการใช้แผนกล้อง", "Warning: native render did not confirm the camera plan")
+          : "";
+      setProjectStatusMsg(t(
+        `Render เสร็จแล้ว: ${res.fileName}${planResultLabel ? ` · ${planResultLabel}` : ""}`,
+        `Render complete: ${res.fileName}${planResultLabel ? ` · ${planResultLabel}` : ""}`,
+      ));
     } catch (err) {
       const errorText = String(err);
+      writeMediaDebugEvent("media.render.frontend_failed", {
+        sourcePath: renderSourcePath,
+        error: errorText,
+        cameraMotionPlan,
+      });
       setProjectStatusMsg(t(`Render ไม่สำเร็จ: ${errorText}`, `Render failed: ${errorText}`));
       setProcessError(
         errorText.includes("ffmpeg_unavailable") || errorText.includes("media_runtime_not_ready")
@@ -3445,13 +4394,14 @@ export function MediaVideoEditorPlayer({
     // The same versioned plan is used by preview and every render path. This
     // deliberately replaces the old cosine loop so the camera holds still for
     // several seconds between slow, deterministic moves.
-    if (cameraMotionPlan) {
+    const activeCameraMotionPlan = authoritativeCameraPlanRef.current ?? cameraMotionPlan;
+    if (activeCameraMotionPlan) {
       const activeTimeMs = Math.round((isPlaying ? smoothTime : currentTime) * 1000);
-      const sample = evaluateCameraMotionPlan(cameraMotionPlan, activeTimeMs);
-      const previous = [...cameraMotionPlan.keyframes]
+      const sample = evaluateCameraMotionPlan(activeCameraMotionPlan, activeTimeMs);
+      const previous = [...activeCameraMotionPlan.keyframes]
         .reverse()
         .find((keyframe) => keyframe.timeMs <= activeTimeMs);
-      const next = cameraMotionPlan.keyframes.find((keyframe) => keyframe.timeMs > activeTimeMs);
+      const next = activeCameraMotionPlan.keyframes.find((keyframe) => keyframe.timeMs > activeTimeMs);
       const isMoving = Boolean(previous && next && (
         Math.abs(previous.x - next.x) > 0.0001
         || Math.abs(previous.y - next.y) > 0.0001
@@ -3842,12 +4792,13 @@ export function MediaVideoEditorPlayer({
     // has reached its target. Convert the requested focal point to the CSS
     // alignment space so the preview matches the native crop filter.
     const sourceRatio = (videoDimensions.width || 1920) / (videoDimensions.height || 1080);
+    const outputRatio = renderAspectRatio ?? sourceRatio;
     let visibleWidth = 1;
     let visibleHeight = 1;
-    if (renderAspectRatio < sourceRatio) {
-      visibleWidth = renderAspectRatio / sourceRatio;
-    } else if (renderAspectRatio > sourceRatio) {
-      visibleHeight = sourceRatio / renderAspectRatio;
+    if (outputRatio < sourceRatio) {
+      visibleWidth = outputRatio / sourceRatio;
+    } else if (outputRatio > sourceRatio) {
+      visibleHeight = sourceRatio / outputRatio;
     }
     visibleWidth = Math.min(1, visibleWidth / effectiveScale);
     visibleHeight = Math.min(1, visibleHeight / effectiveScale);
@@ -4266,15 +5217,18 @@ export function MediaVideoEditorPlayer({
                         setCameraScanStatus("quick");
                         setCameraTrackPoints([]);
                         setCameraActivityIntervals([]);
+                        setFaceScanSummary(null);
                         trackedFaceCandidateRef.current = null;
                         personAnchorRef.current = { x: 0.5, y: 0.5 };
+                        startupPersonLockRef.current = true;
                         focusXRef.current = 0.5;
                         focusYRef.current = 0.5;
                         setFocusX(0.5);
                         setFocusY(0.5);
                         onFocusXChange?.(0.5);
                         onFocusYChange?.(0.5);
-                        setProjectStatusMsg(t("⚡ Face + Activity แบบด่วน: ล็อกกรอบกลางนิ่ง กดสแกนทั้งคลิปเพื่อเปิดการติดตาม", "⚡ Face + Activity Quick: fixed centre frame; run Full Scan to enable tracking."));
+                        setProjectStatusMsg(t("⚡ Face + Activity แบบด่วน: ล็อกใบหน้าที่พบก่อน กดสแกนทั้งคลิปเพื่อวิเคราะห์ activity เพิ่ม", "⚡ Face + Activity Quick: lock onto the detected face first; run Full Scan for activity analysis."));
+                        detectPersonCenter(true);
                       }}
                       title={t("⚡ Face + Activity: ใช้ใบหน้า คน มือ วัตถุ และกิจกรรมเมื่อมีตัวตรวจจับที่รองรับ", "⚡ Face + Activity: use face, person, hand, object and activity evidence when capabilities are available")}
                     >
@@ -4288,19 +5242,22 @@ export function MediaVideoEditorPlayer({
                           onClick={() => {
                             setCameraAnalysisMode("quick");
                             setCameraScanStatus("quick");
+                            authoritativeCameraPlanRef.current = null;
                             setCameraTrackPoints([]);
                             setCameraActivityIntervals([]);
+                            setFaceScanSummary(null);
                             trackedFaceCandidateRef.current = null;
                             personAnchorRef.current = { x: 0.5, y: 0.5 };
+                            startupPersonLockRef.current = true;
                             focusXRef.current = 0.5;
                             focusYRef.current = 0.5;
                             setFocusX(0.5);
                             setFocusY(0.5);
                             onFocusXChange?.(0.5);
                             onFocusYChange?.(0.5);
-                            setProjectStatusMsg(t("กล้องล็อกกลางนิ่งจนกว่าจะสแกนทั้งคลิป", "Camera locked at centre until Full Scan."));
+                            setProjectStatusMsg(t("กล้องจะล็อกใบหน้าที่พบก่อน แล้วใช้ Full Scan เพื่อเพิ่ม activity", "Camera locks onto the detected face first, then Full Scan adds activity evidence."));
                           }}
-                          title={t("ล็อกกรอบกลางนิ่งโดยไม่ใช้ตัวตรวจจับระหว่าง Play", "Lock a fixed centre frame without live detection during playback")}
+                          title={t("ใช้ใบหน้าที่ตรวจพบจัดกรอบทันที และยังไม่ใช้ activity จนกว่าจะ Full Scan", "Use the detected face for immediate framing; activity is enabled after Full Scan")}
                         >
                           ⚡ {t("ด่วน", "Quick")}
                         </button>
@@ -4308,8 +5265,11 @@ export function MediaVideoEditorPlayer({
                           type="button"
                           className={`toolbar-pill-btn ${cameraAnalysisMode === "full_scan" ? "active" : ""}`}
                           onClick={() => {
+                            cameraScanStatusRef.current = "scanning";
                             setCameraAnalysisMode("full_scan");
                             setCameraScanStatus("scanning");
+                            setFaceScanSummary(null);
+                            setFaceFrameDiagnostic(null);
                             setProjectStatusMsg(t("กำลังสแกนทั้งวิดีโอเพื่อวางแผนกล้อง…", "Scanning the full video to plan camera motion…"));
                             void scanFullVideoForCameraPlan();
                           }}
@@ -4833,14 +5793,14 @@ export function MediaVideoEditorPlayer({
                 muted={isMuted || Boolean(nleProject?.tracks?.find((t) => t.id === "track_v1")?.muted)}
                 onLoadedMetadata={handleLoadedMetadata}
                 onLoadedData={() => {
-                  if (focusMode === "auto_person") detectPersonCenter(true);
+                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onCanPlay={() => {
-                  if (focusMode === "auto_person") detectPersonCenter(true);
+                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onTimeUpdate={handleTimeUpdate}
                 onSeeked={() => {
-                  if (focusMode === "auto_person") detectPersonCenter(true);
+                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onEnded={() => setIsPlaying(false)}
                 onError={() => {
@@ -4852,6 +5812,55 @@ export function MediaVideoEditorPlayer({
                 }}
                 playsInline
               />
+              {faceDiagnosticVisible && (
+                <div
+                  className={`face-diagnostic-status ${currentFaceDiagnostic?.status === "found" ? "is-found" : "is-missing"}`}
+                  data-testid="face-diagnostic-status"
+                >
+                  <span className="face-diagnostic-dot" />
+                  {faceDiagnosticLabel}
+                </div>
+              )}
+              {faceDiagnosticVisible && faceScanSummary && (
+                <div
+                  className={`face-scan-status ${faceScanRenderable ? "is-found" : "is-missing"}`}
+                  data-testid="face-scan-status"
+                  role={faceScanRenderable ? undefined : "alert"}
+                >
+                  {faceScanSummary.selectedFrames === 0
+                    ? t("Full Scan: ไม่พบใบหน้าหลักที่ใช้ตัดต่อได้", "Full Scan: no usable main face found")
+                    : faceScanSummary.usedFallbackFaceTrack
+                      ? t("Full Scan: ใช้ใบหน้าที่พบเป็นหลัก (โหมดสำรอง)", "Full Scan: using the detected face as fallback lock")
+                    : faceScanRenderable
+                      ? t("Full Scan: พบใบหน้าหลัก", "Full Scan: main face found")
+                      : t("Full Scan: หลักฐานใบหน้ายังไม่พอ", "Full Scan: insufficient face evidence")}
+                  {` · ${faceScanSummary.selectedFrames}/${faceScanSummary.sampledFrames} ${t("เฟรม", "frames")}`}
+                  {` · ${t("กรอบ", "boxes")} ${faceScanSummary.detectedFrames}`}
+                  {` · ${t("จุดโมเดล ≥5", "model points ≥5")} ${faceScanSummary.landmarkFrames}`}
+                  {` · ${Math.round(faceScanSummary.faceSpanMs / 1000)} ${t("วินาที", "seconds")}`}
+                </div>
+              )}
+              {faceDiagnosticVisible && previewMode === "crop_guide" && currentFaceDiagnostic?.box && (
+                <div
+                  className={`face-diagnostic-box ${currentFaceDiagnostic.status === "found" ? "is-found" : "is-missing"}`}
+                  data-testid="face-diagnostic-box"
+                  style={{
+                    left: `${Math.max(0, currentFaceDiagnostic.box.x) * 100}%`,
+                    top: `${Math.max(0, currentFaceDiagnostic.box.y) * 100}%`,
+                    width: `${Math.min(1, currentFaceDiagnostic.box.width) * 100}%`,
+                    height: `${Math.min(1, currentFaceDiagnostic.box.height) * 100}%`,
+                  }}
+                  title={t("กรอบใบหน้าที่ตัวตรวจจับรายงานจริง", "Face box reported by the detector")}
+                />
+              )}
+              {faceDiagnosticVisible && previewMode === "crop_guide" && currentFaceDiagnostic?.landmarks.map((point, index) => (
+                <div
+                  key={`${currentFaceDiagnostic.timeMs}-${index}`}
+                  className={`face-diagnostic-landmark ${currentFaceDiagnostic.status === "found" ? "is-found" : "is-missing"}`}
+                  style={{ left: `${point.x * 100}%`, top: `${point.y * 100}%` }}
+                  title={`Face landmark ${index + 1}`}
+                />
+              ))}
               {previewMode === "wysiwyg" && aspectRatio !== "source" && (
                 <div
                   data-testid="media-preview-frame"
@@ -5604,6 +6613,7 @@ export function MediaVideoEditorPlayer({
           onOpenProjectSettings={() => setIsProjectSettingsOpen(true)}
           isDuckingActive={isDuckingActive}
           onDropAsset={handleDropAssetOnTrack}
+          onAddAssetClip={handleAddAssetClip}
         />
       ) : (
         /* Bottom Section: Multi-Track Timeline with Audio Waveform */
@@ -5761,6 +6771,7 @@ export function MediaVideoEditorPlayer({
                     setSelectedAudioStreamIndex(null);
                     setWaveformBins([]);
                     setSilenceSegments([]);
+                    setHasAnalyzedDeadAir(false);
                     setAnalysisError(null);
                   }}
                 >
@@ -6100,7 +7111,7 @@ export function MediaVideoEditorPlayer({
                     <button
                       type="button"
                       className="ai-build-pill-btn"
-                    onClick={() => onBuildPlan(deadAirRenderSelection)}
+                    onClick={() => void prepareQueuedRender(onBuildPlan)}
                       disabled={isBusy}
                       title="สร้างแผนตัดต่อ Preprocessing Plan ด้วยพารามิเตอร์ปัจจุบัน"
                     >
@@ -6111,7 +7122,7 @@ export function MediaVideoEditorPlayer({
                     <button
                       type="button"
                       className="ai-submit-queue-btn"
-                      onClick={() => onSubmitJob(deadAirRenderSelection)}
+                      onClick={() => void prepareQueuedRender(onSubmitJob)}
                       disabled={!canSubmitJob || isBusy}
                       title="ส่งแผน AI เข้า Worker GPU Queue"
                     >
@@ -6185,6 +7196,9 @@ export function MediaVideoEditorPlayer({
                         </>
                       )}
                       {" "}· ขนาด: <strong>{formatBytes(processResult.sizeBytes)}</strong>
+                      {processResult.mediaDebugLogPath && (
+                        <><br />🔎 Debug: <strong title={processResult.mediaDebugLogPath}>{processResult.mediaDebugLogPath}</strong></>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -6456,9 +7470,9 @@ export function MediaVideoEditorPlayer({
                       // hidden behind the collapsed panel.
                       setIsRenderPanelCollapsed(false);
                       if (onSubmitJob) {
-                        onSubmitJob(deadAirRenderSelection);
+                        void prepareQueuedRender(onSubmitJob);
                       } else if (onBuildPlan) {
-                        onBuildPlan(deadAirRenderSelection);
+                        void prepareQueuedRender(onBuildPlan);
                       } else {
                         alert("โปรดสร้างแผนตัดต่อหรือเลือกวิดีโอก่อนส่ง Render ด้วย Remotion GPU Worker Queue");
                       }
@@ -6649,6 +7663,9 @@ export function MediaVideoEditorPlayer({
                           </>
                         )}
                         {" "}· ขนาด: <strong>{formatBytes(processResult.sizeBytes)}</strong>
+                        {processResult.mediaDebugLogPath && (
+                          <><br />🔎 Debug: <strong title={processResult.mediaDebugLogPath}>{processResult.mediaDebugLogPath}</strong></>
+                        )}
                       </p>
                     </div>
                   </div>

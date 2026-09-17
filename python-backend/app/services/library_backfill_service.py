@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import and_, exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,6 +27,7 @@ ACTIVE_JOB_STATUSES = (PENDING_STATUS, PROCESSING_STATUS, RETRY_PENDING_STATUS)
 ELIGIBLE_ITEM_STATUSES = ("ready", "failed", "indexing")
 SUPPORTED_BACKFILL_DOMAINS = ("library", "gallery")
 GALLERY_SOURCE = "media_history"
+BACKFILL_SOURCE_ADAPTER_VERSION = "library-canonical-sql-r2-v1"
 
 
 def _normalize_domain(domain: str) -> str:
@@ -42,7 +44,13 @@ def _normalize_tenant_id(tenant_id: str | int | None) -> str | None:
     return value or None
 
 
-def _library_candidate_query(*, tenant_id: str | None, cursor: int):
+def _library_candidate_query(
+    *,
+    tenant_id: str | None,
+    cursor: int,
+    include_existing: bool = False,
+    high_water_mark: int | None = None,
+):
     has_chunks = exists(
         select(LibraryChunk.id).where(LibraryChunk.library_item_id == LibraryItem.id)
     )
@@ -57,12 +65,14 @@ def _library_candidate_query(*, tenant_id: str | None, cursor: int):
 
     predicates = [
         LibraryItem.id > cursor,
+        *([LibraryItem.id <= high_water_mark] if high_water_mark is not None else []),
         LibraryItem.deleted_at.is_(None),
         LibraryItem.status.in_(ELIGIBLE_ITEM_STATUSES),
         LibraryItem.source != GALLERY_SOURCE,
-        ~has_chunks,
         ~has_active_job,
     ]
+    if not include_existing:
+        predicates.append(~has_chunks)
     if tenant_id is not None:
         predicates.append(LibraryItem.tenant_id == tenant_id)
 
@@ -73,7 +83,13 @@ def _library_candidate_query(*, tenant_id: str | None, cursor: int):
     )
 
 
-def _gallery_candidate_query(*, tenant_id: str | None, cursor: int):
+def _gallery_candidate_query(
+    *,
+    tenant_id: str | None,
+    cursor: int,
+    include_existing: bool = False,
+    high_water_mark: int | None = None,
+):
     has_chunks = exists(
         select(LibraryChunk.id).where(LibraryChunk.library_item_id == LibraryItem.id)
     )
@@ -91,15 +107,17 @@ def _gallery_candidate_query(*, tenant_id: str | None, cursor: int):
         .where(
             and_(
                 LibraryItem.id > cursor,
+                *([LibraryItem.id <= high_water_mark] if high_water_mark is not None else []),
                 LibraryItem.deleted_at.is_(None),
                 LibraryItem.status.in_(ELIGIBLE_ITEM_STATUSES),
                 LibraryItem.source == GALLERY_SOURCE,
-                ~has_chunks,
                 ~has_active_job,
             )
         )
         .order_by(LibraryItem.id.asc())
     )
+    if not include_existing:
+        query = query.where(~has_chunks)
     if tenant_id is not None:
         query = query.where(LibraryItem.tenant_id == tenant_id)
     return query
@@ -111,13 +129,25 @@ async def _count_candidates(
     domain: str,
     tenant_id: str | None,
     cursor: int,
+    include_existing: bool = False,
+    high_water_mark: int | None = None,
 ) -> int:
     if domain == "library":
-        query = _library_candidate_query(tenant_id=tenant_id, cursor=cursor).subquery()
+        query = _library_candidate_query(
+            tenant_id=tenant_id,
+            cursor=cursor,
+            include_existing=include_existing,
+            high_water_mark=high_water_mark,
+        ).subquery()
         count = await db.scalar(select(func.count()).select_from(query))
         return int(count or 0)
 
-    query = _gallery_candidate_query(tenant_id=tenant_id, cursor=cursor).subquery()
+    query = _gallery_candidate_query(
+        tenant_id=tenant_id,
+        cursor=cursor,
+        include_existing=include_existing,
+        high_water_mark=high_water_mark,
+    ).subquery()
     count = await db.scalar(select(func.count()).select_from(query))
     return int(count or 0)
 
@@ -129,6 +159,8 @@ async def load_backfill_candidates(
     tenant_id: str | int | None,
     cursor: int,
     limit: int,
+    include_existing: bool = False,
+    high_water_mark: int | None = None,
 ) -> list[dict[str, Any]]:
     resolved_domain = _normalize_domain(domain)
     resolved_tenant_id = _normalize_tenant_id(tenant_id)
@@ -142,6 +174,8 @@ async def load_backfill_candidates(
                     _library_candidate_query(
                         tenant_id=resolved_tenant_id,
                         cursor=resolved_cursor,
+                        include_existing=include_existing,
+                        high_water_mark=high_water_mark,
                     ).limit(resolved_limit)
                 )
             )
@@ -164,6 +198,8 @@ async def load_backfill_candidates(
                 _gallery_candidate_query(
                     tenant_id=resolved_tenant_id,
                     cursor=resolved_cursor,
+                    include_existing=include_existing,
+                    high_water_mark=high_water_mark,
                 ).limit(resolved_limit)
             )
         )
@@ -181,23 +217,57 @@ async def load_backfill_candidates(
     ]
 
 
+async def _source_high_water_mark(
+    db: AsyncSession,
+    *,
+    domain: str,
+    tenant_id: str | None,
+) -> int:
+    predicate = (
+        LibraryItem.source == GALLERY_SOURCE
+        if domain == "gallery"
+        else LibraryItem.source != GALLERY_SOURCE
+    )
+    predicates = [predicate]
+    if tenant_id is not None:
+        predicates.append(LibraryItem.tenant_id == tenant_id)
+    value = await db.scalar(select(func.max(LibraryItem.id)).where(and_(*predicates)))
+    return int(value or 0)
+
+
 async def create_backfill_campaign(
     db: AsyncSession,
     *,
     domain: str = "library",
     tenant_id: str | int | None = None,
     cursor: int = 0,
+    rebuild_from_canonical: bool = False,
 ) -> LibraryBackfillCampaign:
     resolved_domain = _normalize_domain(domain)
     resolved_tenant_id = _normalize_tenant_id(tenant_id)
     resolved_cursor = max(cursor, 0)
+    snapshot_id = str(uuid4())
+    snapshot_created_at = datetime.utcnow()
+    source_high_water_mark = await _source_high_water_mark(
+        db,
+        domain=resolved_domain,
+        tenant_id=resolved_tenant_id,
+    )
 
     campaign = LibraryBackfillCampaign(
         tenant_id=resolved_tenant_id,
         domain=resolved_domain,
         status="queued",
         cursor=resolved_cursor,
-        checkpoint_json={"cursor": resolved_cursor},
+        checkpoint_json={
+            "cursor": resolved_cursor,
+            "rebuild_from_canonical": bool(rebuild_from_canonical),
+            "snapshot_id": snapshot_id,
+            "snapshot_created_at": snapshot_created_at.isoformat(),
+            "source_high_water_mark": source_high_water_mark,
+            "source_adapter_version": BACKFILL_SOURCE_ADAPTER_VERSION,
+            "legacy_vector_values_read": 0,
+        },
         diagnostics_json={},
         started_at=datetime.utcnow(),
     )
@@ -233,11 +303,18 @@ async def run_backfill_campaign_batch(
         raise LookupError(f"library_backfill_campaign_not_found:{campaign_id}")
 
     cap = max(1, min(batch_size, max_enqueue))
+    rebuild_from_canonical = bool(
+        (campaign.checkpoint_json or {}).get("rebuild_from_canonical", False)
+    )
+    checkpoint = dict(campaign.checkpoint_json or {})
+    source_high_water_mark = int(checkpoint.get("source_high_water_mark") or 0)
     estimated_remaining = await _count_candidates(
         db,
         domain=campaign.domain,
         tenant_id=campaign.tenant_id,
         cursor=campaign.cursor or 0,
+        include_existing=rebuild_from_canonical,
+        high_water_mark=source_high_water_mark,
     )
 
     if paused:
@@ -256,7 +333,12 @@ async def run_backfill_campaign_batch(
             "candidate_entity_ids": [],
             "estimated_remaining": estimated_remaining,
             "counters": _campaign_counters(campaign),
-            "diagnostics": dict(campaign.diagnostics_json or {}),
+            "diagnostics": {
+                **dict(campaign.diagnostics_json or {}),
+                "rebuild_from_canonical": rebuild_from_canonical,
+                "snapshot_id": checkpoint.get("snapshot_id"),
+                "legacy_vector_values_read": 0,
+            },
         }
 
     candidates = await load_backfill_candidates(
@@ -265,6 +347,8 @@ async def run_backfill_campaign_batch(
         tenant_id=campaign.tenant_id,
         cursor=campaign.cursor or 0,
         limit=cap,
+        include_existing=rebuild_from_canonical,
+        high_water_mark=source_high_water_mark,
     )
     candidate_entity_ids = [str(candidate["entity_id"]) for candidate in candidates]
     next_cursor = int(candidates[-1]["cursor"]) if candidates else int(campaign.cursor or 0)
@@ -287,7 +371,12 @@ async def run_backfill_campaign_batch(
             "candidate_entity_ids": candidate_entity_ids,
             "estimated_remaining": estimated_remaining,
             "counters": _campaign_counters(campaign),
-            "diagnostics": dict(campaign.diagnostics_json or {}),
+            "diagnostics": {
+                **dict(campaign.diagnostics_json or {}),
+                "rebuild_from_canonical": rebuild_from_canonical,
+                "snapshot_id": checkpoint.get("snapshot_id"),
+                "legacy_vector_values_read": 0,
+            },
         }
 
     created_job_ids: list[int] = []
@@ -328,9 +417,11 @@ async def run_backfill_campaign_batch(
     campaign.completed_at = datetime.utcnow() if campaign.status == "completed" else None
     campaign.updated_at = datetime.utcnow()
     campaign.checkpoint_json = {
+        **checkpoint,
         "cursor": campaign.cursor,
         "batch_size": cap,
         "last_entity_id": candidate_entity_ids[-1] if candidate_entity_ids else None,
+        "legacy_vector_values_read": 0,
     }
     campaign.diagnostics_json = {
         **dict(campaign.diagnostics_json or {}),
@@ -339,6 +430,9 @@ async def run_backfill_campaign_batch(
         "enqueue_attempted": enqueue_attempted,
         "estimated_remaining": estimated_remaining,
         "skip_reason": None,
+        "rebuild_from_canonical": rebuild_from_canonical,
+        "snapshot_id": checkpoint.get("snapshot_id"),
+        "legacy_vector_values_read": 0,
     }
     await db.commit()
 
@@ -540,6 +634,7 @@ async def run_library_backfill_batch(
     paused: bool = False,
     max_enqueue: int = 25,
     domain: str = "library",
+    rebuild_from_canonical: bool = False,
 ) -> dict[str, Any]:
     """Execute one backfill slice with pause/resume and throttle controls."""
     resolved_domain = _normalize_domain(domain)
@@ -573,6 +668,7 @@ async def run_library_backfill_batch(
                 domain=resolved_domain,
                 tenant_id=resolved_tenant_id,
                 cursor=cursor,
+                include_existing=rebuild_from_canonical,
             ),
             "domain": resolved_domain,
         }
@@ -588,6 +684,7 @@ async def run_library_backfill_batch(
         domain=resolved_domain,
         tenant_id=resolved_tenant_id,
         cursor=cursor,
+        include_existing=rebuild_from_canonical,
     )
 
     candidates = await load_backfill_candidates(
@@ -596,6 +693,7 @@ async def run_library_backfill_batch(
         tenant_id=resolved_tenant_id,
         cursor=cursor,
         limit=cap,
+        include_existing=rebuild_from_canonical,
     )
     candidate_item_ids = [int(c["library_item_id"]) for c in candidates]
     next_cursor = int(candidates[-1]["cursor"]) if candidates else cursor
@@ -683,5 +781,6 @@ async def run_library_backfill_batch(
         "domain": resolved_domain,
         "diagnostics": {
             "skip_reason": None,
+            "rebuild_from_canonical": bool(rebuild_from_canonical),
         },
     }

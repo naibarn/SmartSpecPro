@@ -1,4 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "fs/promises";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("../../storage", () => ({
   storagePutFromPath: mocks.storagePutFromPath,
 }));
 import {
+  downloadMediaToTempFile,
   ensureVerticalDramaManagedMediaAsset,
   ingestVerticalDramaMediaAsset,
   reconcileVerticalDramaMediaAsset,
@@ -37,10 +39,95 @@ function makeDb(rows: unknown[]) {
 }
 
 describe("Vertical Drama media asset durability", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.assertR2StorageActive.mockResolvedValue(undefined);
     mocks.storageExists.mockResolvedValue(false);
+  });
+
+  it("retries a transient provider result fetch before surfacing a completed task as failed", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new TypeError("fetch failed"))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const downloaded = await downloadMediaToTempFile(
+      "https://8.8.8.8/result.png",
+      "image",
+      "image/png",
+    );
+
+    try {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await expect(fs.readFile(downloaded.tempPath)).resolves.toEqual(
+        Buffer.from([1, 2, 3]),
+      );
+    } finally {
+      await fs.rm(downloaded.tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("retries a temporary provider HTTP failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(new Uint8Array([4, 5, 6]), {
+          status: 200,
+          headers: { "content-type": "image/png" },
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const downloaded = await downloadMediaToTempFile(
+      "https://8.8.8.8/result.png",
+      "image",
+      "image/png",
+    );
+
+    try {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      await fs.rm(downloaded.tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("does not retry a permanent provider HTTP failure", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("missing", { status: 404 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      downloadMediaToTempFile(
+        "https://8.8.8.8/result.png",
+        "image",
+        "image/png",
+      ),
+    ).rejects.toThrow("Vertical Drama media download failed (404)");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops after the bounded transient download retry budget", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      downloadMediaToTempFile(
+        "https://8.8.8.8/result.png",
+        "image",
+        "image/png",
+      ),
+    ).rejects.toThrow("fetch failed");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
   it("resolves a managed URL to its owned media asset ID", async () => {

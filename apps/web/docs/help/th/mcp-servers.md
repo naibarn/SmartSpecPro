@@ -27,7 +27,7 @@ SmartSpecPro รองรับการเชื่อมต่อกับ MCP
 |-----------|----------|-----------|
 | **HTTP** | JSON-RPC มาตรฐานผ่าน HTTP/HTTPS | ทั่วไปที่สุด ใช้ได้กับ MCP Server ทุกตัว |
 | **Streamable HTTP** | SSE transport พร้อมจัดการ session | สำหรับ streaming response แบบ real-time |
-| **stdio** | ทำงานผ่าน OpenSandbox container | สำหรับเครื่องมือ CLI ที่ทำงานเป็นโปรเซส |
+| **stdio** | ยกเลิกการใช้งานในระบบ | ใช้ external MCP worker ที่อนุมัติ เช่น Hermes, Claude หรือ Codex |
 
 ### ตั้งค่า HTTP Server
 
@@ -46,15 +46,12 @@ SmartSpecPro รองรับการเชื่อมต่อกับ MCP
 
 ### ตั้งค่า stdio Server
 
-ต้องเปิดใช้งาน OpenSandbox ก่อน server จะทำงานใน container แยก:
-1. ระบุคำสั่ง (เช่น `npx`)
-2. เพิ่ม arguments (เช่น `@modelcontextprotocol/server-github`)
-3. ตั้งค่า environment variables (ข้อมูลลับจะถูกเข้ารหัส)
-4. Container ไม่มีการเข้าถึงเครือข่ายเพื่อความปลอดภัย
+ยกเลิกการใช้งาน stdio ภายในระบบแล้ว ให้ใช้ external MCP worker ที่อนุมัติ
+สำหรับเครื่องมือแบบ process-based ส่วน HTTP และ Streamable HTTP ยังใช้งานได้ตามปกติ
 
 ## เครื่องมือปรากฏใน Agent อย่างไร
 
-เมื่อ MCP server เปิดใช้งานและถูกกำหนดให้กับ agency/agent:
+เมื่อ MCP server เปิดใช้งานและถูกกำหนดให้กับ agent:
 - เครื่องมือจาก server จะปรากฏในรายการเครื่องมือของ agent
 - Agent สามารถเรียกใช้ได้ระหว่างการสนทนา
 - การเรียกเครื่องมือจะถูกบันทึกใน audit trail
@@ -79,15 +76,15 @@ SmartSpecPro รองรับการเชื่อมต่อกับ MCP
 - ตรวจสอบว่าผู้ให้บริการ OAuth ไม่ได้เพิกถอนสิทธิ์
 
 ### stdio Server ใช้ไม่ได้
-- ตรวจสอบว่าเปิดใช้งาน OpenSandbox แล้ว (`OPENSANDBOX_ENABLED=true`)
-- ตรวจสอบจำนวน container สูงสุดต่อ tenant (ค่าเริ่มต้น: 2)
+- stdio ภายในระบบถูกปิดถาวรโดยตั้งใจ
+- ให้เชื่อมต่อ MCP server ผ่าน external worker ที่อนุมัติแทน
 
 ## ความปลอดภัย
 
 - URL ของ server ทุกตัวผ่านการตรวจสอบ SSRF (IP ภายในถูกบล็อก)
 - ป้องกัน DNS rebinding สำหรับการเชื่อมต่อ HTTP
 - OAuth token ถูกเข้ารหัสด้วย AES-256-GCM
-- stdio container ทำงานโดยไม่มีการเข้าถึงเครือข่าย
+- external worker ต้องมีนโยบายแยก process และ network ตาม runtime ที่อนุมัติ
 - ขนาด response จำกัดที่ 1MB ต่อการเรียกเครื่องมือ
 - การเรียกเครื่องมือทั้งหมดถูกบันทึกใน audit log
 

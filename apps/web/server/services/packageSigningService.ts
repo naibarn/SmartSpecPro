@@ -6,7 +6,6 @@ import { desktopPackageTrustClassSchema } from "../../shared/desktopHost";
 
 export const desktopPackageTypeValues = [
   "skill_package",
-  "agency_pack",
   "hybrid_pack",
   "tooling_pack",
   "runtime_support_pack",
@@ -14,14 +13,12 @@ export const desktopPackageTypeValues = [
 
 export const desktopRuntimeDestinationValues = [
   "pi",
-  "agency_swarm",
   "desktop_host",
   "hybrid",
 ] as const;
 
 export const desktopPayloadEntryKindValues = [
   "skill_bundle",
-  "agency_definition",
   "hybrid_bundle",
   "runtime_support_bundle",
 ] as const;

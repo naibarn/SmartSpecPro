@@ -13,6 +13,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockListUserWorkerJobs = vi.fn();
+const mockGetWorkerJobDashboardSummary = vi.fn();
 
 vi.mock("../../services/workerJobMonitorService", () => ({
   USER_WORKER_JOB_STATUSES: [
@@ -31,6 +32,15 @@ vi.mock("../../services/workerJobMonitorService", () => ({
   listUserWorkerJobs: (...args: unknown[]) => mockListUserWorkerJobs(...args),
   getUserWorkerJobDetail: vi.fn(),
   cancelQueuedUserWorkerJob: vi.fn(),
+  getWorkerJobDashboardSummary: (...args: unknown[]) => mockGetWorkerJobDashboardSummary(...args),
+}));
+
+vi.mock("../../services/jobControlPlaneMonitor", () => ({
+  applyCanonicalJobAction: vi.fn(),
+  getCanonicalJobOverview: vi.fn(),
+  getCanonicalJobTimeline: vi.fn(),
+  getWorkerJobDashboardSummary: (...args: unknown[]) => mockGetWorkerJobDashboardSummary(...args),
+  listCanonicalJobs: vi.fn(),
 }));
 
 vi.mock("../../_core/trpc", () => {
@@ -83,6 +93,18 @@ describe("workerJobsRouter.list — jobType absent (backward compatible)", () =>
       offset: 0,
     });
     expect(result.items).toHaveLength(1);
+  });
+});
+
+describe("workerJobsRouter.dashboardSummary", () => {
+  it("passes the authenticated tenant and user scope to the control-plane projection", async () => {
+    mockGetWorkerJobDashboardSummary.mockResolvedValueOnce({ scope: "user", counts: { queued: 2 } });
+
+    const fn = workerJobsRouter.dashboardSummary as unknown as Function;
+    const result = await fn({ ctx: CTX });
+
+    expect(mockGetWorkerJobDashboardSummary).toHaveBeenCalledWith({ tenantId: "tenant-1", userId: 9 });
+    expect(result).toEqual({ scope: "user", counts: { queued: 2 } });
   });
 });
 

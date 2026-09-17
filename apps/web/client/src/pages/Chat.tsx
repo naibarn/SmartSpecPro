@@ -42,17 +42,11 @@ import {
   MonitorPlay,
   Loader2,
   Send,
-  Users,
-  Play,
   X,
   ChevronDown,
   ChevronUp,
   ReceiptText,
 } from "lucide-react";
-import { AgencyPickerModal } from "@/components/agency/AgencyPickerModal";
-import { useAgencyStream } from "@/hooks/useAgencyStream";
-import { AgencyChatStream } from "@/components/agency/AgencyChatStream";
-import { DesktopAgencyHandoffLinks } from "@/features/desktop-host/agencies/DesktopAgencyHandoffLinks";
 import { cn } from "@/lib/utils";
 import {
   trackBrowserSessionOpened,
@@ -79,7 +73,6 @@ import {
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
-import { buildWorkpackEntrypointHref } from "@/lib/workpackNavigation";
 
 type RightPanel =
   | "none"
@@ -89,13 +82,6 @@ type RightPanel =
   | "schedule"
   | "canvas"
   | "finance";
-type AgencyRunPhase =
-  | "idle"
-  | "connecting"
-  | "running"
-  | "completed"
-  | "failed";
-
 export default function Chat() {
   const { isLoading, isAuthenticated, user } = useAuth();
   const { t } = useScopedTranslation("chat");
@@ -108,27 +94,6 @@ export default function Chat() {
     () => window.innerWidth >= 1024
   );
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
-  const [agencyPickerOpen, setAgencyPickerOpen] = useState(false);
-  const [targetAgency, setTargetAgency] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
-  const [agencySuggestion, setAgencySuggestion] = useState<{
-    agencyId: string;
-    agencyName: string;
-  } | null>(null);
-  const [agencyInput, setAgencyInput] = useState("");
-  const [agencyRunPhase, setAgencyRunPhase] = useState<AgencyRunPhase>("idle");
-  const [agencyPanelCollapsed, setAgencyPanelCollapsed] = useState(false);
-  const agencyStream = useAgencyStream({
-    onRunFinished: () => {
-      setAgencyRunPhase("completed");
-    },
-    onError: () => {
-      setAgencyRunPhase("failed");
-    },
-  });
-
   // Deep-link state from GlobalAlerts (e.g. /chat?dm=123&dmName=John)
   const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
   const [initialDmUserName, setInitialDmUserName] = useState<string>("");
@@ -155,12 +120,6 @@ export default function Chat() {
 
   const utils = trpc.useUtils();
 
-  // Agency trigger data for auto-detection in chat
-  const { data: agencyTriggersData } = (
-    trpc as any
-  ).agency?.listTriggers?.useQuery?.(undefined, {
-    staleTime: 60_000,
-  }) ?? { data: undefined };
   // Fetch messages to extract artifacts
   const { data: messagesData } = trpc.chat.getMessages.useQuery(
     { conversationId: selectedConversationId!, limit: 100 },
@@ -217,7 +176,6 @@ export default function Chat() {
   const chatBrowserSessionEnabled = Boolean(
     tenantFlags?.chatBrowserSessionEntry && tenantFlags.liveBrowser
   );
-  const workpacksEnabled = Boolean(tenantFlags?.workpacksEnabled);
 
   // Extract artifacts from messages
   const artifacts: Artifact[] = (messagesData || [])
@@ -519,30 +477,6 @@ export default function Chat() {
   };
 
   const handleUserMessageSent = (message: string) => {
-    // Agency auto-detection from trigger phrases
-    if (!targetAgency) {
-      const agencyList = agencyTriggersData?.agencies ?? [];
-      if (agencyList.length > 0 && message.length >= 3) {
-        for (const agency of agencyList) {
-          const phrases: string[] = (agency as any).triggerPhrases ?? [];
-          for (const phrase of phrases) {
-            try {
-              if (new RegExp(phrase, "i").test(message)) {
-                setAgencySuggestion({
-                  agencyId: (agency as any).id,
-                  agencyName: (agency as any).name,
-                });
-                break;
-              }
-            } catch {
-              /* invalid regex */
-            }
-          }
-          if (agencySuggestion) break;
-        }
-      }
-    }
-
     if (!selectedConversationId || !chatBrowserSessionEnabled) {
       setBrowserSessionSuggestion(null);
       return;
@@ -555,18 +489,6 @@ export default function Chat() {
         sourceId: String(selectedConversationId),
       })
     );
-  };
-
-  const handleAgencySend = () => {
-    if (!targetAgency || !agencyInput.trim() || agencyStream.isStreaming)
-      return;
-    setAgencyRunPhase("connecting");
-    setAgencyPanelCollapsed(false);
-    agencyStream.connect({
-      agencyId: targetAgency.id,
-      message: agencyInput.trim(),
-    });
-    setAgencyInput("");
   };
 
   const handleConfirmBrowserSessionSuggestion = async (
@@ -740,64 +662,6 @@ export default function Chat() {
     }
   };
 
-  useEffect(() => {
-    if (agencyStream.isStreaming) {
-      setAgencyRunPhase(current =>
-        current === "running" ? current : "running"
-      );
-    }
-  }, [agencyStream.isStreaming]);
-
-  useEffect(() => {
-    if (agencyStream.error) {
-      setAgencyRunPhase(current =>
-        current === "connecting" || current === "running" ? "failed" : current
-      );
-    }
-  }, [agencyStream.error]);
-
-  useEffect(() => {
-    if (
-      !agencyStream.isStreaming &&
-      agencyStream.messages.length > 0 &&
-      !agencyStream.error
-    ) {
-      setAgencyRunPhase(current =>
-        current === "connecting" || current === "running"
-          ? "completed"
-          : current
-      );
-    }
-  }, [
-    agencyStream.isStreaming,
-    agencyStream.messages.length,
-    agencyStream.error,
-  ]);
-
-  const agencyStatusLabel = (() => {
-    switch (agencyRunPhase) {
-      case "connecting":
-        return t("agency.status.connecting");
-      case "running":
-        return t("agency.status.running");
-      case "completed":
-        return t("agency.status.completed");
-      case "failed":
-        return t("agency.status.failed");
-      default:
-        return t("agency.status.ready");
-    }
-  })();
-
-  const agencyStatusTone =
-    agencyRunPhase === "failed"
-      ? "border-red-200 bg-red-100 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-200"
-      : agencyRunPhase === "completed"
-        ? "border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200"
-        : agencyRunPhase === "running" || agencyRunPhase === "connecting"
-          ? "border-indigo-200 bg-indigo-100 text-indigo-700 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-200"
-          : "border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200";
-
   if (isLoading) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[var(--color-background-body)]">
@@ -931,27 +795,6 @@ export default function Chat() {
               </span>
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAgencyPickerOpen(true)}
-            className="h-9 shrink-0 gap-2"
-            title={t("chat.runAgencyInline")}
-            aria-label={t("chat.runAgency")}
-          >
-            <Play className="h-4 w-4" />
-            <span className="hidden xl:inline">{t("chat.runAgency")}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/agencies")}
-            className="h-9 shrink-0 gap-2"
-            aria-label={t("chat.agencies")}
-          >
-            <Users className="h-4 w-4" />
-            <span className="hidden xl:inline">{t("chat.agencies")}</span>
-          </Button>
         </div>
       </div>
 
@@ -1158,251 +1001,8 @@ export default function Chat() {
                   onDismissBrowserSessionSuggestion={
                     handleDismissBrowserSessionSuggestion
                   }
-                  showWorkStartEntry={workpacksEnabled}
-                  onRunAgency={() => setAgencyPickerOpen(true)}
                   onOpenFinancePanel={() => setRightPanel("finance")}
                 />
-                {/* Agency suggestion card (auto-detected) */}
-                {agencySuggestion && !targetAgency && (
-                  <div className="mx-auto max-w-3xl px-3 pb-2 sm:px-4">
-                    <div className="flex flex-col gap-3 rounded-[var(--radius-container)] border border-[var(--color-border-purple)] bg-[var(--color-background-purple)] px-4 py-3 text-sm sm:flex-row sm:items-center">
-                      <Users className="h-4 w-4 shrink-0 text-indigo-600" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-indigo-900 dark:text-indigo-100">
-                          {t("chat.agencyDetected", {
-                            name: agencySuggestion.agencyName,
-                          })}
-                        </p>
-                        <p className="text-xs text-indigo-600 dark:text-indigo-300 mt-0.5">
-                          {t("chat.agencyDetectedHint")}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="shrink-0"
-                        onClick={() => {
-                          setTargetAgency({
-                            id: agencySuggestion.agencyId,
-                            name: agencySuggestion.agencyName,
-                          });
-                          setAgencySuggestion(null);
-                          setAgencyRunPhase("idle");
-                          setAgencyPanelCollapsed(false);
-                        }}
-                      >
-                        {t("chat.useAgency")}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="shrink-0"
-                        onClick={() => setAgencySuggestion(null)}
-                      >
-                        {t("chat.dismiss")}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {/* Inline agency run panel */}
-                {targetAgency && (
-                  <div className="sticky bottom-0 z-20 border-t border-[var(--color-border)] bg-[var(--color-background-surface)]/90 px-3 py-3 shadow-[var(--shadow-med)] backdrop-blur sm:px-4">
-                    <div className="mx-auto max-w-3xl space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-indigo-600" />
-                        <span className="text-sm font-medium text-indigo-900 dark:text-indigo-100">
-                          {targetAgency.name}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-[10px] px-2 py-0.5",
-                            agencyStatusTone
-                          )}
-                        >
-                          {agencyStatusLabel}
-                        </Badge>
-                        <div className="ml-auto flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() =>
-                              setAgencyPanelCollapsed(value => !value)
-                            }
-                            title={
-                              agencyPanelCollapsed
-                                ? t("chat.expandAgencyPanel")
-                                : t("chat.collapseAgencyPanel")
-                            }
-                          >
-                            {agencyPanelCollapsed ? (
-                              <ChevronDown className="h-3 w-3" />
-                            ) : (
-                              <ChevronUp className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-5 w-5"
-                            onClick={() => {
-                              setTargetAgency(null);
-                              setAgencyInput("");
-                              setAgencyRunPhase("idle");
-                              setAgencyPanelCollapsed(false);
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      {!agencyPanelCollapsed ? (
-                        <>
-                          <p className="text-xs text-muted-foreground">
-                            {t("chat.agencyPanelHint")}
-                          </p>
-                          <div className="rounded-md border border-indigo-200 bg-white/70 px-3 py-3 shadow-sm dark:border-indigo-900 dark:bg-slate-950/40">
-                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-indigo-700 dark:text-indigo-300">
-                                  Desktop handoff
-                                </p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  Open this agency in Desktop Host for governed
-                                  local package sync, Pi preparation, and Agency
-                                  Swarm execution.
-                                </p>
-                              </div>
-                              <DesktopAgencyHandoffLinks
-                                agencyId={targetAgency.id}
-                                runId={
-                                  selectedConversationId
-                                    ? `chat-${selectedConversationId}`
-                                    : undefined
-                                }
-                              />
-                            </div>
-                          </div>
-                          {/* Agency stream output */}
-                          {agencyStream.messages.length > 0 ? (
-                            <div className="max-h-[300px] overflow-y-auto rounded-md border bg-background p-3">
-                              <AgencyChatStream
-                                messages={agencyStream.messages}
-                                activeAgent={agencyStream.activeAgent}
-                                isStreaming={agencyStream.isStreaming}
-                                error={agencyStream.error}
-                                creditsUsed={agencyStream.creditsUsed}
-                                activityEvents={agencyStream.activityEvents}
-                                toolCalls={agencyStream.toolCalls}
-                                guardrailEvents={agencyStream.guardrailEvents}
-                                pendingApproval={agencyStream.pendingApproval}
-                                isPollingFallback={
-                                  agencyStream.isPollingFallback
-                                }
-                                hybridSummary={
-                                  agencyStream.hybridSummary ?? null
-                                }
-                                stepAttemptSnapshots={
-                                  agencyStream.stepAttemptSnapshots ?? []
-                                }
-                              />
-                            </div>
-                          ) : (
-                            <div className="rounded-md border border-dashed bg-background/70 px-4 py-6 text-sm text-muted-foreground">
-                              {t("chat.agencyNoActivity")}
-                            </div>
-                          )}
-                          {agencyStream.error && (
-                            <p className="text-xs text-destructive">
-                              {agencyStream.error}
-                            </p>
-                          )}
-                          {/* Agency input */}
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <Textarea
-                              value={agencyInput}
-                              onChange={e => setAgencyInput(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                  e.preventDefault();
-                                  handleAgencySend();
-                                }
-                              }}
-                              placeholder={t("chat.agencyMessagePlaceholder", {
-                                name: targetAgency.name,
-                              })}
-                              className="min-h-11 max-h-[120px] flex-1 resize-none"
-                              rows={1}
-                              disabled={
-                                agencyStream.isStreaming ||
-                                agencyRunPhase === "connecting"
-                              }
-                            />
-                            <Button
-                              onClick={handleAgencySend}
-                              disabled={
-                                !agencyInput.trim() ||
-                                agencyStream.isStreaming ||
-                                agencyRunPhase === "connecting"
-                              }
-                              className="h-11 shrink-0 px-4"
-                            >
-                              {agencyRunPhase === "connecting" ||
-                              agencyStream.isStreaming ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Send className="h-4 w-4" />
-                              )}
-                              <span className="ml-2">
-                                {agencyRunPhase === "completed"
-                                  ? t("chat.runAgain")
-                                  : agencyRunPhase === "failed"
-                                    ? t("chat.retry")
-                                    : agencyRunPhase === "connecting"
-                                      ? t("chat.connecting")
-                                      : agencyStream.isStreaming
-                                        ? t("chat.running")
-                                        : t("chat.startRun")}
-                              </span>
-                            </Button>
-                          </div>
-                          {agencyStream.isStreaming && (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span>
-                                {t("chat.agencyRunning", {
-                                  agent: agencyStream.activeAgent || "",
-                                })}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2 rounded-md border border-dashed bg-background/70 px-4 py-2 text-xs text-muted-foreground shadow-sm">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-[10px] px-2 py-0.5",
-                              agencyStatusTone
-                            )}
-                          >
-                            {agencyStatusLabel}
-                          </Badge>
-                          <span className="font-medium text-foreground">
-                            {targetAgency.name}
-                          </span>
-                          <span>
-                            {t("chat.agencyPanelCollapsed")}
-                            {agencyStream.isStreaming &&
-                            agencyStream.activeAgent
-                              ? ` ${t("chat.currentAgent", { agent: agencyStream.activeAgent })}`
-                              : ""}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           ) : (
@@ -1444,25 +1044,6 @@ export default function Chat() {
                         size="default"
                       />
                     </>
-                  ) : null}
-                  {workpacksEnabled ? (
-                    <Button
-                      type="button"
-                      size="lg"
-                      variant="outline"
-                      className="gap-2"
-                      onClick={() =>
-                        setLocation(
-                          buildWorkpackEntrypointHref({
-                            entrypoint: "chat",
-                            surface: "intake",
-                          })
-                        )
-                      }
-                    >
-                      <Layers className="h-4 w-4" />
-                      Open Workpack Intake
-                    </Button>
                   ) : null}
                 </div>
               </DashboardSurface>
@@ -1561,17 +1142,6 @@ export default function Chat() {
           )}
         </div>
       </div>
-
-      <AgencyPickerModal
-        open={agencyPickerOpen}
-        onClose={() => setAgencyPickerOpen(false)}
-        onSelect={agency => {
-          setAgencyPickerOpen(false);
-          setTargetAgency({ id: agency.id, name: agency.name });
-          setAgencyRunPhase("idle");
-          setAgencyPanelCollapsed(false);
-        }}
-      />
     </div>
   );
 }

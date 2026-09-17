@@ -25,10 +25,10 @@ export interface AutoTeamProviderPolicyInput {
   teamLanguage?: "en" | "th" | null;
 }
 
-const ROUTE_DEFAULTS: Record<
+const ROUTE_DEFAULTS: Partial<Record<
   AutoTeamRouteClass,
   { provider: string | null; model: string | null; selectedReason: string }
-> = {
+>> = {
   "media.video": {
     provider: "kie.ai",
     model: "veo-3-1",
@@ -37,11 +37,6 @@ const ROUTE_DEFAULTS: Record<
   "media.image": {
     provider: "kie.ai",
     model: "google-nano-banana-pro",
-    selectedReason: "explicit_or_default",
-  },
-  "agency.swarm": {
-    provider: "agency",
-    model: "agency-swarm",
     selectedReason: "explicit_or_default",
   },
   "workflow.automation": {
@@ -108,7 +103,11 @@ export function resolveAutoTeamProviderDecision(
     };
   }
 
-  const defaultConfig = ROUTE_DEFAULTS[input.routeClass];
+  const defaultConfig = ROUTE_DEFAULTS[input.routeClass] ?? {
+    provider: null,
+    model: null,
+    selectedReason: "blocked_route",
+  };
   const requestedModel = normalizeModelHint(input.requestedModel);
   const requestedProvider = input.requestedProvider
     ? normalizeMediaProviderName(input.requestedProvider)

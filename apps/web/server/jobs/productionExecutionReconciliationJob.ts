@@ -8,7 +8,7 @@ import {
   isProductionSpaceStorageUnavailable,
   reconcilePendingProductionExecutions,
 } from "../services/productionSpaceService";
-import { isCloudflareHardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
+import { isFeature186HardCutoverEnabled } from "../services/cloudflareRuntimeTarget";
 
 const DEFAULT_INTERVAL_MS = 30_000;
 const DEFAULT_TENANT_LIMIT = 50;
@@ -44,7 +44,7 @@ function shouldUseInProcessInterval(): boolean {
   const mode = getSchedulerMode();
   if (mode === "interval") return true;
   if (mode === "external") return false;
-  return !isCloudflareHardCutoverEnabled();
+  return !isFeature186HardCutoverEnabled();
 }
 
 function createProductionReconcileToken(input: {

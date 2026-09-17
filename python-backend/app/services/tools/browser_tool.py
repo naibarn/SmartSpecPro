@@ -24,13 +24,7 @@ from urllib.parse import urlparse
 
 import bleach
 import structlog
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.sandbox import SandboxJob
-
-if TYPE_CHECKING:
-    from app.services.sandbox_dispatcher import SandboxDispatcher
 
 logger = structlog.get_logger(__name__)
 
@@ -382,7 +376,7 @@ class BrowserSession:
         tenant_id: str,
         allowed_domains: list[str],
         redis_client: Any | None = None,
-        dispatcher: "SandboxDispatcher | None" = None,
+        dispatcher: Any | None = None,
     ) -> None:
         self._session_id = str(uuid.uuid4())
         self._user_id = user_id
@@ -431,43 +425,7 @@ class BrowserSession:
         self._total_output_bytes += new_bytes
 
     async def _wait_job(self, job_id: str | None) -> dict:
-        """Wait for sandbox job completion and return result.
-
-        If job_id is None (sandbox disabled/fallback), returns empty result.
-        Polls job status with exponential backoff up to ACTION_TIMEOUT.
-        """
-        if job_id is None:
-            return {}
-
-        backoff = 0.1
-        max_wait = self.ACTION_TIMEOUT
-        start = time.monotonic()
-
-        while (time.monotonic() - start) < max_wait:
-            await asyncio.sleep(backoff)
-
-            # Expire cached state to get fresh DB reads
-            await self._dispatcher.db.expire_all()
-
-            stmt = select(SandboxJob).where(SandboxJob.id == job_id)
-            result = await self._dispatcher.db.execute(stmt)
-            job = result.scalar_one_or_none()
-
-            if job is None:
-                raise ValueError(f"Sandbox job {job_id} not found.")
-
-            if job.status == "completed":
-                return job.output_manifest_json or {}
-            elif job.status in ("failed", "timed_out", "canceled"):
-                reason = getattr(job, "status_reason", None) or job.status
-                raise ValueError(f"Sandbox job {job_id} {job.status}: {reason}")
-
-            # Exponential backoff, capped at 2s
-            backoff = min(backoff * 2, 2.0)
-
-        raise ValueError(
-            f"Sandbox job {job_id} timed out after {max_wait}s."
-        )
+        raise RuntimeError("Isolated browser execution must use the approved Cloudflare Container runtime")
 
     async def execute_actions(self, actions: list[dict]) -> dict:
         """Execute a sequence of browser actions.
@@ -538,15 +496,7 @@ class BrowserSession:
             raise ValueError(f"Unknown browser action: {action!r}")
 
     async def _dispatch_to_sandbox(self, inputs: dict) -> dict:
-        """Dispatch an action to the sandbox and wait for result."""
-        job_id = await self._dispatcher.dispatch(
-            feature_type="connector",
-            execution_mode="browser",
-            tenant_id=self._tenant_id,
-            user_id=self._user_id,
-            inputs=inputs,
-        )
-        return await self._wait_job(job_id)
+        raise RuntimeError("Isolated browser execution must use the approved Cloudflare Container runtime")
 
     async def navigate(self, url: str) -> dict:
         """Navigate to URL (SSRF-validated). Returns page title and status."""
@@ -647,7 +597,7 @@ class BrowserSession:
 
 
 class BrowserSessionFactory:
-    """Creates BrowserSession instances with injected SandboxDispatcher."""
+    """Creates policy-checked browser sessions without local container dispatch."""
 
     def __init__(self, db_session: AsyncSession):
         self._db_session = db_session
@@ -659,14 +609,10 @@ class BrowserSessionFactory:
         allowed_domains: list[str],
         redis_client: Any | None = None,
     ) -> BrowserSession:
-        """Create a BrowserSession with SandboxDispatcher injected."""
-        from app.services.sandbox_dispatcher import SandboxDispatcher
-
-        dispatcher = SandboxDispatcher(self._db_session)
+        """Create a browser session; isolated execution is delegated externally."""
         return BrowserSession(
             user_id=user_id,
             tenant_id=tenant_id,
             allowed_domains=allowed_domains,
             redis_client=redis_client,
-            dispatcher=dispatcher,
         )

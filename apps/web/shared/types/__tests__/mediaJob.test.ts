@@ -24,6 +24,7 @@ import type {
 } from "../mediaJob";
 import type { VideoEditorProject } from "../../../client/src/types/videoEditor";
 import { createEmptyProject } from "../../../client/src/types/videoEditor";
+import { createCameraMotionPlan } from "@smartspec/shared";
 
 function makeMinimalSpec(
   overrides: Partial<MediaJobSpec> = {},
@@ -186,6 +187,45 @@ describe("validateJobSpec", () => {
 });
 
 describe("projectToTimeline", () => {
+  it("carries the normalized camera plan into the Worker render timeline", () => {
+    const project = createEmptyProject("Camera parity");
+    const plan = createCameraMotionPlan({
+      durationMs: 5000,
+      mode: "face_focus",
+      focusX: 0.52,
+      focusY: 0.48,
+      analysisMode: "quick",
+    });
+    project.timeline.tracks[0].clips.push({
+      id: "camera-clip",
+      assetId: "asset-camera",
+      trackId: "track-v1",
+      startTime: 0,
+      duration: 5,
+      trimIn: 0,
+      trimOut: 5,
+      volume: 1,
+      speed: 1,
+      effects: [],
+      smartCamera: {
+        mode: "face_focus",
+        autoZoom: true,
+        autoPan: true,
+        intensity: 50,
+        safeMargin: 10,
+        analysisMode: "quick",
+        analysisStatus: "browser_ready",
+        analysisProvenance: "browser",
+        plan,
+        planFingerprint: plan.planFingerprint,
+      },
+    });
+
+    const timeline = projectToTimeline(project);
+    expect(timeline.tracks[0].clips[0].cameraMotionPlan).toEqual(plan);
+    expect(timelineToProject(timeline).timeline.tracks[0].clips[0].smartCamera?.plan).toEqual(plan);
+  });
+
   it("converts seconds to ms correctly", () => {
     const project = createEmptyProject("Test");
     project.timeline.tracks[0].clips.push({

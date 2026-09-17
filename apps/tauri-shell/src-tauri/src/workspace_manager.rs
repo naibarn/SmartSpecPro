@@ -10,7 +10,6 @@ pub enum WorkspaceProfileName {
     IndexingWorker,
     ConnectorHelper,
     PiSidecarManaged,
-    AgencySwarmManaged,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

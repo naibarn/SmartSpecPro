@@ -16,7 +16,8 @@
         "null"
       ],
       "minimum": 1,
-      "maximum": 12,
+      "maximum": 120,
+      "description": "Optional subject age in years; supports children, teenagers, and adults.",
       "default": null
     },
     "gender_style": {

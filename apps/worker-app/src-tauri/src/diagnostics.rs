@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
 const DIAGNOSTIC_LOG_FILE_NAME: &str = "worker-diagnostics.jsonl";
+const MEDIA_DEBUG_LOG_FILE_NAME: &str = "worker-media-debug.jsonl";
 const ACTIVE_SESSION_FILE_NAME: &str = "worker-session.json";
 const MAX_DIAGNOSTIC_TEXT_CHARS: usize = 20_000;
 const MAX_PANIC_BACKTRACE_CHARS: usize = 12_000;
@@ -19,6 +20,7 @@ const MAX_PANIC_BACKTRACE_CHARS: usize = 12_000;
 /// before it. Rotation is what makes it safe to log a lot more.
 const MAX_LOG_BYTES: u64 = 8 * 1024 * 1024;
 const MAX_ROTATED_FILES: u32 = 5;
+const MAX_MEDIA_DEBUG_LOG_BYTES: u64 = 32 * 1024 * 1024;
 
 /// Identifies ONE run of the app.
 ///
@@ -80,6 +82,61 @@ impl LogLevel {
 
 pub fn diagnostic_log_path(app_data_dir: &Path) -> PathBuf {
     app_data_dir.join(DIAGNOSTIC_LOG_FILE_NAME)
+}
+
+pub fn media_debug_log_path(app_data_dir: &Path) -> PathBuf {
+    app_data_dir.join(MEDIA_DEBUG_LOG_FILE_NAME)
+}
+
+/// Writes media boundary evidence to a separate, bounded JSONL file. This is
+/// deliberately not folded into the normal diagnostics stream: a single
+/// Full Scan can contain hundreds of frame observations and must remain easy
+/// to attach and inspect without drowning unrelated worker events.
+pub fn append_media_debug_event(app_data_dir: &Path, event: &str, details: Value) {
+    let log_lock = LOG_MUTEX.get_or_init(|| Mutex::new(()));
+    let Ok(_guard) = log_lock.lock() else {
+        eprintln!("failed to lock worker media debug log");
+        return;
+    };
+    if let Err(error) = try_append_media_debug_event(app_data_dir, event, details) {
+        eprintln!("failed to write worker media debug event: {error}");
+    }
+}
+
+fn try_append_media_debug_event(
+    app_data_dir: &Path,
+    event: &str,
+    details: Value,
+) -> Result<(), String> {
+    fs::create_dir_all(app_data_dir)
+        .map_err(|error| format!("failed to create media debug directory: {error}"))?;
+    let path = media_debug_log_path(app_data_dir);
+    if fs::metadata(&path)
+        .map(|metadata| metadata.len() >= MAX_MEDIA_DEBUG_LOG_BYTES)
+        .unwrap_or(false)
+    {
+        let rotated = path.with_extension("jsonl.1");
+        let _ = fs::remove_file(&rotated);
+        let _ = fs::rename(&path, rotated);
+    }
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| format!("failed to open media debug log: {error}"))?;
+    let timestamp = OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".into());
+    let line = json!({
+        "timestamp": timestamp,
+        "sessionId": session_id(),
+        "pid": std::process::id(),
+        "appVersion": env!("CARGO_PKG_VERSION"),
+        "event": event,
+        "details": redact_value(details, None),
+    });
+    writeln!(file, "{line}")
+        .map_err(|error| format!("failed to write media debug log: {error}"))
 }
 
 fn rotated_log_path(app_data_dir: &Path, index: u32) -> PathBuf {
@@ -618,6 +675,24 @@ mod tests {
 
         assert_eq!(paths.first(), Some(&diagnostic_log_path(&dir)));
         assert_eq!(paths.len(), 2);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn media_debug_event_is_written_to_a_separate_jsonl_file() {
+        let dir = std::env::temp_dir().join(format!("worker-media-debug-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+
+        append_media_debug_event(&dir, "media.debug.test", json!({
+            "sourcePath": "C:/video.mp4",
+            "cameraPlan": { "keyframes": 2 },
+        }));
+
+        let path = media_debug_log_path(&dir);
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("media.debug.test"));
+        assert!(content.contains("\"keyframes\":2"));
+        assert!(!content.contains("worker-diagnostics.jsonl"));
         let _ = fs::remove_dir_all(&dir);
     }
 

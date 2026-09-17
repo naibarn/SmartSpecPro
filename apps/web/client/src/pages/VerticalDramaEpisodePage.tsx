@@ -308,6 +308,21 @@ export function shouldResumeStartFramePoll(
   return true;
 }
 
+export function shouldRefetchEpisodeDetailForPendingFrameTasks(input: {
+  frames?: ReadonlyArray<{
+    imageTask?: { pendingTaskId?: string };
+    stopFrameTask?: { pendingTaskId?: string };
+    angleGrid?: { pendingTaskId?: string };
+  }>;
+}): boolean {
+  return (input.frames ?? []).some(
+    frame =>
+      Boolean(frame.imageTask?.pendingTaskId) ||
+      Boolean(frame.stopFrameTask?.pendingTaskId) ||
+      Boolean(frame.angleGrid?.pendingTaskId)
+  );
+}
+
 /**
  * Pure decision logic for the "resume on load" orphaned-video-clip-task fix
  * (2026-07-06) — exported/unit-testable, same shape/convention as
@@ -381,6 +396,7 @@ export function readVerticalDramaTaskMediaAssetId(
 export function shouldAutoRepairFrameSync(
   task:
     | {
+        pendingTaskId?: string;
         status?: string;
         failureStage?: string;
         lastTaskId?: string;
@@ -389,10 +405,11 @@ export function shouldAutoRepairFrameSync(
   approvedMediaAssetId: string | number | null | undefined
 ): boolean {
   return (
-    task?.status === "failed" &&
-    task.failureStage === "sync" &&
-    Boolean(task.lastTaskId?.trim()) &&
-    !String(approvedMediaAssetId ?? "").trim()
+    !String(approvedMediaAssetId ?? "").trim() &&
+    ((task?.status === "submitted" && Boolean(task.pendingTaskId?.trim())) ||
+      (task?.status === "failed" &&
+        task.failureStage === "sync" &&
+        Boolean(task.lastTaskId?.trim())))
   );
 }
 
@@ -1914,6 +1931,10 @@ function EpisodeWorkspaceShell({
   const [pollingStartFrameShots, setPollingStartFrameShots] = useState<
     Set<number>
   >(new Set());
+  const [generatingAllStartFramePrompts, setGeneratingAllStartFramePrompts] =
+    useState(false);
+  const [generatingAllPromptAndImages, setGeneratingAllPromptAndImages] =
+    useState(false);
   const [pollingStopFrameShots, setPollingStopFrameShots] = useState<
     Set<number>
   >(new Set());
@@ -3238,6 +3259,13 @@ function EpisodeWorkspaceShell({
         // spinner without requiring a manual page reload.
         refetchInterval: query => {
           const previews = query.state.data?.episodePreviews;
+          if (
+            shouldRefetchEpisodeDetailForPendingFrameTasks(
+              query.state.data?.startFramePlan ?? {}
+            )
+          ) {
+            return 2500;
+          }
           return previews?.some(
             preview =>
               preview.status === "pending" && Boolean(preview.pendingJobId)
@@ -3840,6 +3868,14 @@ function EpisodeWorkspaceShell({
       const imageTask = frame.imageTask;
       const shotNumber = frame.shotNumber;
       if (
+        shouldAutoRepairFrameSync(
+          imageTask,
+          frame.approvedMediaAssetId
+        )
+      ) {
+        continue;
+      }
+      if (
         !shouldResumeStartFramePoll(
           imageTask,
           shotNumber,
@@ -3869,13 +3905,12 @@ function EpisodeWorkspaceShell({
   useEffect(() => {
     const frames = episodeDetailQuery.data?.startFramePlan?.frames ?? [];
     for (const frame of frames) {
-      if (
-        shouldAutoRepairFrameSync(frame.imageTask, frame.approvedMediaAssetId)
-      ) {
+      if (shouldAutoRepairFrameSync(frame.imageTask, frame.approvedMediaAssetId)) {
         void autoRepairPersistedFrameSync({
           shotNumber: frame.shotNumber,
           frameRole: "start",
-          taskId: frame.imageTask!.lastTaskId!,
+          taskId:
+            frame.imageTask!.pendingTaskId ?? frame.imageTask!.lastTaskId!,
           promptHash: frame.imagePromptHash,
         });
       }
@@ -3888,7 +3923,8 @@ function EpisodeWorkspaceShell({
         void autoRepairPersistedFrameSync({
           shotNumber: frame.shotNumber,
           frameRole: "stop",
-          taskId: frame.stopFrameTask!.lastTaskId!,
+          taskId:
+            frame.stopFrameTask!.pendingTaskId ?? frame.stopFrameTask!.lastTaskId!,
           promptHash: frame.stopFramePromptHash,
         });
       }
@@ -3905,6 +3941,11 @@ function EpisodeWorkspaceShell({
       const shotNumber = frame.shotNumber;
       const taskId = task?.pendingTaskId;
       if (!taskId || resumedStopFrameShotsRef.current.has(shotNumber)) continue;
+      if (
+        shouldAutoRepairFrameSync(task, frame.approvedStopFrameAssetId)
+      ) {
+        continue;
+      }
       if (
         task.status !== "submitted" &&
         task.status !== "queued" &&
@@ -6303,21 +6344,203 @@ function EpisodeWorkspaceShell({
     if (frame?.angleGrid) persistAngleGrid(shotNumber, null);
   }
 
+  function getCurrentStoryboardShotNumbers(): number[] {
+    const rawShots = (
+      episodeDetailQuery.data?.storyboard as
+        | { shots?: Array<{ shot_number?: number; shotNumber?: number }> }
+        | null
+        | undefined
+    )?.shots;
+    const fromStoryboard = (rawShots ?? [])
+      .map(shot => shot.shot_number ?? shot.shotNumber)
+      .filter(
+        (shotNumber): shotNumber is number =>
+          Number.isInteger(shotNumber) && shotNumber > 0
+      );
+    const fromCanonicalDrafts = unifiedStoryboardData.canonicalShotDrafts.map(
+      draft => draft.shotNumber
+    );
+    return Array.from(
+      new Set([...fromStoryboard, ...fromCanonicalDrafts])
+    ).sort((a, b) => a - b);
+  }
+
+  /**
+   * Generate every image prompt through the same per-shot queue used by the
+   * one-shot prompt + image action. This intentionally bypasses the legacy
+   * batch `start_frame_render_plan` stage so prompt-only and prompt + image
+   * authoring cannot drift into different skills or contracts.
+   */
+  async function handleGenerateAllStartFramePrompts() {
+    if (generatingAllStartFramePrompts) return;
+    if (!requireModelSelectedOrToast("image")) return;
+    const shotNumbers = getCurrentStoryboardShotNumbers();
+    if (shotNumbers.length === 0) {
+      toast.error(
+        lang === "th"
+          ? "ยังไม่มีช็อตสำหรับสร้างพรอมต์ภาพ"
+          : "There are no storyboard shots to generate prompts for."
+      );
+      return;
+    }
+
+    setGeneratingAllStartFramePrompts(true);
+    const queue = [...shotNumbers];
+    const failures: Array<{ shotNumber: number; message: string }> = [];
+    const workerCount = Math.min(3, queue.length);
+    try {
+      await Promise.all(
+        Array.from({ length: workerCount }, async () => {
+          while (queue.length > 0) {
+            const shotNumber = queue.shift();
+            if (shotNumber == null) return;
+            try {
+              await submitAndWaitForShotStartFramePrompt({
+                seriesId,
+                episodeId,
+                shotNumber,
+                canonicalShotSummary:
+                  canonicalShotSummaryByShot.get(shotNumber) || undefined,
+                promptSource:
+                  selectedImageQuality !== "auto"
+                    ? "shot_synopsis_direct"
+                    : undefined,
+                idempotencyKey: crypto.randomUUID(),
+              });
+            } catch (error) {
+              failures.push({
+                shotNumber,
+                message: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+        })
+      );
+      void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+        seriesId,
+        episodeId,
+      });
+      if (failures.length > 0) {
+        const details = failures
+          .sort((a, b) => a.shotNumber - b.shotNumber)
+          .map(failure =>
+            lang === "th"
+              ? `ช็อต ${failure.shotNumber}: ${failure.message}`
+              : `Shot ${failure.shotNumber}: ${failure.message}`
+          )
+          .join("; ");
+        toast.error(
+          lang === "th"
+            ? `สร้างพรอมต์สำเร็จ ${shotNumbers.length - failures.length}/${shotNumbers.length} ช็อต — ${details}`
+            : `Generated prompts for ${shotNumbers.length - failures.length}/${shotNumbers.length} shots — ${details}`
+        );
+      } else {
+        toast.success(
+          lang === "th"
+            ? `สร้างพรอมต์ภาพครบ ${shotNumbers.length} ช็อตแล้ว`
+            : `Generated image prompts for all ${shotNumbers.length} shots.`
+        );
+      }
+    } finally {
+      setGeneratingAllStartFramePrompts(false);
+    }
+  }
+
+  /**
+   * Run the canonical per-shot prompt + image chain for an explicit shot list.
+   * The list is intentionally not filtered by existing media: the dedicated
+   * all-shot action is an explicit paid regeneration of every shot.
+   */
+  async function handleGenerateAllPromptAndImages(shotNumbers: number[]) {
+    if (generatingAllPromptAndImages) return;
+    if (!requireModelSelectedOrToast("image")) return;
+    if (!requireMcpConnectionOrToast("image")) return;
+    if (!requireHermesConnectionOrToast("image")) return;
+    const normalizedShotNumbers = Array.from(
+      new Set(
+        shotNumbers.filter(
+          shotNumber => Number.isInteger(shotNumber) && shotNumber > 0
+        )
+      )
+    ).sort((a, b) => a - b);
+    if (normalizedShotNumbers.length === 0) return;
+
+    setGeneratingAllPromptAndImages(true);
+    setPollingStartFrameShots(prev => {
+      const next = new Set(prev);
+      normalizedShotNumbers.forEach(shotNumber => next.add(shotNumber));
+      return next;
+    });
+    try {
+      const sceneContinuityEnabled =
+        episodeDetailQuery.data?.flags?.sceneNeighborAnchors === true;
+      if (!sceneContinuityEnabled) {
+        const queue = [...normalizedShotNumbers];
+        const workerCount = Math.min(3, queue.length);
+        await Promise.all(
+          Array.from({ length: workerCount }, async () => {
+            while (queue.length > 0) {
+              const shotNumber = queue.shift();
+              if (shotNumber == null) return;
+              await handleGeneratePromptAndImage(shotNumber, "single");
+            }
+          })
+        );
+      } else {
+        const frameOverrides = new Map<number, string>();
+        for (const frame of episodeDetailQuery.data?.startFramePlan?.frames ??
+          []) {
+          if (frame.locationKey?.trim()) {
+            frameOverrides.set(frame.shotNumber, frame.locationKey.trim());
+          }
+        }
+        const groups = buildSceneShotGroups({
+          distinctLocations: (
+            episodeDetailQuery.data?.storyboard as
+              { distinct_locations?: unknown } | null | undefined
+          )?.distinct_locations,
+          overridesByShotNumber: frameOverrides,
+        });
+        const lanes = planSceneOrderedBatch({
+          shotNumbers: normalizedShotNumbers,
+          groups,
+        });
+        await Promise.all(
+          lanes.map(async lane => {
+            for (const shotNumber of lane) {
+              await handleGeneratePromptAndImage(
+                shotNumber,
+                "single",
+                true,
+                true
+              );
+            }
+          })
+        );
+      }
+    } finally {
+      setPollingStartFrameShots(prev => {
+        const next = new Set(prev);
+        normalizedShotNumbers.forEach(shotNumber => next.delete(shotNumber));
+        return next;
+      });
+      setGeneratingAllPromptAndImages(false);
+      void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
+        seriesId,
+        episodeId,
+      });
+    }
+  }
+
   /**
    * One-click "generate prompt + image" (2026-07-05 redesign — fixes the
    * "opens a mandatory-typing repair dialog" bug report). Ensures this
    * shot's image prompt exists WITHOUT any user typing, then submits either
    * a single image or a 3x3 multi-angle grid per the panel's mode choice:
    *
-   *   1. No `start_frame_render_plan` at all yet → run it for real (mode
-   *      "full") for every shot at once, same call `onGenerateStartFramePlan`
-   *      already makes.
-   *   2. Plan exists but THIS shot's `imagePrompt` is empty → call
-   *      `repairStageOutput` with an auto-composed instruction (never shows
-   *      the repair dialog — silent, internal step with its own loading
-   *      state).
-   *   3. Either way, refetch `getEpisodeDetail` until this shot's prompt is
-   *      present, then submit the chosen generation mode.
+   *   1. Author THIS shot's prompt through the canonical per-shot prompt job.
+   *   2. Re-read current shot state and submit the chosen image generation
+   *      mode. The prompt result is handed directly across the boundary.
    *
    * Every await path is wrapped so `pollingStartFrameShots` (this function's
    * loading flag, shared with the plain "Generate image" button) is always
@@ -6326,7 +6549,7 @@ function EpisodeWorkspaceShell({
   async function handleGeneratePromptAndImage(
     shotNumber: number,
     mode: "single" | "angles",
-    // When true (default — the "สร้าง prompt + ภาพ" button), re-author this
+    // When true (default — the "สร้างพรอมต์และภาพ" button), re-author this
     // shot's start-frame prompt from the latest Overview synopsis
     // (`canonicalShotSummary`) before rendering, so a stale/wrong stored
     // prompt is refreshed. When false (the "สร้างภาพ (AI)" render-only
@@ -6406,7 +6629,7 @@ function EpisodeWorkspaceShell({
       const shouldReauthor = reauthor || requiresCurrentStateRefresh;
 
       // The start-frame plan is a materialized snapshot. This button is
-      // "สร้าง prompt + ภาพ" — it ALWAYS re-authors the shot's prompt through
+      // "สร้างพรอมต์และภาพ" — it ALWAYS re-authors the shot's prompt through
       // the dedicated per-shot skill before the paid image render (2026-07-15
       // fix: the old summary-equality guard reused a stale stored prompt
       // whenever the Overview summary hadn't changed, so prompts authored
@@ -6462,7 +6685,7 @@ function EpisodeWorkspaceShell({
           lang === "th"
             ? shouldReauthor
               ? "เตรียมพรอมต์ภาพไม่สำเร็จ ลองใหม่อีกครั้ง"
-              : "ยังไม่มี prompt ภาพ กรุณากด ‘สร้าง prompt + ภาพ’ ก่อน"
+              : "ยังไม่มีพรอมต์ภาพ กรุณากด ‘สร้างพรอมต์และภาพ’ ก่อน"
             : shouldReauthor
               ? "Failed to prepare the image prompt — try again."
               : "No stored image prompt. Use ‘Generate prompt + image’ first.",
@@ -10011,16 +10234,8 @@ function EpisodeWorkspaceShell({
             onRetryStartFrameSync: handleRetryStartFrameSync,
             onGenerateStartFramePlan: isSpecialTieInEpisode
               ? undefined
-              : () =>
-                  runStageMutation.mutate({
-                    seriesId,
-                    episodeId,
-                    stage: "start_frame_render_plan",
-                    mode: "full",
-                  }),
-            generatingStartFramePlan:
-              runStageMutation.isPending &&
-              runStageMutation.variables?.stage === "start_frame_render_plan",
+              : () => void handleGenerateAllStartFramePrompts(),
+            generatingStartFramePlan: generatingAllStartFramePrompts,
             onEditStartFramePrompt: (
               shotNumber,
               currentPrompt,
@@ -10072,67 +10287,12 @@ function EpisodeWorkspaceShell({
               ? handleClearVideoStartFrame
               : undefined,
             onGenerateAllStartFrameImages: (shotNumbers: number[]) => {
-              if (!requireModelSelectedOrToast("image")) return;
-              if (!requireMcpConnectionOrToast("image")) return;
-              if (!requireHermesConnectionOrToast("image")) return;
-              setPollingStartFrameShots(prev => {
-                const next = new Set(prev);
-                shotNumbers.forEach(n => next.add(n));
-                return next;
-              });
-              const sceneContinuityEnabled =
-                episodeDetailQuery.data?.flags?.sceneNeighborAnchors === true;
-              if (!sceneContinuityEnabled) {
-                // Keep the fast async task model, but avoid launching all
-                // prompt+image chains at once. Three workers are enough to
-                // keep the provider busy while preventing a burst from
-                // outrunning the browser/server admission path.
-                const queue = [...shotNumbers];
-                const workerCount = Math.min(3, queue.length);
-                void Promise.all(
-                  Array.from({ length: workerCount }, async () => {
-                    while (queue.length > 0) {
-                      const shotNumber = queue.shift();
-                      if (shotNumber == null) return;
-                      await handleGeneratePromptAndImage(shotNumber, "single");
-                    }
-                  })
-                );
-                return;
-              }
-              const frameOverrides = new Map<number, string>();
-              for (const frame of episodeDetailQuery.data?.startFramePlan
-                ?.frames ?? []) {
-                if (frame.locationKey?.trim()) {
-                  frameOverrides.set(
-                    frame.shotNumber,
-                    frame.locationKey.trim()
-                  );
-                }
-              }
-              const groups = buildSceneShotGroups({
-                distinctLocations: (
-                  episodeDetailQuery.data?.storyboard as
-                    | { distinct_locations?: unknown }
-                    | null
-                    | undefined
-                )?.distinct_locations,
-                overridesByShotNumber: frameOverrides,
-              });
-              const lanes = planSceneOrderedBatch({ shotNumbers, groups });
-              void Promise.all(
-                lanes.map(async lane => {
-                  for (const shotNumber of lane) {
-                    await handleGeneratePromptAndImage(
-                      shotNumber,
-                      "single",
-                      true,
-                      true
-                    );
-                  }
-                })
-              );
+              void handleGenerateAllPromptAndImages(shotNumbers);
             },
+            onGenerateAllPromptAndImages: (shotNumbers: number[]) => {
+              void handleGenerateAllPromptAndImages(shotNumbers);
+            },
+            generatingAllPromptAndImages,
             characterPortraits: episodeDetailQuery.data?.characterPortraits as
               | VerticalDramaCharacterPortraitMap
               | undefined,

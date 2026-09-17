@@ -27,6 +27,7 @@ const JOB_TYPE_BY_OPERATION: Record<MediaOperation, string> = {
   "media.analysis": "editor_media_analysis",
   "media.silence_detect": "editor_media_analysis",
   "media.reframe": "editor_media_analysis",
+  "media.composition_scan": "video.composition_scan",
   "media.speaker_scan": "editor_media_analysis",
   "media.transcribe": "editor_media_analysis",
   "media.align": "editor_media_analysis",

@@ -221,6 +221,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/auth/register",
         "/api/auth/refresh",
         "/api/webhooks",  # Webhooks typically use HMAC signatures instead
+        "/api/admin/vectordb/reindex",  # Node admin bridge uses a short-lived admin Bearer token
     }
 
     # Path prefixes exempt from CSRF (Bearer token auth, server-to-server)
@@ -230,6 +231,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         "/api/webhooks/",
         "/api/internal/",  # Internal endpoints use proxy token auth
         "/api/team-orchestrator/",  # Node -> Python internal orchestration bridge uses X-Proxy-Token
+        "/api/admin/vectordb/provider-switch/",  # Node admin bridge uses a short-lived admin Bearer token
+        "/api/admin/vectordb/backfill/",  # Node admin bridge uses a short-lived admin Bearer token
         "/tasks/",         # Cloud Tasks endpoints use OIDC token auth
     )
 

@@ -38,7 +38,6 @@ export default function DesktopHostGovernance() {
   const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
   const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
-  const desktopAgencyRuntimeEnabled = useTenantFeatureFlag("desktopAgencyRuntime");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
   const tenantStatus = useDesktopHostStatus(
     desktopHostEnabled
@@ -313,7 +312,6 @@ export default function DesktopHostGovernance() {
             desktopHostEnabled,
             desktopAdvancedLocalMode: desktopAdvancedLocalModeEnabled,
             desktopPackageSync: desktopPackageSyncEnabled,
-            desktopAgencyRuntime: desktopAgencyRuntimeEnabled,
             desktopWorkerProjection: desktopWorkerProjectionEnabled,
           }}
           status={tenantStatus.status}

@@ -299,6 +299,43 @@ class TestEnhancedAudioBridge(unittest.TestCase):
         self.assertLess(observed_index, binding_index)
         self.assertLess(binding_index, motion_index)
 
+    def test_terminal_prompt_uses_custom_character_identity_instead_of_screen_position(self):
+        payload = {
+            "nativeAudioEnabled": True,
+            "targetVideoModel": {"id": "gemini-omni-flash-1-1"},
+            "shot": {
+                "shotNumber": 5,
+                "description": "A mother and son review a document",
+                "durationSeconds": 8.0,
+                "verifiedCastPositions": [
+                    {"characterKey": "mother", "name": "แม่", "position": "viewer-left"},
+                    {"characterKey": "son", "name": "ลูก", "position": "viewer-right"},
+                ],
+                "characterDescriptionOverrides": {
+                    "mother": "ผู้หญิงที่นั่งอยู่ สวมเสื้อสีครีม",
+                },
+            },
+            "dialogue": [
+                {
+                    "characterKey": "mother",
+                    "speaker": "แม่",
+                    "lineTh": "ช่วยดูเอกสารนี้หน่อย",
+                },
+                {
+                    "characterKey": "son",
+                    "speaker": "ลูก",
+                    "lineTh": "ได้ครับ ผมกำลังดูอยู่",
+                },
+            ],
+        }
+        prompt = _terminal_prompt(payload, {"actions": ["They review the document together"]})
+
+        self.assertIn("CUSTOM CHARACTER IDENTIFICATION OVERRIDES (AUTHORITATIVE", prompt)
+        self.assertIn("แม่ [characterKey=mother]: ผู้หญิงที่นั่งอยู่ สวมเสื้อสีครีม", prompt)
+        self.assertIn("แม่ identified by ผู้หญิงที่นั่งอยู่ สวมเสื้อสีครีม", prompt)
+        self.assertNotIn("แม่ on viewer-left", prompt)
+        self.assertIn("ลูก on viewer-right", prompt)
+
     def test_terminal_prompt_keeps_dialogue_speaker_offscreen_when_not_in_observed_frame(self):
         payload = {
             "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},

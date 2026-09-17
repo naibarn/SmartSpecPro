@@ -65,9 +65,9 @@ describe("Feature 191 Face + Activity camera planner", () => {
       ],
     });
 
-    expect(plan.keyframes[0].x).toBeCloseTo(0.5, 2);
+    expect(plan.keyframes[0].timeMs).toBe(0);
+    expect(plan.keyframes[0].x).toBeGreaterThan(0.6);
     expect(plan.keyframes.some((frame) => frame.x > 0.6)).toBe(true);
-    expect(plan.keyframes.find((frame) => frame.x > 0.6)?.timeMs).toBeGreaterThan(2_000);
   });
 
   it("settles onto the first face quickly at clip start before applying the deadband", () => {
@@ -82,9 +82,8 @@ describe("Feature 191 Face + Activity camera planner", () => {
     });
 
     expect(plan.keyframes[0].timeMs).toBe(0);
-    expect(plan.keyframes[0].x).toBeCloseTo(0.5, 2);
-    expect(plan.keyframes[1].timeMs).toBeLessThanOrEqual(850);
-    expect(plan.keyframes[1].x).toBeGreaterThan(0.65);
+    expect(plan.keyframes[0].x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 7_999).x).toBeGreaterThan(0.65);
   });
 
   it("falls back to the source centre when face evidence is unavailable", () => {
@@ -99,6 +98,27 @@ describe("Feature 191 Face + Activity camera planner", () => {
 
     expect(plan.keyframes[0].x).toBeCloseTo(0.5, 2);
     expect(plan.keyframes[0].y).toBeCloseTo(0.5, 2);
+  });
+
+  it("keeps face tracking when optional activity pixel evidence is unavailable", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 12_000,
+      focusX: 0.5,
+      focusY: 0.5,
+      analysisMode: "full_scan",
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      // Full Scan may lose canvas pixel access for one codec/source while
+      // MediaPipe face detections remain valid.
+      trackPoints: [
+        { timeMs: 0, x: 0.72, y: 0.48, confidence: 0.95, kind: "face", width: 0.16, height: 0.2 },
+        { timeMs: 6_000, x: 0.72, y: 0.48, confidence: 0.95, kind: "face", width: 0.16, height: 0.2 },
+      ],
+    });
+
+    expect(plan.keyframes[0].x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 11_999).x).toBeGreaterThan(0.65);
   });
 
   it("coalesces detector jitter while retaining meaningful movement and clip endpoints", () => {
@@ -135,8 +155,30 @@ describe("Feature 191 Face + Activity camera planner", () => {
     });
 
     const automaticFrames = plan.keyframes.filter((frame) => frame.source === "auto");
-    expect(automaticFrames.map((frame) => frame.timeMs)).toEqual([0, 850]);
+    expect(automaticFrames.map((frame) => frame.timeMs)).toEqual([0]);
     expect(automaticFrames.at(-1)?.x).toBeCloseTo(0.6, 2);
+  });
+
+  it("recenters a materially off-centre face during Full Scan playback", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 12_000,
+      focusX: 0.5,
+      focusY: 0.5,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+        { timeMs: 2_000, x: 0.4, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+        { timeMs: 3_000, x: 0.4, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+        { timeMs: 4_000, x: 0.4, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+        { timeMs: 5_000, x: 0.4, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+        { timeMs: 6_000, x: 0.4, y: 0.5, confidence: 0.95, kind: "face", width: 0.12, height: 0.18 },
+      ],
+    });
+
+    expect(evaluateCameraMotionPlan(plan, 11_999).x).toBeCloseTo(0.4, 2);
   });
 
   it("does not accumulate small same-direction detector drift into a pan", () => {
@@ -155,7 +197,7 @@ describe("Feature 191 Face + Activity camera planner", () => {
       ],
     });
 
-    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0, 850]);
+    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0]);
     expect(plan.keyframes.every((frame) => Math.abs(frame.x - 0.5) < 0.001)).toBe(true);
   });
 
@@ -174,7 +216,7 @@ describe("Feature 191 Face + Activity camera planner", () => {
       ],
     });
 
-    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0, 850]);
+    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0]);
   });
 
   it("adds a real 15-second hold before one short sustained-edge correction", () => {
@@ -223,6 +265,121 @@ describe("Feature 191 Face + Activity camera planner", () => {
     expect(evaluateCameraMotionPlan(plan, 59_999).y).toBeCloseTo(0.5, 3);
   });
 
+  it("follows nearby activity after the opening face lock while keeping the face safe", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 14_000,
+      focusX: 0.5,
+      focusY: 0.5,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.72, y: 0.56, confidence: 0.8, kind: "activity", width: 0.08, height: 0.08 },
+        { timeMs: 6_000, x: 0.53, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 6_000, x: 0.76, y: 0.57, confidence: 0.85, kind: "activity", width: 0.08, height: 0.08 },
+      ],
+    });
+
+    expect(plan.keyframes.some((frame) => frame.timeMs === 6_000)).toBe(true);
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeGreaterThan(0.5);
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeLessThan(0.6);
+  });
+
+  it("allows confirmed distant activity to take focus briefly, then returns to the face", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 16_000,
+      focusX: 0.5,
+      focusY: 0.48,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.86, y: 0.58, confidence: 0.9, kind: "activity", width: 0.18, height: 0.2 },
+        { timeMs: 6_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 6_000, x: 0.87, y: 0.58, confidence: 0.92, kind: "activity", width: 0.18, height: 0.2 },
+        { timeMs: 10_500, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 12_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+      ],
+    });
+
+    expect(plan.keyframes.some((frame) => frame.x > 0.7 && frame.scale > 1.2)).toBe(true);
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 13_500).x).toBeLessThan(0.58);
+  });
+
+  it("keeps global pixel motion face-safe instead of treating it as a distant subject", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 16_000,
+      focusX: 0.5,
+      focusY: 0.48,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.86, y: 0.58, confidence: 0.98, kind: "activity", width: 0.18, height: 0.2, trackId: "full-scan-global-motion" },
+        { timeMs: 6_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 6_000, x: 0.87, y: 0.58, confidence: 0.99, kind: "activity", width: 0.18, height: 0.2, trackId: "full-scan-global-motion" },
+      ],
+    });
+
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeLessThan(0.65);
+    expect(plan.keyframes.every((frame) => frame.scale <= 1.2)).toBe(true);
+  });
+
+  it("returns toward the verified face when an activity target becomes stale", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 15_000,
+      focusX: 0.5,
+      focusY: 0.5,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.72, y: 0.56, confidence: 0.8, kind: "activity", width: 0.08, height: 0.08 },
+        { timeMs: 6_000, x: 0.53, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 6_000, x: 0.76, y: 0.57, confidence: 0.85, kind: "activity", width: 0.08, height: 0.08 },
+        { timeMs: 11_000, x: 0.7, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+      ],
+    });
+
+    expect(plan.keyframes.some((frame) => frame.timeMs === 11_000)).toBe(true);
+    expect(evaluateCameraMotionPlan(plan, 12_800).x).toBeGreaterThan(0.6);
+  });
+
+  it("does not chase activity when the verified face is already near a horizontal edge", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 10_000,
+      focusX: 0.5,
+      focusY: 0.5,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.28, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.28, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 5_000, x: 0.75, y: 0.55, confidence: 0.85, kind: "activity", width: 0.08, height: 0.08 },
+        { timeMs: 6_000, x: 0.28, y: 0.48, confidence: 0.95, kind: "face", width: 0.08, height: 0.12 },
+        { timeMs: 6_000, x: 0.78, y: 0.56, confidence: 0.85, kind: "activity", width: 0.08, height: 0.08 },
+      ],
+    });
+
+    expect(plan.keyframes).toHaveLength(1);
+    expect(plan.keyframes[0].x).toBeCloseTo(0.28, 2);
+  });
+
   it("does not pan when distant detections alternate instead of confirming one subject exit", () => {
     const plan = createCameraMotionPlan({
       mode: "face_activity",
@@ -258,7 +415,22 @@ describe("Feature 191 Face + Activity camera planner", () => {
     expect(plan.analysisMode).toBe("full_scan");
   });
 
-  it("holds centre then makes a bounded move when Full Scan first finds the person later", () => {
+  it("uses the immediate face lock in Quick mode before Full Scan points exist", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 8_000,
+      focusX: 0.72,
+      focusY: 0.46,
+      analysisMode: "quick",
+      trackPoints: [],
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+    });
+    expect(plan.keyframes[0].x).toBeGreaterThan(0.65);
+    expect(plan.keyframes[0].y).toBeCloseTo(0.46, 2);
+  });
+
+  it("locks a verified delayed Full Scan face from the opening", () => {
     const plan = createCameraMotionPlan({
       mode: "face_focus",
       durationMs: 8_000,
@@ -268,9 +440,11 @@ describe("Feature 191 Face + Activity camera planner", () => {
       analysisMode: "full_scan",
     });
 
-    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0, 2_000, 3_800]);
-    expect(evaluateCameraMotionPlan(plan, 1_999).x).toBeCloseTo(0.5, 3);
-    expect(evaluateCameraMotionPlan(plan, 3_800).x).toBeCloseTo(0.72, 2);
+    expect(plan.keyframes[0].timeMs).toBe(0);
+    expect(plan.keyframes[0].x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 1_000).x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 7_999).x).toBeGreaterThan(0.65);
+    expect(evaluateCameraMotionPlan(plan, 7_999).x).toBeGreaterThan(0.65);
   });
 
   it("preserves Mark precedence at the same time", () => {

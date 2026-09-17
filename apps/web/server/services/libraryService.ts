@@ -1,6 +1,18 @@
 import crypto from "crypto";
 import { TRPCError } from "@trpc/server";
-import { and, count, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 
 import { debugLog } from "../_core/logger";
 import { getDb } from "../db";
@@ -62,7 +74,10 @@ import {
   resolveOcrPageCount,
   resolveOcrProvider,
 } from "./documentOcrSettings";
-import { getFinanceOcrDebugTraceId, recordFinanceOcrDebugStep } from "./financeOcrDebug";
+import {
+  getFinanceOcrDebugTraceId,
+  recordFinanceOcrDebugStep,
+} from "./financeOcrDebug";
 import {
   buildUploadPipelineState,
   computeLibraryUploadChecksum,
@@ -87,11 +102,16 @@ import {
   resolveVectorProvider,
 } from "./vectorProvider";
 import { generateEmbedding } from "./vectorize";
-import type { EffectivePermission, PermissionSource } from "../../shared/types/library";
+import { vectorizeNamespaceForTenant } from "./vectorizeContract";
+import type {
+  EffectivePermission,
+  PermissionSource,
+} from "../../shared/types/library";
 
 export type LibraryPermissionLevel = "read" | "write" | "delete" | "owner";
 export type LibraryVisibility = "private" | "team" | "public";
-export type LibraryItemStatus = "draft" | "ready" | "indexing" | "archived" | "failed";
+export type LibraryItemStatus =
+  "draft" | "ready" | "indexing" | "archived" | "failed";
 export type LibraryTenantId = string | number;
 export type LibraryRecentDaysFilter = 1 | 3 | 7 | 15 | 30;
 
@@ -240,7 +260,7 @@ export class LibraryUrlValidationError extends Error {
   constructor(
     field: "sourceUrl" | "thumbnailUrl",
     reason: LibraryUrlRejectReason,
-    clientMessage: string,
+    clientMessage: string
   ) {
     super(clientMessage);
     this.name = "LibraryUrlValidationError";
@@ -429,9 +449,11 @@ const LIBRARY_PGVECTOR_CANDIDATE_LIMIT = parseBoundedIntegerEnv({
   max: 5_000,
 });
 
-export type LibraryDocumentScope = "all" | "my_library" | "private_vault" | "shared_with_me" | "shared_groups";
+export type LibraryDocumentScope =
+  "all" | "my_library" | "private_vault" | "shared_with_me" | "shared_groups";
 export type LibraryDocumentSort = "updated_desc" | "created_desc";
-export type LibraryDocumentAccessSource = "owner" | "shared_direct" | "shared_group";
+export type LibraryDocumentAccessSource =
+  "owner" | "shared_direct" | "shared_group";
 
 export interface LibraryDocumentFilters {
   itemType?: string;
@@ -495,28 +517,40 @@ async function fetchPgvectorLibraryScores(params: {
 
   try {
     const controller = new AbortController();
-    const timeoutHandle = setTimeout(() => controller.abort(), LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS);
+    const timeoutHandle = setTimeout(
+      () => controller.abort(),
+      LIBRARY_PGVECTOR_SEARCH_TIMEOUT_MS
+    );
     let response: Response;
     try {
-      response = await fetch(`${runtime.pythonBackendUrl}/api/internal/library/search`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-proxy-token": proxyToken,
-        },
-        body: JSON.stringify({
-          tenant_id: params.tenantId,
-          query: params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH),
-          candidate_item_ids: params.itemIds.slice(0, LIBRARY_PGVECTOR_CANDIDATE_LIMIT),
-        }),
-        signal: controller.signal,
-      });
+      response = await fetch(
+        `${runtime.pythonBackendUrl}/api/internal/library/search`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-proxy-token": proxyToken,
+          },
+          body: JSON.stringify({
+            tenant_id: params.tenantId,
+            query: params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH),
+            candidate_item_ids: params.itemIds.slice(
+              0,
+              LIBRARY_PGVECTOR_CANDIDATE_LIMIT
+            ),
+          }),
+          signal: controller.signal,
+        }
+      );
     } finally {
       clearTimeout(timeoutHandle);
     }
 
     if (!response.ok) {
-      console.warn("[library.search] pgvector native search failed:", response.status);
+      console.warn(
+        "[library.search] pgvector native search failed:",
+        response.status
+      );
       return null;
     }
 
@@ -526,7 +560,10 @@ async function fetchPgvectorLibraryScores(params: {
     };
 
     return new Map(
-      (payload.results || []).map((row) => [Number(row.item_id), Number(row.vector_score) || 0]),
+      (payload.results || []).map(row => [
+        Number(row.item_id),
+        Number(row.vector_score) || 0,
+      ])
     );
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -550,18 +587,22 @@ async function fetchCloudflareLibraryScores(params: {
   }
 
   try {
-    const queryEmbedding = await generateEmbedding(params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH));
+    const queryEmbedding = await generateEmbedding(
+      params.query.slice(0, MAX_LIBRARY_PGVECTOR_QUERY_LENGTH)
+    );
     const result = await dispatchVectorOperation({
       operation: "search",
       indexName: params.indexName,
       vector: queryEmbedding,
       topK: Math.min(50, Math.max(1, params.itemIds.length)),
       filter: { tenantId: params.tenantId, type: "library_chunk" },
+      namespace: vectorizeNamespaceForTenant(params.tenantId),
       providerConfig: params.providerConfig,
     });
     const candidateIds = new Set(params.itemIds);
     const scores = new Map<number, number>();
-    for (const match of (result as { matches: VectorSearchMatch[] }).matches || []) {
+    for (const match of (result as { matches: VectorSearchMatch[] }).matches ||
+      []) {
       const metadata = match.metadata || {};
       const rawItemId = metadata.itemId ?? metadata.item_id;
       const itemId = Number(rawItemId);
@@ -572,7 +613,10 @@ async function fetchCloudflareLibraryScores(params: {
     }
     return scores;
   } catch (error) {
-    console.warn("[library.search] Cloudflare Vectorize search failed:", error instanceof Error ? error.message : String(error));
+    console.warn(
+      "[library.search] Cloudflare Vectorize search failed:",
+      error instanceof Error ? error.message : String(error)
+    );
     return null;
   }
 }
@@ -644,7 +688,9 @@ function hashPublicShareToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-function isPublicShareLinkActive(row: Pick<LibraryPublicShareLinkRow, "expiresAt" | "revokedAt">): boolean {
+function isPublicShareLinkActive(
+  row: Pick<LibraryPublicShareLinkRow, "expiresAt" | "revokedAt">
+): boolean {
   if (row.revokedAt) {
     return false;
   }
@@ -654,7 +700,9 @@ function isPublicShareLinkActive(row: Pick<LibraryPublicShareLinkRow, "expiresAt
   return row.expiresAt > new Date();
 }
 
-function serializePublicShareLink(row: LibraryPublicShareLinkRow): PublicShareLinkDto {
+function serializePublicShareLink(
+  row: LibraryPublicShareLinkRow
+): PublicShareLinkDto {
   const token = decryptSecret(row.tokenEncrypted);
   return {
     id: row.id,
@@ -670,7 +718,7 @@ function serializePublicShareLink(row: LibraryPublicShareLinkRow): PublicShareLi
 async function getActivePublicShareLinkRow(
   db: DbClient,
   itemId: number,
-  tenantId: string,
+  tenantId: string
 ): Promise<LibraryPublicShareLinkRow | null> {
   const rows = await db
     .select()
@@ -682,9 +730,9 @@ async function getActivePublicShareLinkRow(
         isNull(libraryPublicShareLinks.revokedAt),
         or(
           isNull(libraryPublicShareLinks.expiresAt),
-          gt(libraryPublicShareLinks.expiresAt, new Date()),
-        ),
-      ),
+          gt(libraryPublicShareLinks.expiresAt, new Date())
+        )
+      )
     )
     .orderBy(desc(libraryPublicShareLinks.createdAt))
     .limit(1);
@@ -693,9 +741,11 @@ async function getActivePublicShareLinkRow(
 }
 
 function getPublicShareOwnerUserId(
-  item: Pick<LibraryItemRow, "ownerUserId" | "metadata">,
+  item: Pick<LibraryItemRow, "ownerUserId" | "metadata">
 ): number | null {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
   const candidates = [
     metadata.uploaded_by_user_id,
     metadata.uploadedByUserId,
@@ -706,7 +756,11 @@ function getPublicShareOwnerUserId(
   ];
 
   for (const candidate of candidates) {
-    if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+    if (
+      typeof candidate === "number" &&
+      Number.isFinite(candidate) &&
+      candidate > 0
+    ) {
       return candidate;
     }
     if (typeof candidate === "string" && candidate.trim()) {
@@ -723,9 +777,12 @@ function getPublicShareOwnerUserId(
 async function assertCanManagePublicShare(
   item: Pick<LibraryItemRow, "id" | "ownerUserId" | "tenantId" | "metadata">,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<void> {
-  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) {
+  if (
+    normalizeLibraryTenantId(item.tenantId) !==
+    normalizeLibraryTenantId(actor.tenantId)
+  ) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "You do not have access to this item",
@@ -748,14 +805,20 @@ async function assertCanManagePublicShare(
   if (!canManageLibraryItem(item, actor, permissionLevel)) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only users who can manage this file can create public share links",
+      message:
+        "Only users who can manage this file can create public share links",
     });
   }
 }
 
-async function resolvePublicShareDownloadUrl(item: LibraryItemRow): Promise<string | null> {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-  const sourceKey = typeof metadata.source_key === "string" ? metadata.source_key : null;
+async function resolvePublicShareDownloadUrl(
+  item: LibraryItemRow
+): Promise<string | null> {
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
+  const sourceKey =
+    typeof metadata.source_key === "string" ? metadata.source_key : null;
   if (sourceKey) {
     try {
       const resolved = await storageGet(sourceKey);
@@ -770,28 +833,44 @@ async function resolvePublicShareDownloadUrl(item: LibraryItemRow): Promise<stri
   return item.sourceUrl ?? null;
 }
 
-function isPrivateVaultLibraryItem(item: Pick<LibraryItemRow, "metadata">): boolean {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-  return metadata.private_vault === true || metadata.privateVault === true || metadata.vault === true;
+function isPrivateVaultLibraryItem(
+  item: Pick<LibraryItemRow, "metadata">
+): boolean {
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
+  return (
+    metadata.private_vault === true ||
+    metadata.privateVault === true ||
+    metadata.vault === true
+  );
 }
 
 function isPrivateVaultMetadata(metadata: unknown): boolean {
-  const normalized = normalizeLibraryMetadata(metadata as Record<string, unknown>);
-  return normalized.private_vault === true || normalized.privateVault === true || normalized.vault === true;
+  const normalized = normalizeLibraryMetadata(
+    metadata as Record<string, unknown>
+  );
+  return (
+    normalized.private_vault === true ||
+    normalized.privateVault === true ||
+    normalized.vault === true
+  );
 }
 
-function hasPrivateVaultAccess(
-  actor: LibraryActor,
-): boolean {
+function hasPrivateVaultAccess(actor: LibraryActor): boolean {
   return actor.privateVaultUnlocked === true;
 }
 
 function getLibraryQueueBackpressureState() {
   const enabled = ["1", "true", "yes", "on"].includes(
-    (process.env.LIBRARY_INDEX_BACKPRESSURE_ENABLED || "").toLowerCase(),
+    (process.env.LIBRARY_INDEX_BACKPRESSURE_ENABLED || "").toLowerCase()
   );
-  const currentQueueLagMinutes = Number(process.env.LIBRARY_INDEX_QUEUE_LAG_MINUTES || "0");
-  const maxQueueLagMinutes = Number(process.env.LIBRARY_INDEX_MAX_QUEUE_LAG_MINUTES || "15");
+  const currentQueueLagMinutes = Number(
+    process.env.LIBRARY_INDEX_QUEUE_LAG_MINUTES || "0"
+  );
+  const maxQueueLagMinutes = Number(
+    process.env.LIBRARY_INDEX_MAX_QUEUE_LAG_MINUTES || "15"
+  );
   return {
     enabled,
     currentQueueLagMinutes,
@@ -801,19 +880,20 @@ function getLibraryQueueBackpressureState() {
 
 function validateLibraryItemUrlField(
   field: "sourceUrl" | "thumbnailUrl",
-  value: string | null | undefined,
+  value: string | null | undefined
 ): string | null {
   if (value === undefined || value === null) {
     return null;
   }
 
-  const context = field === "sourceUrl" ? "library_source_url" : "library_thumbnail_url";
+  const context =
+    field === "sourceUrl" ? "library_source_url" : "library_thumbnail_url";
   const result = validateLibraryUrl(value, context);
   if (!result.ok) {
     throw new LibraryUrlValidationError(
       field,
       result.reason,
-      `Invalid ${field}: ${result.message}`,
+      `Invalid ${field}: ${result.message}`
     );
   }
 
@@ -856,13 +936,41 @@ async function resolveDb(dbClient?: DbClient): Promise<DbClient> {
 
 const MAX_LIBRARY_UPLOAD_BYTES = 50 * 1024 * 1024;
 const ALLOWED_LIBRARY_UPLOAD_EXTENSIONS = new Set([
-  "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp",
-  "mp4", "webm", "mov", "avi", "mkv",
-  "mp3", "wav", "m4a", "ogg", "aac",
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "mp4",
+  "webm",
+  "mov",
+  "avi",
+  "mkv",
+  "mp3",
+  "wav",
+  "m4a",
+  "ogg",
+  "aac",
   "pdf",
-  "txt", "md", "markdown", "csv", "json", "html", "htm", "xml",
-  "doc", "docx", "ppt", "pptx", "xls", "xlsx",
-  "zip", "rar", "7z",
+  "txt",
+  "md",
+  "markdown",
+  "csv",
+  "json",
+  "html",
+  "htm",
+  "xml",
+  "doc",
+  "docx",
+  "ppt",
+  "pptx",
+  "xls",
+  "xlsx",
+  "zip",
+  "rar",
+  "7z",
 ]);
 
 const ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES = [
@@ -889,10 +997,35 @@ const ALLOWED_LIBRARY_UPLOAD_MIME_TYPES = new Set([
   "application/x-7z-compressed",
 ]);
 const TEXT_LIKE_LIBRARY_UPLOAD_EXTENSIONS = new Set([
-  "txt", "md", "markdown", "csv", "json", "xml", "html", "htm",
-  "js", "jsx", "ts", "tsx", "css", "scss", "less",
-  "py", "rb", "java", "c", "cpp", "cs", "go", "rs",
-  "sql", "sh", "yaml", "yml", "toml", "ini",
+  "txt",
+  "md",
+  "markdown",
+  "csv",
+  "json",
+  "xml",
+  "html",
+  "htm",
+  "js",
+  "jsx",
+  "ts",
+  "tsx",
+  "css",
+  "scss",
+  "less",
+  "py",
+  "rb",
+  "java",
+  "c",
+  "cpp",
+  "cs",
+  "go",
+  "rs",
+  "sql",
+  "sh",
+  "yaml",
+  "yml",
+  "toml",
+  "ini",
 ]);
 
 function extractFileExtension(fileName: string): string {
@@ -939,14 +1072,15 @@ function isMarkdownLibraryUpload(extension: string): boolean {
 function extractTextLikeUploadContent(
   fileBuffer: Buffer<ArrayBufferLike>,
   fileType: string,
-  extension: string,
+  extension: string
 ): string | null {
   const normalizedFileType = fileType.toLowerCase();
   const isTextLikeMime =
-    normalizedFileType.startsWith("text/")
-    || normalizedFileType === "application/json"
-    || normalizedFileType === "application/xml";
-  const isTextLikeExtension = TEXT_LIKE_LIBRARY_UPLOAD_EXTENSIONS.has(extension);
+    normalizedFileType.startsWith("text/") ||
+    normalizedFileType === "application/json" ||
+    normalizedFileType === "application/xml";
+  const isTextLikeExtension =
+    TEXT_LIKE_LIBRARY_UPLOAD_EXTENSIONS.has(extension);
 
   if (!isTextLikeMime && !isTextLikeExtension) {
     return null;
@@ -956,7 +1090,9 @@ function extractTextLikeUploadContent(
   return text.length > 0 ? text : null;
 }
 
-function extractTextLikeUploadMetadata(metadata?: Record<string, unknown> | null): string | null {
+function extractTextLikeUploadMetadata(
+  metadata?: Record<string, unknown> | null
+): string | null {
   if (!metadata || typeof metadata !== "object") {
     return null;
   }
@@ -988,9 +1124,15 @@ async function upsertLibrarySourceTextChunk(
     content: string;
     source: string;
     projectId?: string | null;
-  },
+  }
 ): Promise<void> {
-  const resolvedProjectId = params.projectId ?? await resolveLibraryItemProjectId(db, params.libraryItemId, params.tenantId);
+  const resolvedProjectId =
+    params.projectId ??
+    (await resolveLibraryItemProjectId(
+      db,
+      params.libraryItemId,
+      params.tenantId
+    ));
 
   await db
     .insert(libraryChunks)
@@ -1028,21 +1170,28 @@ async function upsertLibrarySourceTextChunk(
 function isAllowedLibraryUploadMime(fileType: string): boolean {
   const normalizedFileType = fileType.toLowerCase();
   if (ALLOWED_LIBRARY_UPLOAD_MIME_TYPES.has(normalizedFileType)) return true;
-  return ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES.some((prefix) => normalizedFileType.startsWith(prefix));
+  return ALLOWED_LIBRARY_UPLOAD_MIME_PREFIXES.some(prefix =>
+    normalizedFileType.startsWith(prefix)
+  );
 }
 
 export function validateLibraryUploadMetadata(
   fileName: string,
-  fileType: string,
+  fileType: string
 ): { fileName: string; fileType: string; extension: string } {
   const normalizedFileName = fileName.trim();
-  const normalizedFileType = (fileType || "application/octet-stream").trim().toLowerCase();
+  const normalizedFileType = (fileType || "application/octet-stream")
+    .trim()
+    .toLowerCase();
   if (!normalizedFileName) {
     throw new Error("File name is required");
   }
 
   const extension = extractFileExtension(normalizedFileName);
-  if (!isAllowedLibraryUploadMime(normalizedFileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(extension)) {
+  if (
+    !isAllowedLibraryUploadMime(normalizedFileType) &&
+    !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(extension)
+  ) {
     throw new Error("File type is not supported for library upload");
   }
   if (extension && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(extension)) {
@@ -1063,7 +1212,7 @@ async function resolveLibraryUploadFile(
     fileSizeBytes?: number;
   },
   tenantId: string,
-  userId: number,
+  userId: number
 ): Promise<{
   fileBuffer: Buffer<ArrayBufferLike>;
   storage: { key: string; url: string } | null;
@@ -1083,7 +1232,10 @@ async function resolveLibraryUploadFile(
     if (contentLength > MAX_LIBRARY_UPLOAD_BYTES) {
       throw new Error("File too large (max 50MB)");
     }
-    if (input.fileSizeBytes !== undefined && contentLength !== input.fileSizeBytes) {
+    if (
+      input.fileSizeBytes !== undefined &&
+      contentLength !== input.fileSizeBytes
+    ) {
       throw new Error("Uploaded file size does not match the upload request");
     }
 
@@ -1119,7 +1271,7 @@ async function rollbackCreatedLibraryUpload(
   itemId: number,
   actor: LibraryActor,
   storageKey: string,
-  db: DbClient,
+  db: DbClient
 ): Promise<void> {
   try {
     const softDeleted = await softDeleteLibraryItem(itemId, actor, db);
@@ -1153,7 +1305,7 @@ function normalizeTagList(value: unknown): string[] {
 }
 
 export function normalizeLibraryMetadata(
-  metadata: Record<string, unknown> | null | undefined,
+  metadata: Record<string, unknown> | null | undefined
 ): Record<string, unknown> {
   if (!metadata || Array.isArray(metadata)) {
     return {};
@@ -1223,7 +1375,7 @@ function buildLibraryUploadMetadata(
     svgSanitized?: boolean;
     duplicateOfItemId?: number | null;
     extraMetadata?: Record<string, unknown>;
-  },
+  }
 ): Record<string, unknown> {
   const pipeline = buildUploadPipelineState(uploadFields.stage, {
     checksumSha256: uploadFields.checksumSha256,
@@ -1248,7 +1400,9 @@ function buildLibraryUploadMetadata(
     upload_pipeline: pipeline,
     upload_pipeline_updated_at: pipeline.updatedAt,
     parse_error: uploadFields.parseError || undefined,
-    parse_warnings: uploadFields.warnings?.length ? uploadFields.warnings : undefined,
+    parse_warnings: uploadFields.warnings?.length
+      ? uploadFields.warnings
+      : undefined,
     duplicate_of_item_id: uploadFields.duplicateOfItemId ?? undefined,
     svg_sanitized: uploadFields.svgSanitized || undefined,
     ...(uploadFields.extraMetadata || {}),
@@ -1326,7 +1480,7 @@ async function buildOcrChargePlan(params: {
 }
 
 function getUploadPipelineMetadata(
-  metadata: Record<string, unknown> | null | undefined,
+  metadata: Record<string, unknown> | null | undefined
 ): Record<string, unknown> {
   if (!metadata || Array.isArray(metadata)) {
     return {};
@@ -1343,14 +1497,19 @@ function getUploadPipelineMetadata(
 async function resolveLibraryItemProjectId(
   db: DbClient,
   libraryItemId: number,
-  tenantId: string,
+  tenantId: string
 ): Promise<string | null> {
   const rows = await db
     .select({
       projectId: libraryItems.projectId,
     })
     .from(libraryItems)
-    .where(and(eq(libraryItems.id, libraryItemId), eq(libraryItems.tenantId, tenantId)))
+    .where(
+      and(
+        eq(libraryItems.id, libraryItemId),
+        eq(libraryItems.tenantId, tenantId)
+      )
+    )
     .limit(1);
 
   return rows[0]?.projectId ?? null;
@@ -1384,7 +1543,7 @@ export function resolveLibraryVectorIndexName(): string {
 }
 
 function extractKnowledgeRefreshMetadata(
-  sourceMetadata: Record<string, unknown> | undefined,
+  sourceMetadata: Record<string, unknown> | undefined
 ): { reason: LibraryKnowledgeRefreshReason } | null {
   const raw = sourceMetadata?.knowledgeRefresh;
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
@@ -1393,10 +1552,10 @@ function extractKnowledgeRefreshMetadata(
 
   const reason = (raw as { reason?: unknown }).reason;
   if (
-    reason === "markdown_save"
-    || reason === "item_update"
-    || reason === "restore"
-    || reason === "permission_change"
+    reason === "markdown_save" ||
+    reason === "item_update" ||
+    reason === "restore" ||
+    reason === "permission_change"
   ) {
     return { reason };
   }
@@ -1406,7 +1565,7 @@ function extractKnowledgeRefreshMetadata(
 
 function buildLibraryIndexJobPersistence(
   payload: ReturnType<typeof buildLibraryIndexJobPayload>,
-  now: Date,
+  now: Date
 ): Pick<
   typeof libraryIndexJobs.$inferInsert,
   | "payloadVersion"
@@ -1421,10 +1580,11 @@ function buildLibraryIndexJobPersistence(
   | "knowledgeRefreshCompletedAt"
   | "knowledgeRefreshError"
 > {
-  const refreshMetadata = extractKnowledgeRefreshMetadata(payload.sourceMetadata);
-  const refreshStatus: LibraryKnowledgeRefreshExecutionStatus | null = refreshMetadata
-    ? "pending"
-    : null;
+  const refreshMetadata = extractKnowledgeRefreshMetadata(
+    payload.sourceMetadata
+  );
+  const refreshStatus: LibraryKnowledgeRefreshExecutionStatus | null =
+    refreshMetadata ? "pending" : null;
 
   return {
     payloadVersion: payload.version,
@@ -1470,10 +1630,13 @@ async function maybeDispatchLibraryKnowledgeRefreshWorker(input: {
 function resolveProcessingMimeType(
   declaredMimeType: string,
   sniffedMimeType: string | null,
-  extension = "",
+  extension = ""
 ): string {
   const normalizedDeclared = declaredMimeType.trim().toLowerCase();
-  const normalizedSniffed = typeof sniffedMimeType === "string" ? sniffedMimeType.trim().toLowerCase() : "";
+  const normalizedSniffed =
+    typeof sniffedMimeType === "string"
+      ? sniffedMimeType.trim().toLowerCase()
+      : "";
   if (normalizedSniffed) {
     return normalizedSniffed;
   }
@@ -1498,10 +1661,16 @@ function resolveProcessingMimeType(
     webp: "image/webp",
     gif: "image/gif",
   };
-  return mimeByExtension[normalizedExtension] || normalizedDeclared || "application/octet-stream";
+  return (
+    mimeByExtension[normalizedExtension] ||
+    normalizedDeclared ||
+    "application/octet-stream"
+  );
 }
 
-function extractVectorIndexNames(metadata: Record<string, unknown> | null | undefined): string[] {
+function extractVectorIndexNames(
+  metadata: Record<string, unknown> | null | undefined
+): string[] {
   if (!metadata || Array.isArray(metadata)) {
     return [];
   }
@@ -1548,12 +1717,12 @@ function getLibraryVectorIndexCandidates(): string[] {
 export async function collectLibraryVectorCleanupTargets(
   itemIds: number | number[],
   tenantId: LibraryTenantId,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryVectorCleanupTargets> {
   const db = await resolveDb(dbClient);
   const normalizedTenantId = normalizeLibraryTenantId(tenantId);
   const normalizedItemIds = Array.isArray(itemIds)
-    ? Array.from(new Set(itemIds.filter((value) => Number.isFinite(value))))
+    ? Array.from(new Set(itemIds.filter(value => Number.isFinite(value))))
     : [itemIds];
 
   if (normalizedItemIds.length === 0) {
@@ -1571,8 +1740,8 @@ export async function collectLibraryVectorCleanupTargets(
       .where(
         and(
           eq(libraryChunks.tenantId, normalizedTenantId),
-          inArray(libraryChunks.libraryItemId, normalizedItemIds),
-        ),
+          inArray(libraryChunks.libraryItemId, normalizedItemIds)
+        )
       ),
     db
       .select({
@@ -1582,8 +1751,8 @@ export async function collectLibraryVectorCleanupTargets(
       .where(
         and(
           eq(libraryItems.tenantId, normalizedTenantId),
-          inArray(libraryItems.id, normalizedItemIds),
-        ),
+          inArray(libraryItems.id, normalizedItemIds)
+        )
       ),
   ]);
 
@@ -1603,13 +1772,17 @@ export async function collectLibraryVectorCleanupTargets(
         indexNames.add(trimmedIndex);
       }
     }
-    for (const indexName of extractVectorIndexNames(row.metadata as Record<string, unknown> | null | undefined)) {
+    for (const indexName of extractVectorIndexNames(
+      row.metadata as Record<string, unknown> | null | undefined
+    )) {
       indexNames.add(indexName);
     }
   }
 
   for (const row of itemRows) {
-    for (const indexName of extractVectorIndexNames(row.metadata as Record<string, unknown> | null | undefined)) {
+    for (const indexName of extractVectorIndexNames(
+      row.metadata as Record<string, unknown> | null | undefined
+    )) {
       indexNames.add(indexName);
     }
   }
@@ -1620,19 +1793,17 @@ export async function collectLibraryVectorCleanupTargets(
   };
 }
 
-export async function cleanupLibraryVectorArtifacts(
-  params: {
-    tenantId: LibraryTenantId;
-    vectorRefIds: string[];
-    indexNames?: string[];
-  },
-): Promise<void> {
+export async function cleanupLibraryVectorArtifacts(params: {
+  tenantId: LibraryTenantId;
+  vectorRefIds: string[];
+  indexNames?: string[];
+}): Promise<void> {
   const vectorRefIds = Array.from(
     new Set(
       params.vectorRefIds
-        .map((value) => (typeof value === "string" ? value.trim() : ""))
-        .filter((value) => value.length > 0),
-    ),
+        .map(value => (typeof value === "string" ? value.trim() : ""))
+        .filter(value => value.length > 0)
+    )
   );
 
   if (vectorRefIds.length === 0) {
@@ -1642,13 +1813,14 @@ export async function cleanupLibraryVectorArtifacts(
   const explicitIndexNames = Array.from(
     new Set(
       (params.indexNames ?? [])
-        .map((value) => (typeof value === "string" ? value.trim() : ""))
-        .filter((value) => value.length > 0),
-    ),
+        .map(value => (typeof value === "string" ? value.trim() : ""))
+        .filter(value => value.length > 0)
+    )
   );
-  const candidateIndexNames = explicitIndexNames.length > 0
-    ? explicitIndexNames
-    : getLibraryVectorIndexCandidates();
+  const candidateIndexNames =
+    explicitIndexNames.length > 0
+      ? explicitIndexNames
+      : getLibraryVectorIndexCandidates();
   if (candidateIndexNames.length === 0) {
     return;
   }
@@ -1662,16 +1834,28 @@ export async function cleanupLibraryVectorArtifacts(
     // Fall back to env-based config so the provider selection remains explicit.
   }
 
-  const resolvedProvider = resolveVectorProvider("delete", providerConfig).provider;
-  const safeVectorRefIds = resolvedProvider === "cloudflare_vectorize"
-    ? vectorRefIds.filter((value) => new TextEncoder().encode(value).byteLength <= 64)
-    : vectorRefIds;
-  if (resolvedProvider === "cloudflare_vectorize" && safeVectorRefIds.length === 0) {
+  const resolvedProvider = resolveVectorProvider(
+    "delete",
+    providerConfig
+  ).provider;
+  const safeVectorRefIds =
+    resolvedProvider === "cloudflare_vectorize"
+      ? vectorRefIds.filter(
+          value => new TextEncoder().encode(value).byteLength <= 64
+        )
+      : vectorRefIds;
+  if (
+    resolvedProvider === "cloudflare_vectorize" &&
+    safeVectorRefIds.length === 0
+  ) {
     return;
   }
-  const effectiveIndexNames = resolvedProvider === "cloudflare_vectorize"
-    ? (explicitIndexNames.length > 0 ? explicitIndexNames : [resolveLibraryVectorIndexName()])
-    : candidateIndexNames;
+  const effectiveIndexNames =
+    resolvedProvider === "cloudflare_vectorize"
+      ? explicitIndexNames.length > 0
+        ? explicitIndexNames
+        : [resolveLibraryVectorIndexName()]
+      : candidateIndexNames;
 
   for (const indexName of effectiveIndexNames) {
     try {
@@ -1697,7 +1881,7 @@ export async function cleanupLibraryVectorArtifacts(
       }
       console.warn(
         `[library.delete] Vector cleanup failed for index ${indexName}:`,
-        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error.message : String(error)
       );
     }
   }
@@ -1710,7 +1894,7 @@ async function findDuplicateUploadedLibraryItem(
     userId: number;
     checksumSha256: string;
     excludeItemId?: number;
-  },
+  }
 ): Promise<LibraryItemRow | null> {
   const predicates = [
     eq(libraryItems.tenantId, params.tenantId),
@@ -1737,11 +1921,14 @@ function tokenize(value: string): string[] {
   return value
     .toLowerCase()
     .split(/[^a-z0-9]+/g)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 1);
+    .map(token => token.trim())
+    .filter(token => token.length > 1);
 }
 
-function computeTokenOverlapScore(queryTokens: string[], content: string): number {
+function computeTokenOverlapScore(
+  queryTokens: string[],
+  content: string
+): number {
   if (!queryTokens.length) return 0;
   const contentTokens = new Set(tokenize(content));
   if (!contentTokens.size) return 0;
@@ -1756,14 +1943,17 @@ function computeTokenOverlapScore(queryTokens: string[], content: string): numbe
 
 function normalizeSearchPhrase(value: unknown): string {
   return typeof value === "string"
-    ? value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+    ? value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim()
     : "";
 }
 
 function computeLibraryExactFieldBoost(
   query: string,
   item: Pick<LibraryItemRow, "title" | "sourceUrl">,
-  metadata: Record<string, unknown>,
+  metadata: Record<string, unknown>
 ): number {
   const normalizedQuery = normalizeSearchPhrase(query);
   if (!normalizedQuery) {
@@ -1778,55 +1968,73 @@ function computeLibraryExactFieldBoost(
     metadata.logicalPath,
     ...(Array.isArray(metadata.aliases) ? metadata.aliases : []),
     ...(Array.isArray(metadata.tags) ? metadata.tags : []),
-  ].map(normalizeSearchPhrase).filter(Boolean);
+  ]
+    .map(normalizeSearchPhrase)
+    .filter(Boolean);
 
-  if (fields.some((field) => field === normalizedQuery)) {
+  if (fields.some(field => field === normalizedQuery)) {
     return 1.25;
   }
 
-  if (fields.some((field) => field.includes(normalizedQuery))) {
+  if (fields.some(field => field.includes(normalizedQuery))) {
     return 0.75;
   }
 
   return 0;
 }
 
-const ALLOWED_LIBRARY_RECENT_DAYS = new Set<LibraryRecentDaysFilter>([1, 3, 7, 15, 30]);
+const ALLOWED_LIBRARY_RECENT_DAYS = new Set<LibraryRecentDaysFilter>([
+  1, 3, 7, 15, 30,
+]);
 const DAY_MS = 86_400_000;
 
-function getRecentCutoffDate(recentDays?: LibraryRecentDaysFilter): Date | null {
+function getRecentCutoffDate(
+  recentDays?: LibraryRecentDaysFilter
+): Date | null {
   if (recentDays === undefined) return null;
   if (!ALLOWED_LIBRARY_RECENT_DAYS.has(recentDays)) return null;
   return new Date(Date.now() - recentDays * DAY_MS);
 }
 
-function getLibraryItemLastActivityAt(item: Pick<LibraryItemRow, "createdAt" | "updatedAt">): Date {
+function getLibraryItemLastActivityAt(
+  item: Pick<LibraryItemRow, "createdAt" | "updatedAt">
+): Date {
   return item.updatedAt > item.createdAt ? item.updatedAt : item.createdAt;
 }
 
 function getLibraryMetadataText(
   metadata: Record<string, unknown>,
-  keys: string[],
+  keys: string[]
 ): string | null {
   for (const key of keys) {
     const value = metadata[key];
     if (typeof value === "string" && value.trim()) return value.trim();
-    if (typeof value === "number" && Number.isFinite(value)) return String(value);
+    if (typeof value === "number" && Number.isFinite(value))
+      return String(value);
   }
   return null;
 }
 
-function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters): boolean {
+function itemMatchesFilters(
+  item: LibraryItemRow,
+  filters?: LibrarySearchFilters
+): boolean {
   if (!filters) return true;
 
   // Single itemType or array fileTypes
   if (filters.itemType && item.itemType !== filters.itemType) return false;
-  if (filters.fileTypes && filters.fileTypes.length > 0 && !filters.fileTypes.includes(item.itemType)) return false;
+  if (
+    filters.fileTypes &&
+    filters.fileTypes.length > 0 &&
+    !filters.fileTypes.includes(item.itemType)
+  )
+    return false;
 
   // Source (single or array)
   if (filters.source) {
     if (Array.isArray(filters.source)) {
-      if (filters.source.length > 0 && !filters.source.includes(item.source)) return false;
+      if (filters.source.length > 0 && !filters.source.includes(item.source))
+        return false;
     } else if (item.source !== filters.source) {
       return false;
     }
@@ -1835,7 +2043,8 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
   // Status (single or array)
   if (filters.status) {
     if (Array.isArray(filters.status)) {
-      if (filters.status.length > 0 && !filters.status.includes(item.status)) return false;
+      if (filters.status.length > 0 && !filters.status.includes(item.status))
+        return false;
     } else if (item.status !== filters.status) {
       return false;
     }
@@ -1851,10 +2060,14 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
 
   // Extensions
   if (filters.extensions && filters.extensions.length > 0) {
-    const extList = filters.extensions.map((e) => e.toLowerCase().startsWith(".") ? e.toLowerCase() : `.${e.toLowerCase()}`);
+    const extList = filters.extensions.map(e =>
+      e.toLowerCase().startsWith(".") ? e.toLowerCase() : `.${e.toLowerCase()}`
+    );
     const title = item.title.toLowerCase();
     const sourceUrl = (item.sourceUrl ?? "").toLowerCase();
-    const hasExt = extList.some((ext) => title.endsWith(ext) || sourceUrl.endsWith(ext));
+    const hasExt = extList.some(
+      ext => title.endsWith(ext) || sourceUrl.endsWith(ext)
+    );
     if (!hasExt) return false;
   }
 
@@ -1867,20 +2080,28 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
     }
   }
 
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
 
   // MIME types
   if (filters.mimeTypes && filters.mimeTypes.length > 0) {
-    const itemMime = String(metadata.mimeType ?? metadata.mime_type ?? metadata.contentType ?? "").toLowerCase();
-    const mimes = filters.mimeTypes.map((m) => m.toLowerCase());
-    if (!mimes.some((m) => itemMime.includes(m))) return false;
+    const itemMime = String(
+      metadata.mimeType ?? metadata.mime_type ?? metadata.contentType ?? ""
+    ).toLowerCase();
+    const mimes = filters.mimeTypes.map(m => m.toLowerCase());
+    if (!mimes.some(m => itemMime.includes(m))) return false;
   }
 
   // Size bytes (min / max)
   if (filters.sizeBytes) {
-    const itemSize = Number(metadata.sizeBytes ?? metadata.fileSizeBytes ?? metadata.size ?? 0);
-    if (filters.sizeBytes.min !== undefined && itemSize < filters.sizeBytes.min) return false;
-    if (filters.sizeBytes.max !== undefined && itemSize > filters.sizeBytes.max) return false;
+    const itemSize = Number(
+      metadata.sizeBytes ?? metadata.fileSizeBytes ?? metadata.size ?? 0
+    );
+    if (filters.sizeBytes.min !== undefined && itemSize < filters.sizeBytes.min)
+      return false;
+    if (filters.sizeBytes.max !== undefined && itemSize > filters.sizeBytes.max)
+      return false;
   }
 
   if (filters.productId) {
@@ -1903,35 +2124,44 @@ function itemMatchesFilters(item: LibraryItemRow, filters?: LibrarySearchFilters
     ]);
     if (runId !== filters.runId) return false;
   }
-  if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
-  if (filters.projectId !== undefined && item.projectId !== filters.projectId) return false;
+  if (
+    filters.ownerUserId !== undefined &&
+    item.ownerUserId !== filters.ownerUserId
+  )
+    return false;
+  if (filters.projectId !== undefined && item.projectId !== filters.projectId)
+    return false;
 
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
   const recentCutoff = getRecentCutoffDate(filters.recentDays);
-  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff) return false;
+  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff)
+    return false;
 
   if (filters.model) {
     const model = typeof metadata.model === "string" ? metadata.model : null;
-    const modelName = typeof metadata.model_name === "string" ? metadata.model_name : null;
+    const modelName =
+      typeof metadata.model_name === "string" ? metadata.model_name : null;
     if (model !== filters.model && modelName !== filters.model) return false;
   }
 
   // Tags: tags / tagsAll / tagsAny
-  const metadataTags = Array.isArray(metadata.tags) ? metadata.tags.map((tag) => String(tag)) : [];
-  const tagsSet = new Set(metadataTags.map((tag) => tag.toLowerCase()));
+  const metadataTags = Array.isArray(metadata.tags)
+    ? metadata.tags.map(tag => String(tag))
+    : [];
+  const tagsSet = new Set(metadataTags.map(tag => tag.toLowerCase()));
 
   if (filters.tags && filters.tags.length > 0) {
-    const required = filters.tags.map((tag) => tag.toLowerCase());
-    if (!required.every((tag) => tagsSet.has(tag))) return false;
+    const required = filters.tags.map(tag => tag.toLowerCase());
+    if (!required.every(tag => tagsSet.has(tag))) return false;
   }
   if (filters.tagsAll && filters.tagsAll.length > 0) {
-    const required = filters.tagsAll.map((tag) => tag.toLowerCase());
-    if (!required.every((tag) => tagsSet.has(tag))) return false;
+    const required = filters.tagsAll.map(tag => tag.toLowerCase());
+    if (!required.every(tag => tagsSet.has(tag))) return false;
   }
   if (filters.tagsAny && filters.tagsAny.length > 0) {
-    const anyList = filters.tagsAny.map((tag) => tag.toLowerCase());
-    if (!anyList.some((tag) => tagsSet.has(tag))) return false;
+    const anyList = filters.tagsAny.map(tag => tag.toLowerCase());
+    if (!anyList.some(tag => tagsSet.has(tag))) return false;
   }
 
   return true;
@@ -1945,7 +2175,9 @@ interface LibraryPermissionRow {
   expiresAt: Date | null;
 }
 
-function rankPermissionLevel(permissionLevel: string | null | undefined): number {
+function rankPermissionLevel(
+  permissionLevel: string | null | undefined
+): number {
   switch (permissionLevel) {
     case "owner":
       return 4;
@@ -1960,7 +2192,9 @@ function rankPermissionLevel(permissionLevel: string | null | undefined): number
   }
 }
 
-function selectHighestPermissionLevel(permissionLevels: string[]): LibraryPermissionLevel | null {
+function selectHighestPermissionLevel(
+  permissionLevels: string[]
+): LibraryPermissionLevel | null {
   let highest: LibraryPermissionLevel | null = null;
   let highestRank = 0;
 
@@ -1979,7 +2213,7 @@ function getPermissionLevelForItem(
   permissions: LibraryPermissionRow[],
   itemId: number,
   actor: LibraryActor,
-  userGroupIds?: number[],
+  userGroupIds?: number[]
 ): {
   effectivePermissionLevel: LibraryPermissionLevel | null;
   hasDirectShare: boolean;
@@ -1987,7 +2221,7 @@ function getPermissionLevelForItem(
   hasGroupShare: boolean;
 } {
   const now = new Date();
-  const relevant = permissions.filter((permission) => {
+  const relevant = permissions.filter(permission => {
     if (permission.libraryItemId !== itemId) return false;
     if (permission.expiresAt && permission.expiresAt <= now) return false;
     return true;
@@ -2003,28 +2237,28 @@ function getPermissionLevelForItem(
   }
 
   const directMatches = relevant.filter(
-    (permission) =>
+    permission =>
       permission.subjectType === "user" &&
-      permission.subjectId === String(actor.userId),
+      permission.subjectId === String(actor.userId)
   );
   const tenantRoleMatches = relevant.filter(
-    (permission) =>
+    permission =>
       permission.subjectType === "tenant_role" &&
       Boolean(actor.role) &&
-      permission.subjectId === actor.role,
+      permission.subjectId === actor.role
   );
   const groupMatches = userGroupIds?.length
     ? relevant.filter(
-        (permission) =>
+        permission =>
           permission.subjectType === "group" &&
-          userGroupIds.includes(Number(permission.subjectId)),
+          userGroupIds.includes(Number(permission.subjectId))
       )
     : [];
 
   const highest = selectHighestPermissionLevel([
-    ...directMatches.map((permission) => permission.permissionLevel),
-    ...tenantRoleMatches.map((permission) => permission.permissionLevel),
-    ...groupMatches.map((permission) => permission.permissionLevel),
+    ...directMatches.map(permission => permission.permissionLevel),
+    ...tenantRoleMatches.map(permission => permission.permissionLevel),
+    ...groupMatches.map(permission => permission.permissionLevel),
   ]);
 
   return {
@@ -2038,13 +2272,13 @@ function getPermissionLevelForItem(
 async function getUserPermissionLevel(
   db: DbClient,
   itemId: number,
-  actor: LibraryActor,
+  actor: LibraryActor
 ): Promise<LibraryPermissionLevel | null> {
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
   // Fetch user's groups (cached in groupsService, 1-min TTL)
   const userGroupsList = await getUserGroups(actor.userId, actorTenantId, db);
-  const groupIds = userGroupsList.map((g) => String(g.id));
+  const groupIds = userGroupsList.map(g => String(g.id));
 
   const rows = await db
     .select({
@@ -2061,27 +2295,30 @@ async function getUserPermissionLevel(
         or(
           and(
             eq(libraryPermissions.subjectType, "user"),
-            eq(libraryPermissions.subjectId, String(actor.userId)),
+            eq(libraryPermissions.subjectId, String(actor.userId))
           ),
           and(
             eq(libraryPermissions.subjectType, "tenant_role"),
-            eq(libraryPermissions.subjectId, actor.role || ""),
+            eq(libraryPermissions.subjectId, actor.role || "")
           ),
           ...(groupIds.length > 0
             ? [
                 and(
                   eq(libraryPermissions.subjectType, "group"),
-                  inArray(libraryPermissions.subjectId, groupIds),
+                  inArray(libraryPermissions.subjectId, groupIds)
                 ),
               ]
-            : []),
+            : [])
         ),
-        or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
-      ),
+        or(
+          isNull(libraryPermissions.expiresAt),
+          gt(libraryPermissions.expiresAt, new Date())
+        )
+      )
     )
     .limit(50);
 
-  return selectHighestPermissionLevel(rows.map((row) => row.permissionLevel));
+  return selectHighestPermissionLevel(rows.map(row => row.permissionLevel));
 }
 
 /**
@@ -2101,7 +2338,7 @@ async function getUserGroups(
   return groups.map(g => ({
     id: g.id,
     name: g.name,
-    role: g.role
+    role: g.role,
   }));
 }
 
@@ -2113,13 +2350,13 @@ async function getUserGroups(
 export async function getUserEffectivePermission(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<EffectivePermission> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
   const sources: PermissionSource[] = [];
-  let highestLevel: 'read' | 'write' | 'delete' | 'owner' | null = null;
+  let highestLevel: "read" | "write" | "delete" | "owner" | null = null;
   let highestRank = 0;
 
   // 1. Check ownership
@@ -2127,10 +2364,7 @@ export async function getUserEffectivePermission(
     .select()
     .from(libraryItems)
     .where(
-      and(
-        eq(libraryItems.id, itemId),
-        eq(libraryItems.tenantId, actorTenantId)
-      )
+      and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId))
     )
     .limit(1);
 
@@ -2139,7 +2373,7 @@ export async function getUserEffectivePermission(
   if (!item) {
     return {
       effectivePermissionLevel: null,
-      sources: []
+      sources: [],
     };
   }
 
@@ -2147,13 +2381,13 @@ export async function getUserEffectivePermission(
   if (item.tenantId !== actorTenantId) {
     return {
       effectivePermissionLevel: null,
-      sources: []
+      sources: [],
     };
   }
 
   if (item.ownerUserId === actor.userId) {
-    sources.push({ type: 'owner' });
-    highestLevel = 'owner';
+    sources.push({ type: "owner" });
+    highestLevel = "owner";
     highestRank = 4;
   }
 
@@ -2179,17 +2413,19 @@ export async function getUserEffectivePermission(
   // 4. Process direct user share
   const directShare = permissions.find(
     (p: { subjectType: string; subjectId: string }) =>
-      p.subjectType === 'user' && p.subjectId === String(actor.userId)
+      p.subjectType === "user" && p.subjectId === String(actor.userId)
   );
   if (directShare) {
     sources.push({
-      type: 'direct',
-      permissionLevel: directShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner',
-      subjectId: directShare.subjectId
+      type: "direct",
+      permissionLevel: directShare.permissionLevel as
+        "read" | "write" | "delete" | "owner",
+      subjectId: directShare.subjectId,
     });
     const rank = rankPermissionLevel(directShare.permissionLevel);
     if (rank > highestRank) {
-      highestLevel = directShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner';
+      highestLevel = directShare.permissionLevel as
+        "read" | "write" | "delete" | "owner";
       highestRank = rank;
     }
   }
@@ -2197,7 +2433,7 @@ export async function getUserEffectivePermission(
   // 5. Process group shares (NEW)
   const groupShares = permissions.filter(
     (p: { subjectType: string; subjectId: string }) =>
-      p.subjectType === 'group' && groupIds.includes(Number(p.subjectId))
+      p.subjectType === "group" && groupIds.includes(Number(p.subjectId))
   );
   for (const groupShare of groupShares) {
     const group = userGroups.find(g => g.id === Number(groupShare.subjectId));
@@ -2208,14 +2444,16 @@ export async function getUserEffectivePermission(
     }
 
     sources.push({
-      type: 'group',
-      permissionLevel: groupShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner',
+      type: "group",
+      permissionLevel: groupShare.permissionLevel as
+        "read" | "write" | "delete" | "owner",
       subjectId: groupShare.subjectId,
-      groupName: group.name
+      groupName: group.name,
     });
     const rank = rankPermissionLevel(groupShare.permissionLevel);
     if (rank > highestRank) {
-      highestLevel = groupShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner';
+      highestLevel = groupShare.permissionLevel as
+        "read" | "write" | "delete" | "owner";
       highestRank = rank;
     }
   }
@@ -2223,33 +2461,44 @@ export async function getUserEffectivePermission(
   // 6. Process tenant role share
   const roleShare = permissions.find(
     (p: { subjectType: string; subjectId: string | null }) =>
-      p.subjectType === 'tenant_role' && p.subjectId !== null && p.subjectId === actor.role
+      p.subjectType === "tenant_role" &&
+      p.subjectId !== null &&
+      p.subjectId === actor.role
   );
   if (roleShare) {
     sources.push({
-      type: 'tenant_role',
-      permissionLevel: roleShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner',
-      subjectId: roleShare.subjectId
+      type: "tenant_role",
+      permissionLevel: roleShare.permissionLevel as
+        "read" | "write" | "delete" | "owner",
+      subjectId: roleShare.subjectId,
     });
     const rank = rankPermissionLevel(roleShare.permissionLevel);
     if (rank > highestRank) {
-      highestLevel = roleShare.permissionLevel as 'read' | 'write' | 'delete' | 'owner';
+      highestLevel = roleShare.permissionLevel as
+        "read" | "write" | "delete" | "owner";
       highestRank = rank;
     }
   }
 
   return {
     effectivePermissionLevel: highestLevel,
-    sources
+    sources,
   };
 }
 
 export function canReadLibraryItem(
-  item: Pick<LibraryItemRow, "tenantId" | "ownerUserId" | "visibility" | "metadata">,
+  item: Pick<
+    LibraryItemRow,
+    "tenantId" | "ownerUserId" | "visibility" | "metadata"
+  >,
   actor: LibraryActor,
-  permissionLevel: LibraryPermissionLevel | null,
+  permissionLevel: LibraryPermissionLevel | null
 ): boolean {
-  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
+  if (
+    normalizeLibraryTenantId(item.tenantId) !==
+    normalizeLibraryTenantId(actor.tenantId)
+  )
+    return false;
   if (isPrivateVaultLibraryItem(item)) {
     return item.ownerUserId === actor.userId && hasPrivateVaultAccess(actor);
   }
@@ -2263,21 +2512,29 @@ export function canReadLibraryItem(
 export function canManageLibraryItem(
   item: Pick<LibraryItemRow, "tenantId" | "ownerUserId" | "metadata">,
   actor: LibraryActor,
-  permissionLevel: LibraryPermissionLevel | null,
+  permissionLevel: LibraryPermissionLevel | null
 ): boolean {
-  if (normalizeLibraryTenantId(item.tenantId) !== normalizeLibraryTenantId(actor.tenantId)) return false;
+  if (
+    normalizeLibraryTenantId(item.tenantId) !==
+    normalizeLibraryTenantId(actor.tenantId)
+  )
+    return false;
   if (isPrivateVaultLibraryItem(item)) {
     return item.ownerUserId === actor.userId && hasPrivateVaultAccess(actor);
   }
   if (actor.role === "admin") return true;
   if (item.ownerUserId === actor.userId) return true;
-  return permissionLevel === "write" || permissionLevel === "delete" || permissionLevel === "owner";
+  return (
+    permissionLevel === "write" ||
+    permissionLevel === "delete" ||
+    permissionLevel === "owner"
+  );
 }
 
 const LIBRARY_GALLERY_LINK_TYPE = "gallery_item";
 
 function mapLibraryItemTypeToGalleryType(
-  itemType: string,
+  itemType: string
 ): "image" | "video" | null {
   if (itemType === "image") return "image";
   if (itemType === "video") return "video";
@@ -2290,11 +2547,12 @@ function readNumericMetadata(
 ): number | null {
   for (const key of keys) {
     const value = metadata[key];
-    const parsed = typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Number.parseFloat(value)
-        : NaN;
+    const parsed =
+      typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Number.parseFloat(value)
+          : NaN;
     if (Number.isFinite(parsed) && parsed > 0) {
       return parsed;
     }
@@ -2304,19 +2562,30 @@ function readNumericMetadata(
 
 function resolveGalleryAspectRatio(
   itemType: "image" | "video",
-  metadata: Record<string, unknown>,
+  metadata: Record<string, unknown>
 ): "1:1" | "9:16" | "16:9" {
-  const explicit = typeof metadata.aspectRatio === "string"
-    ? metadata.aspectRatio
-    : typeof metadata.aspect_ratio === "string"
-      ? metadata.aspect_ratio
-      : null;
+  const explicit =
+    typeof metadata.aspectRatio === "string"
+      ? metadata.aspectRatio
+      : typeof metadata.aspect_ratio === "string"
+        ? metadata.aspect_ratio
+        : null;
   if (explicit === "1:1" || explicit === "9:16" || explicit === "16:9") {
     return explicit;
   }
 
-  const width = readNumericMetadata(metadata, "width", "image_width", "video_width");
-  const height = readNumericMetadata(metadata, "height", "image_height", "video_height");
+  const width = readNumericMetadata(
+    metadata,
+    "width",
+    "image_width",
+    "video_width"
+  );
+  const height = readNumericMetadata(
+    metadata,
+    "height",
+    "image_height",
+    "video_height"
+  );
   if (width && height) {
     const ratio = width / height;
     if (ratio <= 0.75) return "9:16";
@@ -2327,10 +2596,7 @@ function resolveGalleryAspectRatio(
   return itemType === "video" ? "16:9" : "1:1";
 }
 
-async function getLibraryGalleryLinkRow(
-  db: DbLike,
-  libraryItemId: number,
-) {
+async function getLibraryGalleryLinkRow(db: DbLike, libraryItemId: number) {
   const rows = await db
     .select({
       id: libraryLinks.id,
@@ -2339,12 +2605,15 @@ async function getLibraryGalleryLinkRow(
       isPublished: galleryItems.isPublished,
     })
     .from(libraryLinks)
-    .leftJoin(galleryItems, eq(galleryItems.id, sql<number>`${libraryLinks.linkId}::int`))
+    .leftJoin(
+      galleryItems,
+      eq(galleryItems.id, sql<number>`${libraryLinks.linkId}::int`)
+    )
     .where(
       and(
         eq(libraryLinks.libraryItemId, libraryItemId),
-        eq(libraryLinks.linkType, LIBRARY_GALLERY_LINK_TYPE),
-      ),
+        eq(libraryLinks.linkType, LIBRARY_GALLERY_LINK_TYPE)
+      )
     )
     .limit(1);
 
@@ -2353,7 +2622,7 @@ async function getLibraryGalleryLinkRow(
 
 async function removeGalleryPublicationLink(
   db: DbLike,
-  libraryItemId: number,
+  libraryItemId: number
 ): Promise<void> {
   const galleryLink = await getLibraryGalleryLinkRow(db, libraryItemId);
   if (!galleryLink) {
@@ -2361,7 +2630,9 @@ async function removeGalleryPublicationLink(
   }
 
   if (galleryLink.galleryItemId) {
-    await db.delete(galleryItems).where(eq(galleryItems.id, galleryLink.galleryItemId));
+    await db
+      .delete(galleryItems)
+      .where(eq(galleryItems.id, galleryLink.galleryItemId));
   }
 
   await db.delete(libraryLinks).where(eq(libraryLinks.id, galleryLink.id));
@@ -2369,48 +2640,59 @@ async function removeGalleryPublicationLink(
 
 function resolveLibraryGalleryMediaKey(
   item: Pick<LibraryItemRow, "metadata" | "sourceUrl" | "thumbnailUrl">,
-  variant: "file" | "thumbnail" = "file",
+  variant: "file" | "thumbnail" = "file"
 ): string | null {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-  const metadataKey = variant === "thumbnail"
-    ? metadata.thumbnail_key ?? metadata.thumbnailKey
-    : metadata.source_key ?? metadata.sourceKey;
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
+  const metadataKey =
+    variant === "thumbnail"
+      ? (metadata.thumbnail_key ?? metadata.thumbnailKey)
+      : (metadata.source_key ?? metadata.sourceKey);
   if (typeof metadataKey === "string") {
     const normalized = normalizeManagedMediaKey(metadataKey);
     if (normalized) return normalized;
   }
 
-  const source = variant === "thumbnail"
-    ? item.thumbnailUrl || item.sourceUrl
-    : item.sourceUrl;
+  const source =
+    variant === "thumbnail"
+      ? item.thumbnailUrl || item.sourceUrl
+      : item.sourceUrl;
   return parseManagedMediaUrl(source)?.key ?? null;
 }
 
 function buildGalleryPayloadFromLibraryItem(
-  item: LibraryItemRow,
+  item: LibraryItemRow
 ): typeof galleryItems.$inferInsert {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
   const galleryType = mapLibraryItemTypeToGalleryType(item.itemType);
   if (!galleryType) {
-    throw new Error("Only image and video files can be published to the Gallery");
+    throw new Error(
+      "Only image and video files can be published to the Gallery"
+    );
   }
   const fileKey = resolveLibraryGalleryMediaKey(item);
   if (!fileKey) {
     throw new Error("This file does not have a durable managed media key yet");
   }
-  const thumbnailKey = resolveLibraryGalleryMediaKey(item, "thumbnail") || fileKey;
+  const thumbnailKey =
+    resolveLibraryGalleryMediaKey(item, "thumbnail") || fileKey;
   const durableFileUrl = `/api/storage/files/${encodeURI(fileKey)}`;
   const durableThumbnailUrl = `/api/storage/files/${encodeURI(thumbnailKey)}`;
 
-  const model = typeof metadata.model === "string"
-    ? metadata.model
-    : typeof metadata.model_name === "string"
-      ? metadata.model_name
-      : null;
+  const model =
+    typeof metadata.model === "string"
+      ? metadata.model
+      : typeof metadata.model_name === "string"
+        ? metadata.model_name
+        : null;
   const tags = normalizeTagList(metadata.tags);
-  const description = item.description
-    || (typeof metadata.prompt === "string" ? metadata.prompt : null)
-    || null;
+  const description =
+    item.description ||
+    (typeof metadata.prompt === "string" ? metadata.prompt : null) ||
+    null;
 
   return {
     tenantId: item.tenantId != null ? String(item.tenantId) : undefined,
@@ -2432,7 +2714,7 @@ function buildGalleryPayloadFromLibraryItem(
 async function getLibraryItemRowById(
   db: DbClient,
   itemId: number,
-  tenantId: LibraryTenantId,
+  tenantId: LibraryTenantId
 ): Promise<LibraryItemRow | null> {
   const normalizedTenantId = normalizeLibraryTenantId(tenantId);
   const rows = await db
@@ -2442,24 +2724,22 @@ async function getLibraryItemRowById(
       and(
         eq(libraryItems.id, itemId),
         eq(libraryItems.tenantId, normalizedTenantId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     )
     .limit(1);
 
   return rows[0] ?? null;
 }
 
-function canActorPublishLibraryItem(
-  actor: LibraryActor,
-): boolean {
+function canActorPublishLibraryItem(actor: LibraryActor): boolean {
   return actor.role === "admin";
 }
 
 export async function getLibraryGalleryPublicationState(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryGalleryPublicationState | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -2500,7 +2780,7 @@ export async function getLibraryGalleryPublicationState(
 export async function publishLibraryItemToGallery(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<PublishLibraryItemToGalleryResult> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -2523,7 +2803,7 @@ export async function publishLibraryItemToGallery(
 
   const payload = buildGalleryPayloadFromLibraryItem(item);
 
-  const result = await db.transaction(async (tx) => {
+  const result = await db.transaction(async tx => {
     const galleryLink = await getLibraryGalleryLinkRow(tx, item.id);
 
     if (galleryLink?.galleryItemId) {
@@ -2585,7 +2865,7 @@ export async function publishLibraryItemToGallery(
 export async function unpublishLibraryItemFromGallery(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ success: true }> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -2603,7 +2883,7 @@ export async function unpublishLibraryItemFromGallery(
     throw new Error("Only admins can unpublish from the Gallery");
   }
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async tx => {
     await removeGalleryPublicationLink(tx, item.id);
   });
 
@@ -2613,24 +2893,35 @@ export async function unpublishLibraryItemFromGallery(
 export async function createLibraryItem(
   input: CreateLibraryItemInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<CreateLibraryItemResult> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const now = new Date();
 
-  let validatedSourceUrl = validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
-  let validatedThumbnailUrl = validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+  let validatedSourceUrl = validateLibraryItemUrlField(
+    "sourceUrl",
+    input.sourceUrl
+  );
+  let validatedThumbnailUrl = validateLibraryItemUrlField(
+    "thumbnailUrl",
+    input.thumbnailUrl
+  );
   let libraryMetadata = normalizeLibraryMetadata(input.metadata);
 
-  const mediaType = input.itemType === "video"
-    ? "video"
-    : input.itemType === "audio"
-      ? "audio"
-      : input.itemType === "image"
-        ? "image"
-        : null;
-  if (mediaType && validatedSourceUrl && /^https?:\/\//i.test(validatedSourceUrl)) {
+  const mediaType =
+    input.itemType === "video"
+      ? "video"
+      : input.itemType === "audio"
+        ? "audio"
+        : input.itemType === "image"
+          ? "image"
+          : null;
+  if (
+    mediaType &&
+    validatedSourceUrl &&
+    /^https?:\/\//i.test(validatedSourceUrl)
+  ) {
     const durable = await ensureExternalMediaAssetDurable({
       tenantId: actorTenantId,
       userId: actor.userId,
@@ -2638,7 +2929,12 @@ export async function createLibraryItem(
       sourceType: "library_migrated",
       sourceUrl: validatedSourceUrl,
       originalUrl: validatedSourceUrl,
-      mimeType: mediaType === "video" ? "video/mp4" : mediaType === "audio" ? "audio/mpeg" : "image/png",
+      mimeType:
+        mediaType === "video"
+          ? "video/mp4"
+          : mediaType === "audio"
+            ? "audio/mpeg"
+            : "image/png",
     });
     libraryMetadata = {
       ...libraryMetadata,
@@ -2666,8 +2962,8 @@ export async function createLibraryItem(
         and(
           eq(libraryLinks.linkType, input.sourceLink.linkType),
           eq(libraryLinks.linkId, input.sourceLink.linkId),
-          isNull(libraryItems.deletedAt),
-        ),
+          isNull(libraryItems.deletedAt)
+        )
       )
       .limit(1);
 
@@ -2732,9 +3028,20 @@ export async function createLibraryItem(
 
 function mapDriveMimeToItemType(mimeType: string): string {
   const m = mimeType.toLowerCase();
-  if (m.includes("document") || m.includes("word") || m.includes("msword")) return "document";
-  if (m.includes("spreadsheet") || m.includes("excel") || m.includes("ms-excel")) return "spreadsheet";
-  if (m.includes("presentation") || m.includes("powerpoint") || m.includes("ms-powerpoint")) return "presentation";
+  if (m.includes("document") || m.includes("word") || m.includes("msword"))
+    return "document";
+  if (
+    m.includes("spreadsheet") ||
+    m.includes("excel") ||
+    m.includes("ms-excel")
+  )
+    return "spreadsheet";
+  if (
+    m.includes("presentation") ||
+    m.includes("powerpoint") ||
+    m.includes("ms-powerpoint")
+  )
+    return "presentation";
   if (m === "application/pdf") return "pdf";
   if (m.startsWith("text/")) return "text";
   return "file";
@@ -2743,7 +3050,7 @@ function mapDriveMimeToItemType(mimeType: string): string {
 export async function createVirtualDriveReference(
   driveFile: DriveFileInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<CreateLibraryItemResult> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -2758,8 +3065,8 @@ export async function createVirtualDriveReference(
         eq(libraryLinks.linkType, "google_drive_file"),
         eq(libraryLinks.linkId, driveFile.driveFileId),
         eq(libraryLinks.tenantId, actorTenantId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     )
     .limit(1);
 
@@ -2830,7 +3137,7 @@ export async function createVirtualDriveReference(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return {
@@ -2842,19 +3149,24 @@ export async function createVirtualDriveReference(
 export async function uploadLibraryFile(
   input: UploadLibraryFileInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<UploadLibraryFileResult> {
   const db = await resolveDb(dbClient);
   const tenantId = normalizeLibraryTenantId(actor.tenantId);
   const fileName = input.fileName.trim();
-  const fileType = (input.fileType || "application/octet-stream").trim().toLowerCase();
+  const fileType = (input.fileType || "application/octet-stream")
+    .trim()
+    .toLowerCase();
 
   if (!fileName) {
     throw new Error("File name is required");
   }
 
   const ext = extractFileExtension(fileName);
-  if (!isAllowedLibraryUploadMime(fileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+  if (
+    !isAllowedLibraryUploadMime(fileType) &&
+    !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)
+  ) {
     throw new Error("File type is not supported for library upload");
   }
 
@@ -2866,7 +3178,11 @@ export async function uploadLibraryFile(
     throw new Error(`File extension .${ext} is not allowed`);
   }
 
-  const resolvedUpload = await resolveLibraryUploadFile(input, tenantId, actor.userId);
+  const resolvedUpload = await resolveLibraryUploadFile(
+    input,
+    tenantId,
+    actor.userId
+  );
   let fileBuffer: Buffer<ArrayBufferLike> = resolvedUpload.fileBuffer;
   const uploadedStorage = resolvedUpload.storage;
 
@@ -2883,8 +3199,16 @@ export async function uploadLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
-  const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
-  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime, ext);
+  const { sniffedMime } = validateLibraryUploadSignature(
+    fileBuffer,
+    fileType,
+    ext
+  );
+  const effectiveFileType = resolveProcessingMimeType(
+    fileType,
+    sniffedMime,
+    ext
+  );
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
@@ -2909,7 +3233,9 @@ export async function uploadLibraryFile(
       billing: {
         creditsCharged: 0,
         category: "duplicate_reused",
-        fileSizeBytes: Number((duplicate.metadata ?? {}).file_size_bytes || fileBuffer.length),
+        fileSizeBytes: Number(
+          (duplicate.metadata ?? {}).file_size_bytes || fileBuffer.length
+        ),
         baseCredits: 0,
         stepCredits: 0,
         extraSteps: 0,
@@ -2918,15 +3244,19 @@ export async function uploadLibraryFile(
     };
   }
 
-  const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadMetadata(input.metadata)
-    ?? extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
+  const billing = await calculateLibraryUploadCreditCost(
+    effectiveFileType,
+    fileBuffer.length
+  );
+  const fallbackText =
+    extractTextLikeUploadMetadata(input.metadata) ??
+    extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
   const debugTraceId = getFinanceOcrDebugTraceId(
     typeof input.metadata?.finance_debug_trace_id === "string"
       ? input.metadata.finance_debug_trace_id
       : typeof input.metadata?.debug_trace_id === "string"
         ? input.metadata.debug_trace_id
-        : null,
+        : null
   );
 
   const fileId = crypto.randomUUID().replace(/-/g, "");
@@ -2934,7 +3264,8 @@ export async function uploadLibraryFile(
   if (/^(image|video|audio)\//i.test(effectiveFileType)) {
     await assertR2StorageActive();
   }
-  const storage = uploadedStorage ?? await storagePut(key, fileBuffer, effectiveFileType);
+  const storage =
+    uploadedStorage ?? (await storagePut(key, fileBuffer, effectiveFileType));
   let enrichment: LibraryUploadEnrichmentResult | null = null;
   let extractedText: string | null = null;
   let created: Awaited<ReturnType<typeof createLibraryItem>> | null = null;
@@ -2978,7 +3309,10 @@ export async function uploadLibraryFile(
       sourceUrlPresent: Boolean(storage.url),
     });
 
-    const inferredProcessingItemType = inferLibraryItemType(effectiveFileType, ext);
+    const inferredProcessingItemType = inferLibraryItemType(
+      effectiveFileType,
+      ext
+    );
     created = await createLibraryItem(
       {
         itemType: inferredProcessingItemType,
@@ -3009,14 +3343,15 @@ export async function uploadLibraryFile(
           source_key: storage.key,
         },
         sourceUrl: storage.url,
-        thumbnailUrl: inferredProcessingItemType === "image" ? storage.url : null,
+        thumbnailUrl:
+          inferredProcessingItemType === "image" ? storage.url : null,
         sourceLink: {
           linkType: "upload_key",
           linkId: storage.key,
         },
       },
       actor,
-      db,
+      db
     );
   } catch (error) {
     await storageDelete(storage.key).catch(() => {});
@@ -3030,8 +3365,12 @@ export async function uploadLibraryFile(
     fileType: effectiveFileType,
     extension: ext,
     extractedTextLength: extractedText?.length ?? 0,
-    metadataHasExtractedText: Boolean((created.item.metadata ?? {}).extracted_text),
-    metadataKeys: Object.keys((created.item.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+    metadataHasExtractedText: Boolean(
+      (created.item.metadata ?? {}).extracted_text
+    ),
+    metadataKeys: Object.keys(
+      (created.item.metadata ?? {}) as Record<string, unknown>
+    ).slice(0, 16),
   });
   recordFinanceOcrDebugStep("library_upload_persisted", {
     traceId: debugTraceId ?? getTraceId() ?? "unknown",
@@ -3040,7 +3379,9 @@ export async function uploadLibraryFile(
     fileType: effectiveFileType,
     extension: ext,
     extractedTextLength: extractedText?.length ?? 0,
-    metadataHasExtractedText: Boolean((created.item.metadata ?? {}).extracted_text),
+    metadataHasExtractedText: Boolean(
+      (created.item.metadata ?? {}).extracted_text
+    ),
   });
 
   if (extractedText) {
@@ -3048,7 +3389,9 @@ export async function uploadLibraryFile(
       tenantId,
       libraryItemId: created.item.id,
       content: extractedText,
-      source: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+      source: isMarkdownLibraryUpload(ext)
+        ? "document_upload_markdown"
+        : "document_upload_extracted",
       projectId: input.projectId ?? null,
     });
     debugLog("finance_ocr", "library upload chunk upserted", {
@@ -3057,14 +3400,18 @@ export async function uploadLibraryFile(
       libraryItemId: created.item.id,
       fileName,
       extractedTextLength: extractedText.length,
-      chunkSource: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+      chunkSource: isMarkdownLibraryUpload(ext)
+        ? "document_upload_markdown"
+        : "document_upload_extracted",
     });
     recordFinanceOcrDebugStep("library_upload_chunk_upserted", {
       traceId: debugTraceId ?? getTraceId() ?? "unknown",
       libraryItemId: created.item.id,
       fileName,
       extractedTextLength: extractedText.length,
-      chunkSource: isMarkdownLibraryUpload(ext) ? "document_upload_markdown" : "document_upload_extracted",
+      chunkSource: isMarkdownLibraryUpload(ext)
+        ? "document_upload_markdown"
+        : "document_upload_extracted",
     });
   } else {
     debugLog("finance_ocr", "library upload no extracted text", {
@@ -3105,7 +3452,12 @@ export async function uploadLibraryFile(
   if (totalCharge > 0) {
     const hasCredits = await hasEnoughCredits(actor.userId, totalCharge);
     if (!hasCredits) {
-      await rollbackCreatedLibraryUpload(created.item.id, actor, storage.key, db);
+      await rollbackCreatedLibraryUpload(
+        created.item.id,
+        actor,
+        storage.key,
+        db
+      );
       throw new Error(`Insufficient credits. Required: ${totalCharge}`);
     }
   }
@@ -3211,7 +3563,7 @@ export async function uploadLibraryFile(
         },
         allowThrottle: !input.strictIndexing,
       },
-      db,
+      db
     );
   } catch (error) {
     if (input.strictIndexing) {
@@ -3244,7 +3596,12 @@ export async function uploadLibraryFile(
           },
         }).catch(() => {});
       }
-      await rollbackCreatedLibraryUpload(created.item.id, actor, storage.key, db);
+      await rollbackCreatedLibraryUpload(
+        created.item.id,
+        actor,
+        storage.key,
+        db
+      );
     }
     throw error;
   }
@@ -3269,12 +3626,14 @@ export async function uploadLibraryFile(
 export async function replaceLibraryFile(
   input: ReplaceLibraryFileInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<ReplaceLibraryFileResult> {
   const db = await resolveDb(dbClient);
   const tenantId = normalizeLibraryTenantId(actor.tenantId);
   const fileName = input.fileName.trim();
-  const fileType = (input.fileType || "application/octet-stream").trim().toLowerCase();
+  const fileType = (input.fileType || "application/octet-stream")
+    .trim()
+    .toLowerCase();
 
   if (!fileName) {
     throw new Error("File name is required");
@@ -3293,14 +3652,21 @@ export async function replaceLibraryFile(
 
   // 2. Validate new file
   const ext = extractFileExtension(fileName);
-  if (!isAllowedLibraryUploadMime(fileType) && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
+  if (
+    !isAllowedLibraryUploadMime(fileType) &&
+    !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)
+  ) {
     throw new Error("File type is not supported for library upload");
   }
   if (ext && !ALLOWED_LIBRARY_UPLOAD_EXTENSIONS.has(ext)) {
     throw new Error(`File extension .${ext} is not allowed`);
   }
 
-  const resolvedUpload = await resolveLibraryUploadFile(input, tenantId, actor.userId);
+  const resolvedUpload = await resolveLibraryUploadFile(
+    input,
+    tenantId,
+    actor.userId
+  );
   let fileBuffer: Buffer<ArrayBufferLike> = resolvedUpload.fileBuffer;
   const uploadedStorage = resolvedUpload.storage;
 
@@ -3317,8 +3683,16 @@ export async function replaceLibraryFile(
     fileBuffer = sanitized.sanitizedBuffer;
   }
 
-  const { sniffedMime } = validateLibraryUploadSignature(fileBuffer, fileType, ext);
-  const effectiveFileType = resolveProcessingMimeType(fileType, sniffedMime, ext);
+  const { sniffedMime } = validateLibraryUploadSignature(
+    fileBuffer,
+    fileType,
+    ext
+  );
+  const effectiveFileType = resolveProcessingMimeType(
+    fileType,
+    sniffedMime,
+    ext
+  );
   const checksumSha256 = computeLibraryUploadChecksum(fileBuffer);
   const duplicate = await findDuplicateUploadedLibraryItem(db, {
     tenantId,
@@ -3327,26 +3701,37 @@ export async function replaceLibraryFile(
     excludeItemId: existing.id,
   });
   if (duplicate) {
-    throw new Error("An identical file already exists in your library. Reuse the existing item instead of uploading a duplicate.");
+    throw new Error(
+      "An identical file already exists in your library. Reuse the existing item instead of uploading a duplicate."
+    );
   }
 
-  const billing = await calculateLibraryUploadCreditCost(effectiveFileType, fileBuffer.length);
-  const fallbackText = extractTextLikeUploadMetadata(input.metadata)
-    ?? extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
+  const billing = await calculateLibraryUploadCreditCost(
+    effectiveFileType,
+    fileBuffer.length
+  );
+  const fallbackText =
+    extractTextLikeUploadMetadata(input.metadata) ??
+    extractTextLikeUploadContent(fileBuffer, effectiveFileType, ext);
   const debugTraceId = getFinanceOcrDebugTraceId(
     typeof input.metadata?.finance_debug_trace_id === "string"
       ? input.metadata.finance_debug_trace_id
       : typeof input.metadata?.debug_trace_id === "string"
         ? input.metadata.debug_trace_id
-        : null,
+        : null
   );
   let debitTransactionId: number | null = null;
   let ocrDebitTransactionId: number | null = null;
   let ocrChargePlan: OcrChargePlan | null = null;
   if (billing.totalCredits > 0) {
-    const hasCredits = await hasEnoughCredits(actor.userId, billing.totalCredits);
+    const hasCredits = await hasEnoughCredits(
+      actor.userId,
+      billing.totalCredits
+    );
     if (!hasCredits) {
-      throw new Error(`Insufficient credits. Required: ${billing.totalCredits}`);
+      throw new Error(
+        `Insufficient credits. Required: ${billing.totalCredits}`
+      );
     }
 
     const debit = await deductCredits({
@@ -3380,8 +3765,8 @@ export async function replaceLibraryFile(
       .where(
         and(
           eq(libraryLinks.libraryItemId, existing.id),
-          eq(libraryLinks.linkType, "upload_key"),
-        ),
+          eq(libraryLinks.linkType, "upload_key")
+        )
       )
       .limit(1);
 
@@ -3407,18 +3792,23 @@ export async function replaceLibraryFile(
     });
 
     if (!version) {
-      throw new Error("Failed to create version snapshot before replacing file");
+      throw new Error(
+        "Failed to create version snapshot before replacing file"
+      );
     }
     const versionNumber = version.versionNumber;
 
     // 5. Upload new file
     const fileId = crypto.randomUUID().replace(/-/g, "");
-    newKey = uploadedStorage?.key
-      ?? `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
+    newKey =
+      uploadedStorage?.key ??
+      `library/uploads/${tenantId}/${actor.userId}/${fileId}${ext ? `.${ext}` : ""}`;
     if (/^(image|video|audio)\//i.test(effectiveFileType)) {
       await assertR2StorageActive();
     }
-    const storage = uploadedStorage ?? await storagePut(newKey, fileBuffer, effectiveFileType);
+    const storage =
+      uploadedStorage ??
+      (await storagePut(newKey, fileBuffer, effectiveFileType));
     const inferredItemType = inferLibraryItemType(effectiveFileType, ext);
     const featureFlags = await getTenantFeatureFlags(String(tenantId));
     const enrichment = await enrichLibraryUploadContent({
@@ -3462,38 +3852,47 @@ export async function replaceLibraryFile(
     });
 
     // Steps 6-7 in a transaction so item + link updates are atomic
-    const updated = await db.transaction(async (tx) => {
+    const updated = await db.transaction(async tx => {
       // 6. Update library item
       const now = new Date();
       const updatedRows = await tx
         .update(libraryItems)
         .set({
           sourceUrl: storage.url,
-          thumbnailUrl: inferredItemType === "image" ? storage.url : existing.thumbnailUrl,
+          thumbnailUrl:
+            inferredItemType === "image" ? storage.url : existing.thumbnailUrl,
           itemType: inferredItemType,
           status: "indexing",
           metadata: {
-            ...buildLibraryUploadMetadata({ ...oldMetadata, ...(input.metadata || {}) }, {
-              fileName,
-              fileType: effectiveFileType,
-              extension: ext,
-              fileSizeBytes: fileBuffer.length,
-              checksumSha256,
-              extractedText,
-              extractor: enrichment.extractor,
-              searchQuality: enrichment.searchQuality,
-              stage: "indexing",
-              stageMessage: enrichment.stageMessage,
-              warnings: enrichment.warnings,
-              svgSanitized: svgUpload,
-              extraMetadata: enrichment.extraMetadata,
-            }),
+            ...buildLibraryUploadMetadata(
+              { ...oldMetadata, ...(input.metadata || {}) },
+              {
+                fileName,
+                fileType: effectiveFileType,
+                extension: ext,
+                fileSizeBytes: fileBuffer.length,
+                checksumSha256,
+                extractedText,
+                extractor: enrichment.extractor,
+                searchQuality: enrichment.searchQuality,
+                stage: "indexing",
+                stageMessage: enrichment.stageMessage,
+                warnings: enrichment.warnings,
+                svgSanitized: svgUpload,
+                extraMetadata: enrichment.extraMetadata,
+              }
+            ),
             uploaded_by_user_id: actor.userId,
             source_key: storage.key,
           },
           updatedAt: now,
         })
-        .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, tenantId)))
+        .where(
+          and(
+            eq(libraryItems.id, existing.id),
+            eq(libraryItems.tenantId, tenantId)
+          )
+        )
         .returning();
 
       const txUpdated = updatedRows[0];
@@ -3526,8 +3925,12 @@ export async function replaceLibraryFile(
       fileType: effectiveFileType,
       extension: ext,
       extractedTextLength: extractedText?.length ?? 0,
-      metadataHasExtractedText: Boolean((updated.metadata ?? {}).extracted_text),
-      metadataKeys: Object.keys((updated.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+      metadataHasExtractedText: Boolean(
+        (updated.metadata ?? {}).extracted_text
+      ),
+      metadataKeys: Object.keys(
+        (updated.metadata ?? {}) as Record<string, unknown>
+      ).slice(0, 16),
     });
     recordFinanceOcrDebugStep("library_replace_persisted", {
       traceId: debugTraceId ?? getTraceId() ?? "unknown",
@@ -3536,8 +3939,12 @@ export async function replaceLibraryFile(
       fileType: effectiveFileType,
       extension: ext,
       extractedTextLength: extractedText?.length ?? 0,
-      metadataHasExtractedText: Boolean((updated.metadata ?? {}).extracted_text),
-      metadataKeys: Object.keys((updated.metadata ?? {}) as Record<string, unknown>).slice(0, 16),
+      metadataHasExtractedText: Boolean(
+        (updated.metadata ?? {}).extracted_text
+      ),
+      metadataKeys: Object.keys(
+        (updated.metadata ?? {}) as Record<string, unknown>
+      ).slice(0, 16),
     });
 
     if (extractedText) {
@@ -3545,7 +3952,9 @@ export async function replaceLibraryFile(
         tenantId,
         libraryItemId: existing.id,
         content: extractedText,
-        source: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+        source: isMarkdownLibraryUpload(ext)
+          ? "document_replace_markdown"
+          : "document_replace_extracted",
       });
       debugLog("finance_ocr", "library replace chunk upserted", {
         traceId: getTraceId() ?? "unknown",
@@ -3553,14 +3962,18 @@ export async function replaceLibraryFile(
         libraryItemId: existing.id,
         fileName,
         extractedTextLength: extractedText.length,
-        chunkSource: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+        chunkSource: isMarkdownLibraryUpload(ext)
+          ? "document_replace_markdown"
+          : "document_replace_extracted",
       });
       recordFinanceOcrDebugStep("library_replace_chunk_upserted", {
         traceId: debugTraceId ?? getTraceId() ?? "unknown",
         libraryItemId: existing.id,
         fileName,
         extractedTextLength: extractedText.length,
-        chunkSource: isMarkdownLibraryUpload(ext) ? "document_replace_markdown" : "document_replace_extracted",
+        chunkSource: isMarkdownLibraryUpload(ext)
+          ? "document_replace_markdown"
+          : "document_replace_extracted",
       });
     } else {
       await db
@@ -3568,8 +3981,8 @@ export async function replaceLibraryFile(
         .where(
           and(
             eq(libraryChunks.libraryItemId, existing.id),
-            eq(libraryChunks.contentType, "markdown_source"),
-          ),
+            eq(libraryChunks.contentType, "markdown_source")
+          )
         );
       debugLog("finance_ocr", "library replace no extracted text", {
         traceId: getTraceId() ?? "unknown",
@@ -3606,9 +4019,14 @@ export async function replaceLibraryFile(
     });
 
     if (ocrChargePlan) {
-      const hasCredits = await hasEnoughCredits(actor.userId, ocrChargePlan.amount);
+      const hasCredits = await hasEnoughCredits(
+        actor.userId,
+        ocrChargePlan.amount
+      );
       if (!hasCredits) {
-        throw new Error(`Insufficient credits. Required: ${ocrChargePlan.amount}`);
+        throw new Error(
+          `Insufficient credits. Required: ${ocrChargePlan.amount}`
+        );
       }
       const ocrDebit = await deductCredits({
         userId: actor.userId,
@@ -3641,7 +4059,7 @@ export async function replaceLibraryFile(
         },
         allowThrottle: !input.strictIndexing,
       },
-      db,
+      db
     );
 
     return {
@@ -3679,10 +4097,10 @@ export async function replaceLibraryFile(
           libraryItemId: existing.id,
           billingCategory: billing.category,
         },
-      }).catch((refundError) => {
+      }).catch(refundError => {
         console.error(
           `[library.replaceFile] Failed to refund credits for item ${existing.id}:`,
-          refundError instanceof Error ? refundError.message : refundError,
+          refundError instanceof Error ? refundError.message : refundError
         );
       });
     }
@@ -3693,7 +4111,7 @@ export async function replaceLibraryFile(
 export async function getLibraryItemById(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryItemDto | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -3714,11 +4132,13 @@ export async function getLibraryItemById(
 export async function getLibraryUploadStatuses(
   itemIds: number[],
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryUploadStatusDto[]> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
-  const normalizedIds = Array.from(new Set(itemIds.filter((value) => Number.isFinite(value) && value > 0)));
+  const normalizedIds = Array.from(
+    new Set(itemIds.filter(value => Number.isFinite(value) && value > 0))
+  );
 
   if (normalizedIds.length === 0) {
     return [];
@@ -3731,8 +4151,8 @@ export async function getLibraryUploadStatuses(
       and(
         eq(libraryItems.tenantId, actorTenantId),
         inArray(libraryItems.id, normalizedIds),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     );
 
   const results: LibraryUploadStatusDto[] = [];
@@ -3754,60 +4174,86 @@ export async function getLibraryUploadStatuses(
     const itemDto = toLibraryItemDto(row);
     const indexJob = latestJob[0] ?? null;
     const parserWarnings = Array.isArray(pipeline.warnings)
-      ? pipeline.warnings.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      ? pipeline.warnings.filter(
+          (value): value is string =>
+            typeof value === "string" && value.trim().length > 0
+        )
       : [];
 
-    const stage = row.status === "ready"
-      ? "ready"
-      : row.status === "failed"
-        ? "failed"
-        : indexJob && ["pending", "processing", "retry_pending"].includes(indexJob.status)
-          ? "indexing"
-          : (typeof pipeline.stage === "string" ? pipeline.stage : "uploaded");
+    const stage =
+      row.status === "ready"
+        ? "ready"
+        : row.status === "failed"
+          ? "failed"
+          : indexJob &&
+              ["pending", "processing", "retry_pending"].includes(
+                indexJob.status
+              )
+            ? "indexing"
+            : typeof pipeline.stage === "string"
+              ? pipeline.stage
+              : "uploaded";
 
-    const searchQuality = metadata.search_quality === "full_text" ? "full_text" : "metadata_only";
+    const searchQuality =
+      metadata.search_quality === "full_text" ? "full_text" : "metadata_only";
 
     results.push({
       itemId: row.id,
       item: itemDto,
       stage: stage as LibraryUploadPipelineStage,
-      stageMessage: typeof pipeline.stageMessage === "string"
-        ? pipeline.stageMessage
-        : row.status === "ready"
-          ? "Ready for search."
-          : row.status === "failed"
-            ? "Upload processing failed."
-            : indexJob
-              ? "File uploaded. Indexing is still in progress."
-              : "File uploaded and waiting for processing.",
-      parserJobId: typeof pipeline.parserJobId === "string" ? pipeline.parserJobId : null,
-      parserStatus: typeof pipeline.parserStatus === "string" ? pipeline.parserStatus : null,
+      stageMessage:
+        typeof pipeline.stageMessage === "string"
+          ? pipeline.stageMessage
+          : row.status === "ready"
+            ? "Ready for search."
+            : row.status === "failed"
+              ? "Upload processing failed."
+              : indexJob
+                ? "File uploaded. Indexing is still in progress."
+                : "File uploaded and waiting for processing.",
+      parserJobId:
+        typeof pipeline.parserJobId === "string" ? pipeline.parserJobId : null,
+      parserStatus:
+        typeof pipeline.parserStatus === "string"
+          ? pipeline.parserStatus
+          : null,
       indexJobId: indexJob?.id ?? null,
       indexJobStatus: indexJob?.status ?? null,
-      checksumSha256: typeof pipeline.checksumSha256 === "string"
-        ? pipeline.checksumSha256
-        : typeof metadata.content_checksum_sha256 === "string"
-          ? metadata.content_checksum_sha256
-          : null,
-      extractor: typeof pipeline.extractor === "string"
-        ? pipeline.extractor
-        : typeof metadata.extraction_method === "string"
-          ? metadata.extraction_method
-          : null,
+      checksumSha256:
+        typeof pipeline.checksumSha256 === "string"
+          ? pipeline.checksumSha256
+          : typeof metadata.content_checksum_sha256 === "string"
+            ? metadata.content_checksum_sha256
+            : null,
+      extractor:
+        typeof pipeline.extractor === "string"
+          ? pipeline.extractor
+          : typeof metadata.extraction_method === "string"
+            ? metadata.extraction_method
+            : null,
       searchQuality,
-      parseError: typeof pipeline.parseError === "string"
-        ? pipeline.parseError
-        : typeof metadata.parse_error === "string"
-          ? metadata.parse_error
-          : null,
+      parseError:
+        typeof pipeline.parseError === "string"
+          ? pipeline.parseError
+          : typeof metadata.parse_error === "string"
+            ? metadata.parse_error
+            : null,
       warnings: parserWarnings,
-      duplicateOfItemId: typeof metadata.duplicate_of_item_id === "number" ? metadata.duplicate_of_item_id : null,
+      duplicateOfItemId:
+        typeof metadata.duplicate_of_item_id === "number"
+          ? metadata.duplicate_of_item_id
+          : null,
       readyForSearch: row.status === "ready",
-      updatedAt: typeof pipeline.updatedAt === "string" ? pipeline.updatedAt : row.updatedAt.toISOString(),
+      updatedAt:
+        typeof pipeline.updatedAt === "string"
+          ? pipeline.updatedAt
+          : row.updatedAt.toISOString(),
     });
   }
 
-  results.sort((a, b) => normalizedIds.indexOf(a.itemId) - normalizedIds.indexOf(b.itemId));
+  results.sort(
+    (a, b) => normalizedIds.indexOf(a.itemId) - normalizedIds.indexOf(b.itemId)
+  );
   return results;
 }
 
@@ -3815,7 +4261,7 @@ export async function updateLibraryItem(
   itemId: number,
   input: UpdateLibraryItemInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryItemDto | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -3835,25 +4281,32 @@ export async function updateLibraryItem(
   };
 
   if (input.title !== undefined) updatePayload.title = input.title;
-  if (input.description !== undefined) updatePayload.description = input.description;
+  if (input.description !== undefined)
+    updatePayload.description = input.description;
   if (input.status !== undefined) updatePayload.status = input.status;
-  if (input.visibility !== undefined) updatePayload.visibility = input.visibility;
-  if (input.metadata !== undefined) updatePayload.metadata = normalizeLibraryMetadata(input.metadata);
+  if (input.visibility !== undefined)
+    updatePayload.visibility = input.visibility;
+  if (input.metadata !== undefined)
+    updatePayload.metadata = normalizeLibraryMetadata(input.metadata);
   if (input.sourceUrl !== undefined) {
-    updatePayload.sourceUrl = input.sourceUrl === null
-      ? null
-      : validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
+    updatePayload.sourceUrl =
+      input.sourceUrl === null
+        ? null
+        : validateLibraryItemUrlField("sourceUrl", input.sourceUrl);
   }
   if (input.thumbnailUrl !== undefined) {
-    updatePayload.thumbnailUrl = input.thumbnailUrl === null
-      ? null
-      : validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
+    updatePayload.thumbnailUrl =
+      input.thumbnailUrl === null
+        ? null
+        : validateLibraryItemUrlField("thumbnailUrl", input.thumbnailUrl);
   }
 
   const updated = await db
     .update(libraryItems)
     .set(updatePayload)
-    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId)))
+    .where(
+      and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId))
+    )
     .returning();
 
   if (!updated[0]) {
@@ -3879,7 +4332,7 @@ export async function updateLibraryItem(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   // Recompute allowed_scopes if visibility changed
@@ -3892,7 +4345,7 @@ export async function updateLibraryItem(
 
 function isPresentationTempUploadMetadata(
   metadata: unknown,
-  expectedDeckId: number,
+  expectedDeckId: number
 ): boolean {
   if (!metadata || typeof metadata !== "object") {
     return false;
@@ -3908,7 +4361,7 @@ function isPresentationTempUploadMetadata(
 async function softDeleteDeckScopedPresentationUploads(
   presentationItemId: number,
   actor: LibraryActor,
-  db: DbClient,
+  db: DbClient
 ): Promise<void> {
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
   const deckRows = await db
@@ -3917,8 +4370,8 @@ async function softDeleteDeckScopedPresentationUploads(
     .where(
       and(
         eq(presentationDecks.libraryItemId, presentationItemId),
-        eq(presentationDecks.tenantId, actorTenantId),
-      ),
+        eq(presentationDecks.tenantId, actorTenantId)
+      )
     )
     .limit(1);
 
@@ -3933,20 +4386,23 @@ async function softDeleteDeckScopedPresentationUploads(
       metadata: libraryItems.metadata,
     })
     .from(presentationAssetLinks)
-    .innerJoin(libraryItems, eq(libraryItems.id, presentationAssetLinks.libraryItemId))
+    .innerJoin(
+      libraryItems,
+      eq(libraryItems.id, presentationAssetLinks.libraryItemId)
+    )
     .where(
       and(
         eq(presentationAssetLinks.deckId, deck.id),
         eq(presentationAssetLinks.tenantId, actorTenantId),
         eq(libraryItems.tenantId, actorTenantId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     );
 
   const now = new Date();
   const uploadItemIds = linkedRows
-    .filter((row) => isPresentationTempUploadMetadata(row.metadata, deck.id))
-    .map((row) => row.id);
+    .filter(row => isPresentationTempUploadMetadata(row.metadata, deck.id))
+    .map(row => row.id);
 
   if (!uploadItemIds.length) {
     return;
@@ -3963,8 +4419,8 @@ async function softDeleteDeckScopedPresentationUploads(
     .where(
       and(
         inArray(libraryItems.id, uploadItemIds),
-        eq(libraryItems.tenantId, actorTenantId),
-      ),
+        eq(libraryItems.tenantId, actorTenantId)
+      )
     );
 
   for (const uploadItemId of uploadItemIds) {
@@ -3978,7 +4434,7 @@ async function softDeleteDeckScopedPresentationUploads(
         source: "library.delete.presentation_upload",
         allowThrottle: false,
       },
-      db,
+      db
     );
   }
 }
@@ -3986,7 +4442,7 @@ async function softDeleteDeckScopedPresentationUploads(
 export async function softDeleteLibraryItem(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4009,7 +4465,9 @@ export async function softDeleteLibraryItem(
       status: "archived",
       updatedAt: new Date(),
     })
-    .where(and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId)))
+    .where(
+      and(eq(libraryItems.id, itemId), eq(libraryItems.tenantId, actorTenantId))
+    )
     .returning({ id: libraryItems.id });
 
   if (!deleted[0]?.id) {
@@ -4033,7 +4491,7 @@ export async function softDeleteLibraryItem(
       },
       allowThrottle: false,
     },
-    db,
+    db
   );
 
   if (existing.itemType === "presentation") {
@@ -4062,7 +4520,7 @@ const SCOPE_READ_LEVELS = new Set(["read", "write", "delete", "owner"]);
 async function recomputeAndPropagateScopes(
   itemId: number,
   tenantId: string,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<void> {
   const db = await resolveDb(dbClient);
 
@@ -4094,9 +4552,9 @@ async function recomputeAndPropagateScopes(
         eq(libraryPermissions.libraryItemId, itemId),
         or(
           isNull(libraryPermissions.expiresAt),
-          gt(libraryPermissions.expiresAt, new Date()),
-        ),
-      ),
+          gt(libraryPermissions.expiresAt, new Date())
+        )
+      )
     );
 
   // 3. Build allowed_scopes
@@ -4136,8 +4594,8 @@ async function recomputeAndPropagateScopes(
     .where(
       and(
         eq(libraryChunks.libraryItemId, itemId),
-        eq(libraryChunks.tenantId, tenantId),
-      ),
+        eq(libraryChunks.tenantId, tenantId)
+      )
     );
 
   // 6. Fire-and-forget: call Python backend for vector store propagation
@@ -4157,7 +4615,10 @@ async function recomputeAndPropagateScopes(
         new_allowed_scopes: scopeList,
       }),
     }).catch((err: unknown) => {
-      console.warn("[recomputeAndPropagateScopes] Python propagation failed:", err);
+      console.warn(
+        "[recomputeAndPropagateScopes] Python propagation failed:",
+        err
+      );
     });
   }
 }
@@ -4165,7 +4626,7 @@ async function recomputeAndPropagateScopes(
 export async function shareLibraryItem(
   input: ShareLibraryItemInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4195,7 +4656,7 @@ export async function shareLibraryItem(
   }
 
   // NEW: Validate group shares
-  if (input.subjectType === 'group') {
+  if (input.subjectType === "group") {
     // 1. Validate group exists
     const groupRows = await db
       .select()
@@ -4211,17 +4672,17 @@ export async function shareLibraryItem(
     const group = groupRows[0];
 
     if (!group) {
-      throw new Error('Group not found or has been deleted');
+      throw new Error("Group not found or has been deleted");
     }
 
     // 2. Validate group is in same tenant (cross-tenant isolation)
     if (group.tenantId !== actorTenantId) {
-      throw new Error('Cannot share with groups from other tenants');
+      throw new Error("Cannot share with groups from other tenants");
     }
 
     // 3. Validate item is in same tenant as group
     if (existing.tenantId !== group.tenantId) {
-      throw new Error('Cannot share items across tenant boundaries');
+      throw new Error("Cannot share items across tenant boundaries");
     }
   }
 
@@ -4240,7 +4701,11 @@ export async function shareLibraryItem(
       updatedAt: now,
     })
     .onConflictDoUpdate({
-      target: [libraryPermissions.libraryItemId, libraryPermissions.subjectType, libraryPermissions.subjectId],
+      target: [
+        libraryPermissions.libraryItemId,
+        libraryPermissions.subjectType,
+        libraryPermissions.subjectId,
+      ],
       set: {
         permissionLevel: input.permissionLevel,
         grantedByUserId: actor.userId,
@@ -4274,7 +4739,7 @@ export async function shareLibraryItem(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return true;
@@ -4283,7 +4748,7 @@ export async function shareLibraryItem(
 export async function getPublicShareLinkState(
   input: PublicShareLinkInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<PublicShareLinkState> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4298,7 +4763,11 @@ export async function getPublicShareLinkState(
   }
 
   if (getPublicShareOwnerUserId(item) === actor.userId) {
-    const active = await getActivePublicShareLinkRow(db, item.id, actorTenantId);
+    const active = await getActivePublicShareLinkRow(
+      db,
+      item.id,
+      actorTenantId
+    );
     return {
       canManage: true,
       link: active ? serializePublicShareLink(active) : null,
@@ -4320,7 +4789,7 @@ export async function getPublicShareLinkState(
 export async function createPublicShareLink(
   input: PublicShareLinkInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<PublicShareLinkDto> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4340,7 +4809,9 @@ export async function createPublicShareLink(
     return serializePublicShareLink(active);
   }
 
-  const token = crypto.randomBytes(PUBLIC_SHARE_TOKEN_BYTES).toString("base64url");
+  const token = crypto
+    .randomBytes(PUBLIC_SHARE_TOKEN_BYTES)
+    .toString("base64url");
   const now = new Date();
   const expiresAt = new Date(now);
   expiresAt.setDate(expiresAt.getDate() + PUBLIC_SHARE_DEFAULT_TTL_DAYS);
@@ -4370,7 +4841,7 @@ export async function createPublicShareLink(
 export async function revokePublicShareLink(
   input: PublicShareLinkInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<PublicShareLinkDto | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4403,18 +4874,31 @@ export async function revokePublicShareLink(
   return row ? serializePublicShareLink(row) : null;
 }
 
-function isMarkdownLikeLibraryItemForPublicShare(item: Pick<LibraryItemRow, "itemType" | "sourceUrl" | "metadata">): boolean {
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-  const metadataExtension = typeof metadata.extension === "string" ? metadata.extension.toLowerCase().replace(/^\./, "") : "";
+function isMarkdownLikeLibraryItemForPublicShare(
+  item: Pick<LibraryItemRow, "itemType" | "sourceUrl" | "metadata">
+): boolean {
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
+  const metadataExtension =
+    typeof metadata.extension === "string"
+      ? metadata.extension.toLowerCase().replace(/^\./, "")
+      : "";
   const sourceUrl = item.sourceUrl || "";
-  const extFromUrl = sourceUrl ? sourceUrl.split("?")[0].split(".").pop()?.toLowerCase() || "" : "";
+  const extFromUrl = sourceUrl
+    ? sourceUrl.split("?")[0].split(".").pop()?.toLowerCase() || ""
+    : "";
   const ext = metadataExtension || extFromUrl || item.itemType.toLowerCase();
-  return ext === "md" || ext === "markdown" || item.itemType.toLowerCase() === "markdown";
+  return (
+    ext === "md" ||
+    ext === "markdown" ||
+    item.itemType.toLowerCase() === "markdown"
+  );
 }
 
 export async function resolvePublicShareLink(
   token: string,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<PublicShareDocumentResult | null> {
   const db = await resolveDb(dbClient);
   const normalizedToken = token.trim();
@@ -4433,18 +4917,28 @@ export async function resolvePublicShareLink(
     return null;
   }
 
-  const item = await getLibraryItemRowById(db, linkRow.libraryItemId, linkRow.tenantId);
+  const item = await getLibraryItemRowById(
+    db,
+    linkRow.libraryItemId,
+    linkRow.tenantId
+  );
   if (!item || isPrivateVaultLibraryItem(item)) {
     return null;
   }
 
   const downloadUrl = await resolvePublicShareDownloadUrl(item);
   const markdownContent = isMarkdownLikeLibraryItemForPublicShare(item)
-    ? (await getLibraryMarkdownContent(item.id, {
-        userId: item.ownerUserId,
-        tenantId: item.tenantId,
-        role: "user",
-      }, db))?.content ?? null
+    ? ((
+        await getLibraryMarkdownContent(
+          item.id,
+          {
+            userId: item.ownerUserId,
+            tenantId: item.tenantId,
+            role: "user",
+          },
+          db
+        )
+      )?.content ?? null)
     : null;
 
   return {
@@ -4458,7 +4952,9 @@ export async function resolvePublicShareLink(
       description: item.description,
       status: item.status,
       visibility: item.visibility,
-      metadata: normalizeLibraryMetadata(item.metadata as Record<string, unknown>),
+      metadata: normalizeLibraryMetadata(
+        item.metadata as Record<string, unknown>
+      ),
       sourceUrl: downloadUrl,
       thumbnailUrl: item.thumbnailUrl,
       createdAt: item.createdAt,
@@ -4481,12 +4977,14 @@ export async function enqueueLibraryIndexJob(
     sourceMetadata?: Record<string, unknown>;
     allowThrottle?: boolean;
   },
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryEnqueueResult> {
   const db = await resolveDb(dbClient);
   const jobType = input.jobType ?? "initial_index";
   const tenantId = normalizeLibraryTenantId(input.tenantId);
-  const resolvedProjectId = input.projectId ?? await resolveLibraryItemProjectId(db, input.libraryItemId, tenantId);
+  const resolvedProjectId =
+    input.projectId ??
+    (await resolveLibraryItemProjectId(db, input.libraryItemId, tenantId));
   const payload = buildLibraryIndexJobPayload({
     domain: input.domain || "library",
     operation: input.operation || "index",
@@ -4527,8 +5025,12 @@ export async function enqueueLibraryIndexJob(
         eq(libraryIndexJobs.libraryItemId, input.libraryItemId),
         eq(libraryIndexJobs.tenantId, tenantId),
         eq(libraryIndexJobs.jobType, jobType),
-        inArray(libraryIndexJobs.status, ["pending", "processing", "retry_pending"]),
-      ),
+        inArray(libraryIndexJobs.status, [
+          "pending",
+          "processing",
+          "retry_pending",
+        ])
+      )
     )
     .limit(1);
 
@@ -4545,9 +5047,8 @@ export async function enqueueLibraryIndexJob(
       jobId: existing[0].id,
       libraryItemId: input.libraryItemId,
       tenantId,
-      knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ?? null) as
-        | LibraryKnowledgeRefreshExecutionStatus
-        | null,
+      knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ??
+        null) as LibraryKnowledgeRefreshExecutionStatus | null,
     });
 
     return {
@@ -4590,15 +5091,19 @@ export async function enqueueLibraryIndexJob(
       status: "indexing",
       updatedAt: new Date(),
     })
-    .where(and(eq(libraryItems.id, input.libraryItemId), eq(libraryItems.tenantId, tenantId)));
+    .where(
+      and(
+        eq(libraryItems.id, input.libraryItemId),
+        eq(libraryItems.tenantId, tenantId)
+      )
+    );
 
   await maybeDispatchLibraryKnowledgeRefreshWorker({
     jobId: created.id,
     libraryItemId: input.libraryItemId,
     tenantId,
-    knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ?? null) as
-      | LibraryKnowledgeRefreshExecutionStatus
-      | null,
+    knowledgeRefreshStatus: (persistence.knowledgeRefreshStatus ??
+      null) as LibraryKnowledgeRefreshExecutionStatus | null,
   });
 
   return {
@@ -4612,7 +5117,7 @@ export async function enqueueLibraryIndexJob(
 
 export async function safeEnqueueLibraryIndexJob(
   input: Parameters<typeof enqueueLibraryIndexJob>[0],
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryEnqueueResult> {
   try {
     return await enqueueLibraryIndexJob(input, dbClient);
@@ -4644,7 +5149,7 @@ function getDocumentAccessSource(
     hasDirectShare: boolean;
     hasTenantRoleShare: boolean;
     hasGroupShare: boolean;
-  },
+  }
 ): LibraryDocumentAccessSource {
   if (item.ownerUserId === actor.userId) {
     return "owner";
@@ -4654,7 +5159,12 @@ function getDocumentAccessSource(
     return "shared_direct";
   }
 
-  if (permissionInfo.hasGroupShare || permissionInfo.hasTenantRoleShare || item.visibility === "team" || item.visibility === "public") {
+  if (
+    permissionInfo.hasGroupShare ||
+    permissionInfo.hasTenantRoleShare ||
+    item.visibility === "team" ||
+    item.visibility === "public"
+  ) {
     return "shared_group";
   }
 
@@ -4667,7 +5177,7 @@ function matchesDocumentScope(
   permissionInfo: {
     hasDirectShare: boolean;
     hasGroupShare: boolean;
-  },
+  }
 ): boolean {
   if (scope === "all") return true;
   if (scope === "my_library") return accessSource === "owner";
@@ -4675,20 +5185,23 @@ function matchesDocumentScope(
   // Shared-with-me should include only explicit direct user shares.
   if (scope === "shared_with_me") return permissionInfo.hasDirectShare;
   // Shared-groups should include only explicit group shares from other users.
-  if (scope === "shared_groups") return permissionInfo.hasGroupShare && accessSource !== "owner";
+  if (scope === "shared_groups")
+    return permissionInfo.hasGroupShare && accessSource !== "owner";
   return true;
 }
 
 function itemMatchesDocumentFilters(
   item: LibraryItemRow,
-  filters?: LibraryDocumentFilters,
+  filters?: LibraryDocumentFilters
 ): boolean {
   if (!filters) return true;
 
   if (filters.itemType && item.itemType !== filters.itemType) return false;
   if (filters.source && item.source !== filters.source) return false;
   if (filters.productId || filters.runId) {
-    const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+    const metadata = normalizeLibraryMetadata(
+      item.metadata as Record<string, unknown>
+    );
     if (filters.productId) {
       const productId = getLibraryMetadataText(metadata, [
         "productId",
@@ -4710,10 +5223,18 @@ function itemMatchesDocumentFilters(
       if (runId !== filters.runId) return false;
     }
   }
-  if (filters.ownerUserId !== undefined && item.ownerUserId !== filters.ownerUserId) return false;
+  if (
+    filters.ownerUserId !== undefined &&
+    item.ownerUserId !== filters.ownerUserId
+  )
+    return false;
   if (filters.status) {
     if (Array.isArray(filters.status)) {
-      if (filters.status.length > 0 && !filters.status.includes(item.status as any)) return false;
+      if (
+        filters.status.length > 0 &&
+        !filters.status.includes(item.status as any)
+      )
+        return false;
     } else if (item.status !== filters.status) {
       return false;
     }
@@ -4721,14 +5242,20 @@ function itemMatchesDocumentFilters(
   if (filters.fromDate && item.createdAt < filters.fromDate) return false;
   if (filters.toDate && item.createdAt > filters.toDate) return false;
   const recentCutoff = getRecentCutoffDate(filters.recentDays);
-  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff) return false;
+  if (recentCutoff && getLibraryItemLastActivityAt(item) < recentCutoff)
+    return false;
   return true;
 }
 
-function itemMatchesDocumentQuery(item: LibraryItemRow, query: string): boolean {
+function itemMatchesDocumentQuery(
+  item: LibraryItemRow,
+  query: string
+): boolean {
   if (!query) return true;
   const normalizedQuery = query.toLowerCase();
-  const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+  const metadata = normalizeLibraryMetadata(
+    item.metadata as Record<string, unknown>
+  );
   const haystack = [
     item.title,
     item.description || "",
@@ -4742,7 +5269,10 @@ function itemMatchesDocumentQuery(item: LibraryItemRow, query: string): boolean 
   return haystack.includes(normalizedQuery);
 }
 
-function matchesPrivateVaultScope(item: LibraryItemRow, scope: LibraryDocumentScope): boolean {
+function matchesPrivateVaultScope(
+  item: LibraryItemRow,
+  scope: LibraryDocumentScope
+): boolean {
   const isVaultItem = isPrivateVaultLibraryItem(item);
   if (scope === "private_vault") {
     return isVaultItem;
@@ -4763,7 +5293,7 @@ export class LibraryMarkdownVersionConflictError extends Error {
 export async function listLibraryDocuments(
   input: LibraryDocumentListInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryDocumentListResponse> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4780,21 +5310,32 @@ export async function listLibraryDocuments(
   const groupIdNums = userGroupsList.map(g => g.id);
 
   // For my_library scope, apply folder-level filtering (folderId: null = root, number = folder children)
-  const applyFolderFilter = (input.scope === "my_library" || input.scope === undefined || input.scope === "all")
-    && "folderId" in input;
+  const applyFolderFilter =
+    (input.scope === "my_library" ||
+      input.scope === undefined ||
+      input.scope === "all") &&
+    "folderId" in input;
   const folderCondition = applyFolderFilter
-    ? (input.folderId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.folderId))
+    ? input.folderId == null
+      ? isNull(libraryItems.parentId)
+      : eq(libraryItems.parentId, input.folderId)
     : undefined;
 
   const itemRows = await db
     .select()
     .from(libraryItems)
-    .where(and(
-      eq(libraryItems.tenantId, actorTenantId),
-      isNull(libraryItems.deletedAt),
-      folderCondition,
-    ))
-    .orderBy(desc(libraryItems.updatedAt), desc(libraryItems.createdAt), desc(libraryItems.id));
+    .where(
+      and(
+        eq(libraryItems.tenantId, actorTenantId),
+        isNull(libraryItems.deletedAt),
+        folderCondition
+      )
+    )
+    .orderBy(
+      desc(libraryItems.updatedAt),
+      desc(libraryItems.createdAt),
+      desc(libraryItems.id)
+    );
 
   if (!itemRows.length) {
     return {
@@ -4807,7 +5348,7 @@ export async function listLibraryDocuments(
     };
   }
 
-  const itemIds = itemRows.map((item) => item.id);
+  const itemIds = itemRows.map(item => item.id);
   const permissionRows: LibraryPermissionRow[] = await db
     .select({
       libraryItemId: libraryPermissions.libraryItemId,
@@ -4824,78 +5365,106 @@ export async function listLibraryDocuments(
         or(
           and(
             eq(libraryPermissions.subjectType, "user"),
-            eq(libraryPermissions.subjectId, String(actor.userId)),
+            eq(libraryPermissions.subjectId, String(actor.userId))
           ),
           and(
             eq(libraryPermissions.subjectType, "tenant_role"),
-            eq(libraryPermissions.subjectId, actor.role || ""),
+            eq(libraryPermissions.subjectId, actor.role || "")
           ),
-          ...(groupIds.length > 0 ? [
-            and(
-              eq(libraryPermissions.subjectType, "group"),
-              inArray(libraryPermissions.subjectId, groupIds),
-            )
-          ] : []),
+          ...(groupIds.length > 0
+            ? [
+                and(
+                  eq(libraryPermissions.subjectType, "group"),
+                  inArray(libraryPermissions.subjectId, groupIds)
+                ),
+              ]
+            : [])
         ),
-        or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
-      ),
+        or(
+          isNull(libraryPermissions.expiresAt),
+          gt(libraryPermissions.expiresAt, new Date())
+        )
+      )
     );
 
-  const afterFilters = itemRows.filter((item) => itemMatchesDocumentFilters(item, input.filters));
-  const afterQuery = afterFilters.filter((item) => itemMatchesDocumentQuery(item, query));
-  const scopedItems = afterQuery.filter((item) => matchesPrivateVaultScope(item, scope));
+  const afterFilters = itemRows.filter(item =>
+    itemMatchesDocumentFilters(item, input.filters)
+  );
+  const afterQuery = afterFilters.filter(item =>
+    itemMatchesDocumentQuery(item, query)
+  );
+  const scopedItems = afterQuery.filter(item =>
+    matchesPrivateVaultScope(item, scope)
+  );
 
   const visible = scopedItems.reduce<LibraryDocumentListItem[]>((acc, item) => {
-      const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
-      const canRead = canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel);
-      if (!canRead) {
-        return acc;
-      }
+    const permissionInfo = getPermissionLevelForItem(
+      permissionRows,
+      item.id,
+      actor,
+      groupIdNums
+    );
+    const canRead = canReadLibraryItem(
+      item,
+      actor,
+      permissionInfo.effectivePermissionLevel
+    );
+    if (!canRead) {
+      return acc;
+    }
 
-      const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
-      if (!matchesDocumentScope(scope, accessSource, {
+    const accessSource = getDocumentAccessSource(item, actor, permissionInfo);
+    if (
+      !matchesDocumentScope(scope, accessSource, {
         hasDirectShare: permissionInfo.hasDirectShare,
         hasGroupShare: permissionInfo.hasGroupShare,
-      })) {
-        return acc;
-      }
-
-      const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
-      acc.push({
-        id: item.id,
-        item_type: item.itemType,
-        source: item.source,
-        title: item.title,
-        description: item.description,
-        status: item.status,
-        visibility: item.visibility,
-        source_url: item.sourceUrl,
-        thumbnail_url: item.thumbnailUrl,
-        owner_user_id: item.ownerUserId,
-        parent_id: item.parentId ?? null,
-        metadata,
-        access_source: accessSource,
-        permission_level: item.ownerUserId === actor.userId
-          ? "owner"
-          : permissionInfo.effectivePermissionLevel ?? "read",
-        shared_out_count: 0,
-        has_shared_out: false as boolean,
-        created_at: item.createdAt.toISOString(),
-        updated_at: item.updatedAt.toISOString(),
-      });
+      })
+    ) {
       return acc;
-    }, []);
+    }
+
+    const metadata = normalizeLibraryMetadata(
+      item.metadata as Record<string, unknown>
+    );
+    acc.push({
+      id: item.id,
+      item_type: item.itemType,
+      source: item.source,
+      title: item.title,
+      description: item.description,
+      status: item.status,
+      visibility: item.visibility,
+      source_url: item.sourceUrl,
+      thumbnail_url: item.thumbnailUrl,
+      owner_user_id: item.ownerUserId,
+      parent_id: item.parentId ?? null,
+      metadata,
+      access_source: accessSource,
+      permission_level:
+        item.ownerUserId === actor.userId
+          ? "owner"
+          : (permissionInfo.effectivePermissionLevel ?? "read"),
+      shared_out_count: 0,
+      has_shared_out: false as boolean,
+      created_at: item.createdAt.toISOString(),
+      updated_at: item.updatedAt.toISOString(),
+    });
+    return acc;
+  }, []);
 
   visible.sort((a, b) => {
     if (sort === "created_desc") {
-      const createdDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      const createdDiff =
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (createdDiff !== 0) return createdDiff;
       return b.id - a.id;
     }
 
-    const updatedDiff = new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    const updatedDiff =
+      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     if (updatedDiff !== 0) return updatedDiff;
-    const createdDiff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    const createdDiff =
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     if (createdDiff !== 0) return createdDiff;
     return b.id - a.id;
   });
@@ -4903,9 +5472,9 @@ export async function listLibraryDocuments(
   const paged = visible.slice(offset, offset + limit);
 
   if (paged.length > 0) {
-    const pagedItemIds = paged.map((item) => item.id);
+    const pagedItemIds = paged.map(item => item.id);
     const ownerUserIdByItemId = new Map<number, number>(
-      paged.map((item) => [item.id, item.owner_user_id]),
+      paged.map(item => [item.id, item.owner_user_id])
     );
     const activeShareRows = await db
       .select({
@@ -4921,10 +5490,13 @@ export async function listLibraryDocuments(
           inArray(libraryPermissions.libraryItemId, pagedItemIds),
           or(
             eq(libraryPermissions.subjectType, "user"),
-            eq(libraryPermissions.subjectType, "group"),
+            eq(libraryPermissions.subjectType, "group")
           ),
-          or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
-        ),
+          or(
+            isNull(libraryPermissions.expiresAt),
+            gt(libraryPermissions.expiresAt, new Date())
+          )
+        )
       );
 
     const shareCountByItemId = new Map<number, number>();
@@ -4935,9 +5507,9 @@ export async function listLibraryDocuments(
       }
       const ownerUserId = ownerUserIdByItemId.get(itemId);
       if (
-        row.subjectType === "user"
-        && ownerUserId !== undefined
-        && Number(row.subjectId) === ownerUserId
+        row.subjectType === "user" &&
+        ownerUserId !== undefined &&
+        Number(row.subjectId) === ownerUserId
       ) {
         continue;
       }
@@ -4964,7 +5536,7 @@ export async function listLibraryDocuments(
 export async function getLibraryMarkdownContent(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryMarkdownContentResult | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -4993,8 +5565,8 @@ export async function getLibraryMarkdownContent(
         eq(libraryChunks.tenantId, actorTenantId),
         eq(libraryChunks.libraryItemId, item.id),
         eq(libraryChunks.chunkIndex, 0),
-        eq(libraryChunks.contentType, "markdown_source"),
-      ),
+        eq(libraryChunks.contentType, "markdown_source")
+      )
     )
     .limit(1);
 
@@ -5015,7 +5587,7 @@ async function createContentVersion(
     createdByUserId: number;
     changeDescription?: string;
     snapshotObjectKey?: string;
-  },
+  }
 ): Promise<LibraryContentVersion | null> {
   const contentHash = crypto
     .createHash("sha256")
@@ -5044,8 +5616,8 @@ async function createContentVersion(
       .where(
         and(
           eq(libraryContentVersions.libraryItemId, input.libraryItemId),
-          eq(libraryContentVersions.contentHash, contentHash),
-        ),
+          eq(libraryContentVersions.contentHash, contentHash)
+        )
       )
       .limit(1);
 
@@ -5076,7 +5648,7 @@ async function createContentVersion(
 export async function saveLibraryMarkdown(
   input: SaveLibraryMarkdownInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<SaveLibraryMarkdownResult | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5109,8 +5681,8 @@ export async function saveLibraryMarkdown(
     .where(
       and(
         eq(libraryChunks.libraryItemId, existing.id),
-        eq(libraryChunks.contentType, "markdown_source"),
-      ),
+        eq(libraryChunks.contentType, "markdown_source")
+      )
     )
     .limit(1);
 
@@ -5165,7 +5737,12 @@ export async function saveLibraryMarkdown(
       }),
       updatedAt: now,
     })
-    .where(and(eq(libraryItems.id, existing.id), eq(libraryItems.tenantId, actorTenantId)))
+    .where(
+      and(
+        eq(libraryItems.id, existing.id),
+        eq(libraryItems.tenantId, actorTenantId)
+      )
+    )
     .returning();
 
   const updated = updatedRows[0];
@@ -5191,7 +5768,7 @@ export async function saveLibraryMarkdown(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return {
@@ -5204,7 +5781,7 @@ export async function getContentVersionHistory(
   itemId: number,
   actor: LibraryActor,
   options?: { limit?: number; offset?: number },
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryContentVersion[]> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5228,8 +5805,8 @@ export async function getContentVersionHistory(
     .where(
       and(
         eq(libraryContentVersions.libraryItemId, itemId),
-        eq(libraryContentVersions.tenantId, actorTenantId),
-      ),
+        eq(libraryContentVersions.tenantId, actorTenantId)
+      )
     )
     .orderBy(desc(libraryContentVersions.createdAt))
     .limit(limit)
@@ -5239,7 +5816,7 @@ export async function getContentVersionHistory(
 export async function getContentVersionById(
   versionId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryContentVersion | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5250,8 +5827,8 @@ export async function getContentVersionById(
     .where(
       and(
         eq(libraryContentVersions.id, versionId),
-        eq(libraryContentVersions.tenantId, actorTenantId),
-      ),
+        eq(libraryContentVersions.tenantId, actorTenantId)
+      )
     )
     .limit(1);
 
@@ -5262,7 +5839,7 @@ export async function getContentVersionById(
   const existing = await getLibraryItemRowById(
     db,
     version.libraryItemId,
-    actorTenantId,
+    actorTenantId
   );
   if (!existing) {
     return null;
@@ -5279,7 +5856,7 @@ export async function getContentVersionById(
 export async function getVersionSnapshotDownloadUrl(
   versionId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ url: string; fileName: string; fileType: string } | null> {
   const version = await getContentVersionById(versionId, actor, dbClient);
   if (!version) {
@@ -5313,7 +5890,7 @@ export async function getVersionSnapshotDownloadUrl(
 export async function restoreContentVersion(
   versionId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<SaveLibraryMarkdownResult | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5326,7 +5903,7 @@ export async function restoreContentVersion(
   const existing = await getLibraryItemRowById(
     db,
     version.libraryItemId,
-    actorTenantId,
+    actorTenantId
   );
   if (!existing) {
     return null;
@@ -5346,7 +5923,9 @@ export async function restoreContentVersion(
     try {
       restoredUrl = await storageGet(version.snapshotObjectKey);
     } catch {
-      throw new Error("The archived file could not be found in storage. It may have been deleted.");
+      throw new Error(
+        "The archived file could not be found in storage. It may have been deleted."
+      );
     }
 
     // Restore file metadata from the version
@@ -5364,15 +5943,16 @@ export async function restoreContentVersion(
       .where(
         and(
           eq(libraryLinks.libraryItemId, existing.id),
-          eq(libraryLinks.linkType, "upload_key"),
-        ),
+          eq(libraryLinks.linkType, "upload_key")
+        )
       )
       .limit(1);
 
     const currentStorageKey = currentLinks[0]?.linkId ?? null;
-    const currentFileType = typeof oldMetadata.file_type === "string"
-      ? oldMetadata.file_type
-      : "application/octet-stream";
+    const currentFileType =
+      typeof oldMetadata.file_type === "string"
+        ? oldMetadata.file_type
+        : "application/octet-stream";
     const currentSnapshotContent = JSON.stringify({
       file_name: oldMetadata.file_name ?? existing.title,
       file_type: currentFileType,
@@ -5391,28 +5971,31 @@ export async function restoreContentVersion(
     });
 
     // Item + link updates in a transaction for atomicity
-    const updated = await db.transaction(async (tx) => {
+    const updated = await db.transaction(async tx => {
       const now = new Date();
       const updatedRows = await tx
         .update(libraryItems)
         .set({
           sourceUrl: restoredUrl.url,
           thumbnailUrl:
-            existing.itemType === "image" ? restoredUrl.url : existing.thumbnailUrl,
+            existing.itemType === "image"
+              ? restoredUrl.url
+              : existing.thumbnailUrl,
           status: "indexing",
           metadata: normalizeLibraryMetadata({
             ...oldMetadata,
             file_name: restoredMeta.file_name ?? oldMetadata.file_name,
             file_type: restoredMeta.file_type ?? oldMetadata.file_type,
-            file_size_bytes: restoredMeta.file_size_bytes ?? oldMetadata.file_size_bytes,
+            file_size_bytes:
+              restoredMeta.file_size_bytes ?? oldMetadata.file_size_bytes,
           }),
           updatedAt: now,
         })
         .where(
           and(
             eq(libraryItems.id, existing.id),
-            eq(libraryItems.tenantId, actorTenantId),
-          ),
+            eq(libraryItems.tenantId, actorTenantId)
+          )
         )
         .returning();
 
@@ -5459,7 +6042,7 @@ export async function restoreContentVersion(
         },
         allowThrottle: true,
       },
-      db,
+      db
     );
 
     return {
@@ -5477,14 +6060,14 @@ export async function restoreContentVersion(
       knowledgeRefreshReason: "restore",
     },
     actor,
-    db,
+    db
   );
 }
 
 export async function searchLibraryItems(
   input: LibrarySearchInput,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibrarySearchResponseV1> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5496,11 +6079,13 @@ export async function searchLibraryItems(
   const scope = input.scope ?? "all";
 
   const applyFolderFilter =
-    query.length === 0
-    && (scope === "my_library" || scope === "all")
-    && "folderId" in input;
+    query.length === 0 &&
+    (scope === "my_library" || scope === "all") &&
+    "folderId" in input;
   const folderCondition = applyFolderFilter
-    ? (input.folderId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.folderId))
+    ? input.folderId == null
+      ? isNull(libraryItems.parentId)
+      : eq(libraryItems.parentId, input.folderId)
     : undefined;
 
   const itemRows = await db
@@ -5510,17 +6095,21 @@ export async function searchLibraryItems(
       and(
         eq(libraryItems.tenantId, actorTenantId),
         isNull(libraryItems.deletedAt),
-        folderCondition,
-      ),
+        folderCondition
+      )
     )
     .orderBy(desc(libraryItems.createdAt));
 
   const effectiveFilters: LibrarySearchFilters = {
     ...input.filters,
-    ...(input.itemType && !input.filters?.itemType ? { itemType: input.itemType } : {}),
+    ...(input.itemType && !input.filters?.itemType
+      ? { itemType: input.itemType }
+      : {}),
   };
-  const filteredItems = itemRows.filter((item) => itemMatchesFilters(item, effectiveFilters));
-  const itemIds = filteredItems.map((item) => item.id);
+  const filteredItems = itemRows.filter(item =>
+    itemMatchesFilters(item, effectiveFilters)
+  );
+  const itemIds = filteredItems.map(item => item.id);
 
   if (itemIds.length === 0) {
     return {
@@ -5558,34 +6147,50 @@ export async function searchLibraryItems(
         or(
           and(
             eq(libraryPermissions.subjectType, "user"),
-            eq(libraryPermissions.subjectId, String(actor.userId)),
+            eq(libraryPermissions.subjectId, String(actor.userId))
           ),
           and(
             eq(libraryPermissions.subjectType, "tenant_role"),
-            eq(libraryPermissions.subjectId, actor.role || ""),
+            eq(libraryPermissions.subjectId, actor.role || "")
           ),
-          ...(groupIds.length > 0 ? [
-            and(
-              eq(libraryPermissions.subjectType, "group"),
-              inArray(libraryPermissions.subjectId, groupIds),
-            )
-          ] : [])
+          ...(groupIds.length > 0
+            ? [
+                and(
+                  eq(libraryPermissions.subjectType, "group"),
+                  inArray(libraryPermissions.subjectId, groupIds)
+                ),
+              ]
+            : [])
         ),
         inArray(libraryPermissions.libraryItemId, itemIds),
-        or(isNull(libraryPermissions.expiresAt), gt(libraryPermissions.expiresAt, new Date())),
-      ),
+        or(
+          isNull(libraryPermissions.expiresAt),
+          gt(libraryPermissions.expiresAt, new Date())
+        )
+      )
     );
 
   const groupIdNums = userGroups.map(g => g.id);
-  const scopedItems = filteredItems.filter((item) => matchesPrivateVaultScope(item, scope));
+  const scopedItems = filteredItems.filter(item =>
+    matchesPrivateVaultScope(item, scope)
+  );
 
-  const visibleEntries = scopedItems.reduce<Array<{
-    item: LibraryItemRow;
-    accessSource: LibraryDocumentAccessSource;
-    permissionInfo: ReturnType<typeof getPermissionLevelForItem>;
-  }>>((acc, item) => {
-    const permissionInfo = getPermissionLevelForItem(permissionRows, item.id, actor, groupIdNums);
-    if (!canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)) {
+  const visibleEntries = scopedItems.reduce<
+    Array<{
+      item: LibraryItemRow;
+      accessSource: LibraryDocumentAccessSource;
+      permissionInfo: ReturnType<typeof getPermissionLevelForItem>;
+    }>
+  >((acc, item) => {
+    const permissionInfo = getPermissionLevelForItem(
+      permissionRows,
+      item.id,
+      actor,
+      groupIdNums
+    );
+    if (
+      !canReadLibraryItem(item, actor, permissionInfo.effectivePermissionLevel)
+    ) {
       return acc;
     }
 
@@ -5607,17 +6212,25 @@ export async function searchLibraryItems(
     return acc;
   }, []);
 
-  const visibleItemIds = visibleEntries.map((entry) => entry.item.id);
-  const pgvectorCandidateIds = visibleItemIds.slice(0, LIBRARY_PGVECTOR_CANDIDATE_LIMIT);
+  const visibleItemIds = visibleEntries.map(entry => entry.item.id);
+  const pgvectorCandidateIds = visibleItemIds.slice(
+    0,
+    LIBRARY_PGVECTOR_CANDIDATE_LIMIT
+  );
   const shouldTryNativePgvector =
     query.length > 0 &&
     resolvedProvider.provider === "pgvector" &&
     Boolean((await getAppRuntimeConfig()).proxyToken);
-  const shouldTryCloudflareVectorize = query.length > 0 && resolvedProvider.provider === "cloudflare_vectorize";
+  const shouldTryCloudflareVectorize =
+    query.length > 0 && resolvedProvider.provider === "cloudflare_vectorize";
 
   let pgvectorScores: Map<number, number> | null = null;
   let cloudflareScores: Map<number, number> | null = null;
-  let chunkRows: Array<{ libraryItemId: number; content: string; vectorRefId: string | null }> = [];
+  let chunkRows: Array<{
+    libraryItemId: number;
+    content: string;
+    vectorRefId: string | null;
+  }> = [];
 
   if (query.length > 0) {
     if (shouldTryNativePgvector) {
@@ -5633,13 +6246,19 @@ export async function searchLibraryItems(
         tenantId: actorTenantId,
         query,
         itemIds: visibleItemIds,
-        indexName: providerConfig.vectorizeIndexName || resolveLibraryVectorIndexName(),
+        indexName:
+          providerConfig.vectorizeIndexName || resolveLibraryVectorIndexName(),
         providerConfig,
       });
     }
 
-    if ((!shouldTryNativePgvector || pgvectorScores === null) && (!shouldTryCloudflareVectorize || cloudflareScores === null)) {
-      const chunkCandidateIds = shouldTryNativePgvector ? pgvectorCandidateIds : visibleItemIds;
+    if (
+      (!shouldTryNativePgvector || pgvectorScores === null) &&
+      (!shouldTryCloudflareVectorize || cloudflareScores === null)
+    ) {
+      const chunkCandidateIds = shouldTryNativePgvector
+        ? pgvectorCandidateIds
+        : visibleItemIds;
       if (chunkCandidateIds.length > 0) {
         chunkRows = await db
           .select({
@@ -5651,14 +6270,17 @@ export async function searchLibraryItems(
           .where(
             and(
               eq(libraryChunks.tenantId, actorTenantId),
-              inArray(libraryChunks.libraryItemId, chunkCandidateIds),
-            ),
+              inArray(libraryChunks.libraryItemId, chunkCandidateIds)
+            )
           );
       }
     }
   }
 
-  const chunksByItem = new Map<number, Array<{ content: string; vectorRefId: string | null }>>();
+  const chunksByItem = new Map<
+    number,
+    Array<{ content: string; vectorRefId: string | null }>
+  >();
   for (const chunk of chunkRows) {
     const list = chunksByItem.get(chunk.libraryItemId) ?? [];
     list.push({
@@ -5669,9 +6291,11 @@ export async function searchLibraryItems(
   }
 
   const visibleScored = visibleEntries
-    .map((entry) => {
+    .map(entry => {
       const item = entry.item;
-      const metadata = normalizeLibraryMetadata(item.metadata as Record<string, unknown>);
+      const metadata = normalizeLibraryMetadata(
+        item.metadata as Record<string, unknown>
+      );
       const chunks = chunksByItem.get(item.id) ?? [];
 
       const itemText = [
@@ -5681,14 +6305,17 @@ export async function searchLibraryItems(
       ].join(" ");
 
       const keywordScore = query
-        ? computeTokenOverlapScore(queryTokens, itemText)
-          + computeLibraryExactFieldBoost(query, item, metadata)
+        ? computeTokenOverlapScore(queryTokens, itemText) +
+          computeLibraryExactFieldBoost(query, item, metadata)
         : 0;
       const fallbackVectorScore = query
         ? chunks
-            .filter((chunk) => Boolean(chunk.vectorRefId))
+            .filter(chunk => Boolean(chunk.vectorRefId))
             .reduce((maxScore, chunk) => {
-              const score = computeTokenOverlapScore(queryTokens, chunk.content);
+              const score = computeTokenOverlapScore(
+                queryTokens,
+                chunk.content
+              );
               return score > maxScore ? score : maxScore;
             }, 0)
         : 0;
@@ -5697,24 +6324,26 @@ export async function searchLibraryItems(
           ? (pgvectorScores.get(item.id) ?? 0)
           : cloudflareScores
             ? (cloudflareScores.get(item.id) ?? 0)
-          : fallbackVectorScore
+            : fallbackVectorScore
         : 0;
 
       const combinedScore = query
         ? Number((0.45 * keywordScore + 0.55 * vectorScore).toFixed(6))
         : 0;
 
-      const providerName = typeof metadata.provider_name === "string"
-        ? metadata.provider_name
-        : typeof metadata.provider === "string"
-          ? metadata.provider
-          : null;
+      const providerName =
+        typeof metadata.provider_name === "string"
+          ? metadata.provider_name
+          : typeof metadata.provider === "string"
+            ? metadata.provider
+            : null;
 
-      const modelName = typeof metadata.model_name === "string"
-        ? metadata.model_name
-        : typeof metadata.model === "string"
-          ? metadata.model
-          : null;
+      const modelName =
+        typeof metadata.model_name === "string"
+          ? metadata.model_name
+          : typeof metadata.model === "string"
+            ? metadata.model
+            : null;
 
       return {
         item,
@@ -5726,7 +6355,7 @@ export async function searchLibraryItems(
         modelName,
       };
     })
-    .filter((entry) => {
+    .filter(entry => {
       if (!query) return true;
       return entry.keywordScore > 0 || entry.vectorScore > 0;
     });
@@ -5737,11 +6366,15 @@ export async function searchLibraryItems(
       return input.sortOrder === "asc" ? cmp : -cmp;
     });
   } else if (input.sortBy === "created_at" && input.sortOrder === "asc") {
-    visibleScored.sort((a, b) => a.item.createdAt.getTime() - b.item.createdAt.getTime());
+    visibleScored.sort(
+      (a, b) => a.item.createdAt.getTime() - b.item.createdAt.getTime()
+    );
   } else {
     visibleScored.sort((a, b) => {
-      if (b.combinedScore !== a.combinedScore) return b.combinedScore - a.combinedScore;
-      if (b.keywordScore !== a.keywordScore) return b.keywordScore - a.keywordScore;
+      if (b.combinedScore !== a.combinedScore)
+        return b.combinedScore - a.combinedScore;
+      if (b.keywordScore !== a.keywordScore)
+        return b.keywordScore - a.keywordScore;
       if (b.vectorScore !== a.vectorScore) return b.vectorScore - a.vectorScore;
       if (b.item.createdAt.getTime() !== a.item.createdAt.getTime()) {
         return b.item.createdAt.getTime() - a.item.createdAt.getTime();
@@ -5751,7 +6384,7 @@ export async function searchLibraryItems(
   }
 
   const paged = visibleScored.slice(offset, offset + limit);
-  const results: LibrarySearchResultV1[] = paged.map((entry) => ({
+  const results: LibrarySearchResultV1[] = paged.map(entry => ({
     item_id: entry.item.id,
     item_type: entry.item.itemType,
     title: entry.item.title,
@@ -5764,7 +6397,9 @@ export async function searchLibraryItems(
     model_name: entry.modelName,
     owner_user_id: entry.item.ownerUserId,
     parent_id: entry.item.parentId ?? null,
-    metadata: normalizeLibraryMetadata(entry.item.metadata as Record<string, unknown>),
+    metadata: normalizeLibraryMetadata(
+      entry.item.metadata as Record<string, unknown>
+    ),
     access_source: entry.accessSource,
     created_at: entry.item.createdAt.toISOString(),
     updated_at: entry.item.updatedAt.toISOString(),
@@ -5796,7 +6431,7 @@ export async function searchLibraryItems(
 export async function removeLibraryShare(
   input: { itemId: number; subjectType: string; subjectId: string },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5817,8 +6452,8 @@ export async function removeLibraryShare(
         eq(libraryPermissions.libraryItemId, input.itemId),
         eq(libraryPermissions.subjectType, input.subjectType),
         eq(libraryPermissions.subjectId, input.subjectId),
-        eq(libraryPermissions.tenantId, actorTenantId),
-      ),
+        eq(libraryPermissions.tenantId, actorTenantId)
+      )
     )
     .returning({ id: libraryPermissions.id });
 
@@ -5854,16 +6489,21 @@ export async function removeLibraryShare(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return true;
 }
 
 export async function updateLibrarySharePermission(
-  input: { itemId: number; subjectType: string; subjectId: string; permissionLevel: string },
+  input: {
+    itemId: number;
+    subjectType: string;
+    subjectId: string;
+    permissionLevel: string;
+  },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5888,8 +6528,8 @@ export async function updateLibrarySharePermission(
         eq(libraryPermissions.libraryItemId, input.itemId),
         eq(libraryPermissions.subjectType, input.subjectType),
         eq(libraryPermissions.subjectId, input.subjectId),
-        eq(libraryPermissions.tenantId, actorTenantId),
-      ),
+        eq(libraryPermissions.tenantId, actorTenantId)
+      )
     )
     .returning({ id: libraryPermissions.id });
 
@@ -5925,7 +6565,7 @@ export async function updateLibrarySharePermission(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return true;
@@ -5945,7 +6585,7 @@ export interface LibraryShareEntry {
 export async function getLibraryItemShares(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ shares: LibraryShareEntry[] }> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -5970,18 +6610,18 @@ export async function getLibraryItemShares(
     .where(
       and(
         eq(libraryPermissions.libraryItemId, itemId),
-        eq(libraryPermissions.tenantId, actorTenantId),
-      ),
+        eq(libraryPermissions.tenantId, actorTenantId)
+      )
     )
     .limit(200);
 
   // Batch resolve names for shares (one query per subject type)
   const userSubjectIds = permRows
-    .filter((p) => p.subjectType === "user")
-    .map((p) => Number(p.subjectId));
+    .filter(p => p.subjectType === "user")
+    .map(p => Number(p.subjectId));
   const groupSubjectIds = permRows
-    .filter((p) => p.subjectType === "group")
-    .map((p) => Number(p.subjectId));
+    .filter(p => p.subjectType === "group")
+    .map(p => Number(p.subjectId));
 
   const [userNameRows, groupNameRows] = await Promise.all([
     userSubjectIds.length > 0
@@ -5994,14 +6634,19 @@ export async function getLibraryItemShares(
       ? db
           .select({ id: userGroups.id, name: userGroups.name })
           .from(userGroups)
-          .where(and(inArray(userGroups.id, groupSubjectIds), isNull(userGroups.deletedAt)))
+          .where(
+            and(
+              inArray(userGroups.id, groupSubjectIds),
+              isNull(userGroups.deletedAt)
+            )
+          )
       : Promise.resolve([]),
   ]);
 
-  const userNameMap = new Map(userNameRows.map((r) => [r.id, r.name]));
-  const groupNameMap = new Map(groupNameRows.map((r) => [r.id, r.name]));
+  const userNameMap = new Map(userNameRows.map(r => [r.id, r.name]));
+  const groupNameMap = new Map(groupNameRows.map(r => [r.id, r.name]));
 
-  const shares: LibraryShareEntry[] = permRows.map((p) => {
+  const shares: LibraryShareEntry[] = permRows.map(p => {
     const base: LibraryShareEntry = {
       id: p.id,
       subjectType: p.subjectType,
@@ -6011,11 +6656,17 @@ export async function getLibraryItemShares(
     };
 
     if (p.subjectType === "user") {
-      return { ...base, userName: userNameMap.get(Number(p.subjectId)) ?? null };
+      return {
+        ...base,
+        userName: userNameMap.get(Number(p.subjectId)) ?? null,
+      };
     }
 
     if (p.subjectType === "group") {
-      return { ...base, groupName: groupNameMap.get(Number(p.subjectId)) ?? "Deleted Group" };
+      return {
+        ...base,
+        groupName: groupNameMap.get(Number(p.subjectId)) ?? "Deleted Group",
+      };
     }
 
     // tenant_role
@@ -6045,7 +6696,7 @@ export interface TrashListItem {
 export async function listLibraryTrash(
   input: { limit?: number; offset?: number },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ items: TrashListItem[]; total: number }> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -6057,8 +6708,8 @@ export async function listLibraryTrash(
     isNotNull(libraryItems.deletedAt),
     or(
       eq(libraryItems.ownerUserId, actor.userId),
-      eq(libraryItems.deletedBy, actor.userId),
-    ),
+      eq(libraryItems.deletedBy, actor.userId)
+    )
   );
 
   const [totalRow] = await db
@@ -6083,7 +6734,7 @@ export async function listLibraryTrash(
     .offset(offset);
 
   const now = Date.now();
-  const items: TrashListItem[] = rows.map((r) => {
+  const items: TrashListItem[] = rows.map(r => {
     const deletedAtMs = r.deletedAt ? new Date(r.deletedAt).getTime() : now;
     const daysInTrash = Math.floor((now - deletedAtMs) / MS_PER_DAY);
     return {
@@ -6099,12 +6750,12 @@ export async function listLibraryTrash(
 export async function restoreFromLibraryTrash(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<boolean> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
 
-  const restored = await db.transaction(async (tx) => {
+  const restored = await db.transaction(async tx => {
     const rows = await tx
       .select({
         id: libraryItems.id,
@@ -6116,8 +6767,8 @@ export async function restoreFromLibraryTrash(
         and(
           eq(libraryItems.id, itemId),
           eq(libraryItems.tenantId, actorTenantId),
-          isNotNull(libraryItems.deletedAt),
-        ),
+          isNotNull(libraryItems.deletedAt)
+        )
       )
       .limit(1);
 
@@ -6147,8 +6798,8 @@ export async function restoreFromLibraryTrash(
       .where(
         and(
           eq(libraryItems.id, itemId),
-          eq(libraryItems.tenantId, actorTenantId),
-        ),
+          eq(libraryItems.tenantId, actorTenantId)
+        )
       );
 
     return true;
@@ -6171,7 +6822,7 @@ export async function restoreFromLibraryTrash(
       },
       allowThrottle: true,
     },
-    db,
+    db
   );
 
   return restored;
@@ -6184,19 +6835,23 @@ export async function restoreFromLibraryTrash(
  */
 export async function cascadeDeleteLibraryItem(
   tx: Parameters<Parameters<DbClient["transaction"]>[0]>[0],
-  itemId: number,
+  itemId: number
 ): Promise<void> {
   await tx.delete(libraryLinks).where(eq(libraryLinks.libraryItemId, itemId));
   await tx.delete(libraryChunks).where(eq(libraryChunks.libraryItemId, itemId));
-  await tx.delete(libraryIndexJobs).where(eq(libraryIndexJobs.libraryItemId, itemId));
-  await tx.delete(libraryPermissions).where(eq(libraryPermissions.libraryItemId, itemId));
+  await tx
+    .delete(libraryIndexJobs)
+    .where(eq(libraryIndexJobs.libraryItemId, itemId));
+  await tx
+    .delete(libraryPermissions)
+    .where(eq(libraryPermissions.libraryItemId, itemId));
   await tx.delete(libraryItems).where(eq(libraryItems.id, itemId));
 }
 
 export async function permanentDeleteLibraryItem(
   itemId: number,
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ daysInTrash: number }> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -6214,8 +6869,8 @@ export async function permanentDeleteLibraryItem(
       and(
         eq(libraryItems.id, itemId),
         eq(libraryItems.tenantId, actorTenantId),
-        isNotNull(libraryItems.deletedAt),
-      ),
+        isNotNull(libraryItems.deletedAt)
+      )
     )
     .limit(1);
 
@@ -6232,12 +6887,14 @@ export async function permanentDeleteLibraryItem(
     ? Math.floor((Date.now() - new Date(item.deletedAt).getTime()) / MS_PER_DAY)
     : 0;
   const isAdminWithExpired =
-    (actor.role === "admin" || actor.role === "domain_admin") && daysInTrash >= TRASH_PURGE_DAYS;
+    (actor.role === "admin" || actor.role === "domain_admin") &&
+    daysInTrash >= TRASH_PURGE_DAYS;
 
   if (!isOwner && !isAdminWithExpired) {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Only the item owner can permanently delete, or admins for items 90+ days in trash",
+      message:
+        "Only the item owner can permanently delete, or admins for items 90+ days in trash",
     });
   }
 
@@ -6249,8 +6906,8 @@ export async function permanentDeleteLibraryItem(
       .where(
         and(
           eq(libraryLinks.libraryItemId, itemId),
-          eq(libraryLinks.linkType, "upload_key"),
-        ),
+          eq(libraryLinks.linkType, "upload_key")
+        )
       ),
     collectLibraryVectorCleanupTargets(itemId, actorTenantId, db),
   ]);
@@ -6264,7 +6921,7 @@ export async function permanentDeleteLibraryItem(
     indexNames: vectorCleanupTargets.indexNames,
   });
 
-  await db.transaction(async (tx) => {
+  await db.transaction(async tx => {
     await cascadeDeleteLibraryItem(tx, itemId);
   });
 
@@ -6275,7 +6932,7 @@ export async function permanentDeleteLibraryItem(
     } catch (err) {
       console.error(
         `[permanent-delete] Storage cleanup failed for key ${linkId}:`,
-        err instanceof Error ? err.message : err,
+        err instanceof Error ? err.message : err
       );
     }
   }
@@ -6289,8 +6946,12 @@ export async function permanentDeleteLibraryItem(
  */
 export async function removeGoogleDriveData(
   userId: number,
-  tenantId: string,
-): Promise<{ itemsDeleted: number; chunksDeleted: number; linksDeleted: number }> {
+  tenantId: string
+): Promise<{
+  itemsDeleted: number;
+  chunksDeleted: number;
+  linksDeleted: number;
+}> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -6302,16 +6963,20 @@ export async function removeGoogleDriveData(
       and(
         eq(libraryItems.source, "google_drive"),
         eq(libraryItems.ownerUserId, userId),
-        eq(libraryItems.tenantId, tenantId),
-      ),
+        eq(libraryItems.tenantId, tenantId)
+      )
     );
 
-  const itemIds = driveItems.map((i) => i.id);
+  const itemIds = driveItems.map(i => i.id);
   if (itemIds.length === 0) {
     return { itemsDeleted: 0, chunksDeleted: 0, linksDeleted: 0 };
   }
 
-  const vectorCleanupTargets = await collectLibraryVectorCleanupTargets(itemIds, tenantId, db);
+  const vectorCleanupTargets = await collectLibraryVectorCleanupTargets(
+    itemIds,
+    tenantId,
+    db
+  );
 
   await cleanupLibraryVectorArtifacts({
     tenantId,
@@ -6353,7 +7018,7 @@ export interface LibraryFolderAncestor {
 export async function findOwnedLibraryFolderByName(
   input: { name: string; parentId?: number | null },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryItemDto | null> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -6371,9 +7036,11 @@ export async function findOwnedLibraryFolderByName(
         eq(libraryItems.ownerUserId, actor.userId),
         eq(libraryItems.itemType, "folder"),
         eq(libraryItems.title, normalizedName),
-        input.parentId == null ? isNull(libraryItems.parentId) : eq(libraryItems.parentId, input.parentId),
-        isNull(libraryItems.deletedAt),
-      ),
+        input.parentId == null
+          ? isNull(libraryItems.parentId)
+          : eq(libraryItems.parentId, input.parentId),
+        isNull(libraryItems.deletedAt)
+      )
     )
     .orderBy(libraryItems.id)
     .limit(1);
@@ -6391,7 +7058,7 @@ export async function findOwnedLibraryFolderByName(
 export async function createLibraryFolder(
   input: { name: string; parentId?: number | null },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<CreateLibraryItemResult> {
   return createLibraryItem(
     {
@@ -6405,14 +7072,14 @@ export async function createLibraryFolder(
       metadata: { source_type: "folder" },
     },
     actor,
-    dbClient,
+    dbClient
   );
 }
 
 export async function ensureOwnedLibraryFolder(
   input: { name: string; parentId?: number | null },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<CreateLibraryItemResult> {
   const existing = await findOwnedLibraryFolderByName(input, actor, dbClient);
   if (existing) {
@@ -6428,7 +7095,7 @@ export async function ensureOwnedLibraryFolder(
 export async function getLibraryFolderChildCount(
   folderId: number,
   tenantId: LibraryTenantId,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<number> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(tenantId);
@@ -6439,8 +7106,8 @@ export async function getLibraryFolderChildCount(
       and(
         eq(libraryItems.tenantId, actorTenantId),
         eq(libraryItems.parentId, folderId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     );
   return Number(row?.cnt ?? 0);
 }
@@ -6452,7 +7119,7 @@ export async function getLibraryFolderChildCount(
 export async function getLibraryFolderAncestors(
   folderId: number,
   tenantId: LibraryTenantId,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<LibraryFolderAncestor[]> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(tenantId);
@@ -6463,11 +7130,21 @@ export async function getLibraryFolderAncestors(
   // Walk up the tree (max 20 levels to prevent runaway loops)
   for (let depth = 0; depth < 20 && currentId != null; depth++) {
     const idToFetch: number = currentId;
-    const rows: Array<{ id: number; title: string; parentId: number | null }> = await db
-      .select({ id: libraryItems.id, title: libraryItems.title, parentId: libraryItems.parentId })
-      .from(libraryItems)
-      .where(and(eq(libraryItems.id, idToFetch), eq(libraryItems.tenantId, actorTenantId)))
-      .limit(1);
+    const rows: Array<{ id: number; title: string; parentId: number | null }> =
+      await db
+        .select({
+          id: libraryItems.id,
+          title: libraryItems.title,
+          parentId: libraryItems.parentId,
+        })
+        .from(libraryItems)
+        .where(
+          and(
+            eq(libraryItems.id, idToFetch),
+            eq(libraryItems.tenantId, actorTenantId)
+          )
+        )
+        .limit(1);
 
     const row = rows[0];
     if (!row) break;
@@ -6485,7 +7162,7 @@ export async function getLibraryFolderAncestors(
 export async function batchSoftDeleteLibraryItems(
   itemIds: number[],
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<number> {
   if (itemIds.length === 0) return 0;
   const db = await resolveDb(dbClient);
@@ -6502,27 +7179,36 @@ export async function batchSoftDeleteLibraryItems(
       and(
         inArray(libraryItems.id, itemIds),
         eq(libraryItems.tenantId, actorTenantId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     );
   const presentationItemIds = existingRows
-    .filter((row) => row.itemType === "presentation")
-    .map((row) => row.id);
+    .filter(row => row.itemType === "presentation")
+    .map(row => row.id);
 
   const result = await db
     .update(libraryItems)
-    .set({ deletedAt: now, deletedBy: actor.userId, status: "archived", updatedAt: now })
+    .set({
+      deletedAt: now,
+      deletedBy: actor.userId,
+      status: "archived",
+      updatedAt: now,
+    })
     .where(
       and(
         inArray(libraryItems.id, itemIds),
         eq(libraryItems.tenantId, actorTenantId),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     )
     .returning({ id: libraryItems.id });
 
   for (const presentationItemId of presentationItemIds) {
-    await softDeleteDeckScopedPresentationUploads(presentationItemId, actor, db);
+    await softDeleteDeckScopedPresentationUploads(
+      presentationItemId,
+      actor,
+      db
+    );
   }
 
   return result.length;
@@ -6533,9 +7219,13 @@ export async function batchSoftDeleteLibraryItems(
  * Returns the number of items that were newly shared (or already had a share updated).
  */
 export async function shareLibraryToGroup(
-  input: { folderId: number; groupId: number; permissionLevel: LibraryPermissionLevel },
+  input: {
+    folderId: number;
+    groupId: number;
+    permissionLevel: LibraryPermissionLevel;
+  },
   actor: LibraryActor,
-  dbClient?: DbClient,
+  dbClient?: DbClient
 ): Promise<{ shared: number }> {
   const db = await resolveDb(dbClient);
   const actorTenantId = normalizeLibraryTenantId(actor.tenantId);
@@ -6548,8 +7238,8 @@ export async function shareLibraryToGroup(
       and(
         eq(userGroups.id, input.groupId),
         eq(userGroups.tenantId, actorTenantId),
-        isNull(userGroups.deletedAt),
-      ),
+        isNull(userGroups.deletedAt)
+      )
     )
     .limit(1);
 
@@ -6566,13 +7256,15 @@ export async function shareLibraryToGroup(
         eq(libraryItems.tenantId, actorTenantId),
         eq(libraryItems.ownerUserId, actor.userId),
         eq(libraryItems.itemType, "folder"),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     )
     .limit(1);
 
   if (!folder) {
-    throw new Error("Folder not found or you do not have permission to share it");
+    throw new Error(
+      "Folder not found or you do not have permission to share it"
+    );
   }
 
   // Collect all descendant folders owned by actor (BFS) so sharing is folder-recursive.
@@ -6588,13 +7280,13 @@ export async function shareLibraryToGroup(
           eq(libraryItems.ownerUserId, actor.userId),
           eq(libraryItems.itemType, "folder"),
           inArray(libraryItems.parentId, frontier),
-          isNull(libraryItems.deletedAt),
-        ),
+          isNull(libraryItems.deletedAt)
+        )
       );
 
     const next = children
-      .map((row) => row.id)
-      .filter((id) => !folderIds.includes(id));
+      .map(row => row.id)
+      .filter(id => !folderIds.includes(id));
 
     if (next.length === 0) {
       break;
@@ -6614,8 +7306,8 @@ export async function shareLibraryToGroup(
         eq(libraryItems.ownerUserId, actor.userId),
         ne(libraryItems.itemType, "folder"),
         inArray(libraryItems.parentId, folderIds),
-        isNull(libraryItems.deletedAt),
-      ),
+        isNull(libraryItems.deletedAt)
+      )
     );
 
   if (ownedItems.length === 0) return { shared: 0 };
@@ -6631,7 +7323,7 @@ export async function shareLibraryToGroup(
     await db
       .insert(libraryPermissions)
       .values(
-        batch.map((item) => ({
+        batch.map(item => ({
           tenantId: actorTenantId,
           libraryItemId: item.id,
           subjectType: "group" as const,
@@ -6640,10 +7332,14 @@ export async function shareLibraryToGroup(
           grantedByUserId: actor.userId,
           createdAt: now,
           updatedAt: now,
-        })),
+        }))
       )
       .onConflictDoUpdate({
-        target: [libraryPermissions.libraryItemId, libraryPermissions.subjectType, libraryPermissions.subjectId],
+        target: [
+          libraryPermissions.libraryItemId,
+          libraryPermissions.subjectType,
+          libraryPermissions.subjectId,
+        ],
         set: { permissionLevel: input.permissionLevel, updatedAt: now },
       });
     shared += batch.length;

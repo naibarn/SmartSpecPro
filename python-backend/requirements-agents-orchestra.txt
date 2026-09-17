@@ -1,6 +1,5 @@
 # Isolated Orchestra dependency profile.
 #
-# Keep this profile separate until the Agency Swarm import/dependency removal
 # The Agents Orchestra runtime is part of requirements.txt. This compatibility
 # manifest is intentionally dependency-free so alternate build paths cannot
 # reintroduce a second, conflicting SDK pin.

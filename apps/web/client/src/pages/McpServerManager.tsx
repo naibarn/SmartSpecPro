@@ -47,7 +47,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   Wifi,
-  Terminal,
   Globe,
   Shield,
   Lock,
@@ -67,7 +66,6 @@ import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 const TRANSPORT_LABELS: Record<string, { label: string; icon: typeof Globe }> = {
   http: { label: "HTTP", icon: Globe },
   streamable_http: { label: "Streamable HTTP", icon: Wifi },
-  stdio: { label: "stdio (npx)", icon: Terminal },
 };
 
 const HEALTH_BADGES: Record<string, { color: string; label: string }> = {
@@ -92,7 +90,7 @@ interface ServerFormData {
   name: string;
   slug: string;
   description: string;
-  transportType: "http" | "streamable_http" | "stdio";
+  transportType: "http" | "streamable_http";
   url: string;
   command: string;
   args: string;
@@ -119,7 +117,7 @@ interface AssignmentRow {
   createdAt: Date | string;
 }
 
-const TARGET_TYPES = ["tenant", "agency", "agent"] as const;
+const TARGET_TYPES = ["tenant"] as const;
 type TargetType = (typeof TARGET_TYPES)[number];
 
 const DEFAULT_FORM: ServerFormData = {
@@ -164,7 +162,7 @@ export default function McpServerManager() {
   const [selectedServerId, setSelectedServerId] = useState<number | null>(null);
   const [assignments, setAssignments] = useState<Record<number, AssignmentRow[]>>({});
   const [assignForm, setAssignForm] = useState<{ targetType: TargetType; targetId: string }>({
-    targetType: "agency",
+    targetType: "tenant",
     targetId: "",
   });
   const [assigningId, setAssigningId] = useState<number | null>(null);
@@ -210,10 +208,7 @@ export default function McpServerManager() {
   );
 
   const handleSave = useCallback(async () => {
-    const config =
-      form.transportType === "stdio"
-        ? { command: "npx" as const, args: form.args.split(/\s+/).filter(Boolean) }
-        : { url: form.url };
+    const config = { url: form.url };
 
     try {
       if (editId) {
@@ -728,7 +723,7 @@ export default function McpServerManager() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Enter the UUID or identifier of the target tenant, agency, or agent.
+          Enter the tenant identifier.
                 </p>
               </div>
             </div>
@@ -792,34 +787,19 @@ export default function McpServerManager() {
                 <SelectContent>
                   <SelectItem value="http">HTTP</SelectItem>
                   <SelectItem value="streamable_http">Streamable HTTP</SelectItem>
-                  <SelectItem value="stdio">stdio (npx)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {/* Transport-specific config */}
-            {form.transportType !== "stdio" ? (
-              <div>
+            <div>
                 <Label>URL</Label>
                 <Input
                   value={form.url}
                   onChange={(e) => setForm({ ...form, url: e.target.value })}
                   placeholder="https://mcp-server.example.com/rpc"
                 />
-              </div>
-            ) : (
-              <div>
-                <Label>npx Arguments</Label>
-                <Input
-                  value={form.args}
-                  onChange={(e) => setForm({ ...form, args: e.target.value })}
-                  placeholder="-y @modelcontextprotocol/server-sqlite"
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Only <code>npx</code> is allowed as the command (runs in OpenSandbox).
-                </p>
-              </div>
-            )}
+            </div>
 
             <Separator />
 

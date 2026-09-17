@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { evidenceRedactionStateSchema, evidenceRedactionStateValues, evidenceRetentionTierSchema, evidenceRetentionTierValues, sanitizeSensitiveRecord, sideEffectClassSchema, sideEffectClassValues } from "./workpackContracts";
+import { evidenceRedactionStateSchema, evidenceRedactionStateValues, evidenceRetentionTierSchema, evidenceRetentionTierValues, sanitizeSensitiveRecord, sideEffectClassSchema, sideEffectClassValues } from "./agentGovernanceContracts";
 
 const jsonRecordSchema = z.record(z.string(), z.unknown());
 

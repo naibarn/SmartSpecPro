@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   applyVerticalDramaShotSceneIntent,
   buildVerticalDramaShotSceneIntentPrompt,
+  normalizeVerticalDramaShotSceneIntentCandidate,
+  verticalDramaShotSceneIntentOutputSchema,
   type VerticalDramaShotSceneIntentOutput,
 } from "../verticalDramaShotSceneIntent";
 
@@ -215,5 +217,72 @@ describe("vertical-drama-shot-scene-intent", () => {
     expect(prompt).toContain("mentioned_only_refs");
     expect(prompt).toContain("PREVIOUS EPISODE ENDING");
     expect(prompt).toContain("Shot 1");
+    expect(prompt).toContain('"vd-shot-scene-intent-v1"');
+    expect(prompt).toContain("supporting_presence:object[]");
+    expect(prompt).toContain("dialogue_routing:object[]");
+  });
+
+  it("repairs only safe JSON-shape drift before strict validation", () => {
+    const malformed = {
+      contract_version: 1,
+      shots: Array.from({ length: 9 }, (_, index) => ({
+        shot_number: index + 1,
+        contract_version: 1,
+        physical_character_refs: [],
+        screen_caller_refs: [],
+        offscreen_speaker_refs: [],
+        mentioned_only_refs: [],
+        supporting_presence: '["background extra"]',
+        communication_mode: "none",
+        visual_plan: { mode: "no_character" },
+        dialogue_routing: "[]",
+        confidence: "high",
+        needs_review: false,
+        reason_codes: [],
+      })),
+    };
+
+    const normalized =
+      normalizeVerticalDramaShotSceneIntentCandidate(malformed);
+    const parsed = verticalDramaShotSceneIntentOutputSchema.safeParse(
+      normalized.value
+    );
+
+    expect(parsed.success).toBe(true);
+    expect(normalized.changes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: "contract_version" }),
+        expect.objectContaining({ path: "shots.0.scene_intent" }),
+        expect.objectContaining({
+          path: "shots.0.scene_intent.supporting_presence",
+        }),
+      ])
+    );
+    if (parsed.success) {
+      expect(parsed.data.shots[0].scene_intent.contract_version).toBe(
+        "vd-shot-scene-intent-v1"
+      );
+      expect(parsed.data.shots[0].scene_intent.supporting_presence).toEqual([
+        { role: "background extra" },
+      ]);
+    }
+  });
+
+  it("does not hide an invalid non-JSON dialogue routing string", () => {
+    const candidate = {
+      contract_version: "vd-shot-scene-intent-v1",
+      shots: Array.from({ length: 9 }, (_, index) => ({
+        ...intent(index + 1),
+        scene_intent: {
+          ...intent(index + 1).scene_intent,
+          dialogue_routing: "not-json",
+        },
+      })),
+    };
+
+    const parsed = verticalDramaShotSceneIntentOutputSchema.safeParse(
+      normalizeVerticalDramaShotSceneIntentCandidate(candidate).value
+    );
+    expect(parsed.success).toBe(false);
   });
 });

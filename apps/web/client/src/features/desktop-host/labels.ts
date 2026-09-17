@@ -36,13 +36,11 @@ export function buildDesktopHandoffLinks(input: {
   runId?: string;
   projectId?: string;
   skillId?: string;
-  agencyId?: string;
 }) {
   const params = new URLSearchParams();
   if (input.runId) params.set("runId", input.runId);
   if (input.projectId) params.set("projectId", input.projectId);
   if (input.skillId) params.set("skillId", input.skillId);
-  if (input.agencyId) params.set("agencyId", input.agencyId);
 
   return {
     openInDesktop: `/desktop/open?${params.toString()}`,
@@ -54,13 +52,11 @@ export function buildDesktopLaunchUri(input: {
   runId?: string;
   projectId?: string;
   skillId?: string;
-  agencyId?: string;
 }): string {
   const params = new URLSearchParams();
   if (input.runId) params.set("runId", input.runId);
   if (input.projectId) params.set("projectId", input.projectId);
   if (input.skillId) params.set("skillId", input.skillId);
-  if (input.agencyId) params.set("agencyId", input.agencyId);
   return `smartaihub://desktop/open?${params.toString()}`;
 }
 
@@ -68,11 +64,7 @@ export function resolveDesktopViewHref(input: {
   runId?: string | null;
   projectId?: string | null;
   skillId?: string | null;
-  agencyId?: string | null;
 }): string {
-  if (input.agencyId) {
-    return `/agencies/${encodeURIComponent(input.agencyId)}`;
-  }
   if (input.runId?.startsWith("chat-")) {
     return `/chat?conversationId=${encodeURIComponent(input.runId.replace(/^chat-/, ""))}`;
   }

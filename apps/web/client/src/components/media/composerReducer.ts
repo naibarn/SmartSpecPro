@@ -4,10 +4,8 @@ export interface ComposerState {
   activeDraftId: string | null;
   currentStep: ComposerStep;
   topic: string;
-  executionSource: "skill" | "agency";
+  executionSource: "skill";
   skillId: string | null;
-  agencyId: string | null;
-  agencyName: string | null;
   requiresWebSearch: boolean;
   requiresThinking: boolean;
   showComplexityBanner: boolean;
@@ -51,8 +49,6 @@ export const initialComposerState: ComposerState = {
   topic: "",
   executionSource: "skill",
   skillId: null,
-  agencyId: null,
-  agencyName: null,
   requiresWebSearch: false,
   requiresThinking: false,
   showComplexityBanner: false,
@@ -82,9 +78,8 @@ export type ComposerAction =
   | { type: "RESUME_DRAFT"; payload: ComposerState }
   | { type: "GO_TO_STEP"; payload: ComposerStep }
   | { type: "SET_TOPIC"; payload: string }
-  | { type: "SET_EXECUTION_SOURCE"; payload: "skill" | "agency" }
+  | { type: "SET_EXECUTION_SOURCE"; payload: "skill" }
   | { type: "SET_SKILL"; payload: string | null }
-  | { type: "SET_AGENCY"; payload: { id: string; name: string } | null }
   | { type: "TOGGLE_WEB_SEARCH" }
   | { type: "TOGGLE_THINKING" }
   | { type: "DISMISS_COMPLEXITY_BANNER" }
@@ -115,21 +110,35 @@ export type ComposerAction =
 function computeComplexity(topic: string): boolean {
   if (topic.length > 150) return true;
   const lower = topic.toLowerCase();
-  return COMPLEXITY_KEYWORDS.some((keyword) => lower.includes(keyword));
+  return COMPLEXITY_KEYWORDS.some(keyword => lower.includes(keyword));
 }
 
 function dedupeAttachmentIds(ids: number[]): number[] {
   return Array.from(new Set(ids)).slice(0, 6);
 }
 
-export function composerReducer(state: ComposerState, action: ComposerAction): ComposerState {
+export function composerReducer(
+  state: ComposerState,
+  action: ComposerAction
+): ComposerState {
   switch (action.type) {
     case "START_NEW_DRAFT":
       return { ...initialComposerState, currentStep: 1 };
     case "DRAFT_CREATED":
-      return { ...state, activeDraftId: action.payload, currentStep: 1, isDirty: false };
+      return {
+        ...state,
+        activeDraftId: action.payload,
+        currentStep: 1,
+        isDirty: false,
+      };
     case "RESUME_DRAFT":
-      return { ...action.payload, isDirty: false, isSaving: false, isPublishing: false, publishError: null };
+      return {
+        ...action.payload,
+        isDirty: false,
+        isSaving: false,
+        isPublishing: false,
+        publishError: null,
+      };
     case "GO_TO_STEP":
       return { ...state, currentStep: action.payload };
     case "SET_TOPIC":
@@ -137,43 +146,39 @@ export function composerReducer(state: ComposerState, action: ComposerAction): C
         ...state,
         topic: action.payload,
         isDirty: true,
-        showComplexityBanner: state.showComplexityBanner || computeComplexity(action.payload),
+        showComplexityBanner:
+          state.showComplexityBanner || computeComplexity(action.payload),
       };
     case "SET_EXECUTION_SOURCE":
-      return {
-        ...state,
-        executionSource: action.payload,
-        ...(action.payload === "agency"
-          ? { skillId: null }
-          : { agencyId: null, agencyName: null }),
-        isDirty: true,
-      };
+      return { ...state, executionSource: "skill", isDirty: true };
     case "SET_SKILL":
       return {
         ...state,
         skillId: action.payload,
-        agencyId: null,
-        agencyName: null,
-        isDirty: true,
-      };
-    case "SET_AGENCY":
-      return {
-        ...state,
-        agencyId: action.payload?.id ?? null,
-        agencyName: action.payload?.name ?? null,
-        skillId: null,
         isDirty: true,
       };
     case "TOGGLE_WEB_SEARCH":
-      return { ...state, requiresWebSearch: !state.requiresWebSearch, isDirty: true };
+      return {
+        ...state,
+        requiresWebSearch: !state.requiresWebSearch,
+        isDirty: true,
+      };
     case "TOGGLE_THINKING":
-      return { ...state, requiresThinking: !state.requiresThinking, isDirty: true };
+      return {
+        ...state,
+        requiresThinking: !state.requiresThinking,
+        isDirty: true,
+      };
     case "DISMISS_COMPLEXITY_BANNER":
       return { ...state, showComplexityBanner: false };
     case "START_GENERATION":
       return { ...state, isGenerating: true, generationError: null };
     case "STREAMING_CHUNK":
-      return { ...state, articleBody: `${state.articleBody}${action.payload}`, isDirty: true };
+      return {
+        ...state,
+        articleBody: `${state.articleBody}${action.payload}`,
+        isDirty: true,
+      };
     case "GENERATION_COMPLETE":
       return { ...state, isGenerating: false };
     case "GENERATION_ERROR":
@@ -181,10 +186,14 @@ export function composerReducer(state: ComposerState, action: ComposerAction): C
     case "SET_ARTICLE_BODY":
       return { ...state, articleBody: action.payload, isDirty: true };
     case "SET_ATTACHMENT_IDS":
-      return { ...state, attachmentIds: dedupeAttachmentIds(action.payload), isDirty: true };
+      return {
+        ...state,
+        attachmentIds: dedupeAttachmentIds(action.payload),
+        isDirty: true,
+      };
     case "TOGGLE_ATTACHMENT": {
       const next = state.attachmentIds.includes(action.payload)
-        ? state.attachmentIds.filter((id) => id !== action.payload)
+        ? state.attachmentIds.filter(id => id !== action.payload)
         : dedupeAttachmentIds([...state.attachmentIds, action.payload]);
       return { ...state, attachmentIds: next, isDirty: true };
     }
@@ -195,9 +204,22 @@ export function composerReducer(state: ComposerState, action: ComposerAction): C
         ...(action.payload === "social"
           ? { docsSubKind: null, docsTargetId: null, blogTargetId: null }
           : action.payload === "docs"
-            ? { socialPlatform: null, socialTargetId: null, socialCaption: "", captionIsManuallyEdited: false, blogTargetId: null }
+            ? {
+                socialPlatform: null,
+                socialTargetId: null,
+                socialCaption: "",
+                captionIsManuallyEdited: false,
+                blogTargetId: null,
+              }
             : action.payload === "blog"
-              ? { socialPlatform: null, socialTargetId: null, socialCaption: "", captionIsManuallyEdited: false, docsSubKind: null, docsTargetId: null }
+              ? {
+                  socialPlatform: null,
+                  socialTargetId: null,
+                  socialCaption: "",
+                  captionIsManuallyEdited: false,
+                  docsSubKind: null,
+                  docsTargetId: null,
+                }
               : {}),
         isDirty: true,
       };
@@ -219,7 +241,12 @@ export function composerReducer(state: ComposerState, action: ComposerAction): C
     case "SET_SOCIAL_TARGET_ID":
       return { ...state, socialTargetId: action.payload, isDirty: true };
     case "SET_SOCIAL_CAPTION":
-      return { ...state, socialCaption: action.payload, captionIsManuallyEdited: true, isDirty: true };
+      return {
+        ...state,
+        socialCaption: action.payload,
+        captionIsManuallyEdited: true,
+        isDirty: true,
+      };
     case "SET_CAPTION_MANUALLY_EDITED":
       return { ...state, captionIsManuallyEdited: action.payload };
     case "START_CAPTION_GENERATION":
@@ -235,7 +262,12 @@ export function composerReducer(state: ComposerState, action: ComposerAction): C
     case "SAVE_START":
       return { ...state, isSaving: true };
     case "SAVE_COMPLETE":
-      return { ...state, isSaving: false, isDirty: false, lastSavedAt: action.payload };
+      return {
+        ...state,
+        isSaving: false,
+        isDirty: false,
+        lastSavedAt: action.payload,
+      };
     case "SAVE_ERROR":
       return { ...state, isSaving: false };
     case "PUBLISH_START":

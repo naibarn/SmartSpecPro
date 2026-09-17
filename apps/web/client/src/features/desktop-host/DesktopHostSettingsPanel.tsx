@@ -54,7 +54,7 @@ function buildPreviewWorkspaceProfile(
     memoryMb: featureFlags.desktopAdvancedLocalMode ? 8192 : 4096,
     mounts: [],
     outputDirectoryName: "outputs",
-    connectorSidecarAllowed: featureFlags.desktopAgencyRuntime,
+    connectorSidecarAllowed: false,
     writebackMode: featureFlags.desktopAdvancedLocalMode
       ? "advanced_local_override"
       : "managed_output_only",
@@ -97,13 +97,6 @@ function buildFallbackRolloutGates(
         : "desktop_host_feature_flag_disabled",
     },
     {
-      gate: "agency_gateway_only",
-      satisfied: featureFlags.desktopAgencyRuntime,
-      reason: featureFlags.desktopAgencyRuntime
-        ? "agency_gateway_injection_enforced"
-        : "desktop_agency_runtime_flag_disabled",
-    },
-    {
       gate: "offboarding_cleanup_ready",
       satisfied: true,
       reason: "offboarding_cleanup_and_purge_live",
@@ -137,11 +130,6 @@ function buildBootstrapSteps(input: {
       id: "package-sync",
       title: "Sync signed packages",
       status: syncDone || (input.packageCatalog?.packages.length ?? 0) > 0 ? "done" : "pending",
-    },
-    {
-      id: "agency-runtime",
-      title: "Enable Agency Swarm runtime",
-      status: input.featureFlags.desktopAgencyRuntime ? "done" : "pending",
     },
   ] satisfies {
     id: string;
@@ -227,7 +215,6 @@ function buildPolicyFormState(overrides: DesktopDevicePolicyOverrides | null | u
   return {
     allowAdvancedLocalMode: overrideToChoice(overrides?.allowAdvancedLocalMode),
     allowPackageSync: overrideToChoice(overrides?.allowPackageSync),
-    allowAgencyRuntime: overrideToChoice(overrides?.allowAgencyRuntime),
     allowWorkerProjection: overrideToChoice(overrides?.allowWorkerProjection),
     maxLocalRoots: overrides?.maxLocalRoots != null ? String(overrides.maxLocalRoots) : "",
     outputWritebackMode: overrides?.outputWritebackMode ?? "inherit",
@@ -239,7 +226,6 @@ function buildPolicyOverridePayload(state: ReturnType<typeof buildPolicyFormStat
   return {
     allowAdvancedLocalMode: choiceToOverride(state.allowAdvancedLocalMode),
     allowPackageSync: choiceToOverride(state.allowPackageSync),
-    allowAgencyRuntime: choiceToOverride(state.allowAgencyRuntime),
     allowWorkerProjection: choiceToOverride(state.allowWorkerProjection),
     maxLocalRoots: Number.isInteger(parsedMaxLocalRoots) && parsedMaxLocalRoots > 0
       ? parsedMaxLocalRoots
@@ -333,7 +319,7 @@ export function DesktopHostSettingsPanel(props: {
   });
   const runLabels = selectedDevice?.lastRunSummary?.selection.labels ?? {
     surface: "desktop" as const,
-    runtime: featureFlags.desktopAgencyRuntime ? "agency_swarm" : "pi",
+    runtime: "pi",
     locality: "hybrid" as const,
     workspace: "local_workspace" as const,
     trustClass: "org_verified" as const,
@@ -735,7 +721,6 @@ export function DesktopHostSettingsPanel(props: {
               {([
                 ["allowAdvancedLocalMode", "Advanced local mode"],
                 ["allowPackageSync", "Package sync"],
-                ["allowAgencyRuntime", "Agency runtime"],
                 ["allowWorkerProjection", "Worker projection"],
               ] as const).map(([key, label]) => (
                 <div key={key} className="space-y-1">

@@ -146,6 +146,7 @@ export interface NleCanvas {
 export type PreviewAspectRatio = "9:16" | "16:9" | "1:1" | "4:5" | "21:9" | "custom" | "source";
 
 import type { CameraMotionPlan } from "@smartspec/shared";
+import type { SourceVideoGeometry } from "../screens/media-workspace/sourceGeometry";
 
 export interface PreviewCanvasProfile {
   aspectRatio: PreviewAspectRatio;
@@ -207,6 +208,8 @@ export interface VideoProjectDraft {
     deadAirAudioStreamIndex?: number;
     deadAirCutFingerprint?: string;
     deadAirCutRanges?: Array<{ startMs: number; endMs: number }>;
+    /** Source dimensions used by preview, full scan, and native render. */
+    sourceGeometry?: SourceVideoGeometry;
     cameraMotionPlan?: CameraMotionPlan;
     visualMatch?: {
       planFingerprint: string;
@@ -230,6 +233,7 @@ export function createDefaultProjectDraft(options: {
   aspectRatio?: PreviewAspectRatio;
   focusX?: number;
   focusY?: number;
+  sourceGeometry?: SourceVideoGeometry;
   deadAirSegments?: Array<{ startMs: number; endMs: number }>;
 }): SmartSpecProjectDraft {
   const ratio = options.aspectRatio === "16:9"
@@ -496,6 +500,7 @@ export function createDefaultProjectDraft(options: {
       timeSavedMs: sorted.reduce((sum, segment) => sum + segment.endMs - segment.startMs, 0),
       deadAirCutFingerprint: sorted.map((segment) => `${segment.startMs}-${segment.endMs}`).join(","),
       deadAirCutRanges: sorted,
+      ...(options.sourceGeometry ? { sourceGeometry: options.sourceGeometry } : {}),
     },
   };
 }

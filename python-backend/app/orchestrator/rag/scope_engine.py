@@ -317,6 +317,7 @@ async def propagate_scopes_to_vector_stores(
                     vec_metadata["allowed_scopes"] = new_allowed_scopes
                     updated_vectors.append({
                         "id": vec["id"],
+                        "namespace": f"tenant:{tenant_id}",
                         "values": vec["values"],
                         "metadata": vec_metadata,
                     })

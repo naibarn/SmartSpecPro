@@ -28,6 +28,13 @@ describe("getTransientMediaPollRetryHint", () => {
     ).toEqual({ kind: "timeout", retryAfterSeconds: 15 });
   });
 
+  it("recognizes a transient failure while copying a completed provider result", () => {
+    expect(getTransientMediaPollRetryHint(new TypeError("fetch failed"))).toEqual({
+      kind: "upstream",
+      retryAfterSeconds: 15,
+    });
+  });
+
   it("does not hide structural or ownership errors", () => {
     expect(
       getTransientMediaPollRetryHint(

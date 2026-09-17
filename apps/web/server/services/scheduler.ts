@@ -16,7 +16,6 @@ import {
   conversations,
   messages,
   autoDraftSchedules,
-  systemSettings,
 } from "../../drizzle/schema";
 import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
@@ -25,7 +24,13 @@ import { getProviderForModel } from "./llmRouter";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { decrypt } from "./crypto";
 import { signBearerToken } from "../_core/tokens";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import crypto from "crypto";
+
+type ScheduledMessageDeliveryOptions = {
+  /** Set only from the canonical worker executor. */
+  executeSkillInWorker?: boolean;
+};
 
 /**
  * Deliver a scheduled message by schedule ID.
@@ -33,7 +38,10 @@ import crypto from "crypto";
  * Extracted from the old BullMQ executeScheduledJob — same business logic,
  * no broker dependency. Called by the Cloudflare scheduler adapter.
  */
-export async function deliverScheduledMessage(scheduleId: number): Promise<void> {
+export async function deliverScheduledMessage(
+  scheduleId: number,
+  options: ScheduledMessageDeliveryOptions = {},
+): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -144,6 +152,55 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       const enough = await hasEnoughCredits(schedule.userId, 10);
       if (!enough) {
         await logExecution(db, scheduleId, null, "failed", "Insufficient credits for skill execution");
+        return;
+      }
+
+      // Admission is always durable and asynchronous. The worker re-enters
+      // this function with executeSkillInWorker=true to perform the actual
+      // provider call and the notification/message settlement below.
+      if (!options.executeSkillInWorker) {
+        const tenantId =
+          typeof (schedule as any).tenantId === "string" && (schedule as any).tenantId.trim()
+            ? (schedule as any).tenantId.trim()
+            : "default";
+        const occurrence =
+          schedule.nextRunAt?.toISOString() ??
+          schedule.scheduledAt?.toISOString() ??
+          String(scheduleId);
+        await createControlPlaneJob({
+          context: {
+            tenantId,
+            actorType: "user",
+            actorId: userId,
+            authorizationScope: "skill:execute",
+            correlationId: `scheduled-skill:${scheduleId}:${occurrence}`,
+            idempotencyKey: `scheduled-skill:${scheduleId}:${occurrence}`,
+          },
+          definition: {
+            contractVersion: "feature-186-v1",
+            jobType: "scheduled.skill.execute",
+            executionClass: "long",
+            input: { scheduleId },
+            retryPolicy: {
+              maxAttempts: 2,
+              baseDelayMs: 5_000,
+              maxDelayMs: 60_000,
+              jitter: "bounded",
+              deadlineMs: 60 * 60_000,
+              allowedErrorClasses: ["retryable", "unknown"],
+            },
+            timeoutPolicy: {
+              softTimeoutMs: 5 * 60_000,
+              hardTimeoutMs: 30 * 60_000,
+            },
+            requiredCapabilities: {
+              scheduleId,
+              skillId: skillDef.id,
+            },
+          },
+          createOptions: { runtimeType: "node_job_worker" },
+        });
+        console.log(`[Scheduler] Queued skill ${schedule.skillId} (schedule ${scheduleId})`);
         return;
       }
 
@@ -835,55 +892,4 @@ export async function sweepDueAutoDraftSchedules(): Promise<number> {
   }
 
   return dispatched;
-}
-
-/**
- * Sweep expired agency run traces. Default retention: 30 days.
- * Configurable via system_settings category="agency", key="trace_retention_days".
- */
-export async function sweepExpiredRunTraces(): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
-
-  const { sweepExpiredTraces } = await import("./agencyTraceService");
-
-  // Check global retention override
-  const DEFAULT_RETENTION_DAYS = 30;
-  let retentionDays = DEFAULT_RETENTION_DAYS;
-  const [override] = await db
-    .select({ value: systemSettings.value })
-    .from(systemSettings)
-    .where(
-      and(
-        eq(systemSettings.category, "agency"),
-        eq(systemSettings.key, "trace_retention_days"),
-      ),
-    )
-    .limit(1);
-  if (override?.value) {
-    const parsed = parseInt(String(override.value), 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      retentionDays = parsed;
-    }
-  }
-
-  // Get distinct tenants that have traces
-  const tenants = await db.execute(
-    sql`SELECT DISTINCT "tenantId" FROM agency_run_traces`,
-  );
-  const tenantRows = (tenants as any).rows ?? tenants ?? [];
-
-  let totalDeleted = 0;
-  for (const row of tenantRows) {
-    const tenantId = row.tenantId;
-    if (!tenantId) continue;
-
-    const deleted = await sweepExpiredTraces(tenantId, retentionDays);
-    if (deleted > 0) {
-      console.log(`[Scheduler] Deleted ${deleted} expired traces for tenant ${tenantId} (retention: ${retentionDays}d)`);
-    }
-    totalDeleted += deleted;
-  }
-
-  return totalDeleted;
 }

@@ -17,6 +17,12 @@ queue-cancellation, checkpoint/resume, and browser evidence gates pass. A
 missing transfer module is a rollout block, not permission to copy resources
 with ad-hoc table updates.
 
+The default Feature 186 runtime is the existing Node worker pulling durable
+`worker_jobs` through the PostgreSQL-pull adapter. It uses the same canonical
+IDs, outbox, lease, retry, fencing, and executor contract as the Cloudflare
+transport, so episode content, image, prompt, and skill jobs do not need a
+second producer implementation during migration.
+
 For a Cloudflare wave, create or select only the approved environment-specific
 Hyperdrive configuration that points to the existing PostgreSQL database, bind
 it to the Worker through the deployment configuration, and prove origin ACL/TLS
@@ -24,7 +30,14 @@ access, pool capacity, fresh canonical reads, and bounded transactions. Never
 place the Hyperdrive connection string in source control or `.env`; do not use
 Hyperdrive cache results as lease/status truth. If the binding or origin is
 unavailable, verify that the consumer does not acknowledge work without a
-durable PostgreSQL write.
+durable PostgreSQL write. The web origin must receive the approved
+`CLOUDFLARE_RUNTIME_URL` and `CLOUDFLARE_RUNTIME_TOKEN` through its deployment
+secret manager; do not put either value in source control. Set
+`FEATURE_186_CLOUDFLARE_HARD_CUTOVER=true` only after those values and the
+target-account gates are approved. Restart the web origin after changing them
+and require `/readyz` to report `feature186: ok:cloudflare` before replaying due
+outbox rows. Without that explicit flag, `/readyz` must report the local
+`postgres-pull` mode and work continues through the Node worker.
 
 Canonical lifecycle-event retention is append-only: `worker_job_events` must not
 be deleted in place. Any future retention process must first archive immutable,

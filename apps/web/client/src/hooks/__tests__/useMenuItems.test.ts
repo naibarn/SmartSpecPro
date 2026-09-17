@@ -21,13 +21,11 @@ describe("useMenuItems", () => {
     expect(privateFiles?.IconComponent).not.toBe(Sparkles);
   });
 
-  it("shows Work OS in the admin sidebar for admin users", () => {
+  it("does not expose retired Work OS in the admin sidebar", () => {
     const items = getResolvedMenuItems("admin", "admin");
     const workOs = items.find((item) => item.id === "admin-work-os");
 
-    expect(workOs).toBeDefined();
-    expect(workOs?.path).toBe("/admin/work-os");
-    expect(workOs?.label).toBe("Work OS");
+    expect(workOs).toBeUndefined();
   });
 
   it("routes skill revenue to the system report for system admins", () => {
@@ -41,22 +39,21 @@ describe("useMenuItems", () => {
     expect(getResolvedMenuItems("user", "domain-admin").find((item) => item.id === "domain-skill-revenue")).toBeUndefined();
   });
 
-  it("shows Start Work in the main sidebar for regular users", () => {
+  it("does not expose retired work request entry points", () => {
     const items = getResolvedMenuItems("user", "main");
-    const workRequest = items.find((item) => item.id === "work-request");
-
-    expect(workRequest).toBeDefined();
-    expect(workRequest?.path).toBe("/work/request");
-    expect(workRequest?.label).toBe("Start Work");
-  });
-
-  it("shows workpack shortcuts in the main sidebar for regular users", () => {
-    const items = getResolvedMenuItems("user", "main");
-
-    expect(items.find((item) => item.id === "workpack-intake")?.path).toBe("/workpacks/intake");
-    expect(items.find((item) => item.id === "workpack-discovery")?.path).toBe("/workpacks/discovery");
-    expect(items.find((item) => item.id === "workpack-roi")?.path).toBe("/workpacks/roi");
-    expect(items.find((item) => item.id === "workpack-exceptions")?.path).toBe("/workpacks/exceptions");
+    for (const id of [
+      "work-request",
+      "my-requests",
+      "workpack-intake",
+      "workpack-discovery",
+      "workpack-roi",
+      "workpack-exceptions",
+      "workflows",
+      "agencies",
+      "docker",
+    ]) {
+      expect(items.find((item) => item.id === id)).toBeUndefined();
+    }
   });
 
   it("gates Vertical Drama Series on the verticalDramaSeriesDashboardMenu flag", () => {

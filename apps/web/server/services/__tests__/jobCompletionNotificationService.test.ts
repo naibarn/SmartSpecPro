@@ -113,8 +113,8 @@ describe("jobCompletionNotificationService", () => {
     expect(
       buildWorkerJobActionUrl({ inputJson: { seriesId: 53, episodeId: 248 } })
     ).toBe("/drama-series/53/episodes/248");
-    expect(buildWorkerJobActionUrl({ workflowRunId: "run/1" })).toBe(
-      "/work/requests?runId=run%2F1"
+    expect(buildWorkerJobActionUrl({ id: "job-1", workflowRunId: "run/1" })).toBe(
+      "/worker-jobs?jobId=job-1"
     );
   });
 });

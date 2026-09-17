@@ -9,7 +9,7 @@ If `character_reference_images` contains 1-5 images, the prompt must explicitly 
 
 Recommended identity text block:
 
-Use all uploaded character reference images as identity references for the same child character. Preserve the same recognizable facial identity, apparent age, face shape, facial proportions, eye shape, nose, mouth, skin tone, and overall child look. Do not invent a different child. Keep the character clearly recognizable while changing clothing, accessories, pose, camera angle, activity, and scene according to the current request.
+Use all uploaded character reference images as identity references for the same age-appropriate character. Preserve the same recognizable facial identity, apparent age, face shape, facial proportions, eye shape, nose, mouth, skin tone, and overall age-appropriate appearance. Do not invent a different character. Keep the character clearly recognizable while changing clothing, accessories, pose, camera angle, activity, and scene according to the current request.
 
 ## Output contract
 The runtime must return:

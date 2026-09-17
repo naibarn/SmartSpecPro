@@ -1,13 +1,15 @@
 # Feature 186 — Unified Job Control Plane Adapters
 
-**Status:** IN PROGRESS — Cloudflare is the only production runtime target.
-The web origin publishes canonical PostgreSQL outbox envelopes and the
-Cloudflare Worker owns the native Queues/Workflows/Containers/Worker App
-boundary. Google Cloud Tasks, Cloud Run, and their OIDC task routes are
-retired from the runtime path; Google OAuth and Google Drive remain product
-integrations. The compatibility drain, domain projection/checkpoint evidence,
-target-account bindings, and external recovery gates remain explicit and cannot
-be treated as production-ready by local tests alone.
+**Status:** IN PROGRESS — the canonical control plane is runtime-neutral.
+The web origin publishes canonical PostgreSQL outbox envelopes. The existing
+Node worker consumes them through PostgreSQL-pull immediately; the Cloudflare
+Worker owns the native Queues/Workflows/Containers/Worker App boundary when the
+explicit Cloudflare activation flag is enabled. Google Cloud Tasks, Cloud Run,
+and their OIDC task routes are retired from the runtime path; Google OAuth and
+Google Drive remain product integrations. The compatibility drain,
+domain projection/checkpoint evidence, target-account bindings, and external
+recovery gates remain explicit and cannot be treated as production-ready by
+local tests alone.
 **Created:** 2026-09-12
 **Scope:** Web/Node job dispatch, Python execution, existing Worker App execution, Cloudflare Queues/Workflows/Containers/Cron, and the PostgreSQL/Hyperdrive control-plane boundary.
 **Authority:** This specification defines the canonical job contract, persistence invariants, adapter boundaries, rollout gates, and compatibility rules for Feature 186.
@@ -33,23 +35,22 @@ Provider-specific recovery still requires integration evidence. Wave-4 domain
 records and projections retain Redis compatibility reads/writes until their
 canonical status/result readers and checkpoint evidence pass their own gates.
 Redis/BullMQ/Celery/Docker are compatibility/drain infrastructure only and are
-not selectable production targets. The web process publishes durable intents;
-Cloudflare consumes them through the target-account Queue/Hyperdrive boundary.
-The local PostgreSQL-pull executor remains a contract and recovery harness for
-the same canonical envelope, not a claim that Cloudflare target-account
-execution has already been proven. This feature is not production-complete
+not selectable canonical targets. The web process publishes durable intents;
+the local Node worker or Cloudflare consumes the same envelope through the
+selected adapter. Local execution proves the canonical worker contract but not
+Cloudflare target-account execution. This feature is not production-complete
 until the legacy drain, target bindings, deployment rollback, and external
 recovery gates pass.
 
 ### Cloudflare hard-cutover boundary
 
-When `FEATURE_186_HARD_CUTOVER=true`, the only accepted production target is
-Cloudflare. The web process must not initialize BullMQ, Celery, Cloud Run, or
-Google Cloud Tasks publishers. It commits `worker_jobs` and its outbox intent
-first, then publishes the canonical envelope to the deployment-owned
-Cloudflare Worker (`CLOUDFLARE_RUNTIME_URL`) or to the local PostgreSQL-pull
-contract used by the readiness harness. The Worker validates the envelope and
-publishes to the configured native Queue; Hyperdrive remains the only database
+When `FEATURE_186_HARD_CUTOVER=true`, the only accepted canonical target is the
+PostgreSQL-pull Node worker unless `FEATURE_186_CLOUDFLARE_HARD_CUTOVER=true`
+explicitly selects Cloudflare. The web process must not initialize BullMQ,
+Celery, Cloud Run, or Google Cloud Tasks publishers. It commits `worker_jobs`
+and its outbox intent first, then publishes the same canonical envelope to the
+selected adapter. The Cloudflare Worker validates the envelope and publishes
+to the configured native Queue; Hyperdrive remains the only database
 connectivity boundary for canonical state.
 
 The former `USE_CLOUD_TASKS`, `CLOUD_RUN_*`, `GCP_*`, OIDC task routes, and
@@ -124,9 +125,9 @@ rehearsal.
 
 ## Outcome
 
-SmartAIHub has one runtime-neutral Job Control Plane. Business services create and observe a canonical `worker_jobs` record and append lifecycle events to `worker_job_events`; Cloudflare Queues, Workflows, Containers, Cron, and Worker App implement the active production transport, scheduling, and execution adapters. BullMQ/Celery/Beat remain compatibility-drain references only.
+SmartAIHub has one runtime-neutral Job Control Plane. Business services create and observe a canonical `worker_jobs` record and append lifecycle events to `worker_job_events`; the PostgreSQL-pull Node worker is the immediately available transport, while Cloudflare Queues, Workflows, Containers, Cron, and Worker App implement the migration transport when explicitly activated. BullMQ/Celery/Beat remain compatibility-drain references only.
 
-The Cloudflare hard-cutover release keeps the canonical PostgreSQL control-plane contract, lease and heartbeat recovery, centralized business retry policy, idempotency, transactional outbox publication, and adapter boundaries. Redis/BullMQ/Celery remain only for bounded compatibility drain and rollback observation; they are not production runtime choices. Cloudflare replaces the runtime target without changing domain services or the canonical job ID.
+The Cloudflare activation release keeps the canonical PostgreSQL control-plane contract, lease and heartbeat recovery, centralized business retry policy, idempotency, transactional outbox publication, and adapter boundaries. Redis/BullMQ/Celery remain only for bounded compatibility drain and rollback observation; they are not canonical runtime choices. Cloudflare replaces only the transport, without changing domain services or the canonical job ID.
 
 The primary operational result is that a Redis outage, broker loss, worker restart, duplicate delivery, or stalled process does not erase the system's answer to these questions:
 
@@ -757,7 +758,7 @@ Cancellation is also two-phase when transport cancellation is not guaranteed: th
 
 ### Cloudflare production adapters
 
-The Cloudflare boundary is intentionally capability-based and must be verified against the deployment account/plan during implementation. It is the active production target after hard cutover:
+The Cloudflare boundary is intentionally capability-based and must be verified against the deployment account/plan before activation. It becomes the active production target only after the explicit Cloudflare flag and readiness gates pass:
 
 - **Cloudflare Queues Adapter:** single-step/asynchronous message transport; maps the canonical job ID into a message and relies on control-plane idempotency for duplicate delivery.
 - **Cloudflare Workflows Adapter:** durable multi-step orchestration for jobs whose workflow needs persisted step boundaries, waiting, approvals, or long-lived coordination. Workflow instance IDs remain references attached to the canonical job.

@@ -630,7 +630,9 @@ export function MediaWorkspaceHost({
                 onClick={async () => {
                   if (displayWorkspacePath) {
                     try {
-                      await invoke("worker_app_reveal_file", { path: workspace.localPath });
+                      if (workspace) {
+                        await invoke("worker_app_reveal_file", { path: workspace.localPath });
+                      }
                     } catch (err) {
                       console.warn("Failed to reveal file/folder:", err);
                     }

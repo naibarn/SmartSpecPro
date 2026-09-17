@@ -115,7 +115,7 @@ export function getTransientMediaPollRetryHint(
 
   if (
     (statusCode != null && statusCode >= 500 && statusCode <= 599) ||
-    /\b5\d{2}\b|failed to fetch|networkerror|connection reset|connection refused|upstream|gateway|provider status temporarily unavailable/i.test(
+    /\b5\d{2}\b|failed to fetch|fetch failed|networkerror|connection reset|connection refused|upstream|gateway|provider status temporarily unavailable/i.test(
       text
     )
   ) {
@@ -208,12 +208,24 @@ async function durabilizeTask(
         })
       : task;
   if (input.tenantId) {
-    const verticalDrama = await ensureVerticalDramaTaskResultDurable({
-      tenantId: input.tenantId,
-      userId: input.userId,
-      task: durableTask,
-    });
-    if (verticalDrama?.task) return verticalDrama.task;
+    try {
+      const verticalDrama = await ensureVerticalDramaTaskResultDurable({
+        tenantId: input.tenantId,
+        userId: input.userId,
+        task: durableTask,
+      });
+      if (verticalDrama?.task) return verticalDrama.task;
+    } catch (error) {
+      // A completed provider task can briefly expose a result URL that this
+      // process cannot download. Preserve the provider's completed state and
+      // let the domain poller retry the durability bridge instead of turning a
+      // transient copy failure into a false tRPC failure.
+      if (!getTransientMediaPollRetryHint(error)) throw error;
+      console.warn("[VerticalDramaMedia] result durability is retryable", {
+        taskId: durableTask.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
   const marketplaceAutoReview =
     await ensureMarketplaceAutoReviewTaskResultDurable({

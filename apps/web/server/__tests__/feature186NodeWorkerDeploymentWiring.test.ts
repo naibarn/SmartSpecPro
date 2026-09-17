@@ -13,10 +13,19 @@ describe("Feature 186 PostgreSQL Node worker deployment wiring", () => {
     expect(compose).toContain("  smartspec-node-worker:");
     expect(compose).toContain("start:feature-186-node-worker");
     expect(compose).toContain("FEATURE_186_HARD_CUTOVER=");
+    expect(compose).toContain("FEATURE_186_CLOUDFLARE_HARD_CUTOVER=");
     expect(compose).toContain("FEATURE_186_POSTGRES_PYTHON_WORKER=");
     expect(compose).toContain("FEATURE_186_SYSTEM_TENANT_ID=");
+    expect(compose).toContain(
+      "CLOUDFLARE_RUNTIME_URL=${CLOUDFLARE_RUNTIME_URL:-}"
+    );
+    expect(compose).toContain(
+      "CLOUDFLARE_RUNTIME_TOKEN=${CLOUDFLARE_RUNTIME_TOKEN:-}"
+    );
     expect(compose).toContain("JWT_SECRET=");
-    expect(compose).toContain("NODE_SERVER_INTERNAL_URL=http://smartspec-web:3000");
+    expect(compose).toContain(
+      "NODE_SERVER_INTERNAL_URL=http://smartspec-web:3000"
+    );
   });
 
   it("keeps the dedicated worker installed and restartable under systemd", () => {
@@ -27,7 +36,7 @@ describe("Feature 186 PostgreSQL Node worker deployment wiring", () => {
     expect(service).toContain("server/jobs/postgresNodeJobWorker.ts");
     expect(service).toContain("WantedBy=smartspec.target");
     expect(read("systemd/smartspec-node-worker.service")).toContain(
-      "server/jobs/postgresNodeJobWorker.ts",
+      "server/jobs/postgresNodeJobWorker.ts"
     );
     expect(installer).toContain('"smartspec-node-worker.service"');
     expect(installer).toContain('systemctl enable "$service"');
@@ -41,9 +50,15 @@ describe("Feature 186 PostgreSQL Node worker deployment wiring", () => {
     expect(compose).toContain("  smartspec-python-job-worker:");
     expect(compose).toContain("- feature186");
     expect(compose).toContain('"-m", "app.workers.postgres_job_worker"');
-    expect(compose).toContain("JOB_CONTROL_PLANE_URL=http://smartspec-web:3000/api/internal/job-control-plane");
-    expect(compose).toContain("SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}");
-    expect(compose).toContain("FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}");
+    expect(compose).toContain(
+      "JOB_CONTROL_PLANE_URL=http://smartspec-web:3000/api/internal/job-control-plane"
+    );
+    expect(compose).toContain(
+      "SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}"
+    );
+    expect(compose).toContain(
+      "FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}"
+    );
   });
 
   it("does not poll or claim jobs when the hard-cutover flag is disabled", () => {

@@ -18,7 +18,10 @@ import { Theme as AstryxTheme } from "@astryxdesign/core/theme";
 import { LinkProvider } from "@astryxdesign/core/Link";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { getPostHog } from "@/lib/posthog";
-import { ThemeProvider, useTheme as useAppTheme } from "./contexts/ThemeContext";
+import {
+  ThemeProvider,
+  useTheme as useAppTheme,
+} from "./contexts/ThemeContext";
 import {
   AstryxPaletteProvider,
   useAstryxPalette,
@@ -53,6 +56,7 @@ import { WelcomeLanguagePicker } from "@/components/WelcomeLanguagePicker";
 import { RuntimePerformanceOverlay } from "@/components/diagnostics/RuntimePerformanceOverlay";
 import { resolveAstryxColorTokens } from "@/lib/astryxThemeCompatibility";
 import { getCanonicalWorkerJobsPath } from "@/lib/workerJobsRoute";
+import { isRetiredRoute } from "@/lib/retiredRouteGuard";
 
 function AstryxWouterLink({
   href,
@@ -88,7 +92,6 @@ function AstryxWouterLink({
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AutomationPage = lazy(() => import("@/pages/AutomationPage"));
-const DockerPage = lazy(() => import("@/pages/DockerPage"));
 const TerminalPage = lazy(() => import("@/pages/TerminalPage"));
 const CLIPage = lazy(() => import("@/pages/CLIPage"));
 const Factory = lazy(() => import("@/pages/Factory"));
@@ -101,7 +104,9 @@ const Home = lazy(() => import("./pages/Home"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Features = lazy(() => import("./pages/Features"));
 const Docs = lazy(() => import("./pages/Docs"));
-const WorkerAppMacBuildGuide = lazy(() => import("./pages/WorkerAppMacBuildGuide"));
+const WorkerAppMacBuildGuide = lazy(
+  () => import("./pages/WorkerAppMacBuildGuide")
+);
 const Contact = lazy(() => import("./pages/Contact"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Login = lazy(() => import("./pages/Login"));
@@ -129,7 +134,9 @@ const MarketplaceConnectorLab = lazy(
   () => import("./pages/MarketplaceConnectorLab")
 );
 const WorkerAppConnect = lazy(() => import("./pages/WorkerAppConnect"));
-const McpAgentPairingApprove = lazy(() => import("./pages/McpAgentPairingApprove"));
+const McpAgentPairingApprove = lazy(
+  () => import("./pages/McpAgentPairingApprove")
+);
 const MarketplaceCapturePreview = lazy(
   () => import("./pages/MarketplaceCapturePreview")
 );
@@ -151,11 +158,7 @@ const MarketplaceCaptureInsight = lazy(
 const AdminMarketplaceCapture = lazy(
   () => import("./pages/AdminMarketplaceCapture")
 );
-const AdminAgentExperiencePreview = lazy(
-  () => import("./pages/AdminAgentExperiencePreview")
-);
 const DeviceAuth = lazy(() => import("./pages/DeviceAuth"));
-const AdminAgencies = lazy(() => import("./pages/AdminAgencies"));
 const AdminApprovals = lazy(() => import("./pages/AdminApprovals"));
 const AdminGallery = lazy(() => import("./pages/AdminGallery"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
@@ -176,7 +179,9 @@ const AdminSkillRepositories = lazy(
 const AdminTenants = lazy(() => import("./pages/AdminTenants"));
 const AdminServices = lazy(() => import("./pages/AdminServices"));
 const AdminSettings = lazy(() => import("./pages/AdminSettings"));
-const AdminPlatformOperations = lazy(() => import("./pages/AdminPlatformOperations"));
+const AdminPlatformOperations = lazy(
+  () => import("./pages/AdminPlatformOperations")
+);
 const AdminFinanceRules = lazy(() => import("./pages/AdminFinanceRules"));
 const AdminBillingCenter = lazy(() => import("./pages/AdminBillingCenter"));
 const AdminDatabaseBackups = lazy(() => import("./pages/AdminDatabaseBackups"));
@@ -196,7 +201,6 @@ const AdminCommandCenter = lazy(
   () => import("./pages/Admin/AdminCommandCenter")
 );
 const AdminFunnelDashboard = lazy(() => import("./pages/AdminFunnelDashboard"));
-const AdminSandbox = lazy(() => import("./pages/AdminSandbox"));
 const McpServerManager = lazy(() => import("./pages/McpServerManager"));
 const DomainAdmin = lazy(() => import("./pages/DomainAdmin"));
 const DomainThemeEditor = lazy(() => import("./pages/DomainThemeEditor"));
@@ -212,18 +216,14 @@ const SocialInbox = lazy(() => import("./pages/SocialInbox"));
 const SocialPublishing = lazy(() => import("./pages/SocialPublishing"));
 const SocialModeration = lazy(() => import("./pages/SocialModeration"));
 const SocialAutomation = lazy(() => import("./pages/SocialAutomation"));
-const AutonomousTeamMonitor = lazy(
-  () => import("./pages/AutonomousTeamMonitor")
-);
-const RoleAgentDetail = lazy(() => import("./pages/RoleAgentDetail"));
-const RoleMissionPlanner = lazy(() => import("./pages/RoleMissionPlanner"));
-const RoleRoutineScheduler = lazy(() => import("./pages/RoleRoutineScheduler"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
-const StoryboardSkillFrameworkPage = lazy(() => import("./pages/StoryboardSkillFrameworkPage"));
+const StoryboardSkillFrameworkPage = lazy(
+  () => import("./pages/StoryboardSkillFrameworkPage")
+);
 const VerticalDramaSeriesPage = lazy(
   () => import("./pages/VerticalDramaSeriesPage")
 );
@@ -258,7 +258,6 @@ const DesktopHostGovernance = lazy(
 const DesktopOpen = lazy(() => import("./pages/DesktopOpen"));
 const DesktopView = lazy(() => import("./pages/DesktopView"));
 const SkillBrowser = lazy(() => import("./pages/SkillBrowser"));
-const DockerRedirect = lazy(() => import("./pages/DockerRedirect"));
 const GoogleDriveCallback = lazy(() => import("./pages/GoogleDriveCallback"));
 const McpConnectCallback = lazy(() => import("./pages/McpConnectCallback"));
 const OneDriveCallback = lazy(() => import("./pages/OneDriveCallback"));
@@ -278,40 +277,14 @@ const DomainDocsAdmin = lazy(() => import("./pages/DomainDocsAdmin"));
 const UsageAnalytics = lazy(() => import("./pages/UsageAnalytics"));
 const TaskQueueMonitor = lazy(() => import("./pages/TaskQueueMonitor"));
 const Teams = lazy(() => import("./pages/Teams"));
-const AgencyBrowser = lazy(() => import("./pages/AgencyBrowser"));
-const AgencyChat = lazy(() => import("./pages/AgencyChat"));
-const HybridOrchestrationPreview = lazy(
-  () => import("./pages/HybridOrchestrationPreview")
-);
-const AgencyBuilder = lazy(() => import("./pages/AgencyBuilder"));
-const AgencyTemplates = lazy(() => import("./pages/AgencyTemplates"));
-const AgencyMarketplace = lazy(() => import("./pages/AgencyMarketplace"));
 const PersonaSettings = lazy(() => import("./pages/PersonaSettings"));
 const AdminPersonas = lazy(() => import("./pages/AdminPersonas"));
-const Workflows = lazy(() => import("./pages/Workflows"));
-const WorkflowEditor = lazy(() => import("./pages/WorkflowEditor"));
-const WorkflowGallery = lazy(() => import("./pages/WorkflowGallery"));
-const WorkpackIntakeStudio = lazy(() => import("./pages/WorkpackIntakeStudio"));
-const WorkpackDetail = lazy(() => import("./pages/WorkpackDetail"));
-const WorkpackReplayLab = lazy(() => import("./pages/WorkpackReplayLab"));
-const WorkpackExceptionInbox = lazy(
-  () => import("./pages/WorkpackExceptionInbox")
-);
-const WorkpackConnectorStudio = lazy(
-  () => import("./pages/WorkpackConnectorStudio")
-);
-const WorkpackRoiDashboard = lazy(() => import("./pages/WorkpackRoiDashboard"));
-const WorkpackDiscovery = lazy(() => import("./pages/WorkpackDiscovery"));
 const WebhookTriggers = lazy(() => import("./pages/WebhookTriggers"));
-const AdminChannelRouter = lazy(() => import("./pages/AdminChannelRouter"));
 const AdminSystemGuardian = lazy(() => import("./pages/AdminSystemGuardian"));
 const AdminMonitoring = lazy(() => import("./pages/AdminMonitoring"));
 const AdminCapacityAdvisor = lazy(() => import("./pages/AdminCapacityAdvisor"));
 const AdminOcrUsage = lazy(() => import("./pages/AdminOcrUsage"));
-const AdminWorkOsDashboard = lazy(() => import("./pages/AdminWorkOsDashboard"));
 const AdminFeedbackHub = lazy(() => import("./pages/AdminFeedbackHub"));
-const WorkRequest = lazy(() => import("./pages/WorkRequest"));
-const MyRequests = lazy(() => import("./pages/MyRequests"));
 const MyFeedback = lazy(() => import("./pages/MyFeedback"));
 const ContentQualityDashboard = lazy(
   () => import("./pages/ContentQualityDashboard")
@@ -414,13 +387,8 @@ function RequireVerticalDramaSeries({
 }: {
   children: React.ReactNode;
 }) {
-  const {
-    enabled,
-    isResolved,
-    isError,
-    isTransientError,
-    retry,
-  } = useTenantFeatureFlagStatus("verticalDramaSeries");
+  const { enabled, isResolved, isError, isTransientError, retry } =
+    useTenantFeatureFlagStatus("verticalDramaSeries");
   const autoRefreshPending = useTenantServiceRecovery(isTransientError);
   if (isError) {
     if (isTransientError) {
@@ -479,13 +447,8 @@ function RequireVerticalDramaSeries({
  * of flashing a false "not available" denial.
  */
 function RequireVideoIntelligence({ children }: { children: React.ReactNode }) {
-  const {
-    enabled,
-    isResolved,
-    isError,
-    isTransientError,
-    retry,
-  } = useTenantFeatureFlagStatus("videoIntelligencePlatformEnabled");
+  const { enabled, isResolved, isError, isTransientError, retry } =
+    useTenantFeatureFlagStatus("videoIntelligencePlatformEnabled");
   const autoRefreshPending = useTenantServiceRecovery(isTransientError);
   if (isError) {
     if (isTransientError) {
@@ -603,23 +566,26 @@ function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
   const { theme: appTheme } = useAppTheme();
   const colorTokens = useMemo(
     () => resolveAstryxColorTokens(activePalette.theme, appTheme),
-    [activePalette.theme, appTheme],
+    [activePalette.theme, appTheme]
   );
 
   useLayoutEffect(() => {
     if (typeof document === "undefined") return;
 
     const themeRoot = document.documentElement.querySelector<HTMLElement>(
-      "[data-astryx-theme]",
+      "[data-astryx-theme]"
     );
     const targets = [document.documentElement, themeRoot].filter(
       (target, index, all): target is HTMLElement =>
-        target !== null && all.indexOf(target) === index,
+        target !== null && all.indexOf(target) === index
     );
-    const previousValues = targets.map((target) => ({
+    const previousValues = targets.map(target => ({
       target,
       values: new Map(
-        Object.keys(colorTokens).map((name) => [name, target.style.getPropertyValue(name)]),
+        Object.keys(colorTokens).map(name => [
+          name,
+          target.style.getPropertyValue(name),
+        ])
       ),
     }));
 
@@ -648,6 +614,12 @@ function AstryxPaletteApplier({ children }: { children: React.ReactNode }) {
 
 function Router() {
   useNamespacePreloader();
+  const [location] = useLocation();
+
+  if (isRetiredRoute(location)) {
+    return <Redirect to="/404" />;
+  }
+
   // make sure to consider if you need authentication for certain routes
   return (
     <>
@@ -658,7 +630,10 @@ function Router() {
           <Route path="/pricing" component={Pricing} />
           <Route path="/features" component={Features} />
           <Route path="/docs" component={Docs} />
-          <Route path="/docs/worker-app-macos-build" component={WorkerAppMacBuildGuide} />
+          <Route
+            path="/docs/worker-app-macos-build"
+            component={WorkerAppMacBuildGuide}
+          />
           <Route path="/docs/:slug+" component={DocPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/help/:slug+" component={HelpTopicPage} />
@@ -808,11 +783,6 @@ function Router() {
               <AdminPersonas />
             </RequireAdmin>
           </Route>
-          <Route path="/admin/agencies">
-            <RequireAdmin>
-              <AdminAgencies />
-            </RequireAdmin>
-          </Route>
           <Route path="/admin/approvals">
             <RequireAdmin>
               <AdminApprovals />
@@ -926,11 +896,6 @@ function Router() {
               <AdminMarketplaceCapture />
             </RequireAdmin>
           </Route>
-          <Route path="/admin/agent-experience-preview">
-            <RequireAdmin>
-              <AdminAgentExperiencePreview />
-            </RequireAdmin>
-          </Route>
           <Route path="/admin/dashboard">
             <RequireAdmin>
               <AdminCommandCenter />
@@ -939,16 +904,6 @@ function Router() {
           <Route path="/admin/funnel">
             <RequireAdmin>
               <AdminFunnelDashboard />
-            </RequireAdmin>
-          </Route>
-          <Route path="/admin/channel-router">
-            <RequireAdmin>
-              <AdminChannelRouter />
-            </RequireAdmin>
-          </Route>
-          <Route path="/admin/sandbox">
-            <RequireAdmin>
-              <AdminSandbox />
             </RequireAdmin>
           </Route>
           <Route path="/admin/mcp-servers">
@@ -980,21 +935,6 @@ function Router() {
             <RequireAdmin>
               <AdminOcrUsage />
             </RequireAdmin>
-          </Route>
-          <Route path="/admin/work-os">
-            <RequireDomainAdmin>
-              <AdminWorkOsDashboard />
-            </RequireDomainAdmin>
-          </Route>
-          <Route path="/work/request">
-            <RequireAuth>
-              <WorkRequest />
-            </RequireAuth>
-          </Route>
-          <Route path="/work/requests">
-            <RequireAuth>
-              <MyRequests />
-            </RequireAuth>
           </Route>
           <Route path="/admin/feedback-hub">
             <RequireAdmin>
@@ -1117,116 +1057,6 @@ function Router() {
           <Route path="/teams/:teamId">
             <RequireAuth>
               <Teams />
-            </RequireAuth>
-          </Route>
-          <Route path="/role-monitor">
-            <RequireAuth>
-              <AutonomousTeamMonitor />
-            </RequireAuth>
-          </Route>
-          <Route path="/role-monitor/:roleId/mission">
-            <RequireAuth>
-              <RoleMissionPlanner />
-            </RequireAuth>
-          </Route>
-          <Route path="/role-monitor/:roleId/routines">
-            <RequireAuth>
-              <RoleRoutineScheduler />
-            </RequireAuth>
-          </Route>
-          <Route path="/role-monitor/:roleId">
-            <RequireAuth>
-              <RoleAgentDetail />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies">
-            <RequireAuth>
-              <AgencyBrowser />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/templates">
-            <RequireAuth>
-              <AgencyTemplates />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/marketplace">
-            <RequireAuth>
-              <AgencyMarketplace />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/:id/edit">
-            <RequireAuth>
-              <AgencyBuilder />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/:id/hybrid-preview">
-            <RequireAuth>
-              <HybridOrchestrationPreview />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/:id/review">
-            <RequireAuth>
-              <AgencyChat />
-            </RequireAuth>
-          </Route>
-          <Route path="/agencies/:id">
-            <RequireAuth>
-              <AgencyChat />
-            </RequireAuth>
-          </Route>
-          <Route path="/workflows">
-            <RequireAuth>
-              <Workflows />
-            </RequireAuth>
-          </Route>
-          <Route path="/workflows/editor">
-            <RequireAuth>
-              <WorkflowEditor />
-            </RequireAuth>
-          </Route>
-          <Route path="/workflows/gallery">
-            <RequireAuth>
-              <WorkflowGallery />
-            </RequireAuth>
-          </Route>
-          <Route path="/workflows/editor/:id">
-            <RequireAuth>
-              <WorkflowEditor />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/intake">
-            <RequireAuth>
-              <WorkpackIntakeStudio />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/exceptions">
-            <RequireAuth>
-              <WorkpackExceptionInbox />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/roi">
-            <RequireAuth>
-              <WorkpackRoiDashboard />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/discovery">
-            <RequireAuth>
-              <WorkpackDiscovery />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/:workpackId/replay">
-            <RequireAuth>
-              <WorkpackReplayLab />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/:workpackId/connectors">
-            <RequireAuth>
-              <WorkpackConnectorStudio />
-            </RequireAuth>
-          </Route>
-          <Route path="/workpacks/:workpackId">
-            <RequireAuth>
-              <WorkpackDetail />
             </RequireAuth>
           </Route>
           <Route path="/webhook-triggers">
@@ -1491,16 +1321,10 @@ function Router() {
               <CLIPage />
             </RequireAuth>
           </Route>
-          <Route path="/docker">
-            <RequireAuth>
-              <DockerPage />
-            </RequireAuth>
-          </Route>
           <Route
             path="/presentation/:itemId/play"
             component={PresentationPlayMode}
           />
-          <Route path="/docker-redirect" component={DockerRedirect} />
           <Route path="/404" component={NotFound} />
           <Route component={NotFound} />
         </Switch>

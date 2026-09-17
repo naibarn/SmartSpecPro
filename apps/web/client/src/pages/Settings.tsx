@@ -616,7 +616,6 @@ export default function Settings() {
   const desktopHostEnabled = useTenantFeatureFlag("desktopHostEnabled");
   const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
-  const desktopAgencyRuntimeEnabled = useTenantFeatureFlag("desktopAgencyRuntime");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
   const desktopHostStatus = useDesktopHostStatus(
     desktopHostEnabled && activeTab === 'desktopHost' && Boolean(user?.currentTenantId),
@@ -2713,7 +2712,6 @@ export default function Settings() {
                       desktopHostEnabled,
                       desktopAdvancedLocalMode: desktopAdvancedLocalModeEnabled,
                       desktopPackageSync: desktopPackageSyncEnabled,
-                      desktopAgencyRuntime: desktopAgencyRuntimeEnabled,
                       desktopWorkerProjection: desktopWorkerProjectionEnabled,
                     }}
                     status={desktopHostStatus.status}

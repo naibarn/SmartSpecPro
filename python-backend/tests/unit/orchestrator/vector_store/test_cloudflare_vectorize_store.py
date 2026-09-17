@@ -10,6 +10,7 @@ from app.orchestrator.vector_store.cloudflare_vectorize_store import (
     VectorizeAPIError,
     VectorizeConfig,
     VectorizeContractError,
+    validate_vectorize_vector,
 )
 
 
@@ -26,6 +27,13 @@ def _vector(vector_id: str = "v-1") -> dict:
     }
 
 
+def test_vectorize_namespace_matches_tenant_metadata() -> None:
+    vector = {**_vector(), "namespace": "tenant:tenant-1"}
+    validate_vectorize_vector(vector)
+    with pytest.raises(VectorizeContractError, match="VECTORIZE_NAMESPACE_INVALID"):
+        validate_vectorize_vector({**vector, "namespace": "tenant-2"})
+
+
 @pytest.mark.unit
 @pytest.mark.asyncio
 async def test_vectorize_v2_paths_ndjson_and_query_metadata() -> None:
@@ -38,10 +46,12 @@ async def test_vectorize_v2_paths_ndjson_and_query_metadata() -> None:
             lines = [line for line in request.content.decode().splitlines() if line]
             assert len(lines) == 1
             assert json.loads(lines[0])["id"] == "v-1"
+            assert json.loads(lines[0])["namespace"] == "tenant:tenant-1"
             return httpx.Response(200, json={"success": True, "result": {"mutationId": "upsert-1"}})
         if request.url.path.endswith("/query"):
             payload = json.loads(request.content)
             assert payload["returnMetadata"] == "all"
+            assert payload["namespace"] == "tenant:tenant-1"
             return httpx.Response(200, json={"success": True, "result": {"matches": [{"id": "v-1"}]}})
         if request.url.path.endswith("/delete_by_ids"):
             return httpx.Response(200, json={"success": True, "result": {"mutationId": "delete-1"}})
@@ -57,8 +67,13 @@ async def test_vectorize_v2_paths_ndjson_and_query_metadata() -> None:
         http_client_factory=client_factory,
     )
 
-    assert await store.upsert([_vector()]) == {"mutationId": "upsert-1"}
-    assert await store.query([0.1] * 768, top_k=5, filter_metadata={"tenantId": "tenant-1"}) == [{"id": "v-1"}]
+    assert await store.upsert([{**_vector(), "namespace": "tenant:tenant-1"}]) == {"mutationId": "upsert-1"}
+    assert await store.query(
+        [0.1] * 768,
+        top_k=5,
+        filter_metadata={"tenantId": "tenant-1"},
+        namespace="tenant:tenant-1",
+    ) == [{"id": "v-1"}]
     assert await store.delete_by_ids(["v-1"]) == {"mutationId": "delete-1"}
     assert await store.get_by_ids(["v-1"], expected_tenant_id="tenant-1") == [_vector()]
 
@@ -114,6 +129,16 @@ async def test_tenant_verified_get_rejects_wrong_item() -> None:
 def test_vectorize_rejects_unsafe_index_names() -> None:
     with pytest.raises(VectorizeContractError, match="VECTORIZE_INDEX_NAME_INVALID"):
         VectorizeConfig(account_id="account-1", api_token="token-1", index_name="../other-index")
+
+
+@pytest.mark.unit
+def test_vectorize_rejects_unsafe_namespaces() -> None:
+    from app.orchestrator.vector_store.cloudflare_vectorize_store import validate_vectorize_namespace
+
+    with pytest.raises(VectorizeContractError, match="VECTORIZE_NAMESPACE_INVALID"):
+        validate_vectorize_namespace(" ")
+    with pytest.raises(VectorizeContractError, match="VECTORIZE_NAMESPACE_INVALID"):
+        validate_vectorize_namespace("tenant:" + "x" * 100)
 
 
 @pytest.mark.unit

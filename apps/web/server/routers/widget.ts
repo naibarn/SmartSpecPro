@@ -48,8 +48,7 @@ function sanitizeTheme(raw: Record<string, unknown>): Record<string, string> {
 
 const widgetCreateSchema = z.object({
   name: z.string().min(1).max(255),
-  targetType: z.enum(["chat", "agency"]).optional(),
-  targetAgencyId: z.string().optional(),
+  targetType: z.literal("chat").optional(),
   defaultPersonaId: z.string().optional(),
   allowedOrigins: z.array(z.string()).default([]),
   rateLimitPerMinute: z.number().int().min(1).max(1000).default(10),
@@ -65,8 +64,7 @@ const widgetCreateSchema = z.object({
 const widgetUpdateSchema = z.object({
   widgetId: z.string(),
   name: z.string().min(1).max(255).optional(),
-  targetType: z.enum(["chat", "agency"]).optional(),
-  targetAgencyId: z.string().nullable().optional(),
+  targetType: z.literal("chat").optional(),
   defaultPersonaId: z.string().nullable().optional(),
   allowedOrigins: z.array(z.string()).optional(),
   rateLimitPerMinute: z.number().int().min(1).max(1000).optional(),
@@ -150,7 +148,6 @@ export const widgetRouter = router({
           tenantId,
           name: input.name,
           targetType: input.targetType ?? "chat",
-          targetAgencyId: input.targetAgencyId ?? null,
           defaultPersonaId: input.defaultPersonaId ?? null,
           allowedOrigins: input.allowedOrigins,
           rateLimitPerMinute: input.rateLimitPerMinute,
@@ -183,7 +180,6 @@ export const widgetRouter = router({
 
       if (input.name !== undefined) updateData.name = input.name;
       if (input.targetType !== undefined) updateData.targetType = input.targetType;
-      if (input.targetAgencyId !== undefined) updateData.targetAgencyId = input.targetAgencyId;
       if (input.defaultPersonaId !== undefined) updateData.defaultPersonaId = input.defaultPersonaId;
       if (input.allowedOrigins !== undefined) updateData.allowedOrigins = input.allowedOrigins;
       if (input.rateLimitPerMinute !== undefined) updateData.rateLimitPerMinute = input.rateLimitPerMinute;

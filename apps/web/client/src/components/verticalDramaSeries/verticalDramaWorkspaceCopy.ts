@@ -406,6 +406,9 @@ export const VD_COPY = {
 
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
     generatePromptAndImage: "Generate prompt + image",
+    generateAllImagePrompts: "Generate image prompts for all shots",
+    generateAllPromptAndImages: "Generate prompts + images for all shots",
+    generateMissingShotImages: "Generate images for shots without images",
     generatingPromptAndImage: "Working…",
     reviewGeneratedPrompt:
       "Review the generated prompt before spending credits",
@@ -1171,7 +1174,10 @@ export const VD_COPY = {
     canonicalDialoguePreviewLabel: "บทพูด (จากบทเต็ม)",
 
     /* ---- One-click generate + inline prompt editing (Phase 4.1/4.2) ---- */
-    generatePromptAndImage: "สร้าง prompt + ภาพ",
+    generatePromptAndImage: "สร้างพรอมต์และภาพ",
+    generateAllImagePrompts: "สร้างพรอมต์ภาพทุกช็อต",
+    generateAllPromptAndImages: "สร้างพรอมต์และภาพทุกช็อต",
+    generateMissingShotImages: "สร้างภาพสำหรับช็อตที่ยังไม่มีภาพ",
     generatingPromptAndImage: "กำลังทำงาน…",
     reviewGeneratedPrompt: "ตรวจสอบ prompt ที่สร้างก่อนใช้เครดิต",
     savePromptFree: "บันทึก (ฟรี)",

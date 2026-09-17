@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles, ChevronDown, Zap, Bot } from "lucide-react";
+import { Menu, X, Sparkles, ChevronDown, Zap } from "lucide-react";
 import { useTenant } from "@/contexts/TenantContext";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -53,7 +53,6 @@ export function Navbar() {
   const navItems: NavItem[] = [
     { href: "/", label: t("navbar.home") },
     { href: "/features", label: t("navbar.features") },
-    { href: "/workflows/gallery", label: t("navbar.workflows") },
     { href: "/pricing", label: t("navbar.pricing") },
     { href: "/gallery", label: t("navbar.gallery") },
     {
@@ -64,12 +63,6 @@ export function Navbar() {
           label: t("navbar.marketplaceSkills"),
           icon: Zap,
           description: "Browse reusable skills and prompts",
-        },
-        {
-          href: "/agencies/marketplace",
-          label: t("navbar.marketplaceAgencies"),
-          icon: Bot,
-          description: "Swarm-ready team templates",
         },
       ],
     },

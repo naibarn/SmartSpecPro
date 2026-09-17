@@ -39,7 +39,7 @@ import { projectManager } from '../../services/projectManager';
 import { videoEditorRenderService, videoEditorMediaLibrary } from '../../services/videoEditorService';
 import ToastContainer, { showToast } from './Toast';
 import { useLocation } from 'wouter';
-import { sanitizeProjectName, type ManagedAssetRef, type MediaJobEnvelope, type MediaOperation } from '@smartspec/shared';
+import { buildSilenceCutMap, createCameraMotionPlan, sanitizeProjectName, type CameraMotionTrackPoint, type ManagedAssetRef, type MediaJobEnvelope, type MediaOperation } from '@smartspec/shared';
 import { trpc } from '../../lib/trpc';
 import {
   buildVideoEditorLibraryAssetFromItem,
@@ -75,6 +75,7 @@ import { addTextClipToProject, canMoveClipToTrack, shouldAllowOverlap } from './
 import { isTextClipRolloutEnabled } from './textRollout';
 import { WebAssetResolver } from '../../services/webAssetResolver';
 import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from './workerEditorProject';
+import { analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
 import {
   presentationSlideContentSchema,
   type PresentationSlideContent,
@@ -524,6 +525,26 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
     sessionStorage.setItem('currentProject', JSON.stringify(project));
   }, [project]);
 
+  // Any edit creates a new revision. Camera evidence is source/revision bound;
+  // mark it stale before playback or render can silently reuse it.
+  useEffect(() => {
+    let changed = false;
+    const next = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
+    for (const track of next.timeline.tracks) {
+      for (const clip of track.clips) {
+        const settings = clip.smartCamera;
+        if (!settings?.plan || !settings.projectRevisionId || settings.projectRevisionId === project.modifiedAt) continue;
+        if (settings.analysisStatus === 'browser_ready' || settings.analysisStatus === 'browser_degraded') {
+          settings.analysisStatus = 'stale';
+          settings.staleReason = 'project_revision_changed';
+          settings.warnings = [...(settings.warnings ?? []), 'camera_plan_stale_for_revision'].slice(-8);
+          changed = true;
+        }
+      }
+    }
+    if (changed) setProject(next);
+  }, [project]);
+
   // Warn user on browser refresh/close when there are unsaved changes
   useEffect(() => {
     if (!isDirty) return;
@@ -954,7 +975,22 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
 
       const projectId = currentProjectId ? `video-project-${currentProjectId}` : `web-editor-${generateId('project')}`;
       const projectSnapshot = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
+      if (operation === 'video.render' && projectSnapshot.timeline.tracks.some((track) => track.clips.some((clip) => clip.smartCamera?.plan && clip.smartCamera.analysisStatus === 'stale'))) {
+        throw new Error('กล้องอัจฉริยะหมดอายุหลังแก้ไขไทม์ไลน์ กรุณา Quick ใหม่หรือโปรโมต Full Scan ก่อน render');
+      }
       const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
+      const renderCameraPlans = operation === 'video.render'
+        ? Object.fromEntries(projectSnapshot.timeline.tracks.flatMap((track) => track.clips)
+          .filter((clip) => clip.smartCamera?.plan && clip.smartCamera.analysisStatus !== 'stale')
+          .map((clip) => [clip.id, clip.smartCamera?.plan]))
+        : undefined;
+      const operationOptions = operation === 'video.render'
+        ? {
+            ...options,
+            ...(Object.keys(renderCameraPlans ?? {}).length > 0 ? { cameraMotionPlans: renderCameraPlans } : {}),
+            ...(projectSnapshot.metadata?.silenceCutMap ? { silenceCutMap: projectSnapshot.metadata.silenceCutMap } : {}),
+          }
+        : options;
       const outputRoles: Record<MediaOperation, string[]> = {
         'media.probe': ['probe_json'], 'media.proxy': ['proxy_video'], 'media.waveform': ['waveform_json'],
         'media.thumbnail': ['thumbnail_image'], 'media.analysis': ['analysis_json'], 'media.silence_detect': ['silence_json'],
@@ -962,20 +998,21 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         'media.align': ['subtitle_vtt'], 'media.audio_mix': ['mixed_audio'], 'media.audio_extract': ['extracted_audio'],
         'media.audio_export': ['audio_mp3'], 'media.ai_music': ['ai_music'], 'media.ai_media_studio': ['generated_media'],
         'media.privacy_track': ['privacy_track_json'], 'media.recording_normalize': ['normalized_audio'],
+        'media.composition_scan': ['composition_scan_json'],
         'video.render_still': ['preview_frame'], 'video.render': ['final_video'],
       };
       const operationOutputRoles = operation === 'media.ai_media_studio' && options.mode === 'stock_svg'
         ? ['sanitized_svg']
         : outputRoles[operation];
       const isPaid = operation === 'media.ai_music' || operation === 'media.ai_media_studio';
-      const mutationFingerprint = `${projectId}:${operation}:${projectSnapshot.modifiedAt}:${JSON.stringify(options)}`;
+      const mutationFingerprint = `${projectId}:${operation}:${projectSnapshot.modifiedAt}:${JSON.stringify(operationOptions)}`;
       const previousMutation = queueMutationIdsRef.current.get(mutationFingerprint);
       const revisionId = previousMutation?.revisionId || generateId('revision');
       const idempotencyKey = previousMutation?.idempotencyKey || `${projectId}:${revisionId}:${operation}`;
       queueMutationIdsRef.current.set(mutationFingerprint, { revisionId, idempotencyKey });
       const envelope: Omit<MediaJobEnvelope, 'tenantId'> = {
         protocol: 'smartaihub.media.job', version: '1.0', jobId: generateId('editor-job'), projectId,
-        revisionId, timelineVersion: 1, operation, options,
+        revisionId, timelineVersion: 1, operation, options: operationOptions,
         inputs: { assets: Object.values(refs), project: built.project },
         plan: { planHash: generateId('plan'), profileVersion: 'web-editor-1', stages: [{ id: 'operation', operation, dependsOn: [] }], outputRoles: operationOutputRoles },
         requirements: {
@@ -995,6 +1032,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       setSidebarView('worker');
       showToast('ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
       setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(result.job.id))}`);
+      return String(result.job.id);
     } finally {
       setIsSubmittingWorkerJob(false);
     }
@@ -2099,44 +2137,119 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       showToast('ปลดล็อก track ก่อนวิเคราะห์ Smart Camera', 'info');
       return;
     }
-    if (workerHandoff) {
-      try {
-        await handleQueueMediaOperation('media.reframe', {
-          clipId,
-          mode: target.clip.smartCamera?.mode || 'auto_face',
-          autoZoom: target.clip.smartCamera?.autoZoom ?? true,
-          autoPan: target.clip.smartCamera?.autoPan ?? true,
-          intensity: target.clip.smartCamera?.intensity ?? 50,
-          safeMargin: target.clip.smartCamera?.safeMargin ?? 10,
-          reviewRequired: true,
-        }, [target.clip.assetId]);
-      } catch (error) {
-        showToast(getErrorMessage(error, 'ส่งคำขอวิเคราะห์ Smart Camera ไม่สำเร็จ'), 'error', 5000);
-      }
+    const asset = project.assets[target.clip.assetId];
+    const sourceUrl = asset ? getAssetSourceUrl(asset) : null;
+    if (!sourceUrl) {
+      showToast('ไม่พบไฟล์ต้นฉบับสำหรับวิเคราะห์ใน browser', 'error');
       return;
     }
+    const requestedMode = target.clip.smartCamera?.mode;
+    const mode = requestedMode === 'face_activity' ? 'face_activity' : 'face_focus';
+    const sourceFingerprint = `${asset.id}:${asset.path || asset.originalPath || sourceUrl}:${asset.duration || target.clip.duration}`;
+    const projectRevisionId = project.modifiedAt;
+    const trimRange = {
+      startMs: Math.max(0, Math.round(target.clip.trimIn * 1000)),
+      endMs: Math.max(
+        Math.max(0, Math.round(target.clip.trimIn * 1000)) + 1,
+        Math.round((target.clip.trimIn + target.clip.duration * Math.max(0.01, target.clip.speed || 1)) * 1000),
+      ),
+    };
+    const policyFingerprint = 'web-editor-smart-camera-v1';
     setProject(prevProject => {
-      const newProject = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
-      for (const track of newProject.timeline.tracks) {
-        const clip = track.clips.find((candidate) => candidate.id === clipId);
-        if (!clip) continue;
-        if (track.locked) return prevProject;
-        clip.smartCamera = {
-          mode: clip.smartCamera?.mode || 'auto_face',
-          autoZoom: clip.smartCamera?.autoZoom ?? true,
-          autoPan: clip.smartCamera?.autoPan ?? true,
-          intensity: clip.smartCamera?.intensity ?? 50,
-          safeMargin: clip.smartCamera?.safeMargin ?? 10,
-          analysisRequested: true,
-        };
-        newProject.modifiedAt = new Date().toISOString();
-        addToHistory(newProject);
-        return newProject;
-      }
-      return prevProject;
+      const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+      const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+      if (clip) clip.smartCamera = { ...clip.smartCamera, mode, autoZoom: clip.smartCamera?.autoZoom ?? true, autoPan: clip.smartCamera?.autoPan ?? true, intensity: clip.smartCamera?.intensity ?? 50, safeMargin: clip.smartCamera?.safeMargin ?? 10, analysisMode: 'quick', analysisStatus: 'browser_running', analysisProvenance: 'browser', sourceFingerprint, projectRevisionId, markRevision: clip.smartCamera?.markRevision ?? 0, policyFingerprint, trimRange, warnings: [] };
+      return next;
     });
-    showToast('บันทึกคำขอวิเคราะห์ใบหน้า/วัตถุแล้ว ระบบจะประมวลผลเมื่อส่งงานเข้า Worker', 'info', 4500);
-  }, [addToHistory, handleQueueMediaOperation, project.timeline.tracks, workerHandoff]);
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.muted = true;
+      video.playsInline = true;
+      video.src = sourceUrl;
+      await new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error('โหลดวิดีโอสำหรับวิเคราะห์ไม่ทัน')), 12000);
+        video.onloadedmetadata = () => { window.clearTimeout(timeout); resolve(); };
+        video.onerror = () => { window.clearTimeout(timeout); reject(new Error('browser อ่านวิดีโอนี้ไม่ได้')); };
+      });
+      const result = await analyzeFaceAndActivity(video, {
+        sourceFingerprint,
+        maxSamples: mode === 'face_activity' ? 3 : 2,
+        startTimeMs: trimRange.startMs,
+        endTimeMs: trimRange.endMs,
+      });
+      if (result.points.length === 0) {
+        setProject(prevProject => {
+          const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+          const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+          if (clip?.smartCamera) {
+            clip.smartCamera.analysisStatus = 'browser_degraded';
+            clip.smartCamera.warnings = [...(result.warnings.length > 0 ? result.warnings : ['face_not_found']), 'keep_existing_plan_or_add_manual_mark'];
+          }
+          return next;
+        });
+        video.removeAttribute('src');
+        video.load();
+        showToast('ไม่พบใบหน้าที่เชื่อถือได้ จึงคงแผนเดิมไว้และไม่สร้างกรอบว่าง', 'info', 5000);
+        return;
+      }
+      const facePoints: CameraMotionTrackPoint[] = result.points.map((point) => ({ timeMs: point.timeMs, x: point.roi.x + point.roi.width / 2, y: point.roi.y + point.roi.height / 2, width: point.roi.width, height: point.roi.height, confidence: point.roi.confidence, kind: 'face', trackId: point.trackId, visible: point.roi.visible }));
+      const activityPoints: CameraMotionTrackPoint[] = result.activity.map((item) => ({ timeMs: item.timeMs, x: item.x, y: item.y, width: item.width, height: item.height, confidence: item.confidence, kind: item.kind === 'hand' ? 'hand' : 'activity', trackId: item.trackId, visible: item.visible }));
+      const firstFace = result.points[0];
+      const focusX = firstFace ? firstFace.roi.x + firstFace.roi.width / 2 : 0.5;
+      const focusY = firstFace ? firstFace.roi.y + firstFace.roi.height / 2 : 0.5;
+      const plan = createCameraMotionPlan({ durationMs: Math.round((target.clip.duration || video.duration || 0) * 1000), mode, focusX, focusY, baseScale: target.clip.smartCamera?.autoZoom === false ? 1 : 1.18, analysisMode: 'quick', trackPoints: [...facePoints, ...activityPoints], evidence: { analysisMode: 'quick', status: result.status === 'browser_ready' ? 'approved' : 'degraded', sourceFingerprint, markRevision: target.clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, fivePointFace: firstFace, activityEvidence: result.activity } });
+      setProject(prevProject => {
+        const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+        const revisionId = new Date().toISOString();
+        if (clip) clip.smartCamera = { ...clip.smartCamera, mode, analysisMode: 'quick', analysisStatus: result.status === 'browser_ready' ? 'browser_ready' : 'browser_degraded', analysisProvenance: 'browser', sourceFingerprint, projectRevisionId: revisionId, markRevision: clip.smartCamera?.markRevision ?? 0, policyFingerprint, capabilityProfileFingerprint: result.capability.capabilityFingerprint, trimRange, plan, planFingerprint: plan.planFingerprint, planRef: plan.planFingerprint, planReference: plan.planFingerprint, planHash: plan.planFingerprint, facePointCount: facePoints.length, activityEvidenceCount: activityPoints.length, warnings: result.warnings };
+        next.modifiedAt = revisionId;
+        addToHistory(next);
+        return next;
+      });
+      video.removeAttribute('src');
+      video.load();
+      showToast(result.status === 'browser_ready' ? 'วิเคราะห์ Face Focus ใน browser สำเร็จ' : 'วิเคราะห์ได้บางส่วน กรุณาตรวจกรอบก่อน render', 'success', 4500);
+    } catch (error) {
+      setProject(prevProject => {
+        const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        const clip = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+        if (clip?.smartCamera) clip.smartCamera = { ...clip.smartCamera, analysisStatus: 'error', analysisProvenance: 'browser', warnings: [getErrorMessage(error, 'browser analysis failed')] };
+        return next;
+      });
+      showToast(getErrorMessage(error, 'วิเคราะห์ Smart Camera ไม่สำเร็จ'), 'error', 5000);
+    }
+  }, [addToHistory, getAssetSourceUrl, project.assets, project.modifiedAt, project.timeline.tracks]);
+
+  const handleRequestSmartCameraFullScan = useCallback(async (clipId: string) => {
+    if (!workerHandoff) {
+      showToast('Full Scan ต้องใช้ Worker แต่ยังแก้ไขและใช้ Quick ใน browser ได้', 'info', 4500);
+      return;
+    }
+    const clip = project.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+    if (!clip) return;
+    const asset = project.assets[clip.assetId];
+    const sourceFingerprint = asset ? `${asset.id}:${asset.path || asset.originalPath || getAssetSourceUrl(asset)}:${asset.duration || clip.duration}` : `clip:${clipId}`;
+    try {
+      const trimStartMs = Math.max(0, Math.round(clip.trimIn * 1000));
+      const trimEndMs = trimStartMs + Math.max(1, Math.round(clip.duration * Math.max(0.01, clip.speed || 1) * 1000));
+      const durationMs = Math.max(trimEndMs, Math.round((asset?.duration || clip.duration) * 1000), 1);
+      const projectRevisionId = project.modifiedAt;
+      const markRevision = clip.smartCamera?.markRevision ?? 0;
+      const policyFingerprint = 'web-editor-smart-camera-v1';
+      const trimRange = { startMs: trimStartMs, endMs: trimEndMs };
+      const jobId = await handleQueueMediaOperation('media.composition_scan', { clipId, mode: 'full_scan', sourceFingerprint, projectRevisionId, markRevision, policyFingerprint, capabilityProfileFingerprint: 'worker-mediapipe-1.0.1', analysisMode: 'full_scan', compositionContractVersion: 'feature-191.v1', contractVersion: 'feature-186-v1', trimRange, aspectProfile: `${project.settings.width}x${project.settings.height}`, durationMs, reviewRequired: true }, [clip.assetId]);
+      setProject(prevProject => {
+        const next = JSON.parse(JSON.stringify(prevProject)) as VideoEditorProject;
+        const item = next.timeline.tracks.flatMap((track) => track.clips).find((candidate) => candidate.id === clipId);
+        if (item) item.smartCamera = { ...item.smartCamera, analysisMode: 'full_scan', analysisStatus: 'worker_running', analysisProvenance: 'worker', lastAnalysisJobId: jobId, sourceFingerprint, projectRevisionId, markRevision, policyFingerprint, capabilityProfileFingerprint: 'worker-mediapipe-1.0.1', trimRange };
+        return next;
+      });
+    } catch (error) {
+      showToast(getErrorMessage(error, 'ส่ง Full Scan เข้า Worker ไม่สำเร็จ'), 'error', 5000);
+    }
+  }, [getAssetSourceUrl, handleQueueMediaOperation, project.assets, project.modifiedAt, project.settings.height, project.settings.width, project.timeline.tracks, workerHandoff]);
 
   const handleSubmitToWorker = useCallback(async () => {
     if (!workerHandoff || isSubmittingWorkerJob) return;
@@ -3008,6 +3121,21 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         applyToAllTracks,
         analyzedTrackIds,
       );
+      const sourceDurationMs = Math.round(Math.max(
+        project.settings.duration,
+        ...validRegions.map((region) => region.endTime),
+      ) * 1000);
+      newProject.metadata = {
+        ...newProject.metadata,
+        silenceCutMap: buildSilenceCutMap({
+          sourceDurationMs,
+          ranges: validRegions.map((region) => ({ startMs: Math.round(region.startTime * 1000), endMs: Math.round(region.endTime * 1000) })),
+          sourceFingerprint: `project:${project.modifiedAt}:${sourceDurationMs}`,
+          revisionId: project.modifiedAt,
+          audioStreamIndex: null,
+          detectionFingerprint: `dialog:${validRegions.length}`,
+        }),
+      };
 
       // Update project state
       setProject(newProject);
@@ -3411,6 +3539,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             transitions: clip.transitions,
             transform: clip.transform,
             effects: clip.effects,
+            cameraPlan: clip.smartCamera?.analysisStatus === 'stale' ? undefined : clip.smartCamera?.plan,
           };
         }
       }
@@ -4945,6 +5074,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
                   onChange={handleSmartCameraChange}
                   onAddKeyframe={handleAddTransformKeyframeAtCurrentTime}
                   onRequestAnalysis={handleRequestSmartCameraAnalysis}
+                  onRequestFullScan={handleRequestSmartCameraFullScan}
                 />
               )}
               {sidebarView === 'worker' && workerHandoff && (

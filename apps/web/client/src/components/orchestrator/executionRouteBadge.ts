@@ -35,23 +35,6 @@ export function getExecutionRouteBadge(
   const routeReason = normalize(input.routeReason);
 
   if (
-    route === "agency" ||
-    selectedSkillId === "agency-swarm" ||
-    routeReason.includes("agency")
-  ) {
-    return {
-      label: "Agency swarm",
-      title: buildTitle(
-        "Agency swarm",
-        input.route ?? null,
-        input.selectedSkillId ?? null,
-        input.routeReason ?? null
-      ),
-      className: "border-violet-200 bg-violet-50 text-violet-700",
-    };
-  }
-
-  if (
     route.includes("video") ||
     selectedSkillId === "video-creator" ||
     selectedSkillId === "video-prompt-engineer" ||

@@ -26,6 +26,7 @@ export function localizeConnectionPresentation(
     Offline: "ออฟไลน์",
     "Not connected": "ยังไม่เชื่อมต่อ",
     "Ready to receive jobs": "พร้อมรับงาน",
+    "Checking connection": "กำลังตรวจสอบการเชื่อมต่อ",
     "Connected · loop stopped": "เชื่อมต่อแล้ว · หยุดรับงาน",
     "Connected · runtime needs attention": "เชื่อมต่อแล้ว · runtime ต้องตรวจสอบ",
     "Reconnect required": "ต้องเชื่อมต่อใหม่",
@@ -35,11 +36,14 @@ export function localizeConnectionPresentation(
     "Smart AI Hub unavailable · retrying": "Smart AI Hub ไม่พร้อมใช้งาน · กำลังลองใหม่",
   };
   const details: Record<string, string> = {
-    "Connect this machine to receive worker jobs.": "เปิดหน้า Connection แล้วกดเชื่อมต่อเครื่องนี้เพื่อรับงาน",
-    "Approve this Worker App in the browser.": "อนุมัติ Worker App นี้ใน browser ที่เปิดขึ้นมา",
-    "Verifying the saved connection with Smart AI Hub...": "กำลังตรวจสอบการเชื่อมต่อที่บันทึกไว้กับ Smart AI Hub...",
-    "Access and runtime are valid. Start the worker loop to receive jobs.": "สิทธิ์และ runtime ใช้งานได้ ให้เริ่ม Worker loop เพื่อรับงาน",
-    "Connection, runtime, and worker loop are active.": "การเชื่อมต่อ runtime และ Worker loop ทำงานอยู่",
+    "Connect to receive worker jobs.": "เชื่อมต่อเพื่อรับงาน",
+    "Finish approval in your browser.": "อนุมัติใน browser เพื่อดำเนินการต่อ",
+    "Checking the saved connection.": "กำลังตรวจสอบการเชื่อมต่อที่บันทึกไว้",
+    "Waiting for a fresh server check.": "กำลังรอผลตรวจสอบล่าสุดจาก Server",
+    "Access and runtime are valid. Start the worker loop to receive jobs.": "สิทธิ์และ runtime พร้อม ให้เริ่ม Worker loop เพื่อรับงาน",
+    "Connection and worker loop are active.": "การเชื่อมต่อและ Worker loop ทำงานอยู่",
+    "Start the worker loop to receive jobs.": "เริ่ม Worker loop เพื่อรับงาน",
+    "Runtime checks need attention before receiving jobs.": "ต้องตรวจสอบ runtime ก่อนรับงาน",
   };
   return { ...status, label: labels[status.label] ?? status.label, detail: details[status.detail] ?? status.detail };
 }

@@ -12,7 +12,7 @@
         "type": "object",
         "required": ["shot_number", "scene_intent"],
         "properties": {
-          "shot_number": { "type": "integer", "minimum": 1 },
+          "shot_number": { "type": "integer", "minimum": 1, "maximum": 9 },
           "scene_intent": {
             "type": "object",
             "required": [
@@ -47,10 +47,117 @@
                 "type": "array",
                 "items": { "type": "string" }
               },
-              "supporting_presence": { "type": "array" },
-              "communication_mode": { "type": "string" },
-              "visual_plan": { "type": "object" },
-              "dialogue_routing": { "type": "array" },
+              "supporting_presence": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                  "type": "object",
+                  "required": ["role"],
+                  "properties": {
+                    "role": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    },
+                    "count": { "type": "integer", "minimum": 1, "maximum": 20 },
+                    "visibility": { "enum": ["visible", "background"] },
+                    "action": { "type": "string", "maxLength": 500 }
+                  },
+                  "additionalProperties": true
+                }
+              },
+              "communication_mode": {
+                "enum": [
+                  "none",
+                  "phone_call",
+                  "video_call",
+                  "text_message",
+                  "shout_through_barrier",
+                  "barrier_dialogue",
+                  "separate_locations",
+                  "voice_only"
+                ]
+              },
+              "visual_plan": {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "reason_codes",
+                  "primary_character_refs",
+                  "secondary_character_refs"
+                ],
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "single_view",
+                      "device_screen",
+                      "dual_view",
+                      "text_ui",
+                      "voice_only",
+                      "no_character"
+                    ]
+                  },
+                  "reason_codes": {
+                    "type": "array",
+                    "maxItems": 8,
+                    "items": { "type": "string", "minLength": 1 }
+                  },
+                  "primary_character_refs": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": { "type": "string", "minLength": 1 }
+                  },
+                  "secondary_character_refs": {
+                    "type": "array",
+                    "maxItems": 10,
+                    "items": { "type": "string", "minLength": 1 }
+                  },
+                  "primary_location_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  },
+                  "secondary_location_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 160
+                  }
+                },
+                "additionalProperties": true
+              },
+              "dialogue_routing": {
+                "type": "array",
+                "maxItems": 50,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "line_index",
+                    "role",
+                    "visual_target",
+                    "must_be_on_screen",
+                    "must_not_appear_physically"
+                  ],
+                  "properties": {
+                    "line_index": { "type": "integer", "minimum": 0 },
+                    "speaker_ref": { "type": "string", "minLength": 1 },
+                    "role": {
+                      "enum": [
+                        "physical",
+                        "screen_caller",
+                        "offscreen",
+                        "mentioned_only",
+                        "unknown"
+                      ]
+                    },
+                    "visual_target": {
+                      "enum": ["body", "virtual_screen", "none", "text_ui"]
+                    },
+                    "must_be_on_screen": { "type": "boolean" },
+                    "must_not_appear_physically": { "type": "boolean" }
+                  },
+                  "additionalProperties": true
+                }
+              },
               "confidence": { "enum": ["high", "medium", "low"] },
               "needs_review": { "type": "boolean" },
               "reason_codes": { "type": "array", "items": { "type": "string" } }

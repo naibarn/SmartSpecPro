@@ -12,7 +12,19 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  like,
+  lt,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { router, protectedProcedure } from "../_core/trpc";
 import type { TrpcContext } from "../_core/context";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
@@ -29,6 +41,7 @@ import {
   verticalDramaLocations,
   verticalDramaMemoryEvents,
   mediaAssets,
+  mediaTaskArtifacts,
   verticalDramaSourceAssets,
   verticalDramaSourceMediaSegments,
   mediaModels,
@@ -112,6 +125,7 @@ import {
   ingestVerticalDramaMediaAsset,
   reconcileVerticalDramaMediaAsset,
 } from "../services/verticalDramaMediaAssetService";
+import { reconcileStartFramePlanWithDurableArtifacts } from "../services/verticalDramaStartFrameReconciliation";
 import {
   getUnifiedMediaTask,
   isTransientGenerationError,
@@ -1235,6 +1249,11 @@ async function loadEnhancedShotContext(input: {
     rawStoryboardShot,
     input.shotNumber
   );
+  const characterDescriptionOverrides =
+    normalizeVerticalDramaCharacterDescriptionOverrides(
+      frame?.characterDescriptionOverrides,
+      frame?.requiredCharacterRefs ?? []
+    );
   const shotReferenceRoles = frame
     ? resolveExplicitShotReferenceRoles(storyboard, input.shotNumber, frame)
     : {
@@ -1546,6 +1565,7 @@ async function loadEnhancedShotContext(input: {
       ...storyboardShot,
       characterIds,
       screenCallerCharacterRefs,
+      characterDescriptionOverrides,
       visualCastPolicy,
       clipNumber: (clip as { clipNumber?: number }).clipNumber,
       sourceShotNumbers:
@@ -1591,6 +1611,7 @@ async function loadEnhancedShotContext(input: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
       verifiedCastPositions,
+      characterDescriptionOverrides,
       visualCastPolicy,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
@@ -1599,6 +1620,7 @@ async function loadEnhancedShotContext(input: {
     },
     mediaBundle,
     visionReferences,
+    characterDescriptionOverrides,
     targetVideoModel,
     authoringModel,
     nativeAudioEnabled: pack.nativeAudioEnabled === true,
@@ -2989,6 +3011,110 @@ async function loadOwnedEpisode(owner: EpisodeRunOwner) {
   if (!row)
     throw new TRPCError({ code: "NOT_FOUND", message: "Episode not found" });
   return row;
+}
+
+/**
+ * Repair an episode projection when the provider/artifact handoff completed
+ * but the browser that submitted the task disappeared before it could commit
+ * `approvedMediaAssetId`. This is intentionally artifact-only: a provider
+ * task id by itself is not proof that the output is safe to use.
+ */
+async function reconcilePersistedStartFrameTasks(
+  owner: EpisodeRunOwner,
+  plan: VerticalDramaStartFramePlan | null
+): Promise<VerticalDramaStartFramePlan | null> {
+  if (!plan?.frames?.length) return null;
+  const pendingTaskIds = plan.frames.flatMap(frame =>
+    [frame.imageTask?.pendingTaskId, frame.stopFrameTask?.pendingTaskId].filter(
+      (taskId): taskId is string => Boolean(taskId?.trim())
+    )
+  );
+  if (pendingTaskIds.length === 0) return null;
+
+  const artifactRows = await db
+    .select({
+      sourceTaskId: mediaTaskArtifacts.sourceTaskId,
+      mediaAssetId: mediaTaskArtifacts.mediaAssetId,
+    })
+    .from(mediaTaskArtifacts)
+    .where(
+      and(
+        eq(mediaTaskArtifacts.tenantId, owner.tenantId),
+        eq(mediaTaskArtifacts.userId, owner.userId),
+        inArray(mediaTaskArtifacts.sourceTaskId, pendingTaskIds),
+        eq(mediaTaskArtifacts.outputIndex, 0),
+        eq(mediaTaskArtifacts.mediaType, "image"),
+        eq(mediaTaskArtifacts.r2Status, "ready"),
+        isNotNull(mediaTaskArtifacts.mediaAssetId)
+      )
+    );
+  if (artifactRows.length === 0) return null;
+
+  const candidateAssetIds = artifactRows
+    .map(row => row.mediaAssetId)
+    .filter((assetId): assetId is number => Number.isInteger(assetId));
+  if (candidateAssetIds.length === 0) return null;
+
+  // Validate the referenced asset separately. The artifact row is owner
+  // scoped, but the asset id must also be owner scoped and ready before it can
+  // become the episode's approved frame.
+  const readyAssets = await db
+    .select({ id: mediaAssets.id })
+    .from(mediaAssets)
+    .where(
+      and(
+        eq(mediaAssets.tenantId, owner.tenantId),
+        eq(mediaAssets.userId, owner.userId),
+        inArray(mediaAssets.id, candidateAssetIds),
+        eq(mediaAssets.status, "ready"),
+        like(mediaAssets.mimeType, "image/%")
+      )
+    );
+  const readyAssetIds = new Set(readyAssets.map(asset => asset.id));
+  const durableArtifacts = artifactRows.flatMap(row =>
+    row.mediaAssetId != null && readyAssetIds.has(row.mediaAssetId)
+      ? [{ sourceTaskId: row.sourceTaskId, mediaAssetId: row.mediaAssetId }]
+      : []
+  );
+  if (durableArtifacts.length === 0) return null;
+
+  return db.transaction(async tx => {
+    const [freshRow] = await tx
+      .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
+      .from(verticalDramaEpisodes)
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      )
+      .for("update")
+      .limit(1);
+    const freshPlan =
+      (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ?? null;
+    if (!freshPlan) return null;
+
+    const repaired = reconcileStartFramePlanWithDurableArtifacts(
+      freshPlan,
+      durableArtifacts
+    );
+    if (repaired.repaired.length === 0) return null;
+
+    await tx
+      .update(verticalDramaEpisodes)
+      .set({ startFramePlan: repaired.plan, updatedAt: new Date() })
+      .where(
+        and(
+          eq(verticalDramaEpisodes.id, owner.episodeId),
+          eq(verticalDramaEpisodes.tenantId, owner.tenantId),
+          eq(verticalDramaEpisodes.userId, owner.userId),
+          eq(verticalDramaEpisodes.seriesId, owner.seriesId)
+        )
+      );
+    return repaired.plan;
+  });
 }
 
 /** Load the caller-owned series title for user-facing media names. */
@@ -15695,6 +15821,24 @@ export const verticalDramaEpisodesRouter = router({
           }
         }
       }
+
+      // A completed provider task can outlive the browser that submitted it.
+      // Reconcile the already-durable artifact before resolving episode URLs,
+      // so a refresh repairs the JSONB projection instead of rendering an
+      // eternal "กำลังสร้าง" state. This is a no-op for plans without a
+      // pending image/stop-frame task and is bounded to those task ids only.
+      const repairedStartFramePlan = await reconcilePersistedStartFrameTasks(
+        owner,
+        row.startFramePlan as VerticalDramaStartFramePlan | null
+      ).catch(error => {
+        debugError(
+          "vertical-drama-start-frame-reconciliation",
+          `Unable to reconcile persisted frame tasks for episode ${episodeId}`,
+          error
+        );
+        return null;
+      });
+      if (repairedStartFramePlan) row.startFramePlan = repairedStartFramePlan;
 
       const [assetResolution, characterPortraits, qualityReview] =
         await Promise.all([

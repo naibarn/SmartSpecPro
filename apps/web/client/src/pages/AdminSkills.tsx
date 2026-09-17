@@ -1,4 +1,11 @@
-import { Fragment, useState, useEffect, useMemo, useRef, useCallback } from "react";
+import {
+  Fragment,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import type { KeyboardEvent } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
@@ -70,8 +77,19 @@ import {
   ShieldCheck,
   ArrowUpRight,
 } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { useToast } from "@/hooks/use-toast";
 import { SkillStudioDialog } from "@/components/skills/SkillStudioDialog";
 import { SkillModelPreviewPanel } from "@/components/chat/settings/SkillModelPreviewPanel";
@@ -167,7 +185,13 @@ interface MaintenanceRecommendation {
   recommendationType: string;
   title: string;
   summary: string | null;
-  status: "pending_review" | "approved" | "dismissed" | "applied" | "blocked" | "failed";
+  status:
+    | "pending_review"
+    | "approved"
+    | "dismissed"
+    | "applied"
+    | "blocked"
+    | "failed";
   riskLevel: "low" | "medium" | "high" | "critical";
   compatibilityStatus: "unknown" | "compatible" | "warning" | "blocked";
   qualityScore: number | null;
@@ -229,7 +253,10 @@ type LegacyUpgradeNextAction = {
   canRun: boolean;
 };
 
-interface LegacyUpgradeQueueItem extends Omit<MaintenanceRecommendation, "latestRun"> {
+interface LegacyUpgradeQueueItem extends Omit<
+  MaintenanceRecommendation,
+  "latestRun"
+> {
   upgradePriorityScore: number;
   upgradePriorityTier: "low" | "medium" | "high" | "urgent" | "critical";
   parallelUpgradeEligible: boolean;
@@ -253,7 +280,8 @@ interface LegacyUpgradeRunItem {
   id: number;
   recommendationId: number | null;
   skillId: number | null;
-  queueState: "queued" | "running" | "failed" | "completed" | "blocked" | "canceled";
+  queueState:
+    "queued" | "running" | "failed" | "completed" | "blocked" | "canceled";
   runType: string;
   status: string;
   summary: string | null;
@@ -373,13 +401,18 @@ const categoryIcons: Record<string, typeof Sparkles> = {
 // Category label keys
 const categoryLabelKeys: Record<string, string> = {
   image_generation: "admin.skillsPage.categoryLabels.imageGeneration",
-  image_prompt_generation: "admin.skillsPage.categoryLabels.imagePromptGeneration",
-  character_prompt_generation: "admin.skillsPage.categoryLabels.characterPromptGeneration",
+  image_prompt_generation:
+    "admin.skillsPage.categoryLabels.imagePromptGeneration",
+  character_prompt_generation:
+    "admin.skillsPage.categoryLabels.characterPromptGeneration",
   video_generation: "admin.skillsPage.categoryLabels.videoGeneration",
-  video_prompt_generation: "admin.skillsPage.categoryLabels.videoPromptGeneration",
-  image_video_generation: "admin.skillsPage.categoryLabels.imageVideoGeneration",
+  video_prompt_generation:
+    "admin.skillsPage.categoryLabels.videoPromptGeneration",
+  image_video_generation:
+    "admin.skillsPage.categoryLabels.imageVideoGeneration",
   audio_generation: "admin.skillsPage.categoryLabels.audioGeneration",
-  audio_prompt_generation: "admin.skillsPage.categoryLabels.audioPromptGeneration",
+  audio_prompt_generation:
+    "admin.skillsPage.categoryLabels.audioPromptGeneration",
   article_generation: "admin.skillsPage.categoryLabels.articleGeneration",
   slide_generation: "admin.skillsPage.categoryLabels.slideGeneration",
   product_review: "admin.skillsPage.categoryLabels.productReview",
@@ -396,76 +429,32 @@ const categoryLabelKeys: Record<string, string> = {
   other: "admin.skillsPage.categoryLabels.other",
 };
 
-const executionModeLabelKeys: Record<
-  SkillExecutionMode,
-  string
-> = {
+const executionModeLabelKeys: Record<SkillExecutionMode, string> = {
   "llm-only": "admin.skillsPage.executionModes.llmOnly",
   "enhance-prompt": "admin.skillsPage.executionModes.enhancePrompt",
   "media-generate": "admin.skillsPage.executionModes.mediaGenerate",
   python: "admin.skillsPage.executionModes.python",
-  "sandbox-code": "admin.skillsPage.executionModes.sandboxCode",
-  "sandbox-command": "admin.skillsPage.executionModes.sandboxCommand",
-  "sandbox-browser": "admin.skillsPage.executionModes.sandboxBrowser",
-  "sandbox-file": "admin.skillsPage.executionModes.sandboxFile",
-  "sandbox-media": "admin.skillsPage.executionModes.sandboxMedia",
 };
 
+// Retired runtime records are kept readable for migration, but cannot be
+// selected or edited from this UI anymore.
 function isSandboxExecutionMode(
-  executionMode: SkillExecutionMode | null | undefined,
+  executionMode: SkillExecutionMode | null | undefined
 ): executionMode is Extract<SkillExecutionMode, `sandbox-${string}`> {
-  return typeof executionMode === "string" && executionMode.startsWith("sandbox-");
+  return false;
 }
 
 function getDefaultSandboxSettings(
-  category: string,
-  executionMode: SkillExecutionMode | null | undefined,
-): Pick<Skill, "sandboxProfileSlug" | "requiresNetwork" | "requiresBrowser" | "maxRuntimeSeconds" | "maxInputMb"> {
-  if (executionMode === "sandbox-browser") {
-    return {
-      sandboxProfileSlug: "browser-default",
-      requiresNetwork: true,
-      requiresBrowser: true,
-      maxRuntimeSeconds: 600,
-      maxInputMb: 50,
-    };
-  }
-  if (executionMode === "sandbox-file") {
-    return {
-      sandboxProfileSlug: "file-parser",
-      requiresNetwork: false,
-      requiresBrowser: false,
-      maxRuntimeSeconds: 300,
-      maxInputMb: 100,
-    };
-  }
-  if (executionMode === "sandbox-media") {
-    return {
-      sandboxProfileSlug: "media-processing",
-      requiresNetwork: false,
-      requiresBrowser: false,
-      maxRuntimeSeconds: 1800,
-      maxInputMb: 500,
-    };
-  }
-  if (executionMode === "sandbox-command") {
-    return {
-      sandboxProfileSlug: "browser-default",
-      requiresNetwork: category === "slide_generation",
-      requiresBrowser: false,
-      maxRuntimeSeconds: category === "slide_generation" ? 600 : 300,
-      maxInputMb: category === "slide_generation" ? 50 : 25,
-    };
-  }
-  if (executionMode === "sandbox-code") {
-    return {
-      sandboxProfileSlug: "code-default",
-      requiresNetwork: false,
-      requiresBrowser: false,
-      maxRuntimeSeconds: 300,
-      maxInputMb: 25,
-    };
-  }
+  _category?: string,
+  _executionMode?: SkillExecutionMode | null
+): Pick<
+  Skill,
+  | "sandboxProfileSlug"
+  | "requiresNetwork"
+  | "requiresBrowser"
+  | "maxRuntimeSeconds"
+  | "maxInputMb"
+> {
   return {
     sandboxProfileSlug: null,
     requiresNetwork: null,
@@ -475,28 +464,18 @@ function getDefaultSandboxSettings(
   };
 }
 
-function applySandboxDefaults(skill: Skill, executionMode: SkillExecutionMode | null | undefined): Skill {
-  if (!isSandboxExecutionMode(executionMode)) {
-    return {
-      ...skill,
-      executionMode: executionMode ?? null,
-      sandboxProfileSlug: null,
-      requiresNetwork: null,
-      requiresBrowser: null,
-      maxRuntimeSeconds: null,
-      maxInputMb: null,
-    };
-  }
-  const defaults = getDefaultSandboxSettings(skill.category, executionMode);
-  const executionModeChanged = skill.executionMode !== executionMode;
+function applySandboxDefaults(
+  skill: Skill,
+  executionMode: SkillExecutionMode | null | undefined
+): Skill {
   return {
     ...skill,
     executionMode: executionMode ?? null,
-    sandboxProfileSlug: executionModeChanged ? defaults.sandboxProfileSlug : (skill.sandboxProfileSlug ?? defaults.sandboxProfileSlug),
-    requiresNetwork: executionModeChanged ? defaults.requiresNetwork : (skill.requiresNetwork ?? defaults.requiresNetwork),
-    requiresBrowser: executionModeChanged ? defaults.requiresBrowser : (skill.requiresBrowser ?? defaults.requiresBrowser),
-    maxRuntimeSeconds: executionModeChanged ? defaults.maxRuntimeSeconds : (skill.maxRuntimeSeconds ?? defaults.maxRuntimeSeconds),
-    maxInputMb: executionModeChanged ? defaults.maxInputMb : (skill.maxInputMb ?? defaults.maxInputMb),
+    sandboxProfileSlug: null,
+    requiresNetwork: null,
+    requiresBrowser: null,
+    maxRuntimeSeconds: null,
+    maxInputMb: null,
   };
 }
 
@@ -511,38 +490,22 @@ function applySandboxDefaultsToNewSkill<
     maxInputMb: number | null;
   },
 >(draft: T, executionMode: SkillExecutionMode): T {
-  if (!isSandboxExecutionMode(executionMode)) {
-    return {
-      ...draft,
-      executionMode,
-      sandboxProfileSlug: null,
-      requiresNetwork: null,
-      requiresBrowser: null,
-      maxRuntimeSeconds: null,
-      maxInputMb: null,
-    };
-  }
-  const defaults = getDefaultSandboxSettings(draft.category, executionMode);
-  const executionModeChanged = draft.executionMode !== executionMode;
   return {
     ...draft,
     executionMode,
-    sandboxProfileSlug: executionModeChanged ? defaults.sandboxProfileSlug : (draft.sandboxProfileSlug ?? defaults.sandboxProfileSlug),
-    requiresNetwork: executionModeChanged ? defaults.requiresNetwork : (draft.requiresNetwork ?? defaults.requiresNetwork),
-    requiresBrowser: executionModeChanged ? defaults.requiresBrowser : (draft.requiresBrowser ?? defaults.requiresBrowser),
-    maxRuntimeSeconds: executionModeChanged ? defaults.maxRuntimeSeconds : (draft.maxRuntimeSeconds ?? defaults.maxRuntimeSeconds),
-    maxInputMb: executionModeChanged ? defaults.maxInputMb : (draft.maxInputMb ?? defaults.maxInputMb),
+    sandboxProfileSlug: null,
+    requiresNetwork: null,
+    requiresBrowser: null,
+    maxRuntimeSeconds: null,
+    maxInputMb: null,
   };
 }
 
 function getExecutionModeHelperText(
   t: (key: string, params?: string | Record<string, string | number>) => string,
   category: string,
-  executionMode: SkillExecutionMode | null | undefined,
+  executionMode: SkillExecutionMode | null | undefined
 ): string {
-  if (category === "slide_generation" && executionMode === "sandbox-command") {
-    return t("admin.skillsPage.executionModeHelp.slideSandboxCommand");
-  }
   if (category === "slide_generation" && executionMode === "llm-only") {
     return t("admin.skillsPage.executionModeHelp.slideLlmOnly");
   }
@@ -562,27 +525,12 @@ function getExecutionModeHelperText(
   if (executionMode === "python") {
     return t("admin.skillsPage.executionModeHelp.python");
   }
-  if (executionMode === "sandbox-command") {
-    return t("admin.skillsPage.executionModeHelp.sandboxCommand");
-  }
-  if (executionMode === "sandbox-code") {
-    return t("admin.skillsPage.executionModeHelp.sandboxCode");
-  }
-  if (executionMode === "sandbox-browser") {
-    return t("admin.skillsPage.executionModeHelp.sandboxBrowser");
-  }
-  if (executionMode === "sandbox-file") {
-    return t("admin.skillsPage.executionModeHelp.sandboxFile");
-  }
-  if (executionMode === "sandbox-media") {
-    return t("admin.skillsPage.executionModeHelp.sandboxMedia");
-  }
   return t("admin.skillsPage.executionModeHelp.llmOnly");
 }
 
 function getNativeBundleLabel(
   t: (key: string, params?: string | Record<string, string | number>) => string,
-  skill: Pick<Skill, "hasLocalFolder" | "nativeBundleReady">,
+  skill: Pick<Skill, "hasLocalFolder" | "nativeBundleReady">
 ): string {
   if (skill.nativeBundleReady) {
     return t("admin.skillsPage.nativeBundleLabels.native");
@@ -593,7 +541,8 @@ function getNativeBundleLabel(
   return t("admin.skillsPage.nativeBundleLabels.missing");
 }
 
-type NativeBundleProfile = "general" | "research" | "workflow" | "media" | "custom";
+type NativeBundleProfile =
+  "general" | "research" | "workflow" | "media" | "custom";
 
 const NATIVE_BUNDLE_PROFILE_INFO: Record<
   NativeBundleProfile,
@@ -706,7 +655,7 @@ function getMediaModelsForCategory(
   category: string,
   imageModels?: { models?: any[] },
   videoModels?: { models?: any[] },
-  audioModels?: { models?: any[] },
+  audioModels?: { models?: any[] }
 ): any[] {
   const mediaType = getMediaModelTypeForSkillCategory(category);
   if (mediaType === "image") return imageModels?.models || [];
@@ -718,10 +667,13 @@ function getMediaModelsForCategory(
   return [];
 }
 
-function getOrchestrationConfig(configJson: Record<string, unknown> | null | undefined) {
-  const orchestration = configJson && typeof configJson === "object"
-    ? (configJson as Record<string, any>).orchestration
-    : null;
+function getOrchestrationConfig(
+  configJson: Record<string, unknown> | null | undefined
+) {
+  const orchestration =
+    configJson && typeof configJson === "object"
+      ? (configJson as Record<string, any>).orchestration
+      : null;
   if (!orchestration || typeof orchestration !== "object") {
     return {
       mode: "local",
@@ -734,12 +686,20 @@ function getOrchestrationConfig(configJson: Record<string, unknown> | null | und
 
   return {
     mode: typeof orchestration.mode === "string" ? orchestration.mode : "local",
-    endpoint: typeof orchestration.endpoint === "string" ? orchestration.endpoint : "",
+    endpoint:
+      typeof orchestration.endpoint === "string" ? orchestration.endpoint : "",
     skillTargets: Array.isArray(orchestration.skillTargets)
-      ? orchestration.skillTargets.filter((value: unknown): value is string => typeof value === "string").join(", ")
+      ? orchestration.skillTargets
+          .filter(
+            (value: unknown): value is string => typeof value === "string"
+          )
+          .join(", ")
       : "",
     parallel: orchestration.parallel === true,
-    fallback: typeof orchestration.fallback === "string" ? orchestration.fallback : "local",
+    fallback:
+      typeof orchestration.fallback === "string"
+        ? orchestration.fallback
+        : "local",
   };
 }
 
@@ -752,13 +712,17 @@ const DEFAULT_AUTO_LEARNING_CONFIG = {
   minImageFidelityScoreToPass: 80,
 };
 
-function getAutoLearningConfig(configJson: Record<string, unknown> | null | undefined) {
-  const mediaStudio = configJson && typeof configJson === "object"
-    ? (configJson as Record<string, any>).media_studio
-    : null;
-  const autoLearning = mediaStudio && typeof mediaStudio === "object"
-    ? mediaStudio.auto_learning
-    : null;
+function getAutoLearningConfig(
+  configJson: Record<string, unknown> | null | undefined
+) {
+  const mediaStudio =
+    configJson && typeof configJson === "object"
+      ? (configJson as Record<string, any>).media_studio
+      : null;
+  const autoLearning =
+    mediaStudio && typeof mediaStudio === "object"
+      ? mediaStudio.auto_learning
+      : null;
 
   if (!autoLearning || typeof autoLearning !== "object") {
     return DEFAULT_AUTO_LEARNING_CONFIG;
@@ -769,29 +733,40 @@ function getAutoLearningConfig(configJson: Record<string, unknown> | null | unde
     promptQaAfterAutoPrompt: autoLearning.prompt_qa_after_auto_prompt !== false,
     imageQaAfterGeneration: autoLearning.image_qa_after_generation !== false,
     requireAdminApproval: autoLearning.require_admin_approval !== false,
-    minPromptScoreToPass: Number.isFinite(Number(autoLearning.min_prompt_score_to_pass))
+    minPromptScoreToPass: Number.isFinite(
+      Number(autoLearning.min_prompt_score_to_pass)
+    )
       ? Number(autoLearning.min_prompt_score_to_pass)
       : DEFAULT_AUTO_LEARNING_CONFIG.minPromptScoreToPass,
-    minImageFidelityScoreToPass: Number.isFinite(Number(autoLearning.min_image_fidelity_score_to_pass))
+    minImageFidelityScoreToPass: Number.isFinite(
+      Number(autoLearning.min_image_fidelity_score_to_pass)
+    )
       ? Number(autoLearning.min_image_fidelity_score_to_pass)
       : DEFAULT_AUTO_LEARNING_CONFIG.minImageFidelityScoreToPass,
   };
 }
 
-function getProductionReferenceStoryboardConfig(configJson: Record<string, unknown> | null | undefined) {
-  const mediaStudio = configJson && typeof configJson === "object"
-    ? (configJson as Record<string, any>).media_studio
-    : null;
-  const productionReferenceStoryboard = mediaStudio && typeof mediaStudio === "object"
-    ? mediaStudio.production_reference_storyboard
-    : null;
+function getProductionReferenceStoryboardConfig(
+  configJson: Record<string, unknown> | null | undefined
+) {
+  const mediaStudio =
+    configJson && typeof configJson === "object"
+      ? (configJson as Record<string, any>).media_studio
+      : null;
+  const productionReferenceStoryboard =
+    mediaStudio && typeof mediaStudio === "object"
+      ? mediaStudio.production_reference_storyboard
+      : null;
 
   return {
-    configured: Boolean(productionReferenceStoryboard && typeof productionReferenceStoryboard === "object"),
+    configured: Boolean(
+      productionReferenceStoryboard &&
+      typeof productionReferenceStoryboard === "object"
+    ),
     enabled: Boolean(
-      productionReferenceStoryboard
-      && typeof productionReferenceStoryboard === "object"
-      && productionReferenceStoryboard.enabled === true,
+      productionReferenceStoryboard &&
+      typeof productionReferenceStoryboard === "object" &&
+      productionReferenceStoryboard.enabled === true
     ),
   };
 }
@@ -829,10 +804,17 @@ function buildScheduleDraftFromExisting(schedule: MaintenanceSchedule) {
     timezone: schedule.timezone || "Asia/Bangkok",
     status: schedule.status,
     scopeType: schedule.scopeType || "all_skills",
-    scopeCategory: typeof scopeJson.category === "string" ? scopeJson.category : "",
-    scopeExecutionMode: typeof scopeJson.executionMode === "string" ? scopeJson.executionMode : "",
-    genjsCandidatesOnly: scopeJson.genjsCandidatesOnly === true || schedule.scopeType === "genjs_candidates",
-    limit: typeof scopeJson.limit === "number" ? String(scopeJson.limit) : "100",
+    scopeCategory:
+      typeof scopeJson.category === "string" ? scopeJson.category : "",
+    scopeExecutionMode:
+      typeof scopeJson.executionMode === "string"
+        ? scopeJson.executionMode
+        : "",
+    genjsCandidatesOnly:
+      scopeJson.genjsCandidatesOnly === true ||
+      schedule.scopeType === "genjs_candidates",
+    limit:
+      typeof scopeJson.limit === "number" ? String(scopeJson.limit) : "100",
     policyJsonText: JSON.stringify(schedule.policyJson ?? {}, null, 2),
   };
 }
@@ -848,16 +830,22 @@ export default function AdminSkills() {
   const categoryLabels = useMemo(
     () =>
       Object.fromEntries(
-        Object.entries(categoryLabelKeys).map(([key, translationKey]) => [key, t(translationKey)]),
+        Object.entries(categoryLabelKeys).map(([key, translationKey]) => [
+          key,
+          t(translationKey),
+        ])
       ) as Record<string, string>,
-    [t],
+    [t]
   );
   const executionModeLabels = useMemo(
     () =>
       Object.fromEntries(
-        Object.entries(executionModeLabelKeys).map(([key, translationKey]) => [key, t(translationKey)]),
-      ) as Record<SkillExecutionMode, string>,
-    [t],
+        Object.entries(executionModeLabelKeys).map(([key, translationKey]) => [
+          key,
+          t(translationKey),
+        ])
+      ) as Partial<Record<SkillExecutionMode, string>>,
+    [t]
   );
 
   // UI state
@@ -873,24 +861,47 @@ export default function AdminSkills() {
   const [rejectReason, setRejectReason] = useState("");
   const [isStudioDialogOpen, setIsStudioDialogOpen] = useState(false);
   const [studioMode, setStudioMode] = useState<"create" | "improve">("create");
-  const [studioTargetSkillId, setStudioTargetSkillId] = useState<number | null>(null);
-  const [previewProposal, setPreviewProposal] = useState<{ skillName: string; diffFile: string; recommendationId?: number } | null>(null);
-  const [maintenanceSkillFilter, setMaintenanceSkillFilter] = useState<number | null>(null);
-  const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState<string>("pending_review");
-  const [expandedMaintenanceSkillIds, setExpandedMaintenanceSkillIds] = useState<number[]>([]);
-  const [legacyUpgradeIncludeApplied, setLegacyUpgradeIncludeApplied] = useState(false);
-  const [legacyUpgradeQueueFilter, setLegacyUpgradeQueueFilter] = useState<"all" | "critical" | "high" | "parallel" | "eligible">("all");
-  const [selectedLegacyUpgradeIds, setSelectedLegacyUpgradeIds] = useState<number[]>([]);
+  const [studioTargetSkillId, setStudioTargetSkillId] = useState<number | null>(
+    null
+  );
+  const [previewProposal, setPreviewProposal] = useState<{
+    skillName: string;
+    diffFile: string;
+    recommendationId?: number;
+  } | null>(null);
+  const [maintenanceSkillFilter, setMaintenanceSkillFilter] = useState<
+    number | null
+  >(null);
+  const [maintenanceStatusFilter, setMaintenanceStatusFilter] =
+    useState<string>("pending_review");
+  const [expandedMaintenanceSkillIds, setExpandedMaintenanceSkillIds] =
+    useState<number[]>([]);
+  const [legacyUpgradeIncludeApplied, setLegacyUpgradeIncludeApplied] =
+    useState(false);
+  const [legacyUpgradeQueueFilter, setLegacyUpgradeQueueFilter] = useState<
+    "all" | "critical" | "high" | "parallel" | "eligible"
+  >("all");
+  const [selectedLegacyUpgradeIds, setSelectedLegacyUpgradeIds] = useState<
+    number[]
+  >([]);
   const [selectedSkillIds, setSelectedSkillIds] = useState<number[]>([]);
   const [revenueStartDate, setRevenueStartDate] = useState("");
   const [revenueEndDate, setRevenueEndDate] = useState("");
-  const [skillPricingDrafts, setSkillPricingDrafts] = useState<Record<number, SkillPricingDraft>>({});
+  const [skillPricingDrafts, setSkillPricingDrafts] = useState<
+    Record<number, SkillPricingDraft>
+  >({});
   const [bulkTenantCreditCost, setBulkTenantCreditCost] = useState("");
   const [bulkSkillOwnerCreditCost, setBulkSkillOwnerCreditCost] = useState("");
-  const [expandedLegacyUpgradeIds, setExpandedLegacyUpgradeIds] = useState<number[]>([]);
-  const [selectedRecommendationId, setSelectedRecommendationId] = useState<number | null>(null);
-  const [selectedRecommendationViewMode, setSelectedRecommendationViewMode] = useState<"advice" | "reasoning">("advice");
-  const [pendingMaintenanceApply, setPendingMaintenanceApply] = useState<PendingMaintenanceApply | null>(null);
+  const [expandedLegacyUpgradeIds, setExpandedLegacyUpgradeIds] = useState<
+    number[]
+  >([]);
+  const [selectedRecommendationId, setSelectedRecommendationId] = useState<
+    number | null
+  >(null);
+  const [selectedRecommendationViewMode, setSelectedRecommendationViewMode] =
+    useState<"advice" | "reasoning">("advice");
+  const [pendingMaintenanceApply, setPendingMaintenanceApply] =
+    useState<PendingMaintenanceApply | null>(null);
   const openedSkillIdFromQueryRef = useRef<number | null>(null);
   const autoNormalizedLegacyApplySignatureRef = useRef<string | null>(null);
   const autoRetriedLegacyApplyRunIdsRef = useRef<Set<number>>(new Set());
@@ -957,7 +968,13 @@ export default function AdminSkills() {
   const openTabFromQuery = useMemo(() => {
     const params = new URLSearchParams(search);
     const value = params.get("tab");
-    if (value === "skills" || value === "import" || value === "iscProposals" || value === "maintenance" || value === "pendingApproval") {
+    if (
+      value === "skills" ||
+      value === "import" ||
+      value === "iscProposals" ||
+      value === "maintenance" ||
+      value === "pendingApproval"
+    ) {
       return value;
     }
     return null;
@@ -973,39 +990,59 @@ export default function AdminSkills() {
     const params = new URLSearchParams(search);
     const value = params.get("maintenanceStatus");
     if (
-      value === "pending_review"
-      || value === "approved"
-      || value === "applied"
-      || value === "blocked"
-      || value === "failed"
-      || value === "dismissed"
-      || value === "all"
+      value === "pending_review" ||
+      value === "approved" ||
+      value === "applied" ||
+      value === "blocked" ||
+      value === "failed" ||
+      value === "dismissed" ||
+      value === "all"
     ) {
       return value;
     }
     return null;
   }, [search]);
-  const legacyUpgradeQueueFilterFromQuery = useMemo<"all" | "critical" | "high" | "parallel" | "eligible" | null>(() => {
+  const legacyUpgradeQueueFilterFromQuery = useMemo<
+    "all" | "critical" | "high" | "parallel" | "eligible" | null
+  >(() => {
     const params = new URLSearchParams(search);
     const value = params.get("legacyQueueFilter");
-    if (value === "all" || value === "critical" || value === "high" || value === "parallel" || value === "eligible") {
+    if (
+      value === "all" ||
+      value === "critical" ||
+      value === "high" ||
+      value === "parallel" ||
+      value === "eligible"
+    ) {
       return value;
     }
     return null;
   }, [search]);
-  const legacyUpgradeQueueFilterFromStorage = useMemo<"all" | "critical" | "high" | "parallel" | "eligible" | null>(() => {
+  const legacyUpgradeQueueFilterFromStorage = useMemo<
+    "all" | "critical" | "high" | "parallel" | "eligible" | null
+  >(() => {
     if (typeof window === "undefined") {
       return null;
     }
-    const value = window.localStorage.getItem(legacyUpgradeQueueFilterStorageKey);
-    if (value === "all" || value === "critical" || value === "high" || value === "parallel" || value === "eligible") {
+    const value = window.localStorage.getItem(
+      legacyUpgradeQueueFilterStorageKey
+    );
+    if (
+      value === "all" ||
+      value === "critical" ||
+      value === "high" ||
+      value === "parallel" ||
+      value === "eligible"
+    ) {
       return value;
     }
     return null;
   }, []);
-  const [legacyUpgradeQueueFilterRestoredFromStorage] = useState(() => (
-    !legacyUpgradeQueueFilterFromQuery && !!legacyUpgradeQueueFilterFromStorage
-  ));
+  const [legacyUpgradeQueueFilterRestoredFromStorage] = useState(
+    () =>
+      !legacyUpgradeQueueFilterFromQuery &&
+      !!legacyUpgradeQueueFilterFromStorage
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -1020,31 +1057,49 @@ export default function AdminSkills() {
   }, [authLoading, isAdmin, setLocation, user]);
 
   // Fetch skills from database
-  const { data: skills, isLoading, isError: isSkillsError, error: skillsError, refetch: refetchSkills } = trpc.skills.listFromDb.useQuery({
+  const {
+    data: skills,
+    isLoading,
+    isError: isSkillsError,
+    error: skillsError,
+    refetch: refetchSkills,
+  } = trpc.skills.listFromDb.useQuery({
     category: filterCategory !== "all" ? filterCategory : undefined,
     search: searchQuery || undefined,
     enabledOnly: showEnabledOnly || undefined,
   });
-  const { data: billingReconciliation, refetch: refetchBillingReconciliation } = trpc.skills.getBillingReconciliation.useQuery(undefined, {
-    enabled: isAdmin,
-    staleTime: 30_000,
-  });
-  const { data: revenueReport, refetch: refetchRevenueReport } = trpc.skills.getRevenueReport.useQuery({
-    startDate: revenueStartDate || undefined,
-    endDate: revenueEndDate || undefined,
-    limit: 100,
-  }, {
-    enabled: isAdmin,
-    staleTime: 30_000,
-  });
+  const { data: billingReconciliation, refetch: refetchBillingReconciliation } =
+    trpc.skills.getBillingReconciliation.useQuery(undefined, {
+      enabled: isAdmin,
+      staleTime: 30_000,
+    });
+  const { data: revenueReport, refetch: refetchRevenueReport } =
+    trpc.skills.getRevenueReport.useQuery(
+      {
+        startDate: revenueStartDate || undefined,
+        endDate: revenueEndDate || undefined,
+        limit: 100,
+      },
+      {
+        enabled: isAdmin,
+        staleTime: 30_000,
+      }
+    );
 
-  const visibleSkillIds = useMemo(() => (skills ?? []).map((skill) => skill.id), [skills]);
-  const allVisibleSkillsSelected = visibleSkillIds.length > 0 && visibleSkillIds.every((id) => selectedSkillIds.includes(id));
-  const someVisibleSkillsSelected = visibleSkillIds.some((id) => selectedSkillIds.includes(id));
+  const visibleSkillIds = useMemo(
+    () => (skills ?? []).map(skill => skill.id),
+    [skills]
+  );
+  const allVisibleSkillsSelected =
+    visibleSkillIds.length > 0 &&
+    visibleSkillIds.every(id => selectedSkillIds.includes(id));
+  const someVisibleSkillsSelected = visibleSkillIds.some(id =>
+    selectedSkillIds.includes(id)
+  );
 
   useEffect(() => {
     const visibleIds = new Set(visibleSkillIds);
-    setSelectedSkillIds((current) => current.filter((id) => visibleIds.has(id)));
+    setSelectedSkillIds(current => current.filter(id => visibleIds.has(id)));
   }, [visibleSkillIds]);
 
   const createSkillBasicIssues = useMemo(() => {
@@ -1052,8 +1107,10 @@ export default function AdminSkills() {
     if (!newSkillData.slug.trim()) {
       issues.push("Slug is required.");
     } else if (!/^[a-z0-9-]+$/.test(newSkillData.slug.trim())) {
-      issues.push("Slug may contain only lowercase letters, numbers, and dashes.");
-    } else if (skills?.some((skill) => skill.slug === newSkillData.slug.trim())) {
+      issues.push(
+        "Slug may contain only lowercase letters, numbers, and dashes."
+      );
+    } else if (skills?.some(skill => skill.slug === newSkillData.slug.trim())) {
       issues.push("A skill with this slug already exists.");
     }
 
@@ -1066,22 +1123,45 @@ export default function AdminSkills() {
 
   const createSkillValidationIssues = useMemo(() => {
     const issues = [...createSkillBasicIssues];
-    if (newSkillData.bundleType === "native" && !newSkillData.skillContent.trim() && !newSkillData.systemPrompt.trim()) {
-      issues.push("Native bundles work best when you provide skill instructions or a system prompt.");
+    if (
+      newSkillData.bundleType === "native" &&
+      !newSkillData.skillContent.trim() &&
+      !newSkillData.systemPrompt.trim()
+    ) {
+      issues.push(
+        "Native bundles work best when you provide skill instructions or a system prompt."
+      );
     }
 
     return issues;
-  }, [createSkillBasicIssues, newSkillData.bundleType, newSkillData.skillContent, newSkillData.systemPrompt]);
+  }, [
+    createSkillBasicIssues,
+    newSkillData.bundleType,
+    newSkillData.skillContent,
+    newSkillData.systemPrompt,
+  ]);
 
   useEffect(() => {
-    if (!skills || !openSkillIdFromQuery || editingSkill || openedSkillIdFromQueryRef.current === openSkillIdFromQuery) {
+    if (
+      !skills ||
+      !openSkillIdFromQuery ||
+      editingSkill ||
+      openedSkillIdFromQueryRef.current === openSkillIdFromQuery
+    ) {
       return;
     }
-    const found = skills.find((skill: any) => skill.id === openSkillIdFromQuery);
+    const found = skills.find(
+      (skill: any) => skill.id === openSkillIdFromQuery
+    );
     if (found) {
       openedSkillIdFromQueryRef.current = openSkillIdFromQuery;
-      const autoLearning = getAutoLearningConfig((found as any).configJson ?? null);
-      const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((found as any).configJson ?? null);
+      const autoLearning = getAutoLearningConfig(
+        (found as any).configJson ?? null
+      );
+      const productionReferenceStoryboard =
+        getProductionReferenceStoryboardConfig(
+          (found as any).configJson ?? null
+        );
       setEditingSkill({
         ...(found as any),
         _autoLearningEnabled: autoLearning.enabled,
@@ -1090,8 +1170,10 @@ export default function AdminSkills() {
         _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
         _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
         _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
-        _productionReferenceStoryboardConfigured: productionReferenceStoryboard.configured,
-        _productionReferenceStoryboardEnabled: productionReferenceStoryboard.enabled,
+        _productionReferenceStoryboardConfigured:
+          productionReferenceStoryboard.configured,
+        _productionReferenceStoryboardEnabled:
+          productionReferenceStoryboard.enabled,
       } as unknown as Skill);
     }
   }, [editingSkill, openSkillIdFromQuery, skills]);
@@ -1102,26 +1184,36 @@ export default function AdminSkills() {
   // Fetch vision-capable LLM models for default model selection
   const { data: visionModels } = trpc.skills.getVisionModels.useQuery();
   const { data: llmProvidersData } = trpc.llmProviders.list.useQuery();
-  const systemDefaultLlmModel = visionModels?.models?.find((model) => model.isDefault) || visionModels?.models?.[0];
+  const systemDefaultLlmModel =
+    visionModels?.models?.find(model => model.isDefault) ||
+    visionModels?.models?.[0];
   const systemDefaultLlmLabel = systemDefaultLlmModel
     ? t("admin.skillsPage.modelSelection.autoLabelWithFallback", {
-        model: systemDefaultLlmModel.id.split("/").pop() ?? systemDefaultLlmModel.id,
+        model:
+          systemDefaultLlmModel.id.split("/").pop() ?? systemDefaultLlmModel.id,
       })
     : t("admin.skillsPage.modelSelection.autoLabel");
 
   // Fetch media models (image/video/audio) for media-generate skills
-  const { data: imageModels } = trpc.mediaModels.list.useQuery({ type: "image" });
-  const { data: videoModels } = trpc.mediaModels.list.useQuery({ type: "video" });
-  const { data: audioModels } = trpc.mediaModels.list.useQuery({ type: "audio" });
-  const { data: sandboxProfiles } = trpc.sandbox.getProfiles.useQuery();
-
+  const { data: imageModels } = trpc.mediaModels.list.useQuery({
+    type: "image",
+  });
+  const { data: videoModels } = trpc.mediaModels.list.useQuery({
+    type: "video",
+  });
+  const { data: audioModels } = trpc.mediaModels.list.useQuery({
+    type: "audio",
+  });
+  const sandboxProfiles: any[] = [];
   useEffect(() => {
     if (!editingSkill) {
       return;
     }
 
     if (editingSkill.executionMode === "media-generate") {
-      const mediaType = getMediaModelTypeForSkillCategory(editingSkill.category);
+      const mediaType = getMediaModelTypeForSkillCategory(
+        editingSkill.category
+      );
       if (mediaType === "image" && !imageModels) return;
       if (mediaType === "video" && !videoModels) return;
       if (mediaType === "audio" && !audioModels) return;
@@ -1131,7 +1223,7 @@ export default function AdminSkills() {
         editingSkill.category,
         imageModels,
         videoModels,
-        audioModels,
+        audioModels
       ).map((model: any) => model.modelId);
       const nextDefaultModel = pickEnabledModelId({
         preferredId: editingSkill.defaultModel,
@@ -1151,20 +1243,29 @@ export default function AdminSkills() {
       return;
     }
 
-    const llmModelIds = (visionModels?.models ?? []).map((model) => model.id);
+    const llmModelIds = (visionModels?.models ?? []).map(model => model.id);
     const nextLlmModelId = pickEnabledModelId({
       preferredId: editingSkill.llmModelId || editingSkill.defaultModel,
       allowedIds: llmModelIds,
     });
 
-    if ((nextLlmModelId || null) !== (editingSkill.llmModelId || editingSkill.defaultModel || null)) {
+    if (
+      (nextLlmModelId || null) !==
+      (editingSkill.llmModelId || editingSkill.defaultModel || null)
+    ) {
       setEditingSkill({
         ...editingSkill,
         defaultModel: nextLlmModelId || null,
         llmModelId: nextLlmModelId || null,
       });
     }
-  }, [audioModels, editingSkill, imageModels, videoModels, visionModels?.models]);
+  }, [
+    audioModels,
+    editingSkill,
+    imageModels,
+    videoModels,
+    visionModels?.models,
+  ]);
 
   useEffect(() => {
     if (openTabFromQuery) {
@@ -1179,19 +1280,28 @@ export default function AdminSkills() {
   }, [maintenanceStatusFilterFromQuery]);
 
   useEffect(() => {
-    if (!legacyUpgradeQueueFilterFromQuery && !legacyUpgradeQueueFilterFromStorage) {
+    if (
+      !legacyUpgradeQueueFilterFromQuery &&
+      !legacyUpgradeQueueFilterFromStorage
+    ) {
       return;
     }
-    const nextFilter = legacyUpgradeQueueFilterFromQuery || legacyUpgradeQueueFilterFromStorage;
+    const nextFilter =
+      legacyUpgradeQueueFilterFromQuery || legacyUpgradeQueueFilterFromStorage;
     if (!nextFilter) {
       return;
     }
-    setLegacyUpgradeQueueFilter((current) => (current === nextFilter ? current : nextFilter));
+    setLegacyUpgradeQueueFilter(current =>
+      current === nextFilter ? current : nextFilter
+    );
   }, [legacyUpgradeQueueFilterFromQuery, legacyUpgradeQueueFilterFromStorage]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.localStorage.setItem(legacyUpgradeQueueFilterStorageKey, legacyUpgradeQueueFilter);
+      window.localStorage.setItem(
+        legacyUpgradeQueueFilterStorageKey,
+        legacyUpgradeQueueFilter
+      );
     }
 
     const params = new URLSearchParams(search);
@@ -1202,7 +1312,9 @@ export default function AdminSkills() {
     }
 
     const nextSearch = params.toString();
-    const nextLocation = nextSearch ? `${location.split("?")[0]}?${nextSearch}` : location.split("?")[0];
+    const nextLocation = nextSearch
+      ? `${location.split("?")[0]}?${nextSearch}`
+      : location.split("?")[0];
     if (nextLocation !== location) {
       setLocation(nextLocation);
     }
@@ -1212,36 +1324,59 @@ export default function AdminSkills() {
   const { data: pendingSkills } = trpc.skills.listPending.useQuery(undefined, {
     enabled: !!isAdmin,
   });
-  const { data: iscProposals, isLoading: isIscProposalsLoading } = trpc.skills.listIscProposals.useQuery(undefined, {
-    enabled: !!isAdmin,
-    refetchInterval: activeTab === "proposals" || activeTab === "maintenance" ? 5_000 : false,
-    refetchIntervalInBackground: false,
-  });
-  const { data: proposalPreviewData, isLoading: isProposalPreviewLoading } = trpc.skills.getIscProposalContent.useQuery(
-    previewProposal || { skillName: "__placeholder__", diffFile: "placeholder.diff" },
-    { enabled: !!previewProposal && !!isAdmin },
-  );
-  const { data: maintenanceRecommendations, refetch: refetchMaintenanceRecommendations, isLoading: isMaintenanceRecommendationsLoading } =
-    trpc.skills.getUpgradeRecommendations.useQuery(
-      {
-        skillId: maintenanceSkillFilter ?? undefined,
-        status: maintenanceStatusFilter !== "all" ? maintenanceStatusFilter as any : undefined,
-        includeDismissed: maintenanceStatusFilter === "all",
-        limit: 200,
+  const { data: iscProposals, isLoading: isIscProposalsLoading } =
+    trpc.skills.listIscProposals.useQuery(undefined, {
+      enabled: !!isAdmin,
+      refetchInterval:
+        activeTab === "proposals" || activeTab === "maintenance"
+          ? 5_000
+          : false,
+      refetchIntervalInBackground: false,
+    });
+  const { data: proposalPreviewData, isLoading: isProposalPreviewLoading } =
+    trpc.skills.getIscProposalContent.useQuery(
+      previewProposal || {
+        skillName: "__placeholder__",
+        diffFile: "placeholder.diff",
       },
-      {
-        enabled: !!isAdmin,
-        refetchInterval: activeTab === "maintenance" || activeTab === "proposals" ? 5_000 : false,
-        refetchIntervalInBackground: false,
-      },
+      { enabled: !!previewProposal && !!isAdmin }
     );
-  const { data: selectedRecommendationDetail, isLoading: isRecommendationDetailLoading } = trpc.skills.getUpgradeRecommendationDetail.useQuery(
-    selectedRecommendationId ? { recommendationId: selectedRecommendationId } : { recommendationId: 0 },
-    { enabled: !!selectedRecommendationId && !!isAdmin },
+  const {
+    data: maintenanceRecommendations,
+    refetch: refetchMaintenanceRecommendations,
+    isLoading: isMaintenanceRecommendationsLoading,
+  } = trpc.skills.getUpgradeRecommendations.useQuery(
+    {
+      skillId: maintenanceSkillFilter ?? undefined,
+      status:
+        maintenanceStatusFilter !== "all"
+          ? (maintenanceStatusFilter as any)
+          : undefined,
+      includeDismissed: maintenanceStatusFilter === "all",
+      limit: 200,
+    },
+    {
+      enabled: !!isAdmin,
+      refetchInterval:
+        activeTab === "maintenance" || activeTab === "proposals"
+          ? 5_000
+          : false,
+      refetchIntervalInBackground: false,
+    }
   );
-  const { data: maintenanceSchedules } = trpc.skills.listMaintenanceSchedules.useQuery(undefined, {
-    enabled: !!isAdmin,
-  });
+  const {
+    data: selectedRecommendationDetail,
+    isLoading: isRecommendationDetailLoading,
+  } = trpc.skills.getUpgradeRecommendationDetail.useQuery(
+    selectedRecommendationId
+      ? { recommendationId: selectedRecommendationId }
+      : { recommendationId: 0 },
+    { enabled: !!selectedRecommendationId && !!isAdmin }
+  );
+  const { data: maintenanceSchedules } =
+    trpc.skills.listMaintenanceSchedules.useQuery(undefined, {
+      enabled: !!isAdmin,
+    });
   const {
     data: legacyUpgradeQueue,
     refetch: refetchLegacyUpgradeQueue,
@@ -1252,9 +1387,17 @@ export default function AdminSkills() {
       includeApplied: legacyUpgradeIncludeApplied,
       limit: 100,
     },
-    { enabled: !!isAdmin },
+    { enabled: !!isAdmin }
   );
-  const [legacyApplyRunFilter, setLegacyApplyRunFilter] = useState<"all" | "queued" | "running" | "failed" | "completed" | "blocked" | "canceled">("all");
+  const [legacyApplyRunFilter, setLegacyApplyRunFilter] = useState<
+    | "all"
+    | "queued"
+    | "running"
+    | "failed"
+    | "completed"
+    | "blocked"
+    | "canceled"
+  >("all");
   const {
     data: legacyApplyRunsResponse,
     refetch: refetchLegacyApplyRuns,
@@ -1265,108 +1408,137 @@ export default function AdminSkills() {
       state: legacyApplyRunFilter,
       limit: 100,
     },
-    { enabled: !!isAdmin },
+    { enabled: !!isAdmin }
   );
-  const applyLegacyUpgradeRecommendationsMutation = trpc.skills.applyLegacyUpgradeRecommendations.useMutation({
-    onSuccess: (result) => {
-      utils.skills.getLegacyUpgradeQueue.invalidate();
-      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      utils.skills.getUpgradeRecommendations.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      setSelectedLegacyUpgradeIds([]);
-      toast({
-        title: "Legacy Upgrade Batch Queued",
-        description: `${result.appliedCount} upgrade(s) queued, ${result.failedCount} failed.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Bulk Apply Failed",
-        description: error.message || "Failed to apply selected upgrades.",
-        variant: "destructive",
-      });
-    },
-  });
-  const retryLegacyUpgradeApplyRunsMutation = trpc.skills.retryLegacyUpgradeApplyRuns.useMutation({
-    onSuccess: (result) => {
-      utils.skills.getLegacyUpgradeQueue.invalidate();
-      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      utils.skills.getUpgradeRecommendations.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      setSelectedLegacyUpgradeIds([]);
-      toast({
-        title: "Legacy Apply Runs Retried",
-        description: `${result.appliedCount} run(s) retried, ${result.failedCount} failed.`,
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Retry Failed",
-        description: error.message || "Failed to retry selected apply runs.",
-        variant: "destructive",
-      });
-    },
-  });
-  const normalizeLegacyUpgradeApplyRunsMutation = trpc.skills.normalizeLegacyUpgradeApplyRuns.useMutation({
-    onSuccess: (result) => {
-      utils.skills.getLegacyUpgradeQueue.invalidate();
-      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      utils.skills.getUpgradeRecommendations.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      toast({
-        title: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeTitle"),
-        description: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeDescription", {
-          count: result.normalizedCount,
-          scanned: result.scannedCount,
-        }),
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedTitle"),
-        description: error.message || t("admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedDescription"),
-        variant: "destructive",
-      });
-    },
-  });
-  const recoverStaleLegacyUpgradeApplyRunsMutation = trpc.skills.recoverStaleLegacyUpgradeApplyRuns.useMutation({
-    onSuccess: (result) => {
-      utils.skills.getLegacyUpgradeQueue.invalidate();
-      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      utils.skills.getUpgradeRecommendations.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      if (result.recoveredCount > 0 || result.retriedCount > 0) {
+  const applyLegacyUpgradeRecommendationsMutation =
+    trpc.skills.applyLegacyUpgradeRecommendations.useMutation({
+      onSuccess: result => {
+        utils.skills.getLegacyUpgradeQueue.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        utils.skills.getUpgradeRecommendations.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        setSelectedLegacyUpgradeIds([]);
         toast({
-          title: t("admin.skillsPage.legacyRunQueue.recoverStaleTitle"),
-          description: t("admin.skillsPage.legacyRunQueue.recoverStaleDescription", {
-            recovered: result.recoveredCount,
-            retried: result.retriedCount,
-          }),
+          title: "Legacy Upgrade Batch Queued",
+          description: `${result.appliedCount} upgrade(s) queued, ${result.failedCount} failed.`,
         });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: t("admin.skillsPage.legacyRunQueue.recoverStaleFailedTitle"),
-        description: error.message || t("admin.skillsPage.legacyRunQueue.recoverStaleFailedDescription"),
-        variant: "destructive",
-      });
-    },
-  });
-  const latestProposalBySkillName = new Map<string, { skillName: string; diffFile: string; createdAt: string }>();
-  for (const proposal of (iscProposals?.proposals || [])) {
+      },
+      onError: error => {
+        toast({
+          title: "Bulk Apply Failed",
+          description: error.message || "Failed to apply selected upgrades.",
+          variant: "destructive",
+        });
+      },
+    });
+  const retryLegacyUpgradeApplyRunsMutation =
+    trpc.skills.retryLegacyUpgradeApplyRuns.useMutation({
+      onSuccess: result => {
+        utils.skills.getLegacyUpgradeQueue.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        utils.skills.getUpgradeRecommendations.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        setSelectedLegacyUpgradeIds([]);
+        toast({
+          title: "Legacy Apply Runs Retried",
+          description: `${result.appliedCount} run(s) retried, ${result.failedCount} failed.`,
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Retry Failed",
+          description: error.message || "Failed to retry selected apply runs.",
+          variant: "destructive",
+        });
+      },
+    });
+  const normalizeLegacyUpgradeApplyRunsMutation =
+    trpc.skills.normalizeLegacyUpgradeApplyRuns.useMutation({
+      onSuccess: result => {
+        utils.skills.getLegacyUpgradeQueue.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        utils.skills.getUpgradeRecommendations.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        toast({
+          title: t("admin.skillsPage.legacyRunQueue.normalizeNoChangeTitle"),
+          description: t(
+            "admin.skillsPage.legacyRunQueue.normalizeNoChangeDescription",
+            {
+              count: result.normalizedCount,
+              scanned: result.scannedCount,
+            }
+          ),
+        });
+      },
+      onError: error => {
+        toast({
+          title: t(
+            "admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedTitle"
+          ),
+          description:
+            error.message ||
+            t(
+              "admin.skillsPage.legacyRunQueue.normalizeNoChangeFailedDescription"
+            ),
+          variant: "destructive",
+        });
+      },
+    });
+  const recoverStaleLegacyUpgradeApplyRunsMutation =
+    trpc.skills.recoverStaleLegacyUpgradeApplyRuns.useMutation({
+      onSuccess: result => {
+        utils.skills.getLegacyUpgradeQueue.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        utils.skills.getUpgradeRecommendations.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        if (result.recoveredCount > 0 || result.retriedCount > 0) {
+          toast({
+            title: t("admin.skillsPage.legacyRunQueue.recoverStaleTitle"),
+            description: t(
+              "admin.skillsPage.legacyRunQueue.recoverStaleDescription",
+              {
+                recovered: result.recoveredCount,
+                retried: result.retriedCount,
+              }
+            ),
+          });
+        }
+      },
+      onError: error => {
+        toast({
+          title: t("admin.skillsPage.legacyRunQueue.recoverStaleFailedTitle"),
+          description:
+            error.message ||
+            t("admin.skillsPage.legacyRunQueue.recoverStaleFailedDescription"),
+          variant: "destructive",
+        });
+      },
+    });
+  const latestProposalBySkillName = new Map<
+    string,
+    { skillName: string; diffFile: string; createdAt: string }
+  >();
+  for (const proposal of iscProposals?.proposals || []) {
     if (!latestProposalBySkillName.has(proposal.skillName)) {
       latestProposalBySkillName.set(proposal.skillName, {
         skillName: proposal.skillName,
@@ -1375,20 +1547,30 @@ export default function AdminSkills() {
       });
     }
   }
-  const latestRecommendationBySkillId = new Map<number, MaintenanceRecommendation>();
-  for (const item of ((maintenanceRecommendations || []) as MaintenanceRecommendation[])) {
+  const latestRecommendationBySkillId = new Map<
+    number,
+    MaintenanceRecommendation
+  >();
+  for (const item of (maintenanceRecommendations ||
+    []) as MaintenanceRecommendation[]) {
     if (!latestRecommendationBySkillId.has(item.skillId)) {
       latestRecommendationBySkillId.set(item.skillId, item);
     }
   }
-  const maintenanceQueuedProposalCount = useMemo(() => (
-    (maintenanceRecommendations || []).filter((item) => {
-      const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
-        ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
-        : null;
-      return item.latestRun?.status === "running" && applyStrategy === "proposal";
-    }).length
-  ), [maintenanceRecommendations]);
+  const maintenanceQueuedProposalCount = useMemo(
+    () =>
+      (maintenanceRecommendations || []).filter(item => {
+        const applyStrategy =
+          item.latestRun?.logsJson &&
+          typeof item.latestRun.logsJson === "object"
+            ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+            : null;
+        return (
+          item.latestRun?.status === "running" && applyStrategy === "proposal"
+        );
+      }).length,
+    [maintenanceRecommendations]
+  );
   const legacyApplyRunItems = legacyApplyRunsResponse?.items ?? [];
   const rawLegacyApplyRunCounts = legacyApplyRunsResponse?.counts;
   const legacyApplyRunCounts = {
@@ -1401,57 +1583,85 @@ export default function AdminSkills() {
     canceled: rawLegacyApplyRunCounts?.canceled ?? 0,
   };
   const retryableLegacyApplyRunIds = useMemo(
-    () => legacyApplyRunItems
-      .filter((item) => item.queueState === "failed" || item.queueState === "blocked")
-      .map((item) => item.id),
-    [legacyApplyRunItems],
+    () =>
+      legacyApplyRunItems
+        .filter(
+          item => item.queueState === "failed" || item.queueState === "blocked"
+        )
+        .map(item => item.id),
+    [legacyApplyRunItems]
   );
   const normalizableLegacyApplyRunIds = useMemo(
-    () => legacyApplyRunItems
-      .filter((item) => item.queueState === "failed" && isLegacyApplyRunNoChangeCandidate(item))
-      .map((item) => item.id),
-    [legacyApplyRunItems],
+    () =>
+      legacyApplyRunItems
+        .filter(
+          item =>
+            item.queueState === "failed" &&
+            isLegacyApplyRunNoChangeCandidate(item)
+        )
+        .map(item => item.id),
+    [legacyApplyRunItems]
   );
   const autoRetryableLegacyApplyRunIds = useMemo(
-    () => legacyApplyRunItems
-      .filter((item) => (
-        (item.queueState === "failed" || item.queueState === "blocked")
-        && isLegacyApplyRunWorkspaceRootIssue(item)
-        && !autoRetriedLegacyApplyRunIdsRef.current.has(item.id)
-      ))
-      .map((item) => item.id),
-    [legacyApplyRunItems],
+    () =>
+      legacyApplyRunItems
+        .filter(
+          item =>
+            (item.queueState === "failed" || item.queueState === "blocked") &&
+            isLegacyApplyRunWorkspaceRootIssue(item) &&
+            !autoRetriedLegacyApplyRunIdsRef.current.has(item.id)
+        )
+        .map(item => item.id),
+    [legacyApplyRunItems]
   );
   const staleLegacyApplyRunIds = useMemo(
-    () => legacyApplyRunItems
-      .filter((item) => {
-        if (item.queueState !== "queued" && item.queueState !== "running") {
-          return false;
-        }
-        if (autoRecoveredStaleLegacyApplyRunIdsRef.current.has(item.id)) {
-          return false;
-        }
-        const activityAt = new Date(item.updatedAt ?? item.startedAt ?? item.createdAt).getTime();
-        return Number.isFinite(activityAt) && Date.now() - activityAt >= 30 * 60 * 1000;
-      })
-      .map((item) => item.id),
-    [legacyApplyRunItems],
+    () =>
+      legacyApplyRunItems
+        .filter(item => {
+          if (item.queueState !== "queued" && item.queueState !== "running") {
+            return false;
+          }
+          if (autoRecoveredStaleLegacyApplyRunIdsRef.current.has(item.id)) {
+            return false;
+          }
+          const activityAt = new Date(
+            item.updatedAt ?? item.startedAt ?? item.createdAt
+          ).getTime();
+          return (
+            Number.isFinite(activityAt) &&
+            Date.now() - activityAt >= 30 * 60 * 1000
+          );
+        })
+        .map(item => item.id),
+    [legacyApplyRunItems]
   );
 
   useEffect(() => {
-    if (activeTab !== "maintenance" || isLegacyApplyRunsLoading || isLegacyApplyRunsFetching) {
+    if (
+      activeTab !== "maintenance" ||
+      isLegacyApplyRunsLoading ||
+      isLegacyApplyRunsFetching
+    ) {
       return;
     }
 
-    if (staleLegacyApplyRunIds.length > 0 && !recoverStaleLegacyUpgradeApplyRunsMutation.isPending) {
+    if (
+      staleLegacyApplyRunIds.length > 0 &&
+      !recoverStaleLegacyUpgradeApplyRunsMutation.isPending
+    ) {
       for (const runId of staleLegacyApplyRunIds) {
         autoRecoveredStaleLegacyApplyRunIdsRef.current.add(runId);
       }
-      recoverStaleLegacyUpgradeApplyRunsMutation.mutate({ runIds: staleLegacyApplyRunIds });
+      recoverStaleLegacyUpgradeApplyRunsMutation.mutate({
+        runIds: staleLegacyApplyRunIds,
+      });
       return;
     }
 
-    if (normalizableLegacyApplyRunIds.length > 0 && !normalizeLegacyUpgradeApplyRunsMutation.isPending) {
+    if (
+      normalizableLegacyApplyRunIds.length > 0 &&
+      !normalizeLegacyUpgradeApplyRunsMutation.isPending
+    ) {
       const signature = normalizableLegacyApplyRunIds.join(",");
       if (autoNormalizedLegacyApplySignatureRef.current !== signature) {
         autoNormalizedLegacyApplySignatureRef.current = signature;
@@ -1460,11 +1670,16 @@ export default function AdminSkills() {
       }
     }
 
-    if (autoRetryableLegacyApplyRunIds.length > 0 && !retryLegacyUpgradeApplyRunsMutation.isPending) {
+    if (
+      autoRetryableLegacyApplyRunIds.length > 0 &&
+      !retryLegacyUpgradeApplyRunsMutation.isPending
+    ) {
       for (const runId of autoRetryableLegacyApplyRunIds) {
         autoRetriedLegacyApplyRunIdsRef.current.add(runId);
       }
-      retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: autoRetryableLegacyApplyRunIds });
+      retryLegacyUpgradeApplyRunsMutation.mutate({
+        runIds: autoRetryableLegacyApplyRunIds,
+      });
     }
   }, [
     activeTab,
@@ -1479,7 +1694,10 @@ export default function AdminSkills() {
   ]);
   const renderTableLoadingRow = (colSpan: number, label: string) => (
     <TableRow>
-      <TableCell colSpan={colSpan} className="py-10 text-center text-muted-foreground">
+      <TableCell
+        colSpan={colSpan}
+        className="py-10 text-center text-muted-foreground"
+      >
         <div className="flex items-center justify-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>{label}</span>
@@ -1488,7 +1706,9 @@ export default function AdminSkills() {
     </TableRow>
   );
 
-  function toValidDate(value: Date | string | number | null | undefined): Date | null {
+  function toValidDate(
+    value: Date | string | number | null | undefined
+  ): Date | null {
     if (!value) {
       return null;
     }
@@ -1496,7 +1716,10 @@ export default function AdminSkills() {
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
-  function isDateAfter(left: Date | string | null | undefined, right: Date | string | null | undefined): boolean {
+  function isDateAfter(
+    left: Date | string | null | undefined,
+    right: Date | string | null | undefined
+  ): boolean {
     const leftDate = toValidDate(left);
     const rightDate = toValidDate(right);
     if (!leftDate) {
@@ -1508,7 +1731,9 @@ export default function AdminSkills() {
     return leftDate.getTime() > rightDate.getTime();
   }
 
-  function formatMaintenanceDateTime(value: Date | string | number | null | undefined): string {
+  function formatMaintenanceDateTime(
+    value: Date | string | number | null | undefined
+  ): string {
     const date = toValidDate(value);
     if (!date) {
       return t("admin.skillsPage.maintenance.timestamps.none");
@@ -1522,7 +1747,9 @@ export default function AdminSkills() {
     });
   }
 
-  function formatMaintenanceRelativeTime(value: Date | string | number | null | undefined): string {
+  function formatMaintenanceRelativeTime(
+    value: Date | string | number | null | undefined
+  ): string {
     const date = toValidDate(value);
     if (!date) {
       return t("admin.skillsPage.maintenance.timestamps.unknownAge");
@@ -1532,21 +1759,29 @@ export default function AdminSkills() {
     const minuteMs = 60 * 1000;
     const hourMs = 60 * minuteMs;
     const dayMs = 24 * hourMs;
-    const valueAndUnit = absMs < hourMs
-      ? { value: Math.max(1, Math.round(absMs / minuteMs)), unit: "minute" as const }
-      : absMs < dayMs
-        ? { value: Math.round(absMs / hourMs), unit: "hour" as const }
-        : { value: Math.round(absMs / dayMs), unit: "day" as const };
+    const valueAndUnit =
+      absMs < hourMs
+        ? {
+            value: Math.max(1, Math.round(absMs / minuteMs)),
+            unit: "minute" as const,
+          }
+        : absMs < dayMs
+          ? { value: Math.round(absMs / hourMs), unit: "hour" as const }
+          : { value: Math.round(absMs / dayMs), unit: "day" as const };
     return new Intl.RelativeTimeFormat(undefined, { numeric: "auto" }).format(
       diffMs > 0 ? -valueAndUnit.value : valueAndUnit.value,
-      valueAndUnit.unit,
+      valueAndUnit.unit
     );
   }
 
-  const maintenanceRecommendationGroups = useMemo<MaintenanceRecommendationGroup[]>(() => {
+  const maintenanceRecommendationGroups = useMemo<
+    MaintenanceRecommendationGroup[]
+  >(() => {
     const groups = new Map<number, MaintenanceRecommendationGroup>();
 
-    for (const item of sortMaintenanceRecommendationsForDisplay((maintenanceRecommendations || []) as MaintenanceRecommendation[])) {
+    for (const item of sortMaintenanceRecommendationsForDisplay(
+      (maintenanceRecommendations || []) as MaintenanceRecommendation[]
+    )) {
       const existing = groups.get(item.skillId);
       if (!existing) {
         groups.set(item.skillId, {
@@ -1564,16 +1799,24 @@ export default function AdminSkills() {
         continue;
       }
 
-      existing.recommendations = sortMaintenanceRecommendationsForDisplay([...existing.recommendations, item]);
-      existing.highestRiskLevel = getMaintenanceWorstRiskLevel(existing.highestRiskLevel, item.riskLevel);
-      existing.worstCompatibilityStatus = getMaintenanceWorstCompatibilityStatus(
-        existing.worstCompatibilityStatus,
-        item.compatibilityStatus,
+      existing.recommendations = sortMaintenanceRecommendationsForDisplay([
+        ...existing.recommendations,
+        item,
+      ]);
+      existing.highestRiskLevel = getMaintenanceWorstRiskLevel(
+        existing.highestRiskLevel,
+        item.riskLevel
       );
+      existing.worstCompatibilityStatus =
+        getMaintenanceWorstCompatibilityStatus(
+          existing.worstCompatibilityStatus,
+          item.compatibilityStatus
+        );
       if (typeof item.qualityScore === "number") {
-        existing.highestQualityScore = existing.highestQualityScore === null
-          ? item.qualityScore
-          : Math.max(existing.highestQualityScore, item.qualityScore);
+        existing.highestQualityScore =
+          existing.highestQualityScore === null
+            ? item.qualityScore
+            : Math.max(existing.highestQualityScore, item.qualityScore);
       }
       if (!existing.currentRuntime && item.currentRuntime) {
         existing.currentRuntime = item.currentRuntime;
@@ -1584,150 +1827,236 @@ export default function AdminSkills() {
       if (isDateAfter(item.updatedAt, existing.latestUpdatedAt)) {
         existing.latestUpdatedAt = item.updatedAt;
       }
-      if (isDateAfter(item.analyzedAt, existing.primaryRecommendation.analyzedAt)) {
+      if (
+        isDateAfter(item.analyzedAt, existing.primaryRecommendation.analyzedAt)
+      ) {
         existing.primaryRecommendation = existing.recommendations[0] || item;
         existing.skill = item.skill ?? existing.skill;
       }
     }
 
     for (const group of groups.values()) {
-      group.primaryRecommendation = group.recommendations[0] || group.primaryRecommendation;
+      group.primaryRecommendation =
+        group.recommendations[0] || group.primaryRecommendation;
     }
 
     return Array.from(groups.values());
   }, [maintenanceRecommendations]);
   const maintenanceEligibleRecommendationIds = useMemo(
-    () => maintenanceRecommendationGroups.flatMap((group) => (
-      group.recommendations
-        .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
-        .map((item) => item.id)
-    )),
-    [maintenanceRecommendationGroups],
+    () =>
+      maintenanceRecommendationGroups.flatMap(group =>
+        group.recommendations
+          .filter(
+            item =>
+              isMaintenanceRecommendationEffectiveAutoApplySafe(item) &&
+              isMaintenanceRecommendationActionable(item)
+          )
+          .map(item => item.id)
+      ),
+    [maintenanceRecommendationGroups]
   );
   const maintenancePendingSkillCount = useMemo(
-    () => maintenanceRecommendationGroups.filter((group) => (
-      group.recommendations.some((item) => item.status === "pending_review" || item.status === "approved")
-    )).length,
-    [maintenanceRecommendationGroups],
+    () =>
+      maintenanceRecommendationGroups.filter(group =>
+        group.recommendations.some(
+          item => item.status === "pending_review" || item.status === "approved"
+        )
+      ).length,
+    [maintenanceRecommendationGroups]
   );
   const maintenanceBlockedOrFailedSkillCount = useMemo(
-    () => maintenanceRecommendationGroups.filter((group) => (
-      group.recommendations.some((item) => item.status === "blocked" || item.status === "failed")
-    )).length,
-    [maintenanceRecommendationGroups],
+    () =>
+      maintenanceRecommendationGroups.filter(group =>
+        group.recommendations.some(
+          item => item.status === "blocked" || item.status === "failed"
+        )
+      ).length,
+    [maintenanceRecommendationGroups]
   );
   const maintenanceLatestActivityAt = useMemo(() => {
     const candidates = [
-      ...maintenanceRecommendationGroups.flatMap((group) => [group.latestAnalyzedAt, group.latestUpdatedAt]),
-      ...legacyApplyRunItems.flatMap((item) => [item.createdAt, item.updatedAt, item.startedAt, item.endedAt]),
+      ...maintenanceRecommendationGroups.flatMap(group => [
+        group.latestAnalyzedAt,
+        group.latestUpdatedAt,
+      ]),
+      ...legacyApplyRunItems.flatMap(item => [
+        item.createdAt,
+        item.updatedAt,
+        item.startedAt,
+        item.endedAt,
+      ]),
     ].filter(Boolean) as Array<Date | string>;
-    return candidates.reduce<Date | string | null>((latest, value) => (
-      isDateAfter(value, latest) ? value : latest
-    ), null);
+    return candidates.reduce<Date | string | null>(
+      (latest, value) => (isDateAfter(value, latest) ? value : latest),
+      null
+    );
   }, [legacyApplyRunItems, maintenanceRecommendationGroups]);
-  const maintenanceExpandedSkillIdSet = useMemo(() => new Set(expandedMaintenanceSkillIds), [expandedMaintenanceSkillIds]);
-  const legacyUpgradeQueueItems = (legacyUpgradeQueue || []) as LegacyUpgradeQueueItem[];
+  const maintenanceExpandedSkillIdSet = useMemo(
+    () => new Set(expandedMaintenanceSkillIds),
+    [expandedMaintenanceSkillIds]
+  );
+  const legacyUpgradeQueueItems = (legacyUpgradeQueue ||
+    []) as LegacyUpgradeQueueItem[];
   const visibleLegacyUpgradeQueueItems = useMemo(
-    () => legacyUpgradeIncludeApplied
-      ? legacyUpgradeQueueItems
-      : legacyUpgradeQueueItems.filter((item) => !isLegacyUpgradeTerminalHistory(item)),
-    [legacyUpgradeIncludeApplied, legacyUpgradeQueueItems],
+    () =>
+      legacyUpgradeIncludeApplied
+        ? legacyUpgradeQueueItems
+        : legacyUpgradeQueueItems.filter(
+            item => !isLegacyUpgradeTerminalHistory(item)
+          ),
+    [legacyUpgradeIncludeApplied, legacyUpgradeQueueItems]
   );
   const legacyUpgradeFilteredItems = useMemo(() => {
     switch (legacyUpgradeQueueFilter) {
       case "critical":
-        return visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical");
+        return visibleLegacyUpgradeQueueItems.filter(
+          item => item.upgradePriorityTier === "critical"
+        );
       case "high":
-        return visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high");
+        return visibleLegacyUpgradeQueueItems.filter(
+          item => item.upgradePriorityTier === "high"
+        );
       case "parallel":
-        return visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible);
+        return visibleLegacyUpgradeQueueItems.filter(
+          item => item.parallelUpgradeEligible
+        );
       case "eligible":
-        return visibleLegacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed");
+        return visibleLegacyUpgradeQueueItems.filter(
+          item => item.status !== "applied" && item.status !== "dismissed"
+        );
       default:
         return visibleLegacyUpgradeQueueItems;
     }
   }, [legacyUpgradeQueueFilter, visibleLegacyUpgradeQueueItems]);
-  const selectedLegacyUpgradeIdSet = useMemo(() => new Set(selectedLegacyUpgradeIds), [selectedLegacyUpgradeIds]);
-  const expandedLegacyUpgradeIdSet = useMemo(() => new Set(expandedLegacyUpgradeIds), [expandedLegacyUpgradeIds]);
+  const selectedLegacyUpgradeIdSet = useMemo(
+    () => new Set(selectedLegacyUpgradeIds),
+    [selectedLegacyUpgradeIds]
+  );
+  const expandedLegacyUpgradeIdSet = useMemo(
+    () => new Set(expandedLegacyUpgradeIds),
+    [expandedLegacyUpgradeIds]
+  );
   const legacyUpgradeQueueById = useMemo(
-    () => new Map(visibleLegacyUpgradeQueueItems.map((item) => [item.id, item])),
-    [visibleLegacyUpgradeQueueItems],
+    () => new Map(visibleLegacyUpgradeQueueItems.map(item => [item.id, item])),
+    [visibleLegacyUpgradeQueueItems]
   );
   const selectableLegacyUpgradeIds = useMemo(
-    () => visibleLegacyUpgradeQueueItems
-      .filter((item) => canRunLegacyUpgradeAction(item))
-      .map((item) => item.id),
-    [visibleLegacyUpgradeQueueItems],
+    () =>
+      visibleLegacyUpgradeQueueItems
+        .filter(item => canRunLegacyUpgradeAction(item))
+        .map(item => item.id),
+    [visibleLegacyUpgradeQueueItems]
   );
   const autoActionableLegacyUpgradeItems = useMemo(
-    () => visibleLegacyUpgradeQueueItems
-      .filter((item) => canRunLegacyUpgradeAction(item))
-      .slice(0, 50),
-    [visibleLegacyUpgradeQueueItems],
+    () =>
+      visibleLegacyUpgradeQueueItems
+        .filter(item => canRunLegacyUpgradeAction(item))
+        .slice(0, 50),
+    [visibleLegacyUpgradeQueueItems]
   );
   const autoActionableLegacyUpgradeIds = useMemo(
-    () => autoActionableLegacyUpgradeItems.map((item) => item.id),
-    [autoActionableLegacyUpgradeItems],
+    () => autoActionableLegacyUpgradeItems.map(item => item.id),
+    [autoActionableLegacyUpgradeItems]
   );
   const selectedSelectableLegacyUpgradeIds = useMemo(
-    () => selectedLegacyUpgradeIds.filter((id) => selectableLegacyUpgradeIds.includes(id)),
-    [selectedLegacyUpgradeIds, selectableLegacyUpgradeIds],
+    () =>
+      selectedLegacyUpgradeIds.filter(id =>
+        selectableLegacyUpgradeIds.includes(id)
+      ),
+    [selectedLegacyUpgradeIds, selectableLegacyUpgradeIds]
   );
   const selectedEligibleLegacyUpgradeIds = useMemo(
-    () => selectedSelectableLegacyUpgradeIds.filter((id) => legacyUpgradeQueueById.get(id)?.parallelUpgradeEligible),
-    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds],
+    () =>
+      selectedSelectableLegacyUpgradeIds.filter(
+        id => legacyUpgradeQueueById.get(id)?.parallelUpgradeEligible
+      ),
+    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds]
   );
   const selectedCriticalHighLegacyUpgradeIds = useMemo(
-    () => selectedSelectableLegacyUpgradeIds.filter((id) => {
-      const tier = legacyUpgradeQueueById.get(id)?.upgradePriorityTier;
-      return tier === "critical" || tier === "high";
-    }),
-    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds],
+    () =>
+      selectedSelectableLegacyUpgradeIds.filter(id => {
+        const tier = legacyUpgradeQueueById.get(id)?.upgradePriorityTier;
+        return tier === "critical" || tier === "high";
+      }),
+    [legacyUpgradeQueueById, selectedSelectableLegacyUpgradeIds]
   );
   const visibleSelectableLegacyUpgradeIds = useMemo(
-    () => legacyUpgradeFilteredItems
-      .filter((item) => canRunLegacyUpgradeAction(item))
-      .map((item) => item.id),
-    [legacyUpgradeFilteredItems],
+    () =>
+      legacyUpgradeFilteredItems
+        .filter(item => canRunLegacyUpgradeAction(item))
+        .map(item => item.id),
+    [legacyUpgradeFilteredItems]
   );
-  const legacyUpgradeCriticalCount = visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "critical").length;
-  const legacyUpgradeHighCount = visibleLegacyUpgradeQueueItems.filter((item) => item.upgradePriorityTier === "high").length;
-  const legacyUpgradeBlockedCount = visibleLegacyUpgradeQueueItems.filter((item) => item.status === "blocked").length;
-  const legacyUpgradeFailedCount = visibleLegacyUpgradeQueueItems.filter((item) => item.status === "failed").length;
-  const legacyUpgradeAutoBacklogCount = visibleLegacyUpgradeQueueItems.filter((item) => canRunLegacyUpgradeAction(item)).length;
+  const legacyUpgradeCriticalCount = visibleLegacyUpgradeQueueItems.filter(
+    item => item.upgradePriorityTier === "critical"
+  ).length;
+  const legacyUpgradeHighCount = visibleLegacyUpgradeQueueItems.filter(
+    item => item.upgradePriorityTier === "high"
+  ).length;
+  const legacyUpgradeBlockedCount = visibleLegacyUpgradeQueueItems.filter(
+    item => item.status === "blocked"
+  ).length;
+  const legacyUpgradeFailedCount = visibleLegacyUpgradeQueueItems.filter(
+    item => item.status === "failed"
+  ).length;
+  const legacyUpgradeAutoBacklogCount = visibleLegacyUpgradeQueueItems.filter(
+    item => canRunLegacyUpgradeAction(item)
+  ).length;
   const legacyUpgradeMonitorNames = autoActionableLegacyUpgradeItems
     .slice(0, 6)
-    .map((item) => item.skill?.name || item.skill?.slug || `Skill #${item.skillId}`);
-  const allVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.length > 0
-    && visibleSelectableLegacyUpgradeIds.every((id) => selectedLegacyUpgradeIdSet.has(id));
-  const someVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.some((id) => selectedLegacyUpgradeIdSet.has(id));
-  const visibleLegacyIds = legacyUpgradeFilteredItems.map((item) => item.id);
-  const allExpandedLegacySelected = visibleLegacyIds.length > 0
-    && visibleLegacyIds.every((id) => expandedLegacyUpgradeIdSet.has(id));
+    .map(
+      item => item.skill?.name || item.skill?.slug || `Skill #${item.skillId}`
+    );
+  const allVisibleLegacySelected =
+    visibleSelectableLegacyUpgradeIds.length > 0 &&
+    visibleSelectableLegacyUpgradeIds.every(id =>
+      selectedLegacyUpgradeIdSet.has(id)
+    );
+  const someVisibleLegacySelected = visibleSelectableLegacyUpgradeIds.some(id =>
+    selectedLegacyUpgradeIdSet.has(id)
+  );
+  const visibleLegacyIds = legacyUpgradeFilteredItems.map(item => item.id);
+  const allExpandedLegacySelected =
+    visibleLegacyIds.length > 0 &&
+    visibleLegacyIds.every(id => expandedLegacyUpgradeIdSet.has(id));
 
-  function toggleLegacyUpgradeSelection(recommendationId: number, checked: boolean) {
-    setSelectedLegacyUpgradeIds((current) => {
+  function toggleLegacyUpgradeSelection(
+    recommendationId: number,
+    checked: boolean
+  ) {
+    setSelectedLegacyUpgradeIds(current => {
       if (checked) {
-        return current.includes(recommendationId) ? current : [...current, recommendationId];
+        return current.includes(recommendationId)
+          ? current
+          : [...current, recommendationId];
       }
-      return current.filter((id) => id !== recommendationId);
+      return current.filter(id => id !== recommendationId);
     });
   }
 
   function toggleAllVisibleLegacyUpgrades(checked: boolean) {
     if (!checked) {
-      setSelectedLegacyUpgradeIds((current) => current.filter((id) => !visibleSelectableLegacyUpgradeIds.includes(id)));
+      setSelectedLegacyUpgradeIds(current =>
+        current.filter(id => !visibleSelectableLegacyUpgradeIds.includes(id))
+      );
       return;
     }
-    setSelectedLegacyUpgradeIds((current) => Array.from(new Set([...current, ...visibleSelectableLegacyUpgradeIds])));
+    setSelectedLegacyUpgradeIds(current =>
+      Array.from(new Set([...current, ...visibleSelectableLegacyUpgradeIds]))
+    );
   }
 
-  function toggleLegacyUpgradeDetails(recommendationId: number, checked: boolean) {
-    setExpandedLegacyUpgradeIds((current) => {
+  function toggleLegacyUpgradeDetails(
+    recommendationId: number,
+    checked: boolean
+  ) {
+    setExpandedLegacyUpgradeIds(current => {
       if (checked) {
-        return current.includes(recommendationId) ? current : [...current, recommendationId];
+        return current.includes(recommendationId)
+          ? current
+          : [...current, recommendationId];
       }
-      return current.filter((id) => id !== recommendationId);
+      return current.filter(id => id !== recommendationId);
     });
   }
 
@@ -1736,7 +2065,9 @@ export default function AdminSkills() {
       setExpandedLegacyUpgradeIds([]);
       return;
     }
-    setExpandedLegacyUpgradeIds(visibleLegacyUpgradeQueueItems.map((item) => item.id));
+    setExpandedLegacyUpgradeIds(
+      visibleLegacyUpgradeQueueItems.map(item => item.id)
+    );
   }
 
   function collapseAllLegacyUpgradeDetails() {
@@ -1745,14 +2076,16 @@ export default function AdminSkills() {
 
   useEffect(() => {
     const criticalIds = visibleLegacyUpgradeQueueItems
-      .filter((item) => item.upgradePriorityTier === "critical")
-      .map((item) => item.id);
+      .filter(item => item.upgradePriorityTier === "critical")
+      .map(item => item.id);
 
     if (criticalIds.length === 0) {
       return;
     }
 
-    setExpandedLegacyUpgradeIds((current) => Array.from(new Set([...current, ...criticalIds])));
+    setExpandedLegacyUpgradeIds(current =>
+      Array.from(new Set([...current, ...criticalIds]))
+    );
   }, [visibleLegacyUpgradeQueueItems]);
 
   useEffect(() => {
@@ -1766,10 +2099,12 @@ export default function AdminSkills() {
       return;
     }
     const unqueuedIds = visibleLegacyUpgradeQueueItems
-      .filter((item) => canRunLegacyUpgradeAction(item))
-      .filter((item) => !autoQueuedLegacyRecommendationIdsRef.current.has(item.id))
+      .filter(item => canRunLegacyUpgradeAction(item))
+      .filter(
+        item => !autoQueuedLegacyRecommendationIdsRef.current.has(item.id)
+      )
       .slice(0, 50)
-      .map((item) => item.id);
+      .map(item => item.id);
 
     if (unqueuedIds.length === 0) {
       return;
@@ -1818,7 +2153,7 @@ export default function AdminSkills() {
     }
 
     return issues
-      .map((issue) => {
+      .map(issue => {
         if (typeof issue === "string") {
           return issue.trim();
         }
@@ -1835,19 +2170,31 @@ export default function AdminSkills() {
 
   function getLegacyUpgradeReason(item: LegacyUpgradeQueueItem): string | null {
     const latestRun = item.latestRun;
-    const verificationIssues = extractIssueMessages(latestRun?.verificationJson);
+    const verificationIssues = extractIssueMessages(
+      latestRun?.verificationJson
+    );
     const logIssues = extractIssueMessages(latestRun?.logsJson);
-    const recommendationDetails = item.recommendationJson?.details && typeof item.recommendationJson.details === "object"
-      ? item.recommendationJson.details as Record<string, unknown>
-      : null;
+    const recommendationDetails =
+      item.recommendationJson?.details &&
+      typeof item.recommendationJson.details === "object"
+        ? (item.recommendationJson.details as Record<string, unknown>)
+        : null;
     const detailReason =
-      typeof recommendationDetails?.reason === "string" ? recommendationDetails.reason.trim() : null;
+      typeof recommendationDetails?.reason === "string"
+        ? recommendationDetails.reason.trim()
+        : null;
     const detailError =
-      typeof recommendationDetails?.errorMessage === "string" ? recommendationDetails.errorMessage.trim() : null;
+      typeof recommendationDetails?.errorMessage === "string"
+        ? recommendationDetails.errorMessage.trim()
+        : null;
     const detailBlockedReason =
-      typeof recommendationDetails?.blockedReason === "string" ? recommendationDetails.blockedReason.trim() : null;
+      typeof recommendationDetails?.blockedReason === "string"
+        ? recommendationDetails.blockedReason.trim()
+        : null;
     const detailFailureReason =
-      typeof recommendationDetails?.failureReason === "string" ? recommendationDetails.failureReason.trim() : null;
+      typeof recommendationDetails?.failureReason === "string"
+        ? recommendationDetails.failureReason.trim()
+        : null;
 
     const runReason = [
       latestRun?.errorMessage?.trim(),
@@ -1861,29 +2208,35 @@ export default function AdminSkills() {
     ].find(Boolean);
 
     if (item.status === "blocked") {
-      return runReason
-        || t("admin.skillsPage.legacyQueue.blockedReasonFallback");
+      return (
+        runReason || t("admin.skillsPage.legacyQueue.blockedReasonFallback")
+      );
     }
 
     if (item.status === "failed") {
-      return runReason
-        || t("admin.skillsPage.legacyQueue.failedReasonFallback");
+      return (
+        runReason || t("admin.skillsPage.legacyQueue.failedReasonFallback")
+      );
     }
 
     if (item.status === "applied") {
-      return runReason
-        || t("admin.skillsPage.legacyQueue.appliedReasonFallback");
+      return (
+        runReason || t("admin.skillsPage.legacyQueue.appliedReasonFallback")
+      );
     }
 
     if (item.status === "approved") {
-      return runReason
-        || t("admin.skillsPage.legacyQueue.approvedReasonFallback");
+      return (
+        runReason || t("admin.skillsPage.legacyQueue.approvedReasonFallback")
+      );
     }
 
     return runReason ?? null;
   }
 
-  function isLegacyUpgradeNoChangeOutcome(item: LegacyUpgradeQueueItem): boolean {
+  function isLegacyUpgradeNoChangeOutcome(
+    item: LegacyUpgradeQueueItem
+  ): boolean {
     const combined = [
       item.latestRun?.summary,
       item.latestRun?.errorMessage,
@@ -1896,12 +2249,14 @@ export default function AdminSkills() {
       .join(" ")
       .toLowerCase();
 
-    return combined.includes("no patches generated")
-      || combined.includes("no code changes")
-      || combined.includes("without code changes")
-      || combined.includes("no changes required")
-      || combined.includes("completionmode no_changes")
-      || combined.includes("no_changes");
+    return (
+      combined.includes("no patches generated") ||
+      combined.includes("no code changes") ||
+      combined.includes("without code changes") ||
+      combined.includes("no changes required") ||
+      combined.includes("completionmode no_changes") ||
+      combined.includes("no_changes")
+    );
   }
 
   function isLegacyUpgradeProposalReady(item: LegacyUpgradeQueueItem): boolean {
@@ -1915,23 +2270,32 @@ export default function AdminSkills() {
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-    return item.latestRun?.runType === "apply"
-      && item.latestRun.status === "completed"
-      && (applyStrategy === "proposal" || combined.includes("proposal generated"));
+    return (
+      item.latestRun?.runType === "apply" &&
+      item.latestRun.status === "completed" &&
+      (applyStrategy === "proposal" || combined.includes("proposal generated"))
+    );
   }
 
-  function isLegacyUpgradeTerminalHistory(item: LegacyUpgradeQueueItem): boolean {
-    return item.status === "applied"
-      || item.status === "dismissed"
-      || isLegacyUpgradeProposalReady(item)
-      || isLegacyUpgradeNoChangeOutcome(item);
+  function isLegacyUpgradeTerminalHistory(
+    item: LegacyUpgradeQueueItem
+  ): boolean {
+    return (
+      item.status === "applied" ||
+      item.status === "dismissed" ||
+      isLegacyUpgradeProposalReady(item) ||
+      isLegacyUpgradeNoChangeOutcome(item)
+    );
   }
 
   function canRunLegacyUpgradeAction(item: LegacyUpgradeQueueItem): boolean {
     if (item.status === "applied" || item.status === "dismissed") {
       return false;
     }
-    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+    if (
+      item.latestRun?.status === "running" ||
+      item.latestRun?.status === "queued"
+    ) {
       return false;
     }
     if (isLegacyUpgradeProposalReady(item)) {
@@ -1943,18 +2307,28 @@ export default function AdminSkills() {
     return true;
   }
 
-  function isMaintenanceRecommendationActionable(item: MaintenanceRecommendation): boolean {
+  function isMaintenanceRecommendationActionable(
+    item: MaintenanceRecommendation
+  ): boolean {
     if (item.status === "applied" || item.status === "dismissed") {
       return false;
     }
-    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+    if (
+      item.latestRun?.status === "running" ||
+      item.latestRun?.status === "queued"
+    ) {
       return false;
     }
-    const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
-      ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
-      : null;
-    const proposalOnlyCompleted = item.latestRun?.status === "completed"
-      && (applyStrategy === "proposal" || String(item.latestRun.summary || "").toLowerCase().includes("proposal generated"));
+    const applyStrategy =
+      item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
+        ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
+        : null;
+    const proposalOnlyCompleted =
+      item.latestRun?.status === "completed" &&
+      (applyStrategy === "proposal" ||
+        String(item.latestRun.summary || "")
+          .toLowerCase()
+          .includes("proposal generated"));
     if (proposalOnlyCompleted) {
       return false;
     }
@@ -1972,36 +2346,60 @@ export default function AdminSkills() {
     if (payload.source !== "media_studio_auto_learning") {
       return false;
     }
-    const proposedChanges = Array.isArray(payload.proposedChanges) ? payload.proposedChanges : [];
+    const proposedChanges = Array.isArray(payload.proposedChanges)
+      ? payload.proposedChanges
+      : [];
     const targetFiles = proposedChanges
-      .map((change) => String(change?.targetFile || "").trim().toLowerCase())
+      .map(change =>
+        String(change?.targetFile || "")
+          .trim()
+          .toLowerCase()
+      )
       .filter(Boolean);
-    return targetFiles.length > 0 && targetFiles.every((file) => file === "skill.md" || file.endsWith(".md"));
+    return (
+      targetFiles.length > 0 &&
+      targetFiles.every(file => file === "skill.md" || file.endsWith(".md"))
+    );
   }
 
-  function isMaintenanceRecommendationEffectiveAutoApplySafe(
-    item: {
-      isAutoApplySafe?: boolean | null;
-      recommendationType?: string | null;
-      recommendationJson?: Record<string, any> | null;
-    },
-  ): boolean {
-    return item.isAutoApplySafe || isMediaStudioInstructionOnlyRecommendation(item);
+  function isMaintenanceRecommendationEffectiveAutoApplySafe(item: {
+    isAutoApplySafe?: boolean | null;
+    recommendationType?: string | null;
+    recommendationJson?: Record<string, any> | null;
+  }): boolean {
+    return (
+      item.isAutoApplySafe || isMediaStudioInstructionOnlyRecommendation(item)
+    );
   }
 
-  function getMediaStudioRecommendationIssues(item: Pick<MaintenanceRecommendation, "recommendationJson">) {
-    return Array.isArray(item.recommendationJson?.issues) ? item.recommendationJson.issues : [];
+  function getMediaStudioRecommendationIssues(
+    item: Pick<MaintenanceRecommendation, "recommendationJson">
+  ) {
+    return Array.isArray(item.recommendationJson?.issues)
+      ? item.recommendationJson.issues
+      : [];
   }
 
-  function getMediaStudioRecommendationChanges(item: Pick<MaintenanceRecommendation, "recommendationJson">) {
-    return Array.isArray(item.recommendationJson?.proposedChanges) ? item.recommendationJson.proposedChanges : [];
+  function getMediaStudioRecommendationChanges(
+    item: Pick<MaintenanceRecommendation, "recommendationJson">
+  ) {
+    return Array.isArray(item.recommendationJson?.proposedChanges)
+      ? item.recommendationJson.proposedChanges
+      : [];
   }
 
-  function getLegacyUpgradeNextAction(item: LegacyUpgradeQueueItem): LegacyUpgradeNextAction {
-    if (item.latestRun?.status === "running" || item.latestRun?.status === "queued") {
+  function getLegacyUpgradeNextAction(
+    item: LegacyUpgradeQueueItem
+  ): LegacyUpgradeNextAction {
+    if (
+      item.latestRun?.status === "running" ||
+      item.latestRun?.status === "queued"
+    ) {
       return {
         label: t("admin.skillsPage.legacyQueue.nextAction.wait.label"),
-        description: t("admin.skillsPage.legacyQueue.nextAction.wait.description"),
+        description: t(
+          "admin.skillsPage.legacyQueue.nextAction.wait.description"
+        ),
         tone: "info",
         buttonLabel: null,
         canRun: false,
@@ -2011,7 +2409,9 @@ export default function AdminSkills() {
     if (isLegacyUpgradeNoChangeOutcome(item)) {
       return {
         label: t("admin.skillsPage.legacyQueue.nextAction.noChange.label"),
-        description: t("admin.skillsPage.legacyQueue.nextAction.noChange.description"),
+        description: t(
+          "admin.skillsPage.legacyQueue.nextAction.noChange.description"
+        ),
         tone: "success",
         buttonLabel: null,
         canRun: false,
@@ -2021,7 +2421,9 @@ export default function AdminSkills() {
     if (isLegacyUpgradeProposalReady(item)) {
       return {
         label: t("admin.skillsPage.legacyQueue.nextAction.proposalReady.label"),
-        description: t("admin.skillsPage.legacyQueue.nextAction.proposalReady.description"),
+        description: t(
+          "admin.skillsPage.legacyQueue.nextAction.proposalReady.description"
+        ),
         tone: "info",
         buttonLabel: t("admin.skillsPage.legacyQueue.viewAdvice"),
         canRun: false,
@@ -2031,7 +2433,9 @@ export default function AdminSkills() {
     if (item.status === "applied") {
       return {
         label: t("admin.skillsPage.legacyQueue.nextAction.done.label"),
-        description: t("admin.skillsPage.legacyQueue.nextAction.done.description"),
+        description: t(
+          "admin.skillsPage.legacyQueue.nextAction.done.description"
+        ),
         tone: "success",
         buttonLabel: null,
         canRun: false,
@@ -2041,7 +2445,9 @@ export default function AdminSkills() {
     if (item.status === "blocked" || item.status === "failed") {
       return {
         label: t("admin.skillsPage.legacyQueue.nextAction.retry.label"),
-        description: t("admin.skillsPage.legacyQueue.nextAction.retry.description"),
+        description: t(
+          "admin.skillsPage.legacyQueue.nextAction.retry.description"
+        ),
         tone: item.status === "blocked" ? "danger" : "warning",
         buttonLabel: item.isAutoApplySafe
           ? t("admin.skillsPage.legacyQueue.applyUpgrade")
@@ -2068,14 +2474,18 @@ export default function AdminSkills() {
 
     return {
       label: t("admin.skillsPage.legacyQueue.nextAction.review.label"),
-      description: t("admin.skillsPage.legacyQueue.nextAction.review.description"),
+      description: t(
+        "admin.skillsPage.legacyQueue.nextAction.review.description"
+      ),
       tone: "neutral",
       buttonLabel: t("admin.skillsPage.legacyQueue.viewAdvice"),
       canRun: false,
     };
   }
 
-  function getLegacyUpgradeNextActionClass(tone: LegacyUpgradeNextAction["tone"]): string {
+  function getLegacyUpgradeNextActionClass(
+    tone: LegacyUpgradeNextAction["tone"]
+  ): string {
     if (tone === "success") {
       return "border-emerald-500 bg-emerald-50 text-emerald-700";
     }
@@ -2091,7 +2501,10 @@ export default function AdminSkills() {
     return "border-slate-300 bg-slate-50 text-slate-700";
   }
 
-  function getLegacyQueueLatestRunString(item: LegacyUpgradeQueueItem, key: string): string | null {
+  function getLegacyQueueLatestRunString(
+    item: LegacyUpgradeQueueItem,
+    key: string
+  ): string | null {
     const logs = item.latestRun?.logsJson;
     if (!logs || typeof logs !== "object") {
       return null;
@@ -2100,7 +2513,10 @@ export default function AdminSkills() {
     return typeof value === "string" && value.trim() ? value.trim() : null;
   }
 
-  function getLegacyQueueLatestRunNumber(item: LegacyUpgradeQueueItem, key: string): number | null {
+  function getLegacyQueueLatestRunNumber(
+    item: LegacyUpgradeQueueItem,
+    key: string
+  ): number | null {
     const logs = item.latestRun?.logsJson;
     if (!logs || typeof logs !== "object") {
       return null;
@@ -2109,11 +2525,17 @@ export default function AdminSkills() {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   }
 
-  function getLegacyRunLineageSource(run: { lineage?: unknown; logsJson?: unknown } | null | undefined): Record<string, unknown> | null {
+  function getLegacyRunLineageSource(
+    run: { lineage?: unknown; logsJson?: unknown } | null | undefined
+  ): Record<string, unknown> | null {
     if (!run) {
       return null;
     }
-    if (run.lineage && typeof run.lineage === "object" && !Array.isArray(run.lineage)) {
+    if (
+      run.lineage &&
+      typeof run.lineage === "object" &&
+      !Array.isArray(run.lineage)
+    ) {
       return run.lineage as Record<string, unknown>;
     }
     if (run.logsJson && typeof run.logsJson === "object") {
@@ -2126,7 +2548,10 @@ export default function AdminSkills() {
     return null;
   }
 
-  function getLegacyRunLineageString(lineage: Record<string, unknown> | null, key: string): string | null {
+  function getLegacyRunLineageString(
+    lineage: Record<string, unknown> | null,
+    key: string
+  ): string | null {
     if (!lineage) {
       return null;
     }
@@ -2136,10 +2561,15 @@ export default function AdminSkills() {
     }
     const fallbackKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
     const fallback = lineage[fallbackKey];
-    return typeof fallback === "string" && fallback.trim() ? fallback.trim() : null;
+    return typeof fallback === "string" && fallback.trim()
+      ? fallback.trim()
+      : null;
   }
 
-  function getLegacyRunLineageNumber(lineage: Record<string, unknown> | null, key: string): number | null {
+  function getLegacyRunLineageNumber(
+    lineage: Record<string, unknown> | null,
+    key: string
+  ): number | null {
     if (!lineage) {
       return null;
     }
@@ -2149,10 +2579,15 @@ export default function AdminSkills() {
     }
     const fallbackKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
     const fallback = lineage[fallbackKey];
-    return typeof fallback === "number" && Number.isFinite(fallback) ? fallback : null;
+    return typeof fallback === "number" && Number.isFinite(fallback)
+      ? fallback
+      : null;
   }
 
-  function getLegacyRunLineageArray(lineage: Record<string, unknown> | null, key: string): string[] {
+  function getLegacyRunLineageArray(
+    lineage: Record<string, unknown> | null,
+    key: string
+  ): string[] {
     if (!lineage) {
       return [];
     }
@@ -2161,10 +2596,12 @@ export default function AdminSkills() {
     const values = Array.isArray(direct)
       ? direct
       : Array.isArray(lineage[fallbackKey])
-        ? lineage[fallbackKey] as unknown[]
+        ? (lineage[fallbackKey] as unknown[])
         : [];
     return values
-      .map((value) => typeof value === "string" ? value.trim() : String(value ?? "").trim())
+      .map(value =>
+        typeof value === "string" ? value.trim() : String(value ?? "").trim()
+      )
       .filter(Boolean);
   }
 
@@ -2188,7 +2625,9 @@ export default function AdminSkills() {
     return t("admin.skillsPage.legacyRunQueue.failureScopes.orchestrator");
   }
 
-  function getLegacyApplyRunStatusLabel(status: LegacyUpgradeRunItem["queueState"]): string {
+  function getLegacyApplyRunStatusLabel(
+    status: LegacyUpgradeRunItem["queueState"]
+  ): string {
     if (status === "queued") {
       return t("admin.skillsPage.legacyRunQueue.status.queued");
     }
@@ -2208,21 +2647,28 @@ export default function AdminSkills() {
   }
 
   function getLegacyApplyRunReason(run: LegacyUpgradeRunItem): string | null {
-    const resultMessage = typeof run.resultMessage === "string" ? run.resultMessage.trim() : null;
-    const resultError = typeof run.resultError === "string" ? run.resultError.trim() : null;
+    const resultMessage =
+      typeof run.resultMessage === "string" ? run.resultMessage.trim() : null;
+    const resultError =
+      typeof run.resultError === "string" ? run.resultError.trim() : null;
     const verificationIssues = extractIssueMessages(run.verificationJson);
     const logIssues = extractIssueMessages(run.logsJson);
-    return [
-      resultError,
-      resultMessage,
-      run.errorMessage?.trim(),
-      run.summary?.trim(),
-      ...verificationIssues,
-      ...logIssues,
-    ].find(Boolean) || null;
+    return (
+      [
+        resultError,
+        resultMessage,
+        run.errorMessage?.trim(),
+        run.summary?.trim(),
+        ...verificationIssues,
+        ...logIssues,
+      ].find(Boolean) || null
+    );
   }
 
-  function getLegacyApplyRunLogString(run: LegacyUpgradeRunItem, key: string): string | null {
+  function getLegacyApplyRunLogString(
+    run: LegacyUpgradeRunItem,
+    key: string
+  ): string | null {
     const logs = run.logsJson;
     if (!logs || typeof logs !== "object") {
       return null;
@@ -2231,7 +2677,9 @@ export default function AdminSkills() {
     return typeof value === "string" && value.trim() ? value.trim() : null;
   }
 
-  function isLegacyApplyRunNoChangeCandidate(run: LegacyUpgradeRunItem): boolean {
+  function isLegacyApplyRunNoChangeCandidate(
+    run: LegacyUpgradeRunItem
+  ): boolean {
     const completionMode = getLegacyApplyRunLogString(run, "completionMode");
     if (completionMode === "no_changes") {
       return true;
@@ -2251,11 +2699,16 @@ export default function AdminSkills() {
       "no changes required",
       "completed without code changes",
       "isc improve complete",
-    ].some((signal) => combined.includes(signal));
+    ].some(signal => combined.includes(signal));
   }
 
-  function isLegacyApplyRunWorkspaceRootIssue(run: LegacyUpgradeRunItem): boolean {
-    if (run.workspaceRootIssue || run.diagnosticCode === "isc_workspace_root_pollution") {
+  function isLegacyApplyRunWorkspaceRootIssue(
+    run: LegacyUpgradeRunItem
+  ): boolean {
+    if (
+      run.workspaceRootIssue ||
+      run.diagnosticCode === "isc_workspace_root_pollution"
+    ) {
       return true;
     }
     const combined = [
@@ -2272,29 +2725,48 @@ export default function AdminSkills() {
       .join(" ")
       .replace(/\\/g, "/")
       .toLowerCase();
-    return combined.includes("isc_workspace_root_pollution")
-      || (combined.includes("/runs/workspaces/") && combined.includes("/skills/intelligence-skill-creator/"));
+    return (
+      combined.includes("isc_workspace_root_pollution") ||
+      (combined.includes("/runs/workspaces/") &&
+        combined.includes("/skills/intelligence-skill-creator/"))
+    );
   }
 
-  function getLegacyApplyRunDiagnosticPaths(run: LegacyUpgradeRunItem): Array<{ label: string; value: string }> {
+  function getLegacyApplyRunDiagnosticPaths(
+    run: LegacyUpgradeRunItem
+  ): Array<{ label: string; value: string }> {
     return [
       {
         label: t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRoot"),
-        value: run.workspaceRoot || getLegacyApplyRunLogString(run, "workspaceRoot") || "",
+        value:
+          run.workspaceRoot ||
+          getLegacyApplyRunLogString(run, "workspaceRoot") ||
+          "",
       },
       {
         label: t("admin.skillsPage.legacyRunQueue.diagnostics.proposalRoot"),
-        value: run.proposalRoot || getLegacyApplyRunLogString(run, "proposalRoot") || "",
+        value:
+          run.proposalRoot ||
+          getLegacyApplyRunLogString(run, "proposalRoot") ||
+          "",
       },
       {
         label: t("admin.skillsPage.legacyRunQueue.diagnostics.entrypointRoot"),
-        value: run.entrypointRoot || getLegacyApplyRunLogString(run, "entrypointRoot") || "",
+        value:
+          run.entrypointRoot ||
+          getLegacyApplyRunLogString(run, "entrypointRoot") ||
+          "",
       },
       {
-        label: t("admin.skillsPage.legacyRunQueue.diagnostics.canonicalIscRoot"),
-        value: run.canonicalIscRoot || getLegacyApplyRunLogString(run, "canonicalIscRoot") || "",
+        label: t(
+          "admin.skillsPage.legacyRunQueue.diagnostics.canonicalIscRoot"
+        ),
+        value:
+          run.canonicalIscRoot ||
+          getLegacyApplyRunLogString(run, "canonicalIscRoot") ||
+          "",
       },
-    ].filter((item) => item.value.trim());
+    ].filter(item => item.value.trim());
   }
 
   function getLegacyApplyRunTaskId(run: LegacyUpgradeRunItem): string {
@@ -2311,7 +2783,7 @@ export default function AdminSkills() {
 
   function getMaintenanceWorstRiskLevel(
     current: MaintenanceRecommendation["riskLevel"],
-    next: MaintenanceRecommendation["riskLevel"],
+    next: MaintenanceRecommendation["riskLevel"]
   ): MaintenanceRecommendation["riskLevel"] {
     const order: Record<MaintenanceRecommendation["riskLevel"], number> = {
       low: 1,
@@ -2324,9 +2796,12 @@ export default function AdminSkills() {
 
   function getMaintenanceWorstCompatibilityStatus(
     current: MaintenanceRecommendation["compatibilityStatus"],
-    next: MaintenanceRecommendation["compatibilityStatus"],
+    next: MaintenanceRecommendation["compatibilityStatus"]
   ): MaintenanceRecommendation["compatibilityStatus"] {
-    const order: Record<MaintenanceRecommendation["compatibilityStatus"], number> = {
+    const order: Record<
+      MaintenanceRecommendation["compatibilityStatus"],
+      number
+    > = {
       compatible: 1,
       unknown: 2,
       warning: 3,
@@ -2335,7 +2810,9 @@ export default function AdminSkills() {
     return order[next] > order[current] ? next : current;
   }
 
-  function getMaintenanceRiskRank(riskLevel: MaintenanceRecommendation["riskLevel"]): number {
+  function getMaintenanceRiskRank(
+    riskLevel: MaintenanceRecommendation["riskLevel"]
+  ): number {
     const order: Record<MaintenanceRecommendation["riskLevel"], number> = {
       low: 1,
       medium: 2,
@@ -2345,8 +2822,13 @@ export default function AdminSkills() {
     return order[riskLevel];
   }
 
-  function getMaintenanceCompatibilityRank(status: MaintenanceRecommendation["compatibilityStatus"]): number {
-    const order: Record<MaintenanceRecommendation["compatibilityStatus"], number> = {
+  function getMaintenanceCompatibilityRank(
+    status: MaintenanceRecommendation["compatibilityStatus"]
+  ): number {
+    const order: Record<
+      MaintenanceRecommendation["compatibilityStatus"],
+      number
+    > = {
       compatible: 1,
       unknown: 2,
       warning: 3,
@@ -2355,24 +2837,38 @@ export default function AdminSkills() {
     return order[status];
   }
 
-  function sortMaintenanceRecommendationsForDisplay(items: MaintenanceRecommendation[]): MaintenanceRecommendation[] {
+  function sortMaintenanceRecommendationsForDisplay(
+    items: MaintenanceRecommendation[]
+  ): MaintenanceRecommendation[] {
     return [...items].sort((left, right) => {
-      const riskDelta = getMaintenanceRiskRank(right.riskLevel) - getMaintenanceRiskRank(left.riskLevel);
+      const riskDelta =
+        getMaintenanceRiskRank(right.riskLevel) -
+        getMaintenanceRiskRank(left.riskLevel);
       if (riskDelta !== 0) return riskDelta;
 
-      const compatibilityDelta = getMaintenanceCompatibilityRank(right.compatibilityStatus) - getMaintenanceCompatibilityRank(left.compatibilityStatus);
+      const compatibilityDelta =
+        getMaintenanceCompatibilityRank(right.compatibilityStatus) -
+        getMaintenanceCompatibilityRank(left.compatibilityStatus);
       if (compatibilityDelta !== 0) return compatibilityDelta;
 
       if ((right.qualityScore ?? -1) !== (left.qualityScore ?? -1)) {
         return (right.qualityScore ?? -1) - (left.qualityScore ?? -1);
       }
 
-      return new Date(right.analyzedAt).getTime() - new Date(left.analyzedAt).getTime();
+      return (
+        new Date(right.analyzedAt).getTime() -
+        new Date(left.analyzedAt).getTime()
+      );
     });
   }
 
-  function getMaintenanceGroupStatusBadges(group: MaintenanceRecommendationGroup): MaintenanceGroupStatusBadge[] {
-    const recommendationStatusCounts: Record<MaintenanceRecommendation["status"], number> = {
+  function getMaintenanceGroupStatusBadges(
+    group: MaintenanceRecommendationGroup
+  ): MaintenanceGroupStatusBadge[] {
+    const recommendationStatusCounts: Record<
+      MaintenanceRecommendation["status"],
+      number
+    > = {
       pending_review: 0,
       approved: 0,
       dismissed: 0,
@@ -2390,7 +2886,12 @@ export default function AdminSkills() {
     for (const item of group.recommendations) {
       recommendationStatusCounts[item.status] += 1;
       const runStatus = item.latestRun?.status;
-      if (runStatus === "queued" || runStatus === "running" || runStatus === "failed" || runStatus === "completed") {
+      if (
+        runStatus === "queued" ||
+        runStatus === "running" ||
+        runStatus === "failed" ||
+        runStatus === "completed"
+      ) {
         runStatusCounts[runStatus] += 1;
       }
     }
@@ -2408,7 +2909,7 @@ export default function AdminSkills() {
         | "running"
         | "completed",
       count: number,
-      variant: MaintenanceGroupStatusBadge["variant"],
+      variant: MaintenanceGroupStatusBadge["variant"]
     ) => {
       if (count <= 0) {
         return;
@@ -2433,37 +2934,53 @@ export default function AdminSkills() {
     addBadge("queued", runStatusCounts.queued, "secondary");
     addBadge("running", runStatusCounts.running, "outline");
     addBadge("blocked", recommendationStatusCounts.blocked, "destructive");
-    addBadge("failed", Math.max(recommendationStatusCounts.failed, runStatusCounts.failed), "destructive");
+    addBadge(
+      "failed",
+      Math.max(recommendationStatusCounts.failed, runStatusCounts.failed),
+      "destructive"
+    );
     addBadge("applied", recommendationStatusCounts.applied, "secondary");
     addBadge("approved", recommendationStatusCounts.approved, "outline");
-    addBadge("pending_review", recommendationStatusCounts.pending_review, "outline");
+    addBadge(
+      "pending_review",
+      recommendationStatusCounts.pending_review,
+      "outline"
+    );
     addBadge("completed", runStatusCounts.completed, "secondary");
     addBadge("dismissed", recommendationStatusCounts.dismissed, "outline");
 
     return badges;
   }
 
-  function requestRecommendationApply(recommendation: RecommendationApplyTarget, skillName: string) {
+  function requestRecommendationApply(
+    recommendation: RecommendationApplyTarget,
+    skillName: string
+  ) {
     const proposalReady = Boolean(
-      recommendation.skill?.slug && latestProposalBySkillName.has(recommendation.skill.slug),
+      recommendation.skill?.slug &&
+      latestProposalBySkillName.has(recommendation.skill.slug)
     );
-    const effectiveAutoApplySafe = isMaintenanceRecommendationEffectiveAutoApplySafe(recommendation);
+    const effectiveAutoApplySafe =
+      isMaintenanceRecommendationEffectiveAutoApplySafe(recommendation);
 
     if (effectiveAutoApplySafe) {
       applyUpgradeMutation.mutate({ recommendationId: recommendation.id });
       return;
     }
 
-      setPendingMaintenanceApply({
-        recommendationId: recommendation.id,
-        skillName,
-        recommendationTitle: recommendation.title || skillName,
-        isAutoApplySafe: effectiveAutoApplySafe,
-        hasProposalReady: proposalReady,
-      });
+    setPendingMaintenanceApply({
+      recommendationId: recommendation.id,
+      skillName,
+      recommendationTitle: recommendation.title || skillName,
+      isAutoApplySafe: effectiveAutoApplySafe,
+      hasProposalReady: proposalReady,
+    });
   }
 
-  function openRecommendationDetail(recommendationId: number, viewMode: "advice" | "reasoning" = "advice") {
+  function openRecommendationDetail(
+    recommendationId: number,
+    viewMode: "advice" | "reasoning" = "advice"
+  ) {
     setSelectedRecommendationViewMode(viewMode);
     setSelectedRecommendationId(recommendationId);
   }
@@ -2471,7 +2988,7 @@ export default function AdminSkills() {
   function requestMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
     const actionableRecommendationIds = group.recommendations
       .filter(isMaintenanceRecommendationActionable)
-      .map((item) => item.id);
+      .map(item => item.id);
 
     if (actionableRecommendationIds.length === 0) {
       toast({
@@ -2486,10 +3003,16 @@ export default function AdminSkills() {
     });
   }
 
-  function requestEligibleMaintenanceGroupApply(group: MaintenanceRecommendationGroup) {
+  function requestEligibleMaintenanceGroupApply(
+    group: MaintenanceRecommendationGroup
+  ) {
     const eligibleRecommendationIds = group.recommendations
-      .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
-      .map((item) => item.id);
+      .filter(
+        item =>
+          isMaintenanceRecommendationEffectiveAutoApplySafe(item) &&
+          isMaintenanceRecommendationActionable(item)
+      )
+      .map(item => item.id);
 
     if (eligibleRecommendationIds.length === 0) {
       toast({
@@ -2511,11 +3034,11 @@ export default function AdminSkills() {
   }
 
   function toggleMaintenanceSkillDetails(skillId: number, checked: boolean) {
-    setExpandedMaintenanceSkillIds((current) => {
+    setExpandedMaintenanceSkillIds(current => {
       if (checked) {
         return current.includes(skillId) ? current : [...current, skillId];
       }
-      return current.filter((id) => id !== skillId);
+      return current.filter(id => id !== skillId);
     });
   }
 
@@ -2524,7 +3047,9 @@ export default function AdminSkills() {
       setExpandedMaintenanceSkillIds([]);
       return;
     }
-    setExpandedMaintenanceSkillIds(maintenanceRecommendationGroups.map((group) => group.skillId));
+    setExpandedMaintenanceSkillIds(
+      maintenanceRecommendationGroups.map(group => group.skillId)
+    );
   }
 
   function saveMaintenanceSchedule() {
@@ -2534,7 +3059,8 @@ export default function AdminSkills() {
     } catch {
       toast({
         title: "Invalid Policy JSON",
-        description: "Policy JSON must be valid JSON before saving the schedule.",
+        description:
+          "Policy JSON must be valid JSON before saving the schedule.",
         variant: "destructive",
       });
       return;
@@ -2575,7 +3101,11 @@ export default function AdminSkills() {
   );
 
   // Scan folders
-  const { data: folders, refetch: refetchFolders, isLoading: isFoldersLoading } = trpc.skills.scanFolders.useQuery(undefined, {
+  const {
+    data: folders,
+    refetch: refetchFolders,
+    isLoading: isFoldersLoading,
+  } = trpc.skills.scanFolders.useQuery(undefined, {
     enabled: activeTab === "import",
   });
 
@@ -2591,7 +3121,7 @@ export default function AdminSkills() {
         description: "The skill has been created successfully",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to create skill",
@@ -2610,7 +3140,7 @@ export default function AdminSkills() {
         description: "The skill has been updated successfully",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to update skill",
@@ -2620,7 +3150,7 @@ export default function AdminSkills() {
   });
 
   const bulkUpdatePricingMutation = trpc.skills.bulkUpdatePricing.useMutation({
-    onSuccess: (result) => {
+    onSuccess: result => {
       utils.skills.listFromDb.invalidate();
       setSkillPricingDrafts({});
       setSelectedSkillIds([]);
@@ -2628,12 +3158,13 @@ export default function AdminSkills() {
       setBulkSkillOwnerCreditCost("");
       toast({
         title: "Pricing updated",
-        description: result.updatedCount === result.requestedCount
-          ? `${result.updatedCount} skill${result.updatedCount === 1 ? "" : "s"} updated successfully.`
-          : `${result.updatedCount} of ${result.requestedCount} skills updated.`,
+        description:
+          result.updatedCount === result.requestedCount
+            ? `${result.updatedCount} skill${result.updatedCount === 1 ? "" : "s"} updated successfully.`
+            : `${result.updatedCount} of ${result.requestedCount} skills updated.`,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Failed to update pricing",
         description: error.message || "Failed to update skill pricing",
@@ -2642,8 +3173,12 @@ export default function AdminSkills() {
     },
   });
 
-  const updateSkillPricingDraft = (skillId: number, field: keyof SkillPricingDraft, value: string) => {
-    setSkillPricingDrafts((current) => ({
+  const updateSkillPricingDraft = (
+    skillId: number,
+    field: keyof SkillPricingDraft,
+    value: string
+  ) => {
+    setSkillPricingDrafts(current => ({
       ...current,
       [skillId]: {
         ...current[skillId],
@@ -2656,19 +3191,23 @@ export default function AdminSkills() {
     const tenantValue = bulkTenantCreditCost.trim();
     const skillOwnerValue = bulkSkillOwnerCreditCost.trim();
     if (selectedSkillIds.length === 0) {
-      toast({ title: "Select skills first", description: "Select one or more skills before applying bulk pricing." });
+      toast({
+        title: "Select skills first",
+        description: "Select one or more skills before applying bulk pricing.",
+      });
       return;
     }
     if (!tenantValue && !skillOwnerValue) {
       toast({
         title: "No pricing value",
-        description: "Enter at least one credit value. Leave a field blank to keep its current value.",
+        description:
+          "Enter at least one credit value. Leave a field blank to keep its current value.",
         variant: "destructive",
       });
       return;
     }
 
-    setSkillPricingDrafts((current) => {
+    setSkillPricingDrafts(current => {
       const next = { ...current };
       for (const skillId of selectedSkillIds) {
         next[skillId] = {
@@ -2682,7 +3221,7 @@ export default function AdminSkills() {
   };
 
   const savePricingDrafts = () => {
-    const skillsById = new Map((skills ?? []).map((skill) => [skill.id, skill]));
+    const skillsById = new Map((skills ?? []).map(skill => [skill.id, skill]));
     const updates: Array<{
       id: number;
       tenantCreditCost?: number;
@@ -2695,7 +3234,9 @@ export default function AdminSkills() {
       if (!skill) continue;
 
       const update: (typeof updates)[number] = { id };
-      for (const [field, rawValue] of Object.entries(draft) as Array<[keyof SkillPricingDraft, string | undefined]>) {
+      for (const [field, rawValue] of Object.entries(draft) as Array<
+        [keyof SkillPricingDraft, string | undefined]
+      >) {
         const trimmedValue = rawValue?.trim() ?? "";
         if (!trimmedValue) continue;
         const value = Number(trimmedValue);
@@ -2708,21 +3249,28 @@ export default function AdminSkills() {
           return;
         }
 
-        const currentValue = field === "tenantCreditCost"
-          ? (skill.tenantCreditCost ?? 2)
-          : (skill.skillOwnerCreditCost ?? 0);
+        const currentValue =
+          field === "tenantCreditCost"
+            ? (skill.tenantCreditCost ?? 2)
+            : (skill.skillOwnerCreditCost ?? 0);
         if (value !== currentValue) {
           update[field] = value;
         }
       }
 
-      if (update.tenantCreditCost !== undefined || update.skillOwnerCreditCost !== undefined) {
+      if (
+        update.tenantCreditCost !== undefined ||
+        update.skillOwnerCreditCost !== undefined
+      ) {
         updates.push(update);
       }
     }
 
     if (updates.length === 0) {
-      toast({ title: "No changes to save", description: "Change at least one pricing value before saving." });
+      toast({
+        title: "No changes to save",
+        description: "Change at least one pricing value before saving.",
+      });
       return;
     }
 
@@ -2730,17 +3278,23 @@ export default function AdminSkills() {
   };
 
   const pendingPricingDraftCount = useMemo(() => {
-    const skillsById = new Map((skills ?? []).map((skill) => [skill.id, skill]));
+    const skillsById = new Map((skills ?? []).map(skill => [skill.id, skill]));
     return Object.entries(skillPricingDrafts).filter(([idText, draft]) => {
       const skill = skillsById.get(Number(idText));
       if (!skill) return false;
-      return (draft.tenantCreditCost !== undefined && draft.tenantCreditCost.trim() !== String(skill.tenantCreditCost ?? 2))
-        || (draft.skillOwnerCreditCost !== undefined && draft.skillOwnerCreditCost.trim() !== String(skill.skillOwnerCreditCost ?? 0));
+      return (
+        (draft.tenantCreditCost !== undefined &&
+          draft.tenantCreditCost.trim() !==
+            String(skill.tenantCreditCost ?? 2)) ||
+        (draft.skillOwnerCreditCost !== undefined &&
+          draft.skillOwnerCreditCost.trim() !==
+            String(skill.skillOwnerCreditCost ?? 0))
+      );
     }).length;
   }, [skillPricingDrafts, skills]);
 
   const toggleEnabledMutation = trpc.skills.toggleEnabled.useMutation({
-    onSuccess: (updatedSkill) => {
+    onSuccess: updatedSkill => {
       utils.skills.listFromDb.invalidate();
       toast({
         title: updatedSkill.isEnabled ? "Skill Enabled" : "Skill Disabled",
@@ -2749,7 +3303,7 @@ export default function AdminSkills() {
           : "The skill is hidden from users and runtime execution.",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Failed to update skill status",
         description: error.message || "Failed to update skill status",
@@ -2767,7 +3321,7 @@ export default function AdminSkills() {
         description: "The skill has been permanently deleted",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete skill",
@@ -2777,28 +3331,32 @@ export default function AdminSkills() {
   });
 
   // Regenerate marketplace content mutation
-  const regenerateMarketplaceMutation = trpc.skills.regenerateMarketplaceContent.useMutation({
-    onSuccess: (data) => {
-      if (editingSkill && data.marketplaceContent) {
-        setEditingSkill({ ...editingSkill, marketplaceContent: data.marketplaceContent });
-      }
-      toast({
-        title: "Marketplace Content Regenerated",
-        description: "Content has been generated from skill file.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to regenerate",
-        variant: "destructive",
-      });
-    },
-  });
+  const regenerateMarketplaceMutation =
+    trpc.skills.regenerateMarketplaceContent.useMutation({
+      onSuccess: data => {
+        if (editingSkill && data.marketplaceContent) {
+          setEditingSkill({
+            ...editingSkill,
+            marketplaceContent: data.marketplaceContent,
+          });
+        }
+        toast({
+          title: "Marketplace Content Regenerated",
+          description: "Content has been generated from skill file.",
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to regenerate",
+          variant: "destructive",
+        });
+      },
+    });
 
   // Import folder mutation
   const importFolderMutation = trpc.skills.importFolder.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       utils.skills.listFromDb.invalidate();
       refetchFolders();
       toast({
@@ -2806,7 +3364,7 @@ export default function AdminSkills() {
         description: `Successfully imported "${data.name}" from folder`,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import skill from folder",
@@ -2823,17 +3381,21 @@ export default function AdminSkills() {
       setIsZipDialogOpen(false);
       setZipFile(null);
       setZipSlug("");
-      const formatLabel = data.importFormat === "shared-skill" ? "Shared Skill Bundle" : "Custom GPT";
+      const formatLabel =
+        data.importFormat === "shared-skill"
+          ? "Shared Skill Bundle"
+          : "Custom GPT";
       const extras = [];
       if (data.hasPython) extras.push("Python");
       if (data.hasJs) extras.push("JavaScript");
-      if (data.knowledgeFilesCount > 0) extras.push(`${data.knowledgeFilesCount} knowledge files`);
+      if (data.knowledgeFilesCount > 0)
+        extras.push(`${data.knowledgeFilesCount} knowledge files`);
       toast({
         title: `${formatLabel} Imported`,
         description: `Successfully imported "${data.name}"${extras.length > 0 ? ` with ${extras.join(", ")}` : ""}`,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Import Failed",
         description: error.message || "Failed to import from ZIP",
@@ -2852,7 +3414,7 @@ export default function AdminSkills() {
         description: "The skill is now publicly visible to all users.",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to approve skill",
@@ -2873,7 +3435,7 @@ export default function AdminSkills() {
         description: "The skill owner has been notified.",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to reject skill",
@@ -2888,7 +3450,9 @@ export default function AdminSkills() {
       utils.skills.listIscProposals.invalidate();
       utils.skills.getUpgradeRecommendations.invalidate();
       if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
+        utils.skills.getUpgradeRecommendationDetail.invalidate({
+          recommendationId: selectedRecommendationId,
+        });
       }
       toast({
         title: "Proposal Applied",
@@ -2896,7 +3460,7 @@ export default function AdminSkills() {
       });
       setPreviewProposal(null);
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to apply proposal",
@@ -2906,7 +3470,7 @@ export default function AdminSkills() {
   });
 
   const analyzeUpgradeMutation = trpc.skills.analyzeUpgrade.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       utils.skills.getUpgradeRecommendations.invalidate();
       if (data.recommendations?.length > 0) {
         openRecommendationDetail(data.recommendations[0].id, "advice");
@@ -2918,7 +3482,7 @@ export default function AdminSkills() {
         description: `${data.skillSlug} analyzed with ${data.recommendations.length} recommendation(s).`,
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Analysis Failed",
         description: error.message || "Failed to analyze skill",
@@ -2927,155 +3491,175 @@ export default function AdminSkills() {
     },
   });
 
-  const dismissRecommendationMutation = trpc.skills.dismissUpgradeRecommendation.useMutation({
-    onSuccess: () => {
-      utils.skills.getUpgradeRecommendations.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      toast({
-        title: "Recommendation Dismissed",
-        description: "The recommendation has been removed from the default queue.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Dismiss Failed",
-        description: error.message || "Failed to dismiss recommendation",
-        variant: "destructive",
-      });
-    },
-  });
+  const dismissRecommendationMutation =
+    trpc.skills.dismissUpgradeRecommendation.useMutation({
+      onSuccess: () => {
+        utils.skills.getUpgradeRecommendations.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        toast({
+          title: "Recommendation Dismissed",
+          description:
+            "The recommendation has been removed from the default queue.",
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Dismiss Failed",
+          description: error.message || "Failed to dismiss recommendation",
+          variant: "destructive",
+        });
+      },
+    });
 
-  const applyUpgradeMutation = trpc.skills.applyUpgradeRecommendation.useMutation({
-    onSuccess: (data) => {
-      utils.skills.getUpgradeRecommendations.invalidate();
-      utils.skills.getLegacyUpgradeQueue.invalidate();
-      utils.skills.getLegacyUpgradeQueueSummary.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      utils.skills.listFromDb.invalidate();
-      utils.skills.listIscProposals.invalidate();
-      setPendingMaintenanceApply(null);
-      if (data.applyStrategy === "proposal") {
+  const applyUpgradeMutation =
+    trpc.skills.applyUpgradeRecommendation.useMutation({
+      onSuccess: data => {
+        utils.skills.getUpgradeRecommendations.invalidate();
+        utils.skills.getLegacyUpgradeQueue.invalidate();
+        utils.skills.getLegacyUpgradeQueueSummary.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        utils.skills.listFromDb.invalidate();
+        utils.skills.listIscProposals.invalidate();
+        setPendingMaintenanceApply(null);
+        if (data.applyStrategy === "proposal") {
+          setActiveTab("maintenance");
+        }
+        toast({
+          title:
+            data.applyStrategy === "proposal"
+              ? "Proposal Generation Started"
+              : data.mode === "queued"
+                ? "Upgrade Started"
+                : "Upgrade Applied",
+          description:
+            data.applyStrategy === "proposal"
+              ? "A proposal-first upgrade task was queued. It will show in Maintenance while it is generating, then move to Proposals once a .diff file is written."
+              : data.mode === "queued"
+                ? "The maintenance upgrade task was queued and will update this recommendation when it finishes."
+                : "The recommendation was applied successfully.",
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Apply Failed",
+          description: error.message || "Failed to apply recommendation",
+          variant: "destructive",
+        });
+      },
+    });
+
+  const applyMaintenanceRecommendationsMutation =
+    trpc.skills.applyMaintenanceRecommendations.useMutation({
+      onSuccess: result => {
+        utils.skills.getUpgradeRecommendations.invalidate();
+        utils.skills.getLegacyUpgradeApplyRuns.invalidate();
+        if (selectedRecommendationId) {
+          utils.skills.getUpgradeRecommendationDetail.invalidate({
+            recommendationId: selectedRecommendationId,
+          });
+        }
+        utils.skills.listFromDb.invalidate();
+        utils.skills.listIscProposals.invalidate();
+        setExpandedMaintenanceSkillIds([]);
+        toast({
+          title: t("admin.skillsPage.maintenance.startSuccessTitle"),
+          description: t(
+            "admin.skillsPage.maintenance.startSuccessDescription",
+            {
+              appliedCount: result.appliedCount,
+              failedCount: result.failedCount,
+            }
+          ),
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Bulk Apply Failed",
+          description:
+            error.message ||
+            "Failed to apply selected maintenance recommendations.",
+          variant: "destructive",
+        });
+      },
+    });
+
+  const runMaintenanceSweepMutation =
+    trpc.skills.runMaintenanceSweep.useMutation({
+      onSuccess: data => {
+        utils.skills.getUpgradeRecommendations.invalidate();
+        toast({
+          title: "Maintenance Sweep Complete",
+          description: `Analyzed ${data.analyzedCount} skill(s).`,
+        });
         setActiveTab("maintenance");
-      }
-      toast({
-        title: data.applyStrategy === "proposal"
-          ? "Proposal Generation Started"
-          : data.mode === "queued"
-            ? "Upgrade Started"
-            : "Upgrade Applied",
-        description: data.applyStrategy === "proposal"
-          ? "A proposal-first upgrade task was queued. It will show in Maintenance while it is generating, then move to Proposals once a .diff file is written."
-          : data.mode === "queued"
-            ? "The maintenance upgrade task was queued and will update this recommendation when it finishes."
-            : "The recommendation was applied successfully.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Apply Failed",
-        description: error.message || "Failed to apply recommendation",
-        variant: "destructive",
-      });
-    },
-  });
+      },
+      onError: error => {
+        toast({
+          title: "Sweep Failed",
+          description: error.message || "Failed to run maintenance sweep",
+          variant: "destructive",
+        });
+      },
+    });
 
-  const applyMaintenanceRecommendationsMutation = trpc.skills.applyMaintenanceRecommendations.useMutation({
-    onSuccess: (result) => {
-      utils.skills.getUpgradeRecommendations.invalidate();
-      utils.skills.getLegacyUpgradeApplyRuns.invalidate();
-      if (selectedRecommendationId) {
-        utils.skills.getUpgradeRecommendationDetail.invalidate({ recommendationId: selectedRecommendationId });
-      }
-      utils.skills.listFromDb.invalidate();
-      utils.skills.listIscProposals.invalidate();
-      setExpandedMaintenanceSkillIds([]);
-      toast({
-        title: t("admin.skillsPage.maintenance.startSuccessTitle"),
-        description: t("admin.skillsPage.maintenance.startSuccessDescription", {
-          appliedCount: result.appliedCount,
-          failedCount: result.failedCount,
-        }),
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Bulk Apply Failed",
-        description: error.message || "Failed to apply selected maintenance recommendations.",
-        variant: "destructive",
-      });
-    },
-  });
+  const createMaintenanceScheduleMutation =
+    trpc.skills.createMaintenanceSchedule.useMutation({
+      onSuccess: () => {
+        utils.skills.listMaintenanceSchedules.invalidate();
+        setScheduleDraft({
+          id: null,
+          name: "",
+          description: "",
+          cronExpression: "0 9 * * 1",
+          timezone: "Asia/Bangkok",
+          status: "active",
+          scopeType: "all_skills",
+          scopeCategory: "",
+          scopeExecutionMode: "",
+          genjsCandidatesOnly: false,
+          limit: "100",
+          policyJsonText: "{}",
+        });
+        toast({
+          title: "Schedule Saved",
+          description: "The maintenance schedule has been saved.",
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Save Failed",
+          description: error.message || "Failed to save maintenance schedule",
+          variant: "destructive",
+        });
+      },
+    });
 
-  const runMaintenanceSweepMutation = trpc.skills.runMaintenanceSweep.useMutation({
-    onSuccess: (data) => {
-      utils.skills.getUpgradeRecommendations.invalidate();
-      toast({
-        title: "Maintenance Sweep Complete",
-        description: `Analyzed ${data.analyzedCount} skill(s).`,
-      });
-      setActiveTab("maintenance");
-    },
-    onError: (error) => {
-      toast({
-        title: "Sweep Failed",
-        description: error.message || "Failed to run maintenance sweep",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const createMaintenanceScheduleMutation = trpc.skills.createMaintenanceSchedule.useMutation({
-    onSuccess: () => {
-      utils.skills.listMaintenanceSchedules.invalidate();
-      setScheduleDraft({
-        id: null,
-        name: "",
-        description: "",
-        cronExpression: "0 9 * * 1",
-        timezone: "Asia/Bangkok",
-        status: "active",
-        scopeType: "all_skills",
-        scopeCategory: "",
-        scopeExecutionMode: "",
-        genjsCandidatesOnly: false,
-        limit: "100",
-        policyJsonText: "{}",
-      });
-      toast({
-        title: "Schedule Saved",
-        description: "The maintenance schedule has been saved.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Save Failed",
-        description: error.message || "Failed to save maintenance schedule",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateMaintenanceScheduleMutation = trpc.skills.updateMaintenanceSchedule.useMutation({
-    onSuccess: () => {
-      utils.skills.listMaintenanceSchedules.invalidate();
-      toast({
-        title: "Schedule Updated",
-        description: "The maintenance schedule has been updated.",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update maintenance schedule",
-        variant: "destructive",
-      });
-    },
-  });
+  const updateMaintenanceScheduleMutation =
+    trpc.skills.updateMaintenanceSchedule.useMutation({
+      onSuccess: () => {
+        utils.skills.listMaintenanceSchedules.invalidate();
+        toast({
+          title: "Schedule Updated",
+          description: "The maintenance schedule has been updated.",
+        });
+      },
+      onError: error => {
+        toast({
+          title: "Update Failed",
+          description: error.message || "Failed to update maintenance schedule",
+          variant: "destructive",
+        });
+      },
+    });
 
   // Share with groups mutation
   const shareWithGroupsMutation = trpc.skills.shareWithGroups.useMutation({
@@ -3088,7 +3672,7 @@ export default function AdminSkills() {
         description: "The skill is now shared with the selected group.",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to share with group",
@@ -3108,7 +3692,7 @@ export default function AdminSkills() {
         description: "The group no longer has access to this skill.",
       });
     },
-    onError: (error) => {
+    onError: error => {
       toast({
         title: "Error",
         description: error.message || "Failed to remove group sharing",
@@ -3199,7 +3783,12 @@ export default function AdminSkills() {
     const isTextArea = target.tagName === "TEXTAREA";
     const isEnter = event.key === "Enter";
     const isModifierEnter = isEnter && (event.metaKey || event.ctrlKey);
-    const isPlainEnter = isEnter && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+    const isPlainEnter =
+      isEnter &&
+      !event.metaKey &&
+      !event.ctrlKey &&
+      !event.shiftKey &&
+      !event.altKey;
 
     if (event.altKey && event.key === "1") {
       event.preventDefault();
@@ -3212,13 +3801,23 @@ export default function AdminSkills() {
       return;
     }
 
-    if (createDialogStep === 1 && isPlainEnter && !isTextArea && createSkillBasicIssues.length === 0) {
+    if (
+      createDialogStep === 1 &&
+      isPlainEnter &&
+      !isTextArea &&
+      createSkillBasicIssues.length === 0
+    ) {
       event.preventDefault();
       setCreateDialogStep(2);
       return;
     }
 
-    if (createDialogStep === 2 && isModifierEnter && !isTextArea && createSkillValidationIssues.length === 0) {
+    if (
+      createDialogStep === 2 &&
+      isModifierEnter &&
+      !isTextArea &&
+      createSkillValidationIssues.length === 0
+    ) {
       event.preventDefault();
       handleCreateSkill();
     }
@@ -3227,23 +3826,25 @@ export default function AdminSkills() {
   const handleUpdateSkill = () => {
     if (!editingSkill) return;
     const existingConfigJson = editingSkill.configJson || {};
-    const existingMediaStudioConfig = (
-      existingConfigJson.media_studio
-      && typeof existingConfigJson.media_studio === "object"
-      && !Array.isArray(existingConfigJson.media_studio)
-    )
-      ? existingConfigJson.media_studio as Record<string, unknown>
-      : {};
-    const existingProductionReferenceStoryboard = (
-      existingMediaStudioConfig.production_reference_storyboard
-      && typeof existingMediaStudioConfig.production_reference_storyboard === "object"
-      && !Array.isArray(existingMediaStudioConfig.production_reference_storyboard)
-    )
-      ? existingMediaStudioConfig.production_reference_storyboard as Record<string, unknown>
-      : {};
+    const existingMediaStudioConfig =
+      existingConfigJson.media_studio &&
+      typeof existingConfigJson.media_studio === "object" &&
+      !Array.isArray(existingConfigJson.media_studio)
+        ? (existingConfigJson.media_studio as Record<string, unknown>)
+        : {};
+    const existingProductionReferenceStoryboard =
+      existingMediaStudioConfig.production_reference_storyboard &&
+      typeof existingMediaStudioConfig.production_reference_storyboard ===
+        "object" &&
+      !Array.isArray(existingMediaStudioConfig.production_reference_storyboard)
+        ? (existingMediaStudioConfig.production_reference_storyboard as Record<
+            string,
+            unknown
+          >)
+        : {};
     const shouldPersistProductionReferenceStoryboard = Boolean(
-      (editingSkill as any)._productionReferenceStoryboardConfigured
-      || (editingSkill as any)._productionReferenceStoryboardEnabled,
+      (editingSkill as any)._productionReferenceStoryboardConfigured ||
+      (editingSkill as any)._productionReferenceStoryboardEnabled
     );
     const nextConfigJson = {
       ...existingConfigJson,
@@ -3253,23 +3854,31 @@ export default function AdminSkills() {
           ? {
               production_reference_storyboard: {
                 ...existingProductionReferenceStoryboard,
-                enabled: (editingSkill as any)._productionReferenceStoryboardEnabled === true,
+                enabled:
+                  (editingSkill as any)
+                    ._productionReferenceStoryboardEnabled === true,
               },
             }
           : {}),
         auto_learning: {
           enabled: (editingSkill as any)._autoLearningEnabled ?? false,
-          prompt_qa_after_auto_prompt: (editingSkill as any)._autoLearningPromptQa ?? true,
-          image_qa_after_generation: (editingSkill as any)._autoLearningImageQa ?? true,
-          require_admin_approval: (editingSkill as any)._autoLearningRequireAdminApproval ?? true,
-          min_prompt_score_to_pass: (editingSkill as any)._autoLearningMinPromptScore ?? 85,
-          min_image_fidelity_score_to_pass: (editingSkill as any)._autoLearningMinImageScore ?? 80,
+          prompt_qa_after_auto_prompt:
+            (editingSkill as any)._autoLearningPromptQa ?? true,
+          image_qa_after_generation:
+            (editingSkill as any)._autoLearningImageQa ?? true,
+          require_admin_approval:
+            (editingSkill as any)._autoLearningRequireAdminApproval ?? true,
+          min_prompt_score_to_pass:
+            (editingSkill as any)._autoLearningMinPromptScore ?? 85,
+          min_image_fidelity_score_to_pass:
+            (editingSkill as any)._autoLearningMinImageScore ?? 80,
           max_auto_patch_risk: "medium",
         },
       },
       orchestration: {
         mode: (editingSkill as any)._orchestrationMode || "local",
-        endpoint: ((editingSkill as any)._orchestrationEndpoint || "").trim() || null,
+        endpoint:
+          ((editingSkill as any)._orchestrationEndpoint || "").trim() || null,
         skillTargets: ((editingSkill as any)._orchestrationSkillTargets || "")
           .split(",")
           .map((value: string) => value.trim())
@@ -3288,9 +3897,9 @@ export default function AdminSkills() {
       icon: editingSkill.icon || undefined,
       tags: editingSkill.tags,
       isAutoTrigger: editingSkill.isAutoTrigger,
-      triggerPatterns: (editingSkill.triggerPatterns || []).map((pattern) => (
-        pattern
-      )),
+      triggerPatterns: (editingSkill.triggerPatterns || []).map(
+        pattern => pattern
+      ),
       isEnabled: editingSkill.isEnabled,
       enabledByDefault: editingSkill.enabledByDefault,
       visibleByDefault: editingSkill.visibleByDefault,
@@ -3313,33 +3922,48 @@ export default function AdminSkills() {
       marketplaceContent: editingSkill.marketplaceContent,
       knowledgebase: editingSkill.knowledgebase,
       configJson: nextConfigJson,
-      visibility: (editingSkill.visibility === "rejected" || editingSkill.visibility === "private")
-        ? "private"
-        : "public" as "private" | "public",
+      visibility:
+        editingSkill.visibility === "rejected" ||
+        editingSkill.visibility === "private"
+          ? "private"
+          : ("public" as "private" | "public"),
       executionPolicy: {
         // Spec 038 fields
-        thinking_level_hint: (editingSkill as any)._thinkingLevel === "auto" ? null : (editingSkill as any)._thinkingLevel,
+        thinking_level_hint:
+          (editingSkill as any)._thinkingLevel === "auto"
+            ? null
+            : (editingSkill as any)._thinkingLevel,
         requires_web_search: (editingSkill as any)._requiresWebSearch ?? false,
         min_citation_coverage: (editingSkill as any)._minCitationCoverage ?? 0,
         refresh_cadence_days: (editingSkill as any)._refreshCadenceDays ?? 30,
         disclosure_required: (editingSkill as any)._disclosureRequired ?? false,
         response_mode: (editingSkill as any)._responseMode ?? "markdown",
         // Feature 041 fields
-        mode: (editingSkill as any)._execMode === "auto" ? undefined : (editingSkill as any)._execMode,
-        allowConversationOverride: (editingSkill as any)._allowConvOverride ?? true,
+        mode:
+          (editingSkill as any)._execMode === "auto"
+            ? undefined
+            : (editingSkill as any)._execMode,
+        allowConversationOverride:
+          (editingSkill as any)._allowConvOverride ?? true,
         allowFreeModels: (editingSkill as any)._allowFreeModels ?? false,
         requirements: (() => {
           const r: Record<string, boolean | number | undefined> = {
             supportsVision: (editingSkill as any)._reqVision || undefined,
             supportsThinking: (editingSkill as any)._reqThinking || undefined,
-            supportsFunctionTools: (editingSkill as any)._reqFunctionTools || undefined,
-            supportsStructuredOutputs: (editingSkill as any)._reqStructuredOutputs || undefined,
+            supportsFunctionTools:
+              (editingSkill as any)._reqFunctionTools || undefined,
+            supportsStructuredOutputs:
+              (editingSkill as any)._reqStructuredOutputs || undefined,
             supportsJsonMode: (editingSkill as any)._reqJsonMode || undefined,
-            supportsStrictToolSchema: (editingSkill as any)._reqStrictToolSchema || undefined,
+            supportsStrictToolSchema:
+              (editingSkill as any)._reqStrictToolSchema || undefined,
             supportsWebSearch: (editingSkill as any)._reqWebSearch || undefined,
-            supportsCodeExecution: (editingSkill as any)._reqCodeExecution || undefined,
-            supportsComputerUse: (editingSkill as any)._reqComputerUse || undefined,
-            supportsBackground: (editingSkill as any)._reqBackground || undefined,
+            supportsCodeExecution:
+              (editingSkill as any)._reqCodeExecution || undefined,
+            supportsComputerUse:
+              (editingSkill as any)._reqComputerUse || undefined,
+            supportsBackground:
+              (editingSkill as any)._reqBackground || undefined,
             supportsResponses: (editingSkill as any)._reqResponses || undefined,
             contextLength: (editingSkill as any)._reqContextLength || undefined,
           };
@@ -3354,7 +3978,7 @@ export default function AdminSkills() {
     if (!zipFile || !zipSlug) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
       const base64 = (e.target?.result as string)?.split(",")[1];
       if (base64) {
         importZipMutation.mutate({
@@ -3379,10 +4003,19 @@ export default function AdminSkills() {
   };
 
   const selectedSkillExportSource = useMemo(() => {
-    const configJson = (editingSkill?.configJson ?? null) as Record<string, any> | null;
+    const configJson = (editingSkill?.configJson ?? null) as Record<
+      string,
+      any
+    > | null;
     if (!configJson || configJson.source !== "agency_export") return null;
-    const sourceAgencyId = typeof configJson.sourceAgencyId === "string" ? configJson.sourceAgencyId : null;
-    const sourceAgencyName = typeof configJson.sourceAgencyName === "string" ? configJson.sourceAgencyName : null;
+    const sourceAgencyId =
+      typeof configJson.sourceAgencyId === "string"
+        ? configJson.sourceAgencyId
+        : null;
+    const sourceAgencyName =
+      typeof configJson.sourceAgencyName === "string"
+        ? configJson.sourceAgencyName
+        : null;
     return {
       sourceAgencyId,
       sourceAgencyName,
@@ -3390,7 +4023,8 @@ export default function AdminSkills() {
   }, [editingSkill?.configJson]);
 
   const sourceGraphDuplicateLocation = useMemo(() => {
-    if (!selectedSkillExportSource?.sourceAgencyId || !editingSkill) return null;
+    if (!selectedSkillExportSource?.sourceAgencyId || !editingSkill)
+      return null;
     const params = new URLSearchParams({
       autoExport: "1",
       duplicateSkillName: editingSkill.name,
@@ -3520,32 +4154,50 @@ export default function AdminSkills() {
 
         <TabsContent value="skills" className="space-y-6">
           {/* Filters */}
-          <DashboardCard title={t("admin.skillsPage.filters.title")} leading={<Search className="h-5 w-5 text-slate-500" />}>
+          <DashboardCard
+            title={t("admin.skillsPage.filters.title")}
+            leading={<Search className="h-5 w-5 text-slate-500" />}
+          >
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
-                  <Label htmlFor="search">{t("admin.skillsPage.filters.searchLabel")}</Label>
+                  <Label htmlFor="search">
+                    {t("admin.skillsPage.filters.searchLabel")}
+                  </Label>
                   <div className="relative">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="search"
-                      placeholder={t("admin.skillsPage.filters.searchPlaceholder")}
+                      placeholder={t(
+                        "admin.skillsPage.filters.searchPlaceholder"
+                      )}
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={e => setSearchQuery(e.target.value)}
                       className="pl-8"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category">{t("admin.skillsPage.filters.categoryLabel")}</Label>
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <Label htmlFor="category">
+                    {t("admin.skillsPage.filters.categoryLabel")}
+                  </Label>
+                  <Select
+                    value={filterCategory}
+                    onValueChange={setFilterCategory}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder={t("admin.skillsPage.filters.allCategories")} />
+                      <SelectValue
+                        placeholder={t(
+                          "admin.skillsPage.filters.allCategories"
+                        )}
+                      />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">{t("admin.skillsPage.filters.allCategories")}</SelectItem>
-                      {categories?.map((cat) => (
+                      <SelectItem value="all">
+                        {t("admin.skillsPage.filters.allCategories")}
+                      </SelectItem>
+                      {categories?.map(cat => (
                         <SelectItem key={cat.id} value={cat.id}>
                           {cat.name} ({cat.count})
                         </SelectItem>
@@ -3561,7 +4213,9 @@ export default function AdminSkills() {
                       checked={showEnabledOnly}
                       onCheckedChange={setShowEnabledOnly}
                     />
-                    <span className="text-sm">{t("admin.skillsPage.filters.enabledOnly")}</span>
+                    <span className="text-sm">
+                      {t("admin.skillsPage.filters.enabledOnly")}
+                    </span>
                   </div>
                 </div>
 
@@ -3588,33 +4242,63 @@ export default function AdminSkills() {
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Unmapped legacy usage</div>
-                  <div className="text-xl font-semibold">{billingReconciliation?.unmappedUsageCount ?? "—"}</div>
-                </div>
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Unknown skill slug</div>
-                  <div className="text-xl font-semibold">{billingReconciliation?.unknownSkillSlugCount ?? "—"}</div>
-                </div>
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Incomplete settlements</div>
-                  <div className="text-xl font-semibold">{billingReconciliation?.incompleteSettlementCount ?? "—"}</div>
-                </div>
-                <div className="rounded-md border p-3">
-                  <div className="text-xs text-muted-foreground">Open refund debt</div>
+                  <div className="text-xs text-muted-foreground">
+                    Unmapped legacy usage
+                  </div>
                   <div className="text-xl font-semibold">
-                    {billingReconciliation ? `${billingReconciliation.openDebtCount} รายการ / ${billingReconciliation.openDebtCredits} เครดิต` : "—"}
+                    {billingReconciliation?.unmappedUsageCount ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Unknown skill slug
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {billingReconciliation?.unknownSkillSlugCount ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Incomplete settlements
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {billingReconciliation?.incompleteSettlementCount ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Open refund debt
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {billingReconciliation
+                      ? `${billingReconciliation.openDebtCount} รายการ / ${billingReconciliation.openDebtCredits} เครดิต`
+                      : "—"}
                   </div>
                 </div>
               </div>
-              {billingReconciliation && (billingReconciliation.unmappedUsageCount > 0 || billingReconciliation.unknownSkillSlugCount > 0) && (
-                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                  รายการ legacy เหล่านี้ต้อง register/จับคู่แบบตรวจสอบได้ก่อน จึงจะนับรายได้ได้ เพื่อป้องกันการสร้างรายได้เกินจริง
-                  {billingReconciliation.unknownSkillSlugSamples.length > 0 && (
-                    <div className="mt-1 break-words">Unknown slugs: {billingReconciliation.unknownSkillSlugSamples.join(", ")}</div>
-                  )}
-                </div>
-              )}
-              <Button type="button" variant="outline" size="sm" onClick={() => void refetchBillingReconciliation()}>
+              {billingReconciliation &&
+                (billingReconciliation.unmappedUsageCount > 0 ||
+                  billingReconciliation.unknownSkillSlugCount > 0) && (
+                  <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                    รายการ legacy เหล่านี้ต้อง register/จับคู่แบบตรวจสอบได้ก่อน
+                    จึงจะนับรายได้ได้ เพื่อป้องกันการสร้างรายได้เกินจริง
+                    {billingReconciliation.unknownSkillSlugSamples.length >
+                      0 && (
+                      <div className="mt-1 break-words">
+                        Unknown slugs:{" "}
+                        {billingReconciliation.unknownSkillSlugSamples.join(
+                          ", "
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void refetchBillingReconciliation()}
+              >
                 <RefreshCw className="mr-2 h-4 w-4" /> ตรวจสอบ ledger อีกครั้ง
               </Button>
             </div>
@@ -3628,20 +4312,56 @@ export default function AdminSkills() {
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="revenue-start-date">ตั้งแต่</Label>
-                  <Input id="revenue-start-date" type="date" value={revenueStartDate} onChange={(event) => setRevenueStartDate(event.target.value)} />
+                  <Input
+                    id="revenue-start-date"
+                    type="date"
+                    value={revenueStartDate}
+                    onChange={event => setRevenueStartDate(event.target.value)}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="revenue-end-date">ถึง</Label>
-                  <Input id="revenue-end-date" type="date" value={revenueEndDate} onChange={(event) => setRevenueEndDate(event.target.value)} />
+                  <Input
+                    id="revenue-end-date"
+                    type="date"
+                    value={revenueEndDate}
+                    onChange={event => setRevenueEndDate(event.target.value)}
+                  />
                 </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => void refetchRevenueReport()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refetchRevenueReport()}
+                >
                   <RefreshCw className="mr-2 h-4 w-4" /> รีเฟรชรายงาน
                 </Button>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Tenant revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.tenantCredits ?? "—"}</div></div>
-                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Skill owner revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.skillOwnerCredits ?? "—"}</div></div>
-                <div className="rounded-md border p-3"><div className="text-xs text-muted-foreground">Net skill revenue</div><div className="text-xl font-semibold">{revenueReport?.summary.totalCredits ?? "—"}</div></div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Tenant revenue
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {revenueReport?.summary.tenantCredits ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Skill owner revenue
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {revenueReport?.summary.skillOwnerCredits ?? "—"}
+                  </div>
+                </div>
+                <div className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">
+                    Net skill revenue
+                  </div>
+                  <div className="text-xl font-semibold">
+                    {revenueReport?.summary.totalCredits ?? "—"}
+                  </div>
+                </div>
               </div>
               <div className="overflow-x-auto rounded-md border">
                 <Table>
@@ -3656,20 +4376,52 @@ export default function AdminSkills() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {revenueReport?.rows.length ? revenueReport.rows.slice(0, 20).map((row) => {
-                      const sign = row.status === "reversed" ? -1 : 1;
-                      return (
-                        <TableRow key={row.id}>
-                          <TableCell className="whitespace-nowrap text-xs">{new Date(row.createdAt).toLocaleString()}</TableCell>
-                          <TableCell><div className="font-medium">{row.skillName || row.skillSlug}</div><div className="text-xs text-muted-foreground">{row.skillSlug}</div></TableCell>
-                          <TableCell>{sign * row.tenantCredits}</TableCell>
-                          <TableCell>{sign * row.skillOwnerCredits}</TableCell>
-                          <TableCell className="font-medium">{sign * row.totalCredits}</TableCell>
-                          <TableCell><Badge variant={row.status === "reversed" ? "destructive" : "outline"}>{row.status}</Badge></TableCell>
-                        </TableRow>
-                      );
-                    }) : (
-                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">ยังไม่มี settlement ตามช่วงเวลาที่เลือก</TableCell></TableRow>
+                    {revenueReport?.rows.length ? (
+                      revenueReport.rows.slice(0, 20).map(row => {
+                        const sign = row.status === "reversed" ? -1 : 1;
+                        return (
+                          <TableRow key={row.id}>
+                            <TableCell className="whitespace-nowrap text-xs">
+                              {new Date(row.createdAt).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium">
+                                {row.skillName || row.skillSlug}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {row.skillSlug}
+                              </div>
+                            </TableCell>
+                            <TableCell>{sign * row.tenantCredits}</TableCell>
+                            <TableCell>
+                              {sign * row.skillOwnerCredits}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {sign * row.totalCredits}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  row.status === "reversed"
+                                    ? "destructive"
+                                    : "outline"
+                                }
+                              >
+                                {row.status}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center text-muted-foreground"
+                        >
+                          ยังไม่มี settlement ตามช่วงเวลาที่เลือก
+                        </TableCell>
+                      </TableRow>
                     )}
                   </TableBody>
                 </Table>
@@ -3680,456 +4432,714 @@ export default function AdminSkills() {
           {/* Skills List */}
           <DashboardCard
             title={t("admin.skillsPage.library.title")}
-            description={t("admin.skillsPage.library.description", { count: skills?.length || 0 })}
+            description={t("admin.skillsPage.library.description", {
+              count: skills?.length || 0,
+            })}
           >
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : isSkillsError ? (
+              <div
+                className="flex flex-col items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center"
+                role="alert"
+              >
+                <XCircle className="h-8 w-8 text-destructive" />
+                <div>
+                  <p className="font-medium">Unable to load skills</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {skillsError?.message || "Please try again."}
+                  </p>
                 </div>
-              ) : isSkillsError ? (
-                <div className="flex flex-col items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-8 text-center" role="alert">
-                  <XCircle className="h-8 w-8 text-destructive" />
-                  <div>
-                    <p className="font-medium">Unable to load skills</p>
-                    <p className="mt-1 text-sm text-muted-foreground">{skillsError?.message || "Please try again."}</p>
-                  </div>
-                  <Button variant="outline" onClick={() => refetchSkills()}>
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    Retry
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {(skills?.length ?? 0) > 0 && (
-                    <div className="mb-4 space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="font-medium">แก้ไขเครดิตหลายรายการ</p>
-                          <p className="text-sm text-muted-foreground">
-                            เลือก {selectedSkillIds.length} จาก {skills?.length ?? 0} รายการที่กำลังแสดง
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => refetchSkills()}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              <>
+                {(skills?.length ?? 0) > 0 && (
+                  <div className="mb-4 space-y-3 rounded-lg border border-border/70 bg-muted/20 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">แก้ไขเครดิตหลายรายการ</p>
+                        <p className="text-sm text-muted-foreground">
+                          เลือก {selectedSkillIds.length} จาก{" "}
+                          {skills?.length ?? 0} รายการที่กำลังแสดง
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setSelectedSkillIds(
+                              allVisibleSkillsSelected ? [] : visibleSkillIds
+                            )
+                          }
+                        >
+                          {allVisibleSkillsSelected
+                            ? "ยกเลิกทั้งหมด"
+                            : "เลือกทั้งหมดที่แสดง"}
+                        </Button>
+                        {pendingPricingDraftCount > 0 && (
                           <Button
                             type="button"
-                            variant="outline"
                             size="sm"
-                            onClick={() => setSelectedSkillIds(allVisibleSkillsSelected ? [] : visibleSkillIds)}
+                            onClick={savePricingDrafts}
+                            disabled={bulkUpdatePricingMutation.isPending}
                           >
-                            {allVisibleSkillsSelected ? "ยกเลิกทั้งหมด" : "เลือกทั้งหมดที่แสดง"}
+                            {bulkUpdatePricingMutation.isPending && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            บันทึก {pendingPricingDraftCount} รายการ
                           </Button>
-                          {pendingPricingDraftCount > 0 && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={savePricingDrafts}
-                              disabled={bulkUpdatePricingMutation.isPending}
-                            >
-                              {bulkUpdatePricingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                              บันทึก {pendingPricingDraftCount} รายการ
-                            </Button>
-                          )}
-                        </div>
+                        )}
                       </div>
-
-                      {selectedSkillIds.length > 0 && (
-                        <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-                          <div className="space-y-1.5">
-                            <Label htmlFor="bulk-tenant-credit-cost">Tenant owner credits / run</Label>
-                            <Input
-                              id="bulk-tenant-credit-cost"
-                              type="number"
-                              min={0}
-                              max={100000}
-                              step={1}
-                              inputMode="numeric"
-                              placeholder="ไม่เปลี่ยนค่าเดิม"
-                              value={bulkTenantCreditCost}
-                              onChange={(event) => setBulkTenantCreditCost(event.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="bulk-skill-owner-credit-cost">Skill owner credits / run</Label>
-                            <Input
-                              id="bulk-skill-owner-credit-cost"
-                              type="number"
-                              min={0}
-                              max={100000}
-                              step={1}
-                              inputMode="numeric"
-                              placeholder="ไม่เปลี่ยนค่าเดิม"
-                              value={bulkSkillOwnerCreditCost}
-                              onChange={(event) => setBulkSkillOwnerCreditCost(event.target.value)}
-                            />
-                          </div>
-                          <Button type="button" variant="secondary" onClick={applyBulkPricingDraft}>
-                            ใช้กับรายการที่เลือก
-                          </Button>
-                        </div>
-                      )}
                     </div>
-                  )}
+
+                    {selectedSkillIds.length > 0 && (
+                      <div className="grid gap-3 border-t border-border/60 pt-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="bulk-tenant-credit-cost">
+                            Tenant owner credits / run
+                          </Label>
+                          <Input
+                            id="bulk-tenant-credit-cost"
+                            type="number"
+                            min={0}
+                            max={100000}
+                            step={1}
+                            inputMode="numeric"
+                            placeholder="ไม่เปลี่ยนค่าเดิม"
+                            value={bulkTenantCreditCost}
+                            onChange={event =>
+                              setBulkTenantCreditCost(event.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="bulk-skill-owner-credit-cost">
+                            Skill owner credits / run
+                          </Label>
+                          <Input
+                            id="bulk-skill-owner-credit-cost"
+                            type="number"
+                            min={0}
+                            max={100000}
+                            step={1}
+                            inputMode="numeric"
+                            placeholder="ไม่เปลี่ยนค่าเดิม"
+                            value={bulkSkillOwnerCreditCost}
+                            onChange={event =>
+                              setBulkSkillOwnerCreditCost(event.target.value)
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={applyBulkPricingDraft}
+                        >
+                          ใช้กับรายการที่เลือก
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
                         <Checkbox
-                          checked={allVisibleSkillsSelected ? true : someVisibleSkillsSelected ? "indeterminate" : false}
-                          onCheckedChange={(checked) => setSelectedSkillIds(checked === true ? visibleSkillIds : [])}
+                          checked={
+                            allVisibleSkillsSelected
+                              ? true
+                              : someVisibleSkillsSelected
+                                ? "indeterminate"
+                                : false
+                          }
+                          onCheckedChange={checked =>
+                            setSelectedSkillIds(
+                              checked === true ? visibleSkillIds : []
+                            )
+                          }
                           aria-label="Select all visible skills"
                         />
                       </TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.name")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.owner")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.visibility")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.category")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.autoTrigger")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.credits")}</TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.name")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.owner")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.visibility")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.category")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.autoTrigger")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.credits")}
+                      </TableHead>
                       <TableHead>Revenue / run</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.priority")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.status")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.source")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.bundle")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.library.headers.actions")}</TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.priority")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.status")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.source")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.bundle")}
+                      </TableHead>
+                      <TableHead>
+                        {t("admin.skillsPage.library.headers.actions")}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {skills?.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={13} className="text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={13}
+                          className="text-center text-muted-foreground"
+                        >
                           {t("admin.skillsPage.library.empty")}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      skills?.map((skill) => {
-                        const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((skill as any).configJson ?? null);
+                      skills?.map(skill => {
+                        const productionReferenceStoryboard =
+                          getProductionReferenceStoryboardConfig(
+                            (skill as any).configJson ?? null
+                          );
                         const pricingDraft = skillPricingDrafts[skill.id];
-                        const tenantCreditValue = pricingDraft?.tenantCreditCost ?? String(skill.tenantCreditCost ?? 2);
-                        const skillOwnerCreditValue = pricingDraft?.skillOwnerCreditCost ?? String(skill.skillOwnerCreditCost ?? 0);
-                        const tenantCreditNumber = tenantCreditValue.trim() === "" ? (skill.tenantCreditCost ?? 2) : Number(tenantCreditValue);
-                        const skillOwnerCreditNumber = skillOwnerCreditValue.trim() === "" ? (skill.skillOwnerCreditCost ?? 0) : Number(skillOwnerCreditValue);
-                        const totalCreditValue = Number.isFinite(tenantCreditNumber) && Number.isFinite(skillOwnerCreditNumber)
-                          ? tenantCreditNumber + skillOwnerCreditNumber
-                          : "—";
+                        const tenantCreditValue =
+                          pricingDraft?.tenantCreditCost ??
+                          String(skill.tenantCreditCost ?? 2);
+                        const skillOwnerCreditValue =
+                          pricingDraft?.skillOwnerCreditCost ??
+                          String(skill.skillOwnerCreditCost ?? 0);
+                        const tenantCreditNumber =
+                          tenantCreditValue.trim() === ""
+                            ? (skill.tenantCreditCost ?? 2)
+                            : Number(tenantCreditValue);
+                        const skillOwnerCreditNumber =
+                          skillOwnerCreditValue.trim() === ""
+                            ? (skill.skillOwnerCreditCost ?? 0)
+                            : Number(skillOwnerCreditValue);
+                        const totalCreditValue =
+                          Number.isFinite(tenantCreditNumber) &&
+                          Number.isFinite(skillOwnerCreditNumber)
+                            ? tenantCreditNumber + skillOwnerCreditNumber
+                            : "—";
                         return (
-                        <TableRow key={skill.id}>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedSkillIds.includes(skill.id)}
-                              onCheckedChange={(checked) => setSelectedSkillIds((current) => (
-                                checked === true
-                                  ? [...new Set([...current, skill.id])]
-                                  : current.filter((id) => id !== skill.id)
-                              ))}
-                              aria-label={`Select ${skill.name}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getCategoryIcon(skill.category)}
-                              <div className="min-w-0 space-y-1">
-                                <div className="font-medium">{skill.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {skill.slug}
+                          <TableRow key={skill.id}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedSkillIds.includes(skill.id)}
+                                onCheckedChange={checked =>
+                                  setSelectedSkillIds(current =>
+                                    checked === true
+                                      ? [...new Set([...current, skill.id])]
+                                      : current.filter(id => id !== skill.id)
+                                  )
+                                }
+                                aria-label={`Select ${skill.name}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getCategoryIcon(skill.category)}
+                                <div className="min-w-0 space-y-1">
+                                  <div className="font-medium">
+                                    {skill.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {skill.slug}
+                                  </div>
+                                  {productionReferenceStoryboard.enabled && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-sky-500 bg-sky-50 text-sky-700"
+                                      title="config.media_studio.production_reference_storyboard.enabled=true"
+                                    >
+                                      {t(
+                                        "admin.skillsPage.productionReferenceStoryboard.badge"
+                                      )}
+                                    </Badge>
+                                  )}
                                 </div>
-                                {productionReferenceStoryboard.enabled && (
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm text-muted-foreground">
+                                {(skill as any).ownerName ||
+                                  t("admin.skillsPage.library.systemOwner")}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {(skill as any).visibility === "private" && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-gray-400 text-gray-600"
+                                >
+                                  <Lock className="mr-1 h-3 w-3" />
+                                  Private
+                                </Badge>
+                              )}
+                              {(skill as any).visibility ===
+                                "pending_approval" && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-amber-500 text-amber-600 bg-amber-50"
+                                >
+                                  <Clock className="mr-1 h-3 w-3" />
+                                  Pending
+                                </Badge>
+                              )}
+                              {(skill as any).visibility === "public" && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-green-500 text-green-600 bg-green-50"
+                                >
+                                  <Globe className="mr-1 h-3 w-3" />
+                                  Public
+                                </Badge>
+                              )}
+                              {(skill as any).visibility === "rejected" && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-red-500 text-red-600 bg-red-50"
+                                >
+                                  <XCircle className="mr-1 h-3 w-3" />
+                                  Rejected
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {categoryLabels[skill.category] ||
+                                  skill.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {skill.isAutoTrigger ? (
+                                <Badge className="bg-purple-100 text-purple-800">
+                                  <Zap className="mr-1 h-3 w-3" />
+                                  {t("admin.skillsPage.library.autoTrigger")}
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {t("admin.skillsPage.library.manualTrigger")}
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span
+                                className={
+                                  skill.creditMultiplier > 1
+                                    ? "text-orange-600 font-medium"
+                                    : ""
+                                }
+                              >
+                                {skill.creditMultiplier}x
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <div className="min-w-[170px] space-y-1.5 text-xs">
+                                <div className="flex items-center gap-2">
+                                  <label
+                                    htmlFor={`tenant-credit-${skill.id}`}
+                                    className="w-14 shrink-0 text-muted-foreground"
+                                  >
+                                    Tenant
+                                  </label>
+                                  <Input
+                                    id={`tenant-credit-${skill.id}`}
+                                    type="number"
+                                    min={0}
+                                    max={100000}
+                                    step={1}
+                                    inputMode="numeric"
+                                    value={tenantCreditValue}
+                                    onChange={event =>
+                                      updateSkillPricingDraft(
+                                        skill.id,
+                                        "tenantCreditCost",
+                                        event.target.value
+                                      )
+                                    }
+                                    className={cn(
+                                      "h-7 w-24 px-2 text-right",
+                                      pricingDraft?.tenantCreditCost !==
+                                        undefined &&
+                                        "border-amber-400 bg-amber-50/50"
+                                    )}
+                                    aria-label={`Tenant owner credits per run for ${skill.name}`}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label
+                                    htmlFor={`skill-owner-credit-${skill.id}`}
+                                    className="w-14 shrink-0 text-muted-foreground"
+                                  >
+                                    Skill
+                                  </label>
+                                  <Input
+                                    id={`skill-owner-credit-${skill.id}`}
+                                    type="number"
+                                    min={0}
+                                    max={100000}
+                                    step={1}
+                                    inputMode="numeric"
+                                    value={skillOwnerCreditValue}
+                                    onChange={event =>
+                                      updateSkillPricingDraft(
+                                        skill.id,
+                                        "skillOwnerCreditCost",
+                                        event.target.value
+                                      )
+                                    }
+                                    className={cn(
+                                      "h-7 w-24 px-2 text-right",
+                                      pricingDraft?.skillOwnerCreditCost !==
+                                        undefined &&
+                                        "border-amber-400 bg-amber-50/50"
+                                    )}
+                                    aria-label={`Skill owner credits per run for ${skill.name}`}
+                                  />
+                                </div>
+                                <div className="font-semibold">
+                                  Total: {totalCreditValue}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{skill.priority}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={skill.isEnabled}
+                                  disabled={toggleEnabledMutation.isPending}
+                                  aria-label={
+                                    skill.isEnabled
+                                      ? `Disable ${skill.name}`
+                                      : `Enable ${skill.name}`
+                                  }
+                                  onCheckedChange={checked =>
+                                    toggleEnabledMutation.mutate({
+                                      id: skill.id,
+                                      isEnabled: Boolean(checked),
+                                    })
+                                  }
+                                />
+                                {skill.isEnabled ? (
                                   <Badge
                                     variant="outline"
-                                    className="border-sky-500 bg-sky-50 text-sky-700"
-                                    title="config.media_studio.production_reference_storyboard.enabled=true"
+                                    className="border-green-500 text-green-500"
                                   >
-                                    {t("admin.skillsPage.productionReferenceStoryboard.badge")}
+                                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                                    {t("admin.skillsPage.library.enabled")}
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="border-red-500 text-red-500"
+                                  >
+                                    <XCircle className="mr-1 h-3 w-3" />
+                                    {t("admin.skillsPage.library.disabled")}
                                   </Badge>
                                 )}
                               </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                              <span className="text-sm text-muted-foreground">
-                              {(skill as any).ownerName || t("admin.skillsPage.library.systemOwner")}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            {(skill as any).visibility === "private" && (
-                              <Badge variant="outline" className="border-gray-400 text-gray-600">
-                                <Lock className="mr-1 h-3 w-3" />
-                                Private
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">
+                                {skill.importSource ||
+                                  t("admin.skillsPage.library.manualSource")}
                               </Badge>
-                            )}
-                            {(skill as any).visibility === "pending_approval" && (
-                              <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50">
-                                <Clock className="mr-1 h-3 w-3" />
-                                Pending
-                              </Badge>
-                            )}
-                            {(skill as any).visibility === "public" && (
-                              <Badge variant="outline" className="border-green-500 text-green-600 bg-green-50">
-                                <Globe className="mr-1 h-3 w-3" />
-                                Public
-                              </Badge>
-                            )}
-                            {(skill as any).visibility === "rejected" && (
-                              <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
-                                <XCircle className="mr-1 h-3 w-3" />
-                                Rejected
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {categoryLabels[skill.category] || skill.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {skill.isAutoTrigger ? (
-                              <Badge className="bg-purple-100 text-purple-800">
-                                <Zap className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.library.autoTrigger")}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">{t("admin.skillsPage.library.manualTrigger")}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <span className={skill.creditMultiplier > 1 ? "text-orange-600 font-medium" : ""}>
-                              {skill.creditMultiplier}x
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="min-w-[170px] space-y-1.5 text-xs">
-                              <div className="flex items-center gap-2">
-                                <label htmlFor={`tenant-credit-${skill.id}`} className="w-14 shrink-0 text-muted-foreground">Tenant</label>
-                                <Input
-                                  id={`tenant-credit-${skill.id}`}
-                                  type="number"
-                                  min={0}
-                                  max={100000}
-                                  step={1}
-                                  inputMode="numeric"
-                                  value={tenantCreditValue}
-                                  onChange={(event) => updateSkillPricingDraft(skill.id, "tenantCreditCost", event.target.value)}
-                                  className={cn("h-7 w-24 px-2 text-right", pricingDraft?.tenantCreditCost !== undefined && "border-amber-400 bg-amber-50/50")}
-                                  aria-label={`Tenant owner credits per run for ${skill.name}`}
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <label htmlFor={`skill-owner-credit-${skill.id}`} className="w-14 shrink-0 text-muted-foreground">Skill</label>
-                                <Input
-                                  id={`skill-owner-credit-${skill.id}`}
-                                  type="number"
-                                  min={0}
-                                  max={100000}
-                                  step={1}
-                                  inputMode="numeric"
-                                  value={skillOwnerCreditValue}
-                                  onChange={(event) => updateSkillPricingDraft(skill.id, "skillOwnerCreditCost", event.target.value)}
-                                  className={cn("h-7 w-24 px-2 text-right", pricingDraft?.skillOwnerCreditCost !== undefined && "border-amber-400 bg-amber-50/50")}
-                                  aria-label={`Skill owner credits per run for ${skill.name}`}
-                                />
-                              </div>
-                              <div className="font-semibold">Total: {totalCreditValue}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>{skill.priority}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Switch
-                                checked={skill.isEnabled}
-                                disabled={toggleEnabledMutation.isPending}
-                                aria-label={
-                                  skill.isEnabled
-                                    ? `Disable ${skill.name}`
-                                    : `Enable ${skill.name}`
-                                }
-                                onCheckedChange={(checked) =>
-                                  toggleEnabledMutation.mutate({
-                                    id: skill.id,
-                                    isEnabled: Boolean(checked),
-                                  })
-                                }
-                              />
-                              {skill.isEnabled ? (
-                                <Badge variant="outline" className="border-green-500 text-green-500">
-                                  <CheckCircle2 className="mr-1 h-3 w-3" />
-                                  {t("admin.skillsPage.library.enabled")}
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="border-red-500 text-red-500">
-                                  <XCircle className="mr-1 h-3 w-3" />
-                                  {t("admin.skillsPage.library.disabled")}
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary">
-                              {skill.importSource || t("admin.skillsPage.library.manualSource")}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "border",
-                                  skill.nativeBundleReady
-                                    ? "border-emerald-500 text-emerald-700 bg-emerald-50"
-                                    : skill.hasLocalFolder
-                                      ? "border-amber-500 text-amber-700 bg-amber-50"
-                                      : "border-slate-300 text-slate-500 bg-slate-50",
-                                )}
-                                title={
-                                  skill.nativeBundleFiles?.length
-                                    ? skill.nativeBundleFiles.join(", ")
-                                    : skill.nativeBundlePath || skill.folderPath || undefined
-                                }
-                              >
-                              {getNativeBundleLabel(t, skill)}
-                              </Badge>
-                              {skill.nativeBundleFiles?.length ? (
-                                <span className="text-xs text-muted-foreground">
-                                  {skill.nativeBundleFiles.length} files
-                                </span>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => analyzeUpgradeMutation.mutate({ skillId: skill.id })}
-                                disabled={analyzeUpgradeMutation.isPending}
-                              >
-                                <ShieldCheck className="h-3 w-3 text-blue-600" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const latest = latestRecommendationBySkillId.get(skill.id);
-                                  setMaintenanceSkillFilter(skill.id);
-                                  setActiveTab("maintenance");
-                                  if (latest) {
-                                    openRecommendationDetail(latest.id, "advice");
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    "border",
+                                    skill.nativeBundleReady
+                                      ? "border-emerald-500 text-emerald-700 bg-emerald-50"
+                                      : skill.hasLocalFolder
+                                        ? "border-amber-500 text-amber-700 bg-amber-50"
+                                        : "border-slate-300 text-slate-500 bg-slate-50"
+                                  )}
+                                  title={
+                                    skill.nativeBundleFiles?.length
+                                      ? skill.nativeBundleFiles.join(", ")
+                                      : skill.nativeBundlePath ||
+                                        skill.folderPath ||
+                                        undefined
                                   }
-                                }}
-                              >
-                                <Clock className="h-3 w-3 text-slate-600" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  const latest = latestRecommendationBySkillId.get(skill.id);
-                                  if (latest && latest.status !== "applied") {
-                                    requestRecommendationApply(latest, skill.name);
-                                    return;
-                                  }
-                                  setMaintenanceSkillFilter(skill.id);
-                                  setActiveTab("maintenance");
-                                  if (latest) {
-                                    openRecommendationDetail(latest.id, "advice");
-                                  }
-                                }}
-                                disabled={applyUpgradeMutation.isPending}
-                              >
-                                <CheckCircle2 className="h-3 w-3 text-green-600" />
-                              </Button>
-                              {(isAdmin || skill.createdBy === Number(user?.id)) && skill.hasLocalFolder && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openStudio("improve", skill.id)}
                                 >
-                                  <Sparkles className="h-3 w-3 text-amber-600" />
-                                </Button>
-                              )}
-                              {(isAdmin || skill.createdBy === Number(user?.id)) && (
+                                  {getNativeBundleLabel(t, skill)}
+                                </Badge>
+                                {skill.nativeBundleFiles?.length ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    {skill.nativeBundleFiles.length} files
+                                  </span>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() =>
-                                    setEditingSkill((() => {
-                                      const normalizedExecutionMode = isExecutionModeCompatibleWithSkillCategory(
-                                        skill.category,
-                                        (skill as any).executionMode ?? "llm-only",
-                                      )
-                                        ? ((skill as any).executionMode ?? "llm-only")
-                                        : (getRecommendedExecutionModeForSkillCategory(skill.category) || "llm-only");
-                                      const ep = (skill as any).executionPolicyJson ?? {};
-                                      const autoLearning = getAutoLearningConfig((skill as any).configJson ?? null);
-                                      const productionReferenceStoryboard = getProductionReferenceStoryboardConfig((skill as any).configJson ?? null);
-                                      const orchestration = getOrchestrationConfig((skill as any).configJson ?? null);
-                                      return applySandboxDefaults({
-                                        ...(skill as any),
-                                        triggerPatterns: ((skill as any).triggerPatterns || []).map((pattern: any) =>
-                                          typeof pattern === "string" ? pattern : pattern?.pattern || ""
-                                        ),
-                                        executionMode: normalizedExecutionMode,
-                                        marketplaceContent: (skill as any).marketplaceContent ?? null,
-                                        _thinkingLevel: ep.thinking_level_hint ?? "auto",
-                                        _responseMode: ep.response_mode ?? "markdown",
-                                        _minCitationCoverage: ep.min_citation_coverage ?? 0,
-                                        _refreshCadenceDays: ep.refresh_cadence_days ?? 30,
-                                        _requiresWebSearch: ep.requires_web_search ?? false,
-                                        _disclosureRequired: ep.disclosure_required ?? false,
-                                        // Feature 041 fields
-                                        _execMode: ep.mode ?? "auto",
-                                        _allowConvOverride: ep.allowConversationOverride ?? true,
-                                        _allowFreeModels: ep.allowFreeModels ?? false,
-                                        _reqVision: ep.requirements?.supportsVision ?? false,
-                                        _reqThinking: ep.requirements?.supportsThinking ?? false,
-                                        _reqFunctionTools: ep.requirements?.supportsFunctionTools ?? false,
-                                        _reqStructuredOutputs: ep.requirements?.supportsStructuredOutputs ?? false,
-                                        _reqJsonMode: ep.requirements?.supportsJsonMode ?? false,
-                                        _reqStrictToolSchema: ep.requirements?.supportsStrictToolSchema ?? false,
-                                        _reqWebSearch: ep.requirements?.supportsWebSearch ?? false,
-                                        _reqCodeExecution: ep.requirements?.supportsCodeExecution ?? false,
-                                        _reqComputerUse: ep.requirements?.supportsComputerUse ?? false,
-                                        _reqBackground: ep.requirements?.supportsBackground ?? false,
-                                        _reqResponses: ep.requirements?.supportsResponses ?? false,
-                                        _reqContextLength: ep.requirements?.contextLength ?? null,
-                                        _autoLearningEnabled: autoLearning.enabled,
-                                        _autoLearningPromptQa: autoLearning.promptQaAfterAutoPrompt,
-                                        _autoLearningImageQa: autoLearning.imageQaAfterGeneration,
-                                        _autoLearningRequireAdminApproval: autoLearning.requireAdminApproval,
-                                        _autoLearningMinPromptScore: autoLearning.minPromptScoreToPass,
-                                        _autoLearningMinImageScore: autoLearning.minImageFidelityScoreToPass,
-                                        _productionReferenceStoryboardConfigured: productionReferenceStoryboard.configured,
-                                        _productionReferenceStoryboardEnabled: productionReferenceStoryboard.enabled,
-                                        _orchestrationMode: orchestration.mode,
-                                        _orchestrationEndpoint: orchestration.endpoint,
-                                        _orchestrationSkillTargets: orchestration.skillTargets,
-                                        _orchestrationParallel: orchestration.parallel,
-                                        _orchestrationFallback: orchestration.fallback,
-                                      } as Skill, normalizedExecutionMode);
-                                    })())
+                                    analyzeUpgradeMutation.mutate({
+                                      skillId: skill.id,
+                                    })
                                   }
+                                  disabled={analyzeUpgradeMutation.isPending}
                                 >
-                                  <Edit className="h-3 w-3" />
+                                  <ShieldCheck className="h-3 w-3 text-blue-600" />
                                 </Button>
-                              )}
-                              {(isAdmin || skill.createdBy === Number(user?.id)) && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => deleteMutation.mutate({ id: skill.id })}
+                                  onClick={() => {
+                                    const latest =
+                                      latestRecommendationBySkillId.get(
+                                        skill.id
+                                      );
+                                    setMaintenanceSkillFilter(skill.id);
+                                    setActiveTab("maintenance");
+                                    if (latest) {
+                                      openRecommendationDetail(
+                                        latest.id,
+                                        "advice"
+                                      );
+                                    }
+                                  }}
                                 >
-                                  <Trash2 className="h-3 w-3 text-destructive" />
+                                  <Clock className="h-3 w-3 text-slate-600" />
                                 </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    const latest =
+                                      latestRecommendationBySkillId.get(
+                                        skill.id
+                                      );
+                                    if (latest && latest.status !== "applied") {
+                                      requestRecommendationApply(
+                                        latest,
+                                        skill.name
+                                      );
+                                      return;
+                                    }
+                                    setMaintenanceSkillFilter(skill.id);
+                                    setActiveTab("maintenance");
+                                    if (latest) {
+                                      openRecommendationDetail(
+                                        latest.id,
+                                        "advice"
+                                      );
+                                    }
+                                  }}
+                                  disabled={applyUpgradeMutation.isPending}
+                                >
+                                  <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                </Button>
+                                {(isAdmin ||
+                                  skill.createdBy === Number(user?.id)) &&
+                                  skill.hasLocalFolder && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() =>
+                                        openStudio("improve", skill.id)
+                                      }
+                                    >
+                                      <Sparkles className="h-3 w-3 text-amber-600" />
+                                    </Button>
+                                  )}
+                                {(isAdmin ||
+                                  skill.createdBy === Number(user?.id)) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      setEditingSkill(
+                                        (() => {
+                                          const normalizedExecutionMode =
+                                            isExecutionModeCompatibleWithSkillCategory(
+                                              skill.category,
+                                              (skill as any).executionMode ??
+                                                "llm-only"
+                                            )
+                                              ? ((skill as any).executionMode ??
+                                                "llm-only")
+                                              : getRecommendedExecutionModeForSkillCategory(
+                                                  skill.category
+                                                ) || "llm-only";
+                                          const ep =
+                                            (skill as any)
+                                              .executionPolicyJson ?? {};
+                                          const autoLearning =
+                                            getAutoLearningConfig(
+                                              (skill as any).configJson ?? null
+                                            );
+                                          const productionReferenceStoryboard =
+                                            getProductionReferenceStoryboardConfig(
+                                              (skill as any).configJson ?? null
+                                            );
+                                          const orchestration =
+                                            getOrchestrationConfig(
+                                              (skill as any).configJson ?? null
+                                            );
+                                          return applySandboxDefaults(
+                                            {
+                                              ...(skill as any),
+                                              triggerPatterns: (
+                                                (skill as any)
+                                                  .triggerPatterns || []
+                                              ).map((pattern: any) =>
+                                                typeof pattern === "string"
+                                                  ? pattern
+                                                  : pattern?.pattern || ""
+                                              ),
+                                              executionMode:
+                                                normalizedExecutionMode,
+                                              marketplaceContent:
+                                                (skill as any)
+                                                  .marketplaceContent ?? null,
+                                              _thinkingLevel:
+                                                ep.thinking_level_hint ??
+                                                "auto",
+                                              _responseMode:
+                                                ep.response_mode ?? "markdown",
+                                              _minCitationCoverage:
+                                                ep.min_citation_coverage ?? 0,
+                                              _refreshCadenceDays:
+                                                ep.refresh_cadence_days ?? 30,
+                                              _requiresWebSearch:
+                                                ep.requires_web_search ?? false,
+                                              _disclosureRequired:
+                                                ep.disclosure_required ?? false,
+                                              // Feature 041 fields
+                                              _execMode: ep.mode ?? "auto",
+                                              _allowConvOverride:
+                                                ep.allowConversationOverride ??
+                                                true,
+                                              _allowFreeModels:
+                                                ep.allowFreeModels ?? false,
+                                              _reqVision:
+                                                ep.requirements
+                                                  ?.supportsVision ?? false,
+                                              _reqThinking:
+                                                ep.requirements
+                                                  ?.supportsThinking ?? false,
+                                              _reqFunctionTools:
+                                                ep.requirements
+                                                  ?.supportsFunctionTools ??
+                                                false,
+                                              _reqStructuredOutputs:
+                                                ep.requirements
+                                                  ?.supportsStructuredOutputs ??
+                                                false,
+                                              _reqJsonMode:
+                                                ep.requirements
+                                                  ?.supportsJsonMode ?? false,
+                                              _reqStrictToolSchema:
+                                                ep.requirements
+                                                  ?.supportsStrictToolSchema ??
+                                                false,
+                                              _reqWebSearch:
+                                                ep.requirements
+                                                  ?.supportsWebSearch ?? false,
+                                              _reqCodeExecution:
+                                                ep.requirements
+                                                  ?.supportsCodeExecution ??
+                                                false,
+                                              _reqComputerUse:
+                                                ep.requirements
+                                                  ?.supportsComputerUse ??
+                                                false,
+                                              _reqBackground:
+                                                ep.requirements
+                                                  ?.supportsBackground ?? false,
+                                              _reqResponses:
+                                                ep.requirements
+                                                  ?.supportsResponses ?? false,
+                                              _reqContextLength:
+                                                ep.requirements
+                                                  ?.contextLength ?? null,
+                                              _autoLearningEnabled:
+                                                autoLearning.enabled,
+                                              _autoLearningPromptQa:
+                                                autoLearning.promptQaAfterAutoPrompt,
+                                              _autoLearningImageQa:
+                                                autoLearning.imageQaAfterGeneration,
+                                              _autoLearningRequireAdminApproval:
+                                                autoLearning.requireAdminApproval,
+                                              _autoLearningMinPromptScore:
+                                                autoLearning.minPromptScoreToPass,
+                                              _autoLearningMinImageScore:
+                                                autoLearning.minImageFidelityScoreToPass,
+                                              _productionReferenceStoryboardConfigured:
+                                                productionReferenceStoryboard.configured,
+                                              _productionReferenceStoryboardEnabled:
+                                                productionReferenceStoryboard.enabled,
+                                              _orchestrationMode:
+                                                orchestration.mode,
+                                              _orchestrationEndpoint:
+                                                orchestration.endpoint,
+                                              _orchestrationSkillTargets:
+                                                orchestration.skillTargets,
+                                              _orchestrationParallel:
+                                                orchestration.parallel,
+                                              _orchestrationFallback:
+                                                orchestration.fallback,
+                                            } as Skill,
+                                            normalizedExecutionMode
+                                          );
+                                        })()
+                                      )
+                                    }
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </Button>
+                                )}
+                                {(isAdmin ||
+                                  skill.createdBy === Number(user?.id)) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() =>
+                                      deleteMutation.mutate({ id: skill.id })
+                                    }
+                                  >
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
                         );
                       })
                     )}
                   </TableBody>
                 </Table>
-                </>
-              )}
+              </>
+            )}
           </DashboardCard>
         </TabsContent>
 
@@ -4139,93 +5149,122 @@ export default function AdminSkills() {
             description={t("admin.skillsPage.folders.description")}
             leading={<FolderOpen className="h-5 w-5 text-slate-500" />}
           >
-              <div className="flex justify-end mb-4">
-                <Button variant="outline" onClick={() => refetchFolders()}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  {t("admin.skillsPage.folders.scan")}
-                </Button>
-              </div>
+            <div className="flex justify-end mb-4">
+              <Button variant="outline" onClick={() => refetchFolders()}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                {t("admin.skillsPage.folders.scan")}
+              </Button>
+            </div>
 
-              <Table>
-                <TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.folder")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.name")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.hasManifest")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.hasPython")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.hasJs")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.inDatabase")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.folders.headers.actions")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isFoldersLoading ? (
+                  renderTableLoadingRow(7, "Loading folders...")
+                ) : !folders || folders.length === 0 ? (
                   <TableRow>
-                    <TableHead>{t("admin.skillsPage.folders.headers.folder")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.name")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.hasManifest")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.hasPython")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.hasJs")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.inDatabase")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.folders.headers.actions")}</TableHead>
+                    <TableCell
+                      colSpan={7}
+                      className="text-center text-muted-foreground"
+                    >
+                      {t("admin.skillsPage.folders.empty")}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isFoldersLoading ? (
-                    renderTableLoadingRow(7, "Loading folders...")
-                  ) : (!folders || folders.length === 0) ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
-                        {t("admin.skillsPage.folders.empty")}
+                ) : (
+                  folders.map(folder => (
+                    <TableRow key={folder.slug}>
+                      <TableCell className="font-mono">{folder.slug}</TableCell>
+                      <TableCell>
+                        {folder.metadata?.name || folder.slug}
+                      </TableCell>
+                      <TableCell>
+                        {folder.hasSkillMd ? (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <span className="text-xs text-muted-foreground">
+                              {folder.manifestFileName ||
+                                t("admin.skillsPage.folders.manifest")}
+                            </span>
+                          </div>
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {folder.hasPython ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {folder.hasJs ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {folder.existsInDb ? (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500 text-green-500"
+                          >
+                            {t("admin.skillsPage.folders.imported")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">
+                            {t("admin.skillsPage.folders.notImported")}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {folder.existsInDb ? (
+                          <span className="text-muted-foreground text-sm">
+                            {t("admin.skillsPage.folders.alreadyImported")}
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              importFolderMutation.mutate({ slug: folder.slug })
+                            }
+                            disabled={importFolderMutation.isPending}
+                          >
+                            <FolderSync className="mr-2 h-3 w-3" />
+                            {t("admin.skillsPage.folders.import")}
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    folders.map((folder) => (
-                      <TableRow key={folder.slug}>
-                        <TableCell className="font-mono">{folder.slug}</TableCell>
-                        <TableCell>
-                          {folder.metadata?.name || folder.slug}
-                        </TableCell>
-                        <TableCell>
-                          {folder.hasSkillMd ? (
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-500" />
-                              <span className="text-xs text-muted-foreground">{folder.manifestFileName || t("admin.skillsPage.folders.manifest")}</span>
-                            </div>
-                          ) : (
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {folder.hasPython ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {folder.hasJs ? (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {folder.existsInDb ? (
-                            <Badge variant="outline" className="border-green-500 text-green-500">
-                              {t("admin.skillsPage.folders.imported")}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">{t("admin.skillsPage.folders.notImported")}</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {folder.existsInDb ? (
-                            <span className="text-muted-foreground text-sm">{t("admin.skillsPage.folders.alreadyImported")}</span>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={() => importFolderMutation.mutate({ slug: folder.slug })}
-                              disabled={importFolderMutation.isPending}
-                            >
-                              <FolderSync className="mr-2 h-3 w-3" />
-                              {t("admin.skillsPage.folders.import")}
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </DashboardCard>
         </TabsContent>
 
@@ -4235,81 +5274,122 @@ export default function AdminSkills() {
             description={t("admin.skillsPage.proposals.description")}
             leading={<Sparkles className="h-5 w-5 text-slate-500" />}
           >
-              <Table>
-                <TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>
+                    {t("admin.skillsPage.proposals.headers.skill")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.proposals.headers.owner")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.proposals.headers.round")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.proposals.headers.created")}
+                  </TableHead>
+                  <TableHead>
+                    {t("admin.skillsPage.proposals.headers.actions")}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isIscProposalsLoading ? (
+                  renderTableLoadingRow(5, "Loading proposals...")
+                ) : !iscProposals?.proposals?.length ? (
                   <TableRow>
-                    <TableHead>{t("admin.skillsPage.proposals.headers.skill")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.proposals.headers.owner")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.proposals.headers.round")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.proposals.headers.created")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.proposals.headers.actions")}</TableHead>
+                    <TableCell
+                      colSpan={5}
+                      className="py-10 text-center text-muted-foreground"
+                    >
+                      <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">
+                            {t("admin.skillsPage.proposals.empty")}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            ISC proposals will appear here after Skill Studio
+                            saves
+                            <code className="mx-1 rounded bg-muted px-1 py-0.5 text-[11px] text-foreground">
+                              runs/proposals/&lt;skill&gt;/&lt;round&gt;.diff
+                            </code>
+                            files.
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            If you just started a proposal-first upgrade, it
+                            will stay in Maintenance until the diff file is
+                            written.
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setActiveTab("skills")}
+                          >
+                            Go to Skills
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => openStudio("create")}
+                          >
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Open Skill Studio
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isIscProposalsLoading ? (
-                    renderTableLoadingRow(5, "Loading proposals...")
-                  ) : (!iscProposals?.proposals?.length ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
-                        <div className="mx-auto flex max-w-lg flex-col items-center gap-4">
-                          <div className="space-y-1">
-                            <p className="font-medium text-foreground">{t("admin.skillsPage.proposals.empty")}</p>
-                            <p className="text-sm text-muted-foreground">
-                              ISC proposals will appear here after Skill Studio saves
-                              <code className="mx-1 rounded bg-muted px-1 py-0.5 text-[11px] text-foreground">
-                                runs/proposals/&lt;skill&gt;/&lt;round&gt;.diff
-                              </code>
-                              files.
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              If you just started a proposal-first upgrade, it will stay in Maintenance until the diff file is written.
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center justify-center gap-2">
-                            <Button variant="outline" onClick={() => setActiveTab("skills")}>
-                              Go to Skills
-                            </Button>
-                            <Button variant="outline" onClick={() => openStudio("create")}>
-                              <Sparkles className="mr-2 h-4 w-4" />
-                              Open Skill Studio
-                            </Button>
-                          </div>
+                ) : (
+                  iscProposals.proposals.map(proposal => (
+                    <TableRow
+                      key={`${proposal.skillName}-${proposal.diffFile}`}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{proposal.skillName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {proposal.diffFile}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {proposal.ownerName ||
+                          t("admin.skillsPage.proposals.unknownOwner")}
+                      </TableCell>
+                      <TableCell>{proposal.round || "-"}</TableCell>
+                      <TableCell>{proposal.createdAt}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              setPreviewProposal({
+                                skillName: proposal.skillName,
+                                diffFile: proposal.diffFile,
+                              })
+                            }
+                          >
+                            {t("admin.skillsPage.proposals.preview")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              applyProposalMutation.mutate({
+                                skillName: proposal.skillName,
+                                diffFile: proposal.diffFile,
+                              })
+                            }
+                            disabled={applyProposalMutation.isPending}
+                          >
+                            {t("admin.skillsPage.proposals.apply")}
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    iscProposals.proposals.map((proposal) => (
-                      <TableRow key={`${proposal.skillName}-${proposal.diffFile}`}>
-                        <TableCell>
-                          <div className="font-medium">{proposal.skillName}</div>
-                          <div className="text-xs text-muted-foreground">{proposal.diffFile}</div>
-                        </TableCell>
-                        <TableCell>{proposal.ownerName || t("admin.skillsPage.proposals.unknownOwner")}</TableCell>
-                        <TableCell>{proposal.round || "-"}</TableCell>
-                        <TableCell>{proposal.createdAt}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setPreviewProposal({ skillName: proposal.skillName, diffFile: proposal.diffFile })}
-                            >
-                              {t("admin.skillsPage.proposals.preview")}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => applyProposalMutation.mutate({ skillName: proposal.skillName, diffFile: proposal.diffFile })}
-                              disabled={applyProposalMutation.isPending}
-                            >
-                              {t("admin.skillsPage.proposals.apply")}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ))}
-                </TableBody>
-              </Table>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </DashboardCard>
         </TabsContent>
 
@@ -4325,16 +5405,24 @@ export default function AdminSkills() {
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("admin.skillsPage.maintenance.overview.pendingSkills")}
                   </div>
-                  <div className="mt-1 text-2xl font-semibold">{maintenancePendingSkillCount}</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {maintenancePendingSkillCount}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {t("admin.skillsPage.maintenance.overview.pendingSkillsHelp")}
+                    {t(
+                      "admin.skillsPage.maintenance.overview.pendingSkillsHelp"
+                    )}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t("admin.skillsPage.maintenance.overview.pendingRecommendations")}
+                    {t(
+                      "admin.skillsPage.maintenance.overview.pendingRecommendations"
+                    )}
                   </div>
-                  <div className="mt-1 text-2xl font-semibold">{maintenanceEligibleRecommendationIds.length}</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {maintenanceEligibleRecommendationIds.length}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {t("admin.skillsPage.maintenance.overview.eligibleHelp")}
                   </div>
@@ -4343,25 +5431,37 @@ export default function AdminSkills() {
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("admin.skillsPage.maintenance.overview.runningApply")}
                   </div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.queued + legacyApplyRunCounts.running}</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.queued + legacyApplyRunCounts.running}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {t("admin.skillsPage.maintenance.overview.runningApplyHelp")}
+                    {t(
+                      "admin.skillsPage.maintenance.overview.runningApplyHelp"
+                    )}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("admin.skillsPage.maintenance.overview.needsAttention")}
                   </div>
-                  <div className="mt-1 text-2xl font-semibold">{maintenanceBlockedOrFailedSkillCount + legacyApplyRunCounts.failed + legacyApplyRunCounts.blocked}</div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {maintenanceBlockedOrFailedSkillCount +
+                      legacyApplyRunCounts.failed +
+                      legacyApplyRunCounts.blocked}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
-                    {t("admin.skillsPage.maintenance.overview.needsAttentionHelp")}
+                    {t(
+                      "admin.skillsPage.maintenance.overview.needsAttentionHelp"
+                    )}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/20 p-3">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     {t("admin.skillsPage.maintenance.overview.latestActivity")}
                   </div>
-                  <div className="mt-1 text-sm font-semibold">{formatMaintenanceDateTime(maintenanceLatestActivityAt)}</div>
+                  <div className="mt-1 text-sm font-semibold">
+                    {formatMaintenanceDateTime(maintenanceLatestActivityAt)}
+                  </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {formatMaintenanceRelativeTime(maintenanceLatestActivityAt)}
                   </div>
@@ -4370,35 +5470,66 @@ export default function AdminSkills() {
 
               <div className="flex flex-wrap items-end gap-3">
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.maintenance.filters.statusLabel")}</Label>
-                  <Select value={maintenanceStatusFilter} onValueChange={setMaintenanceStatusFilter}>
+                  <Label>
+                    {t("admin.skillsPage.maintenance.filters.statusLabel")}
+                  </Label>
+                  <Select
+                    value={maintenanceStatusFilter}
+                    onValueChange={setMaintenanceStatusFilter}
+                  >
                     <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending_review">{t("admin.skillsPage.maintenance.status.pendingReview")}</SelectItem>
-                      <SelectItem value="approved">{t("admin.skillsPage.maintenance.status.approved")}</SelectItem>
-                      <SelectItem value="applied">{t("admin.skillsPage.maintenance.status.applied")}</SelectItem>
-                      <SelectItem value="blocked">{t("admin.skillsPage.maintenance.status.blocked")}</SelectItem>
-                      <SelectItem value="failed">{t("admin.skillsPage.maintenance.status.failed")}</SelectItem>
-                      <SelectItem value="dismissed">{t("admin.skillsPage.maintenance.status.dismissed")}</SelectItem>
-                      <SelectItem value="all">{t("admin.skillsPage.maintenance.status.all")}</SelectItem>
+                      <SelectItem value="pending_review">
+                        {t("admin.skillsPage.maintenance.status.pendingReview")}
+                      </SelectItem>
+                      <SelectItem value="approved">
+                        {t("admin.skillsPage.maintenance.status.approved")}
+                      </SelectItem>
+                      <SelectItem value="applied">
+                        {t("admin.skillsPage.maintenance.status.applied")}
+                      </SelectItem>
+                      <SelectItem value="blocked">
+                        {t("admin.skillsPage.maintenance.status.blocked")}
+                      </SelectItem>
+                      <SelectItem value="failed">
+                        {t("admin.skillsPage.maintenance.status.failed")}
+                      </SelectItem>
+                      <SelectItem value="dismissed">
+                        {t("admin.skillsPage.maintenance.status.dismissed")}
+                      </SelectItem>
+                      <SelectItem value="all">
+                        {t("admin.skillsPage.maintenance.status.all")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.maintenance.filters.skillLabel")}</Label>
+                  <Label>
+                    {t("admin.skillsPage.maintenance.filters.skillLabel")}
+                  </Label>
                   <Select
-                    value={maintenanceSkillFilter ? String(maintenanceSkillFilter) : "__all__"}
-                    onValueChange={(value) => setMaintenanceSkillFilter(value === "__all__" ? null : Number(value))}
+                    value={
+                      maintenanceSkillFilter
+                        ? String(maintenanceSkillFilter)
+                        : "__all__"
+                    }
+                    onValueChange={value =>
+                      setMaintenanceSkillFilter(
+                        value === "__all__" ? null : Number(value)
+                      )
+                    }
                   >
                     <SelectTrigger className="w-[260px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="__all__">{t("admin.skillsPage.maintenance.filters.allSkills")}</SelectItem>
-                      {(skills || []).map((skill) => (
+                      <SelectItem value="__all__">
+                        {t("admin.skillsPage.maintenance.filters.allSkills")}
+                      </SelectItem>
+                      {(skills || []).map(skill => (
                         <SelectItem key={skill.id} value={String(skill.id)}>
                           {skill.name} ({skill.slug})
                         </SelectItem>
@@ -4409,11 +5540,15 @@ export default function AdminSkills() {
 
                 <Button
                   variant="outline"
-                  onClick={() => runMaintenanceSweepMutation.mutate({ limit: 100 })}
+                  onClick={() =>
+                    runMaintenanceSweepMutation.mutate({ limit: 100 })
+                  }
                   disabled={runMaintenanceSweepMutation.isPending}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  {runMaintenanceSweepMutation.isPending ? t("admin.skillsPage.maintenance.sweeping") : t("admin.skillsPage.maintenance.sweepSkills")}
+                  {runMaintenanceSweepMutation.isPending
+                    ? t("admin.skillsPage.maintenance.sweeping")
+                    : t("admin.skillsPage.maintenance.sweepSkills")}
                 </Button>
 
                 <Button
@@ -4442,51 +5577,90 @@ export default function AdminSkills() {
                   {t("admin.skillsPage.maintenance.collapseAllGroups")}
                 </Button>
                 <Badge variant="outline" className="rounded-full">
-                  {t("admin.skillsPage.maintenance.skillGroupsCount", { count: maintenanceRecommendationGroups.length })}
+                  {t("admin.skillsPage.maintenance.skillGroupsCount", {
+                    count: maintenanceRecommendationGroups.length,
+                  })}
                 </Badge>
                 <Button
                   size="sm"
                   onClick={requestEligibleMaintenanceApplyForView}
-                  disabled={maintenanceEligibleRecommendationIds.length === 0 || applyMaintenanceRecommendationsMutation.isPending}
+                  disabled={
+                    maintenanceEligibleRecommendationIds.length === 0 ||
+                    applyMaintenanceRecommendationsMutation.isPending
+                  }
                 >
-                  {t("admin.skillsPage.maintenance.applyEligibleAcrossView", { count: maintenanceEligibleRecommendationIds.length })}
+                  {t("admin.skillsPage.maintenance.applyEligibleAcrossView", {
+                    count: maintenanceEligibleRecommendationIds.length,
+                  })}
                 </Button>
               </div>
 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.skill")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.advice")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.status")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.risk")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.compatibility")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.quality")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.runtime")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.updated")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.maintenance.headers.actions")}</TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.skill")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.advice")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.status")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.risk")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.compatibility")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.quality")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.runtime")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.updated")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.maintenance.headers.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isMaintenanceRecommendationsLoading ? (
-                    renderTableLoadingRow(9, "Loading maintenance recommendations...")
-                  ) : (!maintenanceRecommendationGroups.length ? (
+                    renderTableLoadingRow(
+                      9,
+                      "Loading maintenance recommendations..."
+                    )
+                  ) : !maintenanceRecommendationGroups.length ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={9}
+                        className="text-center text-muted-foreground"
+                      >
                         {t("admin.skillsPage.maintenance.empty")}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    maintenanceRecommendationGroups.map((group) => {
-                      const isExpanded = maintenanceExpandedSkillIdSet.has(group.skillId);
+                    maintenanceRecommendationGroups.map(group => {
+                      const isExpanded = maintenanceExpandedSkillIdSet.has(
+                        group.skillId
+                      );
                       const recommendationCount = group.recommendations.length;
-                      const actionableRecommendationCount = group.recommendations
-                        .filter(isMaintenanceRecommendationActionable)
-                        .length;
-                      const eligibleRecommendationCount = group.recommendations
-                        .filter((item) => isMaintenanceRecommendationEffectiveAutoApplySafe(item) && isMaintenanceRecommendationActionable(item))
-                        .length;
-                      const statusBadges = getMaintenanceGroupStatusBadges(group);
+                      const actionableRecommendationCount =
+                        group.recommendations.filter(
+                          isMaintenanceRecommendationActionable
+                        ).length;
+                      const eligibleRecommendationCount =
+                        group.recommendations.filter(
+                          item =>
+                            isMaintenanceRecommendationEffectiveAutoApplySafe(
+                              item
+                            ) && isMaintenanceRecommendationActionable(item)
+                        ).length;
+                      const statusBadges =
+                        getMaintenanceGroupStatusBadges(group);
 
                       return (
                         <Fragment key={group.skillId}>
@@ -4494,30 +5668,50 @@ export default function AdminSkills() {
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <div>
-                                  <div className="font-medium">{group.skill?.name || `Skill #${group.skillId}`}</div>
-                                  <div className="text-xs text-muted-foreground">{group.skill?.slug || group.skillId}</div>
+                                  <div className="font-medium">
+                                    {group.skill?.name ||
+                                      `Skill #${group.skillId}`}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {group.skill?.slug || group.skillId}
+                                  </div>
                                 </div>
-                                <Badge variant="secondary" className="rounded-full">
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full"
+                                >
                                   {recommendationCount}
                                 </Badge>
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap items-center gap-2">
-                                <div className="font-medium">{group.primaryRecommendation.title}</div>
-                                <Badge variant="secondary" className="rounded-full">
-                                  {t("admin.skillsPage.maintenance.highestPriority")}
+                                <div className="font-medium">
+                                  {group.primaryRecommendation.title}
+                                </div>
+                                <Badge
+                                  variant="secondary"
+                                  className="rounded-full"
+                                >
+                                  {t(
+                                    "admin.skillsPage.maintenance.highestPriority"
+                                  )}
                                 </Badge>
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {group.primaryRecommendation.recommendationType}
-                                {recommendationCount > 1 ? t("admin.skillsPage.maintenance.recommendationsCount", { count: recommendationCount }) : ""}
+                                {recommendationCount > 1
+                                  ? t(
+                                      "admin.skillsPage.maintenance.recommendationsCount",
+                                      { count: recommendationCount }
+                                    )
+                                  : ""}
                               </div>
                             </TableCell>
                             <TableCell>
                               <div className="flex flex-wrap gap-2">
                                 {statusBadges.length > 0 ? (
-                                  statusBadges.map((badge) => (
+                                  statusBadges.map(badge => (
                                     <Badge
                                       key={`${group.skillId}-${badge.label}`}
                                       variant={badge.variant}
@@ -4527,8 +5721,13 @@ export default function AdminSkills() {
                                     </Badge>
                                   ))
                                 ) : (
-                                  <Badge variant="outline" className="rounded-full">
-                                    {t("admin.skillsPage.maintenance.status.unknown")}
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full"
+                                  >
+                                    {t(
+                                      "admin.skillsPage.maintenance.status.unknown"
+                                    )}
                                   </Badge>
                                 )}
                               </div>
@@ -4537,10 +5736,13 @@ export default function AdminSkills() {
                               <Badge
                                 variant="outline"
                                 className={
-                                  group.highestRiskLevel === "critical" ? "border-red-500 text-red-600" :
-                                  group.highestRiskLevel === "high" ? "border-orange-500 text-orange-600" :
-                                  group.highestRiskLevel === "medium" ? "border-amber-500 text-amber-600" :
-                                  "border-green-500 text-green-600"
+                                  group.highestRiskLevel === "critical"
+                                    ? "border-red-500 text-red-600"
+                                    : group.highestRiskLevel === "high"
+                                      ? "border-orange-500 text-orange-600"
+                                      : group.highestRiskLevel === "medium"
+                                        ? "border-amber-500 text-amber-600"
+                                        : "border-green-500 text-green-600"
                                 }
                               >
                                 {group.highestRiskLevel}
@@ -4550,40 +5752,73 @@ export default function AdminSkills() {
                               <Badge
                                 variant="outline"
                                 className={
-                                  group.worstCompatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
-                                  group.worstCompatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
-                                  group.worstCompatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
-                                  ""
+                                  group.worstCompatibilityStatus === "blocked"
+                                    ? "border-red-500 text-red-600"
+                                    : group.worstCompatibilityStatus ===
+                                        "warning"
+                                      ? "border-amber-500 text-amber-600"
+                                      : group.worstCompatibilityStatus ===
+                                          "compatible"
+                                        ? "border-green-500 text-green-600"
+                                        : ""
                                 }
                               >
                                 {group.worstCompatibilityStatus}
                               </Badge>
                             </TableCell>
-                            <TableCell>{group.highestQualityScore ?? "-"}</TableCell>
                             <TableCell>
-                              <div className="text-sm">{group.currentRuntime || "unknown"}</div>
-                              {group.recommendations.some((item) => {
-                                const applyStrategy = item.latestRun?.logsJson && typeof item.latestRun.logsJson === "object"
-                                  ? (item.latestRun.logsJson as Record<string, unknown>).applyStrategy
-                                  : null;
-                                return item.latestRun?.status === "running" && applyStrategy === "proposal";
+                              {group.highestQualityScore ?? "-"}
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {group.currentRuntime || "unknown"}
+                              </div>
+                              {group.recommendations.some(item => {
+                                const applyStrategy =
+                                  item.latestRun?.logsJson &&
+                                  typeof item.latestRun.logsJson === "object"
+                                    ? (
+                                        item.latestRun.logsJson as Record<
+                                          string,
+                                          unknown
+                                        >
+                                      ).applyStrategy
+                                    : null;
+                                return (
+                                  item.latestRun?.status === "running" &&
+                                  applyStrategy === "proposal"
+                                );
                               }) && (
                                 <Badge variant="secondary" className="mt-1">
                                   Proposal queued
                                 </Badge>
                               )}
-                              {group.recommendations.some((item) => item.isGenjsCandidate) && (
-                                <Badge variant="secondary" className="mt-1">{t("admin.skillsPage.maintenance.genjsCandidate")}</Badge>
+                              {group.recommendations.some(
+                                item => item.isGenjsCandidate
+                              ) && (
+                                <Badge variant="secondary" className="mt-1">
+                                  {t(
+                                    "admin.skillsPage.maintenance.genjsCandidate"
+                                  )}
+                                </Badge>
                               )}
                             </TableCell>
                             <TableCell>
                               <div className="space-y-1 text-sm">
                                 <div className="flex items-center gap-2 font-medium">
                                   <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                                  {formatMaintenanceDateTime(group.latestAnalyzedAt)}
+                                  {formatMaintenanceDateTime(
+                                    group.latestAnalyzedAt
+                                  )}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {t("admin.skillsPage.maintenance.timestamps.updated")}: {formatMaintenanceRelativeTime(group.latestUpdatedAt)}
+                                  {t(
+                                    "admin.skillsPage.maintenance.timestamps.updated"
+                                  )}
+                                  :{" "}
+                                  {formatMaintenanceRelativeTime(
+                                    group.latestUpdatedAt
+                                  )}
                                 </div>
                               </div>
                             </TableCell>
@@ -4592,31 +5827,60 @@ export default function AdminSkills() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => openRecommendationDetail(group.primaryRecommendation.id, "advice")}
+                                  onClick={() =>
+                                    openRecommendationDetail(
+                                      group.primaryRecommendation.id,
+                                      "advice"
+                                    )
+                                  }
                                 >
                                   {t("admin.skillsPage.maintenance.viewAdvice")}
                                 </Button>
                                 <Button
                                   size="sm"
-                                  onClick={() => requestMaintenanceGroupApply(group)}
-                                  disabled={applyMaintenanceRecommendationsMutation.isPending || actionableRecommendationCount === 0}
+                                  onClick={() =>
+                                    requestMaintenanceGroupApply(group)
+                                  }
+                                  disabled={
+                                    applyMaintenanceRecommendationsMutation.isPending ||
+                                    actionableRecommendationCount === 0
+                                  }
                                 >
-                                  {t("admin.skillsPage.maintenance.applyAll", { count: actionableRecommendationCount })}
+                                  {t("admin.skillsPage.maintenance.applyAll", {
+                                    count: actionableRecommendationCount,
+                                  })}
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => requestEligibleMaintenanceGroupApply(group)}
-                                  disabled={applyMaintenanceRecommendationsMutation.isPending || eligibleRecommendationCount === 0}
+                                  onClick={() =>
+                                    requestEligibleMaintenanceGroupApply(group)
+                                  }
+                                  disabled={
+                                    applyMaintenanceRecommendationsMutation.isPending ||
+                                    eligibleRecommendationCount === 0
+                                  }
                                 >
-                                  {t("admin.skillsPage.maintenance.applyEligible", { count: eligibleRecommendationCount })}
+                                  {t(
+                                    "admin.skillsPage.maintenance.applyEligible",
+                                    { count: eligibleRecommendationCount }
+                                  )}
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => toggleMaintenanceSkillDetails(group.skillId, !isExpanded)}
+                                  onClick={() =>
+                                    toggleMaintenanceSkillDetails(
+                                      group.skillId,
+                                      !isExpanded
+                                    )
+                                  }
                                 >
-                                  {isExpanded ? t("admin.skillsPage.maintenance.hideDetails") : t("admin.skillsPage.maintenance.details")}
+                                  {isExpanded
+                                    ? t(
+                                        "admin.skillsPage.maintenance.hideDetails"
+                                      )
+                                    : t("admin.skillsPage.maintenance.details")}
                                 </Button>
                               </div>
                             </TableCell>
@@ -4626,35 +5890,71 @@ export default function AdminSkills() {
                               <TableCell colSpan={9} className="bg-muted/20">
                                 <div className="space-y-3 p-3">
                                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                    {t("admin.skillsPage.maintenance.recommendations")}
+                                    {t(
+                                      "admin.skillsPage.maintenance.recommendations"
+                                    )}
                                   </div>
                                   <div className="space-y-3">
-                                    {group.recommendations.map((item) => (
-                                      <div key={item.id} className="rounded-lg border bg-background p-3">
+                                    {group.recommendations.map(item => (
+                                      <div
+                                        key={item.id}
+                                        className="rounded-lg border bg-background p-3"
+                                      >
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                           <div className="space-y-1">
                                             <div className="flex flex-wrap items-center gap-2">
-                                              <div className="font-medium">{item.title}</div>
-                                              {item.id === group.primaryRecommendation.id && (
-                                                <Badge variant="secondary" className="rounded-full">
-                                                  {t("admin.skillsPage.maintenance.highestPriority")}
+                                              <div className="font-medium">
+                                                {item.title}
+                                              </div>
+                                              {item.id ===
+                                                group.primaryRecommendation
+                                                  .id && (
+                                                <Badge
+                                                  variant="secondary"
+                                                  className="rounded-full"
+                                                >
+                                                  {t(
+                                                    "admin.skillsPage.maintenance.highestPriority"
+                                                  )}
                                                 </Badge>
                                               )}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
-                                              {item.recommendationType} · {t(`admin.skillsPage.maintenance.status.${item.status}`) || item.status}
+                                              {item.recommendationType} ·{" "}
+                                              {t(
+                                                `admin.skillsPage.maintenance.status.${item.status}`
+                                              ) || item.status}
                                             </div>
-                                            {item.recommendationType === "media-studio-auto-learning" && (
+                                            {item.recommendationType ===
+                                              "media-studio-auto-learning" && (
                                               <div className="flex flex-wrap gap-2 pt-1 text-xs text-muted-foreground">
-                                                <Badge variant="secondary" className="rounded-full">
-                                                  {t("admin.skillsPage.maintenance.mediaStudioIssueCount", {
-                                                    count: getMediaStudioRecommendationIssues(item).length,
-                                                  })}
+                                                <Badge
+                                                  variant="secondary"
+                                                  className="rounded-full"
+                                                >
+                                                  {t(
+                                                    "admin.skillsPage.maintenance.mediaStudioIssueCount",
+                                                    {
+                                                      count:
+                                                        getMediaStudioRecommendationIssues(
+                                                          item
+                                                        ).length,
+                                                    }
+                                                  )}
                                                 </Badge>
-                                                <Badge variant="outline" className="rounded-full">
-                                                  {t("admin.skillsPage.maintenance.mediaStudioChangeCount", {
-                                                    count: getMediaStudioRecommendationChanges(item).length,
-                                                  })}
+                                                <Badge
+                                                  variant="outline"
+                                                  className="rounded-full"
+                                                >
+                                                  {t(
+                                                    "admin.skillsPage.maintenance.mediaStudioChangeCount",
+                                                    {
+                                                      count:
+                                                        getMediaStudioRecommendationChanges(
+                                                          item
+                                                        ).length,
+                                                    }
+                                                  )}
                                                 </Badge>
                                               </div>
                                             )}
@@ -4663,10 +5963,14 @@ export default function AdminSkills() {
                                             <Badge
                                               variant="outline"
                                               className={
-                                                item.riskLevel === "critical" ? "border-red-500 text-red-600" :
-                                                item.riskLevel === "high" ? "border-orange-500 text-orange-600" :
-                                                item.riskLevel === "medium" ? "border-amber-500 text-amber-600" :
-                                                "border-green-500 text-green-600"
+                                                item.riskLevel === "critical"
+                                                  ? "border-red-500 text-red-600"
+                                                  : item.riskLevel === "high"
+                                                    ? "border-orange-500 text-orange-600"
+                                                    : item.riskLevel ===
+                                                        "medium"
+                                                      ? "border-amber-500 text-amber-600"
+                                                      : "border-green-500 text-green-600"
                                               }
                                             >
                                               {item.riskLevel}
@@ -4674,43 +5978,86 @@ export default function AdminSkills() {
                                             <Badge
                                               variant="outline"
                                               className={
-                                                item.compatibilityStatus === "blocked" ? "border-red-500 text-red-600" :
-                                                item.compatibilityStatus === "warning" ? "border-amber-500 text-amber-600" :
-                                                item.compatibilityStatus === "compatible" ? "border-green-500 text-green-600" :
-                                                ""
+                                                item.compatibilityStatus ===
+                                                "blocked"
+                                                  ? "border-red-500 text-red-600"
+                                                  : item.compatibilityStatus ===
+                                                      "warning"
+                                                    ? "border-amber-500 text-amber-600"
+                                                    : item.compatibilityStatus ===
+                                                        "compatible"
+                                                      ? "border-green-500 text-green-600"
+                                                      : ""
                                               }
                                             >
                                               {item.compatibilityStatus}
                                             </Badge>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openRecommendationDetail(item.id, "advice")}
-                              >
-                                {t("admin.skillsPage.maintenance.viewAdvice")}
-                              </Button>
+                                            <Button
+                                              variant="outline"
+                                              size="sm"
+                                              onClick={() =>
+                                                openRecommendationDetail(
+                                                  item.id,
+                                                  "advice"
+                                                )
+                                              }
+                                            >
+                                              {t(
+                                                "admin.skillsPage.maintenance.viewAdvice"
+                                              )}
+                                            </Button>
                                             <Button
                                               size="sm"
-                                              onClick={() => requestRecommendationApply(item, group.skill?.name || `Skill #${group.skillId}`)}
-                                              disabled={item.status === "applied" || applyUpgradeMutation.isPending}
+                                              onClick={() =>
+                                                requestRecommendationApply(
+                                                  item,
+                                                  group.skill?.name ||
+                                                    `Skill #${group.skillId}`
+                                                )
+                                              }
+                                              disabled={
+                                                item.status === "applied" ||
+                                                applyUpgradeMutation.isPending
+                                              }
                                             >
-                                              {isMaintenanceRecommendationEffectiveAutoApplySafe(item) ? t("admin.skillsPage.maintenance.applyUpgrade") : t("admin.skillsPage.maintenance.generateProposal")}
+                                              {isMaintenanceRecommendationEffectiveAutoApplySafe(
+                                                item
+                                              )
+                                                ? t(
+                                                    "admin.skillsPage.maintenance.applyUpgrade"
+                                                  )
+                                                : t(
+                                                    "admin.skillsPage.maintenance.generateProposal"
+                                                  )}
                                             </Button>
                                             <Button
                                               variant="ghost"
                                               size="sm"
-                                              onClick={() => dismissRecommendationMutation.mutate({ recommendationId: item.id })}
-                                              disabled={dismissRecommendationMutation.isPending}
+                                              onClick={() =>
+                                                dismissRecommendationMutation.mutate(
+                                                  { recommendationId: item.id }
+                                                )
+                                              }
+                                              disabled={
+                                                dismissRecommendationMutation.isPending
+                                              }
                                             >
                                               Dismiss
                                             </Button>
                                           </div>
                                         </div>
-                                        {Array.isArray(item.recommendationJson?.affectedFiles) && item.recommendationJson.affectedFiles.length > 0 && (
-                                          <div className="mt-2 text-xs text-muted-foreground">
-                                            Affects: {item.recommendationJson.affectedFiles.join(", ")}
-                                          </div>
-                                        )}
+                                        {Array.isArray(
+                                          item.recommendationJson?.affectedFiles
+                                        ) &&
+                                          item.recommendationJson.affectedFiles
+                                            .length > 0 && (
+                                            <div className="mt-2 text-xs text-muted-foreground">
+                                              Affects:{" "}
+                                              {item.recommendationJson.affectedFiles.join(
+                                                ", "
+                                              )}
+                                            </div>
+                                          )}
                                       </div>
                                     ))}
                                   </div>
@@ -4721,7 +6068,7 @@ export default function AdminSkills() {
                         </Fragment>
                       );
                     })
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -4741,21 +6088,46 @@ export default function AdminSkills() {
                       {t("admin.skillsPage.legacyRunQueue.autopilot.title")}
                     </div>
                     <p className="text-xs leading-5 text-blue-800">
-                      {t("admin.skillsPage.legacyRunQueue.autopilot.description")}
+                      {t(
+                        "admin.skillsPage.legacyRunQueue.autopilot.description"
+                      )}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
-                      {t("admin.skillsPage.legacyRunQueue.autopilot.normalizeCount", { count: normalizableLegacyApplyRunIds.length })}
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 bg-white/70 text-blue-800"
+                    >
+                      {t(
+                        "admin.skillsPage.legacyRunQueue.autopilot.normalizeCount",
+                        { count: normalizableLegacyApplyRunIds.length }
+                      )}
                     </Badge>
-                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
-                      {t("admin.skillsPage.legacyRunQueue.autopilot.retryCount", { count: autoRetryableLegacyApplyRunIds.length })}
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 bg-white/70 text-blue-800"
+                    >
+                      {t(
+                        "admin.skillsPage.legacyRunQueue.autopilot.retryCount",
+                        { count: autoRetryableLegacyApplyRunIds.length }
+                      )}
                     </Badge>
-                    <Badge variant="outline" className="border-blue-300 bg-white/70 text-blue-800">
-                      {t("admin.skillsPage.legacyRunQueue.autopilot.staleCount", { count: staleLegacyApplyRunIds.length })}
+                    <Badge
+                      variant="outline"
+                      className="border-blue-300 bg-white/70 text-blue-800"
+                    >
+                      {t(
+                        "admin.skillsPage.legacyRunQueue.autopilot.staleCount",
+                        { count: staleLegacyApplyRunIds.length }
+                      )}
                     </Badge>
-                    {(normalizeLegacyUpgradeApplyRunsMutation.isPending || retryLegacyUpgradeApplyRunsMutation.isPending || recoverStaleLegacyUpgradeApplyRunsMutation.isPending) && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                    {(normalizeLegacyUpgradeApplyRunsMutation.isPending ||
+                      retryLegacyUpgradeApplyRunsMutation.isPending ||
+                      recoverStaleLegacyUpgradeApplyRunsMutation.isPending) && (
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-800"
+                      >
                         <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                         {t("admin.skillsPage.legacyRunQueue.autopilot.running")}
                       </Badge>
@@ -4767,23 +6139,78 @@ export default function AdminSkills() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
                   {[
-                    { key: "all", label: t("admin.skillsPage.legacyRunQueue.filters.all"), count: legacyApplyRunCounts.total },
-                    { key: "queued", label: t("admin.skillsPage.legacyRunQueue.filters.queued"), count: legacyApplyRunCounts.queued },
-                    { key: "running", label: t("admin.skillsPage.legacyRunQueue.filters.running"), count: legacyApplyRunCounts.running },
-                    { key: "failed", label: t("admin.skillsPage.legacyRunQueue.filters.failed"), count: legacyApplyRunCounts.failed },
-                    { key: "blocked", label: t("admin.skillsPage.legacyRunQueue.filters.blocked"), count: legacyApplyRunCounts.blocked },
-                    { key: "completed", label: t("admin.skillsPage.legacyRunQueue.filters.completed"), count: legacyApplyRunCounts.completed },
-                    { key: "canceled", label: t("admin.skillsPage.legacyRunQueue.filters.canceled"), count: legacyApplyRunCounts.canceled },
-                  ].map((filter) => (
+                    {
+                      key: "all",
+                      label: t("admin.skillsPage.legacyRunQueue.filters.all"),
+                      count: legacyApplyRunCounts.total,
+                    },
+                    {
+                      key: "queued",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.queued"
+                      ),
+                      count: legacyApplyRunCounts.queued,
+                    },
+                    {
+                      key: "running",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.running"
+                      ),
+                      count: legacyApplyRunCounts.running,
+                    },
+                    {
+                      key: "failed",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.failed"
+                      ),
+                      count: legacyApplyRunCounts.failed,
+                    },
+                    {
+                      key: "blocked",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.blocked"
+                      ),
+                      count: legacyApplyRunCounts.blocked,
+                    },
+                    {
+                      key: "completed",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.completed"
+                      ),
+                      count: legacyApplyRunCounts.completed,
+                    },
+                    {
+                      key: "canceled",
+                      label: t(
+                        "admin.skillsPage.legacyRunQueue.filters.canceled"
+                      ),
+                      count: legacyApplyRunCounts.canceled,
+                    },
+                  ].map(filter => (
                     <Button
                       key={filter.key}
-                      variant={legacyApplyRunFilter === filter.key ? "default" : "outline"}
+                      variant={
+                        legacyApplyRunFilter === filter.key
+                          ? "default"
+                          : "outline"
+                      }
                       size="sm"
-                      onClick={() => setLegacyApplyRunFilter(filter.key as typeof legacyApplyRunFilter)}
+                      onClick={() =>
+                        setLegacyApplyRunFilter(
+                          filter.key as typeof legacyApplyRunFilter
+                        )
+                      }
                       className="rounded-full"
                     >
                       {filter.label}
-                      <Badge variant={legacyApplyRunFilter === filter.key ? "secondary" : "outline"} className="ml-2 rounded-full px-2 text-[11px]">
+                      <Badge
+                        variant={
+                          legacyApplyRunFilter === filter.key
+                            ? "secondary"
+                            : "outline"
+                        }
+                        className="ml-2 rounded-full px-2 text-[11px]"
+                      >
                         {filter.count}
                       </Badge>
                     </Button>
@@ -4793,30 +6220,55 @@ export default function AdminSkills() {
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variant="outline"
-                    onClick={() => recoverStaleLegacyUpgradeApplyRunsMutation.mutate({ runIds: staleLegacyApplyRunIds })}
-                    disabled={staleLegacyApplyRunIds.length === 0 || recoverStaleLegacyUpgradeApplyRunsMutation.isPending}
+                    onClick={() =>
+                      recoverStaleLegacyUpgradeApplyRunsMutation.mutate({
+                        runIds: staleLegacyApplyRunIds,
+                      })
+                    }
+                    disabled={
+                      staleLegacyApplyRunIds.length === 0 ||
+                      recoverStaleLegacyUpgradeApplyRunsMutation.isPending
+                    }
                   >
                     {recoverStaleLegacyUpgradeApplyRunsMutation.isPending
                       ? t("admin.skillsPage.legacyRunQueue.recoverStalePending")
-                      : t("admin.skillsPage.legacyRunQueue.recoverStale", { count: staleLegacyApplyRunIds.length })}
+                      : t("admin.skillsPage.legacyRunQueue.recoverStale", {
+                          count: staleLegacyApplyRunIds.length,
+                        })}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => normalizeLegacyUpgradeApplyRunsMutation.mutate()}
-                    disabled={normalizableLegacyApplyRunIds.length === 0 || normalizeLegacyUpgradeApplyRunsMutation.isPending}
+                    onClick={() =>
+                      normalizeLegacyUpgradeApplyRunsMutation.mutate()
+                    }
+                    disabled={
+                      normalizableLegacyApplyRunIds.length === 0 ||
+                      normalizeLegacyUpgradeApplyRunsMutation.isPending
+                    }
                   >
                     {normalizeLegacyUpgradeApplyRunsMutation.isPending
-                      ? t("admin.skillsPage.legacyRunQueue.normalizeNoChangePending")
+                      ? t(
+                          "admin.skillsPage.legacyRunQueue.normalizeNoChangePending"
+                        )
                       : t("admin.skillsPage.legacyRunQueue.normalizeNoChange")}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: retryableLegacyApplyRunIds })}
-                    disabled={retryableLegacyApplyRunIds.length === 0 || retryLegacyUpgradeApplyRunsMutation.isPending}
+                    onClick={() =>
+                      retryLegacyUpgradeApplyRunsMutation.mutate({
+                        runIds: retryableLegacyApplyRunIds,
+                      })
+                    }
+                    disabled={
+                      retryableLegacyApplyRunIds.length === 0 ||
+                      retryLegacyUpgradeApplyRunsMutation.isPending
+                    }
                   >
                     {retryLegacyUpgradeApplyRunsMutation.isPending
                       ? t("admin.skillsPage.legacyRunQueue.retrying")
-                      : t("admin.skillsPage.legacyRunQueue.retryFailed", { count: retryableLegacyApplyRunIds.length })}
+                      : t("admin.skillsPage.legacyRunQueue.retryFailed", {
+                          count: retryableLegacyApplyRunIds.length,
+                        })}
                   </Button>
                   <Button
                     variant="outline"
@@ -4824,52 +6276,91 @@ export default function AdminSkills() {
                     disabled={isLegacyApplyRunsFetching}
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    {isLegacyApplyRunsFetching ? t("admin.skillsPage.legacyRunQueue.refreshing") : t("admin.skillsPage.legacyRunQueue.refresh")}
+                    {isLegacyApplyRunsFetching
+                      ? t("admin.skillsPage.legacyRunQueue.refreshing")
+                      : t("admin.skillsPage.legacyRunQueue.refresh")}
                   </Button>
                 </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-7">
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.total")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.total}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.total")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.total}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.queued")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.queued}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.queued")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.queued}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.running")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.running}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.running")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.running}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.failed")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.failed}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.failed")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.failed}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.blocked")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.blocked}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.blocked")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.blocked}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.completed")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.completed}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.completed")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.completed}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyRunQueue.summary.canceled")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyApplyRunCounts.canceled}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyRunQueue.summary.canceled")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyApplyRunCounts.canceled}
+                  </div>
                 </div>
               </div>
 
               <div className="rounded-lg border bg-muted/10 px-3 py-2">
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="secondary" className="rounded-full">
-                    {t("admin.skillsPage.legacyRunQueue.summary.visible", { count: legacyApplyRunItems.length })}
+                    {t("admin.skillsPage.legacyRunQueue.summary.visible", {
+                      count: legacyApplyRunItems.length,
+                    })}
                   </Badge>
                   <Badge variant="secondary" className="rounded-full">
-                    {t("admin.skillsPage.legacyRunQueue.summary.taskIds", { count: legacyApplyRunItems.filter((item) => !!item.taskId).length })}
+                    {t("admin.skillsPage.legacyRunQueue.summary.taskIds", {
+                      count: legacyApplyRunItems.filter(item => !!item.taskId)
+                        .length,
+                    })}
                   </Badge>
                   <Badge variant="secondary" className="rounded-full">
-                    {t("admin.skillsPage.legacyRunQueue.summary.withError", { count: legacyApplyRunItems.filter((item) => !!item.errorMessage).length })}
+                    {t("admin.skillsPage.legacyRunQueue.summary.withError", {
+                      count: legacyApplyRunItems.filter(
+                        item => !!item.errorMessage
+                      ).length,
+                    })}
                   </Badge>
                 </div>
               </div>
@@ -4877,43 +6368,82 @@ export default function AdminSkills() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.skill")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.time")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.task")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.status")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.result")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyRunQueue.headers.actions")}</TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.skill")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.time")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.task")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.status")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.result")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyRunQueue.headers.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLegacyApplyRunsLoading ? (
-                    renderTableLoadingRow(6, t("admin.skillsPage.legacyRunQueue.loading"))
+                    renderTableLoadingRow(
+                      6,
+                      t("admin.skillsPage.legacyRunQueue.loading")
+                    )
                   ) : legacyApplyRunItems.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
-                        {legacyApplyRunFilter === "queued" || legacyApplyRunFilter === "running"
+                      <TableCell
+                        colSpan={6}
+                        className="text-center text-muted-foreground"
+                      >
+                        {legacyApplyRunFilter === "queued" ||
+                        legacyApplyRunFilter === "running"
                           ? t("admin.skillsPage.legacyRunQueue.emptyQueued")
                           : t("admin.skillsPage.legacyRunQueue.empty")}
                       </TableCell>
                     </TableRow>
-                ) : (
-                  legacyApplyRunItems.map((item) => {
-                    const strategy = getLegacyApplyRunStrategy(item);
-                    const reason = getLegacyApplyRunReason(item);
-                    const workspaceRootIssue = isLegacyApplyRunWorkspaceRootIssue(item);
-                    const diagnosticPaths = getLegacyApplyRunDiagnosticPaths(item);
-                    const latestRunLineage = getLegacyRunLineageSource(item.latestRun);
-                    const lineageRole = getLegacyRunLineageString(latestRunLineage, "role") || "orchestrator";
-                    const lineageCheckpointVersion = getLegacyRunLineageNumber(latestRunLineage, "checkpointVersion");
-                    const lineageVerificationState = getLegacyRunLineageString(latestRunLineage, "verificationState");
-                    return (
+                  ) : (
+                    legacyApplyRunItems.map(item => {
+                      const strategy = getLegacyApplyRunStrategy(item);
+                      const reason = getLegacyApplyRunReason(item);
+                      const workspaceRootIssue =
+                        isLegacyApplyRunWorkspaceRootIssue(item);
+                      const diagnosticPaths =
+                        getLegacyApplyRunDiagnosticPaths(item);
+                      const latestRunLineage = getLegacyRunLineageSource(
+                        item.latestRun
+                      );
+                      const lineageRole =
+                        getLegacyRunLineageString(latestRunLineage, "role") ||
+                        "orchestrator";
+                      const lineageCheckpointVersion =
+                        getLegacyRunLineageNumber(
+                          latestRunLineage,
+                          "checkpointVersion"
+                        );
+                      const lineageVerificationState =
+                        getLegacyRunLineageString(
+                          latestRunLineage,
+                          "verificationState"
+                        );
+                      return (
                         <TableRow key={item.id}>
                           <TableCell>
                             <div className="space-y-1">
-                              <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
-                              <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
+                              <div className="font-medium">
+                                {item.skill?.name || `Skill #${item.skillId}`}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {item.skill?.slug || item.skillId}
+                              </div>
                               {item.recommendation?.title && (
-                                <div className="text-xs text-slate-600">{item.recommendation.title}</div>
+                                <div className="text-xs text-slate-600">
+                                  {item.recommendation.title}
+                                </div>
                               )}
                             </div>
                           </TableCell>
@@ -4924,14 +6454,20 @@ export default function AdminSkills() {
                                 {formatMaintenanceDateTime(item.createdAt)}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {t("admin.skillsPage.legacyRunQueue.time.updated")}: {formatMaintenanceDateTime(item.updatedAt)}
+                                {t(
+                                  "admin.skillsPage.legacyRunQueue.time.updated"
+                                )}
+                                : {formatMaintenanceDateTime(item.updatedAt)}
                               </div>
                               <div className="text-xs text-muted-foreground">
                                 {formatMaintenanceRelativeTime(item.updatedAt)}
                               </div>
                               {item.startedAt && (
                                 <div className="text-xs text-muted-foreground">
-                                  {t("admin.skillsPage.legacyRunQueue.time.started")}: {formatMaintenanceDateTime(item.startedAt)}
+                                  {t(
+                                    "admin.skillsPage.legacyRunQueue.time.started"
+                                  )}
+                                  : {formatMaintenanceDateTime(item.startedAt)}
                                 </div>
                               )}
                             </div>
@@ -4939,58 +6475,112 @@ export default function AdminSkills() {
                           <TableCell>
                             <div className="space-y-2">
                               <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant="outline" className="rounded-full font-mono text-[11px]">
-                                  {item.taskId || t("admin.skillsPage.legacyRunQueue.noTaskId")}
+                                <Badge
+                                  variant="outline"
+                                  className="rounded-full font-mono text-[11px]"
+                                >
+                                  {item.taskId ||
+                                    t(
+                                      "admin.skillsPage.legacyRunQueue.noTaskId"
+                                    )}
                                 </Badge>
                                 {strategy && (
-                                  <Badge variant="secondary" className="rounded-full text-[11px]">
-                                    {t("admin.skillsPage.legacyRunQueue.applyStrategy", { strategy })}
+                                  <Badge
+                                    variant="secondary"
+                                    className="rounded-full text-[11px]"
+                                  >
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.applyStrategy",
+                                      { strategy }
+                                    )}
                                   </Badge>
                                 )}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {t("admin.skillsPage.legacyRunQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType}
+                                {t("admin.skillsPage.legacyRunQueue.latestRun")}{" "}
+                                #{item.latestRun.id} · {item.latestRun.runType}
                               </div>
-                              {(item.resolvedLlmModelId || item.sourceRunId || item.retryReason) && (
+                              {(item.resolvedLlmModelId ||
+                                item.sourceRunId ||
+                                item.retryReason) && (
                                 <div className="space-y-1 text-xs text-slate-500">
                                   {item.resolvedLlmModelId && (
                                     <div>
-                                      {t("admin.skillsPage.legacyRunQueue.resolvedModel")}: {item.resolvedLlmModelId}
+                                      {t(
+                                        "admin.skillsPage.legacyRunQueue.resolvedModel"
+                                      )}
+                                      : {item.resolvedLlmModelId}
                                     </div>
                                   )}
                                   {item.sourceRunId && (
                                     <div>
-                                      {t("admin.skillsPage.legacyRunQueue.sourceRun")}: #{item.sourceRunId}
+                                      {t(
+                                        "admin.skillsPage.legacyRunQueue.sourceRun"
+                                      )}
+                                      : #{item.sourceRunId}
                                     </div>
                                   )}
                                   {item.retryReason && (
                                     <div>
-                                      {t("admin.skillsPage.legacyRunQueue.retryReason")}: {item.retryReason}
+                                      {t(
+                                        "admin.skillsPage.legacyRunQueue.retryReason"
+                                      )}
+                                      : {item.retryReason}
                                     </div>
                                   )}
                                 </div>
                               )}
                               {workspaceRootIssue && (
-                                <Badge variant="outline" className="w-fit rounded-full border-amber-500 bg-amber-50 text-[11px] text-amber-700">
-                                  {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue")}
+                                <Badge
+                                  variant="outline"
+                                  className="w-fit rounded-full border-amber-500 bg-amber-50 text-[11px] text-amber-700"
+                                >
+                                  {t(
+                                    "admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue"
+                                  )}
                                 </Badge>
                               )}
                               {latestRunLineage && (
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <Badge variant="outline" className="rounded-full text-[11px]">
-                                    {t("admin.skillsPage.legacyRunQueue.lineage.role")}: {getLegacyRunRoleLabel(lineageRole)}
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full text-[11px]"
+                                  >
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.lineage.role"
+                                    )}
+                                    : {getLegacyRunRoleLabel(lineageRole)}
                                   </Badge>
-                                  <Badge variant="outline" className="rounded-full text-[11px]">
-                                    {t("admin.skillsPage.legacyRunQueue.lineage.failureScope")}: {getLegacyRunFailureScopeLabel(lineageRole)}
+                                  <Badge
+                                    variant="outline"
+                                    className="rounded-full text-[11px]"
+                                  >
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.lineage.failureScope"
+                                    )}
+                                    :{" "}
+                                    {getLegacyRunFailureScopeLabel(lineageRole)}
                                   </Badge>
                                   {lineageCheckpointVersion !== null && (
-                                    <Badge variant="outline" className="rounded-full text-[11px]">
-                                      {t("admin.skillsPage.legacyRunQueue.lineage.checkpoint")}: v{lineageCheckpointVersion}
+                                    <Badge
+                                      variant="outline"
+                                      className="rounded-full text-[11px]"
+                                    >
+                                      {t(
+                                        "admin.skillsPage.legacyRunQueue.lineage.checkpoint"
+                                      )}
+                                      : v{lineageCheckpointVersion}
                                     </Badge>
                                   )}
                                   {lineageVerificationState && (
-                                    <Badge variant="outline" className="rounded-full text-[11px]">
-                                      {t("admin.skillsPage.legacyRunQueue.lineage.verification")}: {lineageVerificationState}
+                                    <Badge
+                                      variant="outline"
+                                      className="rounded-full text-[11px]"
+                                    >
+                                      {t(
+                                        "admin.skillsPage.legacyRunQueue.lineage.verification"
+                                      )}
+                                      : {lineageVerificationState}
                                     </Badge>
                                   )}
                                 </div>
@@ -5002,12 +6592,18 @@ export default function AdminSkills() {
                               <Badge
                                 variant="outline"
                                 className={cn(
-                                  item.queueState === "queued" && "border-blue-500 text-blue-600 bg-blue-50",
-                                  item.queueState === "running" && "border-cyan-500 text-cyan-600 bg-cyan-50",
-                                  item.queueState === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
-                                  item.queueState === "completed" && "border-emerald-500 text-emerald-600 bg-emerald-50",
-                                  item.queueState === "blocked" && "border-red-500 text-red-600 bg-red-50",
-                                  item.queueState === "canceled" && "border-slate-400 text-slate-600 bg-slate-50",
+                                  item.queueState === "queued" &&
+                                    "border-blue-500 text-blue-600 bg-blue-50",
+                                  item.queueState === "running" &&
+                                    "border-cyan-500 text-cyan-600 bg-cyan-50",
+                                  item.queueState === "failed" &&
+                                    "border-orange-500 text-orange-600 bg-orange-50",
+                                  item.queueState === "completed" &&
+                                    "border-emerald-500 text-emerald-600 bg-emerald-50",
+                                  item.queueState === "blocked" &&
+                                    "border-red-500 text-red-600 bg-red-50",
+                                  item.queueState === "canceled" &&
+                                    "border-slate-400 text-slate-600 bg-slate-50"
                                 )}
                               >
                                 {getLegacyApplyRunStatusLabel(item.queueState)}
@@ -5020,37 +6616,66 @@ export default function AdminSkills() {
                           <TableCell>
                             <div className="space-y-1">
                               <div className="text-sm font-medium">
-                                {item.resultMessage || item.latestRun.summary || t("admin.skillsPage.legacyRunQueue.noSummary")}
+                                {item.resultMessage ||
+                                  item.latestRun.summary ||
+                                  t(
+                                    "admin.skillsPage.legacyRunQueue.noSummary"
+                                  )}
                               </div>
-                              {(item.resultError || item.latestRun.errorMessage) && (
-                                <div className={cn(
-                                  "text-xs leading-5",
-                                  item.queueState === "failed" && "text-orange-700",
-                                  item.queueState === "blocked" && "text-red-700",
-                                  item.queueState === "queued" && "text-slate-600",
-                                )}>
-                                  <span className="font-semibold">{t("admin.skillsPage.legacyRunQueue.errorMessageLabel")}{":"}</span>{" "}
-                                  {item.resultError || item.latestRun.errorMessage}
+                              {(item.resultError ||
+                                item.latestRun.errorMessage) && (
+                                <div
+                                  className={cn(
+                                    "text-xs leading-5",
+                                    item.queueState === "failed" &&
+                                      "text-orange-700",
+                                    item.queueState === "blocked" &&
+                                      "text-red-700",
+                                    item.queueState === "queued" &&
+                                      "text-slate-600"
+                                  )}
+                                >
+                                  <span className="font-semibold">
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.errorMessageLabel"
+                                    )}
+                                    {":"}
+                                  </span>{" "}
+                                  {item.resultError ||
+                                    item.latestRun.errorMessage}
                                 </div>
                               )}
-                              {reason && !(item.resultError || item.latestRun.errorMessage) && (
-                                <div className="text-xs leading-5 text-slate-600">
-                                  {reason}
-                                </div>
-                              )}
+                              {reason &&
+                                !(
+                                  item.resultError ||
+                                  item.latestRun.errorMessage
+                                ) && (
+                                  <div className="text-xs leading-5 text-slate-600">
+                                    {reason}
+                                  </div>
+                                )}
                               {workspaceRootIssue && (
                                 <div className="rounded-md border border-amber-200 bg-amber-50/60 p-2 text-xs text-amber-900">
                                   <div className="font-semibold">
-                                    {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue")}
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssue"
+                                    )}
                                   </div>
                                   <div className="mt-1 text-amber-800">
-                                    {t("admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssueDescription")}
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.diagnostics.workspaceRootIssueDescription"
+                                    )}
                                   </div>
                                   {diagnosticPaths.length > 0 && (
                                     <div className="mt-2 space-y-1">
-                                      {diagnosticPaths.map((diagnostic) => (
-                                        <div key={`${item.id}-${diagnostic.label}`} className="grid gap-1">
-                                          <span className="font-semibold">{diagnostic.label}</span>
+                                      {diagnosticPaths.map(diagnostic => (
+                                        <div
+                                          key={`${item.id}-${diagnostic.label}`}
+                                          className="grid gap-1"
+                                        >
+                                          <span className="font-semibold">
+                                            {diagnostic.label}
+                                          </span>
                                           <span className="min-w-0 break-all font-mono text-[11px] leading-4">
                                             {diagnostic.value}
                                           </span>
@@ -5064,12 +6689,19 @@ export default function AdminSkills() {
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-2">
-                              {(item.queueState === "failed" || item.queueState === "blocked") && (
+                              {(item.queueState === "failed" ||
+                                item.queueState === "blocked") && (
                                 <Button
                                   variant="destructive"
                                   size="sm"
-                                  onClick={() => retryLegacyUpgradeApplyRunsMutation.mutate({ runIds: [item.id] })}
-                                  disabled={retryLegacyUpgradeApplyRunsMutation.isPending}
+                                  onClick={() =>
+                                    retryLegacyUpgradeApplyRunsMutation.mutate({
+                                      runIds: [item.id],
+                                    })
+                                  }
+                                  disabled={
+                                    retryLegacyUpgradeApplyRunsMutation.isPending
+                                  }
                                 >
                                   {t("admin.skillsPage.legacyRunQueue.retry")}
                                 </Button>
@@ -5077,26 +6709,44 @@ export default function AdminSkills() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => setLocation(`/admin/skills/runs/${item.id}`)}
+                                onClick={() =>
+                                  setLocation(`/admin/skills/runs/${item.id}`)
+                                }
                               >
                                 <ArrowUpRight className="mr-2 h-4 w-4" />
-                                {t("admin.skillsPage.legacyRunQueue.openDetail")}
+                                {t(
+                                  "admin.skillsPage.legacyRunQueue.openDetail"
+                                )}
                               </Button>
                               {item.recommendation && (
                                 <>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => openRecommendationDetail(item.recommendation!.id, "advice")}
+                                    onClick={() =>
+                                      openRecommendationDetail(
+                                        item.recommendation!.id,
+                                        "advice"
+                                      )
+                                    }
                                   >
-                                    {t("admin.skillsPage.legacyRunQueue.viewAdvice")}
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.viewAdvice"
+                                    )}
                                   </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => openRecommendationDetail(item.recommendation!.id, "reasoning")}
+                                    onClick={() =>
+                                      openRecommendationDetail(
+                                        item.recommendation!.id,
+                                        "reasoning"
+                                      )
+                                    }
                                   >
-                                    {t("admin.skillsPage.legacyRunQueue.viewReasoning")}
+                                    {t(
+                                      "admin.skillsPage.legacyRunQueue.viewReasoning"
+                                    )}
                                   </Button>
                                 </>
                               )}
@@ -5132,15 +6782,26 @@ export default function AdminSkills() {
                         {t("admin.skillsPage.legacyQueue.autopilot.title")}
                       </div>
                       <div className="mt-1 max-w-4xl text-sm leading-6 text-sky-800">
-                        {t("admin.skillsPage.legacyQueue.autopilot.description")}
+                        {t(
+                          "admin.skillsPage.legacyQueue.autopilot.description"
+                        )}
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="rounded-full bg-white text-sky-800">
-                      {t("admin.skillsPage.legacyQueue.autopilot.backlogCount", { count: legacyUpgradeAutoBacklogCount })}
+                    <Badge
+                      variant="secondary"
+                      className="rounded-full bg-white text-sky-800"
+                    >
+                      {t(
+                        "admin.skillsPage.legacyQueue.autopilot.backlogCount",
+                        { count: legacyUpgradeAutoBacklogCount }
+                      )}
                     </Badge>
-                    <Badge variant="secondary" className="rounded-full bg-white text-sky-800">
+                    <Badge
+                      variant="secondary"
+                      className="rounded-full bg-white text-sky-800"
+                    >
                       {applyLegacyUpgradeRecommendationsMutation.isPending
                         ? t("admin.skillsPage.legacyQueue.autopilot.running")
                         : t("admin.skillsPage.legacyQueue.autopilot.ready")}
@@ -5149,15 +6810,25 @@ export default function AdminSkills() {
                 </div>
                 {legacyUpgradeMonitorNames.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {legacyUpgradeMonitorNames.map((name) => (
-                      <Badge key={name} variant="outline" className="rounded-full border-sky-300 bg-white text-sky-800">
+                    {legacyUpgradeMonitorNames.map(name => (
+                      <Badge
+                        key={name}
+                        variant="outline"
+                        className="rounded-full border-sky-300 bg-white text-sky-800"
+                      >
                         {name}
                       </Badge>
                     ))}
-                    {legacyUpgradeAutoBacklogCount > legacyUpgradeMonitorNames.length && (
-                      <Badge variant="outline" className="rounded-full border-sky-300 bg-white text-sky-800">
+                    {legacyUpgradeAutoBacklogCount >
+                      legacyUpgradeMonitorNames.length && (
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-sky-300 bg-white text-sky-800"
+                      >
                         {t("admin.skillsPage.legacyQueue.autopilot.more", {
-                          count: legacyUpgradeAutoBacklogCount - legacyUpgradeMonitorNames.length,
+                          count:
+                            legacyUpgradeAutoBacklogCount -
+                            legacyUpgradeMonitorNames.length,
                         })}
                       </Badge>
                     )}
@@ -5175,24 +6846,40 @@ export default function AdminSkills() {
                     <Checkbox
                       id="legacy-upgrade-include-applied"
                       checked={legacyUpgradeIncludeApplied}
-                      onCheckedChange={(checked) => setLegacyUpgradeIncludeApplied(Boolean(checked))}
+                      onCheckedChange={checked =>
+                        setLegacyUpgradeIncludeApplied(Boolean(checked))
+                      }
                     />
-                    <Label htmlFor="legacy-upgrade-include-applied" className="cursor-pointer">
+                    <Label
+                      htmlFor="legacy-upgrade-include-applied"
+                      className="cursor-pointer"
+                    >
                       {t("admin.skillsPage.legacyQueue.includeApplied")}
                     </Label>
                   </div>
 
                   <div className="flex items-center gap-3">
-                  <Checkbox
-                    id="legacy-upgrade-select-all"
-                    checked={someVisibleLegacySelected ? "indeterminate" : allVisibleLegacySelected}
-                    onCheckedChange={(checked) => toggleAllVisibleLegacyUpgrades(Boolean(checked))}
-                  />
-                    <Label htmlFor="legacy-upgrade-select-all" className="cursor-pointer">
+                    <Checkbox
+                      id="legacy-upgrade-select-all"
+                      checked={
+                        someVisibleLegacySelected
+                          ? "indeterminate"
+                          : allVisibleLegacySelected
+                      }
+                      onCheckedChange={checked =>
+                        toggleAllVisibleLegacyUpgrades(Boolean(checked))
+                      }
+                    />
+                    <Label
+                      htmlFor="legacy-upgrade-select-all"
+                      className="cursor-pointer"
+                    >
                       {t("admin.skillsPage.legacyQueue.selectVisible")}
                     </Label>
                     <span className="text-xs text-muted-foreground">
-                      {t("admin.skillsPage.legacyQueue.selectedCount", { count: selectedLegacyUpgradeIds.length })}
+                      {t("admin.skillsPage.legacyQueue.selectedCount", {
+                        count: selectedLegacyUpgradeIds.length,
+                      })}
                     </span>
                   </div>
 
@@ -5200,12 +6887,22 @@ export default function AdminSkills() {
                     <Checkbox
                       id="legacy-upgrade-expand-all"
                       checked={allExpandedLegacySelected}
-                      onCheckedChange={(checked) => toggleAllLegacyUpgradeDetails(Boolean(checked))}
+                      onCheckedChange={checked =>
+                        toggleAllLegacyUpgradeDetails(Boolean(checked))
+                      }
                     />
-                    <Label htmlFor="legacy-upgrade-expand-all" className="cursor-pointer">
+                    <Label
+                      htmlFor="legacy-upgrade-expand-all"
+                      className="cursor-pointer"
+                    >
                       {t("admin.skillsPage.legacyQueue.expandAll")}
                     </Label>
-                    <Button variant="ghost" size="sm" onClick={collapseAllLegacyUpgradeDetails} disabled={expandedLegacyUpgradeIds.length === 0}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={collapseAllLegacyUpgradeDetails}
+                      disabled={expandedLegacyUpgradeIds.length === 0}
+                    >
                       {t("admin.skillsPage.legacyQueue.collapseAll")}
                     </Button>
                   </div>
@@ -5221,35 +6918,56 @@ export default function AdminSkills() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
-                      recommendationIds: selectedEligibleLegacyUpgradeIds,
-                    })}
-                    disabled={selectedEligibleLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                    onClick={() =>
+                      applyLegacyUpgradeRecommendationsMutation.mutate({
+                        recommendationIds: selectedEligibleLegacyUpgradeIds,
+                      })
+                    }
+                    disabled={
+                      selectedEligibleLegacyUpgradeIds.length === 0 ||
+                      applyLegacyUpgradeRecommendationsMutation.isPending
+                    }
                   >
                     {applyLegacyUpgradeRecommendationsMutation.isPending
                       ? t("admin.skillsPage.legacyQueue.queueEligiblePending")
-                      : t("admin.skillsPage.legacyQueue.queueOnlyEligible", { count: selectedEligibleLegacyUpgradeIds.length })}
+                      : t("admin.skillsPage.legacyQueue.queueOnlyEligible", {
+                          count: selectedEligibleLegacyUpgradeIds.length,
+                        })}
                   </Button>
                   <Button
-                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
-                      recommendationIds: selectedSelectableLegacyUpgradeIds,
-                    })}
-                    disabled={selectedSelectableLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                    onClick={() =>
+                      applyLegacyUpgradeRecommendationsMutation.mutate({
+                        recommendationIds: selectedSelectableLegacyUpgradeIds,
+                      })
+                    }
+                    disabled={
+                      selectedSelectableLegacyUpgradeIds.length === 0 ||
+                      applyLegacyUpgradeRecommendationsMutation.isPending
+                    }
                   >
                     {applyLegacyUpgradeRecommendationsMutation.isPending
                       ? t("admin.skillsPage.legacyQueue.queueSelectedPending")
-                      : t("admin.skillsPage.legacyQueue.queueAllSelected", { count: selectedSelectableLegacyUpgradeIds.length })}
+                      : t("admin.skillsPage.legacyQueue.queueAllSelected", {
+                          count: selectedSelectableLegacyUpgradeIds.length,
+                        })}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => applyLegacyUpgradeRecommendationsMutation.mutate({
-                      recommendationIds: selectedCriticalHighLegacyUpgradeIds,
-                    })}
-                    disabled={selectedCriticalHighLegacyUpgradeIds.length === 0 || applyLegacyUpgradeRecommendationsMutation.isPending}
+                    onClick={() =>
+                      applyLegacyUpgradeRecommendationsMutation.mutate({
+                        recommendationIds: selectedCriticalHighLegacyUpgradeIds,
+                      })
+                    }
+                    disabled={
+                      selectedCriticalHighLegacyUpgradeIds.length === 0 ||
+                      applyLegacyUpgradeRecommendationsMutation.isPending
+                    }
                   >
                     {applyLegacyUpgradeRecommendationsMutation.isPending
                       ? t("admin.skillsPage.legacyQueue.queuePriorityPending")
-                      : t("admin.skillsPage.legacyQueue.queueCriticalHigh", { count: selectedCriticalHighLegacyUpgradeIds.length })}
+                      : t("admin.skillsPage.legacyQueue.queueCriticalHigh", {
+                          count: selectedCriticalHighLegacyUpgradeIds.length,
+                        })}
                   </Button>
                   <Button
                     variant="outline"
@@ -5257,7 +6975,9 @@ export default function AdminSkills() {
                     disabled={isLegacyUpgradeQueueFetching}
                   >
                     <RefreshCw className="mr-2 h-4 w-4" />
-                    {isLegacyUpgradeQueueFetching ? t("admin.skillsPage.legacyQueue.refreshing") : t("admin.skillsPage.legacyQueue.refresh")}
+                    {isLegacyUpgradeQueueFetching
+                      ? t("admin.skillsPage.legacyQueue.refreshing")
+                      : t("admin.skillsPage.legacyQueue.refresh")}
                   </Button>
                 </div>
               </div>
@@ -5267,26 +6987,69 @@ export default function AdminSkills() {
                   {t("admin.skillsPage.legacyQueue.filterView")}
                 </span>
                 {legacyUpgradeQueueFilterRestoredFromStorage && (
-                  <Badge variant="outline" className="rounded-full border-dashed px-2 py-0.5 text-[11px] text-muted-foreground">
+                  <Badge
+                    variant="outline"
+                    className="rounded-full border-dashed px-2 py-0.5 text-[11px] text-muted-foreground"
+                  >
                     {t("admin.skillsPage.legacyQueue.loadedFromPreference")}
                   </Badge>
                 )}
                 {[
-                  { key: "all", label: t("admin.skillsPage.legacyQueue.filters.all"), count: visibleLegacyUpgradeQueueItems.length },
-                  { key: "critical", label: t("admin.skillsPage.legacyQueue.filters.critical"), count: legacyUpgradeCriticalCount },
-                  { key: "high", label: t("admin.skillsPage.legacyQueue.filters.high"), count: legacyUpgradeHighCount },
-                  { key: "parallel", label: t("admin.skillsPage.legacyQueue.filters.parallel"), count: visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length },
-                  { key: "eligible", label: t("admin.skillsPage.legacyQueue.filters.eligible"), count: visibleLegacyUpgradeQueueItems.filter((item) => item.status !== "applied" && item.status !== "dismissed").length },
-                ].map((filter) => (
+                  {
+                    key: "all",
+                    label: t("admin.skillsPage.legacyQueue.filters.all"),
+                    count: visibleLegacyUpgradeQueueItems.length,
+                  },
+                  {
+                    key: "critical",
+                    label: t("admin.skillsPage.legacyQueue.filters.critical"),
+                    count: legacyUpgradeCriticalCount,
+                  },
+                  {
+                    key: "high",
+                    label: t("admin.skillsPage.legacyQueue.filters.high"),
+                    count: legacyUpgradeHighCount,
+                  },
+                  {
+                    key: "parallel",
+                    label: t("admin.skillsPage.legacyQueue.filters.parallel"),
+                    count: visibleLegacyUpgradeQueueItems.filter(
+                      item => item.parallelUpgradeEligible
+                    ).length,
+                  },
+                  {
+                    key: "eligible",
+                    label: t("admin.skillsPage.legacyQueue.filters.eligible"),
+                    count: visibleLegacyUpgradeQueueItems.filter(
+                      item =>
+                        item.status !== "applied" && item.status !== "dismissed"
+                    ).length,
+                  },
+                ].map(filter => (
                   <Button
                     key={filter.key}
-                    variant={legacyUpgradeQueueFilter === filter.key ? "default" : "outline"}
+                    variant={
+                      legacyUpgradeQueueFilter === filter.key
+                        ? "default"
+                        : "outline"
+                    }
                     size="sm"
-                    onClick={() => setLegacyUpgradeQueueFilter(filter.key as typeof legacyUpgradeQueueFilter)}
+                    onClick={() =>
+                      setLegacyUpgradeQueueFilter(
+                        filter.key as typeof legacyUpgradeQueueFilter
+                      )
+                    }
                     className="rounded-full"
                   >
                     {filter.label}
-                    <Badge variant={legacyUpgradeQueueFilter === filter.key ? "secondary" : "outline"} className="ml-2 rounded-full px-2 text-[11px]">
+                    <Badge
+                      variant={
+                        legacyUpgradeQueueFilter === filter.key
+                          ? "secondary"
+                          : "outline"
+                      }
+                      className="ml-2 rounded-full px-2 text-[11px]"
+                    >
                       {filter.count}
                     </Badge>
                   </Button>
@@ -5295,58 +7058,107 @@ export default function AdminSkills() {
 
               <div className="grid gap-3 md:grid-cols-6">
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.queued")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{visibleLegacyUpgradeQueueItems.length}</div>
-                </div>
-                <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.parallelEligible")}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.queued")}
+                  </div>
                   <div className="mt-1 text-2xl font-semibold">
-                    {visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length}
+                    {visibleLegacyUpgradeQueueItems.length}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.critical")}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.parallelEligible")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {
+                      visibleLegacyUpgradeQueueItems.filter(
+                        item => item.parallelUpgradeEligible
+                      ).length
+                    }
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.critical")}
+                  </div>
                   <div className="mt-1 text-2xl font-semibold">
                     {legacyUpgradeCriticalCount}
                   </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.high")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeHighCount}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.high")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyUpgradeHighCount}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.blocked")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeBlockedCount}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.blocked")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyUpgradeBlockedCount}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.legacyQueue.stats.failed")}</div>
-                  <div className="mt-1 text-2xl font-semibold">{legacyUpgradeFailedCount}</div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t("admin.skillsPage.legacyQueue.stats.failed")}
+                  </div>
+                  <div className="mt-1 text-2xl font-semibold">
+                    {legacyUpgradeFailedCount}
+                  </div>
                 </div>
                 <div className="rounded-lg border bg-muted/30 p-3 md:col-span-6">
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.total", { count: visibleLegacyUpgradeQueueItems.length })}
+                      {t("admin.skillsPage.legacyQueue.summary.total", {
+                        count: visibleLegacyUpgradeQueueItems.length,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.parallelEligible", { count: visibleLegacyUpgradeQueueItems.filter((item) => item.parallelUpgradeEligible).length })}
+                      {t(
+                        "admin.skillsPage.legacyQueue.summary.parallelEligible",
+                        {
+                          count: visibleLegacyUpgradeQueueItems.filter(
+                            item => item.parallelUpgradeEligible
+                          ).length,
+                        }
+                      )}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.critical", { count: legacyUpgradeCriticalCount })}
+                      {t("admin.skillsPage.legacyQueue.summary.critical", {
+                        count: legacyUpgradeCriticalCount,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.high", { count: legacyUpgradeHighCount })}
+                      {t("admin.skillsPage.legacyQueue.summary.high", {
+                        count: legacyUpgradeHighCount,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.blocked", { count: legacyUpgradeBlockedCount })}
+                      {t("admin.skillsPage.legacyQueue.summary.blocked", {
+                        count: legacyUpgradeBlockedCount,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.failed", { count: legacyUpgradeFailedCount })}
+                      {t("admin.skillsPage.legacyQueue.summary.failed", {
+                        count: legacyUpgradeFailedCount,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {t("admin.skillsPage.legacyQueue.summary.selected", { count: selectedLegacyUpgradeIds.length })}
+                      {t("admin.skillsPage.legacyQueue.summary.selected", {
+                        count: selectedLegacyUpgradeIds.length,
+                      })}
                     </Badge>
                     <Badge variant="secondary" className="rounded-full">
-                      {legacyUpgradeIncludeApplied ? t("admin.skillsPage.legacyQueue.summary.appliedIncluded") : t("admin.skillsPage.legacyQueue.summary.appliedHidden")}
+                      {legacyUpgradeIncludeApplied
+                        ? t(
+                            "admin.skillsPage.legacyQueue.summary.appliedIncluded"
+                          )
+                        : t(
+                            "admin.skillsPage.legacyQueue.summary.appliedHidden"
+                          )}
                     </Badge>
                   </div>
                 </div>
@@ -5358,25 +7170,46 @@ export default function AdminSkills() {
                     <TableHead className="w-12">
                       <Checkbox
                         checked={allVisibleLegacySelected}
-                        onCheckedChange={(checked) => toggleAllVisibleLegacyUpgrades(Boolean(checked))}
-                        aria-label={t("admin.skillsPage.legacyQueue.selectAllVisibleAria")}
+                        onCheckedChange={checked =>
+                          toggleAllVisibleLegacyUpgrades(Boolean(checked))
+                        }
+                        aria-label={t(
+                          "admin.skillsPage.legacyQueue.selectAllVisibleAria"
+                        )}
                       />
                     </TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.skill")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.priority")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.signals")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.runtime")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.status")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.nextAction")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.legacyQueue.headers.actions")}</TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.skill")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.priority")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.signals")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.runtime")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.status")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.nextAction")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.legacyQueue.headers.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLegacyUpgradeQueueLoading ? (
                     renderTableLoadingRow(8, "Loading legacy upgrade queue...")
-                  ) : (!visibleLegacyUpgradeQueueItems.length ? (
+                  ) : !visibleLegacyUpgradeQueueItems.length ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={8}
+                        className="text-center text-muted-foreground"
+                      >
                         {t("admin.skillsPage.legacyQueue.empty")}
                       </TableCell>
                     </TableRow>
@@ -5384,336 +7217,716 @@ export default function AdminSkills() {
                     legacyUpgradeFilteredItems.map((item, index) => {
                       const nextAction = getLegacyUpgradeNextAction(item);
                       return (
-                      <Fragment key={item.id}>
-                        <TableRow>
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedLegacyUpgradeIdSet.has(item.id)}
-                              onCheckedChange={(checked) => toggleLegacyUpgradeSelection(item.id, Boolean(checked))}
-                              disabled={!canRunLegacyUpgradeAction(item)}
-                              aria-label={`Select ${item.skill?.name || `Skill #${item.skillId}`}`}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold">
-                                #{index + 1}
-                              </div>
-                              <div>
-                                <div className="font-medium">{item.skill?.name || `Skill #${item.skillId}`}</div>
-                                <div className="text-xs text-muted-foreground">{item.skill?.slug || item.skillId}</div>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col gap-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  item.upgradePriorityTier === "urgent" && "border-red-500 text-red-600 bg-red-50",
-                                  item.upgradePriorityTier === "high" && "border-orange-500 text-orange-600 bg-orange-50",
-                                  item.upgradePriorityTier === "medium" && "border-amber-500 text-amber-600 bg-amber-50",
-                                  item.upgradePriorityTier === "low" && "border-slate-400 text-slate-600 bg-slate-50",
-                                )}
-                              >
-                                {item.upgradePriorityTier}
-                              </Badge>
-                              <div className="text-xs text-muted-foreground">
-                                Score {item.upgradePriorityScore.toFixed(1)}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-2">
-                              {item.parallelUpgradeEligible && (
-                                <Badge variant="secondary">Parallel</Badge>
-                              )}
-                              {item.isGenjsCandidate && (
-                                <Badge variant="secondary">GenJS Candidate</Badge>
-                              )}
-                              <Badge variant="outline">{item.recommendationType}</Badge>
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {Object.entries(item.legacyUpgradeSignals || {}).map(([key, value]) => (
-                                <Badge
-                                  key={key}
-                                  variant="outline"
-                                  className={cn(
-                                    value ? "border-emerald-500 text-emerald-700 bg-emerald-50" : "border-slate-300 text-slate-500 bg-slate-50",
-                                  )}
-                                >
-                                  {describeLegacyUpgradeSignal(key, value)}
-                                </Badge>
-                              ))}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">{item.currentRuntime || "unknown"}</div>
-                            {item.proposedRuntime && (
-                              <div className="text-xs text-muted-foreground">→ {item.proposedRuntime}</div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  item.status === "applied" && "border-green-500 text-green-600 bg-green-50",
-                                  item.status === "blocked" && "border-red-500 text-red-600 bg-red-50",
-                                  item.status === "failed" && "border-orange-500 text-orange-600 bg-orange-50",
-                                  item.status === "pending_review" && "border-slate-400 text-slate-600 bg-slate-50",
-                                )}
-                              >
-                                {item.status}
-                              </Badge>
-                              {(item.status === "blocked" || item.status === "failed") && getLegacyUpgradeReason(item) && (
-                                <div className={cn(
-                                  "text-xs leading-5",
-                                  item.status === "blocked" ? "text-red-700" : "text-orange-700",
-                                )}>
-                                  <span className="font-semibold">
-                                    {item.status === "blocked"
-                                      ? t("admin.skillsPage.legacyQueue.blockedReasonLabel")
-                                      : t("admin.skillsPage.legacyQueue.failedReasonLabel")}
-                                    {":"}
-                                  </span>{" "}
-                                  {getLegacyUpgradeReason(item)}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className={cn(
-                              "max-w-[260px] rounded-md border px-3 py-2 text-xs leading-5",
-                              getLegacyUpgradeNextActionClass(nextAction.tone),
-                            )}>
-                              <div className="font-semibold">{nextAction.label}</div>
-                              <div className="mt-1 opacity-90">{nextAction.description}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openRecommendationDetail(item.id, "advice")}
-                              >
-                                {t("admin.skillsPage.legacyQueue.viewAdvice")}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openRecommendationDetail(item.id, "reasoning")}
-                              >
-                                {t("admin.skillsPage.legacyQueue.viewReasoning")}
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => requestRecommendationApply(item, item.skill?.name || `Skill #${item.skillId}`)}
-                                disabled={!nextAction.canRun || applyUpgradeMutation.isPending}
-                              >
-                                {nextAction.buttonLabel || t("admin.skillsPage.legacyQueue.noActionNeeded")}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleLegacyUpgradeDetails(item.id, !expandedLegacyUpgradeIdSet.has(item.id))}
-                              >
-                                {expandedLegacyUpgradeIdSet.has(item.id) ? t("admin.skillsPage.legacyQueue.hideDetails") : t("admin.skillsPage.legacyQueue.details")}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleLegacyUpgradeSelection(item.id, !selectedLegacyUpgradeIdSet.has(item.id))}
-                              >
-                                {selectedLegacyUpgradeIdSet.has(item.id) ? t("admin.skillsPage.legacyQueue.unselect") : t("admin.skillsPage.legacyQueue.select")}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {expandedLegacyUpgradeIdSet.has(item.id) && (
+                        <Fragment key={item.id}>
                           <TableRow>
-                            <TableCell colSpan={8} className="bg-slate-50/70 p-0">
-                              <div className="border-t border-slate-200 px-4 py-4">
-                                <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                                      {t("admin.skillsPage.legacyQueue.prioritySnapshot")}
-                                    </div>
-                                    <div className="space-y-2 text-sm text-slate-700">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-slate-500">{t("admin.skillsPage.legacyQueue.priorityScore")}</span>
-                                        <span className="font-medium">{item.upgradePriorityScore.toFixed(1)}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-slate-500">{t("admin.skillsPage.legacyQueue.priorityTier")}</span>
-                                        <span className="font-medium">{item.upgradePriorityTier}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-slate-500">{t("admin.skillsPage.legacyQueue.parallelEligible")}</span>
-                                        <span className="font-medium">{item.parallelUpgradeEligible ? t("common.yes") : t("common.no")}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-slate-500">{t("admin.skillsPage.legacyQueue.currentRuntime")}</span>
-                                        <span className="font-medium">{item.currentRuntime || "unknown"}</span>
-                                      </div>
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-slate-500">{t("admin.skillsPage.legacyQueue.proposedRuntime")}</span>
-                                        <span className="font-medium">{item.proposedRuntime || "unchanged"}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {(item.status === "blocked" || item.status === "failed" || item.status === "applied" || item.status === "approved") && (
-                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
-                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                                        {t("admin.skillsPage.legacyQueue.outcomeSummary")}
-                                      </div>
-                                      <div className={cn(
-                                        "rounded-lg border p-3 text-sm",
-                                        item.status === "blocked" && "border-red-200 bg-red-50 text-red-800",
-                                        item.status === "failed" && "border-orange-200 bg-orange-50 text-orange-800",
-                                        item.status === "applied" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-                                        item.status === "approved" && "border-slate-200 bg-slate-50 text-slate-700",
-                                      )}>
-                                        <div className="font-medium">
-                                          {item.status === "blocked" && t("admin.skillsPage.legacyQueue.blockedStatus")}
-                                          {item.status === "failed" && t("admin.skillsPage.legacyQueue.failedStatus")}
-                                          {item.status === "applied" && t("admin.skillsPage.legacyQueue.appliedStatus")}
-                                          {item.status === "approved" && t("admin.skillsPage.legacyQueue.approvedStatus")}
-                                        </div>
-                                      <div className="mt-1 text-sm leading-6">
-                                        {getLegacyUpgradeReason(item) || t("admin.skillsPage.legacyQueue.noReason")}
-                                      </div>
-                                      {item.latestRun && (
-                                        <div className="mt-2 text-xs text-slate-500">
-                                          {t("admin.skillsPage.legacyQueue.latestRun")} #{item.latestRun.id} · {item.latestRun.runType} · {item.latestRun.status}
-                                        </div>
-                                      )}
-                                      {(getLegacyQueueLatestRunString(item, "taskId")
-                                        || getLegacyQueueLatestRunString(item, "resolvedLlmModelId")
-                                        || getLegacyQueueLatestRunString(item, "retryReason")
-                                        || getLegacyQueueLatestRunString(item, "resultMessage")
-                                        || getLegacyQueueLatestRunString(item, "resultError")
-                                        || getLegacyQueueLatestRunNumber(item, "sourceRunId") !== null) && (
-                                        <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white/80 p-3 text-xs text-slate-700 md:grid-cols-2">
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.task")}</div>
-                                            <div className="font-mono break-all">{getLegacyQueueLatestRunString(item, "taskId") || t("admin.skillsPage.legacyRunQueue.noTaskId")}</div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resolvedModel")}</div>
-                                            <div className="break-all">{getLegacyQueueLatestRunString(item, "resolvedLlmModelId") || t("admin.skillsPage.legacyRunQueue.noModel")}</div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resultMessage")}</div>
-                                            <div className="break-words">{getLegacyQueueLatestRunString(item, "resultMessage") || item.latestRun?.summary || t("admin.skillsPage.legacyRunQueue.noSummary")}</div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.resultError")}</div>
-                                            <div className={cn("break-words", (getLegacyQueueLatestRunString(item, "resultError") || item.latestRun?.errorMessage) ? "text-orange-700" : "text-slate-500")}>
-                                              {getLegacyQueueLatestRunString(item, "resultError") || item.latestRun?.errorMessage || t("admin.skillsPage.legacyRunQueue.noResultError")}
-                                            </div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.sourceRun")}</div>
-                                            <div>{getLegacyQueueLatestRunNumber(item, "sourceRunId") !== null
-                                              ? `#${getLegacyQueueLatestRunNumber(item, "sourceRunId")}`
-                                              : t("admin.skillsPage.legacyRunQueue.noSourceRun")}</div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.retryReason")}</div>
-                                            <div className="break-words">{getLegacyQueueLatestRunString(item, "retryReason") || t("admin.skillsPage.legacyRunQueue.noRetryReason")}</div>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedLegacyUpgradeIdSet.has(
+                                  item.id
                                 )}
-                                {getLegacyRunLineageSource(item.latestRun) && (
-                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                                      {t("admin.skillsPage.legacyQueue.lineageTitle")}
-                                    </div>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.role")}</div>
-                                        <div className="font-medium">{getLegacyRunRoleLabel(getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "role") || "orchestrator")}</div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.failureScope")}</div>
-                                        <div className="font-medium">{getLegacyRunFailureScopeLabel(getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "role") || "orchestrator")}</div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.parentRun")}</div>
-                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "parentRunId") || "—"}</div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.childRuns")}</div>
-                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageArray(getLegacyRunLineageSource(item.latestRun), "childRunIds").join(", ") || "—"}</div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.checkpoint")}</div>
-                                        <div>{getLegacyRunLineageNumber(getLegacyRunLineageSource(item.latestRun), "checkpointVersion") !== null ? `v${getLegacyRunLineageNumber(getLegacyRunLineageSource(item.latestRun), "checkpointVersion")}` : "—"}</div>
-                                      </div>
-                                      <div className="space-y-1">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.verification")}</div>
-                                        <div>{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "verificationState") || "—"}</div>
-                                      </div>
-                                      <div className="space-y-1 md:col-span-2">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.artifactRefs")}</div>
-                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageArray(getLegacyRunLineageSource(item.latestRun), "artifactRefs").join(", ") || "—"}</div>
-                                      </div>
-                                      <div className="space-y-1 md:col-span-2">
-                                        <div className="text-xs font-semibold text-slate-500">{t("admin.skillsPage.legacyRunQueue.lineage.resumeCursor")}</div>
-                                        <div className="font-mono text-xs break-all">{getLegacyRunLineageString(getLegacyRunLineageSource(item.latestRun), "resumeCursor") || "—"}</div>
-                                      </div>
-                                    </div>
+                                onCheckedChange={checked =>
+                                  toggleLegacyUpgradeSelection(
+                                    item.id,
+                                    Boolean(checked)
+                                  )
+                                }
+                                disabled={!canRunLegacyUpgradeAction(item)}
+                                aria-label={`Select ${item.skill?.name || `Skill #${item.skillId}`}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold">
+                                  #{index + 1}
+                                </div>
+                                <div>
+                                  <div className="font-medium">
+                                    {item.skill?.name ||
+                                      `Skill #${item.skillId}`}
                                   </div>
-                                )}
-
-                                  <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-                                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                                      {t("admin.skillsPage.legacyQueue.signalBreakdown")}
-                                    </div>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                      {Object.entries(item.legacyUpgradeSignals || {}).length > 0 ? (
-                                        Object.entries(item.legacyUpgradeSignals || {}).map(([key, value]) => (
-                                          <div key={key} className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
-                                            <div className="flex items-center justify-between gap-3">
-                                              <div className="text-sm font-medium text-slate-800">
-                                                {key}
-                                              </div>
-                                              <Badge
-                                                variant="outline"
-                                                className={cn(
-                                                  value ? "border-emerald-500 text-emerald-700 bg-emerald-50" : "border-slate-300 text-slate-500 bg-slate-50",
-                                                )}
-                                              >
-                                                {value ? t("admin.skillsPage.legacyQueue.signalPresent") : t("admin.skillsPage.legacyQueue.signalMissing")}
-                                              </Badge>
-                                            </div>
-                                            <div className="mt-2 text-xs text-slate-600">
-                                              {describeLegacyUpgradeSignal(key, value)}
-                                            </div>
-                                          </div>
-                                        ))
-                                      ) : (
-                                        <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-600 md:col-span-2">
-                                          {t("admin.skillsPage.legacyQueue.noSignals")}
-                                        </div>
-                                      )}
-                                    </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {item.skill?.slug || item.skillId}
                                   </div>
                                 </div>
                               </div>
                             </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    item.upgradePriorityTier === "urgent" &&
+                                      "border-red-500 text-red-600 bg-red-50",
+                                    item.upgradePriorityTier === "high" &&
+                                      "border-orange-500 text-orange-600 bg-orange-50",
+                                    item.upgradePriorityTier === "medium" &&
+                                      "border-amber-500 text-amber-600 bg-amber-50",
+                                    item.upgradePriorityTier === "low" &&
+                                      "border-slate-400 text-slate-600 bg-slate-50"
+                                  )}
+                                >
+                                  {item.upgradePriorityTier}
+                                </Badge>
+                                <div className="text-xs text-muted-foreground">
+                                  Score {item.upgradePriorityScore.toFixed(1)}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-2">
+                                {item.parallelUpgradeEligible && (
+                                  <Badge variant="secondary">Parallel</Badge>
+                                )}
+                                {item.isGenjsCandidate && (
+                                  <Badge variant="secondary">
+                                    GenJS Candidate
+                                  </Badge>
+                                )}
+                                <Badge variant="outline">
+                                  {item.recommendationType}
+                                </Badge>
+                              </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {Object.entries(
+                                  item.legacyUpgradeSignals || {}
+                                ).map(([key, value]) => (
+                                  <Badge
+                                    key={key}
+                                    variant="outline"
+                                    className={cn(
+                                      value
+                                        ? "border-emerald-500 text-emerald-700 bg-emerald-50"
+                                        : "border-slate-300 text-slate-500 bg-slate-50"
+                                    )}
+                                  >
+                                    {describeLegacyUpgradeSignal(key, value)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {item.currentRuntime || "unknown"}
+                              </div>
+                              {item.proposedRuntime && (
+                                <div className="text-xs text-muted-foreground">
+                                  → {item.proposedRuntime}
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-2">
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    item.status === "applied" &&
+                                      "border-green-500 text-green-600 bg-green-50",
+                                    item.status === "blocked" &&
+                                      "border-red-500 text-red-600 bg-red-50",
+                                    item.status === "failed" &&
+                                      "border-orange-500 text-orange-600 bg-orange-50",
+                                    item.status === "pending_review" &&
+                                      "border-slate-400 text-slate-600 bg-slate-50"
+                                  )}
+                                >
+                                  {item.status}
+                                </Badge>
+                                {(item.status === "blocked" ||
+                                  item.status === "failed") &&
+                                  getLegacyUpgradeReason(item) && (
+                                    <div
+                                      className={cn(
+                                        "text-xs leading-5",
+                                        item.status === "blocked"
+                                          ? "text-red-700"
+                                          : "text-orange-700"
+                                      )}
+                                    >
+                                      <span className="font-semibold">
+                                        {item.status === "blocked"
+                                          ? t(
+                                              "admin.skillsPage.legacyQueue.blockedReasonLabel"
+                                            )
+                                          : t(
+                                              "admin.skillsPage.legacyQueue.failedReasonLabel"
+                                            )}
+                                        {":"}
+                                      </span>{" "}
+                                      {getLegacyUpgradeReason(item)}
+                                    </div>
+                                  )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div
+                                className={cn(
+                                  "max-w-[260px] rounded-md border px-3 py-2 text-xs leading-5",
+                                  getLegacyUpgradeNextActionClass(
+                                    nextAction.tone
+                                  )
+                                )}
+                              >
+                                <div className="font-semibold">
+                                  {nextAction.label}
+                                </div>
+                                <div className="mt-1 opacity-90">
+                                  {nextAction.description}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    openRecommendationDetail(item.id, "advice")
+                                  }
+                                >
+                                  {t("admin.skillsPage.legacyQueue.viewAdvice")}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    openRecommendationDetail(
+                                      item.id,
+                                      "reasoning"
+                                    )
+                                  }
+                                >
+                                  {t(
+                                    "admin.skillsPage.legacyQueue.viewReasoning"
+                                  )}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    requestRecommendationApply(
+                                      item,
+                                      item.skill?.name ||
+                                        `Skill #${item.skillId}`
+                                    )
+                                  }
+                                  disabled={
+                                    !nextAction.canRun ||
+                                    applyUpgradeMutation.isPending
+                                  }
+                                >
+                                  {nextAction.buttonLabel ||
+                                    t(
+                                      "admin.skillsPage.legacyQueue.noActionNeeded"
+                                    )}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    toggleLegacyUpgradeDetails(
+                                      item.id,
+                                      !expandedLegacyUpgradeIdSet.has(item.id)
+                                    )
+                                  }
+                                >
+                                  {expandedLegacyUpgradeIdSet.has(item.id)
+                                    ? t(
+                                        "admin.skillsPage.legacyQueue.hideDetails"
+                                      )
+                                    : t("admin.skillsPage.legacyQueue.details")}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    toggleLegacyUpgradeSelection(
+                                      item.id,
+                                      !selectedLegacyUpgradeIdSet.has(item.id)
+                                    )
+                                  }
+                                >
+                                  {selectedLegacyUpgradeIdSet.has(item.id)
+                                    ? t("admin.skillsPage.legacyQueue.unselect")
+                                    : t("admin.skillsPage.legacyQueue.select")}
+                                </Button>
+                              </div>
+                            </TableCell>
                           </TableRow>
-                        )}
-                      </Fragment>
+                          {expandedLegacyUpgradeIdSet.has(item.id) && (
+                            <TableRow>
+                              <TableCell
+                                colSpan={8}
+                                className="bg-slate-50/70 p-0"
+                              >
+                                <div className="border-t border-slate-200 px-4 py-4">
+                                  <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                        {t(
+                                          "admin.skillsPage.legacyQueue.prioritySnapshot"
+                                        )}
+                                      </div>
+                                      <div className="space-y-2 text-sm text-slate-700">
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-slate-500">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.priorityScore"
+                                            )}
+                                          </span>
+                                          <span className="font-medium">
+                                            {item.upgradePriorityScore.toFixed(
+                                              1
+                                            )}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-slate-500">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.priorityTier"
+                                            )}
+                                          </span>
+                                          <span className="font-medium">
+                                            {item.upgradePriorityTier}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-slate-500">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.parallelEligible"
+                                            )}
+                                          </span>
+                                          <span className="font-medium">
+                                            {item.parallelUpgradeEligible
+                                              ? t("common.yes")
+                                              : t("common.no")}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-slate-500">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.currentRuntime"
+                                            )}
+                                          </span>
+                                          <span className="font-medium">
+                                            {item.currentRuntime || "unknown"}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                          <span className="text-slate-500">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.proposedRuntime"
+                                            )}
+                                          </span>
+                                          <span className="font-medium">
+                                            {item.proposedRuntime ||
+                                              "unchanged"}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {(item.status === "blocked" ||
+                                      item.status === "failed" ||
+                                      item.status === "applied" ||
+                                      item.status === "approved") && (
+                                      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-2">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                          {t(
+                                            "admin.skillsPage.legacyQueue.outcomeSummary"
+                                          )}
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            "rounded-lg border p-3 text-sm",
+                                            item.status === "blocked" &&
+                                              "border-red-200 bg-red-50 text-red-800",
+                                            item.status === "failed" &&
+                                              "border-orange-200 bg-orange-50 text-orange-800",
+                                            item.status === "applied" &&
+                                              "border-emerald-200 bg-emerald-50 text-emerald-800",
+                                            item.status === "approved" &&
+                                              "border-slate-200 bg-slate-50 text-slate-700"
+                                          )}
+                                        >
+                                          <div className="font-medium">
+                                            {item.status === "blocked" &&
+                                              t(
+                                                "admin.skillsPage.legacyQueue.blockedStatus"
+                                              )}
+                                            {item.status === "failed" &&
+                                              t(
+                                                "admin.skillsPage.legacyQueue.failedStatus"
+                                              )}
+                                            {item.status === "applied" &&
+                                              t(
+                                                "admin.skillsPage.legacyQueue.appliedStatus"
+                                              )}
+                                            {item.status === "approved" &&
+                                              t(
+                                                "admin.skillsPage.legacyQueue.approvedStatus"
+                                              )}
+                                          </div>
+                                          <div className="mt-1 text-sm leading-6">
+                                            {getLegacyUpgradeReason(item) ||
+                                              t(
+                                                "admin.skillsPage.legacyQueue.noReason"
+                                              )}
+                                          </div>
+                                          {item.latestRun && (
+                                            <div className="mt-2 text-xs text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyQueue.latestRun"
+                                              )}{" "}
+                                              #{item.latestRun.id} ·{" "}
+                                              {item.latestRun.runType} ·{" "}
+                                              {item.latestRun.status}
+                                            </div>
+                                          )}
+                                          {(getLegacyQueueLatestRunString(
+                                            item,
+                                            "taskId"
+                                          ) ||
+                                            getLegacyQueueLatestRunString(
+                                              item,
+                                              "resolvedLlmModelId"
+                                            ) ||
+                                            getLegacyQueueLatestRunString(
+                                              item,
+                                              "retryReason"
+                                            ) ||
+                                            getLegacyQueueLatestRunString(
+                                              item,
+                                              "resultMessage"
+                                            ) ||
+                                            getLegacyQueueLatestRunString(
+                                              item,
+                                              "resultError"
+                                            ) ||
+                                            getLegacyQueueLatestRunNumber(
+                                              item,
+                                              "sourceRunId"
+                                            ) !== null) && (
+                                            <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white/80 p-3 text-xs text-slate-700 md:grid-cols-2">
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.task"
+                                                  )}
+                                                </div>
+                                                <div className="font-mono break-all">
+                                                  {getLegacyQueueLatestRunString(
+                                                    item,
+                                                    "taskId"
+                                                  ) ||
+                                                    t(
+                                                      "admin.skillsPage.legacyRunQueue.noTaskId"
+                                                    )}
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.resolvedModel"
+                                                  )}
+                                                </div>
+                                                <div className="break-all">
+                                                  {getLegacyQueueLatestRunString(
+                                                    item,
+                                                    "resolvedLlmModelId"
+                                                  ) ||
+                                                    t(
+                                                      "admin.skillsPage.legacyRunQueue.noModel"
+                                                    )}
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.resultMessage"
+                                                  )}
+                                                </div>
+                                                <div className="break-words">
+                                                  {getLegacyQueueLatestRunString(
+                                                    item,
+                                                    "resultMessage"
+                                                  ) ||
+                                                    item.latestRun?.summary ||
+                                                    t(
+                                                      "admin.skillsPage.legacyRunQueue.noSummary"
+                                                    )}
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.resultError"
+                                                  )}
+                                                </div>
+                                                <div
+                                                  className={cn(
+                                                    "break-words",
+                                                    getLegacyQueueLatestRunString(
+                                                      item,
+                                                      "resultError"
+                                                    ) ||
+                                                      item.latestRun
+                                                        ?.errorMessage
+                                                      ? "text-orange-700"
+                                                      : "text-slate-500"
+                                                  )}
+                                                >
+                                                  {getLegacyQueueLatestRunString(
+                                                    item,
+                                                    "resultError"
+                                                  ) ||
+                                                    item.latestRun
+                                                      ?.errorMessage ||
+                                                    t(
+                                                      "admin.skillsPage.legacyRunQueue.noResultError"
+                                                    )}
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.sourceRun"
+                                                  )}
+                                                </div>
+                                                <div>
+                                                  {getLegacyQueueLatestRunNumber(
+                                                    item,
+                                                    "sourceRunId"
+                                                  ) !== null
+                                                    ? `#${getLegacyQueueLatestRunNumber(item, "sourceRunId")}`
+                                                    : t(
+                                                        "admin.skillsPage.legacyRunQueue.noSourceRun"
+                                                      )}
+                                                </div>
+                                              </div>
+                                              <div className="space-y-1">
+                                                <div className="font-semibold text-slate-500">
+                                                  {t(
+                                                    "admin.skillsPage.legacyRunQueue.retryReason"
+                                                  )}
+                                                </div>
+                                                <div className="break-words">
+                                                  {getLegacyQueueLatestRunString(
+                                                    item,
+                                                    "retryReason"
+                                                  ) ||
+                                                    t(
+                                                      "admin.skillsPage.legacyRunQueue.noRetryReason"
+                                                    )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                    {getLegacyRunLineageSource(
+                                      item.latestRun
+                                    ) && (
+                                      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                          {t(
+                                            "admin.skillsPage.legacyQueue.lineageTitle"
+                                          )}
+                                        </div>
+                                        <div className="grid gap-3 md:grid-cols-2">
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.role"
+                                              )}
+                                            </div>
+                                            <div className="font-medium">
+                                              {getLegacyRunRoleLabel(
+                                                getLegacyRunLineageString(
+                                                  getLegacyRunLineageSource(
+                                                    item.latestRun
+                                                  ),
+                                                  "role"
+                                                ) || "orchestrator"
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.failureScope"
+                                              )}
+                                            </div>
+                                            <div className="font-medium">
+                                              {getLegacyRunFailureScopeLabel(
+                                                getLegacyRunLineageString(
+                                                  getLegacyRunLineageSource(
+                                                    item.latestRun
+                                                  ),
+                                                  "role"
+                                                ) || "orchestrator"
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.parentRun"
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs break-all">
+                                              {getLegacyRunLineageString(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "parentRunId"
+                                              ) || "—"}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.childRuns"
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs break-all">
+                                              {getLegacyRunLineageArray(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "childRunIds"
+                                              ).join(", ") || "—"}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.checkpoint"
+                                              )}
+                                            </div>
+                                            <div>
+                                              {getLegacyRunLineageNumber(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "checkpointVersion"
+                                              ) !== null
+                                                ? `v${getLegacyRunLineageNumber(getLegacyRunLineageSource(item.latestRun), "checkpointVersion")}`
+                                                : "—"}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.verification"
+                                              )}
+                                            </div>
+                                            <div>
+                                              {getLegacyRunLineageString(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "verificationState"
+                                              ) || "—"}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1 md:col-span-2">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.artifactRefs"
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs break-all">
+                                              {getLegacyRunLineageArray(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "artifactRefs"
+                                              ).join(", ") || "—"}
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1 md:col-span-2">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                              {t(
+                                                "admin.skillsPage.legacyRunQueue.lineage.resumeCursor"
+                                              )}
+                                            </div>
+                                            <div className="font-mono text-xs break-all">
+                                              {getLegacyRunLineageString(
+                                                getLegacyRunLineageSource(
+                                                  item.latestRun
+                                                ),
+                                                "resumeCursor"
+                                              ) || "—"}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+                                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                        {t(
+                                          "admin.skillsPage.legacyQueue.signalBreakdown"
+                                        )}
+                                      </div>
+                                      <div className="grid gap-3 md:grid-cols-2">
+                                        {Object.entries(
+                                          item.legacyUpgradeSignals || {}
+                                        ).length > 0 ? (
+                                          Object.entries(
+                                            item.legacyUpgradeSignals || {}
+                                          ).map(([key, value]) => (
+                                            <div
+                                              key={key}
+                                              className="rounded-lg border border-slate-200 bg-slate-50/80 p-3"
+                                            >
+                                              <div className="flex items-center justify-between gap-3">
+                                                <div className="text-sm font-medium text-slate-800">
+                                                  {key}
+                                                </div>
+                                                <Badge
+                                                  variant="outline"
+                                                  className={cn(
+                                                    value
+                                                      ? "border-emerald-500 text-emerald-700 bg-emerald-50"
+                                                      : "border-slate-300 text-slate-500 bg-slate-50"
+                                                  )}
+                                                >
+                                                  {value
+                                                    ? t(
+                                                        "admin.skillsPage.legacyQueue.signalPresent"
+                                                      )
+                                                    : t(
+                                                        "admin.skillsPage.legacyQueue.signalMissing"
+                                                      )}
+                                                </Badge>
+                                              </div>
+                                              <div className="mt-2 text-xs text-slate-600">
+                                                {describeLegacyUpgradeSignal(
+                                                  key,
+                                                  value
+                                                )}
+                                              </div>
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3 text-sm text-slate-600 md:col-span-2">
+                                            {t(
+                                              "admin.skillsPage.legacyQueue.noSignals"
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
                       );
                     })
-                  ))}
+                  )}
                 </TableBody>
               </Table>
             </div>
@@ -5730,32 +7943,61 @@ export default function AdminSkills() {
                   <Label>{t("admin.skillsPage.schedules.fields.name")}</Label>
                   <Input
                     value={scheduleDraft.name}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, name: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.name")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        name: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.name"
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("admin.skillsPage.schedules.fields.cron")}</Label>
                   <Input
                     value={scheduleDraft.cronExpression}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, cronExpression: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.cron")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        cronExpression: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.cron"
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.schedules.fields.timezone")}</Label>
+                  <Label>
+                    {t("admin.skillsPage.schedules.fields.timezone")}
+                  </Label>
                   <Input
                     value={scheduleDraft.timezone}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, timezone: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.timezone")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        timezone: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.timezone"
+                    )}
                   />
                 </div>
                 <div className="flex items-end">
                   <Button
                     onClick={saveMaintenanceSchedule}
-                    disabled={!scheduleDraft.name || createMaintenanceScheduleMutation.isPending || updateMaintenanceScheduleMutation.isPending}
+                    disabled={
+                      !scheduleDraft.name ||
+                      createMaintenanceScheduleMutation.isPending ||
+                      updateMaintenanceScheduleMutation.isPending
+                    }
                   >
-                    {scheduleDraft.id ? t("admin.skillsPage.schedules.update") : t("admin.skillsPage.schedules.save")}
+                    {scheduleDraft.id
+                      ? t("admin.skillsPage.schedules.update")
+                      : t("admin.skillsPage.schedules.save")}
                   </Button>
                 </div>
               </div>
@@ -5765,49 +8007,90 @@ export default function AdminSkills() {
                   <Label>{t("admin.skillsPage.schedules.fields.status")}</Label>
                   <Select
                     value={scheduleDraft.status}
-                    onValueChange={(value) => setScheduleDraft({ ...scheduleDraft, status: value as any })}
+                    onValueChange={value =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        status: value as any,
+                      })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="active">{t("admin.skillsPage.schedules.status.active")}</SelectItem>
-                      <SelectItem value="paused">{t("admin.skillsPage.schedules.status.paused")}</SelectItem>
-                      <SelectItem value="disabled">{t("admin.skillsPage.schedules.status.disabled")}</SelectItem>
+                      <SelectItem value="active">
+                        {t("admin.skillsPage.schedules.status.active")}
+                      </SelectItem>
+                      <SelectItem value="paused">
+                        {t("admin.skillsPage.schedules.status.paused")}
+                      </SelectItem>
+                      <SelectItem value="disabled">
+                        {t("admin.skillsPage.schedules.status.disabled")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.schedules.fields.scopeType")}</Label>
+                  <Label>
+                    {t("admin.skillsPage.schedules.fields.scopeType")}
+                  </Label>
                   <Select
                     value={scheduleDraft.scopeType}
-                    onValueChange={(value) => setScheduleDraft({ ...scheduleDraft, scopeType: value })}
+                    onValueChange={value =>
+                      setScheduleDraft({ ...scheduleDraft, scopeType: value })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all_skills">{t("admin.skillsPage.schedules.scope.allSkills")}</SelectItem>
-                      <SelectItem value="category">{t("admin.skillsPage.schedules.scope.category")}</SelectItem>
-                      <SelectItem value="execution_mode">{t("admin.skillsPage.schedules.scope.executionMode")}</SelectItem>
-                      <SelectItem value="genjs_candidates">{t("admin.skillsPage.schedules.scope.genjsCandidates")}</SelectItem>
+                      <SelectItem value="all_skills">
+                        {t("admin.skillsPage.schedules.scope.allSkills")}
+                      </SelectItem>
+                      <SelectItem value="category">
+                        {t("admin.skillsPage.schedules.scope.category")}
+                      </SelectItem>
+                      <SelectItem value="execution_mode">
+                        {t("admin.skillsPage.schedules.scope.executionMode")}
+                      </SelectItem>
+                      <SelectItem value="genjs_candidates">
+                        {t("admin.skillsPage.schedules.scope.genjsCandidates")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.schedules.fields.categoryFilter")}</Label>
+                  <Label>
+                    {t("admin.skillsPage.schedules.fields.categoryFilter")}
+                  </Label>
                   <Input
                     value={scheduleDraft.scopeCategory}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, scopeCategory: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.categoryFilter")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        scopeCategory: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.categoryFilter"
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>{t("admin.skillsPage.schedules.fields.executionModeFilter")}</Label>
+                  <Label>
+                    {t("admin.skillsPage.schedules.fields.executionModeFilter")}
+                  </Label>
                   <Input
                     value={scheduleDraft.scopeExecutionMode}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, scopeExecutionMode: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.executionModeFilter")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        scopeExecutionMode: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.executionModeFilter"
+                    )}
                   />
                 </div>
               </div>
@@ -5817,21 +8100,35 @@ export default function AdminSkills() {
                   <Label>{t("admin.skillsPage.schedules.fields.limit")}</Label>
                   <Input
                     value={scheduleDraft.limit}
-                    onChange={(e) => setScheduleDraft({ ...scheduleDraft, limit: e.target.value })}
-                    placeholder={t("admin.skillsPage.schedules.placeholders.limit")}
+                    onChange={e =>
+                      setScheduleDraft({
+                        ...scheduleDraft,
+                        limit: e.target.value,
+                      })
+                    }
+                    placeholder={t(
+                      "admin.skillsPage.schedules.placeholders.limit"
+                    )}
                   />
                 </div>
                 <div className="flex items-end">
                   <div className="flex items-center justify-between rounded-lg border bg-white/60 px-3 py-2 w-full">
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.schedules.genjsOnly.label")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.schedules.genjsOnly.label")}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
                         {t("admin.skillsPage.schedules.genjsOnly.help")}
                       </p>
                     </div>
                     <Switch
                       checked={scheduleDraft.genjsCandidatesOnly}
-                      onCheckedChange={(checked) => setScheduleDraft({ ...scheduleDraft, genjsCandidatesOnly: checked })}
+                      onCheckedChange={checked =>
+                        setScheduleDraft({
+                          ...scheduleDraft,
+                          genjsCandidatesOnly: checked,
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -5839,20 +8136,22 @@ export default function AdminSkills() {
                   {scheduleDraft.id && (
                     <Button
                       variant="outline"
-                      onClick={() => setScheduleDraft({
-                        id: null,
-                        name: "",
-                        description: "",
-                        cronExpression: "0 9 * * 1",
-                        timezone: "Asia/Bangkok",
-                        status: "active",
-                        scopeType: "all_skills",
-                        scopeCategory: "",
-                        scopeExecutionMode: "",
-                        genjsCandidatesOnly: false,
-                        limit: "100",
-                        policyJsonText: "{}",
-                      })}
+                      onClick={() =>
+                        setScheduleDraft({
+                          id: null,
+                          name: "",
+                          description: "",
+                          cronExpression: "0 9 * * 1",
+                          timezone: "Asia/Bangkok",
+                          status: "active",
+                          scopeType: "all_skills",
+                          scopeCategory: "",
+                          scopeExecutionMode: "",
+                          genjsCandidatesOnly: false,
+                          limit: "100",
+                          policyJsonText: "{}",
+                        })
+                      }
                     >
                       {t("admin.skillsPage.schedules.new")}
                     </Button>
@@ -5862,80 +8161,138 @@ export default function AdminSkills() {
 
               <Textarea
                 value={scheduleDraft.description}
-                onChange={(e) => setScheduleDraft({ ...scheduleDraft, description: e.target.value })}
+                onChange={e =>
+                  setScheduleDraft({
+                    ...scheduleDraft,
+                    description: e.target.value,
+                  })
+                }
                 rows={2}
-                placeholder={t("admin.skillsPage.schedules.placeholders.description")}
+                placeholder={t(
+                  "admin.skillsPage.schedules.placeholders.description"
+                )}
               />
 
               <Textarea
                 value={scheduleDraft.policyJsonText}
-                onChange={(e) => setScheduleDraft({ ...scheduleDraft, policyJsonText: e.target.value })}
+                onChange={e =>
+                  setScheduleDraft({
+                    ...scheduleDraft,
+                    policyJsonText: e.target.value,
+                  })
+                }
                 rows={4}
                 className="font-mono text-xs"
-                placeholder={t("admin.skillsPage.schedules.placeholders.policy")}
+                placeholder={t(
+                  "admin.skillsPage.schedules.placeholders.policy"
+                )}
               />
 
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.name")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.status")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.cron")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.scope")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.timezone")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.nextRun")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.updated")}</TableHead>
-                    <TableHead>{t("admin.skillsPage.schedules.headers.actions")}</TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.name")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.status")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.cron")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.scope")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.timezone")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.nextRun")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.updated")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.schedules.headers.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {!maintenanceSchedules?.length ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center text-muted-foreground">
+                      <TableCell
+                        colSpan={8}
+                        className="text-center text-muted-foreground"
+                      >
                         {t("admin.skillsPage.schedules.empty")}
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ((maintenanceSchedules || []) as any[]).map((schedule: MaintenanceSchedule) => (
-                      <TableRow key={schedule.id}>
-                        <TableCell>
-                          <div className="font-medium">{schedule.name}</div>
-                          {schedule.description && (
-                            <div className="text-xs text-muted-foreground">{schedule.description}</div>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{schedule.status}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{schedule.cronExpression || "-"}</TableCell>
-                        <TableCell>{schedule.scopeType}</TableCell>
-                        <TableCell>{schedule.timezone}</TableCell>
-                        <TableCell>{schedule.nextRunAt ? new Date(schedule.nextRunAt).toLocaleString() : "-"}</TableCell>
-                        <TableCell>{new Date(schedule.updatedAt).toLocaleString()}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setScheduleDraft(buildScheduleDraftFromExisting(schedule))}
-                            >
-                              {t("admin.skillsPage.schedules.edit")}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => updateMaintenanceScheduleMutation.mutate({
-                                id: schedule.id,
-                                status: schedule.status === "active" ? "paused" : "active",
-                              })}
-                              disabled={updateMaintenanceScheduleMutation.isPending}
-                            >
-                              {schedule.status === "active" ? t("admin.skillsPage.schedules.pause") : t("admin.skillsPage.schedules.activate")}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    ((maintenanceSchedules || []) as any[]).map(
+                      (schedule: MaintenanceSchedule) => (
+                        <TableRow key={schedule.id}>
+                          <TableCell>
+                            <div className="font-medium">{schedule.name}</div>
+                            {schedule.description && (
+                              <div className="text-xs text-muted-foreground">
+                                {schedule.description}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{schedule.status}</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {schedule.cronExpression || "-"}
+                          </TableCell>
+                          <TableCell>{schedule.scopeType}</TableCell>
+                          <TableCell>{schedule.timezone}</TableCell>
+                          <TableCell>
+                            {schedule.nextRunAt
+                              ? new Date(schedule.nextRunAt).toLocaleString()
+                              : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(schedule.updatedAt).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  setScheduleDraft(
+                                    buildScheduleDraftFromExisting(schedule)
+                                  )
+                                }
+                              >
+                                {t("admin.skillsPage.schedules.edit")}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  updateMaintenanceScheduleMutation.mutate({
+                                    id: schedule.id,
+                                    status:
+                                      schedule.status === "active"
+                                        ? "paused"
+                                        : "active",
+                                  })
+                                }
+                                disabled={
+                                  updateMaintenanceScheduleMutation.isPending
+                                }
+                              >
+                                {schedule.status === "active"
+                                  ? t("admin.skillsPage.schedules.pause")
+                                  : t("admin.skillsPage.schedules.activate")}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    )
                   )}
                 </TableBody>
               </Table>
@@ -5951,85 +8308,101 @@ export default function AdminSkills() {
               description={t("admin.skillsPage.pending.description")}
               leading={<Clock className="h-5 w-5 text-slate-500" />}
             >
-                <Table>
-                  <TableHeader>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>
+                      {t("admin.skillsPage.pending.headers.name")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.pending.headers.owner")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.pending.headers.category")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.pending.headers.created")}
+                    </TableHead>
+                    <TableHead>
+                      {t("admin.skillsPage.pending.headers.actions")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!pendingSkills || pendingSkills.length === 0 ? (
                     <TableRow>
-                      <TableHead>{t("admin.skillsPage.pending.headers.name")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.pending.headers.owner")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.pending.headers.category")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.pending.headers.created")}</TableHead>
-                      <TableHead>{t("admin.skillsPage.pending.headers.actions")}</TableHead>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-muted-foreground"
+                      >
+                        {t("admin.skillsPage.pending.empty")}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(!pendingSkills || pendingSkills.length === 0) ? (
-                      <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground">
-                          {t("admin.skillsPage.pending.empty")}
+                  ) : (
+                    pendingSkills.map((skill: any) => (
+                      <TableRow key={skill.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getCategoryIcon(skill.category)}
+                            <div>
+                              <div className="font-medium">{skill.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {skill.slug}
+                              </div>
+                              {skill.description && (
+                                <div className="text-xs text-muted-foreground mt-0.5 max-w-[300px] truncate">
+                                  {skill.description}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {skill.ownerName ||
+                              t("admin.skillsPage.pending.unknownOwner")}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {categoryLabels[skill.category] || skill.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(skill.createdAt).toLocaleDateString()}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 border-green-300 hover:bg-green-50"
+                              onClick={() =>
+                                approveMutation.mutate({ skillId: skill.id })
+                              }
+                              disabled={approveMutation.isPending}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" />
+                              {t("admin.skillsPage.pending.approve")}
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 border-red-300 hover:bg-red-50"
+                              onClick={() => setRejectingSkill(skill)}
+                            >
+                              <XCircle className="mr-1 h-3 w-3" />
+                              {t("admin.skillsPage.pending.reject")}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      pendingSkills.map((skill: any) => (
-                        <TableRow key={skill.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getCategoryIcon(skill.category)}
-                              <div>
-                                <div className="font-medium">{skill.name}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {skill.slug}
-                                </div>
-                                {skill.description && (
-                                  <div className="text-xs text-muted-foreground mt-0.5 max-w-[300px] truncate">
-                                    {skill.description}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm text-muted-foreground">
-                              {skill.ownerName || t("admin.skillsPage.pending.unknownOwner")}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {categoryLabels[skill.category] || skill.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <span className="text-sm text-muted-foreground">
-                              {new Date(skill.createdAt).toLocaleDateString()}
-                            </span>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-green-600 border-green-300 hover:bg-green-50"
-                                onClick={() => approveMutation.mutate({ skillId: skill.id })}
-                                disabled={approveMutation.isPending}
-                              >
-                                <CheckCircle2 className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.pending.approve")}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-300 hover:bg-red-50"
-                                onClick={() => setRejectingSkill(skill)}
-                              >
-                                <XCircle className="mr-1 h-3 w-3" />
-                                {t("admin.skillsPage.pending.reject")}
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </DashboardCard>
           </TabsContent>
         )}
@@ -6058,28 +8431,48 @@ export default function AdminSkills() {
       />
 
       {/* Reject Skill Dialog */}
-      <Dialog open={!!rejectingSkill} onOpenChange={() => { setRejectingSkill(null); setRejectReason(""); }}>
+      <Dialog
+        open={!!rejectingSkill}
+        onOpenChange={() => {
+          setRejectingSkill(null);
+          setRejectReason("");
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("admin.skillsPage.rejectDialog.title")}</DialogTitle>
+            <DialogTitle>
+              {t("admin.skillsPage.rejectDialog.title")}
+            </DialogTitle>
             <DialogDescription>
-              {t("admin.skillsPage.rejectDialog.description", { name: rejectingSkill?.name || "" })}
+              {t("admin.skillsPage.rejectDialog.description", {
+                name: rejectingSkill?.name || "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="reject-reason">{t("admin.skillsPage.rejectDialog.reasonLabel")}</Label>
+              <Label htmlFor="reject-reason">
+                {t("admin.skillsPage.rejectDialog.reasonLabel")}
+              </Label>
               <Textarea
                 id="reject-reason"
-                placeholder={t("admin.skillsPage.rejectDialog.reasonPlaceholder")}
+                placeholder={t(
+                  "admin.skillsPage.rejectDialog.reasonPlaceholder"
+                )}
                 value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
+                onChange={e => setRejectReason(e.target.value)}
                 rows={4}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setRejectingSkill(null); setRejectReason(""); }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRejectingSkill(null);
+                setRejectReason("");
+              }}
+            >
               {t("common.cancel")}
             </Button>
             <Button
@@ -6094,22 +8487,34 @@ export default function AdminSkills() {
               }}
               disabled={!rejectReason.trim() || rejectMutation.isPending}
             >
-              {rejectMutation.isPending ? t("admin.skillsPage.rejectDialog.rejecting") : t("admin.skillsPage.rejectDialog.reject")}
+              {rejectMutation.isPending
+                ? t("admin.skillsPage.rejectDialog.rejecting")
+                : t("admin.skillsPage.rejectDialog.reject")}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!previewProposal} onOpenChange={() => setPreviewProposal(null)}>
+      <Dialog
+        open={!!previewProposal}
+        onOpenChange={() => setPreviewProposal(null)}
+      >
         <DialogContent className="sm:max-w-4xl">
           <DialogHeader>
-            <DialogTitle>{t("admin.skillsPage.proposalPreview.title")}</DialogTitle>
+            <DialogTitle>
+              {t("admin.skillsPage.proposalPreview.title")}
+            </DialogTitle>
             <DialogDescription>
               {previewProposal?.skillName} / {previewProposal?.diffFile}
             </DialogDescription>
           </DialogHeader>
           {isProposalPreviewLoading ? (
-            <div className="flex min-h-[240px] items-center justify-center rounded-lg border bg-muted/20" role="status" aria-live="polite" aria-busy="true">
+            <div
+              className="flex min-h-[240px] items-center justify-center rounded-lg border bg-muted/20"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t("admin.skillsPage.proposalPreview.loading")}
@@ -6139,14 +8544,20 @@ export default function AdminSkills() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!pendingMaintenanceApply} onOpenChange={() => setPendingMaintenanceApply(null)}>
+      <Dialog
+        open={!!pendingMaintenanceApply}
+        onOpenChange={() => setPendingMaintenanceApply(null)}
+      >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              {pendingMaintenanceApply?.isAutoApplySafe ? t("admin.skillsPage.maintenanceApply.applyUpgrade") : t("admin.skillsPage.maintenanceApply.generateProposal")}
+              {pendingMaintenanceApply?.isAutoApplySafe
+                ? t("admin.skillsPage.maintenanceApply.applyUpgrade")
+                : t("admin.skillsPage.maintenanceApply.generateProposal")}
             </DialogTitle>
             <DialogDescription>
-              {pendingMaintenanceApply?.skillName} • {pendingMaintenanceApply?.recommendationTitle}
+              {pendingMaintenanceApply?.skillName} •{" "}
+              {pendingMaintenanceApply?.recommendationTitle}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground">
@@ -6158,34 +8569,42 @@ export default function AdminSkills() {
                   {t("admin.skillsPage.maintenanceApply.unsafeDescription")}
                 </p>
                 {pendingMaintenanceApply?.hasProposalReady && (
-                  <p>
-                    {t("admin.skillsPage.maintenanceApply.hasProposal")}
-                  </p>
+                  <p>{t("admin.skillsPage.maintenanceApply.hasProposal")}</p>
                 )}
               </>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingMaintenanceApply(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setPendingMaintenanceApply(null)}
+            >
               {t("common.cancel")}
             </Button>
-            {pendingMaintenanceApply?.hasProposalReady && !pendingMaintenanceApply?.isAutoApplySafe && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setPendingMaintenanceApply(null);
-                  setActiveTab("proposals");
-                }}
-              >
-                {t("admin.skillsPage.maintenanceApply.openProposals")}
-              </Button>
-            )}
+            {pendingMaintenanceApply?.hasProposalReady &&
+              !pendingMaintenanceApply?.isAutoApplySafe && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setPendingMaintenanceApply(null);
+                    setActiveTab("proposals");
+                  }}
+                >
+                  {t("admin.skillsPage.maintenanceApply.openProposals")}
+                </Button>
+              )}
             {pendingMaintenanceApply && (
               <Button
-                onClick={() => applyUpgradeMutation.mutate({ recommendationId: pendingMaintenanceApply.recommendationId })}
+                onClick={() =>
+                  applyUpgradeMutation.mutate({
+                    recommendationId: pendingMaintenanceApply.recommendationId,
+                  })
+                }
                 disabled={applyUpgradeMutation.isPending}
               >
-                {pendingMaintenanceApply.isAutoApplySafe ? t("admin.skillsPage.maintenanceApply.applyNow") : t("admin.skillsPage.maintenanceApply.generateProposal")}
+                {pendingMaintenanceApply.isAutoApplySafe
+                  ? t("admin.skillsPage.maintenanceApply.applyNow")
+                  : t("admin.skillsPage.maintenanceApply.generateProposal")}
               </Button>
             )}
           </DialogFooter>
@@ -6194,7 +8613,7 @@ export default function AdminSkills() {
 
       <Dialog
         open={!!selectedRecommendationId}
-        onOpenChange={(open) => {
+        onOpenChange={open => {
           if (!open) {
             setSelectedRecommendationId(null);
             setSelectedRecommendationViewMode("advice");
@@ -6209,14 +8628,20 @@ export default function AdminSkills() {
                 : t("admin.skillsPage.advice.title")}
             </DialogTitle>
             <DialogDescription>
-              {selectedRecommendationDetail?.skill?.name || t("admin.skillsPage.advice.selectedSkill")}
+              {selectedRecommendationDetail?.skill?.name ||
+                t("admin.skillsPage.advice.selectedSkill")}
               {selectedRecommendationDetail?.recommendation?.recommendationType
                 ? `• ${selectedRecommendationDetail.recommendation.recommendationType}`
                 : ""}
             </DialogDescription>
           </DialogHeader>
           {isRecommendationDetailLoading ? (
-            <div className="flex min-h-[220px] items-center justify-center rounded-lg border bg-muted/20" role="status" aria-live="polite" aria-busy="true">
+            <div
+              className="flex min-h-[220px] items-center justify-center rounded-lg border bg-muted/20"
+              role="status"
+              aria-live="polite"
+              aria-busy="true"
+            >
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 {t("admin.skillsPage.advice.loading")}
@@ -6235,106 +8660,178 @@ export default function AdminSkills() {
                       latestRun: selectedRecommendationDetail.runs?.[0]
                         ? {
                             id: selectedRecommendationDetail.runs[0].id,
-                            runType: selectedRecommendationDetail.runs[0].runType,
+                            runType:
+                              selectedRecommendationDetail.runs[0].runType,
                             status: selectedRecommendationDetail.runs[0].status,
-                            summary: selectedRecommendationDetail.runs[0].summary,
-                            errorMessage: selectedRecommendationDetail.runs[0].errorMessage,
-                            verificationJson: (selectedRecommendationDetail.runs[0].verificationJson as Record<string, unknown> | null) ?? null,
-                            logsJson: (selectedRecommendationDetail.runs[0].logsJson as Record<string, unknown> | null) ?? null,
-                            startedAt: selectedRecommendationDetail.runs[0].startedAt ? new Date(selectedRecommendationDetail.runs[0].startedAt).toISOString() : null,
-                            endedAt: selectedRecommendationDetail.runs[0].endedAt ? new Date(selectedRecommendationDetail.runs[0].endedAt).toISOString() : null,
-                            createdAt: new Date(selectedRecommendationDetail.runs[0].createdAt).toISOString(),
-                            updatedAt: new Date(selectedRecommendationDetail.runs[0].updatedAt).toISOString(),
+                            summary:
+                              selectedRecommendationDetail.runs[0].summary,
+                            errorMessage:
+                              selectedRecommendationDetail.runs[0].errorMessage,
+                            verificationJson:
+                              (selectedRecommendationDetail.runs[0]
+                                .verificationJson as Record<
+                                string,
+                                unknown
+                              > | null) ?? null,
+                            logsJson:
+                              (selectedRecommendationDetail.runs[0]
+                                .logsJson as Record<string, unknown> | null) ??
+                              null,
+                            startedAt: selectedRecommendationDetail.runs[0]
+                              .startedAt
+                              ? new Date(
+                                  selectedRecommendationDetail.runs[0].startedAt
+                                ).toISOString()
+                              : null,
+                            endedAt: selectedRecommendationDetail.runs[0]
+                              .endedAt
+                              ? new Date(
+                                  selectedRecommendationDetail.runs[0].endedAt
+                                ).toISOString()
+                              : null,
+                            createdAt: new Date(
+                              selectedRecommendationDetail.runs[0].createdAt
+                            ).toISOString(),
+                            updatedAt: new Date(
+                              selectedRecommendationDetail.runs[0].updatedAt
+                            ).toISOString(),
                           }
                         : null,
-                    } as unknown as LegacyUpgradeQueueItem) || t("admin.skillsPage.legacyQueue.noReason")}
+                    } as unknown as LegacyUpgradeQueueItem) ||
+                      t("admin.skillsPage.legacyQueue.noReason")}
                   </div>
                 </div>
               )}
 
-              {selectedRecommendationDetail.skill?.slug && latestProposalBySkillName.has(selectedRecommendationDetail.skill.slug) && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm">
-                  {t("admin.skillsPage.advice.proposalAvailable")}
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        const proposal = latestProposalBySkillName.get(selectedRecommendationDetail.skill!.slug)!;
-                        setPreviewProposal({
-                          skillName: proposal.skillName,
-                          diffFile: proposal.diffFile,
-                          recommendationId: selectedRecommendationDetail.recommendation.id,
-                        });
-                      }}
+              {selectedRecommendationDetail.skill?.slug &&
+                latestProposalBySkillName.has(
+                  selectedRecommendationDetail.skill.slug
+                ) && (
+                  <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-sm">
+                    {t("admin.skillsPage.advice.proposalAvailable")}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const proposal = latestProposalBySkillName.get(
+                            selectedRecommendationDetail.skill!.slug
+                          )!;
+                          setPreviewProposal({
+                            skillName: proposal.skillName,
+                            diffFile: proposal.diffFile,
+                            recommendationId:
+                              selectedRecommendationDetail.recommendation.id,
+                          });
+                        }}
                       >
-                      {t("admin.skillsPage.advice.previewProposal")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const proposal = latestProposalBySkillName.get(selectedRecommendationDetail.skill!.slug)!;
-                        applyProposalMutation.mutate({
-                          skillName: proposal.skillName,
-                          diffFile: proposal.diffFile,
-                          recommendationId: selectedRecommendationDetail.recommendation.id,
-                        });
-                      }}
-                      disabled={applyProposalMutation.isPending}
-                    >
-                      {t("admin.skillsPage.advice.applyProposal")}
-                    </Button>
+                        {t("admin.skillsPage.advice.previewProposal")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const proposal = latestProposalBySkillName.get(
+                            selectedRecommendationDetail.skill!.slug
+                          )!;
+                          applyProposalMutation.mutate({
+                            skillName: proposal.skillName,
+                            diffFile: proposal.diffFile,
+                            recommendationId:
+                              selectedRecommendationDetail.recommendation.id,
+                          });
+                        }}
+                        disabled={applyProposalMutation.isPending}
+                      >
+                        {t("admin.skillsPage.advice.applyProposal")}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">{t("admin.skillsPage.advice.risk")}</div>
-                  <div className="font-medium">{selectedRecommendationDetail.recommendation.riskLevel}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("admin.skillsPage.advice.risk")}
+                  </div>
+                  <div className="font-medium">
+                    {selectedRecommendationDetail.recommendation.riskLevel}
+                  </div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">{t("admin.skillsPage.advice.compatibility")}</div>
-                  <div className="font-medium">{selectedRecommendationDetail.recommendation.compatibilityStatus}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("admin.skillsPage.advice.compatibility")}
+                  </div>
+                  <div className="font-medium">
+                    {
+                      selectedRecommendationDetail.recommendation
+                        .compatibilityStatus
+                    }
+                  </div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">{t("admin.skillsPage.advice.qualityScore")}</div>
-                  <div className="font-medium">{selectedRecommendationDetail.recommendation.qualityScore ?? "-"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("admin.skillsPage.advice.qualityScore")}
+                  </div>
+                  <div className="font-medium">
+                    {selectedRecommendationDetail.recommendation.qualityScore ??
+                      "-"}
+                  </div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">{t("admin.skillsPage.advice.currentRuntime")}</div>
-                  <div className="font-medium">{selectedRecommendationDetail.recommendation.currentRuntime || "-"}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {t("admin.skillsPage.advice.currentRuntime")}
+                  </div>
+                  <div className="font-medium">
+                    {selectedRecommendationDetail.recommendation
+                      .currentRuntime || "-"}
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>{t("admin.skillsPage.advice.summary")}</Label>
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                  {selectedRecommendationDetail.recommendation.summary || t("admin.skillsPage.advice.noSummary")}
+                  {selectedRecommendationDetail.recommendation.summary ||
+                    t("admin.skillsPage.advice.noSummary")}
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label>{t("admin.skillsPage.advice.affectedFiles")}</Label>
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-                  {Array.isArray(selectedRecommendationDetail.recommendation.recommendationJson?.affectedFiles)
-                    ? selectedRecommendationDetail.recommendation.recommendationJson.affectedFiles.join(", ")
+                  {Array.isArray(
+                    selectedRecommendationDetail.recommendation
+                      .recommendationJson?.affectedFiles
+                  )
+                    ? selectedRecommendationDetail.recommendation.recommendationJson.affectedFiles.join(
+                        ", "
+                      )
                     : t("admin.skillsPage.advice.noFileInventory")}
                 </div>
               </div>
 
-              {selectedRecommendationDetail.recommendation.recommendationType === "media-studio-auto-learning" && (
+              {selectedRecommendationDetail.recommendation
+                .recommendationType === "media-studio-auto-learning" && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>
                       {t("admin.skillsPage.maintenance.mediaStudioIssues")}
                     </Label>
                     <div className="space-y-2 rounded-lg border bg-sky-50/40 p-3">
-                      {getMediaStudioRecommendationIssues(selectedRecommendationDetail.recommendation as MaintenanceRecommendation).map((issue: any, index: number) => (
-                        <div key={issue?.id || index} className="rounded-md border bg-white p-2 text-sm">
+                      {getMediaStudioRecommendationIssues(
+                        selectedRecommendationDetail.recommendation as MaintenanceRecommendation
+                      ).map((issue: any, index: number) => (
+                        <div
+                          key={issue?.id || index}
+                          className="rounded-md border bg-white p-2 text-sm"
+                        >
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">{issue?.severity || "-"}</Badge>
-                            <span className="font-medium">{issue?.title || "-"}</span>
+                            <Badge variant="outline">
+                              {issue?.severity || "-"}
+                            </Badge>
+                            <span className="font-medium">
+                              {issue?.title || "-"}
+                            </span>
                           </div>
                           {issue?.recommendation && (
                             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -6350,11 +8847,20 @@ export default function AdminSkills() {
                       {t("admin.skillsPage.maintenance.mediaStudioChanges")}
                     </Label>
                     <div className="space-y-2 rounded-lg border bg-emerald-50/40 p-3">
-                      {getMediaStudioRecommendationChanges(selectedRecommendationDetail.recommendation as MaintenanceRecommendation).map((change: any, index: number) => (
-                        <div key={`${change?.title || "change"}-${index}`} className="rounded-md border bg-white p-2 text-sm">
+                      {getMediaStudioRecommendationChanges(
+                        selectedRecommendationDetail.recommendation as MaintenanceRecommendation
+                      ).map((change: any, index: number) => (
+                        <div
+                          key={`${change?.title || "change"}-${index}`}
+                          className="rounded-md border bg-white p-2 text-sm"
+                        >
                           <div className="flex flex-wrap items-center gap-2">
-                            <Badge variant="outline">{change?.risk || "-"}</Badge>
-                            <span className="font-medium">{change?.title || "-"}</span>
+                            <Badge variant="outline">
+                              {change?.risk || "-"}
+                            </Badge>
+                            <span className="font-medium">
+                              {change?.title || "-"}
+                            </span>
                           </div>
                           {change?.reason && (
                             <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -6362,7 +8868,10 @@ export default function AdminSkills() {
                             </p>
                           )}
                           <p className="mt-1 text-[11px] text-slate-500">
-                            {change?.targetFile || "-"}{change?.targetSection ? ` / ${change.targetSection}` : ""}
+                            {change?.targetFile || "-"}
+                            {change?.targetSection
+                              ? ` / ${change.targetSection}`
+                              : ""}
                           </p>
                         </div>
                       ))}
@@ -6372,13 +8881,21 @@ export default function AdminSkills() {
               )}
 
               <div className="space-y-2">
-                <Label>{t("admin.skillsPage.advice.snapshotVerification")}</Label>
+                <Label>
+                  {t("admin.skillsPage.advice.snapshotVerification")}
+                </Label>
                 <Textarea
-                  value={JSON.stringify({
-                    recommendation: selectedRecommendationDetail.recommendation,
-                    latestSnapshot: selectedRecommendationDetail.snapshots?.[0] || null,
-                    recentRuns: selectedRecommendationDetail.runs || [],
-                  }, null, 2)}
+                  value={JSON.stringify(
+                    {
+                      recommendation:
+                        selectedRecommendationDetail.recommendation,
+                      latestSnapshot:
+                        selectedRecommendationDetail.snapshots?.[0] || null,
+                      recentRuns: selectedRecommendationDetail.runs || [],
+                    },
+                    null,
+                    2
+                  )}
                   readOnly
                   rows={16}
                   className="font-mono text-xs"
@@ -6386,26 +8903,43 @@ export default function AdminSkills() {
               </div>
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">{t("admin.skillsPage.advice.loading")}</div>
+            <div className="text-sm text-muted-foreground">
+              {t("admin.skillsPage.advice.loading")}
+            </div>
           )}
           <DialogFooter>
             {selectedRecommendationDetail?.recommendation && (
               <>
                 <Button
                   variant="outline"
-                  onClick={() => dismissRecommendationMutation.mutate({ recommendationId: selectedRecommendationDetail.recommendation.id })}
+                  onClick={() =>
+                    dismissRecommendationMutation.mutate({
+                      recommendationId:
+                        selectedRecommendationDetail.recommendation.id,
+                    })
+                  }
                   disabled={dismissRecommendationMutation.isPending}
                 >
                   {t("common.dismiss")}
                 </Button>
                 <Button
-                  onClick={() => requestRecommendationApply(
-                    selectedRecommendationDetail.recommendation as MaintenanceRecommendation,
-                    selectedRecommendationDetail.skill?.name || t("admin.skillsPage.advice.selectedSkill"),
-                  )}
-                  disabled={selectedRecommendationDetail.recommendation.status === "applied" || applyUpgradeMutation.isPending}
+                  onClick={() =>
+                    requestRecommendationApply(
+                      selectedRecommendationDetail.recommendation as MaintenanceRecommendation,
+                      selectedRecommendationDetail.skill?.name ||
+                        t("admin.skillsPage.advice.selectedSkill")
+                    )
+                  }
+                  disabled={
+                    selectedRecommendationDetail.recommendation.status ===
+                      "applied" || applyUpgradeMutation.isPending
+                  }
                 >
-                  {isMaintenanceRecommendationEffectiveAutoApplySafe(selectedRecommendationDetail.recommendation as MaintenanceRecommendation) ? t("admin.skillsPage.maintenanceApply.applyUpgrade") : t("admin.skillsPage.maintenanceApply.generateProposal")}
+                  {isMaintenanceRecommendationEffectiveAutoApplySafe(
+                    selectedRecommendationDetail.recommendation as MaintenanceRecommendation
+                  )
+                    ? t("admin.skillsPage.maintenanceApply.applyUpgrade")
+                    : t("admin.skillsPage.maintenanceApply.generateProposal")}
                 </Button>
               </>
             )}
@@ -6414,15 +8948,23 @@ export default function AdminSkills() {
       </Dialog>
 
       {/* Create Skill Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
-        setIsCreateDialogOpen(open);
-        if (!open) {
-          setCreateDialogStep(1);
-        }
-      }}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto" onKeyDown={handleCreateDialogKeyDown}>
+      <Dialog
+        open={isCreateDialogOpen}
+        onOpenChange={open => {
+          setIsCreateDialogOpen(open);
+          if (!open) {
+            setCreateDialogStep(1);
+          }
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-3xl max-h-[90vh] overflow-y-auto"
+          onKeyDown={handleCreateDialogKeyDown}
+        >
           <DialogHeader>
-            <DialogTitle>{t("admin.skillsPage.createDialog.title")}</DialogTitle>
+            <DialogTitle>
+              {t("admin.skillsPage.createDialog.title")}
+            </DialogTitle>
             <DialogDescription>
               {t("admin.skillsPage.createDialog.description")}
             </DialogDescription>
@@ -6433,7 +8975,9 @@ export default function AdminSkills() {
                 type="button"
                 className={cn(
                   "flex-1 rounded-xl px-4 py-2 transition-colors",
-                  createDialogStep === 1 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                  createDialogStep === 1
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
                 )}
                 onClick={() => setCreateDialogStep(1)}
               >
@@ -6443,14 +8987,19 @@ export default function AdminSkills() {
                 type="button"
                 className={cn(
                   "flex-1 rounded-xl px-4 py-2 transition-colors",
-                  createDialogStep === 2 ? "bg-background text-foreground shadow-sm" : "text-muted-foreground",
+                  createDialogStep === 2
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
                 )}
                 onClick={() => setCreateDialogStep(2)}
               >
                 2. Preview & Advanced
               </button>
               <div className="ml-auto px-2 text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                {t("admin.skillsPage.createDialog.stepIndicator", { current: createDialogStep, total: 2 })}
+                {t("admin.skillsPage.createDialog.stepIndicator", {
+                  current: createDialogStep,
+                  total: 2,
+                })}
               </div>
             </div>
 
@@ -6458,51 +9007,88 @@ export default function AdminSkills() {
               <div className="space-y-5 rounded-2xl border bg-background/80 p-5 shadow-sm">
                 <div className="grid gap-5 md:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="slug">{t("admin.skillsPage.fields.slug")}</Label>
+                    <Label htmlFor="slug">
+                      {t("admin.skillsPage.fields.slug")}
+                    </Label>
                     <Input
                       id="slug"
-                      placeholder={t("admin.skillsPage.createDialog.slugPlaceholder")}
+                      placeholder={t(
+                        "admin.skillsPage.createDialog.slugPlaceholder"
+                      )}
                       value={newSkillData.slug}
                       ref={createSlugInputRef}
-                      onChange={(e) => {
-                        const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                      onChange={e => {
+                        const slug = e.target.value
+                          .toLowerCase()
+                          .replace(/[^a-z0-9-]/g, "-");
                         setNewSkillData({ ...newSkillData, slug });
                       }}
                     />
-                    <p className={cn(
-                      "text-xs",
-                      createSkillBasicIssues.some((issue) => issue.startsWith("Slug")) ? "text-amber-700" : "text-muted-foreground",
-                    )}>
-                      {createSkillBasicIssues.find((issue) => issue.startsWith("Slug")) || t("admin.skillsPage.createDialog.slugHelp")}
+                    <p
+                      className={cn(
+                        "text-xs",
+                        createSkillBasicIssues.some(issue =>
+                          issue.startsWith("Slug")
+                        )
+                          ? "text-amber-700"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {createSkillBasicIssues.find(issue =>
+                        issue.startsWith("Slug")
+                      ) || t("admin.skillsPage.createDialog.slugHelp")}
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="name">{t("admin.skillsPage.fields.name")}</Label>
+                    <Label htmlFor="name">
+                      {t("admin.skillsPage.fields.name")}
+                    </Label>
                     <Input
                       id="name"
-                      placeholder={t("admin.skillsPage.createDialog.namePlaceholder")}
+                      placeholder={t(
+                        "admin.skillsPage.createDialog.namePlaceholder"
+                      )}
                       value={newSkillData.name}
-                      onChange={(e) =>
-                        setNewSkillData({ ...newSkillData, name: e.target.value })
+                      onChange={e =>
+                        setNewSkillData({
+                          ...newSkillData,
+                          name: e.target.value,
+                        })
                       }
                     />
-                    <p className={cn(
-                      "text-xs",
-                      createSkillBasicIssues.some((issue) => issue.startsWith("Name")) ? "text-amber-700" : "text-muted-foreground",
-                    )}>
-                      {createSkillBasicIssues.find((issue) => issue.startsWith("Name")) || "This becomes the display name shown in the registry."}
+                    <p
+                      className={cn(
+                        "text-xs",
+                        createSkillBasicIssues.some(issue =>
+                          issue.startsWith("Name")
+                        )
+                          ? "text-amber-700"
+                          : "text-muted-foreground"
+                      )}
+                    >
+                      {createSkillBasicIssues.find(issue =>
+                        issue.startsWith("Name")
+                      ) ||
+                        "This becomes the display name shown in the registry."}
                     </p>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="description">{t("admin.skillsPage.fields.description")}</Label>
+                  <Label htmlFor="description">
+                    {t("admin.skillsPage.fields.description")}
+                  </Label>
                   <Input
                     id="description"
-                    placeholder={t("admin.skillsPage.createDialog.descriptionPlaceholder")}
+                    placeholder={t(
+                      "admin.skillsPage.createDialog.descriptionPlaceholder"
+                    )}
                     value={newSkillData.description}
-                    onChange={(e) =>
-                      setNewSkillData({ ...newSkillData, description: e.target.value })
+                    onChange={e =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        description: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -6510,30 +9096,48 @@ export default function AdminSkills() {
                 <div className="rounded-2xl border bg-muted/20 p-4 space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label>{t("admin.skillsPage.createDialog.bundleTypeLabel")}</Label>
+                      <Label>
+                        {t("admin.skillsPage.createDialog.bundleTypeLabel")}
+                      </Label>
                       <p className="text-xs text-muted-foreground">
                         {t("admin.skillsPage.createDialog.nativeDefaultHelp")}
                       </p>
                     </div>
-                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                    >
                       Default
                     </Badge>
                   </div>
                   <Select
                     value={newSkillData.bundleType}
-                    onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleType: value as "native" | "legacy" })}
+                    onValueChange={value =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        bundleType: value as "native" | "legacy",
+                      })
+                    }
                   >
                     <SelectTrigger className="w-full max-w-xs min-w-0 overflow-hidden">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="native">Native bundle (recommended)</SelectItem>
-                      <SelectItem value="legacy">Legacy DB-only skill</SelectItem>
+                      <SelectItem value="native">
+                        Native bundle (recommended)
+                      </SelectItem>
+                      <SelectItem value="legacy">
+                        Legacy DB-only skill
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   <div className="rounded-xl bg-background/80 p-3 text-xs text-muted-foreground">
-                    <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.nativeScaffoldHelp")}</p>
-                    <p className="mt-1">{t("admin.skillsPage.createDialog.enterContinueHelp")}</p>
+                    <p className="font-medium text-foreground">
+                      {t("admin.skillsPage.createDialog.nativeScaffoldHelp")}
+                    </p>
+                    <p className="mt-1">
+                      {t("admin.skillsPage.createDialog.enterContinueHelp")}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -6544,12 +9148,18 @@ export default function AdminSkills() {
                 <div className="rounded-2xl border bg-background/80 p-5 space-y-4 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <Label className="text-base font-semibold">{t("admin.skillsPage.createDialog.stepTwoTitle")}</Label>
+                      <Label className="text-base font-semibold">
+                        {t("admin.skillsPage.createDialog.stepTwoTitle")}
+                      </Label>
                       <p className="text-sm text-muted-foreground">
-                        Review the scaffold and tune advanced settings before creating the skill.
+                        Review the scaffold and tune advanced settings before
+                        creating the skill.
                       </p>
                     </div>
-                    <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                    >
                       Ready
                     </Badge>
                   </div>
@@ -6558,48 +9168,68 @@ export default function AdminSkills() {
                       <Label>{t("admin.skillsPage.fields.category")}</Label>
                       <Select
                         value={newSkillData.category}
-                        onValueChange={(value) => {
-                          const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
-                            value,
-                            newSkillData.executionMode,
-                          )
-                            ? newSkillData.executionMode
-                            : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
-                          setNewSkillData(applySandboxDefaultsToNewSkill({
-                            ...newSkillData,
-                            category: value,
-                          }, nextExecutionMode));
+                        onValueChange={value => {
+                          const nextExecutionMode =
+                            isExecutionModeCompatibleWithSkillCategory(
+                              value,
+                              newSkillData.executionMode
+                            )
+                              ? newSkillData.executionMode
+                              : getRecommendedExecutionModeForSkillCategory(
+                                  value
+                                ) || "llm-only";
+                          setNewSkillData(
+                            applySandboxDefaultsToNewSkill(
+                              {
+                                ...newSkillData,
+                                category: value,
+                              },
+                              nextExecutionMode
+                            )
+                          );
                         }}
                       >
                         <SelectTrigger className="w-full min-w-0 overflow-hidden">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(categoryLabels).map(([key, label]) => (
-                            <SelectItem key={key} value={key}>
-                              {label}
-                            </SelectItem>
-                          ))}
+                          {Object.entries(categoryLabels).map(
+                            ([key, label]) => (
+                              <SelectItem key={key} value={key}>
+                                {label}
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        This changes the allowed runtime modes and default sandbox settings.
+                        This changes the allowed runtime modes and default
+                        sandbox settings.
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
+                      <Label>
+                        {t("admin.skillsPage.fields.executionMode")}
+                      </Label>
                       <Select
                         value={newSkillData.executionMode}
-                        onValueChange={(value) =>
-                          setNewSkillData(applySandboxDefaultsToNewSkill(newSkillData, value as SkillExecutionMode))
+                        onValueChange={value =>
+                          setNewSkillData(
+                            applySandboxDefaultsToNewSkill(
+                              newSkillData,
+                              value as SkillExecutionMode
+                            )
+                          )
                         }
                       >
                         <SelectTrigger className="w-full min-w-0 overflow-hidden">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {getAllowedExecutionModesForSkillCategory(newSkillData.category).map((mode) => (
+                          {getAllowedExecutionModesForSkillCategory(
+                            newSkillData.category
+                          ).map(mode => (
                             <SelectItem key={mode} value={mode}>
                               {executionModeLabels[mode]}
                             </SelectItem>
@@ -6607,26 +9237,37 @@ export default function AdminSkills() {
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {getExecutionModeHelperText(t, newSkillData.category, newSkillData.executionMode)}
+                        {getExecutionModeHelperText(
+                          t,
+                          newSkillData.category,
+                          newSkillData.executionMode
+                        )}
                       </p>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="priority">{t("admin.skillsPage.fields.priority")}</Label>
+                      <Label htmlFor="priority">
+                        {t("admin.skillsPage.fields.priority")}
+                      </Label>
                       <Input
                         id="priority"
                         type="number"
                         min={0}
                         max={100}
                         value={newSkillData.priority}
-                        onChange={(e) =>
-                          setNewSkillData({ ...newSkillData, priority: parseInt(e.target.value) || 50 })
+                        onChange={e =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            priority: parseInt(e.target.value) || 50,
+                          })
                         }
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="creditMultiplier">{t("admin.skillsPage.fields.creditMultiplier")}</Label>
+                      <Label htmlFor="creditMultiplier">
+                        {t("admin.skillsPage.fields.creditMultiplier")}
+                      </Label>
                       <Input
                         id="creditMultiplier"
                         type="number"
@@ -6634,33 +9275,56 @@ export default function AdminSkills() {
                         max={100}
                         step={0.1}
                         value={newSkillData.creditMultiplier}
-                        onChange={(e) =>
-                          setNewSkillData({ ...newSkillData, creditMultiplier: parseFloat(e.target.value) || 1 })
+                        onChange={e =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            creditMultiplier: parseFloat(e.target.value) || 1,
+                          })
                         }
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="tenantCreditCost">Tenant owner credits / run</Label>
+                      <Label htmlFor="tenantCreditCost">
+                        Tenant owner credits / run
+                      </Label>
                       <Input
                         id="tenantCreditCost"
                         type="number"
                         min={0}
                         step={1}
                         value={newSkillData.tenantCreditCost}
-                        onChange={(e) => setNewSkillData({ ...newSkillData, tenantCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                        onChange={e =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            tenantCreditCost: Math.max(
+                              0,
+                              parseInt(e.target.value, 10) || 0
+                            ),
+                          })
+                        }
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="skillOwnerCreditCost">Skill owner credits / run</Label>
+                      <Label htmlFor="skillOwnerCreditCost">
+                        Skill owner credits / run
+                      </Label>
                       <Input
                         id="skillOwnerCreditCost"
                         type="number"
                         min={0}
                         step={1}
                         value={newSkillData.skillOwnerCreditCost}
-                        onChange={(e) => setNewSkillData({ ...newSkillData, skillOwnerCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                        onChange={e =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            skillOwnerCreditCost: Math.max(
+                              0,
+                              parseInt(e.target.value, 10) || 0
+                            ),
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -6669,10 +9333,17 @@ export default function AdminSkills() {
                     <div className="space-y-4 rounded-2xl border bg-muted/10 p-4">
                       <div className="grid gap-5 lg:grid-cols-[240px_1fr]">
                         <div className="space-y-2">
-                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">{t("admin.skillsPage.createDialog.nativeProfile")}</Label>
+                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t("admin.skillsPage.createDialog.nativeProfile")}
+                          </Label>
                           <Select
                             value={newSkillData.bundleProfile}
-                            onValueChange={(value) => setNewSkillData({ ...newSkillData, bundleProfile: value as NativeBundleProfile })}
+                            onValueChange={value =>
+                              setNewSkillData({
+                                ...newSkillData,
+                                bundleProfile: value as NativeBundleProfile,
+                              })
+                            }
                           >
                             <SelectTrigger className="mt-1 w-full min-w-0 overflow-hidden">
                               <SelectValue />
@@ -6688,30 +9359,56 @@ export default function AdminSkills() {
                         </div>
                         <div className="rounded-xl border border-dashed bg-background/70 p-4 text-xs text-muted-foreground">
                           <p className="font-medium text-foreground">
-                            {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].title}
+                            {
+                              NATIVE_BUNDLE_PROFILE_INFO[
+                                newSkillData.bundleProfile
+                              ].title
+                            }
                           </p>
-                          <p className="mt-1">{NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].description}</p>
+                          <p className="mt-1">
+                            {
+                              NATIVE_BUNDLE_PROFILE_INFO[
+                                newSkillData.bundleProfile
+                              ].description
+                            }
+                          </p>
                           <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">
-                            {t("admin.skillsPage.createDialog.iscAlignedBundleContract")}
+                            {t(
+                              "admin.skillsPage.createDialog.iscAlignedBundleContract"
+                            )}
                           </p>
                           <ul className="mt-2 grid gap-1 sm:grid-cols-2">
-                            {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].bullets.map((bullet) => (
+                            {NATIVE_BUNDLE_PROFILE_INFO[
+                              newSkillData.bundleProfile
+                            ].bullets.map(bullet => (
                               <li key={bullet}>• {bullet}</li>
                             ))}
                           </ul>
                           <div className="mt-3 grid gap-2 lg:grid-cols-2">
                             <div className="rounded-xl bg-background/60 p-3">
-                              <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.performanceFocus")}</p>
+                              <p className="font-medium text-foreground">
+                                {t(
+                                  "admin.skillsPage.createDialog.performanceFocus"
+                                )}
+                              </p>
                               <ul className="mt-1 grid gap-1">
-                                {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].performance.map((bullet) => (
+                                {NATIVE_BUNDLE_PROFILE_INFO[
+                                  newSkillData.bundleProfile
+                                ].performance.map(bullet => (
                                   <li key={bullet}>• {bullet}</li>
                                 ))}
                               </ul>
                             </div>
                             <div className="rounded-xl bg-background/60 p-3">
-                              <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.qualityFocus")}</p>
+                              <p className="font-medium text-foreground">
+                                {t(
+                                  "admin.skillsPage.createDialog.qualityFocus"
+                                )}
+                              </p>
                               <ul className="mt-1 grid gap-1">
-                                {NATIVE_BUNDLE_PROFILE_INFO[newSkillData.bundleProfile].quality.map((bullet) => (
+                                {NATIVE_BUNDLE_PROFILE_INFO[
+                                  newSkillData.bundleProfile
+                                ].quality.map(bullet => (
                                   <li key={bullet}>• {bullet}</li>
                                 ))}
                               </ul>
@@ -6721,7 +9418,9 @@ export default function AdminSkills() {
                       </div>
                       <div className="grid gap-4 lg:grid-cols-2">
                         <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
-                          <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.requiredFiles")}</p>
+                          <p className="font-medium text-foreground">
+                            {t("admin.skillsPage.createDialog.requiredFiles")}
+                          </p>
                           <ul className="grid gap-1">
                             <li>• `SKILL.md` + `skill.md`</li>
                             <li>• `skill.lock.json`</li>
@@ -6730,7 +9429,9 @@ export default function AdminSkills() {
                           </ul>
                         </div>
                         <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
-                          <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.optionalDocs")}</p>
+                          <p className="font-medium text-foreground">
+                            {t("admin.skillsPage.createDialog.optionalDocs")}
+                          </p>
                           <ul className="grid gap-1">
                             <li>• `references/input_contract.md`</li>
                             <li>• `references/output_contract.md`</li>
@@ -6745,126 +9446,229 @@ export default function AdminSkills() {
                     </div>
                   ) : (
                     <div className="rounded-xl border bg-background/80 p-4 text-xs text-muted-foreground space-y-1.5">
-                      <p className="font-medium text-foreground">{t("admin.skillsPage.createDialog.legacyDbOnlySkill")}</p>
-                      <p>{t("admin.skillsPage.createDialog.legacyDbOnlySkillHelp")}</p>
+                      <p className="font-medium text-foreground">
+                        {t("admin.skillsPage.createDialog.legacyDbOnlySkill")}
+                      </p>
+                      <p>
+                        {t(
+                          "admin.skillsPage.createDialog.legacyDbOnlySkillHelp"
+                        )}
+                      </p>
                     </div>
                   )}
                 </div>
 
                 {createSkillValidationIssues.length > 0 && (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 space-y-1.5">
-                    <p className="font-medium">{t("admin.skillsPage.createDialog.reviewBeforeCreating")}</p>
+                    <p className="font-medium">
+                      {t("admin.skillsPage.createDialog.reviewBeforeCreating")}
+                    </p>
                     <ul className="list-disc pl-4 space-y-1">
-                      {createSkillValidationIssues.map((issue) => (
+                      {createSkillValidationIssues.map(issue => (
                         <li key={issue}>{issue}</li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                <div className="space-y-4 rounded-2xl border bg-background/80 p-5 shadow-sm">
-                  <div>
-                    <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {t("admin.skillsPage.sandbox.runtime.help")}
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>{t("admin.skillsPage.sandbox.profile")}</Label>
-                      <Select
-                        value={newSkillData.sandboxProfileSlug || getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).sandboxProfileSlug || "browser-default"}
-                        onValueChange={(value) => setNewSkillData({ ...newSkillData, sandboxProfileSlug: value })}
-                      >
-                        <SelectTrigger className="w-full min-w-0 overflow-hidden">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
-                            { slug: "code-default", name: "Code Execution (Default)" },
-                            { slug: "browser-default", name: "Browser Automation (Default)" },
-                            { slug: "file-parser", name: "File Parser" },
-                            { slug: "media-processing", name: "Media Processing" },
-                          ]).map((profile: any) => (
-                            <SelectItem key={profile.slug} value={profile.slug}>
-                              {profile.name} ({profile.slug})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                {false && (
+                  <div className="space-y-4 rounded-2xl border bg-background/80 p-5 shadow-sm">
+                    <div>
+                      <Label>
+                        {t("admin.skillsPage.sandbox.runtime.title")}
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {t("admin.skillsPage.sandbox.runtime.help")}
+                      </p>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="new-maxRuntimeSeconds">{t("admin.skillsPage.sandbox.maxRuntime")}</Label>
-                      <Input
-                        id="new-maxRuntimeSeconds"
-                        type="number"
-                        min={1}
-                        max={3600}
-                        value={newSkillData.maxRuntimeSeconds ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxRuntimeSeconds ?? 300}
-                        onChange={(e) => setNewSkillData({
-                          ...newSkillData,
-                          maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
-                        })}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="new-maxInputMb">{t("admin.skillsPage.sandbox.maxInput")}</Label>
-                      <Input
-                        id="new-maxInputMb"
-                        type="number"
-                        min={1}
-                        max={2048}
-                        value={newSkillData.maxInputMb ?? getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).maxInputMb ?? 25}
-                        onChange={(e) => setNewSkillData({
-                          ...newSkillData,
-                          maxInputMb: parseInt(e.target.value, 10) || null,
-                        })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                      <div>
-                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresNetwork.label")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresNetwork.help")}</p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>{t("admin.skillsPage.sandbox.profile")}</Label>
+                        <Select
+                          value={
+                            newSkillData.sandboxProfileSlug ||
+                            getDefaultSandboxSettings(
+                              newSkillData.category,
+                              newSkillData.executionMode
+                            ).sandboxProfileSlug ||
+                            "browser-default"
+                          }
+                          onValueChange={value =>
+                            setNewSkillData({
+                              ...newSkillData,
+                              sandboxProfileSlug: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(sandboxProfiles && sandboxProfiles.length > 0
+                              ? sandboxProfiles
+                              : [
+                                  {
+                                    slug: "code-default",
+                                    name: "Code Execution (Default)",
+                                  },
+                                  {
+                                    slug: "browser-default",
+                                    name: "Browser Automation (Default)",
+                                  },
+                                  { slug: "file-parser", name: "File Parser" },
+                                  {
+                                    slug: "media-processing",
+                                    name: "Media Processing",
+                                  },
+                                ]
+                            ).map((profile: any) => (
+                              <SelectItem
+                                key={profile.slug}
+                                value={profile.slug}
+                              >
+                                {profile.name} ({profile.slug})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Switch
-                        checked={newSkillData.requiresNetwork ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresNetwork}
-                        onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresNetwork: checked })}
-                      />
+
+                      <div className="space-y-2">
+                        <Label htmlFor="new-maxRuntimeSeconds">
+                          {t("admin.skillsPage.sandbox.maxRuntime")}
+                        </Label>
+                        <Input
+                          id="new-maxRuntimeSeconds"
+                          type="number"
+                          min={1}
+                          max={3600}
+                          value={
+                            newSkillData.maxRuntimeSeconds ??
+                            getDefaultSandboxSettings(
+                              newSkillData.category,
+                              newSkillData.executionMode
+                            ).maxRuntimeSeconds ??
+                            300
+                          }
+                          onChange={e =>
+                            setNewSkillData({
+                              ...newSkillData,
+                              maxRuntimeSeconds:
+                                parseInt(e.target.value, 10) || null,
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="new-maxInputMb">
+                          {t("admin.skillsPage.sandbox.maxInput")}
+                        </Label>
+                        <Input
+                          id="new-maxInputMb"
+                          type="number"
+                          min={1}
+                          max={2048}
+                          value={
+                            newSkillData.maxInputMb ??
+                            getDefaultSandboxSettings(
+                              newSkillData.category,
+                              newSkillData.executionMode
+                            ).maxInputMb ??
+                            25
+                          }
+                          onChange={e =>
+                            setNewSkillData({
+                              ...newSkillData,
+                              maxInputMb: parseInt(e.target.value, 10) || null,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
 
-                    <div className="flex items-center justify-between rounded-lg border px-3 py-2">
-                      <div>
-                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresBrowser.label")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresBrowser.help")}</p>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                        <div>
+                          <Label className="text-sm">
+                            {t(
+                              "admin.skillsPage.sandbox.requiresNetwork.label"
+                            )}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {t("admin.skillsPage.sandbox.requiresNetwork.help")}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={
+                            newSkillData.requiresNetwork ??
+                            !!getDefaultSandboxSettings(
+                              newSkillData.category,
+                              newSkillData.executionMode
+                            ).requiresNetwork
+                          }
+                          onCheckedChange={checked =>
+                            setNewSkillData({
+                              ...newSkillData,
+                              requiresNetwork: checked,
+                            })
+                          }
+                        />
                       </div>
-                      <Switch
-                        checked={newSkillData.requiresBrowser ?? !!getDefaultSandboxSettings(newSkillData.category, newSkillData.executionMode).requiresBrowser}
-                        onCheckedChange={(checked) => setNewSkillData({ ...newSkillData, requiresBrowser: checked })}
-                      />
+
+                      <div className="flex items-center justify-between rounded-lg border px-3 py-2">
+                        <div>
+                          <Label className="text-sm">
+                            {t(
+                              "admin.skillsPage.sandbox.requiresBrowser.label"
+                            )}
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            {t("admin.skillsPage.sandbox.requiresBrowser.help")}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={
+                            newSkillData.requiresBrowser ??
+                            !!getDefaultSandboxSettings(
+                              newSkillData.category,
+                              newSkillData.executionMode
+                            ).requiresBrowser
+                          }
+                          onCheckedChange={checked =>
+                            setNewSkillData({
+                              ...newSkillData,
+                              requiresBrowser: checked,
+                            })
+                          }
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   <Label>{t("admin.skillsPage.fields.visibility")}</Label>
                   <Select
                     value={newSkillData.visibility || "private"}
-                    onValueChange={(v) =>
-                      setNewSkillData({ ...newSkillData, visibility: v as "private" | "public" })
+                    onValueChange={v =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        visibility: v as "private" | "public",
+                      })
                     }
                   >
                     <SelectTrigger className="w-full min-w-0 overflow-hidden">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="private">{t("admin.skillsPage.visibility.privateOption")}</SelectItem>
-                      <SelectItem value="public">{t("admin.skillsPage.visibility.publicOption")}</SelectItem>
+                      <SelectItem value="private">
+                        {t("admin.skillsPage.visibility.privateOption")}
+                      </SelectItem>
+                      <SelectItem value="public">
+                        {t("admin.skillsPage.visibility.publicOption")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                   {newSkillData.visibility === "public" && !isAdmin && (
@@ -6878,31 +9682,43 @@ export default function AdminSkills() {
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={newSkillData.isAutoTrigger}
-                      onCheckedChange={(checked) =>
-                        setNewSkillData({ ...newSkillData, isAutoTrigger: checked })
+                      onCheckedChange={checked =>
+                        setNewSkillData({
+                          ...newSkillData,
+                          isAutoTrigger: checked,
+                        })
                       }
                     />
-                    <Label>{t("admin.skillsPage.createDialog.autoTrigger")}</Label>
+                    <Label>
+                      {t("admin.skillsPage.createDialog.autoTrigger")}
+                    </Label>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={newSkillData.isEnabled}
-                        onCheckedChange={(checked) =>
-                          setNewSkillData({ ...newSkillData, isEnabled: checked })
+                        onCheckedChange={checked =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            isEnabled: checked,
+                          })
                         }
                       />
-                      <Label>{t("admin.skillsPage.createDialog.enabled")}</Label>
+                      <Label>
+                        {t("admin.skillsPage.createDialog.enabled")}
+                      </Label>
                     </div>
-                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledHelp")}</p>
+                    <p className="text-xs text-muted-foreground ml-11">
+                      {t("admin.skillsPage.createDialog.enabledHelp")}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={newSkillData.visibleByDefault}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={checked =>
                           setNewSkillData({
                             ...newSkillData,
                             visibleByDefault: checked,
@@ -6910,34 +9726,58 @@ export default function AdminSkills() {
                           })
                         }
                       />
-                      <Label>{t("admin.skillsPage.createDialog.visibleByDefault")}</Label>
+                      <Label>
+                        {t("admin.skillsPage.createDialog.visibleByDefault")}
+                      </Label>
                     </div>
-                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.visibleByDefaultHelp")}</p>
+                    <p className="text-xs text-muted-foreground ml-11">
+                      {t("admin.skillsPage.createDialog.visibleByDefaultHelp")}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={newSkillData.enabledByDefault}
-                        onCheckedChange={(checked) =>
-                          setNewSkillData({ ...newSkillData, enabledByDefault: checked })
+                        onCheckedChange={checked =>
+                          setNewSkillData({
+                            ...newSkillData,
+                            enabledByDefault: checked,
+                          })
                         }
                         disabled={!newSkillData.visibleByDefault}
                       />
-                      <Label className={!newSkillData.visibleByDefault ? "text-muted-foreground" : ""}>{t("admin.skillsPage.createDialog.enabledByDefault")}</Label>
+                      <Label
+                        className={
+                          !newSkillData.visibleByDefault
+                            ? "text-muted-foreground"
+                            : ""
+                        }
+                      >
+                        {t("admin.skillsPage.createDialog.enabledByDefault")}
+                      </Label>
                     </div>
-                    <p className="text-xs text-muted-foreground ml-11">{t("admin.skillsPage.createDialog.enabledByDefaultHelp")}</p>
+                    <p className="text-xs text-muted-foreground ml-11">
+                      {t("admin.skillsPage.createDialog.enabledByDefaultHelp")}
+                    </p>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="systemPrompt">{t("admin.skillsPage.fields.systemPrompt")}</Label>
+                  <Label htmlFor="systemPrompt">
+                    {t("admin.skillsPage.fields.systemPrompt")}
+                  </Label>
                   <Textarea
                     id="systemPrompt"
-                    placeholder={t("admin.skillsPage.createDialog.systemPromptPlaceholder")}
+                    placeholder={t(
+                      "admin.skillsPage.createDialog.systemPromptPlaceholder"
+                    )}
                     value={newSkillData.systemPrompt}
-                    onChange={(e) =>
-                      setNewSkillData({ ...newSkillData, systemPrompt: e.target.value })
+                    onChange={e =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        systemPrompt: e.target.value,
+                      })
                     }
                     rows={4}
                     className="font-mono text-sm"
@@ -6945,13 +9785,20 @@ export default function AdminSkills() {
                 </div>
 
                 <div>
-                  <Label htmlFor="skillContent">{t("admin.skillsPage.fields.skillContent")}</Label>
+                  <Label htmlFor="skillContent">
+                    {t("admin.skillsPage.fields.skillContent")}
+                  </Label>
                   <Textarea
                     id="skillContent"
-                    placeholder={t("admin.skillsPage.createDialog.skillContentPlaceholder")}
+                    placeholder={t(
+                      "admin.skillsPage.createDialog.skillContentPlaceholder"
+                    )}
                     value={newSkillData.skillContent}
-                    onChange={(e) =>
-                      setNewSkillData({ ...newSkillData, skillContent: e.target.value })
+                    onChange={e =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        skillContent: e.target.value,
+                      })
                     }
                     rows={6}
                     className="font-mono text-sm"
@@ -6959,14 +9806,21 @@ export default function AdminSkills() {
                 </div>
 
                 <div>
-                  <Label htmlFor="marketplaceContent">{t("admin.skillsPage.fields.marketplaceContent")}</Label>
-                  <p className="text-xs text-muted-foreground mb-1">{t("admin.skillsPage.marketplace.help")}</p>
+                  <Label htmlFor="marketplaceContent">
+                    {t("admin.skillsPage.fields.marketplaceContent")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    {t("admin.skillsPage.marketplace.help")}
+                  </p>
                   <Textarea
                     id="marketplaceContent"
                     placeholder={t("admin.skillsPage.marketplace.placeholder")}
                     value={newSkillData.marketplaceContent}
-                    onChange={(e) =>
-                      setNewSkillData({ ...newSkillData, marketplaceContent: e.target.value })
+                    onChange={e =>
+                      setNewSkillData({
+                        ...newSkillData,
+                        marketplaceContent: e.target.value,
+                      })
                     }
                     rows={8}
                     className="font-mono text-sm"
@@ -6984,19 +9838,29 @@ export default function AdminSkills() {
                 onClick={() => setCreateDialogStep(2)}
                 disabled={createSkillBasicIssues.length > 0}
               >
-                {createSkillBasicIssues.length > 0 ? "Fix required fields" : "Review Preview"}
+                {createSkillBasicIssues.length > 0
+                  ? "Fix required fields"
+                  : "Review Preview"}
               </Button>
             ) : (
               <>
-                <Button variant="outline" onClick={() => setCreateDialogStep(1)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setCreateDialogStep(1)}
+                >
                   Back
                 </Button>
                 <Button
                   onClick={handleCreateSkill}
-                  disabled={createSkillValidationIssues.length > 0 || createMutation.isPending}
+                  disabled={
+                    createSkillValidationIssues.length > 0 ||
+                    createMutation.isPending
+                  }
                   ref={createPrimaryActionRef}
                 >
-                  {createMutation.isPending ? t("admin.skillsPage.createDialog.creating") : t("admin.skillsPage.createDialog.create")}
+                  {createMutation.isPending
+                    ? t("admin.skillsPage.createDialog.creating")
+                    : t("admin.skillsPage.createDialog.create")}
                 </Button>
               </>
             )}
@@ -7006,21 +9870,32 @@ export default function AdminSkills() {
 
       {/* Edit Skill Dialog */}
       {editingSkill && (
-        <Dialog open={!!editingSkill} onOpenChange={() => setEditingSkill(null)}>
+        <Dialog
+          open={!!editingSkill}
+          onOpenChange={() => setEditingSkill(null)}
+        >
           <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-              <DialogTitle>{t("admin.skillsPage.editDialog.title")}</DialogTitle>
+            <DialogHeader>
+              <DialogTitle>
+                {t("admin.skillsPage.editDialog.title")}
+              </DialogTitle>
               <DialogDescription>
-                {t("admin.skillsPage.editDialog.description", { slug: editingSkill.slug })}
+                {t("admin.skillsPage.editDialog.description", {
+                  slug: editingSkill.slug,
+                })}
               </DialogDescription>
             </DialogHeader>
             {selectedSkillExportSource?.sourceAgencyId && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
                 <div className="space-y-0.5">
-                  <p className="font-medium">{t("admin.skillsPage.editDialog.exportedFromAgencyBuilder")}</p>
+                  <p className="font-medium">
+                    {t("admin.skillsPage.editDialog.exportedFromAgencyBuilder")}
+                  </p>
                   <p className="text-xs text-emerald-800">
                     {selectedSkillExportSource.sourceAgencyName
-                      ? t("admin.skillsPage.editDialog.sourceAgency", { name: selectedSkillExportSource.sourceAgencyName })
+                      ? t("admin.skillsPage.editDialog.sourceAgency", {
+                          name: selectedSkillExportSource.sourceAgencyName,
+                        })
                       : t("admin.skillsPage.editDialog.fromGraphExport")}
                   </p>
                 </div>
@@ -7028,7 +9903,11 @@ export default function AdminSkills() {
                   variant="outline"
                   size="sm"
                   className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
-                  onClick={() => setLocation(`/agencies/${selectedSkillExportSource.sourceAgencyId}/edit`)}
+                  onClick={() =>
+                    setLocation(
+                      `/agencies/${selectedSkillExportSource.sourceAgencyId}/edit`
+                    )
+                  }
                 >
                   {t("admin.skillsPage.editDialog.openSourceGraph")}
                 </Button>
@@ -7040,7 +9919,9 @@ export default function AdminSkills() {
                       className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100"
                       onClick={() => setLocation(sourceGraphDuplicateLocation)}
                     >
-                      {t("admin.skillsPage.editDialog.duplicateFromSourceGraph")}
+                      {t(
+                        "admin.skillsPage.editDialog.duplicateFromSourceGraph"
+                      )}
                     </Button>
                     <Button
                       variant="outline"
@@ -7058,14 +9939,20 @@ export default function AdminSkills() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <Label>{t("admin.skillsPage.fields.slug")}</Label>
-                  <Input value={editingSkill.slug} disabled className="bg-muted" />
+                  <Input
+                    value={editingSkill.slug}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
                 <div>
-                  <Label htmlFor="edit-name">{t("admin.skillsPage.fields.name")}</Label>
+                  <Label htmlFor="edit-name">
+                    {t("admin.skillsPage.fields.name")}
+                  </Label>
                   <Input
                     id="edit-name"
                     value={editingSkill.name}
-                    onChange={(e) =>
+                    onChange={e =>
                       setEditingSkill({ ...editingSkill, name: e.target.value })
                     }
                   />
@@ -7073,12 +9960,17 @@ export default function AdminSkills() {
               </div>
 
               <div>
-                <Label htmlFor="edit-description">{t("admin.skillsPage.fields.description")}</Label>
+                <Label htmlFor="edit-description">
+                  {t("admin.skillsPage.fields.description")}
+                </Label>
                 <Input
                   id="edit-description"
                   value={editingSkill.description || ""}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, description: e.target.value })
+                  onChange={e =>
+                    setEditingSkill({
+                      ...editingSkill,
+                      description: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -7087,8 +9979,14 @@ export default function AdminSkills() {
               <div className="space-y-2">
                 <Label>{t("admin.skillsPage.fields.visibility")}</Label>
                 <Select
-                  value={editingSkill.visibility === "pending_approval" ? "public" : editingSkill.visibility === "rejected" ? "private" : editingSkill.visibility}
-                  onValueChange={(v) =>
+                  value={
+                    editingSkill.visibility === "pending_approval"
+                      ? "public"
+                      : editingSkill.visibility === "rejected"
+                        ? "private"
+                        : editingSkill.visibility
+                  }
+                  onValueChange={v =>
                     setEditingSkill({ ...editingSkill, visibility: v as any })
                   }
                 >
@@ -7096,8 +9994,12 @@ export default function AdminSkills() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="private">{t("admin.skillsPage.visibility.privateOption")}</SelectItem>
-                    <SelectItem value="public">{t("admin.skillsPage.visibility.publicOption")}</SelectItem>
+                    <SelectItem value="private">
+                      {t("admin.skillsPage.visibility.privateOption")}
+                    </SelectItem>
+                    <SelectItem value="public">
+                      {t("admin.skillsPage.visibility.publicOption")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 {editingSkill.visibility === "public" && !isAdmin && (
@@ -7113,11 +10015,15 @@ export default function AdminSkills() {
               </div>
 
               {/* Rejection Reason */}
-              {editingSkill.visibility === "rejected" && editingSkill.rejectionReason && (
-                <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-                  <strong>{t("admin.skillsPage.editDialog.rejectionReason")}</strong> {editingSkill.rejectionReason}
-                </div>
-              )}
+              {editingSkill.visibility === "rejected" &&
+                editingSkill.rejectionReason && (
+                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
+                    <strong>
+                      {t("admin.skillsPage.editDialog.rejectionReason")}
+                    </strong>{" "}
+                    {editingSkill.rejectionReason}
+                  </div>
+                )}
 
               {/* Group Sharing Section — only shown for private skills */}
               {editingSkill.visibility === "private" && (
@@ -7137,7 +10043,9 @@ export default function AdminSkills() {
                         >
                           <span>{group.name}</span>
                           <span className="text-xs text-muted-foreground ml-1">
-                            {t("admin.skillsPage.editDialog.groupMembers", { count: group.memberCount })}
+                            {t("admin.skillsPage.editDialog.groupMembers", {
+                              count: group.memberCount,
+                            })}
                           </span>
                           <Button
                             variant="ghost"
@@ -7164,24 +10072,26 @@ export default function AdminSkills() {
                   {/* Add group selector */}
                   {userGroups && userGroups.length > 0 && (
                     <div className="flex items-center gap-2">
-                        <Select
-                          onValueChange={(groupId) => {
-                            shareWithGroupsMutation.mutate({
-                              skillId: editingSkill.id,
-                              groupIds: [parseInt(groupId)],
-                            });
-                          }}
-                        >
-                          <SelectTrigger className="flex-1">
-                          <SelectValue placeholder={t("admin.skillsPage.editDialog.addGroupPlaceholder")} />
-                          </SelectTrigger>
+                      <Select
+                        onValueChange={groupId => {
+                          shareWithGroupsMutation.mutate({
+                            skillId: editingSkill.id,
+                            groupIds: [parseInt(groupId)],
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue
+                            placeholder={t(
+                              "admin.skillsPage.editDialog.addGroupPlaceholder"
+                            )}
+                          />
+                        </SelectTrigger>
                         <SelectContent>
                           {(userGroups as any[])
                             .filter(
                               (g: any) =>
-                                !sharedGroups?.some(
-                                  (sg: any) => sg.id === g.id
-                                )
+                                !sharedGroups?.some((sg: any) => sg.id === g.id)
                             )
                             .map((group: any) => (
                               <SelectItem
@@ -7200,27 +10110,39 @@ export default function AdminSkills() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                <Label>{t("admin.skillsPage.fields.category")}</Label>
-                <Select
-                  value={editingSkill.category}
-                  onValueChange={(value) => {
-                    const nextExecutionMode = isExecutionModeCompatibleWithSkillCategory(
-                      value,
-                      editingSkill.executionMode,
-                    )
-                      ? (editingSkill.executionMode || getRecommendedExecutionModeForSkillCategory(value) || "llm-only")
-                      : (getRecommendedExecutionModeForSkillCategory(value) || "llm-only");
-                    setEditingSkill(applySandboxDefaults({
-                      ...editingSkill,
-                      category: value,
-                      executionMode: nextExecutionMode,
-                      defaultModel: null,
-                      llmModelId: null,
-                      preferredProviderId: null,
-                      strictProviderPin: false,
-                    }, nextExecutionMode));
-                  }}
-                >
+                  <Label>{t("admin.skillsPage.fields.category")}</Label>
+                  <Select
+                    value={editingSkill.category}
+                    onValueChange={value => {
+                      const nextExecutionMode =
+                        isExecutionModeCompatibleWithSkillCategory(
+                          value,
+                          editingSkill.executionMode
+                        )
+                          ? editingSkill.executionMode ||
+                            getRecommendedExecutionModeForSkillCategory(
+                              value
+                            ) ||
+                            "llm-only"
+                          : getRecommendedExecutionModeForSkillCategory(
+                              value
+                            ) || "llm-only";
+                      setEditingSkill(
+                        applySandboxDefaults(
+                          {
+                            ...editingSkill,
+                            category: value,
+                            executionMode: nextExecutionMode,
+                            defaultModel: null,
+                            llmModelId: null,
+                            preferredProviderId: null,
+                            strictProviderPin: false,
+                          },
+                          nextExecutionMode
+                        )
+                      );
+                    }}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -7242,14 +10164,19 @@ export default function AdminSkills() {
                     min={0}
                     max={100}
                     value={editingSkill.priority}
-                    onChange={(e) =>
-                      setEditingSkill({ ...editingSkill, priority: parseInt(e.target.value) || 50 })
+                    onChange={e =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        priority: parseInt(e.target.value) || 50,
+                      })
                     }
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-creditMultiplier">Credit Multiplier</Label>
+                  <Label htmlFor="edit-creditMultiplier">
+                    Credit Multiplier
+                  </Label>
                   <Input
                     id="edit-creditMultiplier"
                     type="number"
@@ -7257,33 +10184,56 @@ export default function AdminSkills() {
                     max={100}
                     step={0.1}
                     value={editingSkill.creditMultiplier}
-                    onChange={(e) =>
-                      setEditingSkill({ ...editingSkill, creditMultiplier: parseFloat(e.target.value) || 1 })
+                    onChange={e =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        creditMultiplier: parseFloat(e.target.value) || 1,
+                      })
                     }
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-tenantCreditCost">Tenant owner credits / run</Label>
+                  <Label htmlFor="edit-tenantCreditCost">
+                    Tenant owner credits / run
+                  </Label>
                   <Input
                     id="edit-tenantCreditCost"
                     type="number"
                     min={0}
                     step={1}
                     value={editingSkill.tenantCreditCost ?? 2}
-                    onChange={(e) => setEditingSkill({ ...editingSkill, tenantCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    onChange={e =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        tenantCreditCost: Math.max(
+                          0,
+                          parseInt(e.target.value, 10) || 0
+                        ),
+                      })
+                    }
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-skillOwnerCreditCost">Skill owner credits / run</Label>
+                  <Label htmlFor="edit-skillOwnerCreditCost">
+                    Skill owner credits / run
+                  </Label>
                   <Input
                     id="edit-skillOwnerCreditCost"
                     type="number"
                     min={0}
                     step={1}
                     value={editingSkill.skillOwnerCreditCost ?? 0}
-                    onChange={(e) => setEditingSkill({ ...editingSkill, skillOwnerCreditCost: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                    onChange={e =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        skillOwnerCreditCost: Math.max(
+                          0,
+                          parseInt(e.target.value, 10) || 0
+                        ),
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -7293,22 +10243,29 @@ export default function AdminSkills() {
                 <Label>{t("admin.skillsPage.fields.executionMode")}</Label>
                 <Select
                   value={editingSkill.executionMode || "llm-only"}
-                  onValueChange={(value) =>
-                    setEditingSkill(applySandboxDefaults({
-                      ...editingSkill,
-                      executionMode: value as SkillExecutionMode,
-                      defaultModel: null,
-                      llmModelId: null,
-                      preferredProviderId: null,
-                      strictProviderPin: false,
-                    }, value as SkillExecutionMode))
+                  onValueChange={value =>
+                    setEditingSkill(
+                      applySandboxDefaults(
+                        {
+                          ...editingSkill,
+                          executionMode: value as SkillExecutionMode,
+                          defaultModel: null,
+                          llmModelId: null,
+                          preferredProviderId: null,
+                          strictProviderPin: false,
+                        },
+                        value as SkillExecutionMode
+                      )
+                    )
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAllowedExecutionModesForSkillCategory(editingSkill.category).map((mode) => (
+                    {getAllowedExecutionModesForSkillCategory(
+                      editingSkill.category
+                    ).map(mode => (
                       <SelectItem key={mode} value={mode}>
                         {executionModeLabels[mode]}
                       </SelectItem>
@@ -7316,16 +10273,21 @@ export default function AdminSkills() {
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
-                  {getExecutionModeHelperText(t, editingSkill.category, editingSkill.executionMode)}
+                  {getExecutionModeHelperText(
+                    t,
+                    editingSkill.category,
+                    editingSkill.executionMode
+                  )}
                 </p>
               </div>
 
-              {isSandboxExecutionMode(editingSkill.executionMode) && (
+              {false && isSandboxExecutionMode(editingSkill.executionMode) && (
                 <div className="space-y-4 rounded-xl border p-4">
                   <div>
                     <Label>{t("admin.skillsPage.sandbox.runtime.title")}</Label>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {t("admin.skillsPage.sandbox.runtime.help")} {t("admin.skillsPage.sandbox.runtime.customHint")}
+                      {t("admin.skillsPage.sandbox.runtime.help")}{" "}
+                      {t("admin.skillsPage.sandbox.runtime.customHint")}
                     </p>
                   </div>
 
@@ -7333,19 +10295,43 @@ export default function AdminSkills() {
                     <div className="space-y-2">
                       <Label>{t("admin.skillsPage.sandbox.profile")}</Label>
                       <Select
-                        value={editingSkill.sandboxProfileSlug || getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).sandboxProfileSlug || "browser-default"}
-                        onValueChange={(value) => setEditingSkill({ ...editingSkill, sandboxProfileSlug: value })}
+                        value={
+                          editingSkill.sandboxProfileSlug ||
+                          getDefaultSandboxSettings(
+                            editingSkill.category,
+                            editingSkill.executionMode
+                          ).sandboxProfileSlug ||
+                          "browser-default"
+                        }
+                        onValueChange={value =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            sandboxProfileSlug: value,
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {(sandboxProfiles && sandboxProfiles.length > 0 ? sandboxProfiles : [
-                            { slug: "code-default", name: "Code Execution (Default)" },
-                            { slug: "browser-default", name: "Browser Automation (Default)" },
-                            { slug: "file-parser", name: "File Parser" },
-                            { slug: "media-processing", name: "Media Processing" },
-                          ]).map((profile: any) => (
+                          {(sandboxProfiles && sandboxProfiles.length > 0
+                            ? sandboxProfiles
+                            : [
+                                {
+                                  slug: "code-default",
+                                  name: "Code Execution (Default)",
+                                },
+                                {
+                                  slug: "browser-default",
+                                  name: "Browser Automation (Default)",
+                                },
+                                { slug: "file-parser", name: "File Parser" },
+                                {
+                                  slug: "media-processing",
+                                  name: "Media Processing",
+                                },
+                              ]
+                          ).map((profile: any) => (
                             <SelectItem key={profile.slug} value={profile.slug}>
                               {profile.name} ({profile.slug})
                             </SelectItem>
@@ -7355,32 +10341,55 @@ export default function AdminSkills() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="edit-maxRuntimeSeconds">{t("admin.skillsPage.sandbox.maxRuntime")}</Label>
+                      <Label htmlFor="edit-maxRuntimeSeconds">
+                        {t("admin.skillsPage.sandbox.maxRuntime")}
+                      </Label>
                       <Input
                         id="edit-maxRuntimeSeconds"
                         type="number"
                         min={1}
                         max={3600}
-                        value={editingSkill.maxRuntimeSeconds ?? getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).maxRuntimeSeconds ?? 300}
-                        onChange={(e) => setEditingSkill({
-                          ...editingSkill,
-                          maxRuntimeSeconds: parseInt(e.target.value, 10) || null,
-                        })}
+                        value={
+                          editingSkill.maxRuntimeSeconds ??
+                          getDefaultSandboxSettings(
+                            editingSkill.category,
+                            editingSkill.executionMode
+                          ).maxRuntimeSeconds ??
+                          300
+                        }
+                        onChange={e =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            maxRuntimeSeconds:
+                              parseInt(e.target.value, 10) || null,
+                          })
+                        }
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="edit-maxInputMb">{t("admin.skillsPage.sandbox.maxInput")}</Label>
+                      <Label htmlFor="edit-maxInputMb">
+                        {t("admin.skillsPage.sandbox.maxInput")}
+                      </Label>
                       <Input
                         id="edit-maxInputMb"
                         type="number"
                         min={1}
                         max={2048}
-                        value={editingSkill.maxInputMb ?? getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).maxInputMb ?? 25}
-                        onChange={(e) => setEditingSkill({
-                          ...editingSkill,
-                          maxInputMb: parseInt(e.target.value, 10) || null,
-                        })}
+                        value={
+                          editingSkill.maxInputMb ??
+                          getDefaultSandboxSettings(
+                            editingSkill.category,
+                            editingSkill.executionMode
+                          ).maxInputMb ??
+                          25
+                        }
+                        onChange={e =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            maxInputMb: parseInt(e.target.value, 10) || null,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -7388,23 +10397,53 @@ export default function AdminSkills() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                       <div>
-                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresNetwork.label")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresNetwork.help")}</p>
+                        <Label className="text-sm">
+                          {t("admin.skillsPage.sandbox.requiresNetwork.label")}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t("admin.skillsPage.sandbox.requiresNetwork.help")}
+                        </p>
                       </div>
                       <Switch
-                        checked={editingSkill.requiresNetwork ?? !!getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).requiresNetwork}
-                        onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, requiresNetwork: checked })}
+                        checked={
+                          editingSkill.requiresNetwork ??
+                          !!getDefaultSandboxSettings(
+                            editingSkill.category,
+                            editingSkill.executionMode
+                          ).requiresNetwork
+                        }
+                        onCheckedChange={checked =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            requiresNetwork: checked,
+                          })
+                        }
                       />
                     </div>
 
                     <div className="flex items-center justify-between rounded-lg border px-3 py-2">
                       <div>
-                        <Label className="text-sm">{t("admin.skillsPage.sandbox.requiresBrowser.label")}</Label>
-                        <p className="text-xs text-muted-foreground">{t("admin.skillsPage.sandbox.requiresBrowser.help")}</p>
+                        <Label className="text-sm">
+                          {t("admin.skillsPage.sandbox.requiresBrowser.label")}
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          {t("admin.skillsPage.sandbox.requiresBrowser.help")}
+                        </p>
                       </div>
                       <Switch
-                        checked={editingSkill.requiresBrowser ?? !!getDefaultSandboxSettings(editingSkill.category, editingSkill.executionMode).requiresBrowser}
-                        onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, requiresBrowser: checked })}
+                        checked={
+                          editingSkill.requiresBrowser ??
+                          !!getDefaultSandboxSettings(
+                            editingSkill.category,
+                            editingSkill.executionMode
+                          ).requiresBrowser
+                        }
+                        onCheckedChange={checked =>
+                          setEditingSkill({
+                            ...editingSkill,
+                            requiresBrowser: checked,
+                          })
+                        }
                       />
                     </div>
                   </div>
@@ -7421,49 +10460,92 @@ export default function AdminSkills() {
                     </Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                          {editingSkill.defaultModel
-                            ? (() => {
-                                const models = getMediaModelsForCategory(
-                                  editingSkill.category,
-                                  imageModels,
-                                  videoModels,
-                                  audioModels,
-                                );
-                                const found = models?.find((m: any) => m.modelId === editingSkill.defaultModel);
-                                return found ? `${found.name} (${found.provider})` : editingSkill.defaultModel;
-                              })()
-                            : <span className="text-muted-foreground">{t("admin.skillsPage.modelSelection.autoHighestPriority")}</span>}
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                        >
+                          {editingSkill.defaultModel ? (
+                            (() => {
+                              const models = getMediaModelsForCategory(
+                                editingSkill.category,
+                                imageModels,
+                                videoModels,
+                                audioModels
+                              );
+                              const found = models?.find(
+                                (m: any) =>
+                                  m.modelId === editingSkill.defaultModel
+                              );
+                              return found
+                                ? `${found.name} (${found.provider})`
+                                : editingSkill.defaultModel;
+                            })()
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {t(
+                                "admin.skillsPage.modelSelection.autoHighestPriority"
+                              )}
+                            </span>
+                          )}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[450px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder={t("admin.skillsPage.modelSelection.searchMediaModels")} />
+                          <CommandInput
+                            placeholder={t(
+                              "admin.skillsPage.modelSelection.searchMediaModels"
+                            )}
+                          />
                           <CommandList className="max-h-[300px] overflow-y-auto">
-                            <CommandEmpty>{t("admin.skillsPage.modelSelection.noModelFound")}</CommandEmpty>
+                            <CommandEmpty>
+                              {t(
+                                "admin.skillsPage.modelSelection.noModelFound"
+                              )}
+                            </CommandEmpty>
                             <CommandGroup>
                               <CommandItem
                                 value="__auto__"
-                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null })}
+                                onSelect={() =>
+                                  setEditingSkill({
+                                    ...editingSkill,
+                                    defaultModel: null,
+                                  })
+                                }
                               >
-                                <Check className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`} />
-                                <span className="text-muted-foreground">{t("admin.skillsPage.modelSelection.autoHighestPriority")}</span>
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${!editingSkill.defaultModel ? "opacity-100" : "opacity-0"}`}
+                                />
+                                <span className="text-muted-foreground">
+                                  {t(
+                                    "admin.skillsPage.modelSelection.autoHighestPriority"
+                                  )}
+                                </span>
                               </CommandItem>
                               {getMediaModelsForCategory(
                                 editingSkill.category,
                                 imageModels,
                                 videoModels,
-                                audioModels,
+                                audioModels
                               )?.map((model: any) => (
                                 <CommandItem
                                   key={model.modelId}
                                   value={`${model.name} ${model.modelId} ${model.provider}`}
-                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.modelId })}
+                                  onSelect={() =>
+                                    setEditingSkill({
+                                      ...editingSkill,
+                                      defaultModel: model.modelId,
+                                    })
+                                  }
                                 >
-                                  <Check className={`mr-2 h-4 w-4 ${editingSkill.defaultModel === model.modelId ? "opacity-100" : "opacity-0"}`} />
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${editingSkill.defaultModel === model.modelId ? "opacity-100" : "opacity-0"}`}
+                                  />
                                   <span>{model.name}</span>
-                                  <span className="ml-1 text-xs text-muted-foreground">({model.provider})</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    ({model.provider})
+                                  </span>
                                 </CommandItem>
                               ))}
                             </CommandGroup>
@@ -7475,10 +10557,13 @@ export default function AdminSkills() {
                       {t("admin.skillsPage.modelSelection.mediaModelHelp")}
                     </p>
                   </>
-                ) : isSandboxExecutionMode(editingSkill.executionMode) || editingSkill.executionMode === "python" ? (
+                ) : isSandboxExecutionMode(editingSkill.executionMode) ||
+                  editingSkill.executionMode === "python" ? (
                   <div className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
                     {editingSkill.executionMode === "sandbox-command"
-                      ? t("admin.skillsPage.modelSelection.sandboxCommandNoPicker")
+                      ? t(
+                          "admin.skillsPage.modelSelection.sandboxCommandNoPicker"
+                        )
                       : t("admin.skillsPage.modelSelection.noPicker")}
                   </div>
                 ) : (
@@ -7489,41 +10574,91 @@ export default function AdminSkills() {
                     </Label>
                     <Popover>
                       <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                          {(editingSkill.llmModelId || editingSkill.defaultModel)
-                            ? (() => {
-                                const selectedModel = editingSkill.llmModelId || editingSkill.defaultModel;
-                                const found = visionModels?.models?.find((m) => m.id === selectedModel);
-                                return found ? `${found.name} (${found.providerDisplayName})` : selectedModel;
-                              })()
-                            : <span className="text-muted-foreground">{systemDefaultLlmLabel}</span>}
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className="w-full justify-between font-normal"
+                        >
+                          {editingSkill.llmModelId ||
+                          editingSkill.defaultModel ? (
+                            (() => {
+                              const selectedModel =
+                                editingSkill.llmModelId ||
+                                editingSkill.defaultModel;
+                              const found = visionModels?.models?.find(
+                                m => m.id === selectedModel
+                              );
+                              return found
+                                ? `${found.name} (${found.providerDisplayName})`
+                                : selectedModel;
+                            })()
+                          ) : (
+                            <span className="text-muted-foreground">
+                              {systemDefaultLlmLabel}
+                            </span>
+                          )}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[450px] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder={t("admin.skillsPage.modelSelection.searchLlmModels")} />
+                          <CommandInput
+                            placeholder={t(
+                              "admin.skillsPage.modelSelection.searchLlmModels"
+                            )}
+                          />
                           <CommandList className="max-h-[300px] overflow-y-auto">
-                            <CommandEmpty>{t("admin.skillsPage.modelSelection.noModelFound")}</CommandEmpty>
+                            <CommandEmpty>
+                              {t(
+                                "admin.skillsPage.modelSelection.noModelFound"
+                              )}
+                            </CommandEmpty>
                             <CommandGroup>
                               <CommandItem
                                 value="__system_default__"
-                                onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: null, llmModelId: null })}
+                                onSelect={() =>
+                                  setEditingSkill({
+                                    ...editingSkill,
+                                    defaultModel: null,
+                                    llmModelId: null,
+                                  })
+                                }
                               >
-                                <Check className={`mr-2 h-4 w-4 ${!(editingSkill.llmModelId || editingSkill.defaultModel) ? "opacity-100" : "opacity-0"}`} />
-                                <span className="text-muted-foreground">{systemDefaultLlmLabel}</span>
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${!(editingSkill.llmModelId || editingSkill.defaultModel) ? "opacity-100" : "opacity-0"}`}
+                                />
+                                <span className="text-muted-foreground">
+                                  {systemDefaultLlmLabel}
+                                </span>
                               </CommandItem>
-                              {visionModels?.models?.map((model) => (
+                              {visionModels?.models?.map(model => (
                                 <CommandItem
                                   key={model.id}
                                   value={`${model.name} ${model.id} ${model.providerDisplayName}`}
-                                  onSelect={() => setEditingSkill({ ...editingSkill, defaultModel: model.id, llmModelId: model.id })}
+                                  onSelect={() =>
+                                    setEditingSkill({
+                                      ...editingSkill,
+                                      defaultModel: model.id,
+                                      llmModelId: model.id,
+                                    })
+                                  }
                                 >
-                                  <Check className={`mr-2 h-4 w-4 ${(editingSkill.llmModelId || editingSkill.defaultModel) === model.id ? "opacity-100" : "opacity-0"}`} />
+                                  <Check
+                                    className={`mr-2 h-4 w-4 ${(editingSkill.llmModelId || editingSkill.defaultModel) === model.id ? "opacity-100" : "opacity-0"}`}
+                                  />
                                   <span>{model.name}</span>
-                                  <span className="ml-1 text-xs text-muted-foreground">({model.providerDisplayName})</span>
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    ({model.providerDisplayName})
+                                  </span>
                                   {model.isDefault && (
-                                    <Badge variant="secondary" className="ml-1 text-[10px] h-4">{t("admin.skillsPage.modelSelection.defaultBadge")}</Badge>
+                                    <Badge
+                                      variant="secondary"
+                                      className="ml-1 text-[10px] h-4"
+                                    >
+                                      {t(
+                                        "admin.skillsPage.modelSelection.defaultBadge"
+                                      )}
+                                    </Badge>
                                   )}
                                 </CommandItem>
                               ))}
@@ -7537,41 +10672,76 @@ export default function AdminSkills() {
                     </p>
 
                     <div className="mt-3 space-y-2 rounded-md border p-3">
-                      <Label>{t("admin.skillsPage.modelSelection.preferredProvider")}</Label>
+                      <Label>
+                        {t("admin.skillsPage.modelSelection.preferredProvider")}
+                      </Label>
                       <Select
-                        value={editingSkill.preferredProviderId ? String(editingSkill.preferredProviderId) : "__auto__"}
-                        onValueChange={(value) =>
+                        value={
+                          editingSkill.preferredProviderId
+                            ? String(editingSkill.preferredProviderId)
+                            : "__auto__"
+                        }
+                        onValueChange={value =>
                           setEditingSkill({
                             ...editingSkill,
-                            preferredProviderId: value === "__auto__" ? null : Number(value),
-                            ...(value === "__auto__" ? { strictProviderPin: false } : {}),
+                            preferredProviderId:
+                              value === "__auto__" ? null : Number(value),
+                            ...(value === "__auto__"
+                              ? { strictProviderPin: false }
+                              : {}),
                           })
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={t("admin.skillsPage.modelSelection.autoRoutePlaceholder")} />
+                          <SelectValue
+                            placeholder={t(
+                              "admin.skillsPage.modelSelection.autoRoutePlaceholder"
+                            )}
+                          />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="__auto__">{t("admin.skillsPage.modelSelection.autoRoutePlaceholder")}</SelectItem>
-                          {(llmProvidersData || []).map((provider: { id: number; displayName: string; providerName: string }) => (
-                            <SelectItem key={provider.id} value={String(provider.id)}>
-                              {provider.displayName} ({provider.providerName})
-                            </SelectItem>
-                          ))}
+                          <SelectItem value="__auto__">
+                            {t(
+                              "admin.skillsPage.modelSelection.autoRoutePlaceholder"
+                            )}
+                          </SelectItem>
+                          {(llmProvidersData || []).map(
+                            (provider: {
+                              id: number;
+                              displayName: string;
+                              providerName: string;
+                            }) => (
+                              <SelectItem
+                                key={provider.id}
+                                value={String(provider.id)}
+                              >
+                                {provider.displayName} ({provider.providerName})
+                              </SelectItem>
+                            )
+                          )}
                         </SelectContent>
                       </Select>
 
                       <div className="flex items-center justify-between pt-1">
                         <div>
-                          <Label className="text-sm">{t("admin.skillsPage.modelSelection.strictProviderPin")}</Label>
+                          <Label className="text-sm">
+                            {t(
+                              "admin.skillsPage.modelSelection.strictProviderPin"
+                            )}
+                          </Label>
                           <p className="text-xs text-muted-foreground">
-                            {t("admin.skillsPage.modelSelection.strictProviderPinHelp")}
+                            {t(
+                              "admin.skillsPage.modelSelection.strictProviderPinHelp"
+                            )}
                           </p>
                         </div>
                         <Switch
                           checked={editingSkill.strictProviderPin}
-                          onCheckedChange={(checked) =>
-                            setEditingSkill({ ...editingSkill, strictProviderPin: checked })
+                          onCheckedChange={checked =>
+                            setEditingSkill({
+                              ...editingSkill,
+                              strictProviderPin: checked,
+                            })
                           }
                           disabled={!editingSkill.preferredProviderId}
                         />
@@ -7585,33 +10755,44 @@ export default function AdminSkills() {
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={editingSkill.isAutoTrigger}
-                    onCheckedChange={(checked) =>
-                      setEditingSkill({ ...editingSkill, isAutoTrigger: checked })
+                    onCheckedChange={checked =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        isAutoTrigger: checked,
+                      })
                     }
                   />
                   <div>
-                    <Label className="text-sm font-medium">{t("admin.skillsPage.createDialog.autoTrigger")}</Label>
-                    <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.autoTriggerHelp")}</p>
+                    <Label className="text-sm font-medium">
+                      {t("admin.skillsPage.createDialog.autoTrigger")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.skillsPage.createDialog.autoTriggerHelp")}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={editingSkill.isEnabled}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setEditingSkill({ ...editingSkill, isEnabled: checked })
                     }
                   />
                   <div>
-                    <Label className="text-sm font-medium">{t("admin.skillsPage.createDialog.enabled")}</Label>
-                    <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.enabledShortHelp")}</p>
+                    <Label className="text-sm font-medium">
+                      {t("admin.skillsPage.createDialog.enabled")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t("admin.skillsPage.createDialog.enabledShortHelp")}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={editingSkill.visibleByDefault}
-                    onCheckedChange={(checked) =>
+                    onCheckedChange={checked =>
                       setEditingSkill({
                         ...editingSkill,
                         visibleByDefault: checked,
@@ -7620,22 +10801,39 @@ export default function AdminSkills() {
                     }
                   />
                   <div>
-                    <Label className="text-sm font-medium">{t("admin.skillsPage.createDialog.visibleByDefault")}</Label>
-                    <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.visibleByDefaultShortHelp")}</p>
+                    <Label className="text-sm font-medium">
+                      {t("admin.skillsPage.createDialog.visibleByDefault")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        "admin.skillsPage.createDialog.visibleByDefaultShortHelp"
+                      )}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Switch
                     checked={editingSkill.enabledByDefault}
-                    onCheckedChange={(checked) =>
-                      setEditingSkill({ ...editingSkill, enabledByDefault: checked })
+                    onCheckedChange={checked =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        enabledByDefault: checked,
+                      })
                     }
                     disabled={!editingSkill.visibleByDefault}
                   />
                   <div>
-                    <Label className={`text-sm font-medium ${!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}`}>{t("admin.skillsPage.createDialog.enabledByDefault")}</Label>
-                    <p className="text-xs text-muted-foreground">{t("admin.skillsPage.createDialog.enabledByDefaultShortHelp")}</p>
+                    <Label
+                      className={`text-sm font-medium ${!editingSkill.visibleByDefault ? "text-muted-foreground" : ""}`}
+                    >
+                      {t("admin.skillsPage.createDialog.enabledByDefault")}
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        "admin.skillsPage.createDialog.enabledByDefaultShortHelp"
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -7646,20 +10844,30 @@ export default function AdminSkills() {
                     <Image className="mt-0.5 h-4 w-4 text-sky-700" />
                     <div>
                       <Label className="text-sm font-semibold text-sky-900">
-                        {t("admin.skillsPage.productionReferenceStoryboard.title")}
+                        {t(
+                          "admin.skillsPage.productionReferenceStoryboard.title"
+                        )}
                       </Label>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {t("admin.skillsPage.productionReferenceStoryboard.description")}
+                        {t(
+                          "admin.skillsPage.productionReferenceStoryboard.description"
+                        )}
                       </p>
                       <code className="mt-2 inline-flex rounded bg-white/80 px-2 py-1 text-[11px] text-sky-900">
                         config.media_studio.production_reference_storyboard.enabled=
-                        {String((editingSkill as any)._productionReferenceStoryboardEnabled === true)}
+                        {String(
+                          (editingSkill as any)
+                            ._productionReferenceStoryboardEnabled === true
+                        )}
                       </code>
                     </div>
                   </div>
                   <Switch
-                    checked={(editingSkill as any)._productionReferenceStoryboardEnabled === true}
-                    onCheckedChange={(checked) =>
+                    checked={
+                      (editingSkill as any)
+                        ._productionReferenceStoryboardEnabled === true
+                    }
+                    onCheckedChange={checked =>
                       setEditingSkill({
                         ...editingSkill,
                         _productionReferenceStoryboardConfigured: true,
@@ -7669,7 +10877,9 @@ export default function AdminSkills() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t("admin.skillsPage.productionReferenceStoryboard.enabledHelp")}
+                  {t(
+                    "admin.skillsPage.productionReferenceStoryboard.enabledHelp"
+                  )}
                 </p>
               </div>
 
@@ -7687,9 +10897,14 @@ export default function AdminSkills() {
                     </div>
                   </div>
                   <Switch
-                    checked={(editingSkill as any)._autoLearningEnabled ?? false}
-                    onCheckedChange={(checked) =>
-                      setEditingSkill({ ...editingSkill, _autoLearningEnabled: checked } as any)
+                    checked={
+                      (editingSkill as any)._autoLearningEnabled ?? false
+                    }
+                    onCheckedChange={checked =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        _autoLearningEnabled: checked,
+                      } as any)
                     }
                   />
                 </div>
@@ -7697,77 +10912,130 @@ export default function AdminSkills() {
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={(editingSkill as any)._autoLearningPromptQa ?? true}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _autoLearningPromptQa: checked } as any)
+                      checked={
+                        (editingSkill as any)._autoLearningPromptQa ?? true
                       }
-                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _autoLearningPromptQa: checked,
+                        } as any)
+                      }
+                      disabled={
+                        !((editingSkill as any)._autoLearningEnabled ?? false)
+                      }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.promptQa")}</Label>
-                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.promptQaHelp")}</p>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.autoLearning.promptQa")}
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("admin.skillsPage.autoLearning.promptQaHelp")}
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={(editingSkill as any)._autoLearningImageQa ?? true}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _autoLearningImageQa: checked } as any)
+                      checked={
+                        (editingSkill as any)._autoLearningImageQa ?? true
                       }
-                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _autoLearningImageQa: checked,
+                        } as any)
+                      }
+                      disabled={
+                        !((editingSkill as any)._autoLearningEnabled ?? false)
+                      }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.imageQa")}</Label>
-                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.imageQaHelp")}</p>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.autoLearning.imageQa")}
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("admin.skillsPage.autoLearning.imageQaHelp")}
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={(editingSkill as any)._autoLearningRequireAdminApproval ?? true}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _autoLearningRequireAdminApproval: checked } as any)
+                      checked={
+                        (editingSkill as any)
+                          ._autoLearningRequireAdminApproval ?? true
                       }
-                      disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _autoLearningRequireAdminApproval: checked,
+                        } as any)
+                      }
+                      disabled={
+                        !((editingSkill as any)._autoLearningEnabled ?? false)
+                      }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.adminApproval")}</Label>
-                      <p className="text-[10px] text-muted-foreground">{t("admin.skillsPage.autoLearning.adminApprovalHelp")}</p>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.autoLearning.adminApproval")}
+                      </Label>
+                      <p className="text-[10px] text-muted-foreground">
+                        {t("admin.skillsPage.autoLearning.adminApprovalHelp")}
+                      </p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.promptScore")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.autoLearning.promptScore")}
+                      </Label>
                       <Input
                         type="number"
                         min={0}
                         max={100}
-                        value={(editingSkill as any)._autoLearningMinPromptScore ?? 85}
-                        onChange={(event) =>
+                        value={
+                          (editingSkill as any)._autoLearningMinPromptScore ??
+                          85
+                        }
+                        onChange={event =>
                           setEditingSkill({
                             ...editingSkill,
-                            _autoLearningMinPromptScore: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
+                            _autoLearningMinPromptScore: Math.max(
+                              0,
+                              Math.min(100, Number(event.target.value) || 0)
+                            ),
                           } as any)
                         }
-                        disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                        disabled={
+                          !((editingSkill as any)._autoLearningEnabled ?? false)
+                        }
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.autoLearning.imageScore")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.autoLearning.imageScore")}
+                      </Label>
                       <Input
                         type="number"
                         min={0}
                         max={100}
-                        value={(editingSkill as any)._autoLearningMinImageScore ?? 80}
-                        onChange={(event) =>
+                        value={
+                          (editingSkill as any)._autoLearningMinImageScore ?? 80
+                        }
+                        onChange={event =>
                           setEditingSkill({
                             ...editingSkill,
-                            _autoLearningMinImageScore: Math.max(0, Math.min(100, Number(event.target.value) || 0)),
+                            _autoLearningMinImageScore: Math.max(
+                              0,
+                              Math.min(100, Number(event.target.value) || 0)
+                            ),
                           } as any)
                         }
-                        disabled={!((editingSkill as any)._autoLearningEnabled ?? false)}
+                        disabled={
+                          !((editingSkill as any)._autoLearningEnabled ?? false)
+                        }
                       />
                     </div>
                   </div>
@@ -7778,7 +11046,9 @@ export default function AdminSkills() {
               <div className="space-y-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <ShieldCheck className="h-4 w-4 text-blue-600" />
-                  <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">{t("admin.skillsPage.contentPolicy.title")}</Label>
+                  <Label className="text-sm font-semibold text-blue-700 dark:text-blue-400">
+                    {t("admin.skillsPage.contentPolicy.title")}
+                  </Label>
                 </div>
                 <p className="text-xs text-muted-foreground -mt-1">
                   {t("admin.skillsPage.contentPolicy.description")}
@@ -7787,21 +11057,42 @@ export default function AdminSkills() {
                 <div className="grid gap-3 md:grid-cols-2">
                   {/* Thinking Level */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.contentPolicy.thinkingLevel.label")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.contentPolicy.thinkingLevel.label")}
+                    </Label>
                     <Select
                       value={(editingSkill as any)._thinkingLevel ?? "auto"}
-                      onValueChange={(val) =>
-                        setEditingSkill({ ...editingSkill, _thinkingLevel: val } as any)
+                      onValueChange={val =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _thinkingLevel: val,
+                        } as any)
                       }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">{t("admin.skillsPage.contentPolicy.thinkingLevel.options.auto")}</SelectItem>
-                        <SelectItem value="low">{t("admin.skillsPage.contentPolicy.thinkingLevel.options.low")}</SelectItem>
-                        <SelectItem value="medium">{t("admin.skillsPage.contentPolicy.thinkingLevel.options.medium")}</SelectItem>
-                        <SelectItem value="high">{t("admin.skillsPage.contentPolicy.thinkingLevel.options.high")}</SelectItem>
+                        <SelectItem value="auto">
+                          {t(
+                            "admin.skillsPage.contentPolicy.thinkingLevel.options.auto"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="low">
+                          {t(
+                            "admin.skillsPage.contentPolicy.thinkingLevel.options.low"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="medium">
+                          {t(
+                            "admin.skillsPage.contentPolicy.thinkingLevel.options.medium"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="high">
+                          {t(
+                            "admin.skillsPage.contentPolicy.thinkingLevel.options.high"
+                          )}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground">
@@ -7811,19 +11102,32 @@ export default function AdminSkills() {
 
                   {/* Response Mode */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.contentPolicy.responseMode.label")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.contentPolicy.responseMode.label")}
+                    </Label>
                     <Select
                       value={(editingSkill as any)._responseMode ?? "markdown"}
-                      onValueChange={(val) =>
-                        setEditingSkill({ ...editingSkill, _responseMode: val } as any)
+                      onValueChange={val =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _responseMode: val,
+                        } as any)
                       }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="markdown">{t("admin.skillsPage.contentPolicy.responseMode.options.markdown")}</SelectItem>
-                        <SelectItem value="cms_json">{t("admin.skillsPage.contentPolicy.responseMode.options.cmsJson")}</SelectItem>
+                        <SelectItem value="markdown">
+                          {t(
+                            "admin.skillsPage.contentPolicy.responseMode.options.markdown"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="cms_json">
+                          {t(
+                            "admin.skillsPage.contentPolicy.responseMode.options.cmsJson"
+                          )}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <p className="text-[10px] text-muted-foreground">
@@ -7834,15 +11138,25 @@ export default function AdminSkills() {
                   {/* Min Citation Coverage */}
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">
-                      {t("admin.skillsPage.contentPolicy.minCitationCoverage.label", { percent: Math.round(((editingSkill as any)._minCitationCoverage ?? 0) * 100) })}
+                      {t(
+                        "admin.skillsPage.contentPolicy.minCitationCoverage.label",
+                        {
+                          percent: Math.round(
+                            ((editingSkill as any)._minCitationCoverage ?? 0) *
+                              100
+                          ),
+                        }
+                      )}
                     </Label>
                     <input
                       type="range"
                       min="0"
                       max="100"
                       step="5"
-                      value={Math.round(((editingSkill as any)._minCitationCoverage ?? 0) * 100)}
-                      onChange={(e) =>
+                      value={Math.round(
+                        ((editingSkill as any)._minCitationCoverage ?? 0) * 100
+                      )}
+                      onChange={e =>
                         setEditingSkill({
                           ...editingSkill,
                           _minCitationCoverage: parseInt(e.target.value) / 100,
@@ -7851,19 +11165,23 @@ export default function AdminSkills() {
                       className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-blue-600"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      {t("admin.skillsPage.contentPolicy.minCitationCoverage.help")}
+                      {t(
+                        "admin.skillsPage.contentPolicy.minCitationCoverage.help"
+                      )}
                     </p>
                   </div>
 
                   {/* Refresh Cadence */}
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.contentPolicy.refreshCadence.label")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.contentPolicy.refreshCadence.label")}
+                    </Label>
                     <Input
                       type="number"
                       min={1}
                       max={365}
                       value={(editingSkill as any)._refreshCadenceDays ?? 30}
-                      onChange={(e) =>
+                      onChange={e =>
                         setEditingSkill({
                           ...editingSkill,
                           _refreshCadenceDays: parseInt(e.target.value) || 30,
@@ -7881,13 +11199,20 @@ export default function AdminSkills() {
                 <div className="grid gap-3 md:grid-cols-2 pt-1">
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={(editingSkill as any)._requiresWebSearch ?? false}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _requiresWebSearch: checked } as any)
+                      checked={
+                        (editingSkill as any)._requiresWebSearch ?? false
+                      }
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _requiresWebSearch: checked,
+                        } as any)
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.quality.webSearchGrounding.label")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.quality.webSearchGrounding.label")}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
                         {t("admin.skillsPage.quality.webSearchGrounding.help")}
                       </p>
@@ -7896,13 +11221,20 @@ export default function AdminSkills() {
 
                   <div className="flex items-center gap-3">
                     <Switch
-                      checked={(editingSkill as any)._disclosureRequired ?? false}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _disclosureRequired: checked } as any)
+                      checked={
+                        (editingSkill as any)._disclosureRequired ?? false
+                      }
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _disclosureRequired: checked,
+                        } as any)
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.quality.disclosureRequired.label")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.quality.disclosureRequired.label")}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
                         {t("admin.skillsPage.quality.disclosureRequired.help")}
                       </p>
@@ -7915,7 +11247,9 @@ export default function AdminSkills() {
               <div className="space-y-3 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/30 dark:bg-purple-950/20 p-4">
                 <div className="flex items-center gap-2 mb-1">
                   <Zap className="h-4 w-4 text-purple-600" />
-                  <Label className="text-sm font-semibold text-purple-700 dark:text-purple-400">{t("admin.skillsPage.modelSelection.title")}</Label>
+                  <Label className="text-sm font-semibold text-purple-700 dark:text-purple-400">
+                    {t("admin.skillsPage.modelSelection.title")}
+                  </Label>
                 </div>
                 <p className="text-xs text-muted-foreground -mt-1">
                   {t("admin.skillsPage.modelSelection.description")}
@@ -7923,53 +11257,135 @@ export default function AdminSkills() {
 
                 {/* Execution Mode */}
                 <div className="space-y-1">
-                  <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.selectionModeLabel")}</Label>
+                  <Label className="text-xs font-medium">
+                    {t("admin.skillsPage.modelSelection.selectionModeLabel")}
+                  </Label>
                   <Select
                     value={(editingSkill as any)._execMode ?? "auto"}
-                    onValueChange={(val) =>
-                      setEditingSkill({ ...editingSkill, _execMode: val } as any)
+                    onValueChange={val =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        _execMode: val,
+                      } as any)
                     }
                   >
                     <SelectTrigger className="h-8 text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">{t("admin.skillsPage.modelSelection.modes.auto")}</SelectItem>
-                      <SelectItem value="requirements">{t("admin.skillsPage.modelSelection.modes.requirements")}</SelectItem>
-                      <SelectItem value="fixed">{t("admin.skillsPage.modelSelection.modes.fixed")}</SelectItem>
-                      <SelectItem value="hybrid">{t("admin.skillsPage.modelSelection.modes.hybrid")}</SelectItem>
+                      <SelectItem value="auto">
+                        {t("admin.skillsPage.modelSelection.modes.auto")}
+                      </SelectItem>
+                      <SelectItem value="requirements">
+                        {t(
+                          "admin.skillsPage.modelSelection.modes.requirements"
+                        )}
+                      </SelectItem>
+                      <SelectItem value="fixed">
+                        {t("admin.skillsPage.modelSelection.modes.fixed")}
+                      </SelectItem>
+                      <SelectItem value="hybrid">
+                        {t("admin.skillsPage.modelSelection.modes.hybrid")}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 {/* Capability Requirements */}
                 <div className="space-y-2">
-                  <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.requiredCapabilitiesLabel")}</Label>
+                  <Label className="text-xs font-medium">
+                    {t(
+                      "admin.skillsPage.modelSelection.requiredCapabilitiesLabel"
+                    )}
+                  </Label>
                   <div className="grid gap-2 md:grid-cols-2">
-                    {([
-                      { key: "_reqWebSearch", label: t("admin.capabilities.webSearch.label"), desc: t("admin.capabilities.webSearch.description") },
-                      { key: "_reqThinking", label: t("admin.capabilities.thinking.label"), desc: t("admin.capabilities.thinking.description") },
-                      { key: "_reqStructuredOutputs", label: t("admin.capabilities.structuredOutputs.label"), desc: t("admin.capabilities.structuredOutputs.description") },
-                      { key: "_reqJsonMode", label: t("admin.capabilities.jsonMode.label"), desc: t("admin.capabilities.jsonMode.description") },
-                      { key: "_reqStrictToolSchema", label: t("admin.capabilities.strictToolSchema.label"), desc: t("admin.capabilities.strictToolSchema.description") },
-                      { key: "_reqFunctionTools", label: t("admin.capabilities.functionTools.label"), desc: t("admin.capabilities.functionTools.description") },
-                      { key: "_reqVision", label: t("admin.capabilities.vision.label"), desc: t("admin.capabilities.vision.description") },
-                      { key: "_reqCodeExecution", label: t("admin.capabilities.codeExecution.label"), desc: t("admin.capabilities.codeExecution.description") },
-                      { key: "_reqResponses", label: t("admin.capabilities.responses.label"), desc: t("admin.capabilities.responses.description") },
-                      { key: "_reqComputerUse", label: t("admin.capabilities.computerUse.label"), desc: t("admin.capabilities.computerUse.description") },
-                      { key: "_reqBackground", label: t("admin.capabilities.background.label"), desc: t("admin.capabilities.background.description") },
-                    ] as const).map((cap) => (
+                    {(
+                      [
+                        {
+                          key: "_reqWebSearch",
+                          label: t("admin.capabilities.webSearch.label"),
+                          desc: t("admin.capabilities.webSearch.description"),
+                        },
+                        {
+                          key: "_reqThinking",
+                          label: t("admin.capabilities.thinking.label"),
+                          desc: t("admin.capabilities.thinking.description"),
+                        },
+                        {
+                          key: "_reqStructuredOutputs",
+                          label: t(
+                            "admin.capabilities.structuredOutputs.label"
+                          ),
+                          desc: t(
+                            "admin.capabilities.structuredOutputs.description"
+                          ),
+                        },
+                        {
+                          key: "_reqJsonMode",
+                          label: t("admin.capabilities.jsonMode.label"),
+                          desc: t("admin.capabilities.jsonMode.description"),
+                        },
+                        {
+                          key: "_reqStrictToolSchema",
+                          label: t("admin.capabilities.strictToolSchema.label"),
+                          desc: t(
+                            "admin.capabilities.strictToolSchema.description"
+                          ),
+                        },
+                        {
+                          key: "_reqFunctionTools",
+                          label: t("admin.capabilities.functionTools.label"),
+                          desc: t(
+                            "admin.capabilities.functionTools.description"
+                          ),
+                        },
+                        {
+                          key: "_reqVision",
+                          label: t("admin.capabilities.vision.label"),
+                          desc: t("admin.capabilities.vision.description"),
+                        },
+                        {
+                          key: "_reqCodeExecution",
+                          label: t("admin.capabilities.codeExecution.label"),
+                          desc: t(
+                            "admin.capabilities.codeExecution.description"
+                          ),
+                        },
+                        {
+                          key: "_reqResponses",
+                          label: t("admin.capabilities.responses.label"),
+                          desc: t("admin.capabilities.responses.description"),
+                        },
+                        {
+                          key: "_reqComputerUse",
+                          label: t("admin.capabilities.computerUse.label"),
+                          desc: t("admin.capabilities.computerUse.description"),
+                        },
+                        {
+                          key: "_reqBackground",
+                          label: t("admin.capabilities.background.label"),
+                          desc: t("admin.capabilities.background.description"),
+                        },
+                      ] as const
+                    ).map(cap => (
                       <div key={cap.key} className="flex items-center gap-2">
                         <Switch
                           checked={(editingSkill as any)[cap.key] ?? false}
-                          onCheckedChange={(checked) =>
-                            setEditingSkill({ ...editingSkill, [cap.key]: checked } as any)
+                          onCheckedChange={checked =>
+                            setEditingSkill({
+                              ...editingSkill,
+                              [cap.key]: checked,
+                            } as any)
                           }
                           className="scale-75"
                         />
                         <div>
-                          <Label className="text-xs font-medium">{cap.label}</Label>
-                          <p className="text-[10px] text-muted-foreground leading-tight">{cap.desc}</p>
+                          <Label className="text-xs font-medium">
+                            {cap.label}
+                          </Label>
+                          <p className="text-[10px] text-muted-foreground leading-tight">
+                            {cap.desc}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -7979,38 +11395,57 @@ export default function AdminSkills() {
                 {/* Context Length + Policy Toggles */}
                 <div className="grid gap-3 md:grid-cols-2 pt-1">
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.minContextLengthLabel")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t(
+                        "admin.skillsPage.modelSelection.minContextLengthLabel"
+                      )}
+                    </Label>
                     <Input
                       type="number"
                       min={0}
                       max={2000000}
                       step={1000}
-                      placeholder={t("admin.skillsPage.modelSelection.minContextLengthPlaceholder")}
+                      placeholder={t(
+                        "admin.skillsPage.modelSelection.minContextLengthPlaceholder"
+                      )}
                       value={(editingSkill as any)._reqContextLength ?? ""}
-                      onChange={(e) =>
+                      onChange={e =>
                         setEditingSkill({
                           ...editingSkill,
-                          _reqContextLength: e.target.value ? parseInt(e.target.value) || null : null,
+                          _reqContextLength: e.target.value
+                            ? parseInt(e.target.value) || null
+                            : null,
                         } as any)
                       }
                       className="h-8 text-xs"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      {t("admin.skillsPage.modelSelection.minContextLengthHelp")}
+                      {t(
+                        "admin.skillsPage.modelSelection.minContextLengthHelp"
+                      )}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3 pt-4">
                     <Switch
                       checked={(editingSkill as any)._allowConvOverride ?? true}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _allowConvOverride: checked } as any)
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _allowConvOverride: checked,
+                        } as any)
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.allowConversationOverride.label")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t(
+                          "admin.skillsPage.modelSelection.allowConversationOverride.label"
+                        )}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
-                        {t("admin.skillsPage.modelSelection.allowConversationOverride.help")}
+                        {t(
+                          "admin.skillsPage.modelSelection.allowConversationOverride.help"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -8018,14 +11453,23 @@ export default function AdminSkills() {
                   <div className="flex items-center gap-3 pt-1">
                     <Switch
                       checked={(editingSkill as any)._allowFreeModels ?? false}
-                      onCheckedChange={(checked) =>
-                        setEditingSkill({ ...editingSkill, _allowFreeModels: checked } as any)
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _allowFreeModels: checked,
+                        } as any)
                       }
                     />
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.modelSelection.allowFreeModels.label")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t(
+                          "admin.skillsPage.modelSelection.allowFreeModels.label"
+                        )}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
-                        {t("admin.skillsPage.modelSelection.allowFreeModels.help")}
+                        {t(
+                          "admin.skillsPage.modelSelection.allowFreeModels.help"
+                        )}
                       </p>
                     </div>
                   </div>
@@ -8040,7 +11484,9 @@ export default function AdminSkills() {
               <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50/40 p-4">
                 <div className="flex items-center gap-2">
                   <Users className="h-4 w-4 text-emerald-700" />
-                  <Label className="text-sm font-semibold text-emerald-800">{t("admin.skillsPage.orchestration.title")}</Label>
+                  <Label className="text-sm font-semibold text-emerald-800">
+                    {t("admin.skillsPage.orchestration.title")}
+                  </Label>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {t("admin.skillsPage.orchestration.description")}
@@ -8048,38 +11494,74 @@ export default function AdminSkills() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.orchestration.mode")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.orchestration.mode")}
+                    </Label>
                     <Select
-                      value={(editingSkill as any)._orchestrationMode ?? "local"}
-                      onValueChange={(value) => setEditingSkill({ ...editingSkill, _orchestrationMode: value } as any)}
+                      value={
+                        (editingSkill as any)._orchestrationMode ?? "local"
+                      }
+                      onValueChange={value =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _orchestrationMode: value,
+                        } as any)
+                      }
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="local">{t("admin.skillsPage.orchestration.modes.local")}</SelectItem>
-                        <SelectItem value="skill-handoff">{t("admin.skillsPage.orchestration.modes.skillHandoff")}</SelectItem>
-                        <SelectItem value="agency-swarm">{t("admin.skillsPage.orchestration.modes.agencySwarm")}</SelectItem>
-                        <SelectItem value="hybrid">{t("admin.skillsPage.orchestration.modes.hybrid")}</SelectItem>
+                        <SelectItem value="local">
+                          {t("admin.skillsPage.orchestration.modes.local")}
+                        </SelectItem>
+                        <SelectItem value="skill-handoff">
+                          {t(
+                            "admin.skillsPage.orchestration.modes.skillHandoff"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="hybrid">
+                          {t("admin.skillsPage.orchestration.modes.hybrid")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.orchestration.executionEndpoint")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.orchestration.executionEndpoint")}
+                    </Label>
                     <Input
                       value={(editingSkill as any)._orchestrationEndpoint ?? ""}
-                      onChange={(e) => setEditingSkill({ ...editingSkill, _orchestrationEndpoint: e.target.value } as any)}
-                      placeholder={t("admin.skillsPage.orchestration.executionEndpointPlaceholder")}
+                      onChange={e =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _orchestrationEndpoint: e.target.value,
+                        } as any)
+                      }
+                      placeholder={t(
+                        "admin.skillsPage.orchestration.executionEndpointPlaceholder"
+                      )}
                     />
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.orchestration.skillTargets")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.orchestration.skillTargets")}
+                    </Label>
                     <Input
-                      value={(editingSkill as any)._orchestrationSkillTargets ?? ""}
-                      onChange={(e) => setEditingSkill({ ...editingSkill, _orchestrationSkillTargets: e.target.value } as any)}
-                      placeholder={t("admin.skillsPage.orchestration.skillTargetsPlaceholder")}
+                      value={
+                        (editingSkill as any)._orchestrationSkillTargets ?? ""
+                      }
+                      onChange={e =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _orchestrationSkillTargets: e.target.value,
+                        } as any)
+                      }
+                      placeholder={t(
+                        "admin.skillsPage.orchestration.skillTargetsPlaceholder"
+                      )}
                     />
                     <p className="text-[10px] text-muted-foreground">
                       {t("admin.skillsPage.orchestration.skillTargetsHelp")}
@@ -8087,32 +11569,64 @@ export default function AdminSkills() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-xs font-medium">{t("admin.skillsPage.orchestration.fallback")}</Label>
+                    <Label className="text-xs font-medium">
+                      {t("admin.skillsPage.orchestration.fallback")}
+                    </Label>
                     <Select
-                      value={(editingSkill as any)._orchestrationFallback ?? "local"}
-                      onValueChange={(value) => setEditingSkill({ ...editingSkill, _orchestrationFallback: value } as any)}
+                      value={
+                        (editingSkill as any)._orchestrationFallback ?? "local"
+                      }
+                      onValueChange={value =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _orchestrationFallback: value,
+                        } as any)
+                      }
                     >
                       <SelectTrigger className="h-9">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="local">{t("admin.skillsPage.orchestration.fallbackOptions.local")}</SelectItem>
-                        <SelectItem value="fail">{t("admin.skillsPage.orchestration.fallbackOptions.fail")}</SelectItem>
-                        <SelectItem value="queue">{t("admin.skillsPage.orchestration.fallbackOptions.queue")}</SelectItem>
+                        <SelectItem value="local">
+                          {t(
+                            "admin.skillsPage.orchestration.fallbackOptions.local"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="fail">
+                          {t(
+                            "admin.skillsPage.orchestration.fallbackOptions.fail"
+                          )}
+                        </SelectItem>
+                        <SelectItem value="queue">
+                          {t(
+                            "admin.skillsPage.orchestration.fallbackOptions.queue"
+                          )}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="flex items-center justify-between rounded-lg border bg-white/60 px-3 py-2">
                     <div>
-                      <Label className="text-xs font-medium">{t("admin.skillsPage.orchestration.parallelDispatch")}</Label>
+                      <Label className="text-xs font-medium">
+                        {t("admin.skillsPage.orchestration.parallelDispatch")}
+                      </Label>
                       <p className="text-[10px] text-muted-foreground">
-                        {t("admin.skillsPage.orchestration.parallelDispatchHelp")}
+                        {t(
+                          "admin.skillsPage.orchestration.parallelDispatchHelp"
+                        )}
                       </p>
                     </div>
                     <Switch
-                      checked={(editingSkill as any)._orchestrationParallel ?? false}
-                      onCheckedChange={(checked) => setEditingSkill({ ...editingSkill, _orchestrationParallel: checked } as any)}
+                      checked={
+                        (editingSkill as any)._orchestrationParallel ?? false
+                      }
+                      onCheckedChange={checked =>
+                        setEditingSkill({
+                          ...editingSkill,
+                          _orchestrationParallel: checked,
+                        } as any)
+                      }
                     />
                   </div>
                 </div>
@@ -8138,23 +11652,35 @@ export default function AdminSkills() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {t("admin.skillsPage.triggerPatterns.helpPrefix")} <code className="bg-muted px-1 rounded">|</code> {t("admin.skillsPage.triggerPatterns.helpSuffix")}
-                  e.g. <code className="bg-muted px-1 rounded">สร้างพรอมต์|enhance prompt|image prompt</code>
+                  {t("admin.skillsPage.triggerPatterns.helpPrefix")}{" "}
+                  <code className="bg-muted px-1 rounded">|</code>{" "}
+                  {t("admin.skillsPage.triggerPatterns.helpSuffix")}
+                  e.g.{" "}
+                  <code className="bg-muted px-1 rounded">
+                    สร้างพรอมต์|enhance prompt|image prompt
+                  </code>
                 </p>
                 {editingSkill.triggerPatterns.length === 0 && (
-                  <p className="text-xs text-muted-foreground italic py-2">{t("admin.skillsPage.triggerPatterns.empty")}</p>
+                  <p className="text-xs text-muted-foreground italic py-2">
+                    {t("admin.skillsPage.triggerPatterns.empty")}
+                  </p>
                 )}
                 <div className="space-y-2">
                   {editingSkill.triggerPatterns.map((pattern, idx) => (
                     <div key={idx} className="flex items-center gap-2">
                       <Input
                         value={pattern}
-                        onChange={(e) => {
+                        onChange={e => {
                           const updated = [...editingSkill.triggerPatterns];
                           updated[idx] = e.target.value;
-                          setEditingSkill({ ...editingSkill, triggerPatterns: updated });
+                          setEditingSkill({
+                            ...editingSkill,
+                            triggerPatterns: updated,
+                          });
                         }}
-                        placeholder={t("admin.skillsPage.triggerPatterns.placeholder")}
+                        placeholder={t(
+                          "admin.skillsPage.triggerPatterns.placeholder"
+                        )}
                         className="font-mono text-sm"
                       />
                       <Button
@@ -8163,8 +11689,13 @@ export default function AdminSkills() {
                         size="icon-sm"
                         className="shrink-0 text-destructive hover:text-destructive"
                         onClick={() => {
-                          const updated = editingSkill.triggerPatterns.filter((_, i) => i !== idx);
-                          setEditingSkill({ ...editingSkill, triggerPatterns: updated });
+                          const updated = editingSkill.triggerPatterns.filter(
+                            (_, i) => i !== idx
+                          );
+                          setEditingSkill({
+                            ...editingSkill,
+                            triggerPatterns: updated,
+                          });
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -8175,12 +11706,17 @@ export default function AdminSkills() {
               </div>
 
               <div>
-                <Label htmlFor="edit-systemPrompt">{t("admin.skillsPage.fields.systemPrompt")}</Label>
+                <Label htmlFor="edit-systemPrompt">
+                  {t("admin.skillsPage.fields.systemPrompt")}
+                </Label>
                 <Textarea
                   id="edit-systemPrompt"
                   value={editingSkill.systemPrompt || ""}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, systemPrompt: e.target.value })
+                  onChange={e =>
+                    setEditingSkill({
+                      ...editingSkill,
+                      systemPrompt: e.target.value,
+                    })
                   }
                   rows={4}
                   className="font-mono text-sm"
@@ -8188,12 +11724,17 @@ export default function AdminSkills() {
               </div>
 
               <div>
-                <Label htmlFor="edit-skillContent">{t("admin.skillsPage.fields.skillContent")}</Label>
+                <Label htmlFor="edit-skillContent">
+                  {t("admin.skillsPage.fields.skillContent")}
+                </Label>
                 <Textarea
                   id="edit-skillContent"
                   value={editingSkill.skillContent || ""}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, skillContent: e.target.value })
+                  onChange={e =>
+                    setEditingSkill({
+                      ...editingSkill,
+                      skillContent: e.target.value,
+                    })
                   }
                   rows={6}
                   className="font-mono text-sm"
@@ -8202,25 +11743,39 @@ export default function AdminSkills() {
 
               <div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="edit-marketplaceContent">{t("admin.skillsPage.fields.marketplaceContent")}</Label>
+                  <Label htmlFor="edit-marketplaceContent">
+                    {t("admin.skillsPage.fields.marketplaceContent")}
+                  </Label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="dark:border-muted-foreground/40 dark:text-foreground"
-                    onClick={() => editingSkill && regenerateMarketplaceMutation.mutate({ id: editingSkill.id })}
+                    onClick={() =>
+                      editingSkill &&
+                      regenerateMarketplaceMutation.mutate({
+                        id: editingSkill.id,
+                      })
+                    }
                     disabled={regenerateMarketplaceMutation.isPending}
                   >
-                    {regenerateMarketplaceMutation.isPending ? t("admin.skillsPage.marketplace.generating") : t("admin.skillsPage.marketplace.regenerate")}
+                    {regenerateMarketplaceMutation.isPending
+                      ? t("admin.skillsPage.marketplace.generating")
+                      : t("admin.skillsPage.marketplace.regenerate")}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">{t("admin.skillsPage.marketplace.help")}</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  {t("admin.skillsPage.marketplace.help")}
+                </p>
                 <Textarea
                   id="edit-marketplaceContent"
                   placeholder={t("admin.skillsPage.marketplace.placeholder")}
                   value={editingSkill.marketplaceContent || ""}
-                  onChange={(e) =>
-                    setEditingSkill({ ...editingSkill, marketplaceContent: e.target.value })
+                  onChange={e =>
+                    setEditingSkill({
+                      ...editingSkill,
+                      marketplaceContent: e.target.value,
+                    })
                   }
                   rows={8}
                   className="font-mono text-sm"
@@ -8232,8 +11787,11 @@ export default function AdminSkills() {
                   <Label>{t("admin.skillsPage.fields.knowledgebase")}</Label>
                   <Textarea
                     value={editingSkill.knowledgebase}
-                    onChange={(e) =>
-                      setEditingSkill({ ...editingSkill, knowledgebase: e.target.value })
+                    onChange={e =>
+                      setEditingSkill({
+                        ...editingSkill,
+                        knowledgebase: e.target.value,
+                      })
                     }
                     rows={4}
                     className="font-mono text-sm"
@@ -8244,19 +11802,29 @@ export default function AdminSkills() {
               {editingSkill.folderPath && (
                 <div>
                   <Label>{t("admin.skillsPage.fields.folderPath")}</Label>
-                  <Input value={editingSkill.folderPath} disabled className="bg-muted" />
+                  <Input
+                    value={editingSkill.folderPath}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
               )}
             </div>
             <DialogFooter className="border-t pt-4">
-              <Button variant="outline" onClick={() => setEditingSkill(null)} className="dark:border-muted-foreground/40 dark:text-foreground dark:hover:bg-muted">
+              <Button
+                variant="outline"
+                onClick={() => setEditingSkill(null)}
+                className="dark:border-muted-foreground/40 dark:text-foreground dark:hover:bg-muted"
+              >
                 {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleUpdateSkill}
                 disabled={updateMutation.isPending}
               >
-                {updateMutation.isPending ? t("admin.skillsPage.editDialog.saving") : t("admin.skillsPage.editDialog.saveChanges")}
+                {updateMutation.isPending
+                  ? t("admin.skillsPage.editDialog.saving")
+                  : t("admin.skillsPage.editDialog.saveChanges")}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -8269,24 +11837,32 @@ export default function AdminSkills() {
           <DialogHeader>
             <DialogTitle>{t("admin.skillsPage.importZip.title")}</DialogTitle>
             <DialogDescription className="space-y-2">
-              <span className="block">{t("admin.skillsPage.importZip.supports")}</span>
-              <span className="block text-xs">
-                <strong>{t("admin.skillsPage.importZip.format1Label")}</strong> {t("admin.skillsPage.importZip.format1Description")}
+              <span className="block">
+                {t("admin.skillsPage.importZip.supports")}
               </span>
               <span className="block text-xs">
-                <strong>{t("admin.skillsPage.importZip.format2Label")}</strong> {t("admin.skillsPage.importZip.format2Description")}
+                <strong>{t("admin.skillsPage.importZip.format1Label")}</strong>{" "}
+                {t("admin.skillsPage.importZip.format1Description")}
+              </span>
+              <span className="block text-xs">
+                <strong>{t("admin.skillsPage.importZip.format2Label")}</strong>{" "}
+                {t("admin.skillsPage.importZip.format2Description")}
               </span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="zipSlug">{t("admin.skillsPage.importZip.slug")}</Label>
+              <Label htmlFor="zipSlug">
+                {t("admin.skillsPage.importZip.slug")}
+              </Label>
               <Input
                 id="zipSlug"
                 placeholder={t("admin.skillsPage.importZip.slugPlaceholder")}
                 value={zipSlug}
-                onChange={(e) => {
-                  const slug = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+                onChange={e => {
+                  const slug = e.target.value
+                    .toLowerCase()
+                    .replace(/[^a-z0-9-]/g, "-");
                   setZipSlug(slug);
                 }}
               />
@@ -8303,7 +11879,7 @@ export default function AdminSkills() {
                   type="file"
                   accept=".zip"
                   className="hidden"
-                  onChange={(e) => {
+                  onChange={e => {
                     const file = e.target.files?.[0];
                     if (file) setZipFile(file);
                   }}
@@ -8314,7 +11890,9 @@ export default function AdminSkills() {
                   onClick={() => zipInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {zipFile ? zipFile.name : t("admin.skillsPage.importZip.selectFile")}
+                  {zipFile
+                    ? zipFile.name
+                    : t("admin.skillsPage.importZip.selectFile")}
                 </Button>
               </div>
             </div>
@@ -8322,27 +11900,38 @@ export default function AdminSkills() {
             {zipFile && (
               <div className="p-3 bg-muted rounded-md">
                 <p className="text-sm">
-                  <span className="font-medium">{t("admin.skillsPage.importZip.fileLabel")}</span> {zipFile.name}
+                  <span className="font-medium">
+                    {t("admin.skillsPage.importZip.fileLabel")}
+                  </span>{" "}
+                  {zipFile.name}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  <span className="font-medium">{t("admin.skillsPage.importZip.sizeLabel")}</span> {(zipFile.size / 1024).toFixed(1)} KB
+                  <span className="font-medium">
+                    {t("admin.skillsPage.importZip.sizeLabel")}
+                  </span>{" "}
+                  {(zipFile.size / 1024).toFixed(1)} KB
                 </p>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsZipDialogOpen(false);
-              setZipFile(null);
-              setZipSlug("");
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsZipDialogOpen(false);
+                setZipFile(null);
+                setZipSlug("");
+              }}
+            >
               {t("common.cancel")}
             </Button>
             <Button
               onClick={handleZipUpload}
               disabled={!zipFile || !zipSlug || importZipMutation.isPending}
             >
-              {importZipMutation.isPending ? t("admin.skillsPage.importZip.importing") : t("admin.skillsPage.importZip.import")}
+              {importZipMutation.isPending
+                ? t("admin.skillsPage.importZip.importing")
+                : t("admin.skillsPage.importZip.import")}
             </Button>
           </DialogFooter>
         </DialogContent>

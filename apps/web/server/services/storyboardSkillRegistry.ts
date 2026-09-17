@@ -78,6 +78,31 @@ function candidateBundleDirs(root: string): string[] {
   return [...new Set(dirs)];
 }
 
+function defaultStoryboardSkillsRoot(): string {
+  const candidates = [
+    path.resolve(process.cwd(), "skills"),
+    path.resolve(process.cwd(), "apps/web/skills"),
+  ];
+  for (const root of candidates) {
+    try {
+      const hasBundle = fs
+        .readdirSync(root, { withFileTypes: true })
+        .some(
+          entry =>
+            entry.isDirectory() &&
+            (fs.existsSync(path.join(root, entry.name, "skill.meta.json")) ||
+              fs.existsSync(
+                path.join(root, entry.name, "imported", "skill.meta.json")
+              ))
+        );
+      if (hasBundle) return root;
+    } catch {
+      // Try the next supported project layout.
+    }
+  }
+  return candidates[0];
+}
+
 function resolveBundle(
   root: string,
   requestedId?: string
@@ -159,7 +184,7 @@ export function buildSkillSnapshot(input: {
 }
 
 export function listCompatibleStoryboardSkills(
-  skillsRoot = path.resolve(process.cwd(), "skills")
+  skillsRoot = defaultStoryboardSkillsRoot()
 ): StoryboardCompatibleSkill[] {
   const result: StoryboardCompatibleSkill[] = [];
   let entries: fs.Dirent[] = [];
@@ -201,7 +226,7 @@ export function listCompatibleStoryboardSkills(
 
 export function getStoryboardSkillSchema(
   skillId: string,
-  skillsRoot = path.resolve(process.cwd(), "skills")
+  skillsRoot = defaultStoryboardSkillsRoot()
 ): StoryboardCompatibleSkill {
   let bundle: ReturnType<typeof resolveBundle> = null;
   try {

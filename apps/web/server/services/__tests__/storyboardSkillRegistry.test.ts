@@ -57,7 +57,12 @@ describe("storyboard skill registry", () => {
     ).toThrow("identity_lock_mode");
     expect(() =>
       assertStoryboardSkillInputs(skill, {
-        age: 13,
+        age: 18,
+      })
+    ).not.toThrow();
+    expect(() =>
+      assertStoryboardSkillInputs(skill, {
+        age: 121,
       })
     ).toThrow("age");
     expect(() =>

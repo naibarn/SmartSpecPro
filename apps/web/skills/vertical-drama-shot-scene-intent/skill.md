@@ -6,6 +6,7 @@ category: video_prompt_generation
 execution_mode: llm-only
 auto_trigger: false
 enabled_by_default: false
+# Skill metadata version. This is not the response contract_version value.
 contract_version: 1
 smartspec_slug: vertical-drama-shot-scene-intent
 ---
@@ -74,3 +75,33 @@ server rejects that output before persistence or image generation.
 
 Use only exact IDs from the supplied roster. Do not invent IDs, merge people,
 or copy a previous shot's cast merely because the location continues.
+
+## Exact output contract
+
+The response itself must use the string contract version
+`vd-shot-scene-intent-v1` at both the root and every nested `scene_intent`.
+The numeric frontmatter value `contract_version: 1` is metadata only and must
+never be copied into the response.
+
+Return exactly nine shot entries. Every `scene_intent` must contain:
+
+```text
+contract_version: "vd-shot-scene-intent-v1"
+physical_character_refs: string[]
+screen_caller_refs: string[]
+offscreen_speaker_refs: string[]
+mentioned_only_refs: string[]
+supporting_presence: object[]
+communication_mode: "none" | "phone_call" | "video_call" | "text_message" | "shout_through_barrier" | "barrier_dialogue" | "separate_locations" | "voice_only"
+visual_plan: object with mode, reason_codes:string[], primary_character_refs:string[], secondary_character_refs:string[]
+dialogue_routing: object[]
+confidence: "high" | "medium" | "low"
+needs_review: boolean
+reason_codes: string[]
+```
+
+`supporting_presence` and `dialogue_routing` must be arrays, never strings.
+`supporting_presence` entries are objects with at least `role`. Each dialogue
+routing entry has `line_index`, `role`, `visual_target`, `must_be_on_screen`,
+and `must_not_appear_physically`. Return one complete JSON object only, with
+no markdown, prose, partial patch, or JSON-encoded arrays/objects.
