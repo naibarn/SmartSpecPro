@@ -9,6 +9,12 @@
 - section-05-monitoring-and-integrations: verified existing monitor/router projections and the cross-spec contract matrix.
 - section-06-migration-and-release-gates: implemented release/rollback documentation and migration-contract coverage remains green.
 
+The Feature 186 producer audit also found and fixed three Vector DB maintenance
+call sites that bypassed the producer boundary. Admin backfill/retry scheduling
+and bounded campaign continuation now use `dispatch_python_task`; the manifest
+is refreshed to the verified inventory (`direct=0`, `unmigrated=0`,
+`adapter-owned=40`).
+
 ## Evidence
 
 Focused Feature 195 suite: `jobControlPlaneTypes`, `jobControlPlane`,

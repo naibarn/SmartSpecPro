@@ -37,6 +37,12 @@ describe("Feature 200 Agent control-plane contracts", () => {
         apiKey: "secret",
       } as AgentTaskManifest)
     ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+    expect(() =>
+      validateAgentTaskManifest({
+        ...manifest,
+        skillIds: undefined,
+      } as unknown as AgentTaskManifest)
+    ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
   it("deduplicates normalized events and creates one canonical Job handoff", () => {

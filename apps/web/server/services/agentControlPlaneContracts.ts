@@ -90,6 +90,18 @@ export function validateAgentTaskManifest(
     !["local_runner", "cloudflare_container"].includes(manifest.runtime)
   )
     invalid("agent provider or runtime is invalid");
+  for (const [field, value] of [
+    ["contextPackageIds", manifest.contextPackageIds],
+    ["skillIds", manifest.skillIds],
+    ["mcpGrantIds", manifest.mcpGrantIds],
+    ["requestedCapabilities", manifest.requestedCapabilities],
+  ] as const) {
+    if (
+      !Array.isArray(value) ||
+      value.some(item => typeof item !== "string" || !item.trim())
+    )
+      invalid(`${field} is invalid`);
+  }
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");
   return {

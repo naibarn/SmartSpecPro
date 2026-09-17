@@ -64,6 +64,7 @@ describe("Feature 199 MCP governance contracts", () => {
       tenantId: "tenant-1",
       actorId: 4,
       connectionId: "conn-1",
+      connectionState: "active",
       toolName: "calendar.create",
       grantId: "grant-1",
       grantRevision: "schema-1",
@@ -79,5 +80,24 @@ describe("Feature 199 MCP governance contracts", () => {
       tenantId: "tenant-1",
     });
     expect(definition.input).not.toHaveProperty("accessToken");
+    expect(() =>
+      buildMcpExecutionJobDefinition({
+        requestId: "req-2",
+        tenantId: "tenant-1",
+        actorId: 4,
+        connectionId: "conn-1",
+        connectionState: "revoked",
+        toolName: "calendar.create",
+        grantId: "grant-1",
+        grantRevision: "schema-1",
+        arguments: { title: "Review" },
+        durable: true,
+        approvedByCommand: true,
+        tool,
+        grant,
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "MCP_CONNECTION_NOT_APPROVED" })
+    );
   });
 });

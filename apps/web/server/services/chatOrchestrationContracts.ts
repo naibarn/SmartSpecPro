@@ -69,26 +69,42 @@ export function normalizeChatRequest(
   idempotencyKey: string;
   correlationId: string;
 } {
+  const optionalTextFields = [
+    ["pageRoute", input.pageRoute, 300],
+    ["pageResourceId", input.pageResourceId, 200],
+  ] as const;
   if (
-    !input.tenantId ||
+    typeof input.tenantId !== "string" ||
+    !input.tenantId.trim() ||
     input.tenantId.length > 36 ||
-    !input.conversationId ||
+    typeof input.conversationId !== "string" ||
+    !input.conversationId.trim() ||
     input.conversationId.length > 160 ||
-    !input.correlationId ||
+    typeof input.correlationId !== "string" ||
+    !input.correlationId.trim() ||
     input.correlationId.length > 160
   )
     invalid("chat identity is invalid");
   if (!Number.isSafeInteger(input.userId) || input.userId <= 0)
     invalid("userId is invalid");
   if (
+    typeof input.text !== "string" ||
     !input.text.trim() ||
     input.text.length > 24_000 ||
+    typeof input.idempotencyKey !== "string" ||
     !input.idempotencyKey.trim() ||
     input.idempotencyKey.length > 128
   )
     invalid("chat request is invalid");
+  for (const [field, value, maxLength] of optionalTextFields) {
+    if (value !== undefined && (typeof value !== "string" || value.length > maxLength))
+      invalid(`${field} is invalid`);
+  }
   return {
     ...input,
+    tenantId: input.tenantId.trim(),
+    conversationId: input.conversationId.trim(),
+    correlationId: input.correlationId.trim(),
     text: input.text.trim(),
     idempotencyKey: input.idempotencyKey.trim(),
     pageRoute: input.pageRoute?.slice(0, 300),

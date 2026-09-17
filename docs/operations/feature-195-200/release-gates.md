@@ -4,7 +4,10 @@ Run these gates in dependency order. They are evidence requirements, not
 feature flags.
 
 1. Feature 195: migration journal, canonical `worker_jobs` schema, outbox
-   dedupe, lease fencing, terminal evidence and focused lifecycle tests.
+   dedupe, lease fencing, terminal evidence, producer inventory audit and
+   focused lifecycle tests. The local structural verifier must report
+   `direct=0` and `unmigrated=0`; remaining legacy adapter calls are rollback
+   boundaries and do not constitute activation.
 2. Feature 196: command/goal/plan hash, policy decision, approval revision and
    Job handoff tests.
 3. Feature 197: trusted Runner registration, fresh capability snapshot, offer

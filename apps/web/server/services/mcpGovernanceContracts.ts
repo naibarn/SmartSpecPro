@@ -37,6 +37,7 @@ export type McpExecutionRequest = {
   tenantId: string;
   actorId: number;
   connectionId: string;
+  connectionState: McpConnectionState;
   toolName: string;
   grantId: string;
   grantRevision: string;
@@ -149,7 +150,7 @@ export function buildMcpExecutionJobDefinition(
   input: McpExecutionRequest & { tool: McpToolDescriptor; grant: McpGrant }
 ): JobDefinition {
   canExecuteMcpTool({
-    connectionState: "active",
+    connectionState: input.connectionState,
     tool: input.tool,
     grant: input.grant,
     approvedByCommand: input.approvedByCommand,

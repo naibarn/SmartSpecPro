@@ -66,5 +66,15 @@ describe("Feature 198 Chat orchestration contracts", () => {
     ).toThrowError(
       expect.objectContaining({ code: "CHAT_ORCHESTRATION_CONTRACT_INVALID" })
     );
+    expect(() =>
+      normalizeChatRequest({
+        ...context,
+        text: "run",
+        idempotencyKey: "request-3",
+        pageRoute: 42 as unknown as string,
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "CHAT_ORCHESTRATION_CONTRACT_INVALID" })
+    );
   });
 });
