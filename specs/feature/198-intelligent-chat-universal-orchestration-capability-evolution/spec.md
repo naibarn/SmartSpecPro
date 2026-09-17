@@ -2,7 +2,7 @@
 
 **Spec ID:** 198  
 **Proposed path:** `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md`  
-**Status:** Ready for implementation planning  
+**Status:** Implementation-ready target specification  
 **Revision:** v5 — Fifth gap-review hardening: contract compatibility, event semantics, resource lifecycle, evaluation hygiene, deprecation, mixed-version rollout, i18n/a11y, governance, telemetry, retrieval quality and large-result handling  
 **Primary surfaces:** Existing SmartAIHub Chat + Universal AI Assistant Launcher/Side Panel + retained Help Center  
 **Primary backend:** SmartAIHub Web/Python Backend  
