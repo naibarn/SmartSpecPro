@@ -9,6 +9,8 @@
 **Preserves:** existing `worker_jobs`, `worker_job_events`, lease/idempotency concepts, Unified Job model, SmartAIHub Library, existing product UIs  
 **Primary migration target:** `smartspec-node-worker.service` queue/dispatch responsibilities → Cloudflare Queues + Unified Job Control Plane  
 **Companion specifications:** Feature 196 — SmartAIHub Goal Orchestration, Capability & Expertise Graph, Solution Optimizer and Universal Command Gateway; Feature 197 — SmartAIHub Runner Adaptive Execution Fabric
+**Related specifications:** Feature 198 — Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 — External MCP Gateway & Upstream Management; Feature 200 — Universal External Agent Control Plane
+**Shared cross-spec contracts:** `SAH-EXEC-1` (durable execution), `SAH-CAP-1` (capability), `SAH-RUNNER-1` (Runner), `SAH-CONTEXT-1` (context), `SAH-ASSET-1` (asset); Feature 195 owns durable `worker_jobs` execution truth.
 
 
 ---

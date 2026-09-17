@@ -1,24 +1,22 @@
-# Orchestra Plan — Enhanced virtual-screen continuity lock
+# Worker App Windows release 0.1.403
 
-## Task Classification
-- Scope: small
-- Risk: low
-- Affected domains: Enhanced video prompt bridge and Python regression tests
-- Estimated file count: 3
-- Chosen route: direct-standard-light inline implementation
-- Bug route: true
-- Classification notes: The defect is isolated to the Enhanced bridge's deterministic terminal prompt and its focused regression coverage. No schema, provider, auth, or UI change is required.
+## Task analysis
 
-## Evidence Ledger
-- source: user screenshot and repository prompt-path inspection
-- observed failure: an Enhanced video prompt can create a new phone/device screen even when the approved start frame already contains the caller's virtual screen
-- root-cause evidence: `_build_visual_cast_lock` identifies a caller as `viewer-screen` but does not require reuse of the exact existing inset or forbid a new screen/window
-- authoritative input: `shot.visualCastPolicy.screenCallerCharacterRefs` plus the approved `START_FRAME_IMAGE`
-- verification boundary: focused Python bridge regression tests; provider output and browser playback remain unverified
+- Intent: build the next Windows Worker App installer and publish it in the existing Dashboard release locations.
+- Scope: small, implementation-ready release packaging task.
+- Risk: medium; the installer is user-facing and includes the runtime pack, but no database or external deployment mutation is requested.
+- Route: direct standard-light execution using the existing `apps/worker-app/scripts/package-windows-release.mjs` workflow.
+- SocratiCode: unavailable; use targeted shell discovery and the repository release script.
+- Specialized skill decision: the generic `release` skill was inspected but skipped for GitHub/tag/npm publishing because the user requested a Dashboard installer artifact only.
 
-## Design
-- Add a deterministic Enhanced-only virtual-screen continuity block whenever server-authorized screen callers exist.
-- Bind each caller dialogue event to the same existing virtual screen visible in `START_FRAME_IMAGE`.
-- Explicitly forbid new phones, device displays, insets, floating windows, faces, physical callers, duplicates, and caller reassignment.
-- Include the same invariant in the compact prompt path so budget reduction cannot remove the protection.
-- Do not add schema fields or infer caller roles from dialogue text.
+## Success criteria
+
+1. Compute the next version from the current package/dashboard state.
+2. Pass the release script dry-run and runtime-pack gate.
+3. Build the Windows x64 NSIS installer.
+4. Place identical copies in `apps/web/client/public/releases/` and `apps/web/dist/public/releases/`.
+5. Verify filename/version, PE magic, byte identity, SHA-256, and worktree diff hygiene.
+
+## Planned wave
+
+- Wave 1: run release dry-run/runtime checks, build and publish the installer, then verify both Dashboard copies and report unsigned/Windows-host limitations.

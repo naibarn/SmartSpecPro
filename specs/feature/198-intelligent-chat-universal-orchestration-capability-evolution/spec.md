@@ -7,10 +7,11 @@
 **Primary surfaces:** Existing SmartAIHub Chat + Universal AI Assistant Launcher/Side Panel + retained Help Center  
 **Primary backend:** SmartAIHub Web/Python Backend  
 **Key runtimes:** LangGraph, OpenAI Agents SDK (Python), existing `worker_jobs`, MCP Host/Client, SmartAIHub Retrieval/RAG stack  
-**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 194 Vectorize/pgvector/Chroma retirement and cutover  
+**Related specs:** Feature 194 Vectorize/pgvector/Chroma retirement and cutover; Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 199 External MCP Gateway & Upstream Management; Feature 200 Universal External Agent Control Plane
 **Last updated:** 2026-09-17
 
 **Current codebase implementation status:** Partial; this specification defines the target Chat/evolution contract and does not imply that all target persistence, broker or Runner integrations already exist.
+**Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 198 owns Chat/Assistant UI and evolution semantics.
 
 ---
 

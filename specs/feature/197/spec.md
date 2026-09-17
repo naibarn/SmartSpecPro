@@ -7,6 +7,8 @@
 **Priority:** Architecture foundation  
 **Feature ID:** 197  
 **Recommended path:** `specs/feature/197/spec.md`  
+**Related specifications:** Feature 198 — Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 — External MCP Gateway & Upstream Management; Feature 200 — Universal External Agent Control Plane
+**Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 197 owns Runner/device/local execution semantics.
 **Implementation rule:** Do not implement a competing local-executor path outside this specification without an explicit architecture revision.
 
 ---

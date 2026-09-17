@@ -7,6 +7,8 @@
 **Recommended path:** `specs/feature/196/spec.md`  
 **Depends on:** Feature 195 Unified Async Job Control Plane
 **Companion architecture:** Feature 197 SmartAIHub Runner Adaptive Execution Fabric  
+**Related specifications:** Feature 198 — Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 — External MCP Gateway & Upstream Management; Feature 200 — Universal External Agent Control Plane
+**Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 196 owns Goal/Plan/Capability/Command semantics.
 **Primary purpose:** Allow users or external assistants to state desired outcomes without knowing which Agent, Skill, Plugin, model, provider, runtime or device must be used.
 **Current codebase implementation status:** Partial; this document defines the target Goal/Plan/Capability/Command architecture and must not be read as evidence that all durable registries or user flows already exist.
 
