@@ -22,6 +22,22 @@
     "section-03-policy-and-execution": {
       "status": "complete",
       "commit_hash": "530e42688"
+    },
+    "section-02-discovery-auth-and-quarantine": {
+      "status": "complete",
+      "commit_hash": "530e42688"
+    },
+    "section-04-api-and-observability": {
+      "status": "complete",
+      "commit_hash": "530e42688"
+    },
+    "section-05-ui": {
+      "status": "complete",
+      "commit_hash": "530e42688"
+    },
+    "section-06-migration-tests-and-acceptance": {
+      "status": "complete",
+      "commit_hash": "530e42688"
     }
   },
   "pre_commit": {

@@ -18,6 +18,26 @@
     "section-01-contracts": {
       "status": "complete",
       "commit_hash": "5356915d9"
+    },
+    "section-02-persistence": {
+      "status": "complete",
+      "commit_hash": "978f8c9b1"
+    },
+    "section-03-publication-and-capacity": {
+      "status": "complete",
+      "commit_hash": "5706371ac"
+    },
+    "section-04-lifecycle-and-control": {
+      "status": "complete",
+      "commit_hash": "5356915d9"
+    },
+    "section-05-monitoring-and-integrations": {
+      "status": "complete",
+      "commit_hash": "566ff7808"
+    },
+    "section-06-migration-and-release-gates": {
+      "status": "complete",
+      "commit_hash": "5706371ac"
     }
   },
   "pre_commit": {

@@ -22,6 +22,22 @@
     "section-01-agent-contracts-and-job-handoff": {
       "status": "complete",
       "commit_hash": "b9dfd23b2"
+    },
+    "section-02-provider-adapters": {
+      "status": "complete",
+      "commit_hash": "b9dfd23b2"
+    },
+    "section-03-runner-and-runtime": {
+      "status": "complete",
+      "commit_hash": "b9dfd23b2"
+    },
+    "section-05-verification-and-ui": {
+      "status": "complete",
+      "commit_hash": "b9dfd23b2"
+    },
+    "section-06-migration-tests-and-acceptance": {
+      "status": "complete",
+      "commit_hash": "b9dfd23b2"
     }
   },
   "pre_commit": {

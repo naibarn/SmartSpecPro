@@ -26,6 +26,18 @@
     "section-04-control-and-recovery": {
       "status": "complete",
       "commit_hash": "b9ab0913a"
+    },
+    "section-02-identity-and-discovery": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-05-ui-and-mcp-boundary": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-06-migration-and-acceptance": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
     }
   },
   "pre_commit": {

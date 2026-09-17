@@ -22,6 +22,22 @@
     "section-03-task-state-and-provenance": {
       "status": "complete",
       "commit_hash": "013c9847c"
+    },
+    "section-02-brokers-and-runtime": {
+      "status": "complete",
+      "commit_hash": "013c9847c"
+    },
+    "section-04-ui-surfaces": {
+      "status": "complete",
+      "commit_hash": "013c9847c"
+    },
+    "section-05-evolution-and-governance": {
+      "status": "complete",
+      "commit_hash": "013c9847c"
+    },
+    "section-06-browser-and-release-gates": {
+      "status": "complete",
+      "commit_hash": "013c9847c"
     }
   },
   "pre_commit": {

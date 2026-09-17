@@ -30,6 +30,14 @@
     "section-05-gateway-and-ui": {
       "status": "complete",
       "commit_hash": "a34b7385a"
+    },
+    "section-02-goal-plan-persistence": {
+      "status": "complete",
+      "commit_hash": "978f8c9b1"
+    },
+    "section-06-cross-spec-release": {
+      "status": "complete",
+      "commit_hash": "566ff7808"
     }
   },
   "pre_commit": {
