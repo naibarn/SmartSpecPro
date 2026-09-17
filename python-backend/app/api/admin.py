@@ -273,10 +273,19 @@ class VectorBackfillBatchPayload(BaseModel):
 
 def _schedule_vector_db_backfill_campaign(campaign_id: int) -> bool:
     """Start durable backfill processing without blocking the admin request."""
+    from app.services.job_control_plane import dispatch_python_task
     from app.tasks.vector_db_backfill_tasks import run_vector_db_backfill_campaign
 
-    run_vector_db_backfill_campaign.delay(int(campaign_id))
-    return True
+    normalized_campaign_id = int(campaign_id)
+    result = dispatch_python_task(
+        run_vector_db_backfill_campaign.name,
+        args=[normalized_campaign_id],
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"vectorize:backfill:campaign:{normalized_campaign_id}",
+        correlation_id=f"admin:vectorize-backfill:{normalized_campaign_id}",
+        legacy_task=run_vector_db_backfill_campaign,
+    )
+    return result.created
 
 
 async def _reset_failed_vector_db_index_jobs_for_retry(db: AsyncSession) -> int:
@@ -307,10 +316,18 @@ async def _reset_failed_vector_db_index_jobs_for_retry(db: AsyncSession) -> int:
 
 def _schedule_vector_db_index_retry() -> bool:
     """Wake the existing bounded library-index retry worker immediately."""
+    from app.services.job_control_plane import dispatch_python_task
     from app.tasks.media_tasks import retry_library_index_jobs
 
-    retry_library_index_jobs.delay()
-    return True
+    dispatch_bucket = int(datetime.utcnow().timestamp() // 300)
+    result = dispatch_python_task(
+        retry_library_index_jobs.name,
+        tenant_id=os.getenv("FEATURE_186_SYSTEM_TENANT_ID"),
+        idempotency_key=f"vectorize:index-retry:{dispatch_bucket}",
+        correlation_id="admin:vectorize-index-retry",
+        legacy_task=retry_library_index_jobs,
+    )
+    return result.created
 
 
 def _status_for_cutover_runtime_error(exc: RuntimeError) -> int:

@@ -37,13 +37,13 @@ selected_job_types:
   - video.intelligence
 producer_inventory:
   source: apps/web/scripts/audit-feature-186-call-sites.ts
-  audited_at: "2026-09-14"
+  audited_at: "2026-09-17"
   direct_transport_call_sites: 0
   direct_transport_call_sites_by_transport:
     bullmq: 0
     celery: 0
   approved_compatibility_call_sites: 0
-  adapter_owned_call_sites: 47
+  adapter_owned_call_sites: 40
   unmigrated_side_effecting_call_sites: 0
   legacy_adapter_transport_call_sites: 3
   status_reader_call_sites: 0
