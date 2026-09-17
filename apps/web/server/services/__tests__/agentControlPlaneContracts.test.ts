@@ -5,6 +5,7 @@ import {
   AgentAdapterRegistry,
   buildAgentJobDefinition,
   validateAgentTaskManifest,
+  type AgentEvent,
   type AgentAdapter,
   type AgentTaskManifest,
 } from "../agentControlPlaneContracts";
@@ -71,6 +72,27 @@ describe("Feature 200 Agent control-plane contracts", () => {
       tenantId: "tenant-1",
     });
     expect(job.input).not.toHaveProperty("apiKey");
+    expect(() =>
+      validateAgentTaskManifest(null as unknown as AgentTaskManifest)
+    ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+    expect(() =>
+      acceptAgentEvent(0, {
+        eventId: "bad",
+        taskId: "task-1",
+        sequence: 1,
+        kind: "text",
+        payload: null as unknown as Record<string, unknown>,
+      })
+    ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+    expect(() =>
+      acceptAgentEvent(0, {
+        eventId: "bad-kind",
+        taskId: "task-1",
+        sequence: 1,
+        kind: "unknown" as AgentEvent["kind"],
+        payload: {},
+      })
+    ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
   it("keeps provider volatility behind a single adapter registry", async () => {

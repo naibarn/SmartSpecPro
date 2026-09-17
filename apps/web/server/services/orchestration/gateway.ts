@@ -37,16 +37,67 @@ export async function submitApprovedPlan(
   }
   const definitions = buildJobDefinitions(input.plan);
   const refs: JobRef[] = [];
+  const jobIdsByStepId = new Map<string, string>();
   for (const definition of definitions) {
+    const orchestration = definition.input.orchestration;
+    const stepId =
+      orchestration &&
+      typeof orchestration === "object" &&
+      !Array.isArray(orchestration)
+        ? (orchestration as { stepId?: unknown }).stepId
+        : undefined;
+    const dependencyStepIds =
+      orchestration &&
+      typeof orchestration === "object" &&
+      !Array.isArray(orchestration)
+        ? (orchestration as { dependsOnStepIds?: unknown }).dependsOnStepIds
+        : undefined;
+    if (
+      typeof stepId !== "string" ||
+      !Array.isArray(dependencyStepIds) ||
+      dependencyStepIds.some(id => typeof id !== "string")
+    ) {
+      throw new JobControlPlaneError(
+        "ORCHESTRATION_PLAN_INVALID",
+        "Plan step dependency metadata is invalid"
+      );
+    }
+    const dependsOnJobIds: string[] = [];
+    for (const dependencyStepId of dependencyStepIds) {
+      const dependencyJobId = jobIdsByStepId.get(dependencyStepId);
+      if (!dependencyJobId) {
+        throw new JobControlPlaneError(
+          "ORCHESTRATION_PLAN_INVALID",
+          "Plan step dependency was not submitted before its dependent step"
+        );
+      }
+      dependsOnJobIds.push(dependencyJobId);
+    }
+    const definitionWithDependencies = {
+      ...definition,
+      input: {
+        ...definition.input,
+        orchestration: {
+          ...(orchestration as Record<string, unknown>),
+          dependsOnJobIds,
+        },
+      },
+    };
     refs.push(
       await createControlPlaneJob({
-        context: input.context,
+        context: {
+          ...input.context,
+          // Each plan step must be independently idempotent. Reusing the
+          // request key for every step would collapse a multi-step plan into
+          // the first Job during a retry.
+          idempotencyKey: definition.idempotencyKey,
+        },
         definition: {
-          ...definition,
+          ...definitionWithDependencies,
           // The gateway derives the tenant and actor from context; this field is
           // kept only in the internal definition for hash/provenance parity.
           input: {
-            ...definition.input,
+            ...definitionWithDependencies.input,
             orchestrationActorId: input.approval.actorId,
           },
         },
@@ -54,6 +105,7 @@ export async function submitApprovedPlan(
         executorRegistry: input.executorRegistry,
       })
     );
+    jobIdsByStepId.set(stepId, refs.at(-1)!.jobId);
   }
   return refs;
 }

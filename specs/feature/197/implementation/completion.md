@@ -13,3 +13,14 @@
 
 Focused Runner contract suite: 3 tests passed. No duplicate Runner job ledger
 or Docker/OpenSandbox path was introduced.
+
+## 2026-09-18 implementation audit corrections
+
+- Runner identity and capability snapshots now normalize bounded text/list
+  fields, reject duplicate capability/workspace entries and invalid timestamp
+  windows, and safely return no offer for malformed runtime data.
+- Workspace confinement now fails closed for non-string path inputs. Added
+  malformed-input regression coverage.
+- Connected discovery, durable reconnect journal and desktop/browser evidence
+  remain runtime acceptance gates; no retired Docker/OpenSandbox path was
+  introduced.

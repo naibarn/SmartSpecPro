@@ -54,6 +54,29 @@ function invalid(message: string): never {
   throw new JobControlPlaneError("AGENT_CONTRACT_INVALID", message);
 }
 
+function requiredText(
+  value: unknown,
+  field: string,
+  maxLength: number
+): string {
+  if (typeof value !== "string") invalid(`${field} is invalid`);
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength)
+    invalid(`${field} is invalid`);
+  return normalized;
+}
+
+function normalizedIdList(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || value.length > 128)
+    invalid(`${field} is invalid`);
+  const normalized = (value as unknown[]).map(item =>
+    requiredText(item, `${field}[]`, 160)
+  );
+  if (new Set(normalized).size !== normalized.length)
+    invalid(`${field} is invalid`);
+  return normalized;
+}
+
 function containsSecret(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(containsSecret);
   if (!value || typeof value !== "object") return false;
@@ -68,48 +91,58 @@ function containsSecret(value: unknown): boolean {
 export function validateAgentTaskManifest(
   manifest: AgentTaskManifest
 ): AgentTaskManifest {
+  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest))
+    invalid("agent manifest is invalid");
+  const raw = manifest as unknown as Record<string, unknown>;
+  const taskId = requiredText(raw.taskId, "taskId", 128);
+  const tenantId = requiredText(raw.tenantId, "tenantId", 36);
+  const goalId = requiredText(raw.goalId, "goalId", 128);
+  const planId = requiredText(raw.planId, "planId", 128);
+  const workspaceId = requiredText(raw.workspaceId, "workspaceId", 160);
   if (
-    !manifest.taskId ||
-    !manifest.tenantId ||
-    !manifest.goalId ||
-    !manifest.planId ||
-    !manifest.workspaceId
-  )
-    invalid("agent identity is incomplete");
-  if (
-    !Number.isSafeInteger(manifest.actorId) ||
-    manifest.actorId <= 0 ||
-    !Number.isSafeInteger(manifest.planRevision) ||
-    manifest.planRevision < 1
+    !Number.isSafeInteger(raw.actorId) ||
+    (raw.actorId as number) <= 0 ||
+    !Number.isSafeInteger(raw.planRevision) ||
+    (raw.planRevision as number) < 1
   )
     invalid("agent identity or plan revision is invalid");
   if (
-    !["codex", "claude_code", "antigravity", "deepseek"].includes(
-      manifest.provider
+    !(
+      typeof raw.provider === "string" &&
+      ["codex", "claude_code", "antigravity", "deepseek"].includes(raw.provider)
     ) ||
-    !["local_runner", "cloudflare_container"].includes(manifest.runtime)
+    !(
+      typeof raw.runtime === "string" &&
+      ["local_runner", "cloudflare_container"].includes(raw.runtime)
+    )
   )
     invalid("agent provider or runtime is invalid");
-  for (const [field, value] of [
-    ["contextPackageIds", manifest.contextPackageIds],
-    ["skillIds", manifest.skillIds],
-    ["mcpGrantIds", manifest.mcpGrantIds],
-    ["requestedCapabilities", manifest.requestedCapabilities],
-  ] as const) {
-    if (
-      !Array.isArray(value) ||
-      value.some(item => typeof item !== "string" || !item.trim())
-    )
-      invalid(`${field} is invalid`);
-  }
+  const contextPackageIds = normalizedIdList(
+    raw.contextPackageIds,
+    "contextPackageIds"
+  );
+  const skillIds = normalizedIdList(raw.skillIds, "skillIds");
+  const mcpGrantIds = normalizedIdList(raw.mcpGrantIds, "mcpGrantIds");
+  const requestedCapabilities = normalizedIdList(
+    raw.requestedCapabilities,
+    "requestedCapabilities"
+  );
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");
   return {
-    ...manifest,
-    contextPackageIds: [...manifest.contextPackageIds],
-    skillIds: [...manifest.skillIds],
-    mcpGrantIds: [...manifest.mcpGrantIds],
-    requestedCapabilities: [...manifest.requestedCapabilities],
+    taskId,
+    tenantId,
+    actorId: raw.actorId as number,
+    goalId,
+    planId,
+    planRevision: raw.planRevision as number,
+    provider: raw.provider as AgentProvider,
+    runtime: raw.runtime as AgentRuntime,
+    workspaceId,
+    contextPackageIds,
+    skillIds,
+    mcpGrantIds,
+    requestedCapabilities,
   };
 }
 
@@ -118,8 +151,30 @@ export function acceptAgentEvent(
   event: AgentEvent
 ): "accepted" | "duplicate" | "out_of_order" {
   if (
+    !Number.isSafeInteger(lastSequence) ||
+    lastSequence < 0 ||
+    !event ||
+    typeof event !== "object" ||
     !Number.isSafeInteger(event.sequence) ||
     event.sequence < 1 ||
+    typeof event.eventId !== "string" ||
+    !event.eventId.trim() ||
+    event.eventId.length > 160 ||
+    typeof event.taskId !== "string" ||
+    !event.taskId.trim() ||
+    event.taskId.length > 128 ||
+    ![
+      "started",
+      "text",
+      "tool_call",
+      "approval_required",
+      "completed",
+      "failed",
+      "cancelled",
+    ].includes(event.kind) ||
+    !event.payload ||
+    typeof event.payload !== "object" ||
+    Array.isArray(event.payload) ||
     containsSecret(event.payload)
   )
     invalid("agent event is invalid");

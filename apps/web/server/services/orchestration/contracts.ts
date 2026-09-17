@@ -40,6 +40,7 @@ export type CapabilityRequirement = {
 };
 
 export type CapabilityOffer = CapabilityRequirement & {
+  offerId: string;
   providerNeutralName: string;
   executionClass: ExecutionClass;
   jobType: string;
@@ -51,6 +52,7 @@ export type CapabilityOffer = CapabilityRequirement & {
 
 export type PlanStep = {
   stepId: string;
+  selectedOfferId: string;
   capabilityId: string;
   jobType: string;
   executionClass: ExecutionClass;
@@ -154,13 +156,24 @@ export function normalizeUniversalCommand(input: {
   );
   const requestedAt = input.requestedAt ?? new Date().toISOString();
   if (Number.isNaN(Date.parse(requestedAt))) fail("requestedAt is invalid");
-  if (input.pageContext?.route && input.pageContext.route.length > 300)
-    fail("pageContext.route is invalid");
   if (
-    input.pageContext?.resourceId &&
-    input.pageContext.resourceId.length > 200
-  )
-    fail("pageContext.resourceId is invalid");
+    input.pageContext !== undefined &&
+    (!input.pageContext ||
+      typeof input.pageContext !== "object" ||
+      Array.isArray(input.pageContext))
+  ) {
+    fail("pageContext is invalid");
+  }
+  for (const [field, value, maxLength] of [
+    ["pageContext.route", input.pageContext?.route, 300],
+    ["pageContext.resourceId", input.pageContext?.resourceId, 200],
+  ] as const) {
+    if (
+      value !== undefined &&
+      (typeof value !== "string" || value.length > maxLength)
+    )
+      fail(`${field} is invalid`);
+  }
   return {
     commandId,
     tenantId,
@@ -169,7 +182,12 @@ export function normalizeUniversalCommand(input: {
     text,
     requestedAt: new Date(requestedAt).toISOString(),
     idempotencyKey,
-    pageContext: input.pageContext,
+    pageContext: input.pageContext
+      ? {
+          route: input.pageContext.route?.trim(),
+          resourceId: input.pageContext.resourceId?.trim(),
+        }
+      : undefined,
   };
 }
 
@@ -196,34 +214,47 @@ export function compilePlan(input: {
   planId: string;
   revision?: number;
 }): PlanRevision {
-  if (input.goal.tenantId.length === 0 || input.offers.length === 0)
+  const planId = requiredText(input.planId, "planId", 128);
+  const capabilitySnapshotRevision = requiredText(
+    input.capabilitySnapshotRevision,
+    "capabilitySnapshotRevision",
+    128
+  );
+  if (
+    !input.goal.tenantId.length ||
+    !input.offers.length ||
+    !Number.isSafeInteger(input.revision ?? 1) ||
+    (input.revision ?? 1) < 1
+  )
     fail("No executable capability offer is available");
   const available = input.offers.filter(offer => offer.available);
   if (available.length !== input.offers.length)
     fail("Plan contains unavailable capability offers");
+  const offerIds = available.map(offer =>
+    requiredText(offer.offerId, "offerId", 128)
+  );
+  if (new Set(offerIds).size !== offerIds.length)
+    fail("Plan contains duplicate capability offers");
   const steps = available.map((offer, index): PlanStep => ({
-    stepId: `${input.planId}:step:${index + 1}`,
+    stepId: `${planId}:step:${index + 1}`,
+    selectedOfferId: offerIds[index],
     capabilityId: offer.capabilityId,
     jobType: offer.jobType,
     executionClass: offer.executionClass,
     input: { goalId: input.goal.goalId, objective: input.goal.objective },
-    dependsOn: index === 0 ? [] : [`${input.planId}:step:${index}`],
+    dependsOn: index === 0 ? [] : [`${planId}:step:${index}`],
     requiresApproval: offer.requiresApproval === true,
   }));
   const requiresApproval = steps.some(step => step.requiresApproval);
   return {
-    planId: requiredText(input.planId, "planId", 128),
+    planId,
     goalId: input.goal.goalId,
     tenantId: input.goal.tenantId,
     revision: input.revision ?? 1,
     planHash: hashPlanSteps(steps),
     status: requiresApproval ? "awaiting_approval" : "draft",
     steps,
-    capabilitySnapshotRevision: requiredText(
-      input.capabilitySnapshotRevision,
-      "capabilitySnapshotRevision",
-      128
-    ),
+    capabilitySnapshotRevision,
     createdAt: new Date().toISOString(),
   };
 }
@@ -231,6 +262,9 @@ export function compilePlan(input: {
 export function buildJobDefinitions(plan: PlanRevision): JobDefinition[] {
   if (plan.status !== "approved" && plan.status !== "submitted") {
     fail("Only an approved plan can be handed to the Job control plane");
+  }
+  if (plan.planHash !== hashPlanSteps(plan.steps)) {
+    fail("Plan hash does not match the approved steps");
   }
   return plan.steps.map(step => ({
     contractVersion: "feature-186-v1",
@@ -244,6 +278,8 @@ export function buildJobDefinitions(plan: PlanRevision): JobDefinition[] {
         planRevision: plan.revision,
         planHash: plan.planHash,
         stepId: step.stepId,
+        selectedOfferId: step.selectedOfferId,
+        dependsOnStepIds: [...step.dependsOn],
       },
     },
     idempotencyKey:

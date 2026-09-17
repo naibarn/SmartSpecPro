@@ -13,3 +13,12 @@
 
 Focused Chat contract suite: 2 tests passed. UI state does not imply Job
 completion without canonical status.
+
+## 2026-09-18 implementation audit corrections
+
+- Rechecked the Chat boundary against the selected Offer, canonical Job
+  dependency and status contracts. No duplicate execution path was added;
+  `/chat` remains the command surface and canonical Job state remains the
+  source of truth.
+- Browser/UI plan cards and consented evolution persistence remain explicitly
+  gated rather than being represented as completed by contract-only code.

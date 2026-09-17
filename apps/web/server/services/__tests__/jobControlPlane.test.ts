@@ -147,6 +147,63 @@ describe("job control plane", () => {
     expect(state.events.map(event => event.eventType)).toEqual(["CREATED", "QUEUED", "DISPATCH_REQUESTED"]);
   });
 
+  it("does not claim a dependent Job before its prerequisite succeeds", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const parent = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const child = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+      input: { orchestration: { dependsOnJobIds: [parent.jobId] } },
+    });
+
+    expect(
+      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+    ).toBeNull();
+    expect(state.jobs.get(child.jobId).status).toBe("queued");
+
+    const parentLease = await controlPlane.claim({ jobId: parent.jobId, runnerId: "runner-parent", adapter: "test" });
+    await controlPlane.start(parentLease!);
+    await controlPlane.complete(parentLease!, { output: { ok: true } });
+    expect(state.jobs.get(parent.jobId).status).toBe("succeeded");
+    expect(
+      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+    ).toMatchObject({ jobId: child.jobId });
+  });
+
+  it("fails a dependent Job closed when its prerequisite permanently fails", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const parent = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const child = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+      input: { orchestration: { dependsOnJobIds: [parent.jobId] } },
+    });
+
+    const parentLease = await controlPlane.claim({ jobId: parent.jobId, runnerId: "runner-parent", adapter: "test" });
+    await controlPlane.start(parentLease!);
+    await controlPlane.fail(parentLease!, {
+      code: "INVALID_INPUT",
+      message: "invalid prerequisite",
+      class: "permanent",
+    });
+
+    expect(
+      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+    ).toBeNull();
+    expect(state.jobs.get(child.jobId)).toMatchObject({
+      status: "failed",
+      errorCode: "JOB_DEPENDENCY_BLOCKED",
+      statusReason: "dependency_failed",
+      operatorReviewRequired: true,
+    });
+    expect(state.events.at(-1)).toMatchObject({
+      workerJobId: child.jobId,
+      eventType: "FAILED",
+    });
+  });
+
   it("rejects a known adapter that does not match the persisted runtime", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

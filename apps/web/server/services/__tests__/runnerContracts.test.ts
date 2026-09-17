@@ -5,6 +5,8 @@ import {
   assertOfferClaim,
   buildWorkOffer,
   isWorkspacePathAllowed,
+  validateRunnerCapabilitySnapshot,
+  validateRunnerIdentity,
   type RunnerCapabilitySnapshot,
   type RunnerIdentity,
 } from "../runnerContracts";
@@ -118,6 +120,34 @@ describe("Feature 197 Runner contracts", () => {
         "/workspace/project",
         "/workspace/project/../secrets.env"
       )
+    ).toBe(false);
+  });
+
+  it("rejects malformed runtime identity, snapshots, and paths safely", () => {
+    expect(() =>
+      validateRunnerIdentity({ runnerId: 123 } as unknown as RunnerIdentity)
+    ).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(() =>
+      validateRunnerCapabilitySnapshot({
+        ...snapshot,
+        capabilities: ["code.edit", "code.edit"],
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+    );
+    expect(
+      buildWorkOffer({
+        jobId: "job-1",
+        tenantId: "tenant-1",
+        requiredCapabilities: 123 as unknown as string[],
+        runner,
+        snapshot,
+      })
+    ).toBeNull();
+    expect(
+      isWorkspacePathAllowed("/workspace/project", 123 as unknown as string)
     ).toBe(false);
   });
 });

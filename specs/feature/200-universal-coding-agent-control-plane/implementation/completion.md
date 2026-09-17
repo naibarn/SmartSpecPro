@@ -13,3 +13,11 @@
 
 Focused Agent contract suite: 3 tests passed. The job handoff uses the existing
 external-agent Job type rather than introducing `agent.external_task`.
+
+## 2026-09-18 implementation audit corrections
+
+- Agent manifests now normalize bounded identity/list fields, reject duplicate
+  references and fail closed for malformed runtime payloads/events.
+- The existing `external_agent_task` handoff and adapter registry remain the
+  only provider boundary. Provider process adapters, connected runtime result
+  projection and browser/UI evidence remain explicit integration gates.

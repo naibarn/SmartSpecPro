@@ -13,3 +13,16 @@
 
 Focused orchestration suite: 4 tests passed. Handoff calls the existing
 `createControlPlaneJob` gateway and never submits directly to a provider.
+
+## 2026-09-18 implementation audit corrections
+
+- Capability Offers now carry an explicit `offerId`, and compiled Plan Steps
+  preserve `selectedOfferId` through the canonical Job input for provenance and
+  policy evaluation.
+- Multi-step submission derives a distinct idempotency key per step and maps
+  Plan step dependencies to predecessor Job IDs before admission.
+- Plan hash is revalidated at approval and Job-definition construction; policy
+  cost is calculated only from the selected Offers.
+- Malformed page context and plan metadata are rejected at the contract
+  boundary. Goal/Plan durable persistence and visual UI evidence remain
+  integration gates as stated above.

@@ -35,6 +35,7 @@ export type GatewayJobDefinition = {
   executionClass: ExecutionClass;
   priority?: number;
   input: Record<string, unknown>;
+  idempotencyKey?: string;
   retryPolicy: RetryPolicy;
   timeoutPolicy: TimeoutPolicy;
   requiredCapabilities?: Record<string, unknown>;
@@ -113,7 +114,10 @@ export async function createControlPlaneJob(
     // still prevent selecting a retired runtime.
     assertGoogleRuntimeDisabled();
   }
-  const idempotencyKey = context.idempotencyKey;
+  // A producer context may provide the request key, but definitions that are
+  // part of a multi-step plan own a stable per-step key. Never erase the
+  // definition key when the caller has no context-level override.
+  const idempotencyKey = context.idempotencyKey ?? definition.idempotencyKey;
   const canonicalDefinition: JobDefinition = {
     ...definition,
     tenantId,

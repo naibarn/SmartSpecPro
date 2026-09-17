@@ -189,6 +189,56 @@ export function compatibilityStatus(status: string): string {
   }
 }
 
+type JobDependencyCheck =
+  | { state: "ready" }
+  | { state: "waiting" }
+  | { state: "failed"; reason: string };
+
+function readJobDependencyIds(inputJson: unknown):
+  | { ids: string[]; invalid: false }
+  | { ids: []; invalid: true } {
+  if (!inputJson || typeof inputJson !== "object" || Array.isArray(inputJson)) {
+    return { ids: [], invalid: true };
+  }
+  const orchestration = (inputJson as Record<string, unknown>).orchestration;
+  if (orchestration === undefined) return { ids: [], invalid: false };
+  if (!orchestration || typeof orchestration !== "object" || Array.isArray(orchestration)) {
+    return { ids: [], invalid: true };
+  }
+  const rawIds = (orchestration as Record<string, unknown>).dependsOnJobIds;
+  if (rawIds === undefined) return { ids: [], invalid: false };
+  if (!Array.isArray(rawIds)) return { ids: [], invalid: true };
+  const ids = rawIds.map(value => (typeof value === "string" ? value.trim() : ""));
+  if (ids.some(id => !/^[a-zA-Z0-9_-]{1,36}$/.test(id))) {
+    return { ids: [], invalid: true };
+  }
+  return { ids: Array.from(new Set(ids)), invalid: false };
+}
+
+async function checkJobDependencies(
+  repo: TxRepo,
+  job: WorkerJob,
+): Promise<JobDependencyCheck> {
+  const parsed = readJobDependencyIds(job.inputJson);
+  if (parsed.invalid) return { state: "failed", reason: "dependency_contract_invalid" };
+  if (parsed.ids.length === 0) return { state: "ready" };
+  if (parsed.ids.includes(job.id)) return { state: "failed", reason: "dependency_cycle" };
+
+  const dependencies = await Promise.all(parsed.ids.map(dependencyId => repo.findJob(dependencyId)));
+  if (dependencies.some(dependency => !dependency)) {
+    return { state: "failed", reason: "dependency_missing" };
+  }
+  if (dependencies.some(dependency => {
+    const status = canonicalizeStoredStatus(dependency!.status);
+    return ["failed", "cancelled", "expired"].includes(status);
+  })) {
+    return { state: "failed", reason: "dependency_failed" };
+  }
+  return dependencies.every(dependency => canonicalizeStoredStatus(dependency!.status) === "succeeded")
+    ? { state: "ready" }
+    : { state: "waiting" };
+}
+
 /**
  * Error text is operational metadata, not a log sink. Keep it useful for
  * operators while preventing credentials and control characters from
@@ -425,6 +475,16 @@ function buildDefaultRepository(): JobControlPlaneRepository {
             return row ?? null;
           },
           async updateJob(input) {
+            const requestedStatus = input.values.status;
+            if (typeof requestedStatus === "string") {
+              // Keep the transition invariant at the repository boundary so
+              // non-lease recovery/operator paths cannot bypass the shared
+              // lifecycle table.
+              assertCanonicalJobTransition(
+                canonicalizeStoredStatus(input.expectedStatus),
+                canonicalizeStoredStatus(requestedStatus),
+              );
+            }
             const conditions = [
               eq(workerJobs.id, input.jobId),
               eq(workerJobs.status, input.expectedStatus as any),
@@ -1433,6 +1493,39 @@ export function createJobControlPlane(repository: JobControlPlaneRepository = de
         const job = await repo.findJob(input.jobId);
         if (!job || job.status !== "queued") return null;
         assertClaimAdapterCompatible(job.runtimeType, input.adapter);
+        const dependencyCheck = await checkJobDependencies(repo, job);
+        if (dependencyCheck.state === "waiting") return null;
+        if (dependencyCheck.state === "failed") {
+          const updated = await repo.updateJob({
+            jobId: job.id,
+            expectedStatus: job.status,
+            expectedAttempt: job.attempt,
+            expectedFencingVersion: job.fencingVersion,
+            values: {
+              status: "failed",
+              statusReason: dependencyCheck.reason,
+              errorCode: "JOB_DEPENDENCY_BLOCKED",
+              errorMessage: "A prerequisite Job could not complete successfully",
+              operatorReviewRequired: true,
+              operatorReviewReason: dependencyCheck.reason,
+              finishedAt: new Date(),
+            },
+          });
+          if (updated) {
+            await repo.cancelUnpublishedOutbox({
+              jobId: job.id,
+              reason: dependencyCheck.reason,
+              cancelledAt: new Date(),
+            });
+            await repo.insertEvent({
+              workerJobId: job.id,
+              eventType: "FAILED",
+              eventIdempotencyKey: `dependency-failed:${job.id}:${job.attempt}:${dependencyCheck.reason}`,
+              payloadJson: { reason: dependencyCheck.reason },
+            });
+          }
+          return null;
+        }
         if (job.attempt > job.maxAttempts) return null;
         const existingAttempt = await repo.findAttempt(job.id, job.attempt);
         if (input.attemptId && (!existingAttempt || existingAttempt.id !== input.attemptId)) return null;

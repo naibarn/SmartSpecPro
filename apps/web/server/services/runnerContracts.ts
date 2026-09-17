@@ -63,28 +63,98 @@ function invalid(message: string): never {
   throw new JobControlPlaneError("RUNNER_CONTRACT_INVALID", message);
 }
 
+function requiredText(
+  value: unknown,
+  field: string,
+  maxLength: number
+): string {
+  if (typeof value !== "string") invalid(`${field} is invalid`);
+  const normalized = value.trim();
+  if (normalized.length === 0 || normalized.length > maxLength)
+    invalid(`${field} is invalid`);
+  return normalized;
+}
+
+function stringList(
+  value: unknown,
+  field: string,
+  maxItems = 128,
+  maxItemLength = 160
+): string[] {
+  if (!Array.isArray(value) || value.length > maxItems)
+    invalid(`${field} is invalid`);
+  const values = (value as unknown[]).map(item =>
+    requiredText(item, `${field}[]`, maxItemLength)
+  );
+  if (new Set(values).size !== values.length) invalid(`${field} is invalid`);
+  return values;
+}
+
 export function validateRunnerIdentity(
   identity: RunnerIdentity
 ): RunnerIdentity {
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(identity.runnerId))
+  if (!identity || typeof identity !== "object" || Array.isArray(identity))
+    invalid("runner identity is invalid");
+  const raw = identity as unknown as Record<string, unknown>;
+  const runnerId = requiredText(raw.runnerId, "runnerId", 128);
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(runnerId))
     invalid("runnerId is invalid");
-  if (!identity.tenantId || identity.tenantId.length > 36)
-    invalid("tenantId is invalid");
-  if (!identity.deviceId || identity.deviceId.length > 160)
-    invalid("deviceId is invalid");
-  if (!["desktop", "container", "worker"].includes(identity.runtime))
+  const tenantId = requiredText(raw.tenantId, "tenantId", 36);
+  const deviceId = requiredText(raw.deviceId, "deviceId", 160);
+  if (!(
+    typeof raw.runtime === "string" &&
+    ["desktop", "container", "worker"].includes(raw.runtime)
+  ))
     invalid("runtime is invalid");
-  if (
-    !["pending", "trusted", "revoked", "quarantined"].includes(
-      identity.trustState
-    )
-  )
+  if (!(
+    typeof raw.trustState === "string" &&
+    ["pending", "trusted", "revoked", "quarantined"].includes(raw.trustState)
+  ))
     invalid("trustState is invalid");
-  if (Number.isNaN(Date.parse(identity.registeredAt)))
+  if (
+    typeof raw.registeredAt !== "string" ||
+    Number.isNaN(Date.parse(raw.registeredAt))
+  )
     invalid("registeredAt is invalid");
   return {
-    ...identity,
-    registeredAt: new Date(identity.registeredAt).toISOString(),
+    runnerId,
+    tenantId,
+    deviceId,
+    runtime: raw.runtime as RunnerRuntime,
+    trustState: raw.trustState as RunnerTrustState,
+    registeredAt: new Date(raw.registeredAt).toISOString(),
+  };
+}
+
+export function validateRunnerCapabilitySnapshot(
+  snapshot: RunnerCapabilitySnapshot
+): RunnerCapabilitySnapshot {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot))
+    invalid("runner capability snapshot is invalid");
+  const raw = snapshot as unknown as Record<string, unknown>;
+  const runnerId = requiredText(raw.runnerId, "snapshot.runnerId", 128);
+  const revision = requiredText(raw.revision, "snapshot.revision", 128);
+  const observedAt = raw.observedAt;
+  const expiresAt = raw.expiresAt;
+  if (
+    typeof observedAt !== "string" ||
+    Number.isNaN(Date.parse(observedAt)) ||
+    typeof expiresAt !== "string" ||
+    Number.isNaN(Date.parse(expiresAt)) ||
+    Date.parse(expiresAt) <= Date.parse(observedAt)
+  )
+    invalid("snapshot timestamps are invalid");
+  if (!["small", "medium", "large"].includes(String(raw.resourceClass)))
+    invalid("snapshot.resourceClass is invalid");
+  return {
+    runnerId,
+    revision,
+    observedAt: new Date(observedAt).toISOString(),
+    expiresAt: new Date(expiresAt).toISOString(),
+    capabilities: stringList(raw.capabilities, "snapshot.capabilities"),
+    workspaceIds: stringList(raw.workspaceIds, "snapshot.workspaceIds"),
+    resourceClass:
+      raw.resourceClass as RunnerCapabilitySnapshot["resourceClass"],
   };
 }
 
@@ -92,10 +162,13 @@ export function isRunnerSnapshotFresh(
   snapshot: RunnerCapabilitySnapshot,
   now = new Date()
 ): boolean {
-  return (
-    snapshot.expiresAt.length > 0 &&
-    Date.parse(snapshot.expiresAt) > now.getTime()
-  );
+  try {
+    const normalized = validateRunnerCapabilitySnapshot(snapshot);
+    return Date.parse(normalized.expiresAt) > now.getTime();
+  } catch (error) {
+    if (error instanceof JobControlPlaneError) return false;
+    throw error;
+  }
 }
 
 export function buildWorkOffer(input: {
@@ -108,33 +181,47 @@ export function buildWorkOffer(input: {
   ttlMs?: number;
 }): WorkOffer | null {
   const now = input.now ?? new Date();
+  let runner: RunnerIdentity;
+  let snapshot: RunnerCapabilitySnapshot;
+  let requiredCapabilities: string[];
+  try {
+    runner = validateRunnerIdentity(input.runner);
+    snapshot = validateRunnerCapabilitySnapshot(input.snapshot);
+    requiredCapabilities = stringList(
+      input.requiredCapabilities,
+      "requiredCapabilities"
+    );
+  } catch (error) {
+    if (error instanceof JobControlPlaneError) return null;
+    throw error;
+  }
   if (
-    input.runner.trustState !== "trusted" ||
-    input.runner.tenantId !== input.tenantId ||
-    input.snapshot.runnerId !== input.runner.runnerId ||
-    !isRunnerSnapshotFresh(input.snapshot, now)
+    runner.trustState !== "trusted" ||
+    runner.tenantId !== input.tenantId ||
+    snapshot.runnerId !== runner.runnerId ||
+    !isRunnerSnapshotFresh(snapshot, now)
   )
     return null;
   if (
-    !input.requiredCapabilities.every(capability =>
-      input.snapshot.capabilities.includes(capability)
+    !requiredCapabilities.every(capability =>
+      snapshot.capabilities.includes(capability)
     )
   )
     return null;
   const expiresAt = new Date(
     Math.min(
       now.getTime() + Math.max(1_000, Math.min(input.ttlMs ?? 30_000, 300_000)),
-      Date.parse(input.snapshot.expiresAt)
+      Date.parse(snapshot.expiresAt)
     )
   );
   return {
-    offerId: `offer:${input.jobId}:${input.runner.runnerId}:${input.snapshot.revision}`,
+    offerId: `offer:${input.jobId}:${runner.runnerId}:${snapshot.revision}`,
     jobId: input.jobId,
     tenantId: input.tenantId,
-    runnerId: input.runner.runnerId,
-    capabilitySnapshotRevision: input.snapshot.revision,
+    runnerId: runner.runnerId,
+    capabilitySnapshotRevision: snapshot.revision,
     expiresAt: expiresAt.toISOString(),
-    requiredCapabilities: [...input.requiredCapabilities],
+    requiredCapabilities,
   };
 }
 
@@ -176,6 +263,8 @@ export function isWorkspacePathAllowed(
   workspaceRoot: string,
   candidatePath: string
 ): boolean {
+  if (typeof workspaceRoot !== "string" || typeof candidatePath !== "string")
+    return false;
   if (!isAbsolute(workspaceRoot) || !isAbsolute(candidatePath)) return false;
   const root = resolve(workspaceRoot);
   const candidate = resolve(candidatePath);

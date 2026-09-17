@@ -50,6 +50,24 @@ function invalid(message: string): never {
   throw new JobControlPlaneError("MCP_GOVERNANCE_CONTRACT_INVALID", message);
 }
 
+function requiredText(
+  value: unknown,
+  field: string,
+  maxLength: number
+): string {
+  if (typeof value !== "string") invalid(`${field} is invalid`);
+  const normalized = value.trim();
+  if (!normalized || normalized.length > maxLength)
+    invalid(`${field} is invalid`);
+  return normalized;
+}
+
+function recordValue(value: unknown, field: string): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid(`${field} is invalid`);
+  return value as Record<string, unknown>;
+}
+
 function stable(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stable);
   if (value && typeof value === "object")
@@ -129,6 +147,12 @@ export function canExecuteMcpTool(input: {
       "MCP grant is missing, revoked or stale"
     );
   if (
+    input.grant.expiresAt !== undefined &&
+    (typeof input.grant.expiresAt !== "string" ||
+      Number.isNaN(Date.parse(input.grant.expiresAt)))
+  )
+    invalid("MCP grant expiry is invalid");
+  if (
     input.grant.expiresAt &&
     Date.parse(input.grant.expiresAt) <= (input.now ?? new Date()).getTime()
   )
@@ -149,6 +173,13 @@ export function canExecuteMcpTool(input: {
 export function buildMcpExecutionJobDefinition(
   input: McpExecutionRequest & { tool: McpToolDescriptor; grant: McpGrant }
 ): JobDefinition {
+  const requestId = requiredText(input.requestId, "requestId", 160);
+  const tenantId = requiredText(input.tenantId, "tenantId", 36);
+  const connectionId = requiredText(input.connectionId, "connectionId", 160);
+  const toolName = requiredText(input.toolName, "toolName", 200);
+  const grantId = requiredText(input.grantId, "grantId", 160);
+  const grantRevision = requiredText(input.grantRevision, "grantRevision", 128);
+  const argumentsValue = recordValue(input.arguments, "arguments");
   canExecuteMcpTool({
     connectionState: input.connectionState,
     tool: input.tool,
@@ -160,30 +191,30 @@ export function buildMcpExecutionJobDefinition(
   if (
     !Number.isSafeInteger(input.actorId) ||
     input.actorId <= 0 ||
-    input.tenantId !== input.tool.tenantId ||
-    input.connectionId !== input.tool.connectionId ||
-    input.toolName !== input.tool.toolName ||
-    input.grantId !== input.grant.grantId ||
-    input.grantRevision !== input.grant.grantRevision
+    tenantId !== input.tool.tenantId ||
+    connectionId !== input.tool.connectionId ||
+    toolName !== input.tool.toolName ||
+    grantId !== input.grant.grantId ||
+    grantRevision !== input.grant.grantRevision
   )
     invalid("MCP actor, grant or tenant scope is invalid");
-  if (containsCredentialKey(input.arguments))
+  if (containsCredentialKey(argumentsValue))
     invalid("MCP arguments cannot contain credentials");
   return {
     contractVersion: "feature-186-v1",
-    tenantId: input.tenantId,
+    tenantId,
     requestedByUserId: input.actorId,
     jobType: "mcp.tool.execute",
     executionClass: "external",
     input: {
-      requestId: input.requestId,
-      connectionId: input.connectionId,
-      toolName: input.toolName,
-      grantId: input.grantId,
-      grantRevision: input.grantRevision,
-      arguments: input.arguments,
+      requestId,
+      connectionId,
+      toolName,
+      grantId,
+      grantRevision,
+      arguments: argumentsValue,
     },
-    idempotencyKey: `mcp:${input.requestId}`.slice(0, 128),
+    idempotencyKey: `mcp:${requestId}`.slice(0, 128),
     retryPolicy: {
       maxAttempts: 2,
       baseDelayMs: 1_000,
@@ -194,8 +225,8 @@ export function buildMcpExecutionJobDefinition(
     },
     timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 900_000 },
     requiredCapabilities: {
-      capabilityId: `mcp:${input.connectionId}:${input.toolName}`,
-      grantRevision: input.grantRevision,
+      capabilityId: `mcp:${connectionId}:${toolName}`,
+      grantRevision,
     },
   };
 }

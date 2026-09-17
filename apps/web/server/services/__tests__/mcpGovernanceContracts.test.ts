@@ -99,5 +99,24 @@ describe("Feature 199 MCP governance contracts", () => {
     ).toThrowError(
       expect.objectContaining({ code: "MCP_CONNECTION_NOT_APPROVED" })
     );
+    expect(() =>
+      buildMcpExecutionJobDefinition({
+        requestId: "req-3",
+        tenantId: "tenant-1",
+        actorId: 4,
+        connectionId: "conn-1",
+        connectionState: "active",
+        toolName: "calendar.create",
+        grantId: "grant-1",
+        grantRevision: "schema-1",
+        arguments: null as unknown as Record<string, unknown>,
+        durable: true,
+        approvedByCommand: true,
+        tool,
+        grant,
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: "MCP_GOVERNANCE_CONTRACT_INVALID" })
+    );
   });
 });

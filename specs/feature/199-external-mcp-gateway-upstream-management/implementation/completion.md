@@ -13,3 +13,12 @@
 
 Focused MCP governance suite: 3 tests passed. Credential-like fields are
 rejected from schemas/arguments and high-risk calls require command approval.
+
+## 2026-09-18 implementation audit corrections
+
+- MCP execution requests now normalize bounded identifiers, require a plain
+  arguments object and reject malformed grant expiry values before creating a
+  canonical Job definition.
+- Effect-time grant/revision/approval checks remain mandatory; remote
+  discovery/OAuth, endpoint observability and catalog UI integration are still
+  release gates.

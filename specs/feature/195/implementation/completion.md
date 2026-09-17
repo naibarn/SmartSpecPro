@@ -21,3 +21,12 @@ Focused Feature 195 suite: `jobControlPlaneTypes`, `jobControlPlane`,
 `jobControlPlaneGateway` — 3 files, 48 tests passed.
 
 No whole-repository typecheck was run.
+
+## 2026-09-18 implementation audit corrections
+
+- Added a repository-boundary transition assertion so the default PostgreSQL
+  update path cannot bypass the canonical Feature 195 lifecycle table.
+- Added dependency-aware claim gating for Job graphs: queued dependents wait
+  for successful prerequisites and fail closed with operator review when a
+  prerequisite is missing or terminally failed.
+- Added focused regression coverage for both dependency paths.

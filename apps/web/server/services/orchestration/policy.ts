@@ -1,8 +1,9 @@
 import { JobControlPlaneError } from "../jobControlPlaneTypes";
-import type {
-  CapabilityOffer,
-  DecisionRecord,
-  PlanRevision,
+import {
+  hashPlanSteps,
+  type CapabilityOffer,
+  type DecisionRecord,
+  type PlanRevision,
 } from "./contracts";
 
 export type OrchestrationPolicy = {
@@ -19,19 +20,20 @@ export function evaluatePlanPolicy(
   policy: OrchestrationPolicy
 ): DecisionRecord {
   const reasons: string[] = [];
+  const selectedOffers = plan.steps.map(step =>
+    offers.find(offer => offer.offerId === step.selectedOfferId)
+  );
   if (plan.steps.length === 0 || plan.steps.length > policy.maxSteps)
     reasons.push("step_limit");
-  const unavailable = offers
-    .filter(offer => !offer.available)
-    .map(offer => offer.capabilityId);
-  if (unavailable.length > 0) reasons.push("capability_unavailable");
+  if (selectedOffers.some(offer => !offer || !offer.available))
+    reasons.push("capability_unavailable");
   if (
     policy.allowedJobTypes &&
     plan.steps.some(step => !policy.allowedJobTypes?.has(step.jobType))
   )
     reasons.push("job_type_not_allowed");
-  const estimatedCost = offers.reduce(
-    (sum, offer) => sum + (offer.estimatedCostCredits ?? 0),
+  const estimatedCost = selectedOffers.reduce(
+    (sum, offer) => sum + (offer?.estimatedCostCredits ?? 0),
     0
   );
   if (
@@ -70,6 +72,12 @@ export function assertApprovedPlan(input: {
   plan: PlanRevision;
   approval?: { planId: string; planRevision: number; decision: string };
 }): void {
+  if (input.plan.planHash !== hashPlanSteps(input.plan.steps)) {
+    throw new JobControlPlaneError(
+      "ORCHESTRATION_PLAN_STALE",
+      "Plan contents do not match the approved plan hash"
+    );
+  }
   if (
     input.plan.status !== "approved" ||
     input.approval?.decision !== "approved" ||
