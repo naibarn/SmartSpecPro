@@ -114,6 +114,50 @@ def test_bridge_uses_reference_semantics_for_unified_image_transport():
     assert prompt.startswith('REFERENCE FRAME SET:')
     assert 'hard literal frame-0 guarantee' in prompt
 
+def test_enhanced_dialogue_reuses_existing_virtual_screen_instead_of_creating_one():
+    payload={
+        'shot': {
+            'shotNumber': 7,
+            'description': 'A woman reads a message while her mother speaks to her.',
+            'durationSeconds': 8,
+            'visualCastPolicy': {
+                'physicalCharacterRefs': ['rinlada'],
+                'physicalCharacterNames': ['รินลดา'],
+                'screenCallerCharacterRefs': ['mayuree'],
+                'screenCallerCharacterNames': ['มยุรี'],
+            },
+        },
+        'dialogue': [{'speakerId':'mayuree','speaker':'มยุรี','text':'อย่าลืมเก็บเอกสารนะ'}],
+        'targetVideoModel': {'id':'veo-3.1'},
+        'mediaBundle': {'startFrame': {'assetId': 7, 'url': 'https://example.test/start.jpg'}},
+    }
+    prompt=_terminal_prompt(payload, {'actions':['Continue the conversation naturally'],'camera':'medium single with phone screen'}, {'characters':[{'characterId':'rinlada','screenPosition':'center'}]})
+    assert 'exact existing virtual-screen inset already visible in START_FRAME_IMAGE' in prompt
+    assert 'do not create a new phone, device display, inset, or floating caller window' in prompt.lower()
+    assert 'the same existing virtual-screen face' in prompt.lower()
+
+def test_compact_enhanced_prompt_keeps_existing_virtual_screen_lock():
+    payload={
+        'shot': {
+            'shotNumber': 7,
+            'description': 'A woman reads a message while her mother speaks to her.',
+            'durationSeconds': 8,
+            'visualCastPolicy': {
+                'physicalCharacterRefs': ['rinlada'],
+                'physicalCharacterNames': ['รินลดา'],
+                'screenCallerCharacterRefs': ['mayuree'],
+                'screenCallerCharacterNames': ['มยุรี'],
+            },
+        },
+        'dialogue': [{'speakerId':'mayuree','speaker':'มยุรี','text':'อย่าลืมเก็บเอกสารนะ'}],
+        'targetVideoModel': {'id':'veo-3.1'},
+        'videoPromptMaxChars': 3000,
+        'mediaBundle': {'startFrame': {'assetId': 7, 'url': 'https://example.test/start.jpg'}},
+    }
+    prompt=_terminal_prompt(payload, {'actions':['Continue the conversation naturally'],'camera':'medium single with phone screen'}, {'characters':[{'characterId':'rinlada','screenPosition':'center'}]})
+    assert 'exact existing virtual-screen inset already visible in START_FRAME_IMAGE' in prompt
+    assert 'do not create a new phone, device display, inset, or floating caller window' in prompt.lower()
+
 def test_bridge_builds_stage_input_before_reading_agent_result():
     captured={'calls':[]}
     class Usage:
@@ -326,5 +370,5 @@ def test_bridge_handles_string_hand_occupancy():
     assert 'hands appear empty' in result['prompt']
 
 def main():
-    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_provider_failure_is_sanitized_without_response_details();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_bridge_handles_string_hand_occupancy();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 24 v11 Agent runtime regression checks')
+    test_registry();test_config();test_tool_allow_list();test_agent_tool_context_is_not_exposed_in_function_schema();test_agent_factory_uses_sdk_compatible_envelope_schema();test_provider_failure_is_sanitized_without_response_details();test_bridge_preserves_canonical_dialogue_and_terminal_audio();test_bridge_uses_reference_semantics_for_unified_image_transport();test_enhanced_dialogue_reuses_existing_virtual_screen_instead_of_creating_one();test_compact_enhanced_prompt_keeps_existing_virtual_screen_lock();test_bridge_builds_stage_input_before_reading_agent_result();test_bridge_omits_empty_optional_audio_direction();test_bridge_repairs_silent_dialogue_and_held_object_reset_once();test_bridge_handles_string_hand_occupancy();test_session_key();test_hash();asyncio.run(async_tests());assert supported_sdk_range()=='>=0.22.0,<0.23';print('PASS: 26 v11 Agent runtime regression checks')
 if __name__=='__main__':main()

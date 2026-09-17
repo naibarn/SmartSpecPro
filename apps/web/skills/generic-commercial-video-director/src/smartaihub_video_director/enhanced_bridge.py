@@ -500,6 +500,41 @@ def _build_visual_cast_lock(payload: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _build_existing_virtual_screen_continuity_lock(payload: dict[str, Any]) -> str:
+    """Keep screen-caller dialogue inside the approved frame-0 virtual screen."""
+    shot = payload.get("shot") or {}
+    policy = shot.get("visualCastPolicy")
+    if not isinstance(policy, dict):
+        return ""
+
+    refs = policy.get("screenCallerCharacterRefs") or []
+    names = policy.get("screenCallerCharacterNames") or []
+    if not isinstance(refs, list):
+        refs = [refs]
+    if not isinstance(names, list):
+        names = [names]
+    callers = []
+    for index, ref in enumerate(refs):
+        ref_text = str(ref).strip()
+        if not ref_text:
+            continue
+        name_text = str(names[index]).strip() if index < len(names) else ""
+        callers.append(f"{name_text} ({ref_text})" if name_text and name_text != ref_text else ref_text)
+    if not callers:
+        return ""
+
+    return (
+        "EXISTING VIRTUAL-SCREEN CONTINUITY LOCK (MANDATORY): "
+        + ", ".join(callers)
+        + " must use the exact existing virtual-screen inset already visible in START_FRAME_IMAGE; "
+        "preserve its original position, size, geometry and caller identity throughout the shot. "
+        "Every dialogue line from a screen caller must animate the same existing virtual-screen face "
+        "inside that assigned inset and nowhere else. Do not create a new phone, device display, inset, "
+        "or floating caller window. Do not generate a new caller face, physical caller, reflection, "
+        "duplicate screen, or duplicate person. Do not move, replace, split or reassign the existing screen."
+    )
+
+
 def _bind_dialogue_to_character_positions(
     dialogue: list[dict[str, Any]],
     character_positions: dict[str, str],
@@ -1189,6 +1224,7 @@ def _terminal_prompt(
         dialogue = _bind_dialogue_to_character_positions(dialogue, character_positions)
     continuity = payload.get("continuity") or {}
     visual_cast_lock = _build_visual_cast_lock(payload)
+    existing_virtual_screen_lock = _build_existing_virtual_screen_continuity_lock(payload)
     has_offscreen_dialogue = any(
         str(line.get("position") or "").strip() == "viewer-offscreen"
         for line in dialogue
@@ -1268,6 +1304,8 @@ def _terminal_prompt(
     ]
     if visual_cast_lock:
         sections.append(visual_cast_lock)
+    if existing_virtual_screen_lock:
+        sections.append(existing_virtual_screen_lock)
     if ep_synopsis:
         sections.append(f"DRAMATIC EPISODE CONTEXT\n\nEpisode Synopsis: {ep_synopsis}")
 
@@ -1436,6 +1474,8 @@ def _terminal_prompt(
     ]
     if visual_cast_lock:
         compact_sections.insert(2, visual_cast_lock)
+    if existing_virtual_screen_lock:
+        compact_sections.insert(2, existing_virtual_screen_lock)
     compact_text = "\n\n".join(compact_sections)
     if _prompt_char_length(compact_text) <= prompt_budget:
         return compact_text
@@ -1444,6 +1484,7 @@ def _terminal_prompt(
         "START FRAME LOCK: Preserve approved frame-0 identity, positions, wardrobe and objects.",
         compact_observed,
         protected_core,
+        existing_virtual_screen_lock,
         "CAMERA: 9:16 continuous shot from frame 0; no cut or reset.",
         "CONSTRAINTS: no reassigned dialogue, duplicate people, morphing or time jumps.",
     ])
