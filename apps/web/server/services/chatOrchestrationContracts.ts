@@ -97,7 +97,10 @@ export function normalizeChatRequest(
   )
     invalid("chat request is invalid");
   for (const [field, value, maxLength] of optionalTextFields) {
-    if (value !== undefined && (typeof value !== "string" || value.length > maxLength))
+    if (
+      value !== undefined &&
+      (typeof value !== "string" || value.length > maxLength)
+    )
       invalid(`${field} is invalid`);
   }
   return {
