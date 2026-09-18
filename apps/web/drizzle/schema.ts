@@ -26965,3 +26965,553 @@ export const audioTrainedVoiceModels = pgTable(
 );
 export type AudioTrainedVoiceModel =
   typeof audioTrainedVoiceModels.$inferSelect;
+
+// =============================================================================
+// Feature 201: Content Protection, Provenance, and Rights Evidence
+// =============================================================================
+
+/** Tenant-scoped registration of a protected image/video/audio asset. */
+export const contentProtectionAssets = pgTable(
+  "content_protection_assets",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    ownerUserId: integer("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceAssetId: bigint("source_asset_id", { mode: "number" }).references(
+      () => mediaAssets.id,
+      { onDelete: "set null" }
+    ),
+    sourceVersionId: varchar("source_version_id", { length: 160 }),
+    modality: varchar("modality", { length: 16 }).notNull(),
+    protectionVersion: integer("protection_version").notNull().default(1),
+    profileId: varchar("profile_id", { length: 80 }).notNull(),
+    profileVersion: varchar("profile_version", { length: 40 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    watermarkChoice: varchar("watermark_choice", { length: 8 })
+      .notNull()
+      .default("off"),
+    choiceSource: varchar("choice_source", { length: 24 })
+      .notNull()
+      .default("disabled_by_user"),
+    sourceObjectKey: text("source_object_key").notNull(),
+    protectedObjectKey: text("protected_object_key"),
+    sourceSha256: varchar("source_sha256", { length: 64 }).notNull(),
+    protectedSha256: varchar("protected_sha256", { length: 64 }),
+    mimeType: varchar("mime_type", { length: 160 }).notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    durationMs: integer("duration_ms"),
+    fps: real("fps"),
+    compoundArtifactId: varchar("compound_artifact_id", { length: 160 }),
+    compoundPlanDigest: varchar("compound_plan_digest", { length: 64 }),
+    causalJobId: varchar("causal_job_id", { length: 36 }).references(
+      () => workerJobs.id,
+      { onDelete: "set null" }
+    ),
+    compoundEnvelope: jsonb("compound_envelope").$type<
+      Record<string, unknown> | null
+    >(),
+    firstObservedAt: timestamp("first_observed_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    claimedCreationAt: timestamp("claimed_creation_at", {
+      withTimezone: true,
+    }),
+    trustedTimestampAt: timestamp("trusted_timestamp_at", {
+      withTimezone: true,
+    }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    protectedAt: timestamp("protected_at", { withTimezone: true }),
+    errorCode: varchar("error_code", { length: 80 }),
+    errorMessage: text("error_message"),
+  },
+  t => [
+    uniqueIndex("content_protection_assets_tenant_idempotency_unique").on(
+      t.tenantId,
+      t.idempotencyKey
+    ),
+    index("content_protection_assets_tenant_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.createdAt
+    ),
+    index("content_protection_assets_source_idx").on(
+      t.tenantId,
+      t.sourceAssetId,
+      t.sourceVersionId
+    ),
+    index("content_protection_assets_protected_hash_idx").on(
+      t.tenantId,
+      t.protectedSha256
+    ),
+  ]
+);
+export type ContentProtectionAsset =
+  typeof contentProtectionAssets.$inferSelect;
+export type InsertContentProtectionAsset =
+  typeof contentProtectionAssets.$inferInsert;
+
+/** Provider result metadata; secret codewords are deliberately not persisted. */
+export const contentProtectionWatermarks = pgTable(
+  "content_protection_watermarks",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    protectedAssetId: varchar("protected_asset_id", { length: 36 })
+      .notNull()
+      .references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 80 }).notNull(),
+    channel: varchar("channel", { length: 32 }).notNull(),
+    algorithmVersion: varchar("algorithm_version", { length: 40 }).notNull(),
+    watermarkId: varchar("watermark_id", { length: 160 }).notNull(),
+    keyVersion: varchar("key_version", { length: 80 }).notNull(),
+    embedSettings: jsonb("embed_settings")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    selfVerifyMetrics: jsonb("self_verify_metrics").$type<
+      Record<string, unknown> | null
+    >(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("content_protection_watermarks_asset_channel_unique").on(
+      t.protectedAssetId,
+      t.channel
+    ),
+    index("content_protection_watermarks_tenant_idx").on(t.tenantId),
+  ]
+);
+export type ContentProtectionWatermark =
+  typeof contentProtectionWatermarks.$inferSelect;
+
+export const contentProtectionFingerprints = pgTable(
+  "content_protection_fingerprints",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    protectedAssetId: varchar("protected_asset_id", { length: 36 })
+      .notNull()
+      .references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    fingerprintType: varchar("fingerprint_type", { length: 32 }).notNull(),
+    fingerprintVersion: varchar("fingerprint_version", { length: 40 }).notNull(),
+    digest: varchar("digest", { length: 128 }).notNull(),
+    bucket: varchar("bucket", { length: 80 }),
+    featuresJson: jsonb("features_json").$type<Record<string, unknown> | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("content_protection_fingerprints_asset_type_unique").on(
+      t.protectedAssetId,
+      t.fingerprintType,
+      t.fingerprintVersion
+    ),
+    index("content_protection_fingerprints_tenant_digest_idx").on(
+      t.tenantId,
+      t.digest
+    ),
+  ]
+);
+
+export const contentProvenanceManifests = pgTable(
+  "content_provenance_manifests",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    protectedAssetId: varchar("protected_asset_id", { length: 36 })
+      .notNull()
+      .references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    manifestVersion: varchar("manifest_version", { length: 40 }).notNull(),
+    manifestSha256: varchar("manifest_sha256", { length: 64 }).notNull(),
+    manifestObjectKey: text("manifest_object_key").notNull(),
+    c2paManifestJson: jsonb("c2pa_manifest_json")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    signerKeyId: varchar("signer_key_id", { length: 160 }).notNull(),
+    signatureAlgorithm: varchar("signature_algorithm", { length: 80 }).notNull(),
+    signedAt: timestamp("signed_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("content_provenance_manifests_asset_version_unique").on(
+      t.protectedAssetId,
+      t.manifestVersion
+    ),
+    index("content_provenance_manifests_tenant_hash_idx").on(
+      t.tenantId,
+      t.manifestSha256
+    ),
+  ]
+);
+
+export const contentPublications = pgTable(
+  "content_publications",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    protectedAssetId: varchar("protected_asset_id", { length: 36 })
+      .notNull()
+      .references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    channel: varchar("channel", { length: 80 }).notNull(),
+    externalReference: varchar("external_reference", { length: 255 }),
+    publishedUrl: text("published_url"),
+    status: varchar("status", { length: 32 }).notNull().default("draft"),
+    observedAt: timestamp("observed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("content_publications_tenant_status_idx").on(t.tenantId, t.status),
+    index("content_publications_asset_idx").on(t.protectedAssetId),
+  ]
+);
+
+export const contentVerificationRuns = pgTable(
+  "content_verification_runs",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    requestedByUserId: integer("requested_by_user_id").references(
+      () => users.id,
+      { onDelete: "set null" }
+    ),
+    queryObjectKey: text("query_object_key"),
+    querySha256: varchar("query_sha256", { length: 64 }).notNull(),
+    modality: varchar("modality", { length: 16 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("queued"),
+    matchCount: integer("match_count").notNull().default(0),
+    resultSummary: jsonb("result_summary")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  t => [
+    index("content_verification_runs_tenant_status_idx").on(
+      t.tenantId,
+      t.status,
+      t.createdAt
+    ),
+    index("content_verification_runs_query_hash_idx").on(
+      t.tenantId,
+      t.querySha256
+    ),
+  ]
+);
+
+export const contentVerificationMatches = pgTable(
+  "content_verification_matches",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    runId: varchar("run_id", { length: 36 })
+      .notNull()
+      .references(() => contentVerificationRuns.id, { onDelete: "cascade" }),
+    protectedAssetId: varchar("protected_asset_id", { length: 36 }).references(
+      () => contentProtectionAssets.id,
+      { onDelete: "set null" }
+    ),
+    matchType: varchar("match_type", { length: 32 }).notNull(),
+    confidence: real("confidence").notNull(),
+    evidenceJson: jsonb("evidence_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("content_verification_matches_run_idx").on(t.runId),
+    index("content_verification_matches_tenant_asset_idx").on(
+      t.tenantId,
+      t.protectedAssetId
+    ),
+  ]
+);
+
+export const contentProtectionCases = pgTable(
+  "content_protection_cases",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    openedByUserId: integer("opened_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    status: varchar("status", { length: 32 }).notNull().default("open"),
+    title: varchar("title", { length: 255 }).notNull(),
+    summary: text("summary"),
+    legalDeclarationConfirmed: boolean("legal_declaration_confirmed")
+      .notNull()
+      .default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [index("content_protection_cases_tenant_status_idx").on(t.tenantId, t.status)]
+);
+
+export const contentEvidencePackages = pgTable(
+  "content_evidence_packages",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    caseId: varchar("case_id", { length: 36 }).references(
+      () => contentProtectionCases.id,
+      { onDelete: "cascade" }
+    ),
+    packageVersion: varchar("package_version", { length: 40 }).notNull(),
+    packageSha256: varchar("package_sha256", { length: 64 }).notNull(),
+    manifestObjectKey: text("manifest_object_key").notNull(),
+    status: varchar("status", { length: 24 }).notNull().default("draft"),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    sealedAt: timestamp("sealed_at", { withTimezone: true }),
+  },
+  t => [
+    index("content_evidence_packages_tenant_case_idx").on(t.tenantId, t.caseId),
+    index("content_evidence_packages_hash_idx").on(t.tenantId, t.packageSha256),
+  ]
+);
+
+export const contentProtectionEvents = pgTable(
+  "content_protection_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    assetId: varchar("asset_id", { length: 36 }).references(
+      () => contentProtectionAssets.id,
+      { onDelete: "set null" }
+    ),
+    runId: varchar("run_id", { length: 36 }).references(
+      () => contentVerificationRuns.id,
+      { onDelete: "set null" }
+    ),
+    eventType: varchar("event_type", { length: 64 }).notNull(),
+    actorUserId: integer("actor_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    eventJson: jsonb("event_json")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("content_protection_events_tenant_created_idx").on(
+      t.tenantId,
+      t.createdAt
+    ),
+    index("content_protection_events_asset_idx").on(t.assetId, t.createdAt),
+  ]
+);
+
+export const contentProtectionSettings = pgTable(
+  "content_protection_settings",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    defaultChoice: varchar("default_choice", { length: 8 }).notNull().default("off"),
+    requireConfirmationOnExport: boolean("require_confirmation_on_export")
+      .notNull()
+      .default(true),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("content_protection_settings_tenant_user_unique").on(
+      t.tenantId,
+      t.userId
+    ),
+  ]
+);
+
+export const contentRightsHolderProfiles = pgTable(
+  "content_rights_holder_profiles",
+  {
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: varchar("display_name", { length: 255 }).notNull(),
+    contactEmail: varchar("contact_email", { length: 320 }),
+    subjectType: varchar("subject_type", { length: 32 }).notNull().default("person"),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("content_rights_holder_profiles_tenant_user_unique").on(t.tenantId, t.userId)]
+);
+
+export const contentRightsClaims = pgTable(
+  "content_rights_claims",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    assetId: varchar("asset_id", { length: 36 }).notNull().references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    holderProfileId: varchar("holder_profile_id", { length: 36 }).notNull().references(() => contentRightsHolderProfiles.id, { onDelete: "restrict" }),
+    claimType: varchar("claim_type", { length: 48 }).notNull(),
+    status: varchar("status", { length: 32 }).notNull().default("claimed"),
+    claimedCreationAt: timestamp("claimed_creation_at", { withTimezone: true }),
+    attributionJson: jsonb("attribution_json").$type<Record<string, unknown>>().notNull().default({}),
+    legalDeclarationConfirmed: boolean("legal_declaration_confirmed").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("content_rights_claims_tenant_asset_idx").on(t.tenantId, t.assetId), index("content_rights_claims_holder_idx").on(t.holderProfileId)]
+);
+
+export const contentRightsEvidenceDocuments = pgTable(
+  "content_rights_evidence_documents",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    claimId: varchar("claim_id", { length: 36 }).notNull().references(() => contentRightsClaims.id, { onDelete: "cascade" }),
+    documentType: varchar("document_type", { length: 48 }).notNull(),
+    objectKey: text("object_key").notNull(),
+    sha256: varchar("sha256", { length: 64 }).notNull(),
+    capturedAt: timestamp("captured_at", { withTimezone: true }).notNull(),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("content_rights_evidence_documents_claim_idx").on(t.claimId), index("content_rights_evidence_documents_hash_idx").on(t.tenantId, t.sha256)]
+);
+
+export const contentComponentRights = pgTable(
+  "content_component_rights",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    assetId: varchar("asset_id", { length: 36 }).notNull().references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    componentType: varchar("component_type", { length: 48 }).notNull(),
+    componentRef: varchar("component_ref", { length: 160 }).notNull(),
+    rightsStatus: varchar("rights_status", { length: 32 }).notNull().default("unverified"),
+    evidenceJson: jsonb("evidence_json").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("content_component_rights_asset_component_unique").on(t.assetId, t.componentType, t.componentRef), index("content_component_rights_tenant_status_idx").on(t.tenantId, t.rightsStatus)]
+);
+
+export const contentCreationCertificates = pgTable(
+  "content_creation_certificates",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    assetId: varchar("asset_id", { length: 36 }).notNull().references(() => contentProtectionAssets.id, { onDelete: "cascade" }),
+    certificateVersion: varchar("certificate_version", { length: 40 }).notNull(),
+    certificateSha256: varchar("certificate_sha256", { length: 64 }).notNull(),
+    certificateObjectKey: text("certificate_object_key").notNull(),
+    signerKeyId: varchar("signer_key_id", { length: 160 }).notNull(),
+    signedAt: timestamp("signed_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("content_creation_certificates_asset_version_unique").on(t.assetId, t.certificateVersion)]
+);
+
+export const contentEvidenceAnchors = pgTable(
+  "content_evidence_anchors",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    packageId: varchar("package_id", { length: 36 }).notNull().references(() => contentEvidencePackages.id, { onDelete: "cascade" }),
+    anchorType: varchar("anchor_type", { length: 48 }).notNull(),
+    anchorValue: varchar("anchor_value", { length: 255 }).notNull(),
+    externalUrl: text("external_url"),
+    observedAt: timestamp("observed_at", { withTimezone: true }),
+    metadataJson: jsonb("metadata_json").$type<Record<string, unknown>>().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("content_evidence_anchors_package_idx").on(t.packageId), index("content_evidence_anchors_tenant_type_idx").on(t.tenantId, t.anchorType)]
+);
+
+export const contentExternalReviewLinks = pgTable(
+  "content_external_review_links",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    packageId: varchar("package_id", { length: 36 }).notNull().references(() => contentEvidencePackages.id, { onDelete: "cascade" }),
+    tokenHash: varchar("token_hash", { length: 128 }).notNull().unique(),
+    scopeJson: jsonb("scope_json").$type<string[]>().notNull().default([]),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),
+    createdByUserId: integer("created_by_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [index("content_external_review_links_tenant_expiry_idx").on(t.tenantId, t.expiresAt), index("content_external_review_links_package_idx").on(t.packageId)]
+);
