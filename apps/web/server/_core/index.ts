@@ -32,6 +32,7 @@ import { registerDesktopHostRoutes } from "../routes/desktopHost";
 import { registerDesktopReleaseRoutes } from "../routes/desktopReleases";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
+import { registerContentProtectionRoutes } from "../routes/contentProtection";
 import { registerAutoDraftToolRoute } from "../routers/autoDraftTool";
 import { registerModelSuggestToolRoute } from "../routers/modelSuggestTool";
 import { registerFileParseToolRoute } from "../routers/fileParseTool";
@@ -1093,6 +1094,7 @@ app.use("/v1/jobs", createPublicJobsRouter());
 app.use("/v1/knowledge", createPublicKnowledgeRouter());
 app.use("/v1/webhooks", createPublicWebhooksRouter());
 app.use("/v1/events", createPublicEventsRouter());
+registerContentProtectionRoutes(app);
 // REST/SSE endpoints
 registerLLMRoutes(app);
 registerMCPRoutes(app);

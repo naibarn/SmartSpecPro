@@ -161,6 +161,7 @@ import { videoProjectsRouter } from "./routers/videoProjects";
 import { tenantDataTransferRouter } from "./routers/tenantDataTransfer";
 import { adminTenantOperationsRouter } from "./routers/adminTenantOperations";
 import { platformOperationsRouter } from "./routers/platformOperations";
+import { contentProtectionRouter } from "./routers/contentProtection";
 import {
   clearPendingTwoFactorCookie,
   readPendingTwoFactorCookie,
@@ -3354,6 +3355,7 @@ type AppRouterShape = {
   connectedDevices: typeof connectedDevicesRouter;
   help: typeof helpRouter;
   databaseBackups: typeof databaseBackupsRouter;
+  contentProtection: typeof contentProtectionRouter;
 };
 
 const appRouterInternal = router<AppRouterShape>({
@@ -3534,6 +3536,7 @@ const appRouterInternal = router<AppRouterShape>({
   connectedDevices: connectedDevicesRouter,
   help: helpRouter,
   databaseBackups: databaseBackupsRouter,
+  contentProtection: contentProtectionRouter,
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,
