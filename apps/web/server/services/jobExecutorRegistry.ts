@@ -522,6 +522,16 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "content_protection.protect",
+  executionClass: "cpu",
+  contractVersions: new Set(["content-protection.v1"]),
+  executor: async input => {
+    const { executeContentProtectionJob } = await import("./contentProtection/worker");
+    return executeContentProtectionJob(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "video.intelligence",
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),

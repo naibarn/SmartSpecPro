@@ -99,7 +99,7 @@ import {
 } from "../../drizzle/schema";
 import { and, asc, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { verifyBearerToken } from "../_core/tokens";
-import { storageStreamFile, storagePut, storagePresignPut } from "../storage";
+import { storageStreamFile, storagePut, storagePresignPut, storageResolveUrl } from "../storage";
 import { createLibraryItem } from "../services/libraryService";
 import {
   getLatestPublishedWorkerRuntimeRelease,
@@ -1114,9 +1114,14 @@ const EDITOR_MEDIA_JOB_TYPES: ReadonlySet<string> = new Set([
   "editor_media_recording_normalize",
 ]);
 
+const CONTENT_PROTECTION_JOB_TYPES: ReadonlySet<string> = new Set([
+  "content_protection.protect",
+]);
+
 const REFERENCE_URL_JOB_TYPES = new Set([
   ...HERMES_MEDIA_JOB_TYPES,
   ...EDITOR_MEDIA_JOB_TYPES,
+  ...CONTENT_PROTECTION_JOB_TYPES,
 ]);
 
 const HERMES_MEDIA_REFERENCE_URL_ACTIVE_STATUSES: ReadonlySet<string> = new Set(
@@ -1158,6 +1163,10 @@ function ensureHermesJobScopedAccess(
 function extractEditorJobReferenceAssetIds(job: Pick<WorkerJob, "inputJson">): Array<{ assetId: string }> {
   const input = job.inputJson as Record<string, unknown> | null | undefined;
   const refs: Array<{ assetId: string }> = [];
+  const sourceAssetId = input?.sourceAssetId;
+  if (typeof sourceAssetId === "number" && Number.isSafeInteger(sourceAssetId) && sourceAssetId > 0) {
+    refs.push({ assetId: String(sourceAssetId) });
+  }
   const add = (value: unknown) => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
     const ref = value as Record<string, unknown>;
@@ -1183,6 +1192,57 @@ function extractEditorJobReferenceAssetIds(job: Pick<WorkerJob, "inputJson">): A
     }
   }
   return [...new Map(refs.map(ref => [ref.assetId, ref])).values()];
+}
+
+async function mintContentProtectionArtifactReferenceUrl(input: {
+  job: Pick<WorkerJob, "inputJson" | "tenantId">;
+  sourceArtifactId: string;
+  request: Request;
+}): Promise<{ assetId: string; url: string; expiresAt: string }[]> {
+  const jobInput = input.job.inputJson as Record<string, unknown> | null | undefined;
+  const sourceObjectKey = typeof jobInput?.sourceObjectKey === "string" ? jobInput.sourceObjectKey : "";
+  const sourceSha256 = typeof jobInput?.sourceSha256 === "string" ? jobInput.sourceSha256.toLowerCase() : "";
+  const database = getDb();
+  const [artifact] = await database
+    .select({ storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
+    .from(workerArtifacts)
+    .innerJoin(workerJobs, eq(workerJobs.id, workerArtifacts.workerJobId))
+    .where(and(
+      eq(workerArtifacts.id, input.sourceArtifactId),
+      eq(workerJobs.tenantId, input.job.tenantId),
+      inArray(workerJobs.status, ["completed", "published"]),
+    ))
+    .limit(1);
+  const metadata = artifact?.metadataJson ?? {};
+  if (
+    !artifact
+    || artifact.storageRef !== sourceObjectKey
+    || String(metadata.checksumSha256 ?? "").toLowerCase() !== sourceSha256
+  ) {
+    throw new WorkerRuntimeServiceError(
+      "worker_permission_denied",
+      403,
+      "Content protection source artifact is not published or checksum-matching",
+    );
+  }
+  const resolved = await storageResolveUrl(artifact.storageRef);
+  const relativeUrl = resolved || `/api/storage/files/${artifact.storageRef}`;
+  const baseUrl = publicBaseUrl(input.request);
+  if (!/^https?:\/\//i.test(relativeUrl) && !baseUrl) {
+    throw new WorkerRuntimeServiceError(
+      "internal_error",
+      500,
+      "A public app URL is required for content protection artifact transfer",
+    );
+  }
+  const url = /^https?:\/\//i.test(relativeUrl)
+    ? relativeUrl
+    : new URL(relativeUrl, `${baseUrl.replace(/\/+$/, "")}/`).toString();
+  return [{
+    assetId: input.sourceArtifactId,
+    url,
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+  }];
 }
 
 function ensureHermesJobLease(
@@ -2680,14 +2740,24 @@ export function registerWorkerRuntimeRoutes(
           // `Record<string, any>` row shape — cast to the strict Drizzle
           // row type at this one crossing point (see the doc comment on
           // `extractHermesJobReferenceAssetIds`).
-          const references = HERMES_MEDIA_JOB_TYPES.has(result.job.jobType)
-            ? extractHermesJobReferenceAssetIds(result.job as unknown as WorkerJob)
-            : extractEditorJobReferenceAssetIds(result.job as unknown as WorkerJob);
-          const referenceUrls = await mintHermesReferenceUrlsOrThrow({
-            tenantId: auth.tenantId,
-            requestedByUserId: result.job.requestedByUserId ?? null,
-            references,
-          });
+          const resultJob = result.job as unknown as WorkerJob;
+          const contentProtectionInput = resultJob.inputJson as Record<string, unknown> | null | undefined;
+          const sourceArtifactId = CONTENT_PROTECTION_JOB_TYPES.has(result.job.jobType)
+            && typeof contentProtectionInput?.sourceArtifactId === "string"
+            ? contentProtectionInput.sourceArtifactId
+            : null;
+          const references = sourceArtifactId
+            ? await mintContentProtectionArtifactReferenceUrl({ job: resultJob, sourceArtifactId, request: req })
+            : HERMES_MEDIA_JOB_TYPES.has(result.job.jobType)
+              ? extractHermesJobReferenceAssetIds(resultJob)
+              : extractEditorJobReferenceAssetIds(resultJob);
+          const referenceUrls = sourceArtifactId
+            ? references
+            : await mintHermesReferenceUrlsOrThrow({
+              tenantId: auth.tenantId,
+              requestedByUserId: result.job.requestedByUserId ?? null,
+              references,
+            });
           res.json({
             ...result,
             job: { ...result.job, referenceUrls },
@@ -2904,14 +2974,23 @@ export function registerWorkerRuntimeRoutes(
             "Worker job is not in an active state for reference URL minting"
           );
         }
-        const references = HERMES_MEDIA_JOB_TYPES.has(job.jobType)
-          ? extractHermesJobReferenceAssetIds(job)
-          : extractEditorJobReferenceAssetIds(job);
-        const referenceUrls = await mintHermesReferenceUrlsOrThrow({
-          tenantId: job.tenantId,
-          requestedByUserId: job.requestedByUserId,
-          references,
-        });
+        const contentProtectionInput = job.inputJson as Record<string, unknown> | null | undefined;
+        const sourceArtifactId = CONTENT_PROTECTION_JOB_TYPES.has(job.jobType)
+          && typeof contentProtectionInput?.sourceArtifactId === "string"
+          ? contentProtectionInput.sourceArtifactId
+          : null;
+        const references = sourceArtifactId
+          ? await mintContentProtectionArtifactReferenceUrl({ job, sourceArtifactId, request: req })
+          : HERMES_MEDIA_JOB_TYPES.has(job.jobType)
+            ? extractHermesJobReferenceAssetIds(job)
+            : extractEditorJobReferenceAssetIds(job);
+        const referenceUrls = sourceArtifactId
+          ? references
+          : await mintHermesReferenceUrlsOrThrow({
+            tenantId: job.tenantId,
+            requestedByUserId: job.requestedByUserId,
+            references,
+          });
         res.json({ referenceUrls });
       } catch (error) {
         handleWorkerRouteError(error, res);

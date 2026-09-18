@@ -1,9 +1,10 @@
 import type { Express, Request, Response } from "express";
+import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { sendApiError } from "../middleware/publicApiHeaders";
-import { contentProtectionAssets } from "../../drizzle/schema";
+import { contentProtectionAssets, contentEvidencePackages, contentExternalReviewLinks } from "../../drizzle/schema";
 import { getContentProtectionOverview, safeAssetView } from "../routers/contentProtection";
 
 type RequestAuth = {
@@ -121,6 +122,24 @@ export function registerContentProtectionRoutes(app: Express): void {
       return res.json(safeAssetView(row));
     } catch {
       return fail(res, 500, "internal_error", "Unable to load protected asset");
+    }
+  });
+
+  app.get("/v1/content-protection/review/:token", async (req, res) => {
+    if (!featureEnabled()) return fail(res, 404, "feature_disabled", "Content protection is not enabled");
+    const token = String(req.params.token || "").trim();
+    if (!/^[A-Za-z0-9_-]{32,128}$/.test(token)) return fail(res, 400, "invalid_request", "Invalid reviewer token");
+    try {
+      const database = await getDb();
+      const tokenHash = createHash("sha256").update(token).digest("hex");
+      const [link] = await database.select().from(contentExternalReviewLinks).where(eq(contentExternalReviewLinks.tokenHash, tokenHash)).limit(1);
+      if (!link || link.revokedAt || link.expiresAt.getTime() <= Date.now()) return fail(res, 410, "review_link_unavailable", "This reviewer link is expired or revoked");
+      const [pkg] = await database.select().from(contentEvidencePackages).where(and(eq(contentEvidencePackages.id, link.packageId), eq(contentEvidencePackages.tenantId, link.tenantId))).limit(1);
+      if (!pkg) return fail(res, 404, "not_found", "Evidence package not found");
+      await database.update(contentExternalReviewLinks).set({ lastAccessedAt: new Date() }).where(eq(contentExternalReviewLinks.id, link.id));
+      return res.json({ packageId: pkg.id, packageVersion: pkg.packageVersion, packageSha256: pkg.packageSha256, status: pkg.status, sealedAt: pkg.sealedAt, scope: link.scopeJson, expiresAt: link.expiresAt, disclaimer: "Technical provenance evidence does not by itself establish legal ownership." });
+    } catch {
+      return fail(res, 500, "internal_error", "Unable to load reviewer evidence");
     }
   });
 }
