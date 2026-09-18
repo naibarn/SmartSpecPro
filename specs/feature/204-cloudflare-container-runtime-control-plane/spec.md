@@ -5,7 +5,7 @@
 **Status:** Proposed / Ready for implementation planning  
 **Target:** Cloudflare-first production architecture  
 **Primary goal:** Migrate appropriate Tauri + Sidecar workloads to Cloudflare Containers while retaining Local Runtime for GPU/device-specific work  
-**Related:** Unified Job Control Plane, SmartAIHub Runner (Feature 205), Worker App / Desktop Runtime, Media Studio, Video Editor, Hermes Agents, Codex/Sandbox workloads
+**Related:** Unified Job Control Plane, SmartAIHub Runner (Feature 205), Worker App / Desktop Runtime, Media Studio, Video Editor, Hermes Agents, Codex/Sandbox workloads, **Feature 206 A2A-First Hybrid External Agent Interoperability**
 
 ---
 
@@ -42,6 +42,15 @@ browser or local-AI utilities. Feature 204 owns image/manifest deployment;
 Feature 205 validates the in-container entrypoint and registers the bounded
 redacted inventory. A shared image capability is never presented as a
 per-user local-device tool.
+
+### Feature 205 release boundary
+
+Feature 205 may build and publish a versioned, signed Container Runner manifest
+alongside its native Runner packages. That manifest is an input to this spec's
+explicit image/deployment path, not a deployment command. Feature 204 owns the
+Cloudflare image reference or digest, staging rollout, health gate, autoscaling,
+instance replacement and rollback. A local Runner update MUST NOT mutate a
+Cloudflare Container image or bypass `worker_jobs`/outbox control.
 
 Initial production policy SHALL favor **conservative queue-first operation** over aggressive autoscaling. For video rendering, one render Container should normally drain the queue; a second Container is opened only after sustained queue delay and a health check confirms the first worker is healthy.
 

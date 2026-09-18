@@ -470,6 +470,7 @@ export function createRunnerControlToken(
         "runner:heartbeat",
         "runner:capabilities",
         "runner:status",
+        "runner:update",
       ],
       jti: `runner_control_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
     },

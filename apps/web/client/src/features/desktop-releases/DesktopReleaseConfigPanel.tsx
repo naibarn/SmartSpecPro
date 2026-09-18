@@ -27,6 +27,7 @@ import { Label } from "@/components/ui/label";
 type DesktopReleaseConfigForm = {
   githubRepository: string;
   githubWorkflow: string;
+  runnerGithubWorkflow: string;
   githubRef: string;
   webUrl: string;
   githubToken: string;
@@ -35,6 +36,7 @@ type DesktopReleaseConfigForm = {
 const EMPTY_FORM: DesktopReleaseConfigForm = {
   githubRepository: "",
   githubWorkflow: "desktop-release.yml",
+  runnerGithubWorkflow: "runner-release.yml",
   githubRef: "main",
   webUrl: "https://smartaihub.app",
   githubToken: "",
@@ -58,12 +60,15 @@ function sourceBadgeClass(source: "db" | "env" | "none" | undefined) {
   return "border-slate-200 bg-slate-50 text-slate-500";
 }
 
-export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
-  const { enabled = true } = props;
+export function DesktopReleaseConfigPanel(props: {
+  enabled?: boolean;
+  defaultExpanded?: boolean;
+}) {
+  const { enabled = true, defaultExpanded = false } = props;
   const { t } = useScopedTranslation(["dashboard", "common"]);
   const [form, setForm] = useState<DesktopReleaseConfigForm>(EMPTY_FORM);
   const [showGithubToken, setShowGithubToken] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const [isGuideExpanded, setIsGuideExpanded] = useState(false);
 
   const {
@@ -84,6 +89,8 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
           githubRepository:
             result.settings.githubRepository || prev.githubRepository,
           githubWorkflow: result.settings.githubWorkflow || prev.githubWorkflow,
+          runnerGithubWorkflow:
+            result.settings.runnerGithubWorkflow || prev.runnerGithubWorkflow,
           githubRef: result.settings.githubRef || prev.githubRef,
           webUrl: result.settings.webUrl || prev.webUrl,
         }));
@@ -102,6 +109,7 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
     setForm({
       githubRepository: config.githubRepository || "",
       githubWorkflow: config.githubWorkflow || "desktop-release.yml",
+      runnerGithubWorkflow: config.runnerGithubWorkflow || "runner-release.yml",
       githubRef: config.githubRef || "main",
       webUrl: config.webUrl || "https://smartaihub.app",
       githubToken: "",
@@ -119,6 +127,7 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
     return [
       config.githubRepositorySource,
       config.githubWorkflowSource,
+      config.runnerGithubWorkflowSource,
       config.githubRefSource,
       config.webUrlSource,
       config.githubTokenSource,
@@ -135,6 +144,7 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
       config.githubTokenConfigured &&
       config.githubRepositorySource === "db" &&
       config.githubWorkflowSource === "db" &&
+      config.runnerGithubWorkflowSource === "db" &&
       config.githubRefSource === "db" &&
       config.webUrlSource === "db" &&
       config.githubTokenSource === "db"
@@ -156,6 +166,7 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
     updateMutation.mutate({
       githubRepository: form.githubRepository.trim(),
       githubWorkflow: form.githubWorkflow.trim(),
+      runnerGithubWorkflow: form.runnerGithubWorkflow.trim(),
       githubRef: form.githubRef.trim(),
       webUrl: form.webUrl.trim(),
       githubToken: form.githubToken.trim() || undefined,
@@ -170,6 +181,10 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
     {
       label: t("dashboard:desktopReleases.admin.config.workflow"),
       source: config?.githubWorkflowSource,
+    },
+    {
+      label: t("dashboard:desktopReleases.admin.config.runnerWorkflow"),
+      source: config?.runnerGithubWorkflowSource,
     },
     {
       label: t("dashboard:desktopReleases.admin.config.ref"),
@@ -260,6 +275,34 @@ export function DesktopReleaseConfigPanel(props: { enabled?: boolean }) {
               }
               placeholder="desktop-release.yml"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="runnerGithubWorkflow">
+                {t("dashboard:desktopReleases.admin.config.runnerWorkflow")}
+              </Label>
+              <Badge
+                variant="outline"
+                className={sourceBadgeClass(config?.runnerGithubWorkflowSource)}
+              >
+                {sourceBadgeLabel(t, config?.runnerGithubWorkflowSource)}
+              </Badge>
+            </div>
+            <Input
+              id="runnerGithubWorkflow"
+              value={form.runnerGithubWorkflow}
+              onChange={event =>
+                setForm(prev => ({
+                  ...prev,
+                  runnerGithubWorkflow: event.target.value,
+                }))
+              }
+              placeholder="runner-release.yml"
+            />
+            <p className="text-xs text-slate-500">
+              {t("dashboard:desktopReleases.admin.config.runnerWorkflowHint")}
+            </p>
           </div>
 
           <div className="space-y-1.5">

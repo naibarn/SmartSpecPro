@@ -863,6 +863,7 @@
   "runnerReleases.admin.startBuild": "เริ่ม manual build",
   "runnerReleases.admin.syncAssets": "ซิงก์ asset",
   "runnerReleases.admin.working": "กำลังทำงาน",
+  "runnerReleases.admin.configurationRequired": "กรุณาตั้งค่า GitHub repository และ token ในส่วนตั้งค่าด้านบนก่อนเริ่ม build Runner",
   "runnerReleases.admin.buildStatus": "Build {{releaseId}}",
   "runnerReleases.admin.catalogSync": "การซิงก์ catalog",
   "runnerReleases.admin.buildDetails": "รายละเอียด build",

@@ -33,7 +33,7 @@ boundaries
 |---:|---|---|---|
 | 01 | Structure/deep-plan | 9 sections, section manifest, section validator and UI-contract validator | PASS |
 | 02 | Worker authentication parity | Existing `workerAuthService.ts` invariants vs Runner namespace, token uses, revocation, device proof and refresh rules | PASS |
-| 03 | Platform/release | Windows x86_64, macOS Intel, macOS Apple Silicon, Linux x86_64, manual-only workflow policy | PASS |
+| 03 | Platform/release | Windows x86_64, macOS Intel (x64), macOS arm64 (Apple Silicon), Linux x86_64, manual-only workflow policy | PASS |
 | 04 | Product separation | Separate package, executable/config roots, credentials, lifecycle and Worker import boundaries | PASS |
 | 05 | Durable control plane | `worker_jobs`, events, outbox, lease/fence ownership and no second ledger | PASS |
 | 06 | Shared Container | Managed node, per-Job workspace/process scope, no direct user socket, restart and two-tenant isolation | PASS |

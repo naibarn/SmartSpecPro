@@ -3,7 +3,8 @@
 ## Outcome
 
 Introduce a concrete SmartAIHub Runner product/runtime that is independently
-installable and operable on Windows x86_64, macOS Intel, macOS Apple Silicon
+installable and operable on Windows x86_64, macOS Intel (x64), macOS arm64
+(aarch64, Apple Silicon)
 and Linux x86_64. The same provider-neutral execution contract must also be
 usable by a Cloudflare Container as a shared, ephemeral execution node for
 multiple users.
@@ -141,7 +142,7 @@ The workflow produces:
 
 - Windows x86_64 native artifact;
 - macOS Intel native artifact;
-- macOS Apple Silicon native artifact;
+- macOS arm64 (Apple Silicon) native artifact;
 - Linux x86_64 native artifact;
 - shared Cloudflare Container Runner artifact/image manifest and digest.
 

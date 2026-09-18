@@ -394,7 +394,8 @@ Use test-first implementation. The focused test inventory is:
    deterministic manifest/checksum and explicit deployment handoff.
 5. Focused Playwright tests for the existing combined launcher/panel and
    /workers/connect Runner-versus-Worker flow.
-6. Environment gates on native Windows, macOS Intel, macOS Apple Silicon and
+6. Environment gates on native Windows, macOS Intel (x64), macOS arm64
+   (Apple Silicon) and
    Linux x86_64 install/start/stop/reconnect, plus a real Cloudflare staging
    Container run with concurrent tenant isolation and restart evidence.
 

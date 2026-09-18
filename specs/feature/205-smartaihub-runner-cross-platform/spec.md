@@ -1,12 +1,12 @@
 # Spec 205 — SmartAIHub Runner Cross-Platform Runtime
 
 **Spec ID:** 205  
-**Revision:** 5 — 2026-09-18 — closes generic runtime integration and records provider/rollout evidence gates
-**Status:** Repository runtime/control-plane implementation complete — provider and rollout evidence pending  
-**Target:** SmartAIHub Runner execution contract with local runtimes for Windows, macOS Intel, macOS Apple Silicon and Linux x86_64, plus a shared Cloudflare Container Runner profile  
+**Revision:** 6 — 2026-09-18 — adds SmartAIHub-owned release catalog, Dashboard distribution and verified local Runner update contract
+**Status:** Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates
+**Target:** SmartAIHub Runner execution contract with local runtimes for Windows x86_64, macOS Intel (x64), macOS arm64 (Apple Silicon) and Linux x86_64, plus a shared Cloudflare Container Runner profile
 **Suggested code path:** `apps/runner-app`  
 **Release path:** GitHub Actions `workflow_dispatch` only; no automatic build or release on push/PR  
-**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 External MCP Gateway & Upstream Management; Feature 200 Universal Coding Agent Control Plane; Feature 201 Content Provenance & Copyright Protection; Feature 202 AI Rough Cut Video Editor; Feature 203 AI Editor Director Shared Runtime; Feature 204 Cloudflare Container Runtime Control Plane
+**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 External MCP Gateway & Upstream Management; Feature 200 Universal Coding Agent Control Plane; Feature 201 Content Provenance & Copyright Protection; Feature 202 AI Rough Cut Video Editor; Feature 203 AI Editor Director Shared Runtime; Feature 204 Cloudflare Container Runtime Control Plane; **Feature 206 A2A-First Hybrid External Agent Interoperability**
 
 ## 1. Decision
 
@@ -94,6 +94,7 @@ They are different execution-node profiles, not two Job systems:
 | Cloudflare Container lifecycle, pool, autoscaling and deployment | Feature 204 | provide the managed execution-node pool and invoke the Feature 205 Container Runner entrypoint |
 | Tool catalog, discovery and capability semantics | Feature 197 | provide the canonical Runner inventory/trust model; Feature 205 implements the concrete cross-platform scanners and adapter probes |
 | Runner execution contract, local runtime and shared Container entrypoint | Feature 205 | own the common execution semantics, local executable, shared-container adapter and manual build artifacts |
+| Runner release catalog, Dashboard download and local self-update | Feature 205 | own SmartAIHub public release distribution, native package/update assets and verified local Runner update lifecycle |
 
 Feature 205 MUST NOT redefine any field that is authoritative in Features
 195–204. Where an existing contract is incomplete for a real Runner boundary,
@@ -107,7 +108,7 @@ instead of silently inventing a Runner-only meaning.
 - a standalone headless Runner executable and development package;
 - Windows x86_64 support;
 - macOS x86_64 (Intel) support;
-- macOS aarch64 (Apple Silicon) support;
+- macOS arm64 (aarch64, Apple Silicon) support;
 - Linux x86_64 support;
 - a `SHARED_CONTAINER_RUNNER` profile for Cloudflare Containers that can serve
   multiple users through isolated per-Job executions;
@@ -126,6 +127,12 @@ instead of silently inventing a Runner-only meaning.
 - manual GitHub build/package workflow and checksums/signatures/manifest;
 - manual build/publishable artifact for the Cloudflare Container Runner image or
   equivalent Cloudflare runtime package, coordinated with Feature 204;
+- SmartAIHub-owned Runner release catalog with platform/architecture/profile
+  metadata, checksums, signatures and provenance;
+- same-origin Dashboard download and version-check APIs that do not expose the
+  GitHub repository or workflow to normal users;
+- authenticated local Runner update command with bounded drain, verified
+  atomic replacement, restart confirmation and rollback;
 - compatibility tests against Features 195, 197, 199, 200 and 203;
 - Web projection of Runner status through existing Task Control/connection
   surfaces without creating a new cluttering UI.
@@ -514,7 +521,7 @@ MUST NOT remain alive only to poll an external provider.
 |---|---|---|---|
 | Windows | x86_64 MSVC | signed `.zip`/installer artifact as selected by plan | clean install, enrollment, service/foreground start, process cancel, reconnect |
 | macOS Intel | x86_64 Darwin | signed `.tar.gz`/`.pkg` or equivalent artifact | native launch, keychain protection, enrollment, reconnect |
-| macOS Apple Silicon | aarch64 Darwin | signed `.tar.gz`/`.pkg` or equivalent artifact | native launch, keychain protection, enrollment, reconnect |
+| macOS arm64 (Apple Silicon) | aarch64 Darwin | signed `.tar.gz`/`.pkg` or equivalent artifact | native launch, keychain protection, enrollment, reconnect |
 | Linux | x86_64 GNU | `.tar.gz` plus systemd/foreground instructions | clean host start, permissions, journal recovery, reconnect |
 | Cloudflare Container | managed Linux pool | manually built/publishable Container Runner artifact | multi-tenant Job isolation, lease/fence, restart reconciliation, queue/cost gates |
 
@@ -573,7 +580,8 @@ The workflow MUST:
 3. run focused Rust/protocol/security/package tests;
 4. produce deterministic artifact names and a machine-readable manifest;
 5. generate SHA-256 checksums and signed metadata where configured;
-6. fail closed when signing/provenance requirements are missing;
+6. fail closed when signing/provenance requirements are missing; in particular,
+   `publish=true` MUST require `required-secret` signing;
 7. upload artifacts for operator review;
 8. publish a GitHub release only when the explicit manual input requests it;
 9. produce a Container artifact digest/manifest without exposing registry
@@ -586,7 +594,62 @@ Local development MAY use `cargo run`, focused tests and a foreground Runner;
 local development commands MUST NOT imply that a local unsigned build is a
 production release.
 
-## 14. Repository Boundaries Established by Implementation
+## 14. SmartAIHub Release Catalog, Dashboard Distribution and Update
+
+GitHub is an internal build/provenance source. SmartAIHub SHALL be the public
+release surface for normal users. Feature 205 SHALL maintain a dedicated
+Runner release catalog and storage namespace separate from Worker App releases,
+Worker runtime packs and the Windows-only speaker-aware runner artifact.
+
+Each published native release MUST register:
+
+- Runner version and channel;
+- platform, architecture and profile compatibility;
+- user package asset and platform-specific raw update executable;
+- byte size, SHA-256, signature/key identity and machine-readable manifest;
+- source commit, protocol contract version, toolchain and release notes;
+- publish/withdraw state and validation checks.
+
+The server SHALL download and validate release assets before making them
+available. It SHALL recompute hashes, verify the manifest/signature policy and
+reject incomplete or incompatible release records. Public responses and
+download URLs MUST be SmartAIHub same-origin paths; GitHub repository names,
+workflow URLs and access tokens MUST NOT be returned to normal users.
+
+The Dashboard SHALL provide one SmartAIHub Runner card, distinct from Worker
+App, with platform-aware download, `ตรวจสอบเวอร์ชัน` and `อัปเดต Runner`
+actions. It SHALL show the current Runner version from the authenticated
+Runner snapshot, the latest compatible catalog version, last-check time and
+explicit unavailable/offline/busy/reconciling/verification states. The UI MUST
+not show executable absolute paths, credentials, raw provider payloads or
+claim that a `worker_jobs` row proves a process is alive.
+
+The local Runner update protocol SHALL use a server-queued command and a
+dedicated `runner:update` scope. The Runner MUST:
+
+1. accept only a tenant-authorized compatible release;
+2. download the raw platform executable through the authenticated control
+   plane URL;
+3. verify SHA-256 and required signature before touching the installed binary;
+4. refuse or defer the update while an active Job cannot be safely drained;
+5. back up the current executable and perform an atomic replacement;
+6. restart and report a bounded health confirmation;
+7. restore the backup and report rollback when startup confirmation fails.
+
+The update state MUST be idempotent and durable enough to recover after a
+process or network restart. Browser code MUST never write local Runner state
+directly. Shared Cloudflare Container updates are excluded from this local
+self-update path: Feature 204 owns image/deployment rollout and receives the
+versioned signed Container manifest through its explicit deployment path.
+
+The release management API MUST include public latest/catalog/download
+operations, tenant-scoped Runner summaries and update request/poll/ack
+operations, plus admin-only build/sync/publish/withdraw/history operations.
+Mutations require idempotency keys and all downloads retain safe content
+headers, range handling where supported and no-store behavior for mutable
+latest routes.
+
+## 15. Repository Boundaries Established by Implementation
 
 The implementation plan MUST evaluate and then establish this boundary:
 
@@ -625,7 +688,7 @@ can be extracted into a neutral versioned protocol package without breaking
 existing imports. A compatibility re-export is preferred over a broad rewrite.
 The Runner MUST not import the Worker App's media executor or Tauri state.
 
-## 15. Verification and Acceptance
+## 16. Verification and Acceptance
 
 Feature 205 is not complete when the binary merely compiles. Acceptance SHALL
 include focused evidence for:
@@ -661,7 +724,7 @@ include focused evidence for:
 
 - Windows x86_64 build and install/start/stop proof;
 - macOS Intel build and native launch proof;
-- macOS Apple Silicon build and native launch proof;
+- macOS arm64 (Apple Silicon) build and native launch proof;
 - Linux x86_64 build and foreground/systemd proof;
 - Shared Container Runner proof with two isolated tenants, concurrent Job lease,
   container restart and no cross-Job workspace/context/credential leakage;
@@ -680,7 +743,23 @@ include focused evidence for:
 - no raw local path, token, provider payload or unverified result is displayed;
 - same Job/Runner state is visible from the inline panel and `/chat`.
 
-## 16. Migration and Rollback
+### Release distribution and update
+
+- manual workflow produces package, raw update binary, manifest, checksum and
+  signature metadata for all four native targets;
+- explicit publish creates a GitHub Release while artifact-only mode does not;
+- server-side sync validates and stores the release without exposing GitHub to
+  normal Dashboard users;
+- Dashboard latest/download/version-check actions select the correct platform
+  and architecture and distinguish Runner from Worker App;
+- update requests enforce tenant ownership, Runner auth scope, idempotency,
+  drain safety, hash/signature verification, restart confirmation and rollback;
+- offline, busy, revoked, incompatible and withdrawn releases produce explicit
+  safe states rather than invented progress;
+- shared Container versioning is handed to Feature 204 and never performed by
+  a local Runner self-update.
+
+## 17. Migration and Rollback
 
 The first rollout MUST be opt-in behind a Runner capability/feature gate. A
 Runner that is unavailable, revoked, incompatible or disconnected MUST leave
@@ -693,7 +772,7 @@ configuration. Any additive registry/schema migration requires selected
 database verification, rollback SQL or an equivalent reversible path and an
 explicit data-retention decision.
 
-## 17. Definition of Done
+## 18. Definition of Done
 
 Feature 205 is complete only when:
 
@@ -711,9 +790,11 @@ Feature 205 is complete only when:
 5. Task Control displays the real Runner state without inventing progress;
 6. manual GitHub native/Container build and release succeeds only by explicit
    operator dispatch, with deployment still gated by Feature 204;
-7. no retired path, duplicate ledger, direct MCP bypass or Worker regression is
+7. SmartAIHub Dashboard can discover/download the correct Runner release and a
+   connected local Runner can complete a verified update or explicit rollback;
+8. no retired path, duplicate ledger, direct MCP bypass or Worker regression is
    introduced; and
-8. the focused cross-spec, security, Rust and platform evidence is recorded in
+9. the focused cross-spec, security, Rust and platform evidence is recorded in
    the implementation completion/review documents.
 
 **End of Spec 205**

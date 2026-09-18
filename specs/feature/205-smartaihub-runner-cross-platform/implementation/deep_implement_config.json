@@ -15,18 +15,28 @@
     "section-06-shared-container-runner",
     "section-07-ui-task-control-and-connection",
     "section-08-manual-release-workflow",
-    "section-09-platform-and-rollout-evidence"
+    "section-09-platform-and-rollout-evidence",
+    "section-10-runner-release-catalog-and-storage",
+    "section-11-github-release-sync-and-admin-build-control",
+    "section-12-runner-version-and-verified-self-update",
+    "section-13-dashboard-runner-download-and-version-ui",
+    "section-14-release-integration-and-evidence"
   ],
   "sections_state": {
-    "section-01-contracts-and-profile-boundary": "completed",
-    "section-02-backend-registry-and-gateway": "completed",
-    "section-03-runner-foundation-and-local-journal": "completed",
-    "section-04-local-discovery-and-control-channel": "completed",
-    "section-05-job-execution-and-adapters": "completed",
-    "section-06-shared-container-runner": "completed",
-    "section-07-ui-task-control-and-connection": "completed",
-    "section-08-manual-release-workflow": "completed",
-    "section-09-platform-and-rollout-evidence": "completed_with_external_gates"
+    "section-01-contracts-and-profile-boundary": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-02-backend-registry-and-gateway": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-03-runner-foundation-and-local-journal": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-04-local-discovery-and-control-channel": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-05-job-execution-and-adapters": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-06-shared-container-runner": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-07-ui-task-control-and-connection": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-08-manual-release-workflow": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-09-platform-and-rollout-evidence": {"status": "complete", "commit_hash": "3a1b8f125c95493d8821a38d7db17333e38be582"},
+    "section-10-runner-release-catalog-and-storage": {"status": "pending"},
+    "section-11-github-release-sync-and-admin-build-control": {"status": "pending"},
+    "section-12-runner-version-and-verified-self-update": {"status": "pending"},
+    "section-13-dashboard-runner-download-and-version-ui": {"status": "pending"},
+    "section-14-release-integration-and-evidence": {"status": "pending"}
   },
   "pre_commit": {
     "present": false,
@@ -36,5 +46,5 @@
     "may_modify_files": false,
     "detected_formatters": []
   },
-  "created_at": "2026-09-18T02:07:16.587603+00:00"
+  "created_at": "2026-09-18T08:37:05.651814+00:00"
 }

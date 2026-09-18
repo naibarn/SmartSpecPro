@@ -50,6 +50,18 @@ vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
   },
 }));
 
+vi.mock("@/features/runner-releases/RunnerReleasePanel", () => ({
+  RunnerReleasePanel: () => <div data-testid="runner-release-panel" />,
+}));
+
+vi.mock("@/features/desktop-releases/RunnerReleaseAdminPanel", () => ({
+  RunnerReleaseAdminPanel: () => <div data-testid="runner-release-admin-panel" />,
+}));
+
+vi.mock("@/features/desktop-releases/WorkerRuntimeReleasePanel", () => ({
+  WorkerRuntimeReleasePanel: () => <div data-testid="worker-runtime-release-panel" />,
+}));
+
 import AdminDesktopHost from "../AdminDesktopHost";
 
 describe("AdminDesktopHost", () => {
@@ -94,6 +106,7 @@ describe("AdminDesktopHost", () => {
     expect(desktopReleaseConfigPanelMock).toHaveBeenCalledWith(
       expect.objectContaining({
         enabled: true,
+        defaultExpanded: true,
       }),
     );
     expect(desktopReleasePanelMock).toHaveBeenCalledWith(

@@ -13,6 +13,11 @@ section-06-shared-container-runner
 section-07-ui-task-control-and-connection
 section-08-manual-release-workflow
 section-09-platform-and-rollout-evidence
+section-10-runner-release-catalog-and-storage
+section-11-github-release-sync-and-admin-build-control
+section-12-runner-version-and-verified-self-update
+section-13-dashboard-runner-download-and-version-ui
+section-14-release-integration-and-evidence
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -30,6 +35,11 @@ END_MANIFEST -->
 | section-07-ui-task-control-and-connection | 01, 02, 04, 05 | 09 | Yes after dependencies |
 | section-08-manual-release-workflow | 01, 03, 06 | 09 | Yes after dependencies |
 | section-09-platform-and-rollout-evidence | 01–08 | - | No |
+| section-10-runner-release-catalog-and-storage | 01, 02, 08 | 11, 12, 13 | No |
+| section-11-github-release-sync-and-admin-build-control | 08, 10 | 14 | Yes after 10 |
+| section-12-runner-version-and-verified-self-update | 01, 02, 03, 04, 10 | 13, 14 | No |
+| section-13-dashboard-runner-download-and-version-ui | 07, 10, 12 | 14 | Yes after dependencies |
+| section-14-release-integration-and-evidence | 10–13 | - | No |
 
 ## Execution Order
 
@@ -41,6 +51,11 @@ END_MANIFEST -->
 5. section-06-shared-container-runner, section-07-ui-task-control-and-connection
    and section-08-manual-release-workflow where their dependencies are complete
 6. section-09-platform-and-rollout-evidence
+7. section-10-runner-release-catalog-and-storage
+8. section-11-github-release-sync-and-admin-build-control and
+   section-12-runner-version-and-verified-self-update
+9. section-13-dashboard-runner-download-and-version-ui
+10. section-14-release-integration-and-evidence
 
 ## Section Summaries
 
@@ -88,6 +103,32 @@ manifests, checksums, optional signing and explicit deployment handoff.
 
 Run focused proof, native/Cloudflare environment gates, security checks,
 feature-gate rollout and rollback evidence, then update completion/review docs.
+
+### section-10-runner-release-catalog-and-storage
+
+Add a dedicated Runner release schema, migration, validated asset model,
+server-owned catalog, same-origin download streaming and public latest APIs.
+
+### section-11-github-release-sync-and-admin-build-control
+
+Make the manual workflow produce real publishable Runner releases and add the
+admin dispatch/status/sync path that imports and validates assets without
+exposing GitHub to normal Dashboard users.
+
+### section-12-runner-version-and-verified-self-update
+
+Report the binary version, add durable authenticated update command delivery,
+drain/apply/restart/rollback semantics and focused Rust/server proof.
+
+### section-13-dashboard-runner-download-and-version-ui
+
+Add the Dashboard Runner card and admin release controls with platform-aware
+download, version check, safe update states, redaction and accessibility.
+
+### section-14-release-integration-and-evidence
+
+Run cross-section audits, workflow/static checks, focused tests and evidence
+updates while keeping Cloudflare deployment and native host proof explicit.
 
 ## Global constraints
 

@@ -188,6 +188,9 @@ const rounds = [
       ) &&
       has("apps/runner-app/src/main.rs", /\"run\"/) &&
       has("apps/runner-app/src/main.rs", /\"rescan\"/) &&
+      has("apps/runner-app/src/main.rs", /__sah-runner-update-child/) &&
+      has("apps/runner-app/src/diagnostics.rs", /sibling_helper_path/) &&
+      has("apps/runner-app/src/diagnostics.rs", /update_ack_statuses/) &&
       has("scripts/verify-runner-release-workflow.mjs", /workflow_dispatch/),
   ],
   [

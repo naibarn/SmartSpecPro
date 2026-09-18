@@ -4,8 +4,8 @@
 **Project:** SmartAIHub / SmartSpecPro  
 **Spec ID:** 199  
 **Recommended path:** `specs/feature/199-external-mcp-gateway-upstream-management/spec.md`  
-**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; **Feature 200 Revision 7 Universal External Agent Control Plane**
-**Companion spec:** **Spec 200** — External Agent Gateway / delegated external-agent runtime integration  
+**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; **Feature 200 Revision 7 Universal External Agent Control Plane**; **Feature 206 A2A-First Hybrid External Agent Interoperability**
+**Companion specs:** **Spec 200** — External Agent Gateway / delegated external-agent runtime integration; **Spec 206** — A2A discovery, negotiation, routing and normalization. Spec 206 does not change Spec 199 ownership of MCP upstream lifecycle, credentials, schema, quarantine or execution.
 **Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 199 owns External MCP upstream lifecycle and governed MCP invocation.  
 **Primary objective:** Add a first-class External MCP management layer without replacing the existing Universal MCP / Capability architecture, and align it normatively with Spec 200 so MCP and External Agent execution share one SmartAIHub orchestration/control plane.  
 **Revision:** v18 — Spec 199↔200 cross-spec alignment over full v17 baseline + sixteenth 10-pass alignment gap audit

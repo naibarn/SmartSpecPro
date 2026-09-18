@@ -2255,6 +2255,34 @@
       "when": 1789690000000,
       "tag": "0335_feature_201_public_identifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 322,
+      "version": "7",
+      "when": 1789737564000,
+      "tag": "0336_runner_release_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 323,
+      "version": "7",
+      "when": 1789737564001,
+      "tag": "0337_runner_update_commands",
+      "breakpoints": true
+    },
+    {
+      "idx": 324,
+      "version": "7",
+      "when": 1789737564002,
+      "tag": "0338_runner_release_builds",
+      "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1789737564003,
+      "tag": "0339_runner_release_build_publish",
+      "breakpoints": true
     }
   ]
 }

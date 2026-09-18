@@ -7,7 +7,7 @@ choices were resolved from the codebase and the related specifications.
 ## Q1 — What product/runtime must be added?
 
 **Answer:** Add a standalone SmartAIHub Runner that works on Windows, macOS
-Intel, macOS Apple Silicon and Linux x86_64. It must be separate from the
+Intel (x64), macOS arm64 (Apple Silicon) and Linux x86_64. It must be separate from the
 existing SmartAIHub Worker App, with its own package identity, process,
 configuration, credentials and lifecycle.
 

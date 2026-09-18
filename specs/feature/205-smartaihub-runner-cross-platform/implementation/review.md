@@ -44,6 +44,29 @@ and 204 at the repository boundary:
 15. Added explicit Runner control rotation, access-token refresh and
     owner-scoped revocation routes; revoked nodes are rejected before WSS
     handshake and before credential rotation/refresh.
+16. Added a separate published-valid Runner release catalog with withdrawn and
+    invalid asset filtering, storage hash recomputation, range-aware
+    same-origin downloads and command-bound update binaries.
+17. Added manual-only cross-platform release build control, selected-commit
+    manifests, optional GitHub Release publishing and server-side catalog sync
+    with required raw-binary signature metadata.
+18. Added durable update commands with owner/admin authorization, native
+    platform/profile compatibility checks, monotonic phase transitions and
+    idempotent acknowledgements.
+19. Added localized Dashboard download/version/update controls and admin
+    build/sync controls while keeping GitHub details out of the normal user
+    surface.
+20. Persisted the manual publish decision so artifact-only workflow runs cannot
+    be imported into the public catalog accidentally, and completed checksum
+    asset sync for every requested native target.
+21. Closed the native update state-machine gap: Runner now acknowledges
+    `verifying → replacing → restarting → completed`, uses bounded idempotent
+    ack retries, runs a copied post-exit helper so Windows can release the
+    live executable lock, confirms authenticated health with the new binary,
+    and rolls back on failed confirmation.
+22. Renamed the release target to `macos-arm64` across the build contract,
+    Admin control and workflow matrix; artifact import still recognizes the
+    legacy `macos-aarch64` filename, while the Intel lane is labeled x64.
 
 ## Known boundaries
 

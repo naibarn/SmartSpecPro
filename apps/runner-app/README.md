@@ -44,4 +44,35 @@ bounded status/cancellation. Shared-container assignments create a fresh
 
 The GitHub workflow at `.github/workflows/runner-release.yml` is deliberately
 manual (`workflow_dispatch` only). It produces native artifacts for Windows
-x86_64, macOS Intel/Apple Silicon and Linux x86_64.
+x86_64, macOS Intel (x64), macOS arm64 (Apple Silicon) and Linux x86_64.
+
+## Release portal setup
+
+Before enabling production downloads or updates:
+
+1. Apply Runner release migrations `0336`–`0339` in the Web app.
+2. Configure the existing Desktop Release settings with the GitHub repository
+   and token, or set `SMARTAIHUB_DESKTOP_RELEASE_GITHUB_REPOSITORY` and
+   `SMARTAIHUB_DESKTOP_RELEASE_GITHUB_TOKEN`. The workflow defaults to
+   `runner-release.yml` and is dispatched only by an admin action.
+3. Add the GitHub Actions secret `RUNNER_SIGNING_KEY`. Publishing is fail
+   closed unless the workflow uses `required-secret` signing.
+4. Configure durable R2/S3-compatible storage for the Web release catalog.
+   The Dashboard serves only SmartAIHub same-origin download URLs.
+5. Configure each local Runner with the matching
+   `SAH_RUNNER_RELEASE_PUBLIC_KEY`; never place the private signing key in a
+   Runner or browser environment.
+
+An administrator starts the build from the Runner Release Control panel. After
+the workflow completes, the server imports and validates the signed assets.
+Users then use Dashboard → Runner Releases to check the version, download the
+native package, or request an authenticated update for a connected local
+Runner. Normal users never need to know the GitHub repository or workflow.
+
+Local updates download a bounded, signed sibling artifact and verify its hash
+and signature before replacement. The Runner copies itself to a temporary
+post-exit helper before replacing the live binary; this is required for
+Windows executable locks and keeps the same update state machine on macOS and
+Linux. The helper confirms an authenticated Runner connection with the new
+binary before reporting `completed`; failed confirmation restores the backup
+and reports `rolled_back`.

@@ -18,6 +18,8 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { DesktopReleaseConfigPanel } from "@/features/desktop-releases/DesktopReleaseConfigPanel";
 import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { WorkerRuntimeReleasePanel } from "@/features/desktop-releases/WorkerRuntimeReleasePanel";
+import { RunnerReleasePanel } from "@/features/runner-releases/RunnerReleasePanel";
+import { RunnerReleaseAdminPanel } from "@/features/desktop-releases/RunnerReleaseAdminPanel";
 
 function roleLabel(role?: string | null) {
   if (role === "admin") {
@@ -206,13 +208,18 @@ export default function AdminDesktopHost() {
                 </div>
               </div>
               <div className="p-5 sm:p-6">
-                <DesktopReleaseConfigPanel enabled />
+                <DesktopReleaseConfigPanel enabled defaultExpanded />
               </div>
             </DashboardSurface>
           ) : null}
 
           {canManageReleaseSettings ? <WorkerRuntimeReleasePanel /> : null}
+        </div>
 
+        <RunnerReleasePanel enabled={Boolean(user)} />
+        {canManageReleaseSettings ? <RunnerReleaseAdminPanel /> : null}
+
+        <div className="space-y-6">
           <DashboardSurface>
             <div className="border-b border-slate-200/80 px-5 pt-5 sm:px-6 sm:pt-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

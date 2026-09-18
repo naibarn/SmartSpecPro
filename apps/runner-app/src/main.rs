@@ -1,7 +1,10 @@
 use smartaihub_runner::{
     config::{RunnerConfig, RunnerProfile},
     container::run_container_entrypoint,
-    diagnostics::{connection_status, redacted_status, run_local_entrypoint},
+    diagnostics::{
+        confirm_update, connection_status, redacted_status, run_local_entrypoint, run_update_child,
+    },
+    RUNNER_VERSION,
 };
 
 fn main() {
@@ -12,6 +15,25 @@ fn main() {
         std::process::exit(2);
     });
     match command {
+        "__sah-runner-update-child" => {
+            if let Err(error) = run_update_child(&config, &args[1..]) {
+                eprintln!("runner update helper error: {error}");
+                std::process::exit(3);
+            }
+        }
+        "__sah-runner-update-confirm" => {
+            if args.get(1).is_none() {
+                eprintln!("runner update confirmation command id is required");
+                std::process::exit(2);
+            }
+            if let Err(error) = confirm_update(&config, args.get(1).expect("checked above")) {
+                eprintln!("runner update confirmation error: {error}");
+                std::process::exit(3);
+            }
+        }
+        "version" => {
+            println!("{{\"version\":\"{RUNNER_VERSION}\",\"contractVersion\":\"sah-runner-v1\"}}")
+        }
         "status" | "doctor" | "capabilities" => {
             println!("{}", redacted_status(&config, command));
         }

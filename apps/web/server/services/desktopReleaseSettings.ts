@@ -13,6 +13,7 @@ import type {
 export const DESKTOP_RELEASE_SETTINGS_CATEGORY = "desktop_release" as const;
 
 const DEFAULT_GITHUB_WORKFLOW = "desktop-release.yml";
+const DEFAULT_RUNNER_GITHUB_WORKFLOW = "runner-release.yml";
 const DEFAULT_GITHUB_REF = "main";
 const DEFAULT_WEB_URL = "https://smartaihub.app";
 
@@ -23,6 +24,8 @@ export type DesktopReleaseConfig = {
   githubRepositorySource: DesktopReleaseSettingSource;
   githubWorkflow: string;
   githubWorkflowSource: DesktopReleaseSettingSource;
+  runnerGithubWorkflow: string;
+  runnerGithubWorkflowSource: DesktopReleaseSettingSource;
   githubRef: string;
   githubRefSource: DesktopReleaseSettingSource;
   webUrl: string;
@@ -35,6 +38,7 @@ export type DesktopReleaseConfig = {
 export type DesktopReleaseConfigUpdateInput = {
   githubRepository: string;
   githubWorkflow: string;
+  runnerGithubWorkflow?: string;
   githubRef: string;
   webUrl: string;
   githubToken?: string | null;
@@ -158,6 +162,11 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     || process.env.DESKTOP_RELEASE_GITHUB_WORKFLOW
     || ""
   );
+  const runnerGithubWorkflowEnv = (
+    process.env.SMARTAIHUB_RUNNER_RELEASE_GITHUB_WORKFLOW
+    || process.env.RUNNER_RELEASE_GITHUB_WORKFLOW
+    || ""
+  );
   const githubRefEnv = (
     process.env.SMARTAIHUB_DESKTOP_RELEASE_GITHUB_REF
     || process.env.DESKTOP_RELEASE_GITHUB_REF
@@ -190,6 +199,11 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     githubWorkflowEnv,
     DEFAULT_GITHUB_WORKFLOW,
   );
+  const runnerGithubWorkflow = resolveField(
+    rowMap.get("runner_github_workflow") as { value: string | null; isSensitive: boolean | null } | undefined,
+    runnerGithubWorkflowEnv,
+    DEFAULT_RUNNER_GITHUB_WORKFLOW,
+  );
   const githubRef = resolveField(
     rowMap.get("github_ref") as { value: string | null; isSensitive: boolean | null } | undefined,
     githubRefEnv,
@@ -209,6 +223,8 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
       githubRepositorySource: githubRepository.source,
       githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
       githubWorkflowSource: githubWorkflow.source,
+      runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+      runnerGithubWorkflowSource: runnerGithubWorkflow.source,
       githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
       githubRefSource: githubRef.source,
       webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
@@ -225,6 +241,8 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
       githubRepositorySource: githubRepository.source,
       githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
       githubWorkflowSource: githubWorkflow.source,
+      runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+      runnerGithubWorkflowSource: runnerGithubWorkflow.source,
       githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
       githubRefSource: githubRef.source,
       webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
@@ -240,6 +258,8 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     githubRepositorySource: githubRepository.source,
     githubWorkflow: githubWorkflow.value.trim() || DEFAULT_GITHUB_WORKFLOW,
     githubWorkflowSource: githubWorkflow.source,
+    runnerGithubWorkflow: runnerGithubWorkflow.value.trim() || DEFAULT_RUNNER_GITHUB_WORKFLOW,
+    runnerGithubWorkflowSource: runnerGithubWorkflow.source,
     githubRef: githubRef.value.trim() || DEFAULT_GITHUB_REF,
     githubRefSource: githubRef.source,
     webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
@@ -256,6 +276,7 @@ export async function updateDesktopReleaseConfig(
 ): Promise<DesktopReleaseConfig> {
   const githubRepository = normalizeGithubRepository(input.githubRepository);
   const githubWorkflow = normalizeWorkflowName(input.githubWorkflow);
+  const runnerGithubWorkflow = normalizeWorkflowName(input.runnerGithubWorkflow ?? DEFAULT_RUNNER_GITHUB_WORKFLOW);
   const githubRef = normalizeWorkflowRef(input.githubRef);
   const webUrl = normalizeDesktopReleaseWebUrl(input.webUrl);
 
@@ -269,6 +290,13 @@ export async function updateDesktopReleaseConfig(
     value: githubWorkflow,
     userId,
   });
+  if (input.runnerGithubWorkflow !== undefined) {
+    await upsertDesktopReleaseSetting({
+      key: "runner_github_workflow",
+      value: runnerGithubWorkflow,
+      userId,
+    });
+  }
   await upsertDesktopReleaseSetting({
     key: "github_ref",
     value: githubRef,

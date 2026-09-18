@@ -55,7 +55,7 @@ test; only a real staging Container run is deployment evidence.
 ### Native platform
 
 Record build/install/start/stop/reconnect for Windows x86_64, macOS Intel,
-macOS Apple Silicon and Linux x86_64. Verify artifact target, checksum,
+macOS arm64 (Apple Silicon) and Linux x86_64. Verify artifact target, checksum,
 manifest, version and profile. If a native host is unavailable, mark it
 blocked/unverified with the missing environment and do not claim completion.
 

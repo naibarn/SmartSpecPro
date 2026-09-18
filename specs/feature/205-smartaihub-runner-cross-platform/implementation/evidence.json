@@ -13,5 +13,12 @@
   "browser_deployed_surface": "unverified",
   "manual_release_policy": "pass",
   "signed_provenance": "unverified",
-  "worker_boundary": "pass"
+  "worker_boundary": "pass",
+  "runner_release_catalog": "pass_local_focused",
+  "runner_release_build_sync": "pass_local_policy_and_contract",
+  "artifact_only_publish_gate": "pass_local",
+  "runner_update_state_machine": "pass_local_focused",
+  "runner_dashboard_surface": "pass_local_jsdom",
+  "release_management_audit_rounds": "10_pass_local",
+  "repository_typecheck": "not_run_by_ram_policy"
 }

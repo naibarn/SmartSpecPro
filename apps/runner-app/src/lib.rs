@@ -13,7 +13,15 @@ pub mod process;
 pub mod protocol;
 pub mod supervisor;
 pub mod transport;
+pub mod update;
 pub mod workspace;
+
+/// Release builds inject `SAH_RUNNER_BUILD_VERSION`; local builds use Cargo's
+/// package version so the binary always reports a deterministic identity.
+pub const RUNNER_VERSION: &str = match option_env!("SAH_RUNNER_BUILD_VERSION") {
+    Some(version) => version,
+    None => env!("CARGO_PKG_VERSION"),
+};
 
 #[cfg(test)]
 mod tests {

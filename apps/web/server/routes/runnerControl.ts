@@ -18,6 +18,9 @@ import {
   verifyRunnerRefreshToken,
 } from "../services/runnerAuthService";
 import { authorizeRequest } from "../_core/authz";
+import { getDb } from "../db";
+import { runnerNodes } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 import {
   defaultRunnerGateway,
   RunnerGatewayError,
@@ -29,6 +32,14 @@ import {
   validateRunnerProtocolEnvelope,
   type RunnerProtocolEnvelope,
 } from "../services/runnerContracts";
+import {
+  acknowledgeRunnerUpdate,
+  claimNextRunnerUpdate,
+  getRunnerUpdateStatus,
+  requestRunnerUpdate,
+  RunnerUpdateError,
+  runnerUpdateStatuses,
+} from "../services/runnerUpdateService";
 
 let runnerWss: WebSocketServer | null = null;
 
@@ -259,6 +270,10 @@ function sendError(res: Response, error: unknown): void {
     res.status(statusCode).json({ error: error.code });
     return;
   }
+  if (error instanceof RunnerUpdateError) {
+    res.status(error.statusCode).json({ error: error.code });
+    return;
+  }
   res.status(400).json({ error: "RUNNER_REQUEST_INVALID" });
 }
 
@@ -311,6 +326,52 @@ export function registerRunnerControlRoutes(
   app: Express,
   gateway: RunnerGateway = defaultRunnerGateway
 ): void {
+  app.get("/api/runners", async (req, res) => {
+    const browserAuth = await authorizeRequest(req, {
+      allowBearer: false,
+      allowSession: true,
+    });
+    if (!browserAuth.ok || browserAuth.mode !== "session") {
+      return res.status(401).json({ error: "RUNNER_LIST_AUTH_REQUIRED" });
+    }
+    const tenantId = String(
+      browserAuth.tenantId ?? browserAuth.user?.currentTenantId ?? "",
+    ).trim();
+    if (!tenantId) return res.status(400).json({ error: "RUNNER_LIST_TENANT_REQUIRED" });
+    try {
+      const rows = await getDb().select().from(runnerNodes).where(eq(runnerNodes.tenantId, tenantId));
+      return res.json({
+        runners: rows.map(row => {
+          const toolInventory = Array.isArray(row.currentSnapshotJson?.toolInventory)
+            ? row.currentSnapshotJson.toolInventory
+            : [];
+          const capabilityInventory = Array.isArray(row.currentSnapshotJson?.capabilityInventory)
+            ? row.currentSnapshotJson.capabilityInventory
+            : [];
+          return {
+            runnerId: row.runnerId,
+            displayName: row.displayName,
+            profile: row.profile,
+            nodeKind: row.nodeKind,
+            status: row.status,
+            trustState: row.trustState,
+            lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+            runnerVersion: typeof row.currentSnapshotJson?.runnerVersion === "string"
+              ? row.currentSnapshotJson.runnerVersion
+              : null,
+            platform: row.currentSnapshotJson?.platform ?? null,
+            toolCount: toolInventory.length,
+            readyToolCount: toolInventory.filter(item => item && typeof item === "object" && ["ready", "available"].includes(String((item as Record<string, unknown>).trustState ?? (item as Record<string, unknown>).availabilityState ?? ""))).length,
+            capabilityCount: capabilityInventory.length,
+            readyCapabilityCount: capabilityInventory.filter(item => item && typeof item === "object" && String((item as Record<string, unknown>).policyDecision ?? "") === "allowed").length,
+          };
+        }),
+      });
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
   app.post("/api/runners/setup", async (req, res) => {
     const browserAuth = await authorizeRequest(req, {
       allowBearer: false,
@@ -599,6 +660,133 @@ export function registerRunnerControlRoutes(
       });
     } catch (error) {
       sendError(res, error);
+    }
+  });
+
+  app.post("/api/runners/:runnerId/update", async (req, res) => {
+    const browserAuth = await authorizeRequest(req, {
+      allowBearer: false,
+      allowSession: true,
+    });
+    if (!browserAuth.ok || browserAuth.mode !== "session") {
+      return res.status(401).json({ error: "RUNNER_UPDATE_SESSION_REQUIRED" });
+    }
+    const tenantId = String(
+      browserAuth.tenantId ?? browserAuth.user?.currentTenantId ?? "",
+    ).trim();
+    const requestedBy = Number(browserAuth.userId ?? browserAuth.user?.id ?? 0);
+    const requesterRole = typeof browserAuth.user?.role === "string" ? browserAuth.user.role : null;
+    const releaseAssetId = Number(req.body?.releaseAssetId);
+    const idempotencyKey = String(req.body?.idempotencyKey ?? "").trim();
+    if (!tenantId || !Number.isInteger(requestedBy) || requestedBy <= 0) {
+      return res.status(400).json({ error: "RUNNER_UPDATE_TENANT_REQUIRED" });
+    }
+    if (!Number.isInteger(releaseAssetId) || releaseAssetId <= 0 || !idempotencyKey || idempotencyKey.length > 200) {
+      return res.status(400).json({ error: "RUNNER_UPDATE_REQUEST_INVALID" });
+    }
+    try {
+      return res.status(202).json(await requestRunnerUpdate({
+        tenantId,
+        runnerId: req.params.runnerId,
+        releaseAssetId,
+        idempotencyKey,
+        requestedBy,
+        requesterRole,
+      }));
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  app.get("/api/runners/:runnerId/update/:commandId", async (req, res) => {
+    const browserAuth = await authorizeRequest(req, {
+      allowBearer: false,
+      allowSession: true,
+    });
+    if (!browserAuth.ok || browserAuth.mode !== "session") {
+      return res.status(401).json({ error: "RUNNER_UPDATE_SESSION_REQUIRED" });
+    }
+    const tenantId = String(
+      browserAuth.tenantId ?? browserAuth.user?.currentTenantId ?? "",
+    ).trim();
+    const requestedBy = Number(browserAuth.userId ?? browserAuth.user?.id ?? 0);
+    const requesterRole = typeof browserAuth.user?.role === "string" ? browserAuth.user.role : null;
+    try {
+      return res.json(await getRunnerUpdateStatus({
+        tenantId,
+        runnerId: req.params.runnerId,
+        commandId: req.params.commandId,
+        requestedBy,
+        requesterRole,
+      }));
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  app.get("/api/runners/:runnerId/update-commands/next", async (req, res) => {
+    const auth = await authenticate(req, res, req.params.runnerId, "runner:update");
+    if (!auth) return;
+    try {
+      return res.json(await claimNextRunnerUpdate({
+        runnerId: req.params.runnerId,
+        tenantId: auth.tenantId,
+      }));
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  app.get("/api/runners/:runnerId/update-commands/:commandId/download", async (req, res) => {
+    const auth = await authenticate(req, res, req.params.runnerId, "runner:update");
+    if (!auth) return;
+    try {
+      const command = await getRunnerUpdateStatus({
+        tenantId: auth.tenantId,
+        runnerId: req.params.runnerId,
+        commandId: req.params.commandId,
+      });
+      if (!command.downloadUrl) return res.status(404).json({ error: "RUNNER_UPDATE_DOWNLOAD_UNAVAILABLE" });
+      const assetId = command.releaseAssetId;
+      const { streamRunnerReleaseAsset } = await import("../services/runnerReleaseService");
+      const result = await streamRunnerReleaseAsset(assetId, typeof req.headers.range === "string" ? req.headers.range : undefined);
+      res.setHeader("Content-Type", result.contentType);
+      res.setHeader("Content-Disposition", `attachment; filename="${result.fileName.replace(/"/g, "\\\"")}"`);
+      if (result.contentLength !== undefined) res.setHeader("Content-Length", String(result.contentLength));
+      if (result.totalLength !== undefined) res.setHeader("Accept-Ranges", "bytes");
+      if (result.isPartial) res.status(206);
+      const stream = result.stream as any;
+      if (typeof stream.pipe === "function") return stream.pipe(res);
+      const reader = stream.getReader();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        res.write(Buffer.from(chunk.value));
+      }
+      return res.end();
+    } catch (error) {
+      return sendError(res, error);
+    }
+  });
+
+  app.post("/api/runners/:runnerId/update-commands/:commandId/ack", async (req, res) => {
+    const auth = await authenticate(req, res, req.params.runnerId, "runner:update");
+    if (!auth) return;
+    const status = String(req.body?.status ?? "");
+    if (!(runnerUpdateStatuses as readonly string[]).includes(status)) {
+      return res.status(400).json({ error: "RUNNER_UPDATE_STATUS_INVALID" });
+    }
+    try {
+      return res.json(await acknowledgeRunnerUpdate({
+        runnerId: req.params.runnerId,
+        commandId: req.params.commandId,
+        status: status as (typeof runnerUpdateStatuses)[number],
+        phase: typeof req.body?.phase === "string" ? req.body.phase : undefined,
+        errorCode: typeof req.body?.errorCode === "string" ? req.body.errorCode : null,
+        errorMessage: typeof req.body?.errorMessage === "string" ? req.body.errorMessage : null,
+      }));
+    } catch (error) {
+      return sendError(res, error);
     }
   });
 }

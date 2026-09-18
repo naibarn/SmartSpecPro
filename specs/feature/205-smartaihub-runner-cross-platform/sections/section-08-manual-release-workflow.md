@@ -23,6 +23,9 @@ The only trigger is workflow_dispatch. Required manual inputs are git
 ref/commit, Runner version, platform, profile (local, shared-container or all),
 artifact-only versus GitHub release, release notes/release identifier and
 signing mode or required-secret availability.
+An artifact-only run MAY use `unsigned-review`; a run with `publish=true` MUST
+use `required-secret` and fail closed before creating a GitHub Release when the
+signing secret is unavailable.
 
 The local matrix is:
 

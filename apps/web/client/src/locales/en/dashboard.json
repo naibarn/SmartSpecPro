@@ -863,6 +863,7 @@
   "runnerReleases.admin.startBuild": "Start manual build",
   "runnerReleases.admin.syncAssets": "Sync assets",
   "runnerReleases.admin.working": "Working",
+  "runnerReleases.admin.configurationRequired": "Configure the GitHub repository and token above before starting a runner build.",
   "runnerReleases.admin.buildStatus": "Build {{releaseId}}",
   "runnerReleases.admin.catalogSync": "catalog sync",
   "runnerReleases.admin.buildDetails": "Build details",

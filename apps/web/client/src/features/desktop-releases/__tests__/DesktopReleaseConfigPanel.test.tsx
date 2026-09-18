@@ -129,4 +129,17 @@ describe("DesktopReleaseConfigPanel", () => {
       "dashboard:desktopReleases.admin.config.missingRequired"
     );
   });
+
+  it("can render expanded for the release build workspace", () => {
+    render(<DesktopReleaseConfigPanel enabled defaultExpanded />);
+
+    expect(
+      screen.getByLabelText(
+        "dashboard:desktopReleases.admin.config.repository"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "common.showLess" })
+    ).toBeInTheDocument();
+  });
 });

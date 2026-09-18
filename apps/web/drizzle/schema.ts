@@ -15537,6 +15537,106 @@ export const runnerCapabilitySnapshots = pgTable("runner_capability_snapshots", 
 export type RunnerCapabilitySnapshotRow = typeof runnerCapabilitySnapshots.$inferSelect;
 export type InsertRunnerCapabilitySnapshotRow = typeof runnerCapabilitySnapshots.$inferInsert;
 
+/** SmartAIHub-owned distribution catalog for the standalone cross-platform Runner. */
+export const runnerReleaseAssets = pgTable("runner_release_assets", {
+  id: serial("id").primaryKey(),
+  version: varchar("version", { length: 64 }).notNull(),
+  platform: varchar("platform", { length: 24 }).notNull(),
+  architecture: varchar("architecture", { length: 24 }).notNull(),
+  profile: varchar("profile", { length: 32 }).notNull(),
+  channel: varchar("channel", { length: 24 }).notNull().default("stable"),
+  assetKind: varchar("assetKind", { length: 24 }).notNull(),
+  fileName: varchar("fileName", { length: 260 }).notNull(),
+  contentType: varchar("contentType", { length: 256 }).notNull().default("application/octet-stream"),
+  storageKey: text("storageKey").notNull(),
+  fileSizeBytes: bigint("fileSizeBytes", { mode: "number" }).notNull(),
+  fileSha256: varchar("fileSha256", { length: 64 }).notNull(),
+  signature: text("signature"),
+  contractVersion: varchar("contractVersion", { length: 64 }).notNull().default("sah-runner-v1"),
+  manifestJson: jsonb("manifestJson").$type<Record<string, unknown> | null>(),
+  validationStatus: varchar("validationStatus", { length: 24 }).notNull().default("valid"),
+  validationChecksJson: jsonb("validationChecksJson").$type<Array<{ id: string; status: "ok" | "error"; message: string }>>().notNull().default(sql`'[]'::jsonb`),
+  provenanceJson: jsonb("provenanceJson").$type<Record<string, unknown>>().notNull(),
+  releaseNotes: text("releaseNotes"),
+  isPublished: boolean("isPublished").notNull().default(false),
+  publishedAt: timestamp("publishedAt", { withTimezone: true }),
+  withdrawnAt: timestamp("withdrawnAt", { withTimezone: true }),
+  uploadedBy: integer("uploadedBy").references(() => users.id, { onDelete: "set null" }),
+  uploadedAt: timestamp("uploadedAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("runner_release_assets_identity_unique").on(
+    t.version,
+    t.platform,
+    t.architecture,
+    t.profile,
+    t.channel,
+    t.assetKind,
+  ),
+  uniqueIndex("runner_release_assets_storage_key_unique").on(t.storageKey),
+  index("runner_release_assets_latest_idx").on(
+    t.platform,
+    t.architecture,
+    t.profile,
+    t.channel,
+    t.isPublished,
+    t.withdrawnAt,
+    t.version,
+  ),
+]);
+
+export type RunnerReleaseAssetRow = typeof runnerReleaseAssets.$inferSelect;
+export type InsertRunnerReleaseAssetRow = typeof runnerReleaseAssets.$inferInsert;
+
+export const runnerUpdateCommands = pgTable("runner_update_commands", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  runnerId: varchar("runnerId", { length: 160 }).notNull().references(() => runnerNodes.runnerId, { onDelete: "cascade" }),
+  releaseAssetId: integer("releaseAssetId").notNull().references(() => runnerReleaseAssets.id, { onDelete: "restrict" }),
+  idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("queued"),
+  phase: varchar("phase", { length: 32 }).notNull().default("queued"),
+  requestedBy: integer("requestedBy").references(() => users.id, { onDelete: "set null" }),
+  errorCode: varchar("errorCode", { length: 128 }),
+  errorMessage: text("errorMessage"),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completedAt", { withTimezone: true }),
+}, t => [
+  uniqueIndex("runner_update_commands_idempotency_unique").on(t.tenantId, t.runnerId, t.idempotencyKey),
+  index("runner_update_commands_pending_idx").on(t.runnerId, t.status, t.createdAt),
+]);
+
+export type RunnerUpdateCommand = typeof runnerUpdateCommands.$inferSelect;
+export type InsertRunnerUpdateCommand = typeof runnerUpdateCommands.$inferInsert;
+
+export const runnerReleaseBuilds = pgTable("runner_release_builds", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  repository: varchar("repository", { length: 256 }).notNull(),
+  workflow: varchar("workflow", { length: 256 }).notNull(),
+  ref: varchar("ref", { length: 256 }).notNull(),
+  version: varchar("version", { length: 64 }).notNull(),
+  platform: varchar("platform", { length: 24 }).notNull(),
+  profile: varchar("profile", { length: 32 }).notNull(),
+  releaseId: varchar("releaseId", { length: 128 }).notNull(),
+  releaseNotes: text("releaseNotes"),
+  publish: boolean("publish").notNull().default(false),
+  workflowRunId: varchar("workflowRunId", { length: 128 }),
+  workflowRunUrl: text("workflowRunUrl"),
+  status: varchar("status", { length: 32 }).notNull().default("queued"),
+  syncStatus: varchar("syncStatus", { length: 32 }).notNull().default("idle"),
+  syncError: text("syncError"),
+  requestedBy: integer("requestedBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("runner_release_builds_release_unique").on(t.repository, t.releaseId),
+  index("runner_release_builds_status_idx").on(t.status, t.updatedAt),
+]);
+
+export type RunnerReleaseBuild = typeof runnerReleaseBuilds.$inferSelect;
+export type InsertRunnerReleaseBuild = typeof runnerReleaseBuilds.$inferInsert;
+
 /** Server projection of models advertised by a connected Worker. */
 export const workerLlmModels = pgTable(
   "worker_llm_models",

@@ -86,3 +86,31 @@ Fresh result: the only newly discovered in-scope blocker was the shared-module
 import mismatch, and it is fixed. The Playwright server emitted environment
 warnings for missing test-session cookies and a pre-existing queue-health
 backlog; neither caused a test failure or changed the implementation boundary.
+
+## Release/update readiness closure — 10 rounds
+
+This follow-up specifically rechecked the user-facing GitHub Actions build,
+SmartAIHub-owned download catalog, version check/update command and native
+cross-platform replacement path after the release-management changes.
+
+| Round | Lens | Result | Evidence/action |
+|---:|---|---|---|
+| 1 | Workflow trigger | PASS | YAML and policy verifier confirm `workflow_dispatch` only; no push/PR build trigger. |
+| 2 | Target matrix | PASS | Workflow declares Windows x86_64, macOS Intel, macOS arm64 and Linux x86_64 jobs. |
+| 3 | Publish safety | PASS | `publish=true` is rejected unless `signing_mode=required-secret`; shared schema and workflow guard agree. |
+| 4 | Catalog boundary | PASS | Normal users use same-origin catalog/download routes; GitHub repository/token remain server/admin-only. |
+| 5 | Build import | PASS | Admin build record persists publish intent and sync refuses artifact-only runs. |
+| 6 | Version check | PASS | Dashboard reads current/latest/last-checked data from the Runner catalog and connected-node projection. |
+| 7 | Update authorization | PASS | Browser owner/admin checks, Runner audience/scope and device proof remain required for update polling/download/ack. |
+| 8 | Update state machine | FIXED/PASS | Runner now acknowledges `verifying → replacing → restarting → completed` instead of skipping server-required phases. |
+| 9 | Windows replacement | FIXED/PASS | Runner copies a sibling post-exit helper, releases the live image lock, confirms the new binary and rolls back on failed health confirmation. |
+| 10 | Final convergence | PASS WITH EXPLICIT EXTERNAL GATES | Static audit is 10/10; real GitHub Actions artifacts, signing secrets, native installs and deployed storage/browser proof remain unverified. |
+
+### Fresh local proof
+
+- Rust: `cargo fmt --check` and 36 tests passed.
+- Local Linux release build: `cargo build --manifest-path apps/runner-app/Cargo.toml --release` passed.
+- Web release/update focused suite: 10 files, 56 tests passed.
+- Workflow policy verifier, YAML parse, module import probe and `git diff --check` passed.
+- Repository-wide TypeScript type-check was intentionally not run because of
+  the project RAM constraint.

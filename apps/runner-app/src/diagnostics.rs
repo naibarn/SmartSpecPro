@@ -2,12 +2,17 @@ use crate::adapters::{apply_probe, probe_candidate};
 use crate::config::RunnerConfig;
 use crate::control_channel::ControlChannel;
 use crate::device_proof::DeviceProofSigner;
+use crate::device_proof::{canonical_json_bytes, endpoint_path};
 use crate::discovery::{scan_environment, CapabilityDimension, ToolCandidate, TrustState};
 use crate::protocol::Envelope;
 use crate::transport::{
     ControlEndpoint, NativeControlTransport, TransportCoordinator, TransportError,
 };
+use crate::update::apply_verified_update;
+use crate::RUNNER_VERSION;
 use serde_json::json;
+use std::fs;
+use std::path::PathBuf;
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
 const MIN_REFRESH_INTERVAL_SECONDS: u64 = 15;
@@ -23,6 +28,8 @@ pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
         "command": command,
         "profile": config.profile,
         "runnerId": config.runner_id,
+        "runnerVersion": RUNNER_VERSION,
+        "contractVersion": "sah-runner-v1",
         "state": "ready",
         "toolCount": tools.len(),
         "readyToolCount": ready_tools,
@@ -151,14 +158,455 @@ pub fn run_local_entrypoint(config: &RunnerConfig) -> Result<(), String> {
     if config.profile != crate::config::RunnerProfile::LocalDevice {
         return Err("RUNNER_ENTRYPOINT_REQUIRES_LOCAL_DEVICE".into());
     }
+    if let Ok(current) = std::env::current_exe() {
+        cleanup_update_helpers(&current);
+    }
     let interval = refresh_interval_seconds()?;
     loop {
         match connection_status(config, "run") {
             Ok(status) => println!("{status}"),
             Err(error) => eprintln!("runner refresh error: {error}"),
         }
+        match poll_and_apply_update(config) {
+            Ok(status) if status.contains("scheduled") => {
+                println!("{status}");
+                return Ok(());
+            }
+            Ok(status) if status != "{\"state\":\"idle\"}" => println!("{status}"),
+            Ok(_) => {}
+            Err(error) => eprintln!("runner update check error: {error}"),
+        }
         std::thread::sleep(interval);
     }
+}
+
+/// Polls the durable update command queue and applies one signed update. The
+/// server remains the authority for target, hash, signature and command state;
+/// this function only performs local verification and atomic replacement.
+pub fn poll_and_apply_update(config: &RunnerConfig) -> Result<String, String> {
+    let control_url = config
+        .control_url
+        .as_deref()
+        .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
+    let token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
+    if token.trim().is_empty() {
+        return Err("RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into());
+    }
+    let command_url = control_url
+        .trim_end_matches('/')
+        .strip_suffix("/control")
+        .map(|base| format!("{base}/update-commands/next"))
+        .ok_or_else(|| "RUNNER_CONTROL_URL_INVALID".to_string())?;
+    let command = request_json(config, "GET", &command_url, &token, b"{}")?;
+    if command.is_null() {
+        return Ok("{\"state\":\"idle\"}".into());
+    }
+    let command_id = command
+        .get("commandId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_UPDATE_COMMAND_INVALID".to_string())?;
+    let download_path = command
+        .get("downloadUrl")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_UPDATE_DOWNLOAD_URL_MISSING".to_string())?;
+    let expected_hash = command
+        .get("expectedSha256")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_UPDATE_HASH_MISSING".to_string())?;
+    let signature = command.get("signature").and_then(serde_json::Value::as_str);
+    let current = std::env::current_exe().map_err(|_| "RUNNER_CURRENT_BINARY_UNAVAILABLE")?;
+    let download_url = absolute_download_url(control_url, download_path)?;
+    let downloaded = sibling_download_path(&current, command_id);
+    let bytes = request_bytes(config, "GET", &download_url, &token, b"{}").map_err(|error| {
+        fail_update(config, &command_url, command_id, &token, "download", error)
+    })?;
+    fs::write(&downloaded, bytes).map_err(|_| {
+        fail_update(
+            config,
+            &command_url,
+            command_id,
+            &token,
+            "download",
+            "RUNNER_UPDATE_DOWNLOAD_WRITE_FAILED".to_string(),
+        )
+    })?;
+    let ack_statuses = update_ack_statuses();
+    acknowledge_update(
+        config,
+        &command_url,
+        command_id,
+        &token,
+        ack_statuses[0],
+        "verification",
+        None,
+    )?;
+
+    let signature_arg = signature.unwrap_or("-");
+    let helper = sibling_helper_path(&current, command_id);
+    fs::copy(&current, &helper).map_err(|_| {
+        fail_update(
+            config,
+            &command_url,
+            command_id,
+            &token,
+            "verification",
+            "RUNNER_UPDATE_HELPER_COPY_FAILED".to_string(),
+        )
+    })?;
+    if let Ok(metadata) = fs::metadata(&current) {
+        let _ = fs::set_permissions(&helper, metadata.permissions());
+    }
+    let child = std::process::Command::new(&helper)
+        .arg("__sah-runner-update-child")
+        .arg(&current)
+        .arg(&downloaded)
+        .arg(command_id)
+        .arg(expected_hash)
+        .arg(signature_arg)
+        .arg(&helper)
+        .spawn()
+        .map_err(|_| {
+            fail_update(
+                config,
+                &command_url,
+                command_id,
+                &token,
+                "verification",
+                "RUNNER_UPDATE_HELPER_START_FAILED".to_string(),
+            )
+        })?;
+    drop(child);
+    Ok(format!(
+        "{{\"state\":\"scheduled\",\"commandId\":\"{command_id}\"}}"
+    ))
+}
+
+fn update_ack_statuses() -> [&'static str; 4] {
+    ["verifying", "replacing", "restarting", "completed"]
+}
+
+fn sibling_helper_path(current: &std::path::Path, command_id: &str) -> PathBuf {
+    let safe = command_id
+        .chars()
+        .filter(|value| value.is_ascii_alphanumeric() || *value == '-' || *value == '_')
+        .collect::<String>();
+    let extension = current
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| format!(".{value}"))
+        .unwrap_or_default();
+    current.with_file_name(format!(".sah-runner-update-helper-{safe}{extension}"))
+}
+
+fn cleanup_update_helpers(current: &std::path::Path) {
+    let Some(parent) = current.parent() else {
+        return;
+    };
+    let Ok(entries) = fs::read_dir(parent) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with(".sah-runner-update-helper-"))
+        {
+            let _ = fs::remove_file(path);
+        }
+    }
+}
+
+fn update_command_url(control_url: &str) -> Result<String, String> {
+    control_url
+        .trim_end_matches('/')
+        .strip_suffix("/control")
+        .map(|base| format!("{base}/update-commands/next"))
+        .ok_or_else(|| "RUNNER_CONTROL_URL_INVALID".to_string())
+}
+
+fn update_ack_url(command_url: &str, command_id: &str) -> String {
+    format!("{command_url}/{command_id}/ack").replace("/update-commands/next/", "/update-commands/")
+}
+
+fn acknowledge_update(
+    config: &RunnerConfig,
+    command_url: &str,
+    command_id: &str,
+    token: &str,
+    status: &str,
+    phase: &str,
+    error_code: Option<&str>,
+) -> Result<(), String> {
+    let mut ack = serde_json::json!({ "status": status, "phase": phase });
+    if let Some(error_code) = error_code {
+        ack["errorCode"] = serde_json::Value::String(error_code.to_string());
+    }
+    let body = canonical_json_bytes(&ack)?;
+    let endpoint = update_ack_url(command_url, command_id);
+    let mut last_error = "RUNNER_UPDATE_ACK_FAILED".to_string();
+    for attempt in 0..2 {
+        match request_json(config, "POST", &endpoint, token, &body) {
+            Ok(_) => return Ok(()),
+            Err(error) => {
+                last_error = error;
+                if attempt == 0 {
+                    std::thread::sleep(std::time::Duration::from_millis(250));
+                }
+            }
+        }
+    }
+    Err(last_error)
+}
+
+fn fail_update(
+    config: &RunnerConfig,
+    command_url: &str,
+    command_id: &str,
+    token: &str,
+    phase: &str,
+    error: String,
+) -> String {
+    let _ = acknowledge_update(
+        config,
+        command_url,
+        command_id,
+        token,
+        "failed",
+        phase,
+        Some(&error),
+    );
+    error
+}
+
+/// Runs after the original process exits so Windows can replace the executable
+/// without holding an image-file lock. The same path is used on Unix for one
+/// deterministic update contract across all native targets.
+pub fn run_update_child(config: &RunnerConfig, args: &[String]) -> Result<(), String> {
+    if args.len() != 6 {
+        return Err("RUNNER_UPDATE_HELPER_ARGS_INVALID".into());
+    }
+    let current = PathBuf::from(&args[0]);
+    let downloaded = PathBuf::from(&args[1]);
+    let command_id = &args[2];
+    let expected_hash = &args[3];
+    let signature = if args[4] == "-" {
+        None
+    } else {
+        Some(args[4].as_str())
+    };
+    let _helper = PathBuf::from(&args[5]);
+    let control_url = config
+        .control_url
+        .as_deref()
+        .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
+    let command_url = update_command_url(control_url)?;
+    let token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
+    if token.trim().is_empty() {
+        return Err("RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into());
+    }
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    let ack_statuses = update_ack_statuses();
+    acknowledge_update(
+        config,
+        &command_url,
+        command_id,
+        &token,
+        ack_statuses[1],
+        "replacement",
+        None,
+    )
+    .map_err(|error| {
+        fail_update(
+            config,
+            &command_url,
+            command_id,
+            &token,
+            "verification",
+            error,
+        )
+    })?;
+    let public_key = std::env::var("SAH_RUNNER_RELEASE_PUBLIC_KEY").ok();
+    let backup = match apply_verified_update(
+        &current,
+        &downloaded,
+        expected_hash,
+        signature,
+        public_key.as_deref(),
+    ) {
+        Ok(backup) => backup,
+        Err(error) => {
+            let _ = acknowledge_update(
+                config,
+                &command_url,
+                command_id,
+                &token,
+                "failed",
+                "replacement",
+                Some(&error),
+            );
+            return Err(error);
+        }
+    };
+    acknowledge_update(
+        config,
+        &command_url,
+        command_id,
+        &token,
+        ack_statuses[2],
+        "restarting",
+        None,
+    )
+    .map_err(|error| {
+        let _ = crate::update::rollback(&current, &backup);
+        let _ = acknowledge_update(
+            config,
+            &command_url,
+            command_id,
+            &token,
+            "rolled_back",
+            "rollback",
+            Some(&error),
+        );
+        error
+    })?;
+    let confirm = std::process::Command::new(&current)
+        .arg("__sah-runner-update-confirm")
+        .arg(command_id)
+        .spawn()
+        .and_then(|mut child| child.wait())
+        .map_err(|_| "RUNNER_UPDATE_CONFIRM_FAILED".to_string());
+    let confirm = match confirm {
+        Ok(status) => status,
+        Err(error) => {
+            let _ = crate::update::rollback(&current, &backup);
+            let _ = acknowledge_update(
+                config,
+                &command_url,
+                command_id,
+                &token,
+                "rolled_back",
+                "rollback",
+                Some(&error),
+            );
+            return Err(error);
+        }
+    };
+    if !confirm.success() {
+        crate::update::rollback(&current, &backup)?;
+        let _ = acknowledge_update(
+            config,
+            &command_url,
+            command_id,
+            &token,
+            "rolled_back",
+            "rollback",
+            Some("RUNNER_UPDATE_HEALTH_CONFIRMATION_FAILED"),
+        );
+        return Err("RUNNER_UPDATE_HEALTH_CONFIRMATION_FAILED".into());
+    }
+    acknowledge_update(
+        config,
+        &command_url,
+        command_id,
+        &token,
+        ack_statuses[3],
+        "completed",
+        None,
+    )?;
+    std::process::Command::new(&current)
+        .arg("run")
+        .spawn()
+        .map_err(|_| "RUNNER_UPDATE_RESTART_FAILED".to_string())?;
+    Ok(())
+}
+
+pub fn confirm_update(config: &RunnerConfig, _command_id: &str) -> Result<(), String> {
+    connection_status(config, "update-confirm").map(|_| ())
+}
+
+fn sibling_download_path(current: &std::path::Path, command_id: &str) -> PathBuf {
+    let safe = command_id
+        .chars()
+        .filter(|value| value.is_ascii_alphanumeric() || *value == '-' || *value == '_')
+        .collect::<String>();
+    current.with_file_name(format!(".sah-runner-update-{safe}"))
+}
+
+fn absolute_download_url(control_url: &str, path: &str) -> Result<String, String> {
+    if !path.starts_with('/') || path.contains("..") || path.contains('?') || path.contains('#') {
+        return Err("RUNNER_UPDATE_DOWNLOAD_URL_INVALID".into());
+    }
+    let authority = control_url
+        .split_once("://")
+        .and_then(|(_, rest)| rest.split('/').next())
+        .ok_or_else(|| "RUNNER_CONTROL_URL_INVALID".to_string())?;
+    Ok(format!("https://{authority}{path}"))
+}
+
+fn request_json(
+    config: &RunnerConfig,
+    method: &str,
+    endpoint: &str,
+    token: &str,
+    body: &[u8],
+) -> Result<serde_json::Value, String> {
+    let bytes = request_bytes(config, method, endpoint, token, body)?;
+    serde_json::from_slice(&bytes).map_err(|_| "RUNNER_UPDATE_RESPONSE_INVALID".into())
+}
+
+fn request_bytes(
+    config: &RunnerConfig,
+    method: &str,
+    endpoint: &str,
+    token: &str,
+    body: &[u8],
+) -> Result<Vec<u8>, String> {
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
+        .build()
+        .new_agent();
+    let path = endpoint_path(endpoint).map_err(|_| "RUNNER_UPDATE_ENDPOINT_INVALID")?;
+    if method != "GET" && method != "POST" {
+        return Err("RUNNER_UPDATE_METHOD_INVALID".into());
+    }
+    let mut request_builder = ureq::http::Request::builder()
+        .method(method)
+        .uri(endpoint)
+        .header("Authorization", format!("Bearer {token}"))
+        .header("X-SmartAIHub-Runner-Id", &config.runner_id)
+        .header("Content-Type", "application/json");
+    if let Some(device_id) = config.device_id.as_deref() {
+        if let Some(proof) = DeviceProofSigner::from_env(device_id, token)? {
+            let headers = proof.headers(method, &path, body)?;
+            request_builder = request_builder
+                .header("X-Runner-Device-Id", headers.device_id)
+                .header("X-Runner-Device-Public-Key", headers.public_key)
+                .header("X-Runner-Machine-Fingerprint", headers.machine_fingerprint)
+                .header("X-Runner-Device-Nonce", headers.nonce)
+                .header("X-Runner-Device-Timestamp", headers.timestamp)
+                .header("X-Runner-Device-Signature", headers.signature)
+                .header("X-Runner-Body-Sha256", headers.body_hash);
+        }
+    }
+    let request = request_builder
+        .body(body.to_vec())
+        .map_err(|_| "RUNNER_UPDATE_REQUEST_BUILD_FAILED")?;
+    let response = agent
+        .run(request)
+        .map_err(|_| "RUNNER_UPDATE_REQUEST_FAILED")?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "RUNNER_UPDATE_REQUEST_REJECTED_{}",
+            response.status().as_u16()
+        ));
+    }
+    response
+        .into_body()
+        .with_config()
+        .limit(750 * 1024 * 1024)
+        .read_to_vec()
+        .map_err(|_| "RUNNER_UPDATE_RESPONSE_READ_FAILED".into())
 }
 
 pub fn refresh_interval_seconds() -> Result<std::time::Duration, String> {
@@ -230,6 +678,8 @@ fn capability_snapshot(config: &RunnerConfig, tools: &[ToolCandidate]) -> serde_
         .collect::<Vec<_>>();
     json!({
         "runnerId": config.runner_id,
+        "runnerVersion": RUNNER_VERSION,
+        "contractVersion": "sah-runner-v1",
         "revision": format!("snapshot:{}:{}", config.runner_id, observed_at),
         "observedAt": observed_at,
         "expiresAt": expires_at,
@@ -334,7 +784,7 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 
 #[cfg(test)]
 mod lifecycle_tests {
-    use super::parse_refresh_interval;
+    use super::{parse_refresh_interval, update_ack_statuses};
     use std::time::Duration;
 
     #[test]
@@ -358,6 +808,14 @@ mod lifecycle_tests {
         assert_eq!(
             parse_refresh_interval(Some("not-a-number")).unwrap_err(),
             "RUNNER_REFRESH_INTERVAL_INVALID"
+        );
+    }
+
+    #[test]
+    fn update_ack_sequence_matches_server_state_machine() {
+        assert_eq!(
+            update_ack_statuses(),
+            ["verifying", "replacing", "restarting", "completed"]
         );
     }
 }

@@ -34,6 +34,7 @@ import {
 } from "../routes/runnerControl";
 import { registerDesktopHostRoutes } from "../routes/desktopHost";
 import { registerDesktopReleaseRoutes } from "../routes/desktopReleases";
+import { registerRunnerReleaseRoutes } from "../routes/runnerReleases";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
 import { registerContentManifestImportRoutes } from "../routers/contentManifestImport";
 import { registerContentProtectionRoutes } from "../routes/contentProtection";
@@ -1117,6 +1118,7 @@ registerJobControlPlaneRoutes(app);
 registerRunnerControlRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
+registerRunnerReleaseRoutes(app);
 registerWorkflowWorkerRuntimeRoutes(app);
 registerContentAutomationRoutes(app);
 registerContentManifestImportRoutes(app);

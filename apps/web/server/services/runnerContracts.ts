@@ -118,6 +118,8 @@ export type RunnerIdentity = {
 
 export type RunnerCapabilitySnapshot = {
   runnerId: string;
+  /** Additive version identity; legacy snapshots normalize this to null. */
+  runnerVersion?: string | null;
   revision: string;
   observedAt: string;
   expiresAt: string;
@@ -601,6 +603,9 @@ export function validateRunnerCapabilitySnapshot(
     invalid("runner capability snapshot is invalid");
   const raw = snapshot as unknown as Record<string, unknown>;
   const runnerId = requiredText(raw.runnerId, "snapshot.runnerId", 128);
+  const runnerVersion = raw.runnerVersion === undefined || raw.runnerVersion === null
+    ? null
+    : requiredText(raw.runnerVersion, "snapshot.runnerVersion", 64);
   const revision = requiredText(raw.revision, "snapshot.revision", 128);
   const observedAt = raw.observedAt;
   const expiresAt = raw.expiresAt;
@@ -631,6 +636,7 @@ export function validateRunnerCapabilitySnapshot(
   }
   return {
     runnerId,
+    runnerVersion,
     revision,
     observedAt: new Date(observedAt).toISOString(),
     expiresAt: new Date(expiresAt).toISOString(),

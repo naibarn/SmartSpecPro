@@ -2,7 +2,7 @@
 
 Date: 2026-09-18
 
-All nine plan sections were implemented in dependency order. “Completed” means
+All fourteen plan sections were implemented in dependency order. “Completed” means
 the repository contract, code path and focused proof are present; native host,
 Cloudflare target-account and signed-release evidence remain external rollout
 gates and are not represented as local passes.
@@ -18,6 +18,11 @@ gates and are not represented as local passes.
 | 07 UI Task Control/connection | Completed — deployed evidence pending | existing combined Feedback/Chat surface projects Runner platform/profile, safe state, expandable redacted tool/capability inventory and task step progress; `/workers/connect` embeds authenticated Runner enrollment beside Worker App; deployed browser evidence remains external |
 | 08 Manual release workflow | Completed | `workflow_dispatch`-only workflow, four targets, profile/publish/signing inputs, manifest/checksum/static policy proof |
 | 09 Platform/rollout evidence | Partial with explicit gates | evidence matrix and 10-round audit recorded; local focused proof passes, provider/session and deployment gates explicitly pending/unverified |
+| 10 Runner release catalog/storage | Completed | dedicated `runner_release_assets` contract, migration 0336, validated catalog/download service, publication/withdrawal filtering and focused contract/route tests |
+| 11 Manual GitHub release/build control | Completed — provider publish evidence pending | manual-only four-target workflow, selected-commit manifests, signing/publish policy, durable build/sync service, admin control panel and workflow verifier |
+| 12 Runner version/verified self-update | Completed — signed host rollout pending | version contract, authenticated command queue, owner/admin and platform/profile checks, command-bound download, monotonic ack state machine, RSA-SHA256/hash/atomic replacement/rollback implementation and focused tests |
+| 13 Dashboard download/version UI | Completed — deployed browser evidence pending | same-origin Dashboard card, platform selection, version check, download/update progress, admin release control, Thai/English copy and focused jsdom proof |
+| 14 Release integration/evidence | Completed locally — external gates explicit | 10-round audit, focused Rust/web tests, workflow policy verifier, import probe and diff hygiene; native host/signing/provider/Cloudflare/browser deployment remain unverified |
 
 ## Focused commands
 
