@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { ImgHTMLAttributes, ReactNode, VideoHTMLAttributes } from "react";
 import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 
@@ -10,6 +10,7 @@ type AuthenticatedMediaImageProps = Omit<
   fallback?: ReactNode;
   loadingLabel?: string;
   errorLabel?: string;
+  retryLabel?: string;
 };
 
 type AuthenticatedMediaVideoProps = Omit<
@@ -21,6 +22,13 @@ type AuthenticatedMediaVideoProps = Omit<
   loadingLabel?: string;
   errorLabel?: string;
 };
+
+const IMAGE_RETRY_DELAYS_MS = [250, 750] as const;
+
+function addImageRetryParam(url: string, retryVersion: number): string {
+  if (retryVersion === 0 || !url.startsWith("/api/storage/files/")) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}mediaRetry=${retryVersion}`;
+}
 
 export function getAuthenticatedMediaUrl(
   url: string | null | undefined
@@ -69,6 +77,7 @@ export function AuthenticatedMediaImage({
   fallback,
   loadingLabel = "กำลังโหลดภาพ...",
   errorLabel = "ไม่พบภาพ",
+  retryLabel = "ลองโหลดใหม่",
   loading = "lazy",
   decoding = "async",
   onError,
@@ -76,7 +85,42 @@ export function AuthenticatedMediaImage({
 }: AuthenticatedMediaImageProps) {
   const resolvedSrc = getAuthenticatedMediaUrl(src);
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
-  const loadError = Boolean(resolvedSrc && failedSrc === resolvedSrc);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retryVersion, setRetryVersion] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimerRef = useRef<number | null>(null);
+  const loadError = Boolean(
+    resolvedSrc && failedSrc === resolvedSrc && !isRetrying
+  );
+
+  useEffect(() => {
+    setFailedSrc(null);
+    setRetryAttempt(0);
+    setRetryVersion(0);
+    setIsRetrying(false);
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+
+    return () => {
+      if (retryTimerRef.current !== null) {
+        window.clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, [resolvedSrc]);
+
+  const retryImage = () => {
+    if (retryTimerRef.current !== null) {
+      window.clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    setFailedSrc(null);
+    setRetryAttempt(0);
+    setRetryVersion(version => version + 1);
+    setIsRetrying(false);
+  };
 
   const placeholder = fallback ?? (
     <div
@@ -85,22 +129,37 @@ export function AuthenticatedMediaImage({
       aria-label={alt}
       title={loadError ? errorLabel : loadingLabel}
     >
-      {loadError ? errorLabel : loadingLabel}
+      <span>{loadError ? errorLabel : loadingLabel}</span>
+      {loadError && (
+        <button type="button" onClick={retryImage}>
+          {retryLabel}
+        </button>
+      )}
     </div>
   );
 
-  if (!resolvedSrc || loadError) return placeholder;
+  if (!resolvedSrc || loadError || isRetrying) return placeholder;
 
   const handleImageError: ImgHTMLAttributes<HTMLImageElement>["onError"] =
     event => {
-      setFailedSrc(resolvedSrc);
       onError?.(event);
+      if (retryAttempt < IMAGE_RETRY_DELAYS_MS.length) {
+        setIsRetrying(true);
+        retryTimerRef.current = window.setTimeout(() => {
+          retryTimerRef.current = null;
+          setRetryAttempt(attempt => attempt + 1);
+          setRetryVersion(version => version + 1);
+          setIsRetrying(false);
+        }, IMAGE_RETRY_DELAYS_MS[retryAttempt]);
+        return;
+      }
+      setFailedSrc(resolvedSrc);
     };
 
   return (
     <img
       {...imageProps}
-      src={resolvedSrc}
+      src={addImageRetryParam(resolvedSrc, retryVersion)}
       alt={alt}
       className={className}
       loading={loading}

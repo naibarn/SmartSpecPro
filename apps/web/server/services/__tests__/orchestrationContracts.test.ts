@@ -72,6 +72,8 @@ describe("Feature 196 orchestration contracts", () => {
     expect(jobs[0].input.orchestration).toMatchObject({
       planId: "plan-1",
       planHash: plan.planHash,
+      stepIndex: 1,
+      totalSteps: 1,
       selectedOfferId: "offer-media-render-v1",
     });
     expect(() =>
@@ -264,5 +266,7 @@ describe("Feature 196 orchestration contracts", () => {
     const second = create.mock.calls[1][0];
     expect(first.idempotencyKey).not.toBe(second.idempotencyKey);
     expect(second.input.orchestration.dependsOnJobIds).toEqual(["job-1"]);
+    expect(first.input.orchestration).toMatchObject({ stepIndex: 1, totalSteps: 2 });
+    expect(second.input.orchestration).toMatchObject({ stepIndex: 2, totalSteps: 2 });
   });
 });

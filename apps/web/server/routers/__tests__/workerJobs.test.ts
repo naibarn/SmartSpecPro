@@ -13,6 +13,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockListUserWorkerJobs = vi.fn();
+const mockListUserWorkerTaskGroups = vi.fn();
 const mockGetWorkerJobDashboardSummary = vi.fn();
 
 vi.mock("../../services/workerJobMonitorService", () => ({
@@ -30,6 +31,7 @@ vi.mock("../../services/workerJobMonitorService", () => ({
     "expired",
   ],
   listUserWorkerJobs: (...args: unknown[]) => mockListUserWorkerJobs(...args),
+  listUserWorkerTaskGroups: (...args: unknown[]) => mockListUserWorkerTaskGroups(...args),
   getUserWorkerJobDetail: vi.fn(),
   cancelQueuedUserWorkerJob: vi.fn(),
   getWorkerJobDashboardSummary: (...args: unknown[]) => mockGetWorkerJobDashboardSummary(...args),
@@ -105,6 +107,30 @@ describe("workerJobsRouter.dashboardSummary", () => {
 
     expect(mockGetWorkerJobDashboardSummary).toHaveBeenCalledWith({ tenantId: "tenant-1", userId: 9 });
     expect(result).toEqual({ scope: "user", counts: { queued: 2 } });
+  });
+});
+
+describe("workerJobsRouter.taskGroups", () => {
+  it("passes protected tenant/user scope and bounded pagination to the task view", async () => {
+    mockListUserWorkerTaskGroups.mockResolvedValueOnce({
+      groups: [{ groupId: "plan:1", jobs: [] }],
+      hasMore: true,
+      nextOffset: 25,
+      sourceTruncated: false,
+    });
+
+    const fn = workerJobsRouter.taskGroups as unknown as Function;
+    const result = await fn({
+      ctx: CTX,
+      input: { limit: 25, offset: 0 },
+    });
+
+    expect(mockListUserWorkerTaskGroups).toHaveBeenCalledWith({
+      auth: { tenantId: "tenant-1", userId: 9 },
+      limit: 25,
+      offset: 0,
+    });
+    expect(result.hasMore).toBe(true);
   });
 });
 

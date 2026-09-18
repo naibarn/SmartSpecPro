@@ -8,7 +8,9 @@ import jwt, { type SignOptions } from "jsonwebtoken";
 
 const jwtSecretEnv = process.env.JWT_SECRET;
 if (!jwtSecretEnv || jwtSecretEnv.length < 32) {
-  throw new Error("CRITICAL: JWT_SECRET must be set (min 32 characters) in all environments");
+  throw new Error(
+    "CRITICAL: JWT_SECRET must be set (min 32 characters) in all environments"
+  );
 }
 const JWT_SECRET: string = jwtSecretEnv;
 
@@ -33,6 +35,9 @@ export interface TokenClaims {
   externalReference?: string;
   workerConnectionId?: string;
   workerTokenSetId?: string;
+  runnerId?: string;
+  runnerProfile?: "local_device" | "shared_container";
+  runnerNodeKind?: "local_device" | "managed_container";
   deviceId?: string;
   machineFingerprintHash?: string;
   devicePublicKey?: string;
@@ -84,7 +89,9 @@ export async function verifyBearerToken(token: string): Promise<TokenClaims> {
  * Used only for token renewal flows where the signature still matters but the
  * token may have aged out.
  */
-export async function verifyBearerTokenIgnoringExpiration(token: string): Promise<TokenClaims> {
+export async function verifyBearerTokenIgnoringExpiration(
+  token: string
+): Promise<TokenClaims> {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, {
       algorithms: ["HS256"],
@@ -104,9 +111,12 @@ export async function verifyBearerTokenIgnoringExpiration(token: string): Promis
  */
 export function signBearerToken(
   claims: TokenClaims,
-  expiresIn: SignOptions["expiresIn"] = "1h",
+  expiresIn: SignOptions["expiresIn"] = "1h"
 ): string {
-  return jwt.sign(claims, JWT_SECRET, { expiresIn: expiresIn ?? "1h", algorithm: "HS256" });
+  return jwt.sign(claims, JWT_SECRET, {
+    expiresIn: expiresIn ?? "1h",
+    algorithm: "HS256",
+  });
 }
 
 /**
@@ -115,7 +125,10 @@ export function signBearerToken(
  * @param required - Required scope to check
  * @returns true if user has the required scope
  */
-export function hasScope(scopes: string[] | undefined, required: string): boolean {
+export function hasScope(
+  scopes: string[] | undefined,
+  required: string
+): boolean {
   if (!scopes || !Array.isArray(scopes)) {
     return false;
   }
@@ -175,10 +188,7 @@ export function isValidScope(scope: string): boolean {
  * @returns Array of default scopes
  */
 export function getDefaultScopes(): string[] {
-  return [
-    "mcp:read",
-    "profile:read",
-  ];
+  return ["mcp:read", "profile:read"];
 }
 
 /**
@@ -188,7 +198,7 @@ export function getDefaultScopes(): string[] {
  */
 export function createInternalTokenFromAuth(
   auth: { userId: number; tenantId?: string | null },
-  scopes?: string[],
+  scopes?: string[]
 ): string {
   return signBearerToken(
     {
@@ -200,6 +210,6 @@ export function createInternalTokenFromAuth(
       scopes: scopes ?? ["media:generate", "presentation:export"],
       jti: `api_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
     },
-    "15m",
+    "15m"
   );
 }

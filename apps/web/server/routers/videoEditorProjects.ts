@@ -15,8 +15,9 @@ import {
   marketplaceProducts,
   mediaStudioStoryboardReviews,
   videoEditorProjects,
+  videoEditorProjectRevisions,
 } from "../../drizzle/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, exists, not, or } from "drizzle-orm";
 import {
   UpdateStoryboardReviewHyperframesFinalCompositeInputSchema,
   mergeStoryboardReviewHyperframesFinalCompositeState,
@@ -48,6 +49,10 @@ import {
   optimizeProductReferenceStoryboardPrompt,
 } from "../services/productReferenceStoryboardSkillRunner";
 import { marketplaceOwnerTenantScope } from "../services/marketplaceTenantScope";
+import {
+  appendVideoEditorProjectRevision,
+  VideoEditorProjectRevisionConflictError,
+} from "../services/videoEditorProjectRevisionService";
 
 const STORYBOARD_REVIEW_SERVER_DEBUG_BUILD = "storyboard-review-server-audio-debug-20260527-2245";
 const STORYBOARD_REVIEW_CLIENT_DEBUG_BUILD = "storyboard-review-client-lifecycle-debug-20260527-2325";
@@ -2062,6 +2067,23 @@ export const videoEditorProjectsRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { projects: [], total: 0 };
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       const limit = input?.limit ?? 20;
       const offset = input?.offset ?? 0;
@@ -2081,14 +2103,14 @@ export const videoEditorProjectsRouter = router({
             updatedAt: videoEditorProjects.updatedAt,
           })
           .from(videoEditorProjects)
-          .where(eq(videoEditorProjects.userId, ctx.user.id))
+          .where(and(eq(videoEditorProjects.userId, ctx.user.id), projectTenantScope))
           .orderBy(desc(videoEditorProjects.updatedAt))
           .limit(limit)
           .offset(offset),
         db
           .select({ total: sql<number>`count(*)::int` })
           .from(videoEditorProjects)
-          .where(eq(videoEditorProjects.userId, ctx.user.id)),
+          .where(and(eq(videoEditorProjects.userId, ctx.user.id), projectTenantScope)),
       ]);
 
       return { projects, total };
@@ -2100,6 +2122,23 @@ export const videoEditorProjectsRouter = router({
     .query(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return null;
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       const [project] = await db
         .select()
@@ -2107,12 +2146,28 @@ export const videoEditorProjectsRouter = router({
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         )
         .limit(1);
 
-      return project ?? null;
+      if (!project) return null;
+      const [revision] = await db
+        .select({ id: videoEditorProjectRevisions.id, revision: videoEditorProjectRevisions.revision, documentHash: videoEditorProjectRevisions.documentHash })
+        .from(videoEditorProjectRevisions)
+        .where(and(
+          eq(videoEditorProjectRevisions.projectId, input.id),
+          eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+        ))
+        .orderBy(desc(videoEditorProjectRevisions.revision))
+        .limit(1);
+      return {
+        ...project,
+        currentRevisionId: revision?.id ?? null,
+        currentRevision: revision?.revision ?? 0,
+        currentDocumentHash: revision?.documentHash ?? null,
+      };
     }),
 
   /** Save (create or update) a project */
@@ -2122,6 +2177,9 @@ export const videoEditorProjectsRouter = router({
         id: z.number().optional(),
         name: z.string().min(1).max(256),
         projectData: z.any(),
+        expectedRevision: z.number().int().min(0).optional(),
+        expectedRevisionId: z.string().trim().min(1).max(160).optional(),
+        clientMutationId: z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/).optional(),
         thumbnailUrl: z.string().optional(),
         duration: z.number().optional(),
         resolution: z.string().optional(),
@@ -2132,40 +2190,36 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
 
       const now = new Date();
 
       if (input.id) {
-        // Update — verify ownership first
-        const [existing] = await db
-          .select({ id: videoEditorProjects.id })
-          .from(videoEditorProjects)
-          .where(
-            and(
-              eq(videoEditorProjects.id, input.id),
-              eq(videoEditorProjects.userId, ctx.user.id)
-            )
-          )
-          .limit(1);
-
-        if (!existing) throw new Error("Project not found");
-
-        await db
-          .update(videoEditorProjects)
-          .set({
-            name: input.name,
-            projectData: input.projectData,
-            thumbnailUrl: input.thumbnailUrl,
-            duration: input.duration?.toString(),
-            resolution: input.resolution,
-            trackCount: input.trackCount,
-            clipCount: input.clipCount,
-            isAutoSave: false,
-            updatedAt: now,
-          })
-          .where(eq(videoEditorProjects.id, input.id));
-
-        return { id: input.id };
+        try {
+          const revision = await appendVideoEditorProjectRevision(
+            { tenantId: ctx.tenantId, userId: ctx.user.id },
+            {
+              projectId: input.id,
+              document: input.projectData,
+              expectedRevision: input.expectedRevision,
+              expectedRevisionId: input.expectedRevisionId,
+              clientMutationId: input.clientMutationId,
+              reason: "edit",
+              name: input.name,
+              thumbnailUrl: input.thumbnailUrl,
+              duration: input.duration,
+              resolution: input.resolution,
+              trackCount: input.trackCount,
+              clipCount: input.clipCount,
+            },
+          );
+          return { id: input.id, revisionId: revision.id, revision: revision.revision };
+        } catch (error) {
+          if (error instanceof VideoEditorProjectRevisionConflictError) {
+            throw new TRPCError({ code: "CONFLICT", message: "Project revision is stale", cause: { currentRevisionId: error.currentRevisionId, actualRevision: error.actualRevision } });
+          }
+          throw error;
+        }
       } else {
         // Create new
         const [inserted] = await db
@@ -2185,7 +2239,28 @@ export const videoEditorProjectsRouter = router({
           })
           .returning({ id: videoEditorProjects.id });
 
-        return { id: inserted.id };
+        try {
+          const revision = await appendVideoEditorProjectRevision(
+            { tenantId: ctx.tenantId, userId: ctx.user.id },
+            {
+              projectId: inserted.id,
+              document: input.projectData,
+              expectedRevision: 0,
+              clientMutationId: input.clientMutationId,
+              reason: "edit",
+              name: input.name,
+              thumbnailUrl: input.thumbnailUrl,
+              duration: input.duration,
+              resolution: input.resolution,
+              trackCount: input.trackCount,
+              clipCount: input.clipCount,
+            },
+          );
+          return { id: inserted.id, revisionId: revision.id, revision: revision.revision };
+        } catch (error) {
+          await db.delete(videoEditorProjects).where(eq(videoEditorProjects.id, inserted.id)).catch(() => undefined);
+          throw error;
+        }
       }
     }),
 
@@ -2195,6 +2270,9 @@ export const videoEditorProjectsRouter = router({
       z.object({
         id: z.number(),
         projectData: z.any(),
+        expectedRevision: z.number().int().min(0).optional(),
+        expectedRevisionId: z.string().trim().min(1).max(160).optional(),
+        clientMutationId: z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/).optional(),
         clipCount: z.number().optional(),
         duration: z.number().optional(),
       })
@@ -2202,24 +2280,28 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
-
-      const result = await db
-        .update(videoEditorProjects)
-        .set({
-          projectData: input.projectData,
-          clipCount: input.clipCount,
-          duration: input.duration?.toString(),
-          isAutoSave: true,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
-          )
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+      try {
+        const revision = await appendVideoEditorProjectRevision(
+          { tenantId: ctx.tenantId, userId: ctx.user.id },
+          {
+            projectId: input.id,
+            document: input.projectData,
+            expectedRevision: input.expectedRevision,
+            expectedRevisionId: input.expectedRevisionId,
+            clientMutationId: input.clientMutationId,
+            reason: "autosave",
+            duration: input.duration,
+            clipCount: input.clipCount,
+          },
         );
-
-      return { success: true };
+        return { success: true, revisionId: revision.id, revision: revision.revision };
+      } catch (error) {
+        if (error instanceof VideoEditorProjectRevisionConflictError) {
+          throw new TRPCError({ code: "CONFLICT", message: "Project revision is stale", cause: { currentRevisionId: error.currentRevisionId, actualRevision: error.actualRevision } });
+        }
+        throw error;
+      }
     }),
 
   /** Delete a project (with ownership check) */
@@ -2228,13 +2310,31 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       await db
         .delete(videoEditorProjects)
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         );
 
@@ -2252,6 +2352,23 @@ export const videoEditorProjectsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database unavailable");
+      if (!ctx.tenantId) throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context required" });
+
+      const projectTenantScope = or(
+        not(exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id)),
+        )),
+        exists(
+          db.select({ id: videoEditorProjectRevisions.id })
+            .from(videoEditorProjectRevisions)
+            .where(and(
+              eq(videoEditorProjectRevisions.projectId, videoEditorProjects.id),
+              eq(videoEditorProjectRevisions.tenantId, ctx.tenantId),
+            )),
+        ),
+      );
 
       await db
         .update(videoEditorProjects)
@@ -2262,7 +2379,8 @@ export const videoEditorProjectsRouter = router({
         .where(
           and(
             eq(videoEditorProjects.id, input.id),
-            eq(videoEditorProjects.userId, ctx.user.id)
+            eq(videoEditorProjects.userId, ctx.user.id),
+            projectTenantScope,
           )
         );
 

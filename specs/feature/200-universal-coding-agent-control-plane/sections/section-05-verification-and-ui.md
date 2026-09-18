@@ -19,6 +19,17 @@ Reuse Chat plan/approval/live-task cards, job monitor, Runner connection and Lib
 ### Surface Inventory
 Agent Panel, provider/runtime selector, task manifest/context scope, approval dialog, live events, diff/artifact verification and final result.
 
+### Shared Task Control Projection
+The same Feedback/Chat launcher and `/chat` Universal Control Plane panel MUST
+show open multi-step work from the protected `workerJobs.taskGroups` projection.
+Users can expand each group to inspect ordered steps, status, bounded progress,
+worker/runtime, latest safe event and prerequisites, while retaining the
+existing cancel action. Grouping uses valid plan metadata first, then workflow
+run, then an isolated single-job fallback; completed in-scope predecessors are
+shown under the active group. The panel discloses the bounded 500-job source
+scan and links to the existing full Job view when exhaustive inspection is
+needed.
+
 ### Component Map
 Chat owns presentation; Feature 200 owns Agent state; Feature 195 owns Job; Feature 197 owns Runner; 199 owns MCP grants.
 
@@ -40,4 +51,3 @@ Start → approve → live event → disconnect/recover → verify → result.
 ## TDD steps
 
 Test verification and UI state matrix first; implement projections/components; run focused jsdom/browser checks.
-

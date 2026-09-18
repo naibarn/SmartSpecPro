@@ -770,5 +770,16 @@
   "websitePreview": "ตัวอย่างเว็บไซต์",
   "welcome": "ยินดีต้อนรับกลับ, {{name}}!",
   "workflow.approve": "อนุมัติ",
-  "workflow.reject": "ปฏิเสธ"
+  "workflow.reject": "ปฏิเสธ",
+  "contentProtection.title": "การคุ้มครองเนื้อหา",
+  "contentProtection.assets": "สื่อที่ป้องกันแล้ว",
+  "contentProtection.verify": "ตรวจสอบสำเนา",
+  "contentProtection.settings": "การตั้งค่าการคุ้มครอง",
+  "contentProtection.protected": "ป้องกันแล้ว",
+  "contentProtection.processing": "กำลังประมวลผล",
+  "contentProtection.warning": "มีคำเตือน",
+  "contentProtection.failed": "ล้มเหลว",
+  "contentProtection.statusTitle": "สถานะการคุ้มครองเนื้อหา",
+  "contentProtection.statusDescription": "นับเฉพาะไฟล์สุดท้าย: ระบบจะแสดงตัวเลือกลายน้ำก่อน export และแสดงหลักฐานทางเทคนิคหลังตรวจสอบ",
+  "contentProtection.unprotected": "ไม่ได้ป้องกัน"
 }

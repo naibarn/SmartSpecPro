@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help/HelpButton";
+import { RunnerConnectPanel } from "@/components/settings/RunnerConnectPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -229,6 +230,8 @@ export default function WorkerAppConnect() {
             </div>
           </div>
         </section>
+
+        <RunnerConnectPanel />
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

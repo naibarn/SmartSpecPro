@@ -26,6 +26,7 @@ const PARTIAL_COVERAGE_NAMESPACES = [
   "presentation",
   "agency",
   "dashboard",
+  "contentProtection",
 ];
 
 function readJson(filepath: string): Record<string, string> {

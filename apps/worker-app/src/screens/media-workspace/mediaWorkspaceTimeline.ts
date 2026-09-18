@@ -1,5 +1,6 @@
 import type { NleClip, NleTrack, ProjectAsset } from "../../types/nleProject";
 import { normalizeSilenceRanges as normalizeSharedSilenceRanges, type CameraMotionPlan } from "@smartspec/shared";
+import { isProjectFilePath } from "./projectPersistence";
 
 export interface SilenceRange {
   startMs: number;
@@ -27,10 +28,15 @@ export interface TimelineVideoSource {
 }
 
 /** Full Scan and render must read the same timeline-selected source. */
-export function chooseRenderSourcePath(analysisSourcePath: string, openedFilePath: string): string {
-  const timelinePath = analysisSourcePath.trim();
-  if (timelinePath) return timelinePath;
-  return openedFilePath.trim();
+export function chooseRenderSourcePath(
+  analysisSourcePath: string,
+  openedFilePath: string,
+  fallbackPaths: string[] = [],
+): string {
+  return [analysisSourcePath, openedFilePath, ...fallbackPaths]
+    .map((path) => path.trim())
+    .find((path) => path.length > 0 && !isProjectFilePath(path))
+    ?? "";
 }
 
 export interface WaveformBin {

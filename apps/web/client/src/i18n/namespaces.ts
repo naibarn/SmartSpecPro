@@ -20,6 +20,7 @@ export const ROUTE_NAMESPACES = [
   { pathPrefix: "/domain-admin", namespaces: ["settings"] as const },
   { pathPrefix: "/profile", namespaces: ["profile"] as const },
   { pathPrefix: "/settings", namespaces: ["settings"] as const },
+  { pathPrefix: "/content-protection", namespaces: ["contentProtection"] as const },
   { pathPrefix: "/credits", namespaces: ["billing"] as const },
   { pathPrefix: "/usage", namespaces: ["billing"] as const },
   { pathPrefix: "/help", namespaces: ["help"] as const },

@@ -9861,6 +9861,10 @@ export const videoEditorProjectRevisions = pgTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     revision: integer("revision").notNull(),
+    parentRevisionId: varchar("parentRevisionId", { length: 36 }).references(
+      () => videoEditorProjectRevisions.id,
+      { onDelete: "set null" }
+    ),
     schemaVersion: varchar("schemaVersion", { length: 32 }).notNull(),
     document: jsonb("document").$type<Record<string, unknown>>().notNull(),
     documentHash: varchar("documentHash", { length: 64 }).notNull(),
@@ -9957,6 +9961,37 @@ export const videoEditorProjectJobs = pgTable(
 export type VideoEditorProjectJob = typeof videoEditorProjectJobs.$inferSelect;
 export type InsertVideoEditorProjectJob =
   typeof videoEditorProjectJobs.$inferInsert;
+
+/** Feature 203: immutable server-owned execution snapshot for an editor job. */
+export const videoEditorExecutionSnapshots = pgTable(
+  "video_editor_execution_snapshots",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    projectId: integer("projectId").notNull().references(() => videoEditorProjects.id, { onDelete: "cascade" }),
+    revisionId: varchar("revisionId", { length: 36 }).notNull().references(() => videoEditorProjectRevisions.id, { onDelete: "restrict" }),
+    workerJobId: varchar("workerJobId", { length: 36 }),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    operation: varchar("operation", { length: 100 }).notNull(),
+    contractVersion: varchar("contractVersion", { length: 40 }).notNull(),
+    document: jsonb("document").$type<Record<string, unknown>>().notNull(),
+    documentHash: varchar("documentHash", { length: 64 }).notNull(),
+    snapshotHash: varchar("snapshotHash", { length: 64 }).notNull(),
+    sourceFingerprints: jsonb("sourceFingerprints").$type<string[]>().notNull(),
+    capabilityProfile: jsonb("capabilityProfile").$type<Record<string, unknown>>().notNull(),
+    policy: jsonb("policy").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    uniqueIndex("video_editor_execution_snapshots_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
+    index("video_editor_execution_snapshots_project_idx").on(t.projectId, t.createdAt),
+    index("video_editor_execution_snapshots_revision_idx").on(t.revisionId),
+    index("video_editor_execution_snapshots_job_idx").on(t.workerJobId),
+  ]
+);
+
+export type VideoEditorExecutionSnapshot = typeof videoEditorExecutionSnapshots.$inferSelect;
+export type InsertVideoEditorExecutionSnapshot = typeof videoEditorExecutionSnapshots.$inferInsert;
 
 /** Feature 184 parity: managed upload session state (migration 0290). */
 export const videoEditorUploadSessions = pgTable(
@@ -15455,6 +15490,52 @@ export const workers = pgTable(
 
 export type Worker = typeof workers.$inferSelect;
 export type InsertWorker = typeof workers.$inferInsert;
+
+/** SmartAIHub Runner registry; intentionally separate from the retired Worker App registry. */
+export const runnerNodes = pgTable("runner_nodes", {
+  runnerId: varchar("runnerId", { length: 160 }).primaryKey(),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  ownerUserId: integer("ownerUserId").references(() => users.id, { onDelete: "set null" }),
+  nodeKind: varchar("nodeKind", { length: 32 }).notNull(),
+  profile: varchar("profile", { length: 32 }).notNull(),
+  deviceId: varchar("deviceId", { length: 160 }),
+  displayName: varchar("displayName", { length: 255 }).notNull(),
+  trustState: varchar("trustState", { length: 32 }).notNull().default("pending"),
+  status: varchar("status", { length: 32 }).notNull().default("offline"),
+  currentSnapshotRevision: varchar("currentSnapshotRevision", { length: 128 }),
+  currentSnapshotJson: jsonb("currentSnapshotJson").$type<Record<string, unknown>>(),
+  snapshotObservedAt: timestamp("snapshotObservedAt", { withTimezone: true }),
+  snapshotExpiresAt: timestamp("snapshotExpiresAt", { withTimezone: true }),
+  lastSeenAt: timestamp("lastSeenAt", { withTimezone: true }),
+  revokedAt: timestamp("revokedAt", { withTimezone: true }),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index("runner_nodes_tenant_status_idx").on(t.tenantId, t.status),
+  uniqueIndex("runner_nodes_tenant_device_unique").on(t.tenantId, t.deviceId),
+]);
+
+export type RunnerNode = typeof runnerNodes.$inferSelect;
+export type InsertRunnerNode = typeof runnerNodes.$inferInsert;
+
+export const runnerCapabilitySnapshots = pgTable("runner_capability_snapshots", {
+  id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+  runnerId: varchar("runnerId", { length: 160 }).notNull().references(() => runnerNodes.runnerId, { onDelete: "cascade" }),
+  tenantId: varchar("tenantId", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+  revision: varchar("revision", { length: 128 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 200 }).notNull(),
+  observedAt: timestamp("observedAt", { withTimezone: true }).notNull(),
+  expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+  snapshotJson: jsonb("snapshotJson").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  uniqueIndex("runner_snapshots_runner_revision_unique").on(t.runnerId, t.revision),
+  uniqueIndex("runner_snapshots_runner_idempotency_unique").on(t.runnerId, t.idempotencyKey),
+  index("runner_snapshots_tenant_created_idx").on(t.tenantId, t.createdAt),
+]);
+
+export type RunnerCapabilitySnapshotRow = typeof runnerCapabilitySnapshots.$inferSelect;
+export type InsertRunnerCapabilitySnapshotRow = typeof runnerCapabilitySnapshots.$inferInsert;
 
 /** Server projection of models advertised by a connected Worker. */
 export const workerLlmModels = pgTable(
@@ -26977,6 +27058,10 @@ export const contentProtectionAssets = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
+    /** Opaque identifier safe to disclose in certificates and reviewer evidence. */
+    publicAssetId: varchar("public_asset_id", { length: 36 })
+      .notNull()
+      .default(sql`gen_random_uuid()`),
     tenantId: varchar("tenant_id", { length: 36 })
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -27036,6 +27121,7 @@ export const contentProtectionAssets = pgTable(
     errorMessage: text("error_message"),
   },
   t => [
+    uniqueIndex("content_protection_assets_public_id_unique").on(t.publicAssetId),
     uniqueIndex("content_protection_assets_tenant_idempotency_unique").on(
       t.tenantId,
       t.idempotencyKey
@@ -27280,6 +27366,10 @@ export const contentProtectionCases = pgTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .default(sql`gen_random_uuid()`),
+    /** Opaque identifier safe to disclose in external reviewer links. */
+    publicCaseId: varchar("public_case_id", { length: 36 })
+      .notNull()
+      .default(sql`gen_random_uuid()`),
     tenantId: varchar("tenant_id", { length: 36 })
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
@@ -27299,7 +27389,10 @@ export const contentProtectionCases = pgTable(
       .defaultNow()
       .notNull(),
   },
-  t => [index("content_protection_cases_tenant_status_idx").on(t.tenantId, t.status)]
+  t => [
+    uniqueIndex("content_protection_cases_public_id_unique").on(t.publicCaseId),
+    index("content_protection_cases_tenant_status_idx").on(t.tenantId, t.status),
+  ]
 );
 
 export const contentEvidencePackages = pgTable(

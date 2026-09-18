@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 const { enqueue } = vi.hoisted(() => ({ enqueue: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("../feature186VerticalDramaJobAdapter", () => ({ createFeature186VerticalDramaJob: enqueue }));
 
-import { enqueueCompositionScanJob, validateCompositionScanInput } from "../compositionScanJob";
+import { enqueueCompositionScanJob, isCompositionEvidencePromotable, validateCompositionScanInput } from "../compositionScanJob";
 
 const base = {
   jobId: "job-1",
@@ -35,5 +35,10 @@ describe("Feature 191 canonical scan boundary", () => {
     expect(() => validateCompositionScanInput({ ...base, durationMs: 0 })).toThrow("COMPOSITION_SCAN_DURATION_INVALID");
     expect(() => validateCompositionScanInput({ ...base, analysisMode: "bad" as never })).toThrow("COMPOSITION_SCAN_MODE_INVALID");
     expect(() => validateCompositionScanInput({ ...base, trimRange: { startMs: 100, endMs: 100 } })).toThrow("COMPOSITION_SCAN_TRIM_RANGE_INVALID");
+  });
+
+  it("does not treat degraded analysis as promotable evidence", () => {
+    expect(isCompositionEvidencePromotable({ status: "degraded", evidenceRef: "evidence-a" })).toBe(false);
+    expect(isCompositionEvidencePromotable({ status: "available", evidenceRef: "evidence-a" })).toBe(true);
   });
 });

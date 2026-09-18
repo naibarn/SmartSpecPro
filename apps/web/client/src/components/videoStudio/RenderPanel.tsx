@@ -62,6 +62,10 @@ export function RenderPanel({
   const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
   const [digitalWatermarkChoice, setDigitalWatermarkChoice] = useState<"on" | "off">("off");
   const [contentProtectionEnabled, setContentProtectionEnabled] = useState(false);
+  const contentProtectionSettings = trpc.contentProtection.getSettings.useQuery(undefined, {
+    enabled: contentProtectionEnabled,
+    retry: false,
+  });
   useEffect(() => {
     let active = true;
     void fetch("/api/tenant/current", { credentials: "include" })
@@ -79,6 +83,11 @@ export function RenderPanel({
       active = false;
     };
   }, []);
+  useEffect(() => {
+    if (contentProtectionSettings.data?.defaultChoice === "on" || contentProtectionSettings.data?.defaultChoice === "off") {
+      setDigitalWatermarkChoice(contentProtectionSettings.data.defaultChoice);
+    }
+  }, [contentProtectionSettings.data?.defaultChoice]);
 
   const compileQuery = trpc.videoProjects.compileProject.useQuery(
     { projectId },

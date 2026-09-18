@@ -200,11 +200,41 @@ export default function WorkerWebEditor() {
   const [isImporting, setIsImporting] = useState(false);
   const [savedProjectId, setSavedProjectId] = useState<number | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const savedProjectRevisionRef = useRef<{ id: string; revision: number } | null>(null);
   const [legacyProjectId, setLegacyProjectId] = useState<number | null>(null);
+  const [contentProtectionEnabled, setContentProtectionEnabled] = useState(false);
+  const [digitalWatermarkChoice, setDigitalWatermarkChoice] = useState<"on" | "off">("off");
 
   const saveProject = trpc.videoEditorProjects.save.useMutation();
   const submitJob = trpc.editorMediaJobs.submit.useMutation();
   const trpcUtils = trpc.useUtils();
+
+  useEffect(() => {
+    let active = true;
+    const loadContentProtectionSettings = async () => {
+      try {
+        const tenantResponse = await fetch("/api/tenant/current", { credentials: "include" });
+        if (!tenantResponse.ok) return;
+        const tenantPayload = await tenantResponse.json() as { tenant?: { featureFlags?: Record<string, unknown> } };
+        if (!active || tenantPayload.tenant?.featureFlags?.contentProtectionEnabled !== true) return;
+        setContentProtectionEnabled(true);
+        const settingsResponse = await fetch("/api/trpc/contentProtection.getSettings", { credentials: "include" });
+        if (!settingsResponse.ok) return;
+        const settingsPayload = await settingsResponse.json() as { result?: { data?: unknown } };
+        const resultData = settingsPayload.result?.data;
+        const settings = resultData && typeof resultData === "object" && "json" in resultData
+          ? (resultData as { json?: unknown }).json
+          : resultData;
+        if (!active || !settings || typeof settings !== "object" || Array.isArray(settings)) return;
+        const defaultChoice = (settings as { defaultChoice?: unknown }).defaultChoice;
+        if (defaultChoice === "on" || defaultChoice === "off") setDigitalWatermarkChoice(defaultChoice);
+      } catch {
+        // Protection is optional at the tenant boundary; keep the explicit OFF default.
+      }
+    };
+    void loadContentProtectionSettings();
+    return () => { active = false; };
+  }, []);
 
   const queryParams = useMemo(() => {
     const query = location.includes("?") ? location.slice(location.indexOf("?")) : "";
@@ -246,6 +276,9 @@ export default function WorkerWebEditor() {
     setTracks(restored.tracks);
     setPlayhead(restored.playhead);
     setSavedProjectId(project.id);
+    savedProjectRevisionRef.current = project.currentRevisionId
+      ? { id: project.currentRevisionId, revision: project.currentRevision ?? 0 }
+      : null;
     const firstReadyAsset = restored.assets.find((asset) => asset.status === "ready") ?? null;
     setSelectedAssetId(firstReadyAsset?.id ?? restored.assets[0]?.id ?? null);
     setPreviewUri(firstReadyAsset?.uri ?? null);
@@ -376,22 +409,27 @@ export default function WorkerWebEditor() {
     setIsDirty(true);
   };
 
-  const save = async () => {
+  const save = async (): Promise<{ id: number; revisionId: string; revision: number } | null> => {
     try {
       const result = await saveProject.mutateAsync({
         ...(savedProjectId ? { id: savedProjectId } : {}),
         name: projectName.trim() || "โปรเจกต์วิดีโอใหม่",
         projectData: { projectName, assets, tracks, playhead },
+        ...(savedProjectRevisionRef.current ? { expectedRevision: savedProjectRevisionRef.current.revision, expectedRevisionId: savedProjectRevisionRef.current.id } : {}),
+        clientMutationId: `legacy-save-${makeId("mutation")}`,
         duration,
         resolution: "1920x1080",
         trackCount: tracks.length,
         clipCount: tracks.reduce((count, track) => count + track.clips.length, 0),
       });
       setSavedProjectId(result.id);
+      savedProjectRevisionRef.current = { id: result.revisionId, revision: result.revision };
       setIsDirty(false);
       toast.success("บันทึกโปรเจกต์แล้ว");
+      return result;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "บันทึกโปรเจกต์ไม่สำเร็จ");
+      return null;
     }
   };
 
@@ -403,8 +441,19 @@ export default function WorkerWebEditor() {
       return;
     }
     const refs = new Map(readyAssets.map((asset) => [asset.id, assetRef(asset)]));
-    const projectId = savedProjectId ? `video-project-${savedProjectId}` : makeId("web-editor");
-    const revisionId = makeId("revision");
+    let persistedProjectId = savedProjectId;
+    let revisionId = savedProjectRevisionRef.current?.id ?? null;
+    if (!persistedProjectId || isDirty || !revisionId) {
+      const saved = await save();
+      if (!saved) return;
+      persistedProjectId = saved.id;
+      revisionId = saved.revisionId;
+    }
+    if (!persistedProjectId || !revisionId) {
+      toast.error("ยังไม่มี ProjectRevision สำหรับส่ง Worker");
+      return;
+    }
+    const projectId = `project-${persistedProjectId}`;
     const jobId = makeId("editor-job");
     const project = {
       projectId,
@@ -448,6 +497,15 @@ export default function WorkerWebEditor() {
       revisionId,
       timelineVersion: 1,
       operation: "video.render",
+      ...(contentProtectionEnabled
+        ? {
+            protectionIntent: {
+              choice: digitalWatermarkChoice,
+              choiceSource: "per_export" as const,
+              requireBeforePublish: true,
+            },
+          }
+        : {}),
       inputs: {
         assets: readyAssets.map((asset) => assetRef(asset)).filter((ref): ref is ManagedAssetRef => Boolean(ref)),
         project,
@@ -591,6 +649,7 @@ export default function WorkerWebEditor() {
           <div className="mb-5 flex items-center gap-2"><Settings2 className="h-4 w-4 text-cyan-300" aria-hidden="true" /><p className="text-sm font-semibold text-white">Worker handoff</p></div>
           <div className="rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] p-4"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">ประมวลผลบน Worker</p><p className="mt-2 text-sm leading-6 text-slate-300">การตัดต่อเบื้องต้นทำบนเว็บ งาน render, proxy และวิเคราะห์สื่อจะสร้างเป็น job ในคิวให้ Worker รับไปทำ</p><Link href="/worker-jobs" className="mt-3 inline-flex min-h-10 items-center gap-2 text-sm font-medium text-cyan-200 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">เปิดคิวงาน <ChevronRight className="h-4 w-4" aria-hidden="true" /></Link></div>
           <div className="mt-4 space-y-3"><div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3"><span className="text-sm text-slate-400">สื่อในโปรเจกต์</span><span className="font-semibold text-white">{assets.length}</span></div><div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3"><span className="text-sm text-slate-400">คลิปใน timeline</span><span className="font-semibold text-white">{tracks.reduce((count, track) => count + track.clips.length, 0)}</span></div><div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-3"><span className="text-sm text-slate-400">ความยาว</span><span className="font-mono text-sm text-white">{formatTime(duration)}</span></div></div>
+          {contentProtectionEnabled ? <div className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.06] p-4" data-testid="legacy-editor-content-protection-choice"><p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-300">Digital Content Protection</p><p className="mt-2 text-xs leading-5 text-slate-300">ลายน้ำดิจิทัลจะถูกสร้างหลัง final render และจะตรวจสอบก่อน publish รองรับวิดีโอที่รวมจาก timeline นี้</p><div className="mt-3 flex gap-2"><Button type="button" variant={digitalWatermarkChoice === "on" ? "default" : "outline"} className="min-h-10 flex-1" onClick={() => setDigitalWatermarkChoice("on")}>เปิดใช้ (ON)</Button><Button type="button" variant={digitalWatermarkChoice === "off" ? "default" : "outline"} className="min-h-10 flex-1" onClick={() => setDigitalWatermarkChoice("off")}>ไม่ใช้ (OFF)</Button></div><p className="mt-2 text-xs text-slate-500">{digitalWatermarkChoice === "on" ? "ON: รอตรวจสอบก่อนเผยแพร่" : "OFF: ระบุว่า unprotected ตามสิทธิ์ของผู้ใช้"}</p></div> : null}
           <div className="mt-6"><p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">พร้อมส่งหรือยัง</p><ul className="space-y-2 text-sm text-slate-400"><li className="flex items-center gap-2">{assets.length > 0 ? <Check className="h-4 w-4 text-emerald-400" /> : <span className="h-4 w-4 rounded-full border border-slate-600" />}เพิ่มสื่อ</li><li className="flex items-center gap-2">{tracks.some((track) => track.clips.length > 0) ? <Check className="h-4 w-4 text-emerald-400" /> : <span className="h-4 w-4 rounded-full border border-slate-600" />}จัด timeline</li><li className="flex items-center gap-2">{assets.every((asset) => asset.mediaAssetId) && assets.length > 0 ? <Check className="h-4 w-4 text-emerald-400" /> : <span className="h-4 w-4 rounded-full border border-slate-600" />}ผูก managed media</li></ul></div>
           <Button className="mt-6 min-h-12 w-full bg-cyan-500 text-slate-950 hover:bg-cyan-400" onClick={submitToWorker} disabled={submitJob.isPending || assets.length === 0 || !assets.every((asset) => asset.mediaAssetId) || !tracks.some((track) => track.clips.length > 0)}><Send className="mr-2 h-4 w-4" aria-hidden="true" />ส่งงานเข้า Worker queue</Button>
           <p className="mt-3 text-center text-xs leading-5 text-slate-600">เครดิตจะถูกกันไว้เมื่อกดยืนยันส่งงาน และคืนตามผลลัพธ์ของ job</p>

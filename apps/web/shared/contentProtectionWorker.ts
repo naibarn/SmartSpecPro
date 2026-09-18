@@ -7,8 +7,12 @@ import {
 
 export const CONTENT_PROTECTION_JOB_TYPE =
   "content_protection.protect" as const;
+export const CONTENT_PROTECTION_VERIFY_JOB_TYPE =
+  "content_protection.verify" as const;
 export const CONTENT_PROTECTION_CONTRACT_VERSION =
   "content-protection.v1" as const;
+export const CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION =
+  "content-protection.verify.v1" as const;
 export const CONTENT_PROTECTION_PROGRESS_STAGES = [
   "validate_contract",
   "stage_inputs",
@@ -21,6 +25,23 @@ export const CONTENT_PROTECTION_PROGRESS_STAGES = [
 export const CONTENT_PROTECTION_FAILURE_CODES = [
   "content_protection_failed",
 ] as const;
+export const CONTENT_PROTECTION_VERIFY_PROGRESS_STAGES = [
+  "INGEST",
+  "HASH_INPUT",
+  "PROBE_MEDIA",
+  "VIDEO_FINGERPRINT",
+  "AUDIO_FINGERPRINT",
+  "CANDIDATE_SEARCH",
+  "VIDEO_WATERMARK_DETECT",
+  "AUDIO_WATERMARK_DETECT",
+  "SEGMENT_ALIGNMENT",
+  "C2PA_INSPECT",
+  "RESULT_BUILD",
+  "COMPLETE",
+] as const;
+export const CONTENT_PROTECTION_VERIFY_FAILURE_CODES = [
+  "content_protection_verification_failed",
+] as const;
 
 export const contentProtectionIntentSchema = z
   .object({
@@ -30,7 +51,16 @@ export const contentProtectionIntentSchema = z
       .optional(),
     requireBeforePublish: z.boolean().default(true),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.choice === "on" && value.choiceSource === "disabled_by_user") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["choiceSource"],
+        message: "An enabled watermark cannot be marked as disabled by the user",
+      });
+    }
+  });
 
 export type ContentProtectionIntent = z.infer<
   typeof contentProtectionIntentSchema
@@ -100,6 +130,35 @@ export const contentProtectionJobInputSchema = z
 
 export type ContentProtectionJobInput = z.infer<
   typeof contentProtectionJobInputSchema
+>;
+
+const perceptualHashSchema = z.string().trim().min(1).max(512);
+
+export const contentProtectionVerificationJobInputSchema = z
+  .object({
+    contractVersion: z.literal(CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION),
+    jobType: z.literal(CONTENT_PROTECTION_VERIFY_JOB_TYPE),
+    tenantId: z.string().trim().min(1).max(36),
+    runId: z.string().uuid(),
+    requestedByUserId: z.number().int().positive().nullable(),
+    candidateScope: z.enum(["owner", "tenant"]),
+    queryObjectKey: safeStorageKey,
+    querySha256: sha256Schema,
+    queryPerceptualHash: perceptualHashSchema.nullable().optional(),
+    modality: z.enum(CONTENT_PROTECTION_MODALITIES),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (hasSecretLikeField(value)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Worker payload must not contain secrets or raw media",
+      });
+    }
+  });
+
+export type ContentProtectionVerificationJobInput = z.infer<
+  typeof contentProtectionVerificationJobInputSchema
 >;
 
 export const contentProtectionJobResultSchema = z

@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   CONTENT_PROTECTION_JOB_TYPE,
   CONTENT_PROTECTION_PROGRESS_STAGES,
+  CONTENT_PROTECTION_VERIFY_PROGRESS_STAGES,
+  CONTENT_PROTECTION_VERIFY_JOB_TYPE,
+  CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
   contentProtectionIntentSchema,
   contentProtectionJobInputSchema,
   contentProtectionJobResultSchema,
+  contentProtectionVerificationJobInputSchema,
   isRetryableContentProtectionError,
   redactContentProtectionWorkerPayload,
   validateContentProtectionProgress,
@@ -49,6 +53,12 @@ describe("content protection worker intent", () => {
       contentProtectionIntentSchema.safeParse({
         choice: "on",
         tenantId: "attacker",
+      }).success
+    ).toBe(false);
+    expect(
+      contentProtectionIntentSchema.safeParse({
+        choice: "on",
+        choiceSource: "disabled_by_user",
       }).success
     ).toBe(false);
   });
@@ -106,5 +116,41 @@ describe("content protection worker contract", () => {
         outputSha256: "b".repeat(64),
       })
     ).toEqual({ outputSha256: "b".repeat(64) });
+  });
+});
+
+describe("content protection verification control-plane contract", () => {
+  it("requires a managed query reference and preserves the forensic stage order", () => {
+    const parsed = contentProtectionVerificationJobInputSchema.parse({
+      contractVersion: CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
+      jobType: CONTENT_PROTECTION_VERIFY_JOB_TYPE,
+      tenantId: "tenant-a",
+      runId: "11111111-1111-4111-8111-111111111111",
+      requestedByUserId: 42,
+      candidateScope: "owner",
+      queryObjectKey: "tenant-a/query.mp4",
+      querySha256: "a".repeat(64),
+      queryPerceptualHash: null,
+      modality: "video",
+    });
+    expect(parsed.queryObjectKey).toBe("tenant-a/query.mp4");
+    expect(CONTENT_PROTECTION_VERIFY_PROGRESS_STAGES).toEqual([
+      "INGEST",
+      "HASH_INPUT",
+      "PROBE_MEDIA",
+      "VIDEO_FINGERPRINT",
+      "AUDIO_FINGERPRINT",
+      "CANDIDATE_SEARCH",
+      "VIDEO_WATERMARK_DETECT",
+      "AUDIO_WATERMARK_DETECT",
+      "SEGMENT_ALIGNMENT",
+      "C2PA_INSPECT",
+      "RESULT_BUILD",
+      "COMPLETE",
+    ]);
+    expect(() => contentProtectionVerificationJobInputSchema.parse({
+      ...parsed,
+      rawBytes: "forbidden",
+    })).toThrow();
   });
 });

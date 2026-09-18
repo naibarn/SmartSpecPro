@@ -28,6 +28,10 @@ import { registerWorkerRuntimeReleaseRoutes } from "../routes/workerRuntimeRelea
 import { registerWorkflowWorkerRuntimeRoutes } from "../routes/workflowWorkerRuntime";
 import { registerWorkerSeriesControlPlaneRoutes } from "../routes/workerSeriesControlPlane";
 import { registerJobControlPlaneRoutes } from "../routes/jobControlPlane";
+import {
+  handleRunnerUpgrade,
+  registerRunnerControlRoutes,
+} from "../routes/runnerControl";
 import { registerDesktopHostRoutes } from "../routes/desktopHost";
 import { registerDesktopReleaseRoutes } from "../routes/desktopReleases";
 import { registerContentAutomationRoutes } from "../routers/contentAutomationRoutes";
@@ -1110,6 +1114,7 @@ registerWorkerRuntimeRoutes(app);
 registerWorkerRuntimeReleaseRoutes(app);
 registerWorkerSeriesControlPlaneRoutes(app);
 registerJobControlPlaneRoutes(app);
+registerRunnerControlRoutes(app);
 registerDesktopHostRoutes(app);
 registerDesktopReleaseRoutes(app);
 registerWorkflowWorkerRuntimeRoutes(app);
@@ -2401,6 +2406,8 @@ async function main() {
     const url = new URL(req.url ?? "/", `http://${req.headers.host}`);
     if (url.pathname === "/api/voice/stream") {
       handleVoiceUpgrade(req, socket as any, head);
+    } else if (/^\/api\/runners\/[^/]+\/control$/.test(url.pathname)) {
+      handleRunnerUpgrade(req, socket as any, head);
     } else if (url.pathname === "/widget/v1/ws") {
       handleWidgetUpgrade(req, socket as any, head);
     }

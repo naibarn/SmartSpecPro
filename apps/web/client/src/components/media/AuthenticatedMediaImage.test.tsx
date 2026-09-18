@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   AuthenticatedMediaImage,
   AuthenticatedMediaVideo,
@@ -11,6 +12,10 @@ import {
 describe("AuthenticatedMediaImage", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("normalizes a bare storage key to the protected storage route", () => {
@@ -63,7 +68,8 @@ describe("AuthenticatedMediaImage", () => {
     );
   });
 
-  it("shows a readable fallback when protected media fails in the browser", () => {
+  it("shows a readable fallback after bounded retries are exhausted", () => {
+    vi.useFakeTimers();
     render(
       <AuthenticatedMediaImage
         src="/api/storage/files/missing.png"
@@ -73,9 +79,58 @@ describe("AuthenticatedMediaImage", () => {
     );
 
     fireEvent.error(screen.getByAltText("Missing image"));
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    fireEvent.error(screen.getByAltText("Missing image"));
+    act(() => {
+      vi.advanceTimersByTime(750);
+    });
+    fireEvent.error(screen.getByAltText("Missing image"));
     expect(
       screen.getByRole("img", { name: "Missing image" })
     ).toHaveTextContent("ไม่พบภาพ");
+  });
+
+  it("retries failed images a bounded number of times and supports manual retry", () => {
+    vi.useFakeTimers();
+    render(
+      <AuthenticatedMediaImage
+        src="/api/storage/files/intermittent.png"
+        alt="Intermittent image"
+      />
+    );
+
+    fireEvent.error(screen.getByAltText("Intermittent image"));
+    expect(screen.getByText("กำลังโหลดภาพ...")).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
+      "src",
+      "/api/storage/files/intermittent.png?mediaRetry=1"
+    );
+
+    fireEvent.error(screen.getByAltText("Intermittent image"));
+    act(() => {
+      vi.advanceTimersByTime(750);
+    });
+    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
+      "src",
+      "/api/storage/files/intermittent.png?mediaRetry=2"
+    );
+
+    fireEvent.error(screen.getByAltText("Intermittent image"));
+    expect(
+      screen.getByRole("button", { name: "ลองโหลดใหม่" })
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "ลองโหลดใหม่" }));
+    expect(screen.getByAltText("Intermittent image")).toHaveAttribute(
+      "src",
+      "/api/storage/files/intermittent.png?mediaRetry=3"
+    );
   });
 
   it("keeps public external URLs as normal image sources", () => {
@@ -100,6 +155,7 @@ describe("AuthenticatedMediaImage", () => {
   });
 
   it("replaces an expired external URL with a readable fallback", () => {
+    vi.useFakeTimers();
     render(
       <AuthenticatedMediaImage
         src="https://cdn.example.com/expired.png"
@@ -107,15 +163,21 @@ describe("AuthenticatedMediaImage", () => {
       />
     );
     fireEvent.error(screen.getByAltText("Expired image"));
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    fireEvent.error(screen.getByAltText("Expired image"));
+    act(() => {
+      vi.advanceTimersByTime(750);
+    });
+    fireEvent.error(screen.getByAltText("Expired image"));
     expect(screen.getByTitle("ไม่พบภาพ")).toBeInTheDocument();
   });
 
   it("fetches the normalized URL from the shared helper", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(new Response(new Blob(["image"]), { status: 200 }))
+      vi.fn().mockResolvedValue(new Response("image", { status: 200 }))
     );
     await fetchAuthenticatedMedia("library/uploads/a.png");
     expect(fetch).toHaveBeenCalledWith(

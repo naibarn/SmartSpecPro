@@ -6,7 +6,7 @@ Feature 200 sections 8, 15–18, 40–42, 47–48, 52 and provider/risk requirem
 
 ## Deliverable
 
-Implement one adapter interface for Codex, Claude Code, Antigravity and DeepSeek start/stream/pause/resume/cancel/collect/health, preserving provider-native evidence and platform error taxonomy.
+Implement one adapter interface for Codex, Claude Code, Antigravity, DeepSeek Harness, Hermes Agents and OpenClaw-compatible runtimes for start/stream/pause/resume/cancel/collect/health, preserving provider-native evidence and platform error taxonomy. Feature 205 scans and registers the host installation; this section consumes that projection and owns provider task/session semantics.
 
 ## TDD steps
 

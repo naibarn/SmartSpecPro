@@ -2659,7 +2659,7 @@ export default function Settings() {
                         <p className="mt-2 text-sm leading-6 text-slate-700">{currentUiLanguage === 'th' ? 'กำหนดค่าเริ่มต้นของคุณเองสำหรับงานส่งออกสุดท้าย ระบบจะแจ้ง ON/OFF ชัดเจนก่อนสร้างลายน้ำ' : 'Set your own default for final exports. The export surface will show the effective ON/OFF choice before a digital watermark is created.'}</p>
                       </div>
                     </div>
-                    <Button className="mt-4" variant="outline" onClick={() => setLocation('/content-protection/settings')}>
+                    <Button className="mt-4" variant="outline" onClick={() => setLocation('/content-protection')}>
                       {currentUiLanguage === 'th' ? 'เปิด workspace Content Protection' : 'Open Content Protection workspace'}
                     </Button>
                   </div>

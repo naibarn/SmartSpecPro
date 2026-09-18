@@ -18,6 +18,7 @@ vi.mock("../verticalDramaEpisodePreview", () => ({
 import {
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
+  listUserWorkerTaskGroups,
   listUserWorkerJobs,
   type WorkerJobMonitorRepository,
 } from "../workerJobMonitorService";
@@ -417,5 +418,122 @@ describe("workerJobMonitorService", () => {
       { auth: { tenantId: "tenant-1", userId: 7 }, jobId: "job-vd-2" },
       { repo },
     )).resolves.toEqual({ canceled: true, jobId: "job-vd-2" });
+  });
+
+  it("groups open plan jobs and includes scoped completed predecessors", async () => {
+    const makeJob = (id: string, status: string, stepIndex: number, dependsOnJobIds: string[], created: Date) => ({
+      id,
+      tenantId: "tenant-1",
+      workerId: null,
+      runtimeType: "node",
+      workflowRunId: null,
+      requestedByUserId: 7,
+      jobType: `agent.step.${stepIndex}`,
+      status,
+      statusReason: null,
+      resourceProfile: "standard",
+      outputJson: { providerSecret: "must-not-render" },
+      failureReason: null,
+      inputJson: {
+        orchestration: {
+          planId: "plan-1",
+          stepId: `plan-1:step:${stepIndex}`,
+          stepIndex,
+          totalSteps: 3,
+          dependsOnJobIds,
+          providerPayload: "must-not-render",
+        },
+      },
+      progressJson: { progressPercent: stepIndex === 2 ? 45 : 0, phase: `phase-${stepIndex}` },
+      createdAt: created,
+      startedAt: created,
+      finishedAt: status === "succeeded" ? laterAt : null,
+      worker: null,
+    });
+    const completed = makeJob("job-1", "succeeded", 1, [], createdAt);
+    const running = makeJob("job-2", "running", 2, ["job-1"], laterAt);
+    const queued = makeJob("job-3", "queued", 3, ["job-2"], new Date("2026-01-01T10:10:00Z"));
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([queued, running]),
+      listUserJobsByIds: vi.fn().mockImplementation(({ jobIds }: { jobIds: string[] }) =>
+        Promise.resolve(jobIds.includes("job-1") ? [completed] : [])),
+      listEvents: vi.fn().mockImplementation((jobIds: string[]) => Promise.resolve(jobIds.map(jobId => ({
+        id: `event-${jobId}`,
+        workerJobId: jobId,
+        eventSequence: 1,
+        eventType: "job.progress",
+        payloadJson: { message: `Progress ${jobId}`, percent: jobId === "job-2" ? 45 : 0 },
+        createdAt: jobId === "job-2" ? laterAt : createdAt,
+      })))),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await listUserWorkerTaskGroups(
+      { auth: { tenantId: "tenant-1", userId: 7 }, limit: 25, offset: 0 },
+      { repo },
+    );
+
+    expect(repo.listUserJobs).toHaveBeenCalledWith(expect.objectContaining({
+      auth: { tenantId: "tenant-1", userId: 7 },
+      statuses: expect.arrayContaining(["waiting_external", "running", "queued"]),
+      offset: 0,
+    }));
+    expect(repo.listUserJobsByIds).toHaveBeenCalledWith({
+      auth: { tenantId: "tenant-1", userId: 7 },
+      jobIds: expect.arrayContaining(["job-1", "job-2"]),
+    });
+    expect(result.groups).toHaveLength(1);
+    expect(result.sourceTruncated).toBe(false);
+    expect(result.groups[0]).toMatchObject({
+      groupId: "plan:plan-1",
+      groupKind: "plan",
+      status: "running",
+      completedSteps: 1,
+      totalSteps: 3,
+      progressPercent: 48,
+      activeStepId: "plan-1:step:2",
+    });
+    expect(result.groups[0].jobs.map(job => job.id)).toEqual(["job-1", "job-2", "job-3"]);
+    expect(JSON.stringify(result)).not.toContain("providerSecret");
+    expect(JSON.stringify(result)).not.toContain("providerPayload");
+  });
+
+  it("isolates malformed orchestration metadata as a degraded single job", async () => {
+    const repo = createRepo({
+      listUserJobs: vi.fn().mockResolvedValue([{
+        id: "job-malformed",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "node",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "agent.task",
+        status: "running",
+        statusReason: null,
+        resourceProfile: "standard",
+        outputJson: null,
+        failureReason: null,
+        inputJson: { orchestration: { planId: "plan-without-step" } },
+        progressJson: { progressPercent: 101, phase: "running" },
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: null,
+        worker: null,
+      }]),
+      listEvents: vi.fn().mockResolvedValue([]),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await listUserWorkerTaskGroups(
+      { auth: { tenantId: "tenant-1", userId: 7 } },
+      { repo },
+    );
+
+    expect(result.groups[0]).toMatchObject({
+      groupId: "job:job-malformed",
+      groupKind: "single",
+      metadataState: "degraded",
+      progressPercent: 100,
+    });
   });
 });

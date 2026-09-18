@@ -2,11 +2,11 @@
 
 **Status:** Implementation-ready target specification  
 **Spec ID:** 200  
-**Revision:** 4 — Spec 199/200 unified orchestration, capability, Runner, RAG, asset and approval contracts  
+**Revision:** 7 — adds the hierarchical Task Control monitoring projection, clarifies separate Runner/Worker authentication connections and aligns the Runner-hosted agent catalog with Hermes/OpenClaw while preserving the unified Spec 199/200 orchestration, capability, Runner, RAG, asset and approval contracts
 **Suggested repository path:** `specs/feature/200-universal-coding-agent-control-plane/spec.md`  
-**Related specs:** Feature 194 Vectorize/pgvector/Chroma retirement and cutover; Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 External MCP Gateway & Upstream Management  
+**Related specs:** Feature 194 Vectorize/pgvector/Chroma retirement and cutover; Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; Feature 199 External MCP Gateway & Upstream Management; Feature 204 Cloudflare Container Runtime Control Plane; Feature 205 SmartAIHub Runner Cross-Platform Runtime
 **Companion spec:** Feature 199 — External MCP Gateway & Upstream Management  
-**Current codebase implementation status:** Partial; current Chat, Agent runtime, MCP, Worker and Job Control Plane building blocks exist, but the complete provider-independent Agent Task/Runner Control contract is target work.  
+**Current codebase implementation status:** Partial; current Chat, Agent runtime, MCP, Worker and Job Control Plane building blocks exist, and the hierarchical Task Control monitoring slice is implemented, but the complete provider-independent Agent Task/Runner Control contract remains target work.
 **Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 200 owns delegated External Agent runtime semantics.
 **Primary systems:** SmartAIHub Web, Universal AI Assistant, SmartAIHub Backend, Context Broker, Skill Gateway, Asset Gateway, SmartAIHub Runner, SmartAIHub Worker App, Unified Job Control Plane  
 **Primary execution targets:** Windows, macOS, Linux, remote/cloud agents  
@@ -36,8 +36,56 @@ This revision incorporates the architecture decisions made after the first Spec 
 - Context Package + live retrieval model;
 - job-scoped knowledge authorization and provenance.
 
-**Initial providers:** Codex, Claude Code, Google Antigravity, DeepSeek Harness  
+## Revision 5 Alignment Additions — Hierarchical Task Control Monitoring
+
+Revision 5 records the shared monitoring contract for multi-step work started
+from Chat, the Universal Assistant or another approved product surface. This is
+a monitoring projection over the existing Feature 195 durable Job state; it is
+not a new execution engine, queue, ledger, workflow runtime or realtime
+transport.
+
+The normative requirements are:
+
+- `worker_jobs` and `worker_job_events` remain the canonical durable source.
+  The protected `workerJobs.taskGroups` query is a read projection and MUST
+  enforce both the authenticated tenant and requesting-user scope.
+- Open jobs, including `waiting_external`, MUST be grouped with this
+  precedence: valid orchestration `planId`, then `workflowRunId`, then an
+  isolated single-job group. Malformed orchestration metadata MUST be surfaced
+  as degraded metadata and MUST NOT merge unrelated jobs.
+- A group MUST expose deterministic aggregate status, bounded progress,
+  completed/total steps, the active step, and the latest safe event. Failed,
+  expired or canceled work MUST remain visible; a group is successful only when
+  all known required steps are successful.
+- Step dependencies MAY resolve completed predecessor jobs by the explicit
+  `dependsOnJobIds` metadata only. Dependency lookup MUST use the same tenant
+  and requesting-user predicates, bounded continuation and safe projection;
+  completed predecessors MUST appear under the active group without creating a
+  detached completed-only group.
+- The source scan MUST be bounded to 500 open jobs and disclose truncation;
+  group pagination MUST expose `hasMore`/`nextOffset`. The UI MUST disclose a
+  source cap and provide the existing full Job view for exhaustive inspection.
+- The shared Feedback/Chat launcher and `/chat` Universal Control Plane panel
+  MUST expose the same task-group view inline, with expandable steps showing
+  status, progress, worker/runtime, latest event, prerequisites and the
+  existing cancel action. It MUST NOT navigate users to a separate Chat URL or
+  create a second Task Control surface.
+- The projection MUST redact raw input, credentials, provider payloads,
+  arbitrary progress data and unverified URLs. Spec 199 owns MCP upstream
+  transport and MUST NOT implement a parallel task monitor; Spec 200 consumes
+  the shared Job projection for External Agent work.
+
+The detailed implementation addendum is maintained at
+`task-control-multistep-tracking/spec.md`; it MUST remain subordinate to this
+Revision 5 contract and cannot introduce a conflicting source of truth.
+
+**Initial providers:** Codex, Claude Code, Google Antigravity, DeepSeek Harness, Hermes Agents, OpenClaw-compatible runtimes
 **Future providers:** ZCode, Gemini CLI, OpenCode, Aider, other coding-agent harnesses
+
+The Runner-known catalog and registration contract MUST recognize all six
+initial providers even when their execution adapters are delivered in phases.
+An installed-but-unready or adapter-missing provider is registered as a
+non-selectable capability state; it MUST NOT be reported as executable.
 
 ---
 
@@ -94,10 +142,11 @@ This section is **normative**. Spec 199 and Spec 200 are companion specification
 | Capability Registry / Resolver | shared platform | contribute normalized `mcp_tool`, resource/prompt/extension projections | contribute external-agent/runtime availability and SmartAIHub Skill/Asset-facing projections |
 | Retrieval / RAG / Help | Retrieval Broker / shared platform | contribute MCP-derived content only with lineage/ACL | consume retrieval via scoped External Agent context projection |
 | External MCP transport | **Spec 199** | owns remote/local upstream lifecycle, protocol, OAuth, schema, quarantine, MCP execution | MUST NOT reimplement upstream MCP transport |
-| External Agent runtime | **Spec 200** | MAY expose capabilities used by external agents | owns Codex/Claude/Antigravity/DeepSeek adapters, sessions, provider events/results |
+| External Agent runtime | **Spec 200** | MAY expose capabilities used by external agents | owns Codex/Claude/Antigravity/DeepSeek/Hermes/OpenClaw adapter semantics, sessions, provider events/results; Feature 205 owns host scanning/process gateway |
 | Runner Control Channel | shared execution-control infrastructure | use it for Runner MCP Runtime Manager commands/events | use it for External Agent Runtime commands/events |
-| Runner capability advertisement | shared Execution Node Registry | contribute local MCP runtimes/capabilities | contribute external-agent runtimes, project bindings and provider health |
+| Runner capability advertisement | shared Execution Node Registry | contribute local MCP runtimes/capabilities | consume Feature 205's one redacted tool/capability snapshot, contributing agent-runtime projections without creating a second registry |
 | Durable execution | `worker_jobs` / `worker_job_events` | use for long-running/local/retryable/artifact-producing MCP work | use for delegated external-agent tasks and long-running capability work |
+| Task Control monitoring | Feature 200 projection over `worker_jobs` / `worker_job_events` | MUST NOT create a parallel task ledger or monitor | owns the protected hierarchical group/step read model and shared Chat/Assistant presentation |
 | Approval | shared Approval Service | MCP/tool/risk/schema execution approval | provider action, shell/file, capability invocation approval |
 | Audit / trace | shared platform | MCP gateway/upstream trace | agent session/turn/capability/result trace |
 | Skills | SmartAIHub Skill/Capability platform | treats Skills as sibling capability type, not MCP | external agents discover/invoke Skills remotely; no local Skill install |
@@ -127,6 +176,13 @@ LangGraph — System Orchestrator
 ```
 
 Spec 199 and Spec 200 MUST NOT bypass this shared orchestration contract for ordinary product flows.
+
+For monitoring, the request continues through the same authenticated platform
+boundary: the UI reads the protected Task Control projection, which resolves
+only in-scope open Jobs plus explicitly referenced in-scope predecessors. The
+projection does not claim provider execution success; provider-native events,
+workspace verification and result verification remain the runtime gates defined
+elsewhere in this specification.
 
 ### C. External Agent Tool/Capability Flow
 
@@ -189,7 +245,19 @@ Spec 199's search-first/lazy MCP discovery and Spec 200's remote Skill discovery
 
 ### E. One Runner / Worker Connection
 
-SmartAIHub Runner and SmartAIHub Worker App SHALL maintain **one shared outbound authenticated Runner Control Channel**.
+SmartAIHub Runner and SmartAIHub Worker App SHALL use **one shared outbound
+authenticated Runner Control Channel contract**. “Shared” means the same
+versioned transport, registry and message namespace; it does not mean a shared
+socket, credential, configuration root or durable session. When both products
+are installed, each remains a separately authenticated execution
+node/connection.
+
+The Feature 205 `SHARED_CONTAINER_RUNNER` profile is different: it is a
+managed, ephemeral execution node and MUST NOT expose a direct user-device
+control channel. Its Agent work is admitted, leased, fenced and observed through
+the canonical `worker_jobs`/outbox path owned by Feature 195, while Feature 204
+owns the Cloudflare lifecycle and Feature 205 owns the in-container execution
+contract.
 
 There MUST NOT be:
 
@@ -369,7 +437,8 @@ delegated cognitive/execution runtimes
 
 selected when:
 
-- the user explicitly chooses Codex/Claude/Antigravity/DeepSeek;
+- the user explicitly chooses Codex, Claude, Antigravity, DeepSeek, Hermes or
+  OpenClaw;
 - policy chooses an external agent;
 - the task needs a local/provider-native harness capability.
 
@@ -987,7 +1056,7 @@ Connection loss SHALL be treated as a normal distributed-systems condition.
 
 A WebSocket/control-channel disconnect MUST NOT by itself:
 
-- terminate Codex/Claude/Antigravity/DeepSeek;
+- terminate Codex, Claude, Antigravity, DeepSeek, Hermes or OpenClaw;
 - fail a running job;
 - re-dispatch the same write-capable coding job to another machine;
 - lose events.
@@ -1235,6 +1304,7 @@ SmartAIHub Capability Gateway
      │    ┌─────────┼───────────┬──────────────┐
      │    ▼         ▼           ▼              ▼
      │  Codex    Claude     Antigravity    DeepSeek Harness
+     │  Hermes Agents      OpenClaw-compatible
      │
      └────────────────────────────────────────────────────────────
 
@@ -5970,6 +6040,7 @@ Final target:
      │   ┌────────┼──────────────┬──────────────┐
      │   ▼        ▼              ▼              ▼
      │ Codex   Claude        Antigravity     DeepSeek
+     │ Hermes Agents        OpenClaw-compatible
      │
      └────────────────────────────────────────────────────
 

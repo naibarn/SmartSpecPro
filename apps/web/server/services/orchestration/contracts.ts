@@ -266,7 +266,7 @@ export function buildJobDefinitions(plan: PlanRevision): JobDefinition[] {
   if (plan.planHash !== hashPlanSteps(plan.steps)) {
     fail("Plan hash does not match the approved steps");
   }
-  return plan.steps.map(step => ({
+  return plan.steps.map((step, index) => ({
     contractVersion: "feature-186-v1",
     tenantId: plan.tenantId,
     jobType: step.jobType,
@@ -278,6 +278,8 @@ export function buildJobDefinitions(plan: PlanRevision): JobDefinition[] {
         planRevision: plan.revision,
         planHash: plan.planHash,
         stepId: step.stepId,
+        stepIndex: index + 1,
+        totalSteps: plan.steps.length,
         selectedOfferId: step.selectedOfferId,
         dependsOnStepIds: [...step.dependsOn],
       },

@@ -770,5 +770,16 @@
   "websitePreview": "Website Preview",
   "welcome": "Welcome back, {{name}}!",
   "workflow.approve": "Approve",
-  "workflow.reject": "Reject"
+  "workflow.reject": "Reject",
+  "contentProtection.title": "Content Protection",
+  "contentProtection.assets": "Protected assets",
+  "contentProtection.verify": "Verify a copy",
+  "contentProtection.settings": "Protection settings",
+  "contentProtection.protected": "Protected",
+  "contentProtection.processing": "Processing",
+  "contentProtection.warning": "Warning",
+  "contentProtection.failed": "Failed",
+  "contentProtection.statusTitle": "Content Protection status",
+  "contentProtection.statusDescription": "Final artifacts only: watermark choice is shown before export and technical evidence is available after verification.",
+  "contentProtection.unprotected": "Unprotected"
 }

@@ -146,6 +146,7 @@ import { mcpServersRouter } from "./routers/mcpServers";
 import { mcpConnectionsRouter } from "./routers/mcpConnections";
 import { hermesConnectionsRouter } from "./routers/hermesConnections";
 import { connectedDevicesRouter } from "./routers/connectedDevices";
+import { runnerNodesRouter } from "./routers/runnerNodes";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
@@ -3353,6 +3354,7 @@ type AppRouterShape = {
   mcpConnections: typeof mcpConnectionsRouter;
   hermesConnections: typeof hermesConnectionsRouter;
   connectedDevices: typeof connectedDevicesRouter;
+  runnerNodes: typeof runnerNodesRouter;
   help: typeof helpRouter;
   databaseBackups: typeof databaseBackupsRouter;
   contentProtection: typeof contentProtectionRouter;
@@ -3534,6 +3536,7 @@ const appRouterInternal = router<AppRouterShape>({
   mcpConnections: mcpConnectionsRouter,
   hermesConnections: hermesConnectionsRouter,
   connectedDevices: connectedDevicesRouter,
+  runnerNodes: runnerNodesRouter,
   help: helpRouter,
   databaseBackups: databaseBackupsRouter,
   contentProtection: contentProtectionRouter,

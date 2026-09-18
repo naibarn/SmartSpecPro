@@ -3,6 +3,7 @@ import {
   contentProtectionRouter,
   contentProtectionModalitySchema,
   protectAssetInputSchema,
+  safeAssetView,
   verifyCopyInputSchema,
 } from "./contentProtection";
 
@@ -16,6 +17,7 @@ describe("content protection router contract", () => {
       "protectAsset",
       "verifyCopy",
       "getVerification",
+      "getCase",
       "getSettings",
       "setDefaultChoice",
     ]));
@@ -36,5 +38,37 @@ describe("content protection router contract", () => {
     expect(verifyCopyInputSchema.safeParse({ modality: "video", sourceAssetId: 1 }).success).toBe(true);
     expect(verifyCopyInputSchema.safeParse({ modality: "video", sourceAssetId: -1 }).success).toBe(false);
     expect(verifyCopyInputSchema.safeParse({ modality: "video", storageKey: "../../etc/passwd" }).success).toBe(false);
+  });
+
+  it("returns only the opaque public asset identifier to clients", () => {
+    const view = safeAssetView({
+      id: "11111111-1111-4111-8111-111111111111",
+      publicAssetId: "22222222-2222-4222-8222-222222222222",
+      modality: "video",
+      status: "PROTECTED",
+      watermarkChoice: "on",
+      choiceSource: "per_export",
+      mimeType: "video/mp4",
+      width: null,
+      height: null,
+      durationMs: 1000,
+      fps: 30,
+      sourceSha256: "a".repeat(64),
+      protectedSha256: "b".repeat(64),
+      sourceVersionId: null,
+      compoundArtifactId: null,
+      compoundPlanDigest: null,
+      causalJobId: null,
+      firstObservedAt: new Date(0),
+      claimedCreationAt: null,
+      trustedTimestampAt: null,
+      publishedAt: null,
+      protectedAt: new Date(0),
+      errorCode: null,
+      errorMessage: null,
+      createdAt: new Date(0),
+    } as any);
+    expect(view.publicAssetId).toBe("22222222-2222-4222-8222-222222222222");
+    expect(view).not.toHaveProperty("id");
   });
 });

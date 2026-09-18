@@ -2234,6 +2234,27 @@
       "when": 1789687800000,
       "tag": "0332_feature_201_content_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 319,
+      "version": "7",
+      "when": 1789687900000,
+      "tag": "0333_feature_203_editor_revision_parent",
+      "breakpoints": true
+    },
+    {
+      "idx": 320,
+      "version": "7",
+      "when": 1789688000000,
+      "tag": "0334_feature_203_execution_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 321,
+      "version": "7",
+      "when": 1789690000000,
+      "tag": "0335_feature_201_public_identifiers",
+      "breakpoints": true
     }
   ]
 }

@@ -36,6 +36,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "vertical_drama.story",
   "video.intelligence",
   "video.composition_scan",
+  "content_protection.verify",
 ]);
 
 export function isPostgresNodeJobType(jobType: string): boolean {

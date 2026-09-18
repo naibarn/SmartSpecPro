@@ -40,6 +40,7 @@ describe("Feature 201 schema contract", () => {
     const columns = getTableColumns(schema.contentProtectionAssets);
     expect(columns).toHaveProperty("tenantId");
     expect(columns).toHaveProperty("ownerUserId");
+    expect(columns).toHaveProperty("publicAssetId");
     expect(columns).toHaveProperty("sourceSha256");
     expect(columns).toHaveProperty("protectedSha256");
     expect(columns).toHaveProperty("firstObservedAt");
@@ -49,7 +50,17 @@ describe("Feature 201 schema contract", () => {
       index => index.config.name
     );
     expect(indexNames).toContain("content_protection_assets_tenant_idempotency_unique");
+    expect(indexNames).toContain("content_protection_assets_public_id_unique");
     expect(indexNames).toContain("content_protection_assets_tenant_status_idx");
     expect(indexNames).toContain("content_protection_assets_protected_hash_idx");
+  });
+
+  it("keeps reviewer-facing case identifiers separate from internal primary keys", () => {
+    const columns = getTableColumns(schema.contentProtectionCases);
+    expect(columns).toHaveProperty("publicCaseId");
+    const indexNames = getTableConfig(schema.contentProtectionCases).indexes.map(
+      index => index.config.name
+    );
+    expect(indexNames).toContain("content_protection_cases_public_id_unique");
   });
 });

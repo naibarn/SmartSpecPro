@@ -1,0 +1,40 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/205-smartaihub-runner-cross-platform/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/205-smartaihub-runner-cross-platform/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cargo test --manifest-path apps/runner-app/Cargo.toml",
+  "sections": [
+    "section-01-contracts-and-profile-boundary",
+    "section-02-backend-registry-and-gateway",
+    "section-03-runner-foundation-and-local-journal",
+    "section-04-local-discovery-and-control-channel",
+    "section-05-job-execution-and-adapters",
+    "section-06-shared-container-runner",
+    "section-07-ui-task-control-and-connection",
+    "section-08-manual-release-workflow",
+    "section-09-platform-and-rollout-evidence"
+  ],
+  "sections_state": {
+    "section-01-contracts-and-profile-boundary": "completed",
+    "section-02-backend-registry-and-gateway": "completed",
+    "section-03-runner-foundation-and-local-journal": "completed",
+    "section-04-local-discovery-and-control-channel": "completed",
+    "section-05-job-execution-and-adapters": "completed",
+    "section-06-shared-container-runner": "completed",
+    "section-07-ui-task-control-and-connection": "completed",
+    "section-08-manual-release-workflow": "completed",
+    "section-09-platform-and-rollout-evidence": "completed_with_external_gates"
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-18T02:07:16.587603+00:00"
+}

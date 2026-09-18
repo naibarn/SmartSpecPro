@@ -220,6 +220,7 @@ const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
 const ContentProtection = lazy(() => import("./pages/content-protection/ContentProtectionPage"));
+const EvidenceReviewPage = lazy(() => import("./pages/content-protection/EvidenceReviewPage"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
 const StoryboardSkillFrameworkPage = lazy(
@@ -1102,6 +1103,10 @@ function Router() {
             path="/share/vd/:token"
             component={VerticalDramaSharedSeriesPage}
           />
+          <Route
+            path="/evidence-review/:publicCaseId"
+            component={EvidenceReviewPage}
+          />
           {/* Legacy path redirects — the /dashboard prefix was dropped after initial launch. */}
           <Route path="/dashboard/vertical-drama/:seriesId/episodes/:episodeId/runs/:runId">
             {params => (
@@ -1146,6 +1151,21 @@ function Router() {
           <Route path="/content-protection">
             <RequireAuth>
               <ContentProtection />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection/assets/:assetId/rights">
+            <RequireAuth>
+              <ContentProtection initialSection="rights" />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection/assets/:assetId/certificate">
+            <RequireAuth>
+              <ContentProtection initialSection="certificate" />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection/cases/:caseId">
+            <RequireAuth>
+              <ContentProtection initialSection="cases" />
             </RequireAuth>
           </Route>
           <Route path="/content-protection/:section">

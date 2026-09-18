@@ -118,38 +118,14 @@ export async function resolveEpisodeCoverAssetUrls(
 
   for (const row of rows) {
     if (!row.mimeType.toLowerCase().startsWith("image/")) continue;
-    let url = row.thumbnailUrl ?? row.originalUrl;
-    if (row.storageKey) {
-      const objectExists = await storageExists(row.storageKey).catch(() => null);
-      if (objectExists === false) {
-        await db
-          .update(mediaAssets)
-          .set({ status: "expired", updatedAt: new Date() })
-          .where(
-            and(
-              eq(mediaAssets.id, row.id),
-              eq(mediaAssets.tenantId, owner.tenantId),
-              eq(mediaAssets.userId, owner.userId),
-            ),
-          );
-        continue;
-      }
-      if (objectExists === true) {
-        url = `/api/storage/files/${encodeURI(row.storageKey)}`;
-        if (row.status !== "ready" || row.originalUrl !== url) {
-          await db
-            .update(mediaAssets)
-            .set({ status: "ready", originalUrl: url, updatedAt: new Date() })
-            .where(
-              and(
-                eq(mediaAssets.id, row.id),
-                eq(mediaAssets.tenantId, owner.tenantId),
-                eq(mediaAssets.userId, owner.userId),
-              ),
-            );
-        }
-      }
-    }
+    // This resolver is on the Series detail read path. Do not perform a
+    // remote HEAD request or repair the media-assets row here: one cover per
+    // episode turns page load into serial storage I/O and DB writes. The
+    // tenant-scoped storage proxy remains the authoritative existence check
+    // when the browser requests the image.
+    const url = row.storageKey
+      ? `/api/storage/files/${encodeURI(row.storageKey)}`
+      : (row.thumbnailUrl ?? row.originalUrl);
     if (url) urls.set(String(row.id), url);
   }
   return urls;
@@ -256,7 +232,10 @@ export function buildEpisodeCoverGenerationSnapshot(input: {
   const selected = selectEpisodeCoverReferences(
     candidates,
     narrativeText,
-    Math.min(frameReferenceLimit, input.referenceImageCount ?? frameReferenceLimit),
+    Math.min(
+      frameReferenceLimit,
+      input.referenceImageCount ?? frameReferenceLimit
+    ),
     input.referenceSelectionOffset ??
       (input.coverSlotId ? input.coverSlotId - 1 : 0),
     input.coverSlotId ? input.coverSlotId - 1 : undefined

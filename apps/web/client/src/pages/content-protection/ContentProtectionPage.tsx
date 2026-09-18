@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import {
   AlertTriangle,
@@ -18,8 +18,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTenantFeatureFlagStatus } from "@/hooks/useTenantFeatureFlag";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { WebAssetResolver } from "@/services/webAssetResolver";
 
 const stages = [
   "validate_contract",
@@ -32,15 +34,33 @@ const stages = [
 ] as const;
 
 const navItems = [
-  ["overview", "Overview"],
-  ["assets", "Protected assets"],
-  ["verify", "Verify a copy"],
-  ["verifications", "Verification results"],
-  ["cases", "Cases"],
-  ["rights", "Rights & ownership"],
-  ["certificate", "Certificate"],
-  ["settings", "Settings"],
+  ["overview", "nav.overview"],
+  ["assets", "nav.assets"],
+  ["verify", "nav.verify"],
+  ["verifications", "nav.verifications"],
+  ["cases", "nav.cases"],
+  ["rights", "nav.rights"],
+  ["certificate", "nav.certificate"],
+  ["settings", "nav.settings"],
 ] as const;
+
+type ProtectionTranslator = (key: string, params?: string | Record<string, string | number>) => string;
+
+const statusTranslationKeys: Record<string, string> = {
+  queued: "statusQueued",
+  QUEUED: "statusQueued",
+  processing: "statusProcessing",
+  PROCESSING: "statusProcessing",
+  PROTECTED: "statusProtected",
+  PROTECTED_WITH_WARNINGS: "statusProtectedWarnings",
+  FAILED: "statusFailed",
+  PROTECTION_REQUESTED: "statusRequested",
+  UNPROTECTED_BY_USER_CHOICE: "statusUnprotected",
+  INCONCLUSIVE: "statusInconclusive",
+  DRAFT: "statusDraft",
+  OPEN: "statusOpen",
+  COMPLETED: "statusCompleted",
+};
 
 function modalityIcon(modality: string) {
   if (modality === "image") return ImageIcon;
@@ -48,30 +68,28 @@ function modalityIcon(modality: string) {
   return Video;
 }
 
-function statusLabel(status: string): string {
-  return status === "UNPROTECTED_BY_USER_CHOICE"
-    ? "Digital watermark: OFF — disabled by user"
-    : status.replaceAll("_", " ");
+function statusLabel(status: string, t: ProtectionTranslator): string {
+  if (status === "UNPROTECTED_BY_USER_CHOICE") return t("disabledByUser");
+  const translationKey = statusTranslationKeys[status];
+  return translationKey ? t(translationKey) : status.replaceAll("_", " ");
 }
 
-function EvidenceNotice() {
+function EvidenceNotice({ t }: { t: ProtectionTranslator }) {
   return (
     <div
       className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950"
       role="note"
     >
-      <strong>Technical evidence only.</strong> A watermark, hash, fingerprint,
-      or timestamp does not by itself establish legal ownership. Review rights,
-      licences, and chain-of-title evidence before making a legal declaration.
+      <strong>{t("technicalEvidenceOnly")}</strong> {t("evidenceDisclaimer")}
     </div>
   );
 }
 
-function StageList({ active }: { active?: string | null }) {
+function StageList({ active, t }: { active?: string | null; t: ProtectionTranslator }) {
   return (
     <ol
       className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
-      aria-label="Digital watermark processing stages"
+      aria-label={t("stageAria")}
     >
       {stages.map((stage, index) => {
         const reached = active
@@ -96,11 +114,11 @@ function StageList({ active }: { active?: string | null }) {
   );
 }
 
-function AssetCard({ asset }: { asset: any }) {
+function AssetCard({ asset, t }: { asset: any; t: ProtectionTranslator }) {
   const Icon = modalityIcon(asset.modality);
   return (
     <Link
-      href={`/content-protection/assets/${asset.id}`}
+      href={`/content-protection/assets/${asset.publicAssetId}`}
       className="group block rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
     >
       <div className="flex items-start justify-between gap-3">
@@ -110,27 +128,27 @@ function AssetCard({ asset }: { asset: any }) {
           </span>
           <div className="min-w-0">
             <p className="font-semibold capitalize text-slate-900">
-              {asset.modality} artifact
+              {t("assetArtifact", { modality: t(asset.modality) })}
             </p>
             <p className="truncate text-xs text-slate-500">
-              {asset.sourceSha256}
+              {t("publicId")}: {asset.publicAssetId ?? "—"}
             </p>
           </div>
         </div>
         <Badge variant={asset.status === "PROTECTED" ? "default" : "outline"}>
-          {asset.status.replaceAll("_", " ")}
+          {statusLabel(asset.status, t)}
         </Badge>
       </div>
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
         <span className="rounded-full bg-slate-100 px-2 py-1">
-          Choice: {asset.watermarkChoice?.toUpperCase()}
+          {t("choice")}: {asset.watermarkChoice?.toUpperCase()}
         </span>
         <span className="rounded-full bg-slate-100 px-2 py-1">
           {asset.mimeType}
         </span>
         {asset.compoundPlanDigest ? (
           <span className="rounded-full bg-slate-100 px-2 py-1">
-            Compound bound
+            {t("compoundBound")}
           </span>
         ) : null}
       </div>
@@ -138,10 +156,12 @@ function AssetCard({ asset }: { asset: any }) {
   );
 }
 
-export default function ContentProtectionPage() {
+export default function ContentProtectionPage({ initialSection }: { initialSection?: string } = {}) {
   const [, setLocation] = useLocation();
-  const params = useParams<{ section?: string; assetId?: string }>();
-  const section = params.section || "overview";
+  const { t } = useScopedTranslation("contentProtection");
+  const params = useParams<{ section?: string; assetId?: string; caseId?: string }>();
+  const section = initialSection || params.section || "overview";
+  const caseRef = params.caseId || (section === "cases" ? params.assetId : undefined);
   const feature = useTenantFeatureFlagStatus("contentProtectionEnabled");
   const imageFeature = useTenantFeatureFlagStatus(
     "contentProtectionImageProviderEnabled"
@@ -154,6 +174,14 @@ export default function ContentProtectionPage() {
   const [caseTitle, setCaseTitle] = useState("");
   const [caseSummary, setCaseSummary] = useState("");
   const [caseAssetIds, setCaseAssetIds] = useState("");
+  const [reviewerAllowsPackageDownload, setReviewerAllowsPackageDownload] = useState(false);
+  const [verifyUploadState, setVerifyUploadState] = useState<{
+    pending: boolean;
+    message?: string;
+    error?: string;
+  }>({ pending: false });
+  const verifyFileInputRef = useRef<HTMLInputElement>(null);
+  const verifyAssetResolver = useMemo(() => new WebAssetResolver(), []);
   const [rightsDisplayName, setRightsDisplayName] = useState("");
   const [rightsContactEmail, setRightsContactEmail] = useState("");
   const [rightsClaimType, setRightsClaimType] = useState("creator");
@@ -201,8 +229,14 @@ export default function ContentProtectionPage() {
     }
   );
   const cases = trpc.contentProtection.listCases.useQuery(undefined, {
-    enabled: feature.enabled && section === "cases",
+    enabled: feature.enabled && section === "cases" && !caseRef,
   });
+  const selectedCase = trpc.contentProtection.getCase.useQuery(
+    { caseId: caseRef || "00000000-0000-0000-0000-000000000000" },
+    {
+      enabled: feature.enabled && section === "cases" && Boolean(caseRef),
+    },
+  );
   const rights = trpc.contentProtection.getRights.useQuery(
     { assetId: params.assetId || "00000000-0000-0000-0000-000000000000" },
     {
@@ -238,8 +272,11 @@ export default function ContentProtectionPage() {
     });
 
   const title = useMemo(
-    () => navItems.find(([id]) => id === section)?.[1] ?? "Content Protection",
-    [section]
+    () => {
+      const key = navItems.find(([id]) => id === section)?.[1];
+      return key ? t(key) : t("workspaceTitle");
+    },
+    [section, t]
   );
 
   if (!feature.isResolved)
@@ -254,11 +291,10 @@ export default function ContentProtectionPage() {
         <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <LockKeyhole className="mx-auto h-10 w-10 text-slate-400" />
           <h1 className="mt-4 text-2xl font-semibold text-slate-900">
-            Content Protection is not enabled
+            {t("notEnabledTitle")}
           </h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Ask your tenant administrator to enable this workspace. No provider
-            credentials or watermark secrets are exposed here.
+            {t("notEnabledDescription")}
           </p>
         </div>
       </main>
@@ -277,28 +313,48 @@ export default function ContentProtectionPage() {
   const imageProtectionUnavailable =
     modality === "image" && (!imageFeature.isResolved || !imageFeature.enabled);
 
+  const uploadSuspectedMedia = async (file: File | undefined) => {
+    if (!file) return;
+    const fileModality = file.type.split("/", 1)[0];
+    if (fileModality !== "image" && fileModality !== "video" && fileModality !== "audio") {
+      setVerifyUploadState({ pending: false, error: t("invalidMediaType") });
+      return;
+    }
+    setVerifyUploadState({ pending: true });
+    try {
+      const upload = verifyAssetResolver.uploadAsset(file, undefined, {
+        idempotencyKey: `content-protection-verify-${Date.now()}`,
+      });
+      const result = await upload.promise;
+      if (!result.mediaAssetId) throw new Error(t("uploadNotRegistered"));
+      setSourceAssetId(result.mediaAssetId);
+      setModality(fileModality);
+      setVerifyUploadState({ pending: false, message: t("uploadedChecksumPending") });
+    } catch (error) {
+      setVerifyUploadState({ pending: false, error: error instanceof Error ? error.message : t("uploadFailed") });
+    }
+  };
+
   return (
     <main className="min-h-screen bg-slate-50/80 px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-slate-950 p-6 text-white shadow-xl sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
-              Content Protection
+            {t("eyebrow")}
             </p>
             <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-              Protect final image, audio, and video artifacts, then inspect
-              reproducible technical evidence.
+              {t("workspaceDescription")}
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-slate-300">
-            <ShieldCheck className="h-5 w-5 text-emerald-300" /> User-controlled
-            ON/OFF
+            <ShieldCheck className="h-5 w-5 text-emerald-300" /> {t("userChoice")}
           </div>
         </header>
         <nav
           className="mb-6 flex gap-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2"
-          aria-label="Content Protection navigation"
+          aria-label={t("navigationAria")}
         >
           {navItems.map(([id, label]) => (
             <Link
@@ -311,11 +367,11 @@ export default function ContentProtectionPage() {
                   : "text-slate-600 hover:bg-slate-100"
               )}
             >
-              {label}
+              {t(label)}
             </Link>
           ))}
         </nav>
-        <EvidenceNotice />
+        <EvidenceNotice t={t} />
 
         {section === "overview" ? (
           <section className="mt-6 space-y-6">
@@ -339,37 +395,35 @@ export default function ContentProtectionPage() {
                 <div className="flex items-center gap-3">
                   <Fingerprint className="h-6 w-6 text-emerald-600" />
                   <h2 className="text-lg font-semibold">
-                    Protect a final asset
+                    {t("protectFinalTitle")}
                   </h2>
                 </div>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  The digital watermark is created only after the selected final
-                  bytes are available. Intermediate clips are not treated as the
-                  final protected artifact.
+                  {t("protectFinalDescription")}
                 </p>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <Input
-                    aria-label="Source media asset ID"
-                    placeholder="Media asset ID"
+                    aria-label={t("sourceAssetId")}
+                    placeholder={t("mediaAssetIdPlaceholder")}
                     value={sourceAssetId}
                     onChange={e => setSourceAssetId(e.target.value)}
                   />
                   <select
-                    aria-label="Media modality"
+                    aria-label={t("verificationModality")}
                     className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                     value={modality}
                     onChange={e =>
                       setModality(e.target.value as typeof modality)
                     }
                   >
-                    <option value="image">Image</option>
-                    <option value="video">Video</option>
-                    <option value="audio">Audio</option>
+                    <option value="image">{t("image")}</option>
+                    <option value="video">{t("video")}</option>
+                    <option value="audio">{t("audio")}</option>
                   </select>
                   <div
                     className="flex rounded-md border border-slate-200 p-1"
                     role="group"
-                    aria-label="Digital watermark choice"
+                    aria-label={t("digitalWatermarkChoice")}
                   >
                     <button
                       type="button"
@@ -379,7 +433,7 @@ export default function ContentProtectionPage() {
                       )}
                       onClick={() => setChoice("on")}
                     >
-                      ON
+                      {t("on")}
                     </button>
                     <button
                       type="button"
@@ -389,14 +443,13 @@ export default function ContentProtectionPage() {
                       )}
                       onClick={() => setChoice("off")}
                     >
-                      OFF
+                      {t("off")}
                     </button>
                   </div>
                 </div>
                 {imageProtectionUnavailable ? (
                   <p className="mt-3 text-sm text-amber-700" role="status">
-                    Image protection is not enabled for this tenant yet. Ask an
-                    administrator to enable the image provider rollout flag.
+                    {t("imageProtectionUnavailable")}
                   </p>
                 ) : null}
                 <p
@@ -405,9 +458,7 @@ export default function ContentProtectionPage() {
                     choice === "on" ? "text-emerald-700" : "text-amber-700"
                   )}
                 >
-                  {choice === "on"
-                    ? "Digital watermark: ON — final artifact will wait for self-verification."
-                    : "Digital watermark: OFF — disabled by user; output is unprotected."}
+                  {choice === "on" ? t("onNotice") : t("offNotice")}
                 </p>
                 <Button
                   className="mt-4"
@@ -419,29 +470,27 @@ export default function ContentProtectionPage() {
                   }
                 >
                   {protect.isPending
-                    ? "Queueing protection…"
-                    : "Protect final artifact"}
+                    ? t("queueingProtection")
+                    : t("protectFinalAction")}
                 </Button>
                 {protect.data?.asset ? (
                   <div
                     className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"
                     role="status"
                   >
-                    {statusLabel(protect.data.asset.status)}
+                    {statusLabel(protect.data.asset.status, t)}
                     {protect.data.jobId ? ` · Job ${protect.data.jobId}` : ""}
                   </div>
                 ) : null}
               </div>
               <div className="rounded-3xl border border-slate-200 bg-white p-6">
-                <h2 className="text-lg font-semibold">
-                  When is the watermark created?
-                </h2>
+                <h2 className="text-lg font-semibold">{t("whenCreatedTitle")}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  After final compound/render bytes are persisted, during the
-                  protection worker stages below.
+                  {t("whenCreatedDescription")}
                 </p>
                 <div className="mt-4">
                   <StageList
+                    t={t}
                     active={
                       protect.data?.asset?.status === "PROTECTED"
                         ? "publish_artifact"
@@ -452,18 +501,15 @@ export default function ContentProtectionPage() {
               </div>
             </div>
             <div>
-              <h2 className="mb-3 text-lg font-semibold text-slate-900">
-                Recent protected assets
-              </h2>
+              <h2 className="mb-3 text-lg font-semibold text-slate-900">{t("recentAssets")}</h2>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(assets.data ?? []).slice(0, 6).map(assetRow => (
-                  <AssetCard key={assetRow.id} asset={assetRow} />
+                  <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
                 ))}
               </div>
               {assets.data?.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-                  No protected assets yet. Choose ON above to protect a final
-                  artifact.
+                  {t("noAssets")}
                 </p>
               ) : null}
             </div>
@@ -475,17 +521,17 @@ export default function ContentProtectionPage() {
             {params.assetId ? (
               <div className="space-y-6">
                 {asset.isLoading ? (
-                  <p aria-busy="true">Loading evidence…</p>
+                  <p aria-busy="true">{t("loadingEvidence")}</p>
                 ) : asset.data ? (
                   <>
                     <div className="rounded-3xl border border-slate-200 bg-white p-6">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <p className="text-xs uppercase tracking-wide text-slate-500">
-                            {asset.data.modality} final artifact
+                            {t("assetArtifact", { modality: t(asset.data.modality) })}
                           </p>
                           <h2 className="mt-1 text-2xl font-semibold">
-                            {statusLabel(asset.data.status)}
+                            {statusLabel(asset.data.status, t)}
                           </h2>
                         </div>
                         <Badge>
@@ -494,31 +540,33 @@ export default function ContentProtectionPage() {
                       </div>
                       <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
                         <div>
-                          <dt className="text-slate-500">Source SHA-256</dt>
+                          <dt className="text-slate-500">{t("publicAssetId")}</dt>
+                          <dd className="mt-1 break-all font-mono text-xs text-slate-900">
+                            {asset.data.publicAssetId ?? "—"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-slate-500">{t("sourceSha256")}</dt>
                           <dd className="mt-1 break-all font-mono text-xs text-slate-900">
                             {asset.data.sourceSha256}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-slate-500">Protected SHA-256</dt>
+                          <dt className="text-slate-500">{t("protectedSha256")}</dt>
                           <dd className="mt-1 break-all font-mono text-xs text-slate-900">
-                            {asset.data.protectedSha256 ??
-                              "Pending self-verification"}
+                            {asset.data.protectedSha256 ?? t("pendingSelfVerification")}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-slate-500">Compound plan</dt>
+                          <dt className="text-slate-500">{t("compoundPlan")}</dt>
                           <dd className="mt-1 text-slate-900">
-                            {asset.data.compoundPlanDigest ??
-                              "Standalone asset"}
+                            {asset.data.compoundPlanDigest ?? t("standaloneAsset")}
                           </dd>
                         </div>
                         <div>
-                          <dt className="text-slate-500">Technical signal</dt>
+                          <dt className="text-slate-500">{t("technicalSignal")}</dt>
                           <dd className="mt-1 text-slate-900">
-                            {asset.data.protectedAt
-                              ? "Self-detected and QC passed"
-                              : "Not yet verified"}
+                            {asset.data.protectedAt ? t("selfDetectedQcPassed") : t("notYetVerified")}
                           </dd>
                         </div>
                       </dl>
@@ -529,32 +577,32 @@ export default function ContentProtectionPage() {
                         <div className="rounded-xl bg-slate-50 p-3">
                           <p className="text-xs text-slate-500">
                             {asset.data.modality === "image"
-                              ? "Invisible image watermark"
+                              ? t("invisibleImageWatermark")
                               : asset.data.modality === "video"
-                                ? "Video watermark"
-                                : "Audio watermark"}
+                                ? t("videoWatermark")
+                                : t("audioWatermark")}
                           </p>
                           <p className="mt-1 text-sm font-medium text-slate-900">
                             {asset.data.protectedAt
-                              ? "Detected after creation"
-                              : "Awaiting worker result"}
+                              ? t("detectedAfterCreation")
+                              : t("awaitingWorker")}
                           </p>
                         </div>
                         <div className="rounded-xl bg-slate-50 p-3">
                           <p className="text-xs text-slate-500">
-                            Fingerprint signal
+                            {t("fingerprintSignal")}
                           </p>
                           <p className="mt-1 text-sm font-medium text-slate-900">
                             {asset.data.modality === "image"
-                              ? "PDQ / crop-resize alignment"
+                              ? t("imageFingerprint")
                               : asset.data.modality === "video"
-                                ? "Perceptual video fingerprint"
-                                : "Audio fingerprint"}
+                                ? t("videoFingerprint")
+                                : t("audioFingerprint")}
                           </p>
                         </div>
                         <div className="rounded-xl bg-slate-50 p-3">
                           <p className="text-xs text-slate-500">
-                            Dimensions / duration
+                            {t("dimensionsDuration")}
                           </p>
                           <p className="mt-1 text-sm font-medium text-slate-900">
                             {asset.data.modality === "image"
@@ -567,20 +615,21 @@ export default function ContentProtectionPage() {
                       </div>
                       <div className="mt-5 flex flex-wrap gap-2">
                         <Link
-                          href={`/content-protection/rights/${asset.data.id}`}
+                          href={`/content-protection/assets/${asset.data.publicAssetId}/rights`}
                         >
-                          <Button variant="outline">Rights & ownership</Button>
+                          <Button variant="outline">{t("rightsAction")}</Button>
                         </Link>
                         <Link
-                          href={`/content-protection/certificate/${asset.data.id}`}
+                          href={`/content-protection/assets/${asset.data.publicAssetId}/certificate`}
                         >
                           <Button variant="outline">
-                            Creation certificate
+                            {t("certificateAction")}
                           </Button>
                         </Link>
                       </div>
                     </div>
                     <StageList
+                      t={t}
                       active={
                         asset.data.status === "PROTECTED"
                           ? "publish_artifact"
@@ -589,13 +638,13 @@ export default function ContentProtectionPage() {
                     />
                   </>
                 ) : (
-                  <p>Asset not found.</p>
+                  <p>{t("assetNotFound")}</p>
                 )}
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {(assets.data ?? []).map(assetRow => (
-                  <AssetCard key={assetRow.id} asset={assetRow} />
+                  <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
                 ))}
               </div>
             )}
@@ -607,28 +656,47 @@ export default function ContentProtectionPage() {
             <div className="rounded-3xl border border-slate-200 bg-white p-6">
               <Search className="h-7 w-7 text-emerald-600" />
               <h2 className="mt-3 text-xl font-semibold">
-                Verify a suspected copy
+                {t("verifyTitle")}
               </h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Use a tenant-owned library asset. The result reports technical
-                match signals, not a legal verdict.
+                {t("verifyDescription")}
               </p>
+              <input
+                ref={verifyFileInputRef}
+                type="file"
+                className="sr-only"
+                accept="image/*,video/*,audio/*"
+                onChange={event => {
+                  void uploadSuspectedMedia(event.target.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+              />
+              <Button
+                className="mt-4 w-full"
+                variant="outline"
+                onClick={() => verifyFileInputRef.current?.click()}
+                disabled={verifyUploadState.pending}
+              >
+                {verifyUploadState.pending ? t("uploadingSuspected") : t("uploadSuspected")}
+              </Button>
+              {verifyUploadState.message ? <p className="mt-2 text-xs text-emerald-700" role="status">{verifyUploadState.message}</p> : null}
+              {verifyUploadState.error ? <p className="mt-2 text-xs text-red-700" role="alert">{verifyUploadState.error}</p> : null}
               <Input
                 className="mt-5"
-                aria-label="Query media asset ID"
-                placeholder="Media asset ID"
+                aria-label={t("queryAssetId")}
+                placeholder={t("mediaAssetIdPlaceholder")}
                 value={sourceAssetId}
                 onChange={e => setSourceAssetId(e.target.value)}
               />
               <select
-                aria-label="Verification modality"
+                aria-label={t("verificationModality")}
                 className="mt-3 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={modality}
                 onChange={e => setModality(e.target.value as typeof modality)}
               >
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-                <option value="audio">Audio</option>
+                <option value="image">{t("image")}</option>
+                <option value="video">{t("video")}</option>
+                <option value="audio">{t("audio")}</option>
               </select>
               <Button
                 className="mt-4 w-full"
@@ -640,24 +708,22 @@ export default function ContentProtectionPage() {
                 disabled={verify.isPending || !sourceAssetId}
               >
                 {verify.isPending
-                  ? "Starting verification…"
-                  : "Start technical verification"}
+                  ? t("startingVerification")
+                  : t("startVerification")}
               </Button>
             </div>
             <div className="rounded-3xl border border-slate-200 bg-white p-6">
-              <h2 className="text-lg font-semibold">Signals reviewed</h2>
+              <h2 className="text-lg font-semibold">{t("signalsReviewed")}</h2>
               <ul className="mt-4 space-y-3 text-sm text-slate-700">
                 <li className="flex gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> Exact
-                  SHA-256 integrity
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" /> {t("exactSha256")}
                 </li>
                 <li className="flex gap-2">
-                  <Fingerprint className="h-4 w-4 text-emerald-600" /> Invisible
-                  watermark detection
+                  <Fingerprint className="h-4 w-4 text-emerald-600" /> {t("watermarkRecord")}
                 </li>
                 <li className="flex gap-2">
                   <PlayCircle className="h-4 w-4 text-emerald-600" />{" "}
-                  Modality-specific fingerprint and C2PA evidence
+                  {t("imageDhash")}
                 </li>
               </ul>
             </div>
@@ -666,10 +732,10 @@ export default function ContentProtectionPage() {
 
         {section === "verifications" ? (
           <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6">
-            <h2 className="text-xl font-semibold">Verification result</h2>
+            <h2 className="text-xl font-semibold">{t("verificationResult")}</h2>
             {verification.isLoading ? (
               <p className="mt-3" aria-busy="true">
-                Processing…
+                {t("processing")}
               </p>
             ) : verification.data ? (
               <div className="mt-4 space-y-4">
@@ -680,19 +746,18 @@ export default function ContentProtectionPage() {
                       : "outline"
                   }
                 >
-                  {verification.data.status}
+                  {statusLabel(verification.data.status, t)}
                 </Badge>
                 <pre className="overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
                   {JSON.stringify(verification.data.matches, null, 2)}
                 </pre>
                 <p className="text-sm text-amber-800">
-                  Technical match evidence does not by itself establish legal
-                  ownership.
+                  {t("technicalMatchDisclaimer")}
                 </p>
               </div>
             ) : (
               <p className="mt-3 text-sm text-slate-500">
-                No verification run found.
+                {t("noVerification")}
               </p>
             )}
           </section>
@@ -700,15 +765,14 @@ export default function ContentProtectionPage() {
 
         {section === "settings" ? (
           <section className="mt-6 max-w-2xl rounded-3xl border border-slate-200 bg-white p-6">
-            <h2 className="text-xl font-semibold">Default protection choice</h2>
+            <h2 className="text-xl font-semibold">{t("defaultChoiceTitle")}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">
-              You control whether final exports request an invisible digital
-              watermark. This does not change visible branding watermarks.
+              {t("defaultChoiceDescription")}
             </p>
             <div
               className="mt-5 flex gap-2"
               role="group"
-              aria-label="Default digital watermark choice"
+              aria-label={t("defaultChoiceAria")}
             >
               <Button
                 variant={
@@ -716,7 +780,7 @@ export default function ContentProtectionPage() {
                 }
                 onClick={() => saveSettings.mutate({ defaultChoice: "on" })}
               >
-                ON
+                {t("on")}
               </Button>
               <Button
                 variant={
@@ -724,11 +788,11 @@ export default function ContentProtectionPage() {
                 }
                 onClick={() => saveSettings.mutate({ defaultChoice: "off" })}
               >
-                OFF
+                {t("off")}
               </Button>
             </div>
             <p className="mt-4 text-sm text-slate-600">
-              Current default:{" "}
+              {t("currentDefault")}: {" "}
               <strong>
                 {settings.data?.defaultChoice?.toUpperCase() ?? "OFF"}
               </strong>
@@ -738,30 +802,47 @@ export default function ContentProtectionPage() {
 
         {section === "cases" ? (
           <section className="mt-6 space-y-4">
+            {caseRef ? (
+              <div className="rounded-3xl border border-slate-200 bg-white p-6">
+                {selectedCase.isLoading ? <p aria-busy="true">{t("loadingCase")}</p> : selectedCase.data ? (
+                  <>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-slate-500">{t("caseDetail")}</p>
+                        <h2 className="mt-1 text-xl font-semibold">{selectedCase.data.title}</h2>
+                      </div>
+                      <Badge variant="outline">{statusLabel(selectedCase.data.status, t)}</Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-600">{selectedCase.data.summary || t("caseSummaryFallback")}</p>
+                    <p className="mt-4 break-all font-mono text-xs text-slate-500">{t("publicCaseId")}: {selectedCase.data.publicCaseId}</p>
+                    <Link className="mt-4 inline-block text-sm text-emerald-700 underline" href="/content-protection/cases">{t("backToCases")}</Link>
+                  </>
+                ) : <p className="text-sm text-slate-600">{t("caseNotFound")}</p>}
+              </div>
+            ) : null}
             <div className="rounded-3xl border border-slate-200 bg-white p-6">
-              <h2 className="text-xl font-semibold">Create an evidence case</h2>
+              <h2 className="text-xl font-semibold">{t("createCaseTitle")}</h2>
               <p className="mt-2 text-sm text-slate-600">
-                Use a case to collect technical evidence before any legal or
-                external review decision.
+                {t("createCaseDescription")}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Input
-                  aria-label="Case title"
-                  placeholder="Case title"
+                  aria-label={t("caseTitlePlaceholder")}
+                  placeholder={t("caseTitlePlaceholder")}
                   value={caseTitle}
                   onChange={e => setCaseTitle(e.target.value)}
                 />
                 <Input
-                  aria-label="Asset IDs"
-                  placeholder="Asset IDs (comma separated)"
+                  aria-label={t("assetIdsPlaceholder")}
+                  placeholder={t("assetIdsPlaceholder")}
                   value={caseAssetIds}
                   onChange={e => setCaseAssetIds(e.target.value)}
                 />
               </div>
               <Input
                 className="mt-3"
-                aria-label="Case summary"
-                placeholder="Case summary"
+                aria-label={t("caseSummaryPlaceholder")}
+                placeholder={t("caseSummaryPlaceholder")}
                 value={caseSummary}
                 onChange={e => setCaseSummary(e.target.value)}
               />
@@ -775,29 +856,29 @@ export default function ContentProtectionPage() {
                 }
                 disabled={createCase.isPending || !caseTitle.trim()}
               >
-                Create case
+                {t("createCase")}
               </Button>
               {createEvidencePackage.data ? (
                 <div
                   className="mt-4 rounded-xl bg-slate-50 p-3 text-sm"
                   role="status"
                 >
-                  Evidence package sealed:{" "}
+                  {t("evidencePackageSealed")} {" "}
                   {createEvidencePackage.data.package.packageSha256}
                 </div>
               ) : null}
             </div>
-            {(cases.data ?? []).map((item: any) => (
+            {!caseRef ? (cases.data ?? []).map((item: any) => (
               <div
-                key={item.id}
+                key={item.publicCaseId}
                 className="rounded-2xl border border-slate-200 bg-white p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-semibold">{item.title}</h2>
-                  <Badge variant="outline">{item.status}</Badge>
+                  <Link className="font-semibold text-slate-900 underline" href={`/content-protection/cases/${item.publicCaseId}`}>{item.title}</Link>
+                  <Badge variant="outline">{statusLabel(item.status, t)}</Badge>
                 </div>
-                <p className="mt-2 text-sm text-slate-600">
-                  {item.summary || "Technical evidence case"}
+                  <p className="mt-2 text-sm text-slate-600">
+                  {item.summary || t("technicalEvidenceCase")}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button
@@ -809,7 +890,7 @@ export default function ContentProtectionPage() {
                         .filter(Boolean);
                       if (assetIds.length)
                         createEvidencePackage.mutate({
-                          caseId: item.id,
+                          caseId: item.publicCaseId,
                           assetIds,
                         });
                     }}
@@ -817,22 +898,35 @@ export default function ContentProtectionPage() {
                       createEvidencePackage.isPending || !caseAssetIds.trim()
                     }
                   >
-                    Seal evidence package
+                    {t("sealEvidence")}
                   </Button>
-                  {createEvidencePackage.data?.package.caseId === item.id ? (
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        createReviewerLink.mutate({
-                          packageId: createEvidencePackage.data.package.id,
-                          expiresInHours: 24,
-                          scope: ["technical_evidence"],
-                        })
-                      }
-                      disabled={createReviewerLink.isPending}
-                    >
-                      Create 24h reviewer link
-                    </Button>
+                  {createEvidencePackage.data?.package.publicCaseId === item.publicCaseId ? (
+                    <>
+                      <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={reviewerAllowsPackageDownload}
+                          onChange={event => setReviewerAllowsPackageDownload(event.target.checked)}
+                        />
+                        {t("allowDownload")}
+                      </label>
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          createReviewerLink.mutate({
+                            packageId: createEvidencePackage.data.package.id,
+                            expiresInHours: 24,
+                            scope: [
+                              "technical_evidence",
+                              ...(reviewerAllowsPackageDownload ? ["package_download"] : []),
+                            ],
+                          })
+                        }
+                        disabled={createReviewerLink.isPending}
+                      >
+                        {t("createReviewerLink")}
+                      </Button>
+                    </>
                   ) : null}
                 </div>
                 {createReviewerLink.data ? (
@@ -840,14 +934,22 @@ export default function ContentProtectionPage() {
                     className="mt-3 break-all text-xs text-emerald-700"
                     role="status"
                   >
-                    Reviewer token (share once): {createReviewerLink.data.token}
+                    {t("reviewerUrl")} {" "}
+                    <a
+                      className="underline"
+                      href={createReviewerLink.data.reviewPath}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {window.location.origin + createReviewerLink.data.reviewPath}
+                    </a>
                   </p>
                 ) : null}
               </div>
-            ))}
-            {cases.data?.length === 0 ? (
+            )) : null}
+            {!caseRef && cases.data?.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-                No cases yet.
+                {t("noCases")}
               </p>
             ) : null}
           </section>
@@ -857,28 +959,26 @@ export default function ContentProtectionPage() {
           <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-6">
             <FileCheck2 className="h-7 w-7 text-emerald-600" />
             <h2 className="mt-3 text-xl font-semibold">
-              {section === "rights"
-                ? "Rights & ownership"
-                : "Creation certificate"}
+              {section === "rights" ? t("rightsTitle") : t("certificateTitle")}
             </h2>
             {section === "rights" ? (
               <>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Input
-                    aria-label="Rights holder display name"
-                    placeholder="Rights holder name"
+                    aria-label={t("rightsHolderName")}
+                    placeholder={t("rightsHolderName")}
                     value={rightsDisplayName}
                     onChange={e => setRightsDisplayName(e.target.value)}
                   />
                   <Input
-                    aria-label="Rights holder contact email"
-                    placeholder="Contact email"
+                    aria-label={t("contactEmail")}
+                    placeholder={t("contactEmail")}
                     value={rightsContactEmail}
                     onChange={e => setRightsContactEmail(e.target.value)}
                   />
                   <Input
-                    aria-label="Rights claim type"
-                    placeholder="Claim type"
+                    aria-label={t("claimType")}
+                    placeholder={t("claimType")}
                     value={rightsClaimType}
                     onChange={e => setRightsClaimType(e.target.value)}
                   />
@@ -891,8 +991,7 @@ export default function ContentProtectionPage() {
                       setLegalDeclarationConfirmed(e.target.checked)
                     }
                   />{" "}
-                  I confirm this is a user-provided declaration subject to
-                  applicable law.
+                  {t("rightsDeclaration")}
                 </label>
                 <Button
                   className="mt-4"
@@ -913,13 +1012,13 @@ export default function ContentProtectionPage() {
                     !legalDeclarationConfirmed
                   }
                 >
-                  Save rights claim
+                  {t("saveRightsClaim")}
                 </Button>
                 <pre className="mt-5 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
                   {JSON.stringify(
                     rights.data ?? {
                       message:
-                        "Select a protected asset to inspect rights evidence.",
+                        t("selectAssetRights"),
                     },
                     null,
                     2
@@ -936,13 +1035,13 @@ export default function ContentProtectionPage() {
                   }
                   disabled={createCertificate.isPending || !params.assetId}
                 >
-                  Create or load certificate
+                  {t("createOrLoadCertificate")}
                 </Button>
                 <pre className="mt-4 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
                   {JSON.stringify(
                     certificate.data ?? {
                       message:
-                        "A certificate requires a verified final protected artifact.",
+                        t("certificateRequirement"),
                     },
                     null,
                     2

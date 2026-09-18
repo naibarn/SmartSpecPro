@@ -186,8 +186,8 @@ async function patchGroup(
   await persistManifest(owner, next);
 }
 
-async function resolvePlayableOutput(job: WorkerJob): Promise<string> {
-  const raw = await resolveRemotionOutputRef(job);
+async function resolvePlayableOutput(job: WorkerJob, overrideRef?: string | null): Promise<string> {
+  const raw = String(overrideRef ?? "").trim() || await resolveRemotionOutputRef(job);
   if (!raw) return "";
   if (/^(https?:\/\/|\/)/i.test(raw)) return raw;
   try {
@@ -571,11 +571,12 @@ export async function reconcileProductionEpisodeRemotionJobs(
       !Array.isArray(jobOutput.contentProtection)
         ? (jobOutput.contentProtection as Record<string, unknown>)
         : null;
-    if (protectionGate?.status === "PROTECTION_REQUESTED") {
+    let protectedOutputRef: string | null = null;
+    if (protectionGate && protectionGate.status !== "UNPROTECTED_BY_USER_CHOICE") {
       const protectionAssetId = String(protectionGate.protectionAssetId ?? "").trim();
       const [protectionAsset] = protectionAssetId
         ? await db
-            .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage })
+            .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage, protectedObjectKey: contentProtectionAssets.protectedObjectKey })
             .from(contentProtectionAssets)
             .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
             .limit(1)
@@ -589,8 +590,17 @@ export async function reconcileProductionEpisodeRemotionJobs(
         });
         continue;
       }
+      protectedOutputRef = String(protectionAsset.protectedObjectKey ?? protectionGate.protectedObjectKey ?? "").trim() || null;
+      if (!protectedOutputRef) {
+        await patchGroup(owner, group.index, {
+          status: "failed",
+          renderJobId: undefined,
+          error: "Protected artifact passed status gate without a protected output reference",
+        });
+        continue;
+      }
     }
-    const videoUrl = await resolvePlayableOutput(job);
+    const videoUrl = await resolvePlayableOutput(job, protectedOutputRef);
     if (!videoUrl) {
       await patchGroup(owner, group.index, {
         status: "failed",

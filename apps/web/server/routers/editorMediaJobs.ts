@@ -5,9 +5,19 @@ import { z } from "zod";
 
 import { protectedProcedure, router } from "../_core/trpc";
 import { getDb } from "../db";
-import { mediaAssets, workerJobs } from "../../drizzle/schema";
+import {
+  mediaAssets,
+  videoEditorExecutionSnapshots,
+  videoEditorProjectJobs,
+  videoEditorProjectRevisions,
+  videoEditorProjects,
+  workerJobOutbox,
+  workerJobs,
+} from "../../drizzle/schema";
+import { contentProtectionSettings } from "../../drizzle/schema";
 import {
   buildEditorWorkerJobProjection,
+  resolveEditorRuntimeRouting,
   type EditorMediaJobInput,
 } from "../services/editorMediaJobContract";
 import {
@@ -17,8 +27,11 @@ import {
 import { refundReservation } from "../services/creditService";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { isDesktopWorkerDispatchEnabled } from "../services/workerSchedulerService";
+import { isPostgresNodeJobWorkerEnabled } from "../jobs/postgresNodeJobWorker";
 import { mediaOperationClaimCapability } from "@smartspec/shared";
-import { enqueueCompositionScanJob, validateCompositionScanInput } from "../services/compositionScanJob";
+import { enqueueCompositionScanJob, isCompositionEvidencePromotable, validateCompositionScanInput } from "../services/compositionScanJob";
+import { buildVideoEditorExecutionSnapshot } from "../services/videoEditorExecutionAdmission";
+import { contentProtectionIntentSchema, type ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 
 const envelopeSchema = z.record(z.string(), z.unknown());
 const idempotencyKeySchema = z.string().trim().regex(/^[A-Za-z0-9._:-]{8,160}$/);
@@ -97,6 +110,76 @@ function normalizeResourceProfile(value: unknown): string {
   return typeof value === "string" && RESOURCE_PROFILES.has(value as never) ? value : "cpu_heavy";
 }
 
+function parseWebEditorProjectId(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = /^(?:project|web-project)-(\d+)$/.exec(value);
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+const PROTECTED_EDITOR_OPERATIONS = new Set<MediaJobOperation>([
+  "video.render",
+  "video.render_still",
+  "media.audio_export",
+]);
+
+type MediaJobOperation = EditorMediaJobInput["operation"];
+
+async function resolveEditorProtectionIntent(
+  tenantId: string,
+  userId: number,
+  operation: MediaJobOperation,
+  rawIntent: unknown,
+  flags: Record<string, unknown>,
+): Promise<ContentProtectionIntent | undefined> {
+  if (!PROTECTED_EDITOR_OPERATIONS.has(operation)) {
+    if (rawIntent !== undefined) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Content protection is only available for final media exports" });
+    }
+    return undefined;
+  }
+  if (flags.contentProtectionEnabled !== true) {
+    if (rawIntent !== undefined) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Content protection is not enabled for this tenant" });
+    }
+    return undefined;
+  }
+
+  const intent = rawIntent === undefined
+    ? null
+    : contentProtectionIntentSchema.safeParse(rawIntent);
+  if (intent && !intent.success) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid content protection choice" });
+  }
+  const resolved = intent && intent.success
+    ? {
+        ...intent.data,
+        choiceSource: intent.data.choiceSource ?? (intent.data.choice === "on" ? "per_export" : "disabled_by_user"),
+      }
+    : undefined;
+  let protectionIntent = resolved;
+  if (!protectionIntent) {
+    const [settings] = await getDb()
+      .select({ defaultChoice: contentProtectionSettings.defaultChoice })
+      .from(contentProtectionSettings)
+      .where(and(
+        eq(contentProtectionSettings.tenantId, tenantId),
+        eq(contentProtectionSettings.userId, userId),
+      ))
+      .limit(1);
+    protectionIntent = {
+      choice: settings?.defaultChoice === "on" ? "on" : "off",
+      choiceSource: "user_default",
+      requireBeforePublish: true,
+    };
+  }
+  if (protectionIntent.choice === "on" && operation === "video.render_still" && flags.contentProtectionImageProviderEnabled !== true) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Image content protection provider is not enabled for this tenant" });
+  }
+  return protectionIntent;
+}
+
 export const editorMediaJobsRouter = router({
   submit: protectedProcedure
     .input(z.object({
@@ -136,8 +219,18 @@ export const editorMediaJobsRouter = router({
         const code = message === "TENANT_MISMATCH" ? "FORBIDDEN" : "BAD_REQUEST";
         throw new TRPCError({ code, message });
       }
-      const project = projection.inputJson.inputs.project;
       const operation = projectionInput.operation;
+      const protectionIntent = await resolveEditorProtectionIntent(
+        auth.tenantId,
+        auth.userId,
+        operation,
+        projection.inputJson.protectionIntent,
+        flags as unknown as Record<string, unknown>,
+      );
+      if (protectionIntent) {
+        projection.inputJson = { ...projection.inputJson, protectionIntent };
+      }
+      const project = projection.inputJson.inputs.project;
       const requiresVideoTimeline = operation === "video.render" || operation === "video.render_still";
       if (requiresVideoTimeline && (!project || !project.tracks.some((track) => track.kind === "video" && track.clips.length > 0))) {
         throw new TRPCError({
@@ -145,11 +238,18 @@ export const editorMediaJobsRouter = router({
           message: "A video timeline with at least one clip is required for Worker render",
         });
       }
+      if (operation === "media.audio_export" && protectionIntent?.choice === "on" && (!project || !project.tracks.some((track) => track.kind === "audio" && track.clips.length > 0))) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "A protected audio export requires an audio timeline with at least one clip",
+        });
+      }
       if (!requiresVideoTimeline && operation !== "media.ai_music" && operation !== "media.ai_media_studio" && projection.inputJson.inputs.assets.length === 0) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "At least one managed media asset is required for this operation" });
       }
 
       const db = getDb();
+      const numericProjectId = parseWebEditorProjectId(projection.inputJson.projectId);
       const existing = await db
         .select({ id: workerJobs.id, jobType: workerJobs.jobType, status: workerJobs.status })
         .from(workerJobs)
@@ -159,7 +259,38 @@ export const editorMediaJobsRouter = router({
         if (existing[0].jobType !== projection.jobType) {
           throw new TRPCError({ code: "CONFLICT", message: "Idempotency key is already bound to another job" });
         }
-        return { created: false, job: existing[0] };
+        const [existingSnapshot] = numericProjectId !== null
+          ? await db
+            .select({ id: videoEditorExecutionSnapshots.id, revisionId: videoEditorExecutionSnapshots.revisionId, snapshotHash: videoEditorExecutionSnapshots.snapshotHash, workerJobId: videoEditorExecutionSnapshots.workerJobId })
+            .from(videoEditorExecutionSnapshots)
+            .where(and(
+              eq(videoEditorExecutionSnapshots.tenantId, auth.tenantId),
+              eq(videoEditorExecutionSnapshots.workerJobId, existing[0].id),
+            ))
+            .limit(1)
+          : [];
+        return {
+          created: false,
+          job: existing[0],
+          snapshot: existingSnapshot ?? null,
+          snapshotReady: numericProjectId === null || Boolean(existingSnapshot),
+        };
+      }
+
+      // Composition scan is currently a server-owned PostgreSQL Node
+      // capability, not a Windows Worker capability. Fail closed before
+      // reserving credits or creating a job that no enabled executor can
+      // claim. The legacy composition adapter retains durable-queue behavior;
+      // this guard is for the active Web generic-submit path only.
+      const runtimeRouting = resolveEditorRuntimeRouting(
+        projection.jobType,
+        isPostgresNodeJobWorkerEnabled(),
+      );
+      if (!runtimeRouting.available) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "CAPABILITY_BLOCKED: Node composition-scan executor is unavailable",
+        });
       }
 
       const assetIds = collectMediaAssetIds(projection.inputJson as unknown as Record<string, unknown>);
@@ -189,6 +320,57 @@ export const editorMediaJobsRouter = router({
         }
       }
 
+      let revisionAuthority: {
+        projectId: number;
+        revisionId: string;
+        revision: number;
+        document: Record<string, unknown>;
+        documentHash: string;
+      } | null = null;
+      let admissionSnapshot: Awaited<ReturnType<typeof buildVideoEditorExecutionSnapshot>> | null = null;
+      if (numericProjectId !== null) {
+        if (!projection.inputJson.revisionId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A persisted editor revision is required before dispatch" });
+        const [ownedProject] = await db
+          .select({ id: videoEditorProjects.id })
+          .from(videoEditorProjects)
+          .where(and(eq(videoEditorProjects.id, numericProjectId), eq(videoEditorProjects.userId, auth.userId)))
+          .limit(1);
+        const [revision] = await db
+          .select()
+          .from(videoEditorProjectRevisions)
+          .where(and(
+            eq(videoEditorProjectRevisions.id, projection.inputJson.revisionId),
+            eq(videoEditorProjectRevisions.projectId, numericProjectId),
+            eq(videoEditorProjectRevisions.tenantId, auth.tenantId),
+          ))
+          .limit(1);
+        if (!ownedProject || !revision) throw new TRPCError({ code: "CONFLICT", message: "Editor revision is stale or not accessible" });
+        revisionAuthority = {
+          projectId: numericProjectId,
+          revisionId: revision.id,
+          revision: revision.revision,
+          document: revision.document,
+          documentHash: revision.documentHash,
+        };
+        const sourceFingerprint = typeof projection.inputJson.options?.sourceFingerprint === "string"
+          && /^(?:sha256:[a-f0-9]{8,128}|managed:[A-Za-z0-9._:-]{1,160})$/i.test(projection.inputJson.options.sourceFingerprint)
+          ? projection.inputJson.options.sourceFingerprint
+          : `managed:${assetIds.join("-") || projection.inputJson.projectId}`;
+        admissionSnapshot = await buildVideoEditorExecutionSnapshot({
+          tenantId: auth.tenantId,
+          projectId: numericProjectId,
+          revisionId: revision.id,
+          revisionNumber: revision.revision,
+          idempotencyKey: projection.idempotencyKey,
+          operation: projection.inputJson.operation,
+          contractVersion: projection.inputJson.version,
+          sourceFingerprints: [sourceFingerprint],
+          projectDocument: revision.document,
+          capabilityProfile: projection.inputJson.requirements,
+          policy: { protectionIntent: projection.inputJson.protectionIntent ?? null },
+        });
+      }
+
       const billing = projection.inputJson.billing.required
         ? await reserveWorkerJobCredits({
             userId: auth.userId,
@@ -205,17 +387,20 @@ export const editorMediaJobsRouter = router({
 
       try {
         const capabilityFamilies = projection.inputJson.requirements.capabilities;
-        const job = await db
+        const job = await db.transaction(async (tx) => {
+          const insertedJob = await tx
           .insert(workerJobs)
           .values({
             tenantId: auth.tenantId,
             workerId: null,
-            runtimeType: "desktop_zeroclaw_managed",
+            runtimeType: runtimeRouting.runtimeType,
             requestedByUserId: auth.userId,
             requestedBySystemComponent: "web_video_editor",
             jobType: projection.jobType,
             status: "queued",
-            statusReason: "web_video_editor_worker_handoff",
+            statusReason: runtimeRouting.runtimeType === "node_job_worker"
+              ? "web_video_editor_node_handoff"
+              : "web_video_editor_worker_handoff",
             priority: projection.inputJson.operation === "video.render" ? 40 : 20,
             resourceProfile: normalizeResourceProfile(projection.inputJson.requirements.resourceProfile) as never,
             capabilityRequirementsJson: {
@@ -240,7 +425,42 @@ export const editorMediaJobsRouter = router({
             idempotencyKey: projection.idempotencyKey,
           })
           .returning({ id: workerJobs.id, jobType: workerJobs.jobType, status: workerJobs.status });
-        return { created: true, job: job[0] };
+          const createdJob = insertedJob[0];
+          if (!createdJob) throw new Error("EDITOR_JOB_INSERT_FAILED");
+          if (revisionAuthority) {
+            await tx.insert(videoEditorExecutionSnapshots).values({
+              id: admissionSnapshot?.snapshotId ?? `snapshot-${randomUUID().replaceAll("-", "")}`,
+              tenantId: auth.tenantId,
+              projectId: revisionAuthority.projectId,
+              revisionId: revisionAuthority.revisionId,
+              workerJobId: createdJob.id,
+              idempotencyKey: projection.idempotencyKey,
+              operation: projection.inputJson.operation,
+              contractVersion: projection.inputJson.version,
+              document: revisionAuthority.document,
+              documentHash: revisionAuthority.documentHash,
+              snapshotHash: admissionSnapshot?.snapshotHash ?? revisionAuthority.documentHash,
+              sourceFingerprints: admissionSnapshot?.sourceFingerprints ?? [`managed:${assetIds.join("-") || projection.inputJson.projectId}`],
+              capabilityProfile: projection.inputJson.requirements,
+              policy: { protectionIntent: projection.inputJson.protectionIntent ?? null },
+            });
+            await tx.insert(videoEditorProjectJobs).values({
+              projectId: revisionAuthority.projectId,
+              tenantId: auth.tenantId,
+              revisionId: revisionAuthority.revisionId,
+              workerJobId: createdJob.id,
+              planHash: projection.inputJson.plan.planHash,
+            });
+          }
+          await tx.insert(workerJobOutbox).values({
+            workerJobId: createdJob.id,
+            envelopeVersion: projection.inputJson.version,
+            envelopeJson: projection.inputJson as unknown as Record<string, unknown>,
+            dedupeKey: `editor:${auth.tenantId}:${projection.idempotencyKey}`,
+          });
+          return { created: true, job: createdJob };
+        });
+        return job;
       } catch (error) {
         if (billing?.reservationId) await refundReservation(billing.reservationId).catch(() => undefined);
         throw error;
@@ -318,6 +538,7 @@ export const editorMediaJobsRouter = router({
       if (!row || row.jobType !== "video.composition_scan") throw new TRPCError({ code: "NOT_FOUND", message: "Composition scan job not found" });
       if (String(row.status) !== "completed" && String(row.status) !== "succeeded") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Composition scan is not complete" });
       const output = row.outputJson && typeof row.outputJson === "object" ? row.outputJson as Record<string, unknown> : {};
+      if (!isCompositionEvidencePromotable(output)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Composition evidence is degraded or not ready for promotion" });
       if (output.sourceFingerprint !== input.expectedSourceFingerprint) throw new TRPCError({ code: "CONFLICT", message: "Composition evidence is stale for this source" });
       if (typeof output.projectRevisionId === "string" && output.projectRevisionId !== input.expectedRevisionId) throw new TRPCError({ code: "CONFLICT", message: "Composition evidence is stale for this project revision" });
       const evidenceRef = typeof output.evidenceRef === "string" && output.evidenceRef.trim() ? output.evidenceRef : null;

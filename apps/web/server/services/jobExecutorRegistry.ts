@@ -532,6 +532,16 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "content_protection.verify",
+  executionClass: "cpu",
+  contractVersions: new Set(["content-protection.verify.v1"]),
+  executor: async input => {
+    const { executeContentProtectionVerificationJob } = await import("./contentProtection/verification");
+    return executeContentProtectionVerificationJob(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "video.intelligence",
   executionClass: "long",
   contractVersions: new Set(["feature-186-v1"]),

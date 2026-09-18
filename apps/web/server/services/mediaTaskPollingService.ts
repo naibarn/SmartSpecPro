@@ -2,6 +2,7 @@ import type { MediaAuditContext, MediaTask } from "./mediaGenerationService";
 import { ensureMarketplaceAutoReviewTaskResultDurable } from "./marketplaceAutoReviewMediaAssetService";
 import { ensureVerticalDramaTaskResultDurable } from "./verticalDramaMediaAssetService";
 import { ensureMediaTaskArtifactsForPolling } from "./mediaTaskArtifactService";
+import { ensureMediaTaskContentProtection } from "./mediaTaskContentProtectionService";
 import { isTransientGenerationError } from "../../shared/transientGenerationError";
 
 export { isTransientGenerationError };
@@ -207,12 +208,20 @@ async function durabilizeTask(
           userId: input.userId,
         })
       : task;
+  const protectedTask =
+    input.tenantId && !isDomainOwnedTask
+      ? await ensureMediaTaskContentProtection({
+          task: durableTask,
+          tenantId: input.tenantId,
+          userId: input.userId,
+        })
+      : durableTask;
   if (input.tenantId) {
     try {
       const verticalDrama = await ensureVerticalDramaTaskResultDurable({
         tenantId: input.tenantId,
         userId: input.userId,
-        task: durableTask,
+        task: protectedTask,
       });
       if (verticalDrama?.task) return verticalDrama.task;
     } catch (error) {
@@ -231,7 +240,7 @@ async function durabilizeTask(
     await ensureMarketplaceAutoReviewTaskResultDurable({
       tenantId: input.tenantId,
       userId: input.userId,
-      task: durableTask,
+      task: protectedTask,
     });
-  return marketplaceAutoReview?.task ?? durableTask;
+  return marketplaceAutoReview?.task ?? protectedTask;
 }

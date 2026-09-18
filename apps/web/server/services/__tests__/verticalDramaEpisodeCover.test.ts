@@ -1,4 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+const storageMocks = vi.hoisted(() => ({
+  storageExists: vi.fn(),
+}));
+
+vi.mock("../../storage", () => ({
+  storageExists: storageMocks.storageExists,
+}));
+
 import {
   buildEpisodeCoverGenerationSnapshot,
   projectEpisodeCover,
@@ -186,6 +195,50 @@ describe("vertical drama episode cover service helpers", () => {
         [{ status: "ready", mediaAssetId: "15" }]
       )
     ).resolves.toEqual(new Map([["15", "/api/storage/files/cover-thumb.png"]]));
+  });
+
+  it("does not perform remote storage checks or repair writes while loading cover URLs", async () => {
+    const update = vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn().mockResolvedValue([]),
+      })),
+    }));
+    const fakeDb = {
+      select: () => ({
+        from: () => ({
+          where: async () => [
+            {
+              id: 15,
+              mimeType: "image/png",
+              thumbnailUrl: "https://provider.example/cover-thumb.png",
+              originalUrl: "https://provider.example/cover.png",
+              storageKey: "vertical-drama/53/image/cover/episode-1.png",
+              status: "ready",
+            },
+          ],
+        }),
+      }),
+      update,
+    } as any;
+
+    storageMocks.storageExists.mockResolvedValue(false);
+
+    await expect(
+      resolveEpisodeCoverAssetUrls(
+        fakeDb,
+        { tenantId: "tenant-1", userId: 7 },
+        [{ status: "ready", mediaAssetId: "15" }]
+      )
+    ).resolves.toEqual(
+      new Map([
+        [
+          "15",
+          "/api/storage/files/vertical-drama/53/image/cover/episode-1.png",
+        ],
+      ])
+    );
+    expect(storageMocks.storageExists).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("resolves only the requested configured image logos", () => {

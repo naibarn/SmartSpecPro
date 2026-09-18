@@ -817,9 +817,35 @@ export function MediaVideoEditorPlayer({
     [analysisVideoSources, selectedAnalysisTrackId],
   );
 
+  // A loaded project can remain in `videoFile` as a .videoproject.json while
+  // preview correctly resolves the real media from project metadata, tracks,
+  // or the media pool. Keep those same real-media candidates available to the
+  // native render boundary; otherwise the render guard sees only the project
+  // file and returns before sending any command.
+  const projectSourceFallbackPaths = useMemo(() => [
+    nleProject?.metadata?.originalSourceVideo ?? "",
+    ...(nleProject?.tracks ?? []).flatMap((track) => (
+      track.id === "track_v1"
+      || track.id === "track_v2"
+      || track.type === "video_main"
+      || track.type === "video_broll"
+        ? track.clips.flatMap((clip) => [clip.sourcePath ?? "", clip.sourceUrl ?? ""])
+        : []
+    )),
+    ...(nleProject?.mediaPool ?? [])
+      .filter((asset) => asset.mediaType === "video")
+      .map((asset) => asset.filePath),
+  ], [nleProject]);
+
   // When a project contains only a V2/B-roll video, use that clip as the
   // analysis source instead of continuing to probe the old V1/videoFile path.
-  const analysisSourcePath = selectedAnalysisSource?.path || videoFile?.path || "";
+  // Project files are deliberately skipped so preview, Full Scan, and native
+  // Render all consume the same actual media path.
+  const analysisSourcePath = useMemo(() => chooseRenderSourcePath(
+    selectedAnalysisSource?.path ?? "",
+    videoFile?.path ?? "",
+    projectSourceFallbackPaths,
+  ), [projectSourceFallbackPaths, selectedAnalysisSource?.path, videoFile?.path]);
 
   // Packaged Worker builds do not provide a dependable DevTools console. Keep
   // one bounded native JSONL trace for the actual media boundary so a failed
@@ -841,13 +867,8 @@ export function MediaVideoEditorPlayer({
       });
   }, []);
 
-  // A project entry can still be carried as `videoFile` while its real source
-  // lives on the NLE timeline. Native FFmpeg/ffprobe must receive the exact
-  // media path selected for Full Scan, never a stale project/file context.
-  const renderSourcePath = useMemo(() => {
-    const selectedPath = chooseRenderSourcePath(analysisSourcePath, videoFile?.path ?? "");
-    return selectedPath && !isProjectFilePath(selectedPath) ? selectedPath : "";
-  }, [analysisSourcePath, videoFile?.path]);
+  // Full Scan and native FFmpeg must receive the exact same source path.
+  const renderSourcePath = analysisSourcePath;
 
   // Source geometry is the coordinate space shared by preview, Full Scan, and
   // native render. It must never be replaced by the output canvas dimensions.
@@ -3969,10 +3990,19 @@ export function MediaVideoEditorPlayer({
   const handleProcessVideo = async (removeDeadAir: boolean = true) => {
     if ((!videoFile && !nleProject) || isProcessing) return;
     if (!renderSourcePath) {
-      setProcessError(t(
+      const message = t(
         "ไม่พบ source video ที่ใช้ Render ใน Timeline",
         "No renderable source video was found in the timeline.",
-      ));
+      );
+      writeMediaDebugEvent("media.render.blocked", {
+        reason: "missing_render_source_path",
+        analysisSourcePath,
+        openedFilePath: videoFile?.path ?? null,
+        projectSourceFallbackPaths,
+      });
+      setProcessError(message);
+      setProjectStatusMsg(message);
+      setIsRenderPanelCollapsed(false);
       return;
     }
     setIsProcessing(true);

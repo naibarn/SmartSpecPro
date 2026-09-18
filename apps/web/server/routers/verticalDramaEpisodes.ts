@@ -53,6 +53,7 @@ import {
   verticalDramaSeriesSoundBibles,
   verticalDramaAudioQcReports,
   verticalDramaAudioManifests,
+  contentProtectionSettings,
 } from "../../drizzle/schema";
 import type { VerticalDramaShotBrollBinding } from "../../drizzle/schema";
 import {
@@ -135,6 +136,7 @@ import { verticalDramaCharacterStockService } from "../services/verticalDramaCha
 import { verticalDramaLocationStockService } from "../services/verticalDramaLocationStock";
 import { getVerticalDramaLocationCameraViewLabel } from "@shared/verticalDramaSeries/locationAssets";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { contentProtectionIntentSchema } from "../../shared/contentProtectionWorker";
 import {
   getProviderForModel,
   type ProviderCandidate,
@@ -32797,11 +32799,7 @@ export const verticalDramaEpisodesRouter = router({
         // whole feed for THIS render only, without touching the saved plan.
         includeTextOverlays: z.boolean().optional(),
         includeWatermark: z.boolean().optional(),
-        protectionIntent: z.object({
-          choice: z.enum(["on", "off"]),
-          choiceSource: z.enum(["per_export", "user_default", "disabled_by_user"]).optional(),
-          requireBeforePublish: z.boolean().optional(),
-        }).optional(),
+        protectionIntent: contentProtectionIntentSchema.optional(),
         // `planning/vd-remotion-render-option/plan.md` wave 1 — OPT-IN
         // Remotion render path for this sub-episode assembly. Omitted/
         // `"ffmpeg"` is BYTE-IDENTICAL to every render before this option
@@ -32822,6 +32820,32 @@ export const verticalDramaEpisodesRouter = router({
       const episodeId = parseId(input.episodeId, "episode id");
       const owner = { tenantId, userId, seriesId, episodeId };
       const row = await loadOwnedEpisode(owner);
+      const tenantFlags = await getTenantFeatureFlags(tenantId);
+      let protectionIntent: z.infer<typeof contentProtectionIntentSchema> | undefined;
+      if (tenantFlags.contentProtectionEnabled === true) {
+        if (input.protectionIntent) {
+          protectionIntent = contentProtectionIntentSchema.parse(input.protectionIntent);
+        } else {
+          const [settings] = await db
+            .select({ defaultChoice: contentProtectionSettings.defaultChoice })
+            .from(contentProtectionSettings)
+            .where(and(
+              eq(contentProtectionSettings.tenantId, tenantId),
+              eq(contentProtectionSettings.userId, userId),
+            ))
+            .limit(1);
+          protectionIntent = {
+            choice: settings?.defaultChoice === "on" ? "on" : "off",
+            choiceSource: "user_default",
+            requireBeforePublish: true,
+          };
+        }
+      } else if (input.protectionIntent) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Content protection is not enabled for this tenant",
+        });
+      }
 
       const pack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
       const clipSources: EpisodeClipSource[] =
@@ -33148,7 +33172,7 @@ export const verticalDramaEpisodesRouter = router({
         ...(watermarkImagesForJob
           ? { watermarkImages: watermarkImagesForJob }
           : {}),
-        ...(input.protectionIntent ? { protectionIntent: input.protectionIntent } : {}),
+        ...(protectionIntent ? { protectionIntent } : {}),
       };
       // `planning/vd-remotion-render-option/plan.md` wave 1 — try the
       // opt-in Remotion queue path FIRST when requested; ANY failure falls
@@ -33199,7 +33223,7 @@ export const verticalDramaEpisodesRouter = router({
             broll: brollInputs.length > 0 ? brollInputs : undefined,
             tenantId,
             requestedByUserId: userId,
-            protectionIntent: input.protectionIntent,
+            protectionIntent,
             idempotencyKey: input.idempotencyKey,
           });
           jobId = submitted.jobId;

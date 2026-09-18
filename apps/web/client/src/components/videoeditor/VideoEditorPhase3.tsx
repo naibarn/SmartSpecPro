@@ -76,6 +76,7 @@ import { isTextClipRolloutEnabled } from './textRollout';
 import { WebAssetResolver } from '../../services/webAssetResolver';
 import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from './workerEditorProject';
 import { buildWorkerRenderOptions } from './workerRenderHandoff';
+import type { ContentProtectionIntent } from '../../shared/contentProtectionWorker';
 import { analysisWindowDurationMs, analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
 import {
   presentationSlideContentSchema,
@@ -474,6 +475,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [showProjectList, setShowProjectList] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const projectRevisionRef = useRef<{ id: string; revision: number } | null>(null);
   const [isSubmittingWorkerJob, setIsSubmittingWorkerJob] = useState(false);
   const [workerJobId, setWorkerJobId] = useState<number | null>(null);
   const queueMutationIdsRef = useRef(new Map<string, { revisionId: string; idempotencyKey: string }>());
@@ -485,7 +487,10 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   const saveMutation = trpc.videoEditorProjects.save.useMutation();
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState<Date | null>(null);
   const autoSaveMutation = trpc.videoEditorProjects.autoSave.useMutation({
-    onSuccess: () => setLastAutoSaveAt(new Date()),
+    onSuccess: (result) => {
+      projectRevisionRef.current = { id: result.revisionId, revision: result.revision };
+      setLastAutoSaveAt(new Date());
+    },
     onError: (err: any) => console.warn('[AutoSave] DB auto-save failed:', err.message),
   });
   const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
@@ -607,12 +612,15 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         id: currentProjectId ?? undefined,
         name: project.name,
         projectData: project,
+        ...(projectRevisionRef.current ? { expectedRevision: projectRevisionRef.current.revision, expectedRevisionId: projectRevisionRef.current.id } : {}),
+        clientMutationId: `web-save-${generateId('mutation')}`,
         duration: project.settings.duration,
         resolution: `${project.settings.width}x${project.settings.height}`,
         trackCount: project.timeline.tracks.length,
         clipCount,
       });
       setCurrentProjectId(result.id);
+      projectRevisionRef.current = { id: result.revisionId, revision: result.revision };
       setIsDirty(false);
       setLastAutoSaveAt(new Date());
     } catch (error) {
@@ -630,6 +638,8 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       autoSaveMutation.mutate({
         id: currentProjectId,
         projectData: project,
+        ...(projectRevisionRef.current ? { expectedRevision: projectRevisionRef.current.revision, expectedRevisionId: projectRevisionRef.current.id } : {}),
+        clientMutationId: `web-autosave-${generateId('mutation')}`,
         clipCount,
         duration: project.settings.duration,
       });
@@ -651,6 +661,9 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       }
       setProject(normalized);
       setCurrentProjectId(loaded.id);
+      projectRevisionRef.current = loaded.currentRevisionId
+        ? { id: loaded.currentRevisionId, revision: loaded.currentRevision ?? 0 }
+        : null;
       setHistory([normalized]);
       setHistoryIndex(0);
       setIsDirty(false);
@@ -698,6 +711,9 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         }
         setProject(normalized);
         setCurrentProjectId(loaded.id);
+        projectRevisionRef.current = loaded.currentRevisionId
+          ? { id: loaded.currentRevisionId, revision: loaded.currentRevision ?? 0 }
+          : null;
         setHistory([normalized]);
         setHistoryIndex(0);
         setIsDirty(false);
@@ -974,18 +990,56 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${unresolved.slice(0, 3).join(', ')}`);
       }
 
-      const projectId = currentProjectId ? `video-project-${currentProjectId}` : `web-editor-${generateId('project')}`;
       const projectSnapshot = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
+      for (const [assetId, ref] of Object.entries(refs)) {
+        if (ref.namespace === 'media_asset') {
+          projectSnapshot.assets[assetId].mediaAssetId = parseManagedMediaAssetId(ref.id) ?? undefined;
+        }
+      }
+
+      let persistedProjectId = currentProjectId;
+      let revisionId = projectRevisionRef.current?.id ?? null;
+      if (!persistedProjectId || isDirty || !revisionId) {
+        const clipCount = projectSnapshot.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
+        const saved = await saveMutation.mutateAsync({
+          id: persistedProjectId ?? undefined,
+          name: projectSnapshot.name,
+          projectData: projectSnapshot,
+          ...(projectRevisionRef.current ? { expectedRevision: projectRevisionRef.current.revision, expectedRevisionId: projectRevisionRef.current.id } : {}),
+          clientMutationId: `web-operation-${generateId('mutation')}`,
+          duration: projectSnapshot.settings.duration,
+          resolution: `${projectSnapshot.settings.width}x${projectSnapshot.settings.height}`,
+          trackCount: projectSnapshot.timeline.tracks.length,
+          clipCount,
+        });
+        persistedProjectId = saved.id;
+        revisionId = saved.revisionId;
+        setCurrentProjectId(saved.id);
+        projectRevisionRef.current = { id: saved.revisionId, revision: saved.revision };
+        setProject(projectSnapshot);
+        setIsDirty(false);
+      }
+
+      if (!persistedProjectId || !revisionId) throw new Error('EDITOR_REVISION_REQUIRED');
+      const projectId = `project-${persistedProjectId}`;
       if (operation === 'video.render' && projectSnapshot.timeline.tracks.some((track) => track.clips.some((clip) => clip.smartCamera?.plan && clip.smartCamera.analysisStatus === 'stale'))) {
         throw new Error('กล้องอัจฉริยะหมดอายุหลังแก้ไขไทม์ไลน์ กรุณา Quick ใหม่หรือโปรโมต Full Scan ก่อน render');
       }
       const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
-      const operationOptions = operation === 'video.render'
+      const requestedOperationOptions = operation === 'video.render'
         ? {
             ...options,
             ...buildWorkerRenderOptions(projectSnapshot),
           }
         : options;
+      const operationOptions = typeof requestedOperationOptions.projectRevisionId === 'string'
+        ? { ...requestedOperationOptions, projectRevisionId: revisionId }
+        : requestedOperationOptions;
+      const rawProtectionIntent = operationOptions.protectionIntent;
+      const workerOptions = Object.fromEntries(
+        Object.entries(operationOptions).filter(([key]) => key !== 'protectionIntent'),
+      );
+      const protectionIntent = rawProtectionIntent as ContentProtectionIntent | undefined;
       const outputRoles: Record<MediaOperation, string[]> = {
         'media.probe': ['probe_json'], 'media.proxy': ['proxy_video'], 'media.waveform': ['waveform_json'],
         'media.thumbnail': ['thumbnail_image'], 'media.analysis': ['analysis_json'], 'media.silence_detect': ['silence_json'],
@@ -1002,12 +1056,13 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       const isPaid = operation === 'media.ai_music' || operation === 'media.ai_media_studio';
       const mutationFingerprint = `${projectId}:${operation}:${projectSnapshot.modifiedAt}:${JSON.stringify(operationOptions)}`;
       const previousMutation = queueMutationIdsRef.current.get(mutationFingerprint);
-      const revisionId = previousMutation?.revisionId || generateId('revision');
-      const idempotencyKey = previousMutation?.idempotencyKey || `${projectId}:${revisionId}:${operation}`;
-      queueMutationIdsRef.current.set(mutationFingerprint, { revisionId, idempotencyKey });
+      const pinnedRevisionId = previousMutation?.revisionId || revisionId;
+      const idempotencyKey = previousMutation?.idempotencyKey || `${projectId}:${pinnedRevisionId}:${operation}`;
+      queueMutationIdsRef.current.set(mutationFingerprint, { revisionId: pinnedRevisionId, idempotencyKey });
       const envelope: Omit<MediaJobEnvelope, 'tenantId'> = {
         protocol: 'smartaihub.media.job', version: '1.0', jobId: generateId('editor-job'), projectId,
-        revisionId, timelineVersion: 1, operation, options: operationOptions,
+        revisionId: pinnedRevisionId, timelineVersion: 1, operation, options: workerOptions,
+        ...(protectionIntent ? { protectionIntent } : {}),
         inputs: { assets: Object.values(refs), project: built.project },
         plan: { planHash: generateId('plan'), profileVersion: 'web-editor-1', stages: [{ id: 'operation', operation, dependsOn: [] }], outputRoles: operationOutputRoles },
         requirements: {
@@ -1031,7 +1086,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
     } finally {
       setIsSubmittingWorkerJob(false);
     }
-  }, [currentProjectId, getAssetSourceUrl, isSubmittingWorkerJob, project, setLocation, submitWorkerJobMutation, workerHandoff]);
+  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, project, saveMutation, setLocation, submitWorkerJobMutation, workerHandoff]);
 
   const handleRecordingReady = useCallback(async (file: File) => {
     const upload = workerAssetResolverRef.current.uploadAsset(file, undefined, {
@@ -2299,7 +2354,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
           }
         }));
 
-      const revisionId = generateId('revision');
+      let revisionId = projectRevisionRef.current?.id ?? null;
       const projectSnapshot = JSON.parse(JSON.stringify(project)) as VideoEditorProject;
       for (const [assetId, ref] of Object.entries(refs)) {
         if (ref.namespace === 'media_asset') {
@@ -2314,24 +2369,29 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       const renderOptions = buildWorkerRenderOptions(projectSnapshot);
 
       let persistedProjectId = currentProjectId;
-      if (!persistedProjectId || isDirty) {
+      if (!persistedProjectId || isDirty || !revisionId) {
         const clipCount = projectSnapshot.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
         const saved = await saveMutation.mutateAsync({
           id: persistedProjectId ?? undefined,
           name: projectSnapshot.name,
           projectData: projectSnapshot,
+          ...(projectRevisionRef.current ? { expectedRevision: projectRevisionRef.current.revision, expectedRevisionId: projectRevisionRef.current.id } : {}),
+          clientMutationId: `web-render-${generateId('mutation')}`,
           duration: projectSnapshot.settings.duration,
           resolution: `${projectSnapshot.settings.width}x${projectSnapshot.settings.height}`,
           trackCount: projectSnapshot.timeline.tracks.length,
           clipCount,
         });
         persistedProjectId = saved.id;
+        revisionId = saved.revisionId;
         setCurrentProjectId(saved.id);
+        projectRevisionRef.current = { id: saved.revisionId, revision: saved.revision };
         setProject(projectSnapshot);
         setIsDirty(false);
       }
 
-      const projectId = persistedProjectId ? `video-project-${persistedProjectId}` : `web-editor-${generateId('project')}`;
+      if (!persistedProjectId || !revisionId) throw new Error('EDITOR_REVISION_REQUIRED');
+      const projectId = `project-${persistedProjectId}`;
       const built = buildCanonicalWorkerProject(projectSnapshot, { refs, unresolved }, projectId);
       if (built.project.migration.unresolved.length > 0) {
         throw new Error(`สื่อบางรายการยังไม่พร้อมสำหรับ Worker: ${built.project.migration.unresolved.slice(0, 3).join(', ')}`);

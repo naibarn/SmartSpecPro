@@ -63,6 +63,11 @@ missing authenticated browser environment as a residual acceptance gate.
   verification, and reviewer surfaces and checked cross-section tenant scope.
 - Completed the recorded 15-round audit in
   `implementation/audits/15-round-audit.md`.
+- Re-ran a 20-round requirement-to-code audit plus two convergence passes in
+  `implementation/audits/20-round-audit-2026-09-18.md`. The audit moved Verify
+  onto `content_protection.verify` in the canonical control plane, restored
+  owner-scoped candidate filtering, and repaired signed-certificate evidence
+  projection before recording convergence.
 - Focused TypeScript and Rust verification passed; the repository-wide
   typecheck was intentionally not run under the root RAM constraint. The
   existing Drizzle snapshot collision and external provider/browser/production

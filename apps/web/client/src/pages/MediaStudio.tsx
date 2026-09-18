@@ -13,6 +13,7 @@ import { HelpButton } from "@/components/help";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -157,6 +158,7 @@ import {
   Save,
   Film,
   Route,
+  ShieldCheck,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -11039,6 +11041,33 @@ export default function MediaStudio() {
 
   // Active tab state
   const [activeTab, setActiveTab] = useState<MediaType>("image");
+  const contentProtectionEnabled = useTenantFeatureFlag("contentProtectionEnabled");
+  const contentProtectionImageEnabled = useTenantFeatureFlag("contentProtectionImageProviderEnabled");
+  const { data: contentProtectionSettings } = trpc.contentProtection.getSettings.useQuery(undefined, {
+    enabled: contentProtectionEnabled,
+    retry: false,
+  });
+  const [mediaStudioProtectionChoice, setMediaStudioProtectionChoice] = useState<"on" | "off">("off");
+  useEffect(() => {
+    if (contentProtectionSettings?.defaultChoice === "on" || contentProtectionSettings?.defaultChoice === "off") {
+      setMediaStudioProtectionChoice(contentProtectionSettings.defaultChoice);
+    }
+  }, [contentProtectionSettings?.defaultChoice]);
+  useEffect(() => {
+    if (activeTab === "image" && !contentProtectionImageEnabled) {
+      setMediaStudioProtectionChoice("off");
+    }
+  }, [activeTab, contentProtectionImageEnabled]);
+  const mediaStudioProtectionIntent = useMemo(
+    () => activeTab === "image" || activeTab === "video" || activeTab === "audio"
+      ? {
+          choice: mediaStudioProtectionChoice,
+          choiceSource: "per_export" as const,
+          requireBeforePublish: true,
+        }
+      : undefined,
+    [activeTab, mediaStudioProtectionChoice],
+  );
   const [mcpConnectionId, setMcpConnectionId] = useState<string | null>(null);
   const [mcpSharedGroupId, setMcpSharedGroupId] = useState<number | null>(null);
   const [hyperframesRenderLibrarySessions, setHyperframesRenderLibrarySessions] =
@@ -19284,6 +19313,7 @@ export default function MediaStudio() {
           prompt: currentPrompt,
           model: selectedModel || undefined,
           aspectRatio: finalAspectRatio,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: effectiveReferenceImages,
           referenceVideos:
             activeTab === "video" ? effectiveReferenceVideos : [],
@@ -19342,19 +19372,37 @@ export default function MediaStudio() {
           creditsUsed = task.creditsUsed;
           startedAsyncTask = !!task.id || !!task.taskId;
         } else if (shouldUseDirectMediaGateway && activeTab === "audio") {
-          const result = await generateAudioMutation.mutateAsync({
-            text: currentPrompt,
-            model: selectedModel || undefined,
-            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
-            ...(Object.keys(currentExtraParams).length > 0
-              ? { extraParams: currentExtraParams }
-              : {}),
-            ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-          });
+          if (mediaStudioProtectionIntent?.choice === "on") {
+            const task = await generateAudioAsyncMutation.mutateAsync({
+              text: currentPrompt,
+              model: selectedModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              transport: "gateway_api",
+              protectionIntent: mediaStudioProtectionIntent,
+              ...(Object.keys(currentExtraParams).length > 0
+                ? { extraParams: currentExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
+            asyncTask = task;
+            resultUrl = task.resultUrl || extractTaskResultUrl(task as any) || undefined;
+            creditsUsed = task.creditsUsed;
+            startedAsyncTask = !!task.id || !!task.taskId;
+          } else {
+            const result = await generateAudioMutation.mutateAsync({
+              text: currentPrompt,
+              model: selectedModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              ...(Object.keys(currentExtraParams).length > 0
+                ? { extraParams: currentExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
 
-          resultUrl = extractTaskResultUrl(result as any) || undefined;
-          creditsUsed = result.creditsUsed;
-          startedAsyncTask = false;
+            resultUrl = extractTaskResultUrl(result as any) || undefined;
+            creditsUsed = result.creditsUsed;
+            startedAsyncTask = false;
+          }
         } else {
           throw new Error("Unsupported generation mode");
         }
@@ -21419,6 +21467,7 @@ export default function MediaStudio() {
         prompt: retryPrompt,
         model: retryModel || undefined,
         aspectRatio: finalAspectRatio,
+        protectionIntent: mediaStudioProtectionIntent,
         referenceImages: effectiveReferenceImages,
         referenceVideos: targetTab === "video" ? effectiveReferenceVideos : [],
         extraParams:
@@ -21509,19 +21558,37 @@ export default function MediaStudio() {
           creditsUsed = taskResult.creditsUsed;
           startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
         } else {
-          const result = await generateAudioMutation.mutateAsync({
-            text: retryPrompt,
-            model: retryModel || undefined,
-            originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
-            ...(Object.keys(mergedExtraParams).length > 0
-              ? { extraParams: mergedExtraParams }
-              : {}),
-            ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
-          });
+          if (mediaStudioProtectionIntent?.choice === "on") {
+            const taskResult = await generateAudioAsyncMutation.mutateAsync({
+              text: retryPrompt,
+              model: retryModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              transport: "gateway_api",
+              protectionIntent: mediaStudioProtectionIntent,
+              ...(Object.keys(mergedExtraParams).length > 0
+                ? { extraParams: mergedExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
+            asyncTask = taskResult;
+            resultUrl = taskResult.resultUrl || extractTaskResultUrl(taskResult as any) || undefined;
+            creditsUsed = taskResult.creditsUsed;
+            startedAsyncTask = !!taskResult.id || !!taskResult.taskId;
+          } else {
+            const result = await generateAudioMutation.mutateAsync({
+              text: retryPrompt,
+              model: retryModel || undefined,
+              originSurface: MEDIA_STUDIO_CREDIT_ORIGIN,
+              ...(Object.keys(mergedExtraParams).length > 0
+                ? { extraParams: mergedExtraParams }
+                : {}),
+              ...(Object.keys(apiConfig).length > 0 ? { apiConfig } : {}),
+            });
 
-          resultUrl = extractTaskResultUrl(result as any) || undefined;
-          creditsUsed = result.creditsUsed;
-          startedAsyncTask = false;
+            resultUrl = extractTaskResultUrl(result as any) || undefined;
+            creditsUsed = result.creditsUsed;
+            startedAsyncTask = false;
+          }
         }
 
         if (resultUrl) {
@@ -22002,6 +22069,7 @@ export default function MediaStudio() {
         prompt: promptForGeneration,
         model: context.model,
         aspectRatio: context.aspectRatio,
+        protectionIntent: mediaStudioProtectionIntent,
         referenceImages: context.referenceImages,
         referenceVideos: context.referenceVideos,
         extraParams: context.extraParams,
@@ -22449,6 +22517,7 @@ export default function MediaStudio() {
           prompt: normalizedPrompt,
           model: task.storyboardContext.model || task.model,
           aspectRatio: task.storyboardContext.aspectRatio,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: task.storyboardContext.referenceImages,
           referenceVideos: [],
           extraParams: {
@@ -28748,6 +28817,7 @@ export default function MediaStudio() {
             prompt: promptText,
             model,
             aspectRatio,
+            protectionIntent: mediaStudioProtectionIntent,
             referenceImages: referenceImageUrls,
             referenceVideos: [],
             extraParams: infographicExtraParams,
@@ -32436,6 +32506,7 @@ export default function MediaStudio() {
           prompt: generationPrompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceUrls.map(url => ({ url })),
           referenceVideos: [],
           extraParams,
@@ -32825,6 +32896,7 @@ export default function MediaStudio() {
           prompt: generationPrompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceUrls.map(url => ({ url })),
           referenceVideos: [],
           extraParams,
@@ -33618,6 +33690,7 @@ export default function MediaStudio() {
           prompt,
           model,
           aspectRatio: aspect,
+          protectionIntent: mediaStudioProtectionIntent,
           referenceImages: referenceImageUrls.map(url => ({ url })),
           referenceVideos: referenceVideoUrls.map(url => ({ url })),
           extraParams,
@@ -36199,6 +36272,51 @@ export default function MediaStudio() {
                         </div>
                       </div>
                     </button>
+                    {contentProtectionEnabled && (activeTab === "image" || activeTab === "video" || activeTab === "audio") && (
+                      <div
+                        className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3"
+                        data-testid="media-studio-content-protection"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start gap-2">
+                            <ShieldCheck className="mt-0.5 h-4 w-4 text-emerald-700" />
+                            <div>
+                              <Label className="text-sm font-semibold text-emerald-950">
+                                {isThaiLocale ? "ลายน้ำดิจิทัลเพื่อยืนยันเจ้าของ" : "Digital ownership watermark"}
+                              </Label>
+                              <p className="mt-1 text-xs leading-5 text-emerald-900/80">
+                                {mediaStudioProtectionChoice === "on"
+                                  ? (isThaiLocale
+                                    ? "เปิด — สร้างหลัง export สุดท้ายและตรวจสอบก่อนพร้อมใช้งาน"
+                                    : "ON — created after the final export and self-verified before ready")
+                                  : (isThaiLocale
+                                    ? "ปิด — ผลลัพธ์นี้จะถูกบันทึกเป็น UNPROTECTED_BY_USER_CHOICE"
+                                    : "OFF — this output is recorded as UNPROTECTED_BY_USER_CHOICE")}
+                              </p>
+                            </div>
+                          </div>
+                          <Switch
+                            checked={mediaStudioProtectionChoice === "on"}
+                            disabled={activeTab === "image" && !contentProtectionImageEnabled}
+                            onCheckedChange={checked => setMediaStudioProtectionChoice(checked ? "on" : "off")}
+                            aria-label={isThaiLocale ? "เปิดใช้ลายน้ำดิจิทัล" : "Enable digital ownership watermark"}
+                          />
+                        </div>
+                        {activeTab === "image" && !contentProtectionImageEnabled ? (
+                          <p className="mt-2 text-[11px] text-amber-800">
+                            {isThaiLocale
+                              ? "การป้องกันรูปภาพยังไม่เปิดใช้ใน tenant นี้ จึงเลือก ON ไม่ได้จนกว่าจะติดตั้ง provider"
+                              : "Image protection is not enabled for this tenant; enable the image provider before choosing ON."}
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-[11px] text-emerald-800/80">
+                          {isThaiLocale
+                            ? "ลายน้ำดิจิทัลไม่ใช่เครื่องหมายที่มองเห็น และไม่แทนการพิสูจน์ทางกฎหมาย"
+                            : "This is an invisible technical provenance signal, not a legal ownership determination."}
+                        </p>
+                      </div>
+                    )}
+
                     <Button
                       type="button"
                       variant="ghost"

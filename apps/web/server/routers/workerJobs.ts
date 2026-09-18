@@ -6,6 +6,7 @@ import {
   USER_WORKER_JOB_STATUSES,
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
+  listUserWorkerTaskGroups,
   listUserWorkerJobs,
 } from "../services/workerJobMonitorService";
 import {
@@ -71,6 +72,17 @@ export const workerJobsRouter = router({
         jobId: input.jobId,
       });
     }),
+
+  taskGroups: protectedProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).default(25),
+      offset: z.number().int().min(0).default(0),
+    }).optional())
+    .query(async ({ ctx, input }) => listUserWorkerTaskGroups({
+      auth: requireWorkerJobAuth(ctx),
+      limit: input?.limit ?? 25,
+      offset: input?.offset ?? 0,
+    })),
 
   dashboardSummary: protectedProcedure
     .query(async ({ ctx }) => {

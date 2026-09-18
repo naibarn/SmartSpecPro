@@ -1,0 +1,144 @@
+name: SmartAIHub Runner manual release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build"
+        required: false
+        default: "main"
+      version:
+        description: "Artifact version label"
+        required: true
+        default: "manual"
+      platform:
+        description: "Target platform or all native targets"
+        required: true
+        type: choice
+        options: [all, windows, macos-intel, macos-arm, linux]
+        default: all
+      profile:
+        description: "Runner profile metadata"
+        required: true
+        type: choice
+        options: [local_device, shared_container, all]
+        default: all
+      publish:
+        description: "Publish a GitHub release after manual approval"
+        required: true
+        type: boolean
+        default: false
+      release_id:
+        description: "Explicit release identifier when publish is enabled"
+        required: false
+        default: ""
+      signing_mode:
+        description: "Signing/provenance mode"
+        required: true
+        type: choice
+        options: [unsigned-review, required-secret]
+        default: unsigned-review
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x86_64
+            platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: smartaihub-runner.exe
+          - name: macos-x86_64
+            platform: macos-intel
+            os: macos-13
+            target: x86_64-apple-darwin
+            binary: smartaihub-runner
+          - name: macos-aarch64
+            platform: macos-arm
+            os: macos-14
+            target: aarch64-apple-darwin
+            binary: smartaihub-runner
+          - name: linux-x86_64
+            platform: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: smartaihub-runner
+
+    runs-on: ${{ matrix.os }}
+    if: inputs.platform == 'all' || inputs.platform == matrix.platform
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Test Runner crate
+        run: cargo test --manifest-path apps/runner-app/Cargo.toml
+
+      - name: Check signing gate
+        if: inputs.signing_mode == 'required-secret'
+        shell: bash
+        env:
+          RUNNER_SIGNING_KEY: ${{ secrets.RUNNER_SIGNING_KEY }}
+        run: |
+          if [ -z "$RUNNER_SIGNING_KEY" ]; then echo "RUNNER_SIGNING_KEY is required"; exit 1; fi
+
+      - name: Build Runner
+        run: cargo build --manifest-path apps/runner-app/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Package Runner (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          tar -C apps/runner-app/target/${{ matrix.target }}/release -czf "dist/smartaihub-runner-${{ matrix.name }}-${{ inputs.version }}.tar.gz" "${{ matrix.binary }}"
+          printf '{"artifact":"smartaihub-runner-%s-%s","target":"%s","profile":"%s","sourceRef":"%s","sourceCommit":"%s","contractVersion":"sah-runner-v1"}\n' "${{ matrix.name }}" "${{ inputs.version }}" "${{ matrix.target }}" "${{ inputs.profile }}" "${{ inputs.ref }}" "${{ github.sha }}" > "dist/manifest.json"
+          shasum -a 256 dist/* > "dist/SHA256SUMS"
+
+      - name: Package Runner (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" -DestinationPath "dist/smartaihub-runner-${{ matrix.name }}-${{ inputs.version }}.zip"
+          "{\"artifact\":\"smartaihub-runner-${{ matrix.name }}-${{ inputs.version }}\",\"target\":\"${{ matrix.target }}\",\"profile\":\"${{ inputs.profile }}\",\"sourceRef\":\"${{ inputs.ref }}\",\"sourceCommit\":\"${{ github.sha }}\",\"contractVersion\":\"sah-runner-v1\"}" | Out-File -Encoding utf8 dist/manifest.json
+          Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } | Set-Content dist/SHA256SUMS
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartaihub-runner-${{ matrix.name }}-${{ inputs.version }}
+          path: dist/*
+
+      - name: Publish handoff metadata
+        if: inputs.publish == true
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.release_id }}" ]; then echo "release_id is required when publish=true"; exit 1; fi
+          echo "Manual publish requested for ${{ inputs.release_id }}; release creation remains an explicit operator step."
+
+  container-manifest:
+    name: shared-container-manifest
+    if: inputs.profile == 'all' || inputs.profile == 'shared_container'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Create deterministic Container manifest
+        run: |
+          mkdir -p dist
+          printf '{"entrypoint":"smartaihub-runner","command":["smartaihub-runner","run"],"profile":"shared_container","resourceProfiles":["small","medium","large"],"healthSignal":"/health/runner","sourceRef":"%s","sourceCommit":"%s","contractVersion":"sah-runner-v1","imageDigest":"operator-supplied"}\n' "${{ inputs.ref }}" "${{ github.sha }}" > dist/smartaihub-runner-container-manifest.json
+          shasum -a 256 dist/smartaihub-runner-container-manifest.json > dist/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartaihub-runner-container-manifest-${{ inputs.version }}
+          path: dist/*

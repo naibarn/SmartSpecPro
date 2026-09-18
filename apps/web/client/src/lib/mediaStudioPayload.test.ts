@@ -108,4 +108,23 @@ describe("buildMediaStudioCommonPayload", () => {
 
     expect(payload.extraParams).toEqual({ background: "transparent" });
   });
+
+  it("carries the explicit digital-watermark choice to every async export payload", () => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: "A protected editorial image",
+      aspectRatio: "1:1",
+      referenceImages: [],
+      protectionIntent: {
+        choice: "on",
+        choiceSource: "per_export",
+        requireBeforePublish: true,
+      },
+    });
+
+    expect(payload.protectionIntent).toEqual({
+      choice: "on",
+      choiceSource: "per_export",
+      requireBeforePublish: true,
+    });
+  });
 });

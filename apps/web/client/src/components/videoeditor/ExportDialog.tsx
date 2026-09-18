@@ -96,6 +96,41 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   const [estimatedSize, setEstimatedSize] = useState(0);
   const [renderMode, setRenderMode] = useState<'auto' | 'remotion' | 'ffmpeg' | 'gpu'>('auto');
   const [outputKind, setOutputKind] = useState<'video' | 'mp3' | 'frame'>('video');
+  const [contentProtectionEnabled, setContentProtectionEnabled] = useState(false);
+  const [digitalWatermarkChoice, setDigitalWatermarkChoice] = useState<'on' | 'off'>('off');
+
+  useEffect(() => {
+    let active = true;
+    const loadContentProtectionSettings = async () => {
+      if (typeof fetch !== 'function') return;
+      try {
+        const tenantResponse = await fetch('/api/tenant/current', { credentials: 'include' });
+        if (!tenantResponse.ok) return;
+        const tenantPayload = await tenantResponse.json() as { tenant?: { featureFlags?: Record<string, unknown> } };
+        const enabled = tenantPayload.tenant?.featureFlags?.contentProtectionEnabled === true;
+        if (!active || !enabled) return;
+        setContentProtectionEnabled(true);
+        const settingsResponse = await fetch('/api/trpc/contentProtection.getSettings', { credentials: 'include' });
+        if (!settingsResponse.ok) return;
+        const settingsPayload = await settingsResponse.json() as { result?: { data?: unknown } };
+        const resultData = settingsPayload.result?.data;
+        const settings = resultData && typeof resultData === 'object' && 'json' in resultData
+          ? (resultData as { json?: unknown }).json
+          : resultData;
+        if (active && settings && typeof settings === 'object' && !Array.isArray(settings)) {
+          const defaultChoice = (settings as { defaultChoice?: unknown }).defaultChoice;
+          if (defaultChoice === 'on' || defaultChoice === 'off') setDigitalWatermarkChoice(defaultChoice);
+        }
+      } catch {
+        // Feature flags/settings fail closed; the export remains available with
+        // the explicit OFF default when the protection service is unavailable.
+      }
+    };
+    void loadContentProtectionSettings();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     loadEncoders();
@@ -168,6 +203,17 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
       toast.error('MP3 และ Current frame ต้องส่งผ่าน Worker handoff');
       return;
     }
+    const protectionIntent = contentProtectionEnabled
+      ? {
+          choice: digitalWatermarkChoice,
+          choiceSource: 'per_export' as const,
+          requireBeforePublish: true,
+        }
+      : undefined;
+    if (protectionIntent?.choice === 'on' && !onQueueOperation) {
+      toast.error('เปิดใช้ลายน้ำดิจิทัลต้องส่งไฟล์ผ่าน Worker handoff');
+      return;
+    }
     if (onQueueOperation) {
       const operation = outputKind === 'mp3' ? 'media.audio_export' : outputKind === 'frame' ? 'video.render_still' : 'video.render';
       try {
@@ -176,6 +222,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           renderer: outputKind === 'video' ? renderMode : 'ffmpeg',
           filename: safeOutputPath,
           exportSettings: customSettings,
+          ...(protectionIntent ? { protectionIntent } : {}),
         }, Object.keys(project.assets));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'ส่งงานเข้า Worker ไม่สำเร็จ');
@@ -513,6 +560,38 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
               />
             </div>
           </div>
+
+          {contentProtectionEnabled && (
+            <div className="section" data-testid="video-editor-content-protection-choice">
+              <div className="section-title">Digital Content Protection</div>
+              <div className="info-box" role="group" aria-label="Digital watermark choice">
+                <div style={{ color: '#b8c7d9', fontSize: '12px', lineHeight: 1.5, marginBottom: '10px' }}>
+                  ระบบจะสร้างลายน้ำดิจิทัลหลังได้ bytes ของไฟล์สุดท้ายแล้ว และจะไม่ publish จนกว่าการตรวจสอบจะผ่าน รองรับวิดีโอ เสียง และภาพเฟรมนี้
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className={`dialog-button ${digitalWatermarkChoice === 'on' ? 'primary' : 'secondary'}`}
+                    onClick={() => setDigitalWatermarkChoice('on')}
+                  >
+                    เปิดใช้ (ON)
+                  </button>
+                  <button
+                    type="button"
+                    className={`dialog-button ${digitalWatermarkChoice === 'off' ? 'primary' : 'secondary'}`}
+                    onClick={() => setDigitalWatermarkChoice('off')}
+                  >
+                    ไม่ใช้ (OFF)
+                  </button>
+                </div>
+                <div style={{ color: digitalWatermarkChoice === 'on' ? '#7ee2a8' : '#9aa7b5', fontSize: '11px', marginTop: '8px' }}>
+                  {digitalWatermarkChoice === 'on'
+                    ? 'ON: ไฟล์สุดท้ายจะรอตรวจสอบก่อนเผยแพร่'
+                    : 'OFF: ผู้ใช้เลือกไม่ใช้ และไฟล์จะถูกระบุว่า unprotected'}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Video Settings */}
           <div className="section">

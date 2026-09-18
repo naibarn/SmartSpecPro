@@ -23,6 +23,7 @@ export const USER_WORKER_JOB_STATUSES = [
   "uploading",
   "publishing",
   "indexing",
+  "waiting_external",
   "completed",
   "succeeded",
   "failed",
@@ -56,6 +57,7 @@ type WorkerJobRow = Pick<
   | "outputJson"
   | "failureReason"
   | "inputJson"
+  | "progressJson"
   | "createdAt"
   | "startedAt"
   | "finishedAt"
@@ -106,6 +108,10 @@ export type WorkerJobMonitorRepository = {
     limit: number;
     offset: number;
   }): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>>;
+  listUserJobsByIds?(input: {
+    auth: WorkerJobMonitorAuth;
+    jobIds: string[];
+  }): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>>;
   getUserJob(input: {
     auth: WorkerJobMonitorAuth;
     jobId: string;
@@ -149,6 +155,15 @@ export type SafeWorkerOutputRef = {
   createdAt?: Date;
 };
 
+export type SafeWorkerJobOrchestration = {
+  planId: string | null;
+  stepId: string | null;
+  stepIndex: number | null;
+  totalSteps: number | null;
+  dependsOnJobIds: string[];
+  metadataState: "none" | "valid" | "degraded";
+};
+
 export type UserWorkerJobSummary = {
   id: string;
   jobType: string;
@@ -161,6 +176,9 @@ export type UserWorkerJobSummary = {
   createdAt: Date;
   startedAt: Date | null;
   finishedAt: Date | null;
+  progressPercent: number | null;
+  progressPhase: string | null;
+  orchestration: SafeWorkerJobOrchestration;
   latestEvent: SafeWorkerJobEvent | null;
   worker: WorkerSummaryRow | null;
   outputRefs: SafeWorkerOutputRef[];
@@ -170,6 +188,44 @@ export type UserWorkerJobSummary = {
 export type UserWorkerJobDetail = UserWorkerJobSummary & {
   events: SafeWorkerJobEvent[];
 };
+
+export type UserWorkerTaskGroup = {
+  groupId: string;
+  groupKind: "plan" | "workflow" | "single";
+  title: string;
+  status: UserWorkerJobStatus;
+  progressPercent: number | null;
+  completedSteps: number;
+  totalSteps: number;
+  activeStepId: string | null;
+  latestEvent: SafeWorkerJobEvent | null;
+  metadataState: "clean" | "degraded";
+  jobs: UserWorkerJobSummary[];
+};
+
+export type UserWorkerTaskGroupsPage = {
+  groups: UserWorkerTaskGroup[];
+  hasMore: boolean;
+  nextOffset: number;
+  sourceTruncated: boolean;
+};
+
+const OPEN_USER_WORKER_JOB_STATUSES: UserWorkerJobStatus[] = [
+  "pending",
+  "queued",
+  "leased",
+  "claimed",
+  "preparing",
+  "running",
+  "uploading",
+  "publishing",
+  "indexing",
+  "waiting_external",
+  "retry_scheduled",
+];
+
+const MAX_TASK_GROUP_SOURCE_JOBS = 500;
+const MAX_DEPENDENCY_JOBS = 200;
 
 export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
   async listUserJobs(input) {
@@ -200,6 +256,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         outputJson: workerJobs.outputJson,
         failureReason: workerJobs.failureReason,
         inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -220,6 +277,49 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
       .offset(input.offset) as Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>;
   },
 
+  async listUserJobsByIds(input) {
+    const jobIds = Array.from(new Set(input.jobIds)).slice(0, MAX_DEPENDENCY_JOBS);
+    if (jobIds.length === 0) return [];
+
+    return await db
+      .select({
+        id: workerJobs.id,
+        tenantId: workerJobs.tenantId,
+        workerId: workerJobs.workerId,
+        runtimeType: workerJobs.runtimeType,
+        workflowRunId: workerJobs.workflowRunId,
+        requestedByUserId: workerJobs.requestedByUserId,
+        jobType: workerJobs.jobType,
+        status: workerJobs.status,
+        statusReason: workerJobs.statusReason,
+        resourceProfile: workerJobs.resourceProfile,
+        outputJson: workerJobs.outputJson,
+        failureReason: workerJobs.failureReason,
+        inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
+        createdAt: workerJobs.createdAt,
+        startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt,
+        worker: {
+          id: workers.id,
+          displayName: workers.displayName,
+          machineName: workers.machineName,
+          status: workers.status,
+          runtimeType: workers.runtimeType,
+          lastSeenAt: workers.lastSeenAt,
+        },
+      })
+      .from(workerJobs)
+      .leftJoin(workers, eq(workers.id, workerJobs.workerId))
+      .where(and(
+        inArray(workerJobs.id, jobIds),
+        eq(workerJobs.tenantId, input.auth.tenantId),
+        eq(workerJobs.requestedByUserId, input.auth.userId),
+      ))
+      .orderBy(desc(workerJobs.createdAt))
+      .limit(MAX_DEPENDENCY_JOBS) as Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>;
+  },
+
   async getUserJob(input) {
     const [row] = await db
       .select({
@@ -236,6 +336,7 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         outputJson: workerJobs.outputJson,
         failureReason: workerJobs.failureReason,
         inputJson: workerJobs.inputJson,
+        progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
@@ -343,8 +444,27 @@ function safeString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
+function safeBoundedString(value: unknown, maxLength: number): string | undefined {
+  const result = safeString(value);
+  return result && result.length <= maxLength && !/[\u0000-\u001f\u007f]/.test(result)
+    ? result
+    : undefined;
+}
+
 function safeNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function safeInteger(value: unknown, min: number, max: number): number | undefined {
+  const result = safeNumber(value);
+  return result !== undefined && Number.isInteger(result) && result >= min && result <= max
+    ? result
+    : undefined;
+}
+
+function safePercent(value: unknown): number | undefined {
+  const result = safeNumber(value);
+  return result === undefined ? undefined : Math.max(0, Math.min(100, result));
 }
 
 function safeBoolean(value: unknown): boolean | undefined {
@@ -433,18 +553,82 @@ function projectEvent(event: EventRow): SafeWorkerJobEvent {
   return {
     id: event.id,
     eventType: event.eventType,
-    sidecarEventType: safeString(payload.eventType ?? payload.sidecarEventType) ?? null,
-    message: safeString(payload.message ?? payload.safeMessage ?? payload.phaseLabel) ?? null,
-    progressPercent: safeNumber(payload.progressPercent ?? payload.progress ?? payload.percent) ?? null,
-    phase: safeString(payload.phase ?? payload.stage ?? payload.status) ?? null,
-    shotId: safeString(payload.shotId) ?? null,
-    shotIndex: safeNumber(payload.shotIndex) ?? null,
-    shotTotal: safeNumber(payload.shotTotal) ?? null,
+    sidecarEventType: safeBoundedString(payload.eventType ?? payload.sidecarEventType, 128) ?? null,
+    message: safeBoundedString(payload.message ?? payload.safeMessage ?? payload.phaseLabel, 500) ?? null,
+    progressPercent: safePercent(payload.progressPercent ?? payload.progress ?? payload.percent) ?? null,
+    phase: safeBoundedString(payload.phase ?? payload.stage ?? payload.status, 128) ?? null,
+    shotId: safeBoundedString(payload.shotId, 128) ?? null,
+    shotIndex: safeInteger(payload.shotIndex, 0, 10_000) ?? null,
+    shotTotal: safeInteger(payload.shotTotal, 0, 10_000) ?? null,
     cacheHit: safeBoolean(payload.cacheHit) ?? null,
-    errorCode: safeString(payload.errorCode ?? payload.failureCode ?? payload.code) ?? null,
-    rootCause: safeString(payload.rootCause) ?? null,
-    concatMode: safeString(payload.concatMode) ?? null,
+    errorCode: safeBoundedString(payload.errorCode ?? payload.failureCode ?? payload.code, 128) ?? null,
+    rootCause: safeBoundedString(payload.rootCause, 500) ?? null,
+    concatMode: safeBoundedString(payload.concatMode, 128) ?? null,
     createdAt: event.createdAt,
+  };
+}
+
+function projectOrchestration(row: WorkerJobRow): SafeWorkerJobOrchestration {
+  const orchestration = asRecord(asRecord(row.inputJson).orchestration);
+  if (Object.keys(orchestration).length === 0) {
+    return {
+      planId: null,
+      stepId: null,
+      stepIndex: null,
+      totalSteps: null,
+      dependsOnJobIds: [],
+      metadataState: "none",
+    };
+  }
+
+  const planId = safeBoundedString(orchestration.planId, 128);
+  const stepId = safeBoundedString(orchestration.stepId, 128);
+  const rawDependencies = orchestration.dependsOnJobIds;
+  const dependencies = Array.isArray(rawDependencies)
+    ? rawDependencies.map(value => safeBoundedString(value, 128))
+    : [];
+  const dependenciesValid = rawDependencies === undefined || (
+    Array.isArray(rawDependencies) &&
+    rawDependencies.length <= MAX_DEPENDENCY_JOBS &&
+    dependencies.every(value => value !== undefined)
+  );
+  const parsedStepIndex = safeInteger(orchestration.stepIndex, 1, 200)
+    ?? (stepId?.match(/:step:(\d+)$/)?.[1]
+      ? safeInteger(Number(stepId.match(/:step:(\d+)$/)?.[1]), 1, 200)
+      : undefined);
+  const rawStepIndex = orchestration.stepIndex;
+  const stepIndexValid = rawStepIndex === undefined || parsedStepIndex !== undefined;
+  const totalSteps = safeInteger(orchestration.totalSteps, 1, 200);
+  const totalStepsValid = orchestration.totalSteps === undefined || totalSteps !== undefined;
+  const metadataState = planId && stepId && dependenciesValid && stepIndexValid && totalStepsValid
+    ? "valid"
+    : "degraded";
+
+  return {
+    planId: metadataState === "valid" ? planId : null,
+    stepId: metadataState === "valid" ? stepId : null,
+    stepIndex: metadataState === "valid" ? parsedStepIndex ?? null : null,
+    totalSteps: metadataState === "valid" ? totalSteps ?? null : null,
+    dependsOnJobIds: metadataState === "valid"
+      ? dependencies.filter((value): value is string => value !== undefined)
+      : [],
+    metadataState,
+  };
+}
+
+function projectProgress(row: WorkerJobRow): {
+  progressPercent: number | null;
+  progressPhase: string | null;
+} {
+  const progress = asRecord(row.progressJson);
+  return {
+    progressPercent: safePercent(
+      progress.progressPercent ?? progress.progress ?? progress.percent
+    ) ?? null,
+    progressPhase: safeBoundedString(
+      progress.phase ?? progress.stage ?? progress.status,
+      128
+    ) ?? null,
   };
 }
 
@@ -480,6 +664,9 @@ function projectJob(
     outputRefs.length === 0
       ? "failed"
       : row.status;
+  const orchestration = projectOrchestration(row);
+  const persistedProgress = projectProgress(row);
+  const latestEvent = events[0] ?? null;
 
   return {
     id: row.id,
@@ -496,7 +683,10 @@ function projectJob(
     createdAt: row.createdAt,
     startedAt: row.startedAt,
     finishedAt: row.finishedAt,
-    latestEvent: events[0] ?? null,
+    progressPercent: latestEvent?.progressPercent ?? persistedProgress.progressPercent,
+    progressPhase: latestEvent?.phase ?? persistedProgress.progressPhase,
+    orchestration,
+    latestEvent,
     worker: row.worker?.id ? row.worker : null,
     outputRefs,
     canCancel: ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled", "claimed", "preparing", "uploading", "publishing", "indexing"].includes(status),
@@ -511,6 +701,187 @@ function groupByJobId<T extends { workerJobId: string }>(rows: T[]): Map<string,
     grouped.set(row.workerJobId, items);
   }
   return grouped;
+}
+
+function isSuccessfulStatus(status: UserWorkerJobStatus): boolean {
+  return status === "completed" || status === "succeeded";
+}
+
+function isTerminalStatus(status: UserWorkerJobStatus): boolean {
+  return isSuccessfulStatus(status) || ["failed", "cancelled", "canceled", "expired"].includes(status);
+}
+
+function compareTaskJobs(a: UserWorkerJobSummary, b: UserWorkerJobSummary): number {
+  const aIndex = a.orchestration.stepIndex ?? Number.MAX_SAFE_INTEGER;
+  const bIndex = b.orchestration.stepIndex ?? Number.MAX_SAFE_INTEGER;
+  return aIndex - bIndex
+    || a.createdAt.getTime() - b.createdAt.getTime()
+    || a.id.localeCompare(b.id);
+}
+
+function taskGroupKey(job: UserWorkerJobSummary): {
+  groupId: string;
+  groupKind: UserWorkerTaskGroup["groupKind"];
+  title: string;
+} {
+  if (job.orchestration.metadataState === "valid" && job.orchestration.planId) {
+    return {
+      groupId: `plan:${job.orchestration.planId}`,
+      groupKind: "plan",
+      title: `Plan ${job.orchestration.planId}`,
+    };
+  }
+  if (job.orchestration.metadataState !== "degraded" && job.workflowRunId) {
+    return {
+      groupId: `workflow:${job.workflowRunId}`,
+      groupKind: "workflow",
+      title: `Workflow ${job.workflowRunId}`,
+    };
+  }
+  return {
+    groupId: `job:${job.id}`,
+    groupKind: "single",
+    title: job.jobType,
+  };
+}
+
+function aggregateTaskStatus(jobs: UserWorkerJobSummary[], totalSteps: number): UserWorkerJobStatus {
+  if (jobs.some(job => job.status === "failed")) return "failed";
+  if (jobs.some(job => job.status === "expired")) return "expired";
+  if (jobs.some(job => ["cancelled", "canceled"].includes(job.status))) return "canceled";
+
+  const activeJobs = jobs.filter(job => !isTerminalStatus(job.status));
+  if (activeJobs.length > 0) {
+    for (const status of [
+      "running", "publishing", "uploading", "indexing", "preparing", "claimed",
+      "leased", "waiting_external", "retry_scheduled", "queued", "pending",
+    ] as UserWorkerJobStatus[]) {
+      if (activeJobs.some(job => job.status === status)) return status;
+    }
+    return activeJobs[0].status;
+  }
+  return jobs.length >= totalSteps && jobs.every(job => isSuccessfulStatus(job.status))
+    ? "succeeded"
+    : "queued";
+}
+
+function latestTaskEvent(jobs: UserWorkerJobSummary[]): SafeWorkerJobEvent | null {
+  return jobs
+    .map(job => job.latestEvent)
+    .filter((event): event is SafeWorkerJobEvent => event != null)
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id))[0]
+    ?? null;
+}
+
+function aggregateTaskProgress(jobs: UserWorkerJobSummary[], totalSteps: number): number | null {
+  if (totalSteps <= 0) return null;
+  const knownProgress = jobs.reduce((sum, job) => (
+    sum + (isSuccessfulStatus(job.status) ? 100 : job.progressPercent ?? 0)
+  ), 0);
+  return Math.max(0, Math.min(100, Math.round(knownProgress / totalSteps)));
+}
+
+/**
+ * Pure server-side grouping used by both the task-group query and focused
+ * tests. It accepts only already scoped/safe summaries.
+ */
+export function groupUserWorkerJobs(jobs: UserWorkerJobSummary[]): UserWorkerTaskGroup[] {
+  const groups = new Map<string, {
+    groupKind: UserWorkerTaskGroup["groupKind"];
+    title: string;
+    jobs: UserWorkerJobSummary[];
+  }>();
+
+  for (const job of jobs) {
+    const key = taskGroupKey(job);
+    const group = groups.get(key.groupId) ?? {
+      groupKind: key.groupKind,
+      title: key.title,
+      jobs: [],
+    };
+    group.jobs.push(job);
+    groups.set(key.groupId, group);
+  }
+
+  return Array.from(groups.entries())
+    .map(([groupId, group]) => {
+      const orderedJobs = group.jobs.slice().sort(compareTaskJobs);
+      const explicitTotal = Math.max(
+        ...orderedJobs.map(job => job.orchestration.totalSteps ?? 0),
+        0,
+      );
+      const totalSteps = Math.max(explicitTotal, orderedJobs.length, 1);
+      const activeStep = orderedJobs.find(job => !isTerminalStatus(job.status));
+      return {
+        groupId,
+        groupKind: group.groupKind,
+        title: group.title,
+        status: aggregateTaskStatus(orderedJobs, totalSteps),
+        progressPercent: aggregateTaskProgress(orderedJobs, totalSteps),
+        completedSteps: orderedJobs.filter(job => isSuccessfulStatus(job.status)).length,
+        totalSteps,
+        activeStepId: activeStep?.orchestration.stepId ?? activeStep?.id ?? null,
+        latestEvent: latestTaskEvent(orderedJobs),
+        metadataState: orderedJobs.some(job => job.orchestration.metadataState === "degraded")
+          ? "degraded"
+          : "clean",
+        jobs: orderedJobs,
+      } satisfies UserWorkerTaskGroup;
+    })
+    .sort((a, b) => {
+      const aDate = Math.max(...a.jobs.map(job => job.createdAt.getTime()), 0);
+      const bDate = Math.max(...b.jobs.map(job => job.createdAt.getTime()), 0);
+      return bDate - aDate || a.groupId.localeCompare(b.groupId);
+    });
+}
+
+async function projectJobRows(
+  repo: WorkerJobMonitorRepository,
+  jobs: Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>,
+  eventLimit = 1,
+): Promise<UserWorkerJobSummary[]> {
+  const jobIds = jobs.map(job => job.id);
+  const [events, artifacts] = await Promise.all([
+    repo.listEvents(jobIds, eventLimit),
+    repo.listArtifacts(jobIds),
+  ]);
+  const eventsByJobId = groupByJobId(events);
+  const artifactsByJobId = groupByJobId(artifacts);
+  return jobs.map(job => projectJob(job, eventsByJobId, artifactsByJobId));
+}
+
+function rowIsInScope(
+  row: WorkerJobRow,
+  auth: WorkerJobMonitorAuth,
+): boolean {
+  return row.tenantId === auth.tenantId && row.requestedByUserId === auth.userId;
+}
+
+async function resolveDependencyRows(
+  repo: WorkerJobMonitorRepository,
+  auth: WorkerJobMonitorAuth,
+  initialRows: Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>,
+): Promise<Array<WorkerJobRow & { worker: WorkerSummaryRow | null }>> {
+  if (!repo.listUserJobsByIds) return initialRows;
+
+  const rowsById = new Map(initialRows.map(row => [row.id, row]));
+  let pending = Array.from(new Set(initialRows.flatMap(row => projectOrchestration(row).dependsOnJobIds)));
+  let rounds = 0;
+  while (pending.length > 0 && rounds < 4 && rowsById.size < MAX_TASK_GROUP_SOURCE_JOBS + MAX_DEPENDENCY_JOBS) {
+    const dependencyRows = await repo.listUserJobsByIds({
+      auth,
+      jobIds: pending.slice(0, MAX_DEPENDENCY_JOBS),
+    });
+    const nextPending: string[] = [];
+    for (const row of dependencyRows) {
+      if (!rowIsInScope(row, auth) || rowsById.has(row.id)) continue;
+      rowsById.set(row.id, row);
+      nextPending.push(...projectOrchestration(row).dependsOnJobIds);
+    }
+    pending = Array.from(new Set(nextPending.filter(id => !rowsById.has(id))));
+    rounds += 1;
+  }
+  return Array.from(rowsById.values());
 }
 
 export async function listUserWorkerJobs(
@@ -531,14 +902,47 @@ export async function listUserWorkerJobs(
     limit: input.limit ?? 50,
     offset: input.offset ?? 0,
   });
-  const jobIds = jobs.map((job) => job.id);
-  const [events, artifacts] = await Promise.all([
-    repo.listEvents(jobIds, 1),
-    repo.listArtifacts(jobIds),
-  ]);
 
   return {
-    items: jobs.map((job) => projectJob(job, groupByJobId(events), groupByJobId(artifacts))),
+    items: await projectJobRows(repo, jobs),
+  };
+}
+
+export async function listUserWorkerTaskGroups(
+  input: {
+    auth: WorkerJobMonitorAuth;
+    limit?: number;
+    offset?: number;
+  },
+  deps: { repo?: WorkerJobMonitorRepository } = {},
+): Promise<UserWorkerTaskGroupsPage> {
+  const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const limit = Math.max(1, Math.min(input.limit ?? 25, 100));
+  const offset = Math.max(0, input.offset ?? 0);
+  const sourceLimit = MAX_TASK_GROUP_SOURCE_JOBS + 1;
+  const openRows = await repo.listUserJobs({
+    auth: input.auth,
+    statuses: OPEN_USER_WORKER_JOB_STATUSES,
+    limit: sourceLimit,
+    offset: 0,
+  });
+  const sourceTruncated = openRows.length > MAX_TASK_GROUP_SOURCE_JOBS;
+  const scopedOpenRows = openRows
+    .slice(0, MAX_TASK_GROUP_SOURCE_JOBS)
+    .filter(row => rowIsInScope(row, input.auth));
+  const allRows = await resolveDependencyRows(repo, input.auth, scopedOpenRows);
+  const summaries = await projectJobRows(repo, allRows);
+  const openJobIds = new Set(scopedOpenRows.map(row => row.id));
+  const allGroups = groupUserWorkerJobs(summaries).filter(group =>
+    group.jobs.some(job => openJobIds.has(job.id))
+  );
+  const end = offset + limit;
+
+  return {
+    groups: allGroups.slice(offset, end),
+    hasMore: allGroups.length > end,
+    nextOffset: end,
+    sourceTruncated,
   };
 }
 

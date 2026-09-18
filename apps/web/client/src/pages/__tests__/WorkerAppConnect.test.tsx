@@ -127,6 +127,7 @@ describe("WorkerAppConnect", () => {
     render(<WorkerAppConnect />);
 
     expect(await screen.findByText("My render worker")).toBeInTheDocument();
+    expect(screen.getByText("เชื่อมต่อ SmartAIHub Runner")).toBeInTheDocument();
     expect(screen.getByText("DESKTOP-1")).toBeInTheDocument();
     expect(screen.queryByText(/worker-registration-token/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/copy worker key/i)).not.toBeInTheDocument();

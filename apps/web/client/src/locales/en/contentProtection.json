@@ -1,0 +1,134 @@
+{
+  "nav.overview": "Overview",
+  "nav.assets": "Protected assets",
+  "nav.verify": "Verify a copy",
+  "nav.verifications": "Verification results",
+  "nav.cases": "Cases",
+  "nav.rights": "Rights & ownership",
+  "nav.certificate": "Certificate",
+  "nav.settings": "Settings",
+  "eyebrow": "Content Protection",
+  "workspaceTitle": "Content Protection",
+  "workspaceDescription": "Protect final image, audio, and video artifacts, then inspect reproducible technical evidence.",
+  "userChoice": "User-controlled ON/OFF",
+  "technicalEvidenceOnly": "Technical evidence only.",
+  "evidenceDisclaimer": "A watermark, hash, fingerprint, or timestamp does not by itself establish legal ownership. Review rights, licences, and chain-of-title evidence before making a legal declaration.",
+  "stageAria": "Digital watermark processing stages",
+  "publicId": "Public ID",
+  "choice": "Choice",
+  "compoundBound": "Compound bound",
+  "disabledByUser": "Digital watermark: OFF — disabled by user",
+  "protectFinalTitle": "Protect a final asset",
+  "protectFinalDescription": "The digital watermark is created only after the selected final bytes are available. Intermediate clips are not treated as the final protected artifact.",
+  "sourceAssetId": "Source media asset ID",
+  "mediaAssetIdPlaceholder": "Media asset ID",
+  "digitalWatermarkChoice": "Digital watermark choice",
+  "on": "ON",
+  "off": "OFF",
+  "imageProtectionUnavailable": "Image protection is not enabled for this tenant yet. Ask an administrator to enable the image provider rollout flag.",
+  "onNotice": "Digital watermark: ON — final artifact will wait for self-verification.",
+  "offNotice": "Digital watermark: OFF — disabled by user; output is unprotected.",
+  "queueingProtection": "Queueing protection…",
+  "protectFinalAction": "Protect final artifact",
+  "whenCreatedTitle": "When is the watermark created?",
+  "whenCreatedDescription": "After final compound/render bytes are persisted, during the protection worker stages below.",
+  "recentAssets": "Recent protected assets",
+  "noAssets": "No protected assets yet. Choose ON above to protect a final artifact.",
+  "assetNotFound": "Asset not found.",
+  "sourceSha256": "Source SHA-256",
+  "protectedSha256": "Protected SHA-256",
+  "pendingSelfVerification": "Pending self-verification",
+  "compoundPlan": "Compound plan",
+  "standaloneAsset": "Standalone asset",
+  "technicalSignal": "Technical signal",
+  "selfDetectedQcPassed": "Self-detected and QC passed",
+  "notYetVerified": "Not yet verified",
+  "detectedAfterCreation": "Detected after creation",
+  "awaitingWorker": "Awaiting worker result",
+  "dimensionsDuration": "Dimensions / duration",
+  "rightsAction": "Rights & ownership",
+  "certificateAction": "Creation certificate",
+  "verifyTitle": "Verify a suspected copy",
+  "verifyDescription": "Upload a suspected image, video, or audio file, or enter a tenant-owned library asset ID. The result reports technical match signals, not a legal verdict.",
+  "uploadSuspected": "Upload suspected media",
+  "uploadingSuspected": "Uploading suspected media…",
+  "uploadedChecksumPending": "Uploaded. Server checksum will be calculated before verification.",
+  "uploadFailed": "Upload failed",
+  "uploadNotRegistered": "The uploaded media was not registered as a tenant asset.",
+  "invalidMediaType": "Choose an image, video, or audio file.",
+  "startVerification": "Start technical verification",
+  "startingVerification": "Starting verification…",
+  "verificationResult": "Verification result",
+  "processing": "Processing…",
+  "noVerification": "No verification run found.",
+  "technicalMatchDisclaimer": "Technical match evidence does not by itself establish legal ownership.",
+  "defaultChoiceTitle": "Default protection choice",
+  "defaultChoiceDescription": "You control whether final exports request an invisible digital watermark. This does not change visible branding watermarks.",
+  "currentDefault": "Current default",
+  "caseDetail": "Case detail",
+  "backToCases": "Back to cases",
+  "caseNotFound": "Case not found.",
+  "createCaseTitle": "Create an evidence case",
+  "createCaseDescription": "Use a case to collect technical evidence before any legal or external review decision.",
+  "caseTitlePlaceholder": "Case title",
+  "assetIdsPlaceholder": "Asset IDs (comma separated)",
+  "caseSummaryPlaceholder": "Case summary",
+  "createCase": "Create case",
+  "evidencePackageSealed": "Evidence package sealed:",
+  "technicalEvidenceCase": "Technical evidence case",
+  "sealEvidence": "Seal evidence package",
+  "allowDownload": "Allow reviewer to download evidence ZIP",
+  "createReviewerLink": "Create 24h reviewer link",
+  "reviewerUrl": "Reviewer URL (share only with the intended reviewer):",
+  "noCases": "No cases yet.",
+  "rightsTitle": "Rights & ownership",
+  "certificateTitle": "Creation certificate",
+  "rightsHolderName": "Rights holder name",
+  "contactEmail": "Contact email",
+  "claimType": "Claim type",
+  "legalDeclaration": "I confirm this is a user-provided declaration subject to applicable law.",
+  "saveRightsClaim": "Save rights claim",
+  "selectAssetRights": "Select a protected asset to inspect rights evidence.",
+  "createOrLoadCertificate": "Create or load certificate",
+  "certificateRequirement": "A certificate requires a verified final protected artifact."
+  ,"notEnabledTitle": "Content Protection is not enabled"
+  ,"notEnabledDescription": "Ask your tenant administrator to enable this workspace. No provider credentials or watermark secrets are exposed here."
+  ,"navigationAria": "Content Protection navigation"
+  ,"loadingEvidence": "Loading evidence…"
+  ,"assetArtifact": "{{modality}} final artifact"
+  ,"publicAssetId": "Public asset ID"
+  ,"invisibleImageWatermark": "Invisible image watermark"
+  ,"videoWatermark": "Video watermark"
+  ,"audioWatermark": "Audio watermark"
+  ,"fingerprintSignal": "Fingerprint signal"
+  ,"imageFingerprint": "PDQ / crop-resize alignment"
+  ,"videoFingerprint": "Perceptual video fingerprint"
+  ,"audioFingerprint": "Audio fingerprint"
+  ,"assetNotFound": "Asset not found."
+  ,"signalsReviewed": "Signals reviewed"
+  ,"exactSha256": "Exact SHA-256 integrity"
+  ,"watermarkRecord": "Protected asset watermark record and self-verification status"
+  ,"imageDhash": "Image dHash similarity when an image perceptual hash is available"
+  ,"queryAssetId": "Query media asset ID"
+  ,"verificationModality": "Verification modality"
+  ,"image": "Image"
+  ,"video": "Video"
+  ,"audio": "Audio"
+  ,"defaultChoiceAria": "Default digital watermark choice"
+  ,"loadingCase": "Loading case…"
+  ,"publicCaseId": "Public case ID"
+  ,"caseSummaryFallback": "Technical evidence case"
+  ,"rightsDeclaration": "I confirm this is a user-provided declaration subject to applicable law."
+  ,"reviewerUrlWarning": "Reviewer URL (share only with the intended reviewer):"
+  ,"statusQueued": "Queued"
+  ,"statusProcessing": "Processing"
+  ,"statusProtected": "Protected"
+  ,"statusProtectedWarnings": "Protected with warnings"
+  ,"statusFailed": "Failed"
+  ,"statusRequested": "Protection requested"
+  ,"statusUnprotected": "Unprotected by user choice"
+  ,"statusInconclusive": "Inconclusive"
+  ,"statusDraft": "Draft"
+  ,"statusOpen": "Open"
+  ,"statusCompleted": "Completed"
+}

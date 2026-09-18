@@ -138,6 +138,7 @@ import { getSecurityPinVersion } from "../services/securityPinService";
 import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
 import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
 import { ImagePromptSafetyError } from "../services/imagePromptSafetyService";
+import { contentProtectionIntentSchema } from "../../shared/contentProtectionWorker";
 
 /**
  * Parse an HTTP `Retry-After` header value into a positive number of seconds.
@@ -723,6 +724,33 @@ function requireMediaTenantId(ctx: {
     });
   }
   return tenantId;
+}
+
+async function validateMediaProtectionIntent(
+  tenantId: string,
+  modality: "image" | "video" | "audio",
+  intent: z.infer<typeof contentProtectionIntentSchema> | undefined,
+): Promise<z.infer<typeof contentProtectionIntentSchema> | undefined> {
+  if (!intent) return undefined;
+  const flags = await getTenantFeatureFlags(tenantId) as unknown as Record<string, unknown>;
+  if (flags.contentProtectionEnabled !== true) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Content protection is not enabled" });
+  }
+  if (intent.choice === "on" && modality === "image" && flags.contentProtectionImageProviderEnabled !== true) {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Image content protection is not enabled" });
+  }
+  return {
+    ...intent,
+    choiceSource: intent.choiceSource ?? (intent.choice === "on" ? "per_export" : "disabled_by_user"),
+  };
+}
+
+function gateMediaTaskResult(
+  task: MediaTask,
+  intent: z.infer<typeof contentProtectionIntentSchema> | undefined,
+): MediaTask {
+  if (intent?.choice !== "on") return task;
+  return { ...task, resultUrl: undefined };
 }
 
 async function enforceMediaAgeSafety(params: {
@@ -3117,10 +3145,12 @@ export const mediaRouter = router({
         sharedGroupId: z.number().int().optional(),
         mcpApprovalId: z.string().optional(),
         idempotencyKey: z.string().max(128).optional(),
+        protectionIntent: contentProtectionIntentSchema.optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireMediaTenantId(ctx);
+      const tenantId = requireMediaTenantId(ctx);
+      const protectionIntent = await validateMediaProtectionIntent(tenantId, "audio", input.protectionIntent);
       const rateLimitKey = `user:${ctx.user.id}`;
       if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
         throw new TRPCError({
@@ -3146,6 +3176,10 @@ export const mediaRouter = router({
       const normalizedExtraParams = normalizedModelId === GEMINI_3_1_FLASH_TTS_MODEL_ID
         ? normalizeGemini31FlashTtsExtraParams(input.extraParams)
         : input.extraParams;
+      const mediaAudioExtraParams = {
+        ...(normalizedExtraParams ?? {}),
+        ...(protectionIntent ? { __content_protection_intent: protectionIntent } : {}),
+      };
       assertAudioModelExtraParamsValid(model, normalizedExtraParams);
 
       // Lux TTS rate limit (5 requests per 10 minutes)
@@ -3231,7 +3265,7 @@ export const mediaRouter = router({
           trace_id: debugTraceId,
         };
 
-        return await mediaGenerationService.generateAudioAsync(
+        return gateMediaTaskResult(await mediaGenerationService.generateAudioAsync(
           {
             text: input.text,
             model,
@@ -3239,7 +3273,7 @@ export const mediaRouter = router({
             speed: input.speed,
             apiConfig: apiConfigWithProvider,
             extraParams: {
-              ...normalizedExtraParams,
+              ...mediaAudioExtraParams,
               ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             },
             publicUrl: ctx.publicUrl ?? undefined,
@@ -3252,7 +3286,7 @@ export const mediaRouter = router({
             },
           },
           userToken
-        );
+        ), protectionIntent);
       } catch (error) {
         console.error("[Media] Audio generation failed, refunding credits:", error);
         try {
@@ -3318,10 +3352,12 @@ export const mediaRouter = router({
           shortLabel: z.string().trim().min(1).max(255),
           canvasRatio: z.string().trim().min(1).max(16).optional(),
         }).optional(),
+        protectionIntent: contentProtectionIntentSchema.optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
       const tenantId = requireMediaTenantId(ctx);
+      const protectionIntent = await validateMediaProtectionIntent(tenantId, "image", input.protectionIntent);
       if (input.presentationContext) {
         await getPresentationDeckDetail(input.presentationContext.deckId, {
           userId: ctx.user.id,
@@ -3372,6 +3408,10 @@ export const mediaRouter = router({
         });
       }
       const effectiveImageExtraParams = resolvedGrokRequest?.extraParams ?? input.extraParams;
+      const mediaImageExtraParams = {
+        ...(effectiveImageExtraParams ?? {}),
+        ...(protectionIntent ? { __content_protection_intent: protectionIntent } : {}),
+      };
       const effectiveReferenceImageUrls = resolvedGrokRequest?.referenceImageUrls ?? input.referenceImageUrls;
       assertMediaPromptWithinModelLimit({
         value: input.prompt,
@@ -3475,14 +3515,14 @@ export const mediaRouter = router({
           requestedByUserId: ctx.user.id,
           idempotencyKey: input.idempotencyKey,
         });
-        return buildHermesMediaTaskEnvelope({
+        return gateMediaTaskResult(buildHermesMediaTaskEnvelope({
           taskId: result.taskId,
           userId: ctx.user.id,
           mediaType: "image",
           model: hermesProviderModelId,
           prompt: input.prompt,
-          extraParams: input.extraParams,
-        });
+          extraParams: mediaImageExtraParams,
+        }), protectionIntent);
       }
 
       const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
@@ -3550,14 +3590,14 @@ export const mediaRouter = router({
           argumentShape: mcpArgumentShape,
           idempotencyKey: input.idempotencyKey,
         });
-        return submitMcpMediaGeneration({
+        return gateMediaTaskResult(await submitMcpMediaGeneration({
           tenantId,
           prompt: input.prompt,
           model,
           metadata: transportMetadata,
           parameters: {
             ...modelTransport.defaultParams,
-            ...input.extraParams,
+            ...mediaImageExtraParams,
             ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             aspectRatio: input.aspectRatio,
             resolution: input.resolution,
@@ -3568,7 +3608,7 @@ export const mediaRouter = router({
             referenceStyleUrl: resolvedReferenceStyleUrl,
             hasReferenceStyle: Boolean(resolvedReferenceStyleUrl),
           },
-        });
+        }), protectionIntent);
       }
 
       // Check and deduct credits upfront to prevent race condition
@@ -3623,7 +3663,7 @@ export const mediaRouter = router({
             referenceStyleUrl: input.referenceStyleUrl,
             apiConfig: apiConfigWithProvider,
             extraParams: {
-              ...effectiveImageExtraParams,
+              ...mediaImageExtraParams,
               __reserved_credits: creditCost,
               __reserved_resolution: input.resolution,
               ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
@@ -3671,7 +3711,7 @@ export const mediaRouter = router({
             });
           }
         }
-        return task;
+        return gateMediaTaskResult(task, protectionIntent);
       } catch (error) {
         // Refund credits on failure
         console.error("[Media] Image generation failed, refunding credits:", error);
@@ -3742,10 +3782,12 @@ export const mediaRouter = router({
         // caller has no default Hermes connection for this asset type.
         hermesConnectionId: z.string().max(64).optional(),
         idempotencyKey: z.string().max(128).optional(),
+        protectionIntent: contentProtectionIntentSchema.optional(),
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireMediaTenantId(ctx);
+      const tenantId = requireMediaTenantId(ctx);
+      const protectionIntent = await validateMediaProtectionIntent(tenantId, "video", input.protectionIntent);
       assertMcpFieldsOnlyWithMcpTransport(input);
       // Rate limiting
       const rateLimitKey = `user:${ctx.user.id}`;
@@ -3799,6 +3841,10 @@ export const mediaRouter = router({
       const normalizedExtraParams = geminiOmniExtraParams
         ? { ...input.extraParams, ...geminiOmniExtraParams }
         : input.extraParams;
+      const mediaVideoExtraParams = {
+        ...(normalizedExtraParams ?? {}),
+        ...(protectionIntent ? { __content_protection_intent: protectionIntent } : {}),
+      };
       assertModelAwareVideoRequest({
         modelId: model,
         configJson: dbModel.configJson,
@@ -3900,14 +3946,14 @@ export const mediaRouter = router({
           requestedByUserId: ctx.user.id,
           idempotencyKey: input.idempotencyKey,
         });
-        return buildHermesMediaTaskEnvelope({
+        return gateMediaTaskResult(buildHermesMediaTaskEnvelope({
           taskId: result.taskId,
           userId: ctx.user.id,
           mediaType: "video",
           model: hermesProviderModelId,
           prompt: input.prompt,
-          extraParams: normalizedExtraParams,
-        });
+          extraParams: mediaVideoExtraParams,
+        }), protectionIntent);
       }
 
       const shouldUseMcpTransport = modelTransport.transport === "mcp" || input.transport === "mcp";
@@ -3972,14 +4018,14 @@ export const mediaRouter = router({
           argumentShape: mcpArgumentShape,
           idempotencyKey: input.idempotencyKey,
         });
-        return submitMcpMediaGeneration({
+        return gateMediaTaskResult(await submitMcpMediaGeneration({
           tenantId,
           prompt: input.prompt,
           model,
           metadata: transportMetadata,
           parameters: {
             ...modelTransport.defaultParams,
-            ...normalizedExtraParams,
+            ...mediaVideoExtraParams,
             ...(ageSafetyMetadata ? { __age_safety: ageSafetyMetadata } : {}),
             duration,
             aspectRatio: input.aspectRatio,
@@ -3989,7 +4035,7 @@ export const mediaRouter = router({
             referenceVideoUrls: resolvedReferenceVideoUrls,
             referenceVideoCount: resolvedReferenceVideoUrls?.length ?? 0,
           },
-        });
+        }), protectionIntent);
       }
 
       // Check and deduct credits upfront to prevent race condition
@@ -4042,7 +4088,7 @@ export const mediaRouter = router({
             referenceAudioUrls: input.referenceAudioUrls,
             apiConfig: apiConfigWithProvider,
             extraParams: {
-              ...normalizedExtraParams,
+              ...mediaVideoExtraParams,
               __reserved_credits: creditCost,
               __reserved_resolution: input.resolution,
               __reserved_duration: duration,
@@ -4061,7 +4107,7 @@ export const mediaRouter = router({
           userToken
         );
 
-        return task;
+        return gateMediaTaskResult(task, protectionIntent);
       } catch (error) {
         if (isMediaProviderCapacityError(error)) {
           const retryDelayMs = getMediaRetryDelayMsFromError(error) ?? 5 * 60 * 1000;
@@ -4089,7 +4135,7 @@ export const mediaRouter = router({
               referenceAudioUrls: input.referenceAudioUrls,
               apiConfig: apiConfigWithProvider,
               extraParams: {
-                ...normalizedExtraParams,
+                ...mediaVideoExtraParams,
                 __reserved_credits: creditCost,
                 __reserved_resolution: input.resolution,
                 __reserved_duration: duration,

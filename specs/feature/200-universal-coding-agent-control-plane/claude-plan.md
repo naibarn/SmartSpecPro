@@ -38,9 +38,9 @@ Define provider-neutral AgentTaskManifest, session, turn, normalized event, appr
 
 ### Task 2: Provider adapter boundary
 
-**Files:** Add/modify provider adapter modules under `python-backend/app/services/agent_runtime` and Web runtime selection; add fixtures/tests for Codex, Claude, Antigravity and DeepSeek.
+**Files:** Add/modify provider adapter modules under `python-backend/app/services/agent_runtime` and Web runtime selection; add fixtures/tests for Codex, Claude, Antigravity, DeepSeek, Hermes and OpenClaw-compatible runtimes. Feature 205 owns host scanning/registration and supervised process launch.
 
-Define one adapter interface for start/stream/pause/resume/cancel/collect/health, capability requirements and native evidence. Normalize provider events without flattening meaningful native diagnostics. Keep sandbox/CLI volatility isolated and never place secrets in manifests or logs.
+Define one adapter interface for start/stream/pause/resume/cancel/collect/health, capability requirements and native evidence. Normalize provider events without flattening meaningful native diagnostics. Keep sandbox/CLI volatility isolated and never place secrets in manifests or logs. Consume only the tool/adapter identity and readiness projection published by Feature 205; do not implement a second machine scanner or registry.
 
 **Tests first:** provider capability negotiation, malformed/empty output, timeout, duplicate/out-of-order events, cancellation and adapter error taxonomy.
 
@@ -77,4 +77,3 @@ Roll out manifest/Job projection, one provider adapter, shared Runner, context/a
 ## Definition of done
 
 Every source heading and acceptance criterion is mapped, Agent Tasks use shared Job/Runner/control truth, providers are isolated behind adapters, context/assets/skills/MCP are scoped, results are verified, Chat UI is accessible and focused Web/Python/Rust tests pass.
-

@@ -1777,7 +1777,7 @@ export async function generateStartFrameRenderPlan(
         seriesId: params.seriesId,
         episodeId: params.episodeId,
         taskClass: "start_frame_prompt",
-        settings: params.episodeGenerationSettings,
+        settings: params.episodeGenerationSettings ?? {},
       },
     });
 
@@ -1831,7 +1831,7 @@ export async function generateStartFrameRenderPlan(
         seriesId: params.seriesId,
         episodeId: params.episodeId,
         taskClass: "start_frame_prompt",
-        settings: params.episodeGenerationSettings,
+        settings: params.episodeGenerationSettings ?? {},
       },
     });
     const retryUsage = retry.response.usage;
@@ -2864,6 +2864,8 @@ export interface GenerateStartFrameShotPromptParams {
   publicUrl?: string | null;
   seriesId: number;
   episodeId: number;
+  /** Episode-scoped LLM quality settings resolved by the owning router. */
+  episodeGenerationSettings?: unknown;
   shotNumber: number;
   /** Temporal role for skill-first authoring. Omitted keeps legacy callers on start behavior. */
   frameRole?: VerticalDramaFrameRole;
@@ -3792,6 +3794,13 @@ export async function generateStartFrameShotPrompt(
           }
         : undefined
   );
+  const verticalDramaLlmContext = {
+    seriesId: params.seriesId,
+    episodeId: params.episodeId,
+    tenantId: params.tenantId,
+    settings: params.episodeGenerationSettings ?? {},
+    taskClass: "start_frame_prompt" as const,
+  };
 
   if (isPolicySafeSynopsisMode) {
     const executePolicyRewrite = (promptText: string) =>
@@ -3807,6 +3816,8 @@ export async function generateStartFrameShotPrompt(
         schema: policySafeSynopsisOutputSchema,
         firstAttemptMaxTokens: 1400,
         retryMaxTokens: 1800,
+        verticalDramaContext: verticalDramaLlmContext,
+        modelFallbackPolicy: "recommended",
       });
     let policyCall = await executePolicyRewrite(userPrompt);
     const policyCalls = [policyCall];
@@ -3998,6 +4009,8 @@ export async function generateStartFrameShotPrompt(
       schema: startFrameShotPromptOutputSchema,
       firstAttemptMaxTokens: 3000,
       retryMaxTokens: 4000,
+      verticalDramaContext: verticalDramaLlmContext,
+      modelFallbackPolicy: "recommended",
     });
 
   const roleAwareData = normalizeRoleAwareFramePromptOutput(
@@ -4098,6 +4111,8 @@ export async function generateStartFrameShotPrompt(
       schema: startFrameShotPromptOutputSchema,
       firstAttemptMaxTokens: 3000,
       retryMaxTokens: 4000,
+      verticalDramaContext: verticalDramaLlmContext,
+      modelFallbackPolicy: "recommended",
     });
     const retryUsage = retry.response.usage;
     const retryCreditsUsed = calculateCreditsForLLM(

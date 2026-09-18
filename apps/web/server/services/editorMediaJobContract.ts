@@ -19,6 +19,21 @@ export type WorkerJobInsertProjection = {
   idempotencyKey: string;
 };
 
+export type EditorRuntimeRouting = {
+  runtimeType: "node_job_worker" | "desktop_zeroclaw_managed";
+  available: boolean;
+};
+
+export function resolveEditorRuntimeRouting(
+  jobType: string,
+  nodeExecutorEnabled: boolean,
+): EditorRuntimeRouting {
+  if (jobType === "video.composition_scan") {
+    return { runtimeType: "node_job_worker", available: nodeExecutorEnabled };
+  }
+  return { runtimeType: "desktop_zeroclaw_managed", available: true };
+}
+
 const JOB_TYPE_BY_OPERATION: Record<MediaOperation, string> = {
   "media.probe": "editor_media_probe",
   "media.proxy": "editor_media_proxy",

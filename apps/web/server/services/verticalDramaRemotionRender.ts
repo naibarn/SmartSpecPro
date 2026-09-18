@@ -2487,11 +2487,12 @@ export async function reconcileVdRemotionAssembly(
     !Array.isArray(jobOutput.contentProtection)
       ? (jobOutput.contentProtection as Record<string, unknown>)
       : null;
-  if (protectionGate?.status === "PROTECTION_REQUESTED") {
+  let protectedOutputRef: string | null = null;
+  if (protectionGate && protectionGate.status !== "UNPROTECTED_BY_USER_CHOICE") {
     const protectionAssetId = String(protectionGate.protectionAssetId ?? "").trim();
     const [protectionAsset] = protectionAssetId
       ? await db
-          .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage })
+          .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage, protectedObjectKey: contentProtectionAssets.protectedObjectKey })
           .from(contentProtectionAssets)
           .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
           .limit(1)
@@ -2507,9 +2508,18 @@ export async function reconcileVdRemotionAssembly(
       });
       return { reconciled: true, status: "failed" };
     }
+    protectedOutputRef = String(protectionAsset.protectedObjectKey ?? protectionGate.protectedObjectKey ?? "").trim() || null;
+    if (!protectedOutputRef) {
+      await persistCompiledVideoState(owner, {
+        pendingJobId: undefined,
+        status: "failed",
+        error: "Protected artifact passed status gate without a protected output reference",
+      });
+      return { reconciled: true, status: "failed" };
+    }
   }
 
-  const rawOutputUrl = await resolveRemotionOutputRef(job as WorkerJob);
+  const rawOutputUrl = protectedOutputRef || await resolveRemotionOutputRef(job as WorkerJob);
   if (!rawOutputUrl) {
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,

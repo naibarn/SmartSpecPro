@@ -209,6 +209,31 @@ function userMessageContent(callIndex = 0): string {
 }
 
 describe("generateStartFrameShotPrompt — mode dispatch (a, b)", () => {
+  it("passes the start-frame task policy and curated fallback to the LLM wrapper", async () => {
+    mockExecute.mockResolvedValue(
+      successResponse({
+        prompt: "a cinematic prompt",
+        negative_prompt: "no blur",
+      })
+    );
+
+    await generateStartFrameShotPrompt(
+      baseShotParams({ imagePromptMode: "cinematic_narrative" })
+    );
+
+    expect(mockExecute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extraBodyParams: expect.objectContaining({
+          __verticalDramaReasoningPolicy: expect.objectContaining({
+            taskClass: "start_frame_prompt",
+            effort: "medium",
+            exclude: true,
+          }),
+        }),
+      })
+    );
+  });
+
   it("mode `policy_safe_rewrite` loads the synopsis skill", async () => {
     mockExecute.mockResolvedValue(
       successResponse({

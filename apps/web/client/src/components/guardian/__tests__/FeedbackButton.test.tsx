@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +9,7 @@ const mockRoute = vi.hoisted(() => ({
 const feedbackMocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   mutate: vi.fn(),
+  createChat: vi.fn(),
   user: null as { role?: string } | null,
 }));
 
@@ -25,7 +27,30 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    chat: {
+      createConversation: {
+        useMutation: () => ({
+          mutateAsync: feedbackMocks.createChat,
+          isPending: false,
+          error: null,
+        }),
+      },
+    },
   },
+}));
+
+vi.mock("@/components/chat/ChatView", () => ({
+  ChatView: ({ conversationId }: { conversationId: number | null }) => (
+    <section data-testid="global-chat-view">
+      ChatView conversation {conversationId ?? "pending"}
+    </section>
+  ),
+}));
+
+vi.mock("@/components/chat/UniversalControlPlanePanel", () => ({
+  UniversalControlPlanePanel: () => (
+    <section data-testid="global-control-plane">Task Control Center</section>
+  ),
 }));
 
 vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
@@ -47,6 +72,8 @@ describe("FeedbackButton placement", () => {
     feedbackMocks.confirm.mockReset();
     feedbackMocks.confirm.mockResolvedValue(false);
     feedbackMocks.mutate.mockClear();
+    feedbackMocks.createChat.mockReset();
+    feedbackMocks.createChat.mockResolvedValue({ id: 42 });
     feedbackMocks.user = null;
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
@@ -55,10 +82,15 @@ describe("FeedbackButton placement", () => {
     });
   });
 
+  function openFeedbackForm() {
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByRole("tab", { name: "Send Feedback" }));
+  }
+
   it("docks to the bottom right by default", () => {
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open feedback dialog");
+    const button = screen.getByLabelText("Open AI Chat and Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -76,7 +108,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open feedback dialog");
+    const button = screen.getByLabelText("Open AI Chat and Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -93,7 +125,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open feedback dialog");
+    const button = screen.getByLabelText("Open AI Chat and Feedback");
     expect(button.style.right).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.left).toBe("");
@@ -108,7 +140,7 @@ describe("FeedbackButton placement", () => {
 
     render(<FeedbackButton />);
 
-    const button = screen.getByLabelText("Open feedback dialog");
+    const button = screen.getByLabelText("Open AI Chat and Feedback");
     expect(button.style.left).toBe("16px");
     expect(button.style.bottom).toBe("calc(16px + env(safe-area-inset-bottom))");
     expect(button.style.right).toBe("");
@@ -116,7 +148,7 @@ describe("FeedbackButton placement", () => {
 
   it("keeps normal feedback as the default and submits without confirmation", async () => {
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open feedback dialog"));
+    openFeedbackForm();
     fireEvent.change(screen.getByPlaceholderText("Title"), {
       target: { value: "Normal feedback" },
     });
@@ -130,7 +162,7 @@ describe("FeedbackButton placement", () => {
 
   it("uses a wrapping textarea for long titles", () => {
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open feedback dialog"));
+    openFeedbackForm();
 
     const titleField = screen.getByPlaceholderText("Title");
     expect(titleField.tagName).toBe("TEXTAREA");
@@ -139,7 +171,7 @@ describe("FeedbackButton placement", () => {
 
   it("requires confirmation before submitting urgent feedback", async () => {
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open feedback dialog"));
+    openFeedbackForm();
     fireEvent.change(screen.getByPlaceholderText("Title"), {
       target: { value: "Urgent feedback" },
     });
@@ -155,10 +187,39 @@ describe("FeedbackButton placement", () => {
     expect(feedbackMocks.mutate).not.toHaveBeenCalled();
   });
 
+  it("opens AI Chat from the single combined Help and Feedback button", async () => {
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+
+    expect(screen.getByRole("tab", { name: "AI Chat" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("global-chat-view")).toHaveTextContent(
+        "conversation 42",
+      );
+    });
+    expect(feedbackMocks.createChat).toHaveBeenCalledWith({
+      title: "AI Chat Assistant",
+    });
+  });
+
+  it("keeps Task Control Center in the same combined panel", () => {
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat and Feedback"));
+    fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
+
+    expect(screen.getByTestId("global-control-plane")).toBeInTheDocument();
+    expect(mockRoute.setLocation).not.toHaveBeenCalledWith(
+      "/chat?panel=control-plane",
+    );
+  });
+
   it("shows the Feedback Hub link only to admins", () => {
     feedbackMocks.user = { role: "admin" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open feedback dialog"));
+    openFeedbackForm();
 
     expect(
       screen.getByRole("button", { name: /Admin Feedback Hub/ }),
@@ -170,7 +231,7 @@ describe("FeedbackButton placement", () => {
   it("does not show the Feedback Hub link to non-admins", () => {
     feedbackMocks.user = { role: "domain_admin" };
     render(<FeedbackButton />);
-    fireEvent.click(screen.getByLabelText("Open feedback dialog"));
+    openFeedbackForm();
 
     expect(
       screen.queryByRole("button", { name: /Admin Feedback Hub/ }),

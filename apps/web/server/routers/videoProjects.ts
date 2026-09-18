@@ -4471,17 +4471,47 @@ export const videoProjectsRouter = router({
         };
       }
 
-      const outputUrl =
-        typeof (jobRow.outputJson as Record<string, unknown> | null)?.outputUrl === "string"
-          ? ((jobRow.outputJson as Record<string, unknown>).outputUrl as string)
-          : null;
+      const jobOutput = jobRow.outputJson as Record<string, unknown> | null;
+      const protectionGate = jobOutput?.contentProtection &&
+        typeof jobOutput.contentProtection === "object" &&
+        !Array.isArray(jobOutput.contentProtection)
+        ? jobOutput.contentProtection as Record<string, unknown>
+        : null;
+      let outputUrl = typeof jobOutput?.outputUrl === "string"
+        ? jobOutput.outputUrl
+        : null;
+      let effectiveStatus = jobRow.status;
+      let protectionFailure: string | null = null;
+      if (protectionGate && protectionGate.status !== "UNPROTECTED_BY_USER_CHOICE") {
+        if (protectionGate.status === "PROTECTION_REQUESTED") {
+          outputUrl = null;
+        } else if (protectionGate.status === "PROTECTED" || protectionGate.status === "PROTECTED_WITH_WARNINGS") {
+          const protectedRef = typeof protectionGate.protectedObjectKey === "string"
+            ? protectionGate.protectedObjectKey.trim()
+            : "";
+          if (protectedRef) {
+            outputUrl = /^(https?:\/\/|\/)/i.test(protectedRef)
+              ? protectedRef
+              : await storageResolveUrl(protectedRef);
+          } else {
+            outputUrl = null;
+            protectionFailure = "Protected artifact reference is not available yet";
+          }
+        } else {
+          effectiveStatus = "failed";
+          outputUrl = null;
+          protectionFailure = typeof protectionGate.errorMessage === "string"
+            ? protectionGate.errorMessage
+            : "Final artifact protection did not pass verification";
+        }
+      }
 
       return {
         profile,
         jobId,
-        status: jobRow.status,
-        resultVideoUrl: jobRow.status === "completed" ? outputUrl : null,
-        failureReason: jobRow.status === "failed" ? (jobRow.failureReason ?? null) : null,
+        status: effectiveStatus,
+        resultVideoUrl: effectiveStatus === "completed" ? outputUrl : null,
+        failureReason: effectiveStatus === "failed" ? (protectionFailure ?? jobRow.failureReason ?? null) : null,
         updatedAt: (jobRow.finishedAt ?? jobRow.startedAt ?? jobRow.createdAt)?.toISOString?.() ?? null,
       };
     }),

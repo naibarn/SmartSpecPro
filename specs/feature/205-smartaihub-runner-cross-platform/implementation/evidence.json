@@ -1,0 +1,17 @@
+{
+  "contract_and_security": "pass",
+  "runtime_and_recovery": "pass_local",
+  "wss_https_transport": "pass_local_implementation",
+  "real_process_adapters": "partial_provider_evidence_pending",
+  "container_entrypoint_reconciliation": "pass_local_contract",
+  "shared_container_target": "unverified",
+  "windows_x86_64_host": "unverified",
+  "macos_intel_host": "unverified",
+  "macos_apple_silicon_host": "unverified",
+  "linux_x86_64_host": "unverified",
+  "cloudflare_target_account": "unverified",
+  "browser_deployed_surface": "unverified",
+  "manual_release_policy": "pass",
+  "signed_provenance": "unverified",
+  "worker_boundary": "pass"
+}

@@ -3,6 +3,12 @@ import { createFeature186VerticalDramaJob } from "./feature186VerticalDramaJobAd
 
 export const COMPOSITION_SCAN_JOB_TYPE = "video.composition_scan" as const;
 
+export function isCompositionEvidencePromotable(output: unknown): boolean {
+  if (!output || typeof output !== "object" || Array.isArray(output)) return false;
+  const value = output as Record<string, unknown>;
+  return value.status === "available" && typeof value.evidenceRef === "string" && value.evidenceRef.trim().length > 0;
+}
+
 export type CompositionScanJobInput = {
   jobId: string;
   tenantId: string;

@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/202-ai_rough_cut_video_editor_unified/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/202-ai_rough_cut_video_editor_unified/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && pnpm exec vitest run shared/videoEditorContracts.test.ts client/src/components/videoeditor/__tests__/workerRenderHandoff.test.ts client/src/components/videoeditor/__tests__/workerEditorProject.test.ts server/services/__tests__/compositionScanJob.test.ts server/services/__tests__/editorChangeSetService.test.ts server/services/__tests__/editorOperationBridge.test.ts server/services/__tests__/editorAiModeContracts.test.ts server/services/__tests__/editorRenderParity.test.ts",
+  "sections": [
+    "section-01-project-adapter",
+    "section-02-operation-bridge",
+    "section-03-timeline-change-sets",
+    "section-04-ai-tools-transcript",
+    "section-05-preview-render-qc",
+    "section-06-acceptance-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-18T04:38:02.347869+00:00"
+}

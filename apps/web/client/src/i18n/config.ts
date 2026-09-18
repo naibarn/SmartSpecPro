@@ -32,6 +32,7 @@ export const ALL_NAMESPACES = [
   "admin",
   "social",
   "help",
+  "contentProtection",
 ] as const;
 
 export type Namespace = (typeof ALL_NAMESPACES)[number];

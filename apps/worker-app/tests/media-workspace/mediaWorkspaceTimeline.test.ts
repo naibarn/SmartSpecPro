@@ -81,6 +81,14 @@ describe("media workspace dead-air timeline", () => {
     expect(chooseRenderSourcePath("", "D:/opened-source.mp4")).toBe("D:/opened-source.mp4");
   });
 
+  it("skips a project file and resolves the real media source for a loaded project", () => {
+    expect(chooseRenderSourcePath(
+      "D:/C2177-ขวดดูดนม/C2177-ขวดดูดนม.videoproject.json",
+      "D:/C2177-ขวดดูดนม/C2177-ขวดดูดนม.videoproject.json",
+      ["D:/C2177-ขวดดูดนม/C3800.MP4"],
+    )).toBe("D:/C2177-ขวดดูดนม/C3800.MP4");
+  });
+
   it("normalizes Media Bin payloads that use name and filePath", () => {
     expect(normalizeTimelineDropAsset({ name: "C3784.MP4", filePath: "D:/C3784.MP4", mediaType: "video", durationMs: 105600 }))
       .toEqual({ name: "C3784.MP4", path: "D:/C3784.MP4", mediaType: "video", durationMs: 105600 });

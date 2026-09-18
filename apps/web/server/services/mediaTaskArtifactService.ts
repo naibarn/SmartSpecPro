@@ -20,6 +20,7 @@ import type {
   MediaTaskArtifactProjection,
   MediaType,
 } from "./mediaGenerationService";
+import { ensureMediaTaskContentProtection } from "./mediaTaskContentProtectionService";
 
 const DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 const MAX_BYTES: Record<MediaType, number> = {
@@ -271,6 +272,7 @@ function projectArtifact(row: MediaTaskArtifact): MediaTaskArtifactProjection {
   return {
     artifactId: String(row.id),
     outputIndex: row.outputIndex,
+    ...(row.mediaAssetId ? { mediaAssetId: row.mediaAssetId } : {}),
     ...(r2Url ? { r2Url } : {}),
     ...(row.r2StorageKey ? { r2StorageKey: row.r2StorageKey } : {}),
     r2Status: row.r2Status,
@@ -804,11 +806,28 @@ export async function projectMediaTaskArtifacts(input: {
   return input.tasks.map(task => {
     const rowsForTask =
       bySource.get(`${sourceKindForMediaTask(task)}:${task.id}`) ?? [];
+    const previousProtection = new Map(
+      (task.artifacts ?? []).map(artifact => [artifact.outputIndex, artifact]),
+    );
     return applyMediaArtifactProjection(
       task,
       rowsForTask
         .sort((a, b) => a.outputIndex - b.outputIndex)
-        .map(projectArtifact)
+        .map(row => {
+          const projected = projectArtifact(row);
+          const prior = previousProtection.get(projected.outputIndex);
+          if (!prior?.contentProtectionStatus) return projected;
+          return {
+            ...projected,
+            contentProtectionAssetId: prior.contentProtectionAssetId,
+            contentProtectionStatus: prior.contentProtectionStatus,
+            playbackUrl: prior.playbackUrl,
+            availabilityStatus: prior.availabilityStatus,
+            ...(prior.availabilityReason
+              ? { availabilityReason: prior.availabilityReason }
+              : {}),
+          };
+        })
     );
   });
 }
@@ -1068,5 +1087,10 @@ async function durabilizeHistoryTask(input: {
       return applyMediaArtifactProjection(input.task, []);
     }
   }
-  return ensureMediaTaskArtifactsForPolling(input);
+  const durable = await ensureMediaTaskArtifactsForPolling(input);
+  return ensureMediaTaskContentProtection({
+    task: durable,
+    tenantId: input.tenantId,
+    userId: input.userId,
+  });
 }

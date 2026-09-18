@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,6 +12,7 @@ import {
   SchedulePanel,
   type Artifact,
 } from "@/components/chat";
+import { UniversalControlPlanePanel } from "@/components/chat/UniversalControlPlanePanel";
 import { FinanceHub } from "@/components/finance/FinanceHub";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
@@ -46,6 +47,7 @@ import {
   ChevronDown,
   ChevronUp,
   ReceiptText,
+  Network,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -81,11 +83,13 @@ type RightPanel =
   | "artifacts"
   | "schedule"
   | "canvas"
-  | "finance";
+  | "finance"
+  | "control-plane";
 export default function Chat() {
   const { isLoading, isAuthenticated, user } = useAuth();
   const { t } = useScopedTranslation("chat");
   const [, setLocation] = useLocation();
+  const search = useSearch();
 
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | null
@@ -94,6 +98,10 @@ export default function Chat() {
     () => window.innerWidth >= 1024
   );
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
+  const [chatPromptRequest, setChatPromptRequest] = useState<{
+    id: number;
+    text: string;
+  } | null>(null);
   // Deep-link state from GlobalAlerts (e.g. /chat?dm=123&dmName=John)
   const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
   const [initialDmUserName, setInitialDmUserName] = useState<string>("");
@@ -217,7 +225,7 @@ export default function Chat() {
 
   // Parse URL search params for deep-linking from GlobalAlerts
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(search);
     const dm = params.get("dm");
     const dmName = params.get("dmName");
     const panel = params.get("panel");
@@ -240,12 +248,15 @@ export default function Chat() {
     } else if (panel === "finance") {
       setRightPanel("finance");
       window.history.replaceState({}, "", "/chat");
+    } else if (panel === "control-plane") {
+      setRightPanel("control-plane");
+      window.history.replaceState({}, "", "/chat");
     } else if (panel === "schedule") {
       setRightPanel("schedule");
       if (alertId) setInitialAlertId(Number(alertId));
       window.history.replaceState({}, "", "/chat");
     }
-  }, []);
+  }, [search]);
 
   const buildChatLaunchContext = (
     sessionId: string,
@@ -391,6 +402,7 @@ export default function Chat() {
     options?: { closeSidebar?: boolean }
   ) => {
     setSelectedConversationId(conversationId);
+    setChatPromptRequest(null);
     setRightPanel("none");
     setLocation(`/chat?c=${conversationId}`);
     if (options?.closeSidebar ?? window.innerWidth < 1024) {
@@ -405,6 +417,19 @@ export default function Chat() {
     const result = await createConversationWithDefaultModel();
     activateConversation(result.id);
     return result.id;
+  };
+
+  const handleOpenControlPlanePrompt = async (prompt: string) => {
+    try {
+      await ensureConversationId();
+      setChatPromptRequest({ id: Date.now(), text: prompt });
+      setRightPanel("none");
+      toast.success("เพิ่มงานใน Chat composer แล้ว ตรวจสอบก่อนส่งได้เลย");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "เปิด Chat composer ไม่สำเร็จ"
+      );
+    }
   };
 
   const handleOpenBrowserSession = async (options?: {
@@ -710,6 +735,20 @@ export default function Chat() {
           <LocaleToggle className="hidden xl:inline-flex" />
           <HelpButton page="/chat" variant="ghost" size="sm" />
           <Button
+            variant={rightPanel === "control-plane" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() =>
+              setRightPanel(
+                rightPanel === "control-plane" ? "none" : "control-plane"
+              )
+            }
+            className="h-9 shrink-0 gap-2"
+            aria-label="Open Task Control Center"
+          >
+            <Network className="h-4 w-4" />
+            <span className="hidden md:inline">Task Control</span>
+          </Button>
+          <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
             size="sm"
             onClick={() =>
@@ -1002,6 +1041,7 @@ export default function Chat() {
                     handleDismissBrowserSessionSuggestion
                   }
                   onOpenFinancePanel={() => setRightPanel("finance")}
+                  composerPrompt={chatPromptRequest}
                 />
               </div>
             </div>
@@ -1066,7 +1106,7 @@ export default function Chat() {
           className={cn(
             "min-h-0 flex-shrink-0 flex-col overflow-hidden bg-[var(--color-background-surface)] transition-all duration-200",
             rightPanel !== "none"
-              ? "fixed bottom-2 left-2 right-2 top-16 z-50 flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:static lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
+              ? "fixed bottom-2 left-2 right-2 top-16 z-[60] flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:relative lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
               : "pointer-events-none hidden w-0 translate-x-full border-l-0 lg:flex"
           )}
         >
@@ -1127,6 +1167,13 @@ export default function Chat() {
                 />
               </FinanceAccessGate>
             </div>
+          )}
+          {rightPanel === "control-plane" && (
+            <UniversalControlPlanePanel
+              conversationId={selectedConversationId}
+              onClose={() => setRightPanel("none")}
+              onOpenPrompt={prompt => void handleOpenControlPlanePrompt(prompt)}
+            />
           )}
           {rightPanel === "schedule" && (
             <SchedulePanel

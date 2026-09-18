@@ -1507,6 +1507,7 @@ export interface MediaTask {
 export interface MediaTaskArtifactProjection {
   artifactId: string;
   outputIndex: number;
+  mediaAssetId?: number;
   r2Url?: string;
   r2StorageKey?: string;
   r2Status: string;
@@ -1517,6 +1518,8 @@ export interface MediaTaskArtifactProjection {
   fallbackUrl?: string;
   availabilityStatus: string;
   availabilityReason?: string;
+  contentProtectionAssetId?: string;
+  contentProtectionStatus?: string;
 }
 
 async function durabilizeCompletedMediaTask(

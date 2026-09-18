@@ -1,11 +1,12 @@
 import type { Express, Request, Response } from "express";
 import { createHash } from "node:crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, or } from "drizzle-orm";
 
 import { getDb } from "../db";
 import { sendApiError } from "../middleware/publicApiHeaders";
-import { contentProtectionAssets, contentEvidencePackages, contentExternalReviewLinks } from "../../drizzle/schema";
+import { contentProtectionAssets, contentProtectionCases, contentEvidencePackages, contentExternalReviewLinks } from "../../drizzle/schema";
 import { getContentProtectionOverview, safeAssetView } from "../routers/contentProtection";
+import { storageStreamFile } from "../storage";
 
 type RequestAuth = {
   ok: true;
@@ -115,7 +116,13 @@ export function registerContentProtectionRoutes(app: Express): void {
     if (!/^[0-9a-f-]{36}$/i.test(req.params.assetId)) return fail(res, 400, "invalid_request", "Invalid asset identifier");
     try {
       const database = await getDb();
-      const predicates = [eq(contentProtectionAssets.id, req.params.assetId), eq(contentProtectionAssets.tenantId, auth.tenantId)];
+      const predicates = [
+        or(
+          eq(contentProtectionAssets.id, req.params.assetId),
+          eq(contentProtectionAssets.publicAssetId, req.params.assetId),
+        ),
+        eq(contentProtectionAssets.tenantId, auth.tenantId),
+      ];
       if (!auth.admin) predicates.push(eq(contentProtectionAssets.ownerUserId, auth.userId));
       const [row] = await database.select().from(contentProtectionAssets).where(and(...predicates)).limit(1);
       if (!row) return fail(res, 404, "not_found", "Protected asset not found");
@@ -125,9 +132,9 @@ export function registerContentProtectionRoutes(app: Express): void {
     }
   });
 
-  app.get("/v1/content-protection/review/:token", async (req, res) => {
+  const serveReviewerEvidence = async (req: Request, res: Response, publicCaseId?: string, download = false) => {
     if (!featureEnabled()) return fail(res, 404, "feature_disabled", "Content protection is not enabled");
-    const token = String(req.params.token || "").trim();
+    const token = String(req.query.token ?? req.params.token ?? "").trim();
     if (!/^[A-Za-z0-9_-]{32,128}$/.test(token)) return fail(res, 400, "invalid_request", "Invalid reviewer token");
     try {
       const database = await getDb();
@@ -136,10 +143,44 @@ export function registerContentProtectionRoutes(app: Express): void {
       if (!link || link.revokedAt || link.expiresAt.getTime() <= Date.now()) return fail(res, 410, "review_link_unavailable", "This reviewer link is expired or revoked");
       const [pkg] = await database.select().from(contentEvidencePackages).where(and(eq(contentEvidencePackages.id, link.packageId), eq(contentEvidencePackages.tenantId, link.tenantId))).limit(1);
       if (!pkg) return fail(res, 404, "not_found", "Evidence package not found");
+      const [caseRow] = pkg.caseId
+        ? await database.select({ publicCaseId: contentProtectionCases.publicCaseId })
+          .from(contentProtectionCases)
+          .where(and(eq(contentProtectionCases.id, pkg.caseId), eq(contentProtectionCases.tenantId, link.tenantId)))
+          .limit(1)
+        : [];
+      if (!caseRow) return fail(res, 404, "not_found", "Evidence case not found");
+      if (publicCaseId && caseRow.publicCaseId !== publicCaseId) return fail(res, 404, "not_found", "Evidence package not found");
       await database.update(contentExternalReviewLinks).set({ lastAccessedAt: new Date() }).where(eq(contentExternalReviewLinks.id, link.id));
-      return res.json({ packageId: pkg.id, packageVersion: pkg.packageVersion, packageSha256: pkg.packageSha256, status: pkg.status, sealedAt: pkg.sealedAt, scope: link.scopeJson, expiresAt: link.expiresAt, disclaimer: "Technical provenance evidence does not by itself establish legal ownership." });
+      const scope = Array.isArray(link.scopeJson) ? link.scopeJson : [];
+      if (download) {
+        if (!scope.includes("package_download")) return fail(res, 403, "scope_denied", "This reviewer link does not allow package download");
+        const stored = await storageStreamFile(pkg.manifestObjectKey);
+        if (!stored) return fail(res, 404, "not_found", "Evidence package file not found");
+        res.setHeader("Content-Type", "application/zip");
+        res.setHeader("Content-Disposition", `attachment; filename="evidence-${pkg.id}.zip"`);
+        if (stored.contentLength != null) res.setHeader("Content-Length", String(stored.contentLength));
+        const stream = stored.stream as any;
+        if (typeof stream.pipe !== "function") return fail(res, 500, "internal_error", "Evidence package stream unavailable");
+        stream.on?.("error", (error: Error) => res.destroy(error));
+        stream.pipe(res);
+        return;
+      }
+      return res.json({ publicCaseId: caseRow.publicCaseId, packageId: pkg.id, packageVersion: pkg.packageVersion, packageSha256: pkg.packageSha256, status: pkg.status, sealedAt: pkg.sealedAt, scope, expiresAt: link.expiresAt, downloadPath: scope.includes("package_download") ? `/v1/content-protection/evidence-review/${caseRow.publicCaseId}/download` : null, disclaimer: "Technical provenance evidence does not by itself establish legal ownership." });
     } catch {
       return fail(res, 500, "internal_error", "Unable to load reviewer evidence");
     }
+  };
+
+  app.get("/v1/content-protection/evidence-review/:publicCaseId/download", async (req, res) => {
+    await serveReviewerEvidence(req, res, req.params.publicCaseId, true);
+  });
+  app.get("/v1/content-protection/evidence-review/:publicCaseId", async (req, res) => {
+    await serveReviewerEvidence(req, res, req.params.publicCaseId);
+  });
+  // Backwards-compatible token-only endpoint for clients that predate the
+  // public case-scoped route. New links must use the case-scoped endpoint.
+  app.get("/v1/content-protection/review/:token", async (req, res) => {
+    await serveReviewerEvidence(req, res);
   });
 }

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildEditorWorkerJobProjection } from "../editorMediaJobContract";
+import {
+  buildEditorWorkerJobProjection,
+  resolveEditorRuntimeRouting,
+} from "../editorMediaJobContract";
 import { mediaOperationClaimCapability } from "@smartspec/shared";
 
 const input = {
@@ -20,5 +23,19 @@ describe("editor media job projection", () => {
   it("fails closed for idempotency and revision mismatches", () => {
     expect(() => buildEditorWorkerJobProjection({ ...input, idempotencyKey: "short" })).toThrow("IDEMPOTENCY_KEY_INVALID");
     expect(() => buildEditorWorkerJobProjection({ ...input, expectedRevisionId: "rev-2", revisionId: "rev-1" })).toThrow("REVISION_CONFLICT");
+  });
+  it("routes composition scan to Node and blocks it when the Node lane is disabled", () => {
+    expect(resolveEditorRuntimeRouting("video.composition_scan", true)).toEqual({
+      runtimeType: "node_job_worker",
+      available: true,
+    });
+    expect(resolveEditorRuntimeRouting("video.composition_scan", false)).toEqual({
+      runtimeType: "node_job_worker",
+      available: false,
+    });
+    expect(resolveEditorRuntimeRouting("editor_video_render", false)).toEqual({
+      runtimeType: "desktop_zeroclaw_managed",
+      available: true,
+    });
   });
 });

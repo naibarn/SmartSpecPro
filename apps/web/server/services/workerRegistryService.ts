@@ -34,8 +34,6 @@ import type {
   WorkerScope,
 } from "../../shared/workerRuntime";
 import {
-  CONTENT_PROTECTION_FAILURE_CODES,
-  CONTENT_PROTECTION_PROGRESS_STAGES,
   COMFY_IMAGE_GENERATION_FAILURE_CODES,
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_VIDEO_GENERATION_FAILURE_CODES,
@@ -67,7 +65,12 @@ import {
   remotionExecutorCapabilityProfileSchema,
   remotionExecutorReadinessSchema,
 } from "../../shared/workerRuntime";
-import { contentProtectionJobInputSchema } from "../../shared/contentProtectionWorker";
+import {
+  CONTENT_PROTECTION_FAILURE_CODES,
+  CONTENT_PROTECTION_PROGRESS_STAGES,
+  contentProtectionIntentSchema,
+  contentProtectionJobInputSchema,
+} from "../../shared/contentProtectionWorker";
 import {
   getWorkerAccessPermissionScopesForPreset,
   type WorkerAccessPermissionPreset,
@@ -303,6 +306,39 @@ async function reconcileContentProtectionWorkerResult(
     throw new Error("CONTENT_PROTECTION_STALE_RECORD");
   }
 
+  const compoundEnvelope = isPlainObject(input.compoundEnvelope)
+    ? input.compoundEnvelope
+    : null;
+  const causalJobId = typeof compoundEnvelope?.causalJobId === "string"
+    ? compoundEnvelope.causalJobId.trim()
+    : "";
+  if (causalJobId) {
+    const [causalJob] = await database
+      .select()
+      .from(workerJobs)
+      .where(and(eq(workerJobs.id, causalJobId), eq(workerJobs.tenantId, job.tenantId)))
+      .limit(1);
+    if (causalJob) {
+      const causalOutput = isPlainObject(causalJob.outputJson) ? causalJob.outputJson : {};
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...causalOutput,
+          contentProtection: {
+            ...(isPlainObject(causalOutput.contentProtection) ? causalOutput.contentProtection : {}),
+            status: "PROTECTED",
+            protectionAssetId: protectionAsset.id,
+            protectionJobId: job.id,
+            protectedArtifactId: artifact.id,
+            protectedObjectKey: artifact.storageRef,
+            protectedSha256: outputSha256,
+            protectedAt: now.toISOString(),
+            requireBeforePublish: true,
+          },
+        },
+      }).where(and(eq(workerJobs.id, causalJob.id), eq(workerJobs.tenantId, job.tenantId)));
+    }
+  }
+
   await database
     .insert(contentProtectionWatermarks)
     .values({
@@ -329,6 +365,57 @@ async function reconcileContentProtectionWorkerResult(
     .onConflictDoNothing();
 }
 
+async function reconcileContentProtectionWorkerFailure(
+  job: WorkerJobRecord,
+): Promise<void> {
+  if (job.jobType !== "content_protection.protect") return;
+  const input = contentProtectionJobInputSchema.safeParse(job.inputJson ?? {});
+  if (!input.success) return;
+  const database = getDb();
+  const errorMessage = String(job.failureReason ?? "Content protection worker failed").slice(0, 1000);
+  const [asset] = await database.update(contentProtectionAssets).set({
+    status: "FAILED",
+    errorCode: "CONTENT_PROTECTION_WORKER_FAILED",
+    errorMessage,
+  }).where(and(
+    eq(contentProtectionAssets.id, input.data.protectionAssetId),
+    eq(contentProtectionAssets.tenantId, job.tenantId),
+    eq(contentProtectionAssets.causalJobId, job.id),
+    or(
+      eq(contentProtectionAssets.status, "QUEUED"),
+      eq(contentProtectionAssets.status, "PROCESSING"),
+    ),
+  )).returning({ id: contentProtectionAssets.id });
+  if (!asset) return;
+
+  const envelope = isPlainObject(input.data.compoundEnvelope)
+    ? input.data.compoundEnvelope
+    : null;
+  const causalJobId = typeof envelope?.causalJobId === "string"
+    ? envelope.causalJobId.trim()
+    : "";
+  if (!causalJobId) return;
+  const [causalJob] = await database.select().from(workerJobs).where(and(
+    eq(workerJobs.id, causalJobId),
+    eq(workerJobs.tenantId, job.tenantId),
+  )).limit(1);
+  if (!causalJob) return;
+  const causalOutput = isPlainObject(causalJob.outputJson) ? causalJob.outputJson : {};
+  await database.update(workerJobs).set({
+    outputJson: {
+      ...causalOutput,
+      contentProtection: {
+        ...(isPlainObject(causalOutput.contentProtection) ? causalOutput.contentProtection : {}),
+        status: "FAILED",
+        protectionAssetId: input.data.protectionAssetId,
+        protectionJobId: job.id,
+        requireBeforePublish: true,
+        errorMessage,
+      },
+    },
+  }).where(and(eq(workerJobs.id, causalJob.id), eq(workerJobs.tenantId, job.tenantId)));
+}
+
 type FinalCompoundProtectionHandoff = {
   protectionAssetId: string;
   protectionJobId: string;
@@ -351,14 +438,15 @@ function finalProtectionIntent(job: WorkerJobRecord): {
       : instructions && isPlainObject(instructions.contentProtectionIntent)
         ? instructions.contentProtectionIntent
         : null;
-  if (!intent || (intent.choice !== "on" && intent.choice !== "off")) return null;
-  const choiceSource = intent.choiceSource === "per_export" || intent.choiceSource === "user_default"
-    ? intent.choiceSource
-    : "disabled_by_user";
+  if (!intent) return null;
+  const parsed = contentProtectionIntentSchema.safeParse(intent);
+  if (!parsed.success) throw new Error("CONTENT_PROTECTION_INTENT_INVALID");
+  const choiceSource = parsed.data.choiceSource
+    ?? (parsed.data.choice === "on" ? "per_export" : "disabled_by_user");
   return {
-    choice: intent.choice,
+    choice: parsed.data.choice,
     choiceSource,
-    requireBeforePublish: intent.requireBeforePublish !== false,
+    requireBeforePublish: parsed.data.requireBeforePublish,
   };
 }
 
@@ -413,6 +501,7 @@ async function enqueueFinalCompoundProtection(
   if (![
     "editor_video_render",
     "editor_video_render_still",
+    "editor_media_audio_export",
     "vertical_drama_ffmpeg_assembly",
     "remotion_render_video",
   ].includes(job.jobType)) return null;
@@ -441,7 +530,9 @@ async function enqueueFinalCompoundProtection(
     const contentType = String(metadata.contentType ?? "").toLowerCase();
     return job.jobType === "editor_video_render_still"
       ? contentType.startsWith("image/")
-      : contentType.startsWith("video/");
+      : job.jobType === "editor_media_audio_export"
+        ? contentType.startsWith("audio/")
+        : contentType.startsWith("video/");
   });
   if (!artifact?.id || !artifact.storageRef) {
     throw new Error("CONTENT_PROTECTION_FINAL_ARTIFACT_MISSING");
@@ -468,6 +559,7 @@ async function enqueueFinalCompoundProtection(
   if (!isVerticalDramaAssembly) {
     for (const track of tracks) {
       if (!isPlainObject(track) || !Array.isArray(track.clips)) continue;
+      if (job.jobType === "editor_media_audio_export" && track.kind !== "audio") continue;
       for (const clip of track.clips) {
         if (!isPlainObject(clip) || !isPlainObject(clip.asset)) continue;
         if (clip.asset.namespace !== "media_asset") continue;
@@ -631,6 +723,12 @@ async function enqueueFinalCompoundProtection(
     };
   }
   const protectionAssetId = existing?.id ?? crypto.randomUUID();
+  const protectionModality = job.jobType === "editor_video_render_still"
+    ? "image"
+    : job.jobType === "editor_media_audio_export"
+      ? "audio"
+      : "video";
+  const protectionExtension = protectionModality === "image" ? "png" : protectionModality === "audio" ? "mp3" : "mp4";
   if (!existing) {
     await database.insert(contentProtectionAssets).values({
       id: protectionAssetId,
@@ -638,7 +736,7 @@ async function enqueueFinalCompoundProtection(
       ownerUserId: job.requestedByUserId,
       sourceAssetId: orderedRefs[0]?.id ?? null,
       sourceVersionId: revisionId ?? null,
-      modality: job.jobType === "editor_video_render_still" ? "image" : "video",
+      modality: protectionModality,
       profileId: "content-protection-default",
       profileVersion: "1",
       status: "QUEUED",
@@ -680,12 +778,12 @@ async function enqueueFinalCompoundProtection(
         sourceObjectKey: artifact.storageRef,
         sourceSha256,
         mimeType,
-        modality: job.jobType === "editor_video_render_still" ? "image" : "video",
+        modality: protectionModality,
         effectiveChoice: "on",
         choiceSource: intent.choiceSource === "per_export" || intent.choiceSource === "user_default" ? intent.choiceSource : "user_default",
         providerId,
         providerVersion: "1",
-        outputObjectKey: `${job.tenantId}/content-protection/${protectionAssetId}.${job.jobType === "editor_video_render_still" ? "png" : "mp4"}`,
+        outputObjectKey: `${job.tenantId}/content-protection/${protectionAssetId}.${protectionExtension}`,
         compoundEnvelope,
         requireBeforePublish: true,
       },
@@ -694,7 +792,7 @@ async function enqueueFinalCompoundProtection(
         capabilityFamilies: ["content_protection"],
         requiredClaimCapability: "content-protection-v1",
         providerId,
-        modalities: [job.jobType === "editor_video_render_still" ? "image" : "video"],
+        modalities: [protectionModality],
       },
       retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
       timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
@@ -2680,6 +2778,11 @@ export async function recordWorkerJobEvent(
           }
           await reconcileContentProtectionWorkerResult(job);
         }
+      } else if (job.jobType === "content_protection.protect") {
+        await reconcileContentProtectionWorkerFailure({
+          ...job,
+          failureReason: nextJob.failureReason ?? job.failureReason,
+        });
       }
 
       // Feature 180 training completion is a separate lifecycle boundary:

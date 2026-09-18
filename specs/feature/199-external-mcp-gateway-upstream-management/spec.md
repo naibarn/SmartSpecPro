@@ -4,7 +4,7 @@
 **Project:** SmartAIHub / SmartSpecPro  
 **Spec ID:** 199  
 **Recommended path:** `specs/feature/199-external-mcp-gateway-upstream-management/spec.md`  
-**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; **Feature 200 Revision 4 Universal External Agent Control Plane**  
+**Related specs:** Feature 195 Unified Async Job Control Plane; Feature 196 Goal Orchestration; Feature 197 Runner Adaptive Execution Fabric; Feature 198 Intelligent Chat, Universal Orchestration & Capability Evolution; **Feature 200 Revision 7 Universal External Agent Control Plane**
 **Companion spec:** **Spec 200** — External Agent Gateway / delegated external-agent runtime integration  
 **Shared cross-spec contracts:** `SAH-EXEC-1`, `SAH-CAP-1`, `SAH-RUNNER-1`, `SAH-CONTEXT-1`, `SAH-ASSET-1`; Feature 199 owns External MCP upstream lifecycle and governed MCP invocation.  
 **Primary objective:** Add a first-class External MCP management layer without replacing the existing Universal MCP / Capability architecture, and align it normatively with Spec 200 so MCP and External Agent execution share one SmartAIHub orchestration/control plane.  
@@ -28,7 +28,7 @@ SmartAIHub already has a broader orchestration architecture in which:
 - **`worker_jobs` / `worker_job_events`** remain the source of truth for durable execution.
 - **SmartAIHub Runner / Worker** execute local or heavy workloads.
 - **Universal AI Assistant Launcher** and full Chat share the same orchestration/runtime contracts.
-- **Spec 200 External Agent Gateway** is a companion execution surface for delegated runtimes such as Codex/Claude/Antigravity/DeepSeek; it does not own MCP upstream transport.
+- **Spec 200 External Agent Gateway** is a companion execution surface for delegated runtimes such as Codex/Claude/Antigravity/DeepSeek/Hermes/OpenClaw; it does not own MCP upstream transport.
 - **Capability Registry/Resolver, Retrieval Broker, Runner Control Channel, `worker_jobs`, Approval, Audit/Trace, retry/lease/fencing, assets and billing** are shared infrastructure and MUST NOT be duplicated by Spec 199 or Spec 200.
 
 This spec extends that architecture with an **External MCP Gateway & Upstream Management Layer** inspired by proven patterns from `smart-mcp-proxy/mcpproxy-go`, while keeping SmartAIHub’s own contracts and abstractions as the canonical public interfaces.
@@ -223,7 +223,7 @@ A Spec 200 external agent MUST NOT connect directly to arbitrary upstream MCP se
 Canonical route:
 
 ```text
-Claude / Codex / Antigravity / DeepSeek
+Claude / Codex / Antigravity / DeepSeek / Hermes / OpenClaw
       ↓
 Spec 200 External Agent Gateway / Agent Runtime Core
       ↓
@@ -4760,7 +4760,7 @@ Requirements:
 
 ### 19.4 Spec 200 Delegated External Agents and MCP Capability Use
 
-OpenAI Agents SDK remains the default SmartAIHub cognitive executor. A Spec 200 External Agent (Codex/Claude/Antigravity/DeepSeek or future runtime) is a delegated executor selected explicitly by user/policy/task requirements.
+OpenAI Agents SDK remains the default SmartAIHub cognitive executor. A Spec 200 External Agent (Codex/Claude/Antigravity/DeepSeek/Hermes/OpenClaw or future runtime) is a delegated executor selected explicitly by user/policy/task requirements.
 
 When an External Agent needs MCP functionality:
 

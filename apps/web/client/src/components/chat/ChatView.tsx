@@ -747,6 +747,7 @@ interface Attachment {
 
 interface ChatViewProps {
   conversationId: number | null;
+  composerPrompt?: { id: number; text: string } | null;
   onTitleUpdate?: (title: string) => void;
   browserSessionSuggestion?: BrowserSessionLaunchSuggestion | null;
   showBrowserSessionEntry?: boolean;
@@ -764,6 +765,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 export function ChatView({
   conversationId,
+  composerPrompt,
   onTitleUpdate,
   browserSessionSuggestion,
   showBrowserSessionEntry = false,
@@ -812,6 +814,7 @@ export function ChatView({
 
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const appliedComposerPromptIdRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -821,6 +824,18 @@ export function ChatView({
     const userId = user?.id != null ? String(user.id) : "anonymous";
     return `smartspec_chat_ocr_only_mode:${tenantId}:${userId}`;
   }, [user?.currentTenantId, user?.id]);
+
+  useEffect(() => {
+    if (
+      !composerPrompt?.text.trim() ||
+      appliedComposerPromptIdRef.current === composerPrompt.id
+    ) {
+      return;
+    }
+    setInput(composerPrompt.text);
+    appliedComposerPromptIdRef.current = composerPrompt.id;
+    window.requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [composerPrompt]);
 
   useEffect(() => {
     return () => {

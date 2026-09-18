@@ -1,0 +1,134 @@
+{
+  "nav.overview": "ภาพรวม",
+  "nav.assets": "สื่อที่ป้องกันแล้ว",
+  "nav.verify": "ตรวจสอบสำเนา",
+  "nav.verifications": "ผลการตรวจสอบ",
+  "nav.cases": "เคสหลักฐาน",
+  "nav.rights": "สิทธิ์และความเป็นเจ้าของ",
+  "nav.certificate": "ใบรับรอง",
+  "nav.settings": "การตั้งค่า",
+  "eyebrow": "การคุ้มครองเนื้อหา",
+  "workspaceTitle": "การคุ้มครองเนื้อหา",
+  "workspaceDescription": "ปกป้องไฟล์ภาพ เสียง และวิดีโอสุดท้าย พร้อมตรวจสอบหลักฐานทางเทคนิคที่ทำซ้ำได้",
+  "userChoice": "ผู้ใช้ควบคุม ON/OFF",
+  "technicalEvidenceOnly": "หลักฐานทางเทคนิคเท่านั้น",
+  "evidenceDisclaimer": "ลายน้ำ แฮช ลายนิ้วมือ หรือ timestamp ไม่ได้ยืนยันความเป็นเจ้าของตามกฎหมายโดยลำพัง ต้องตรวจสอบสิทธิ์ ใบอนุญาต และ chain of title ก่อนยืนยันทางกฎหมาย",
+  "stageAria": "ขั้นตอนประมวลผลลายน้ำดิจิทัล",
+  "publicId": "รหัสสาธารณะ",
+  "choice": "ตัวเลือก",
+  "compoundBound": "ผูกกับ compound แล้ว",
+  "disabledByUser": "ลายน้ำดิจิทัล: OFF — ผู้ใช้ปิดการใช้งาน",
+  "protectFinalTitle": "ปกป้องไฟล์สุดท้าย",
+  "protectFinalDescription": "ลายน้ำดิจิทัลจะสร้างหลังมี bytes ของไฟล์สุดท้ายแล้วเท่านั้น คลิปขั้นกลางจะไม่ถือเป็น artifact สุดท้าย",
+  "sourceAssetId": "รหัส media asset ต้นทาง",
+  "mediaAssetIdPlaceholder": "รหัส Media asset",
+  "digitalWatermarkChoice": "ตัวเลือกลายน้ำดิจิทัล",
+  "on": "ON",
+  "off": "OFF",
+  "imageProtectionUnavailable": "ยังไม่เปิดใช้ image protection สำหรับ tenant นี้ โปรดให้ผู้ดูแลเปิด rollout flag ของ image provider",
+  "onNotice": "ลายน้ำดิจิทัล: ON — ไฟล์สุดท้ายจะรอตรวจสอบตัวเอง",
+  "offNotice": "ลายน้ำดิจิทัล: OFF — ผู้ใช้ปิดการใช้งาน และไฟล์จะเป็น unprotected",
+  "queueingProtection": "กำลังส่งงานปกป้อง…",
+  "protectFinalAction": "ปกป้องไฟล์สุดท้าย",
+  "whenCreatedTitle": "ลายน้ำถูกสร้างเมื่อใด",
+  "whenCreatedDescription": "หลัง persist bytes ของ compound/render สุดท้าย ระหว่างขั้นตอนของ protection worker ด้านล่าง",
+  "recentAssets": "สื่อที่ป้องกันล่าสุด",
+  "noAssets": "ยังไม่มีสื่อที่ป้องกัน เลือก ON ด้านบนเพื่อปกป้องไฟล์สุดท้าย",
+  "assetNotFound": "ไม่พบสื่อ",
+  "sourceSha256": "SHA-256 ต้นฉบับ",
+  "protectedSha256": "SHA-256 หลังปกป้อง",
+  "pendingSelfVerification": "รอตรวจสอบตัวเอง",
+  "compoundPlan": "แผน compound",
+  "standaloneAsset": "สื่อเดี่ยว",
+  "technicalSignal": "สัญญาณทางเทคนิค",
+  "selfDetectedQcPassed": "ตรวจพบตัวเองและผ่าน QC",
+  "notYetVerified": "ยังไม่ตรวจสอบ",
+  "detectedAfterCreation": "ตรวจพบหลังสร้าง",
+  "awaitingWorker": "รอผลจาก worker",
+  "dimensionsDuration": "ขนาด / ระยะเวลา",
+  "rightsAction": "สิทธิ์และความเป็นเจ้าของ",
+  "certificateAction": "ใบรับรองการสร้าง",
+  "verifyTitle": "ตรวจสอบสำเนาที่สงสัย",
+  "verifyDescription": "อัปโหลดไฟล์ภาพ วิดีโอ หรือเสียงที่สงสัย หรือใส่รหัสสื่อใน Library ของ tenant ผลลัพธ์เป็นสัญญาณการจับคู่ทางเทคนิค ไม่ใช่คำตัดสินทางกฎหมาย",
+  "uploadSuspected": "อัปโหลดสื่อที่สงสัย",
+  "uploadingSuspected": "กำลังอัปโหลดสื่อที่สงสัย…",
+  "uploadedChecksumPending": "อัปโหลดแล้ว ระบบจะคำนวณ checksum ฝั่ง server ก่อนตรวจสอบ",
+  "uploadFailed": "อัปโหลดไม่สำเร็จ",
+  "uploadNotRegistered": "สื่อที่อัปโหลดไม่ได้ถูกลงทะเบียนเป็น asset ของ tenant",
+  "invalidMediaType": "เลือกไฟล์ภาพ วิดีโอ หรือเสียง",
+  "startVerification": "เริ่มตรวจสอบทางเทคนิค",
+  "startingVerification": "กำลังเริ่มตรวจสอบ…",
+  "verificationResult": "ผลการตรวจสอบ",
+  "processing": "กำลังประมวลผล…",
+  "noVerification": "ไม่พบรายการตรวจสอบ",
+  "technicalMatchDisclaimer": "หลักฐานการจับคู่ทางเทคนิคไม่ได้ยืนยันความเป็นเจ้าของตามกฎหมายโดยลำพัง",
+  "defaultChoiceTitle": "ตัวเลือกการปกป้องเริ่มต้น",
+  "defaultChoiceDescription": "คุณควบคุมว่าจะให้ export สุดท้ายขอลายน้ำดิจิทัลที่มองไม่เห็นหรือไม่ การตั้งค่านี้ไม่เปลี่ยน visible branding watermark",
+  "currentDefault": "ค่าเริ่มต้นปัจจุบัน",
+  "caseDetail": "รายละเอียดเคส",
+  "backToCases": "กลับไปเคส",
+  "caseNotFound": "ไม่พบเคส",
+  "createCaseTitle": "สร้างเคสหลักฐาน",
+  "createCaseDescription": "ใช้เคสเพื่อรวบรวมหลักฐานทางเทคนิคก่อนการตัดสินใจทางกฎหมายหรือส่งให้ผู้ตรวจสอบภายนอก",
+  "caseTitlePlaceholder": "ชื่อเคส",
+  "assetIdsPlaceholder": "รหัสสื่อ (คั่นด้วย comma)",
+  "caseSummaryPlaceholder": "สรุปเคส",
+  "createCase": "สร้างเคส",
+  "evidencePackageSealed": "ปิดผนึก evidence package แล้ว:",
+  "technicalEvidenceCase": "เคสหลักฐานทางเทคนิค",
+  "sealEvidence": "ปิดผนึก evidence package",
+  "allowDownload": "อนุญาตให้ reviewer ดาวน์โหลด evidence ZIP",
+  "createReviewerLink": "สร้างลิงก์ reviewer 24 ชั่วโมง",
+  "reviewerUrl": "URL สำหรับ reviewer (แชร์เฉพาะผู้ตรวจสอบที่ตั้งใจ):",
+  "noCases": "ยังไม่มีเคส",
+  "rightsTitle": "สิทธิ์และความเป็นเจ้าของ",
+  "certificateTitle": "ใบรับรองการสร้าง",
+  "rightsHolderName": "ชื่อผู้ถือสิทธิ์",
+  "contactEmail": "อีเมลติดต่อ",
+  "claimType": "ประเภทการอ้างสิทธิ์",
+  "legalDeclaration": "ฉันยืนยันว่าการประกาศนี้มาจากผู้ใช้และอยู่ภายใต้กฎหมายที่เกี่ยวข้อง",
+  "saveRightsClaim": "บันทึกการอ้างสิทธิ์",
+  "selectAssetRights": "เลือกสื่อที่ป้องกันเพื่อดูหลักฐานสิทธิ์",
+  "createOrLoadCertificate": "สร้างหรือโหลดใบรับรอง",
+  "certificateRequirement": "ใบรับรองต้องมี artifact สุดท้ายที่ป้องกันและตรวจสอบแล้ว"
+  ,"notEnabledTitle": "ยังไม่ได้เปิดใช้การคุ้มครองเนื้อหา"
+  ,"notEnabledDescription": "โปรดให้ผู้ดูแล tenant เปิดใช้ workspace นี้ ระบบจะไม่เปิดเผย credential ของ provider หรือ secret ของลายน้ำ"
+  ,"navigationAria": "เมนูการคุ้มครองเนื้อหา"
+  ,"loadingEvidence": "กำลังโหลดหลักฐาน…"
+  ,"assetArtifact": "artifact สุดท้ายประเภท {{modality}}"
+  ,"publicAssetId": "รหัสสื่อสาธารณะ"
+  ,"invisibleImageWatermark": "ลายน้ำภาพแบบมองไม่เห็น"
+  ,"videoWatermark": "ลายน้ำวิดีโอ"
+  ,"audioWatermark": "ลายน้ำเสียง"
+  ,"fingerprintSignal": "สัญญาณลายนิ้วมือ"
+  ,"imageFingerprint": "ความสอดคล้อง PDQ / crop-resize"
+  ,"videoFingerprint": "ลายนิ้วมือวิดีโอเชิงความน่าจะเป็น"
+  ,"audioFingerprint": "ลายนิ้วมือเสียง"
+  ,"assetNotFound": "ไม่พบสื่อ"
+  ,"signalsReviewed": "สัญญาณที่ตรวจสอบ"
+  ,"exactSha256": "ความถูกต้องของ SHA-256 แบบตรงกัน"
+  ,"watermarkRecord": "ระเบียนลายน้ำของสื่อที่ป้องกันและสถานะการตรวจสอบตัวเอง"
+  ,"imageDhash": "ความคล้ายคลึงของ dHash ภาพเมื่อมี perceptual hash"
+  ,"queryAssetId": "ค้นหารหัส media asset"
+  ,"verificationModality": "ประเภทสื่อที่ตรวจสอบ"
+  ,"image": "ภาพ"
+  ,"video": "วิดีโอ"
+  ,"audio": "เสียง"
+  ,"defaultChoiceAria": "ตัวเลือกลายน้ำดิจิทัลเริ่มต้น"
+  ,"loadingCase": "กำลังโหลดเคส…"
+  ,"publicCaseId": "รหัสเคสสาธารณะ"
+  ,"caseSummaryFallback": "เคสหลักฐานทางเทคนิค"
+  ,"rightsDeclaration": "ฉันยืนยันว่าการประกาศนี้มาจากผู้ใช้และอยู่ภายใต้กฎหมายที่เกี่ยวข้อง"
+  ,"reviewerUrlWarning": "URL สำหรับ reviewer (แชร์เฉพาะผู้ตรวจสอบที่ตั้งใจ):"
+  ,"statusQueued": "อยู่ในคิว"
+  ,"statusProcessing": "กำลังประมวลผล"
+  ,"statusProtected": "ป้องกันแล้ว"
+  ,"statusProtectedWarnings": "ป้องกันแล้วแต่มีคำเตือน"
+  ,"statusFailed": "ล้มเหลว"
+  ,"statusRequested": "ร้องขอการป้องกันแล้ว"
+  ,"statusUnprotected": "ผู้ใช้เลือกไม่ป้องกัน"
+  ,"statusInconclusive": "ยังสรุปไม่ได้"
+  ,"statusDraft": "แบบร่าง"
+  ,"statusOpen": "เปิดอยู่"
+  ,"statusCompleted": "เสร็จสมบูรณ์"
+}
