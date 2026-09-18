@@ -96,6 +96,8 @@ describe("DesktopReleasePanel", () => {
   });
 
   it("rehydrates a persisted build and keeps polling until it completes", async () => {
+    const queuedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+    const workflowRunUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     const storedBuildResult: DesktopReleaseBuildResponse = {
       repository: "naibarn/SmartSpecPro",
       workflow: "desktop-release.yml",
@@ -104,7 +106,7 @@ describe("DesktopReleasePanel", () => {
       platform: "windows",
       bundleMode: "on-demand",
       releaseNotes: "Ship fixes",
-      queuedAt: "2026-04-10T10:00:00.000Z",
+      queuedAt,
       workflowRunId: "123",
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/123",
       workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
@@ -114,7 +116,7 @@ describe("DesktopReleasePanel", () => {
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/123",
       workflowRunStatus: "in_progress",
       workflowRunConclusion: null,
-      workflowRunUpdatedAt: "2026-04-10T10:01:00.000Z",
+      workflowRunUpdatedAt,
       portalSyncStatus: "idle",
       portalSyncUpdatedAt: null,
     };
@@ -267,6 +269,8 @@ describe("DesktopReleasePanel", () => {
   });
 
   it("hides portal sync retry alerts while the workflow is still running", async () => {
+    const queuedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+    const workflowRunUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     const storedBuildResult: DesktopReleaseBuildResponse = {
       repository: "naibarn/SmartSpecPro",
       workflow: "desktop-release.yml",
@@ -275,7 +279,7 @@ describe("DesktopReleasePanel", () => {
       platform: "windows",
       bundleMode: "e4b",
       releaseNotes: "Smart AI Hub - Alpha Version 0.1.3",
-      queuedAt: "2026-04-10T01:00:00.000Z",
+      queuedAt,
       workflowRunId: "777",
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/777",
       workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
@@ -285,7 +289,7 @@ describe("DesktopReleasePanel", () => {
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/777",
       workflowRunStatus: "in_progress",
       workflowRunConclusion: null,
-      workflowRunUpdatedAt: "2026-04-10T01:10:00.000Z",
+      workflowRunUpdatedAt,
       portalSyncStatus: "syncing",
       portalSyncUpdatedAt: "2026-04-10T01:11:00.000Z",
       portalSyncError: "desktop_release_github_release_not_ready",
@@ -400,6 +404,57 @@ describe("DesktopReleasePanel", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("dashboard:desktopReleases.admin.build.progress.stalledNote"),
+    ).toBeInTheDocument();
+  });
+
+  it("marks a queued workflow as stalled after the status stops changing", async () => {
+    const storedBuildResult: DesktopReleaseBuildResponse = {
+      repository: "naibarn/SmartSpecPro",
+      workflow: "desktop-release.yml",
+      ref: "main",
+      version: "0.1.0",
+      platform: "windows",
+      bundleMode: "on-demand",
+      releaseNotes: "Queued too long",
+      queuedAt: new Date(Date.now() - 31 * 60_000).toISOString(),
+      workflowRunId: "1000",
+      workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/1000",
+      workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
+    };
+    const storedBuildStatus: DesktopReleaseBuildRunStatus = {
+      workflowRunId: "1000",
+      workflowRunUrl: storedBuildResult.workflowRunUrl,
+      workflowRunStatus: "queued",
+      workflowRunConclusion: null,
+      workflowRunUpdatedAt: null,
+      portalSyncStatus: "idle",
+      portalSyncUpdatedAt: null,
+    };
+
+    sessionStorage.setItem(
+      BUILD_SESSION_KEY,
+      JSON.stringify({ buildResult: storedBuildResult, buildRunStatus: storedBuildStatus }),
+    );
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+      if (href.includes("/builds/1000/status")) {
+        return new Response(JSON.stringify({ buildRun: storedBuildStatus }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    expect(
+      await screen.findByText("dashboard:desktopReleases.admin.build.progress.stalled"),
     ).toBeInTheDocument();
   });
 

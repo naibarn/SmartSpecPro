@@ -152,3 +152,14 @@ Loop policy:
 - Browser-authenticated screenshots remain an external evidence gate; typecheck
   remains intentionally skipped under AGENTS.md RAM rules.
 - Audit record: `specs/feature/201-content-provenance-copyright-protection/implementation/audits/ui-ux-integration-audit-2026-09-18.md`.
+
+## Desktop build stuck investigation (2026-09-18)
+
+- GitHub Actions run `35360618065` failed at the Windows web-asset build step,
+  not at runner allocation. The repository's atomic build wrapper requires
+  Linux `flock`; the portable Vite/widget build passes locally.
+- Updated the desktop workflow to use the portable build and added a focused
+  workflow contract test.
+- Added a 30-minute stale guard for queued/running desktop builds and a UI
+  regression test. The authenticated runner-release 502 remains a separate
+  production migration/log evidence gate; no production mutation was attempted.

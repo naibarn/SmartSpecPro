@@ -66,3 +66,26 @@ records are under each spec's `implementation/audits/` folder.
   migration markers, and explicit external release gates were rechecked.
 - Fresh records: `implementation/audits/15-round-audit-2026-09-18.md` under
   both Spec 202 and Spec 203.
+
+## Desktop build stuck investigation (2026-09-18)
+
+### Task Classification
+- Scope: medium
+- Risk: medium
+- Affected domains: GitHub Actions desktop release workflow, Desktop Release UI, focused tests
+- Estimated file count: 5
+- Chosen route: direct-inline debugging and repair in standard-light mode
+- Bug route: true
+- Classification notes: The user reported a stuck release build with concrete browser/network evidence. The fix crosses CI workflow and user-visible progress state but does not change auth, schema, or production data.
+
+### Evidence ledger
+- source: GitHub Actions run and browser screenshot
+- identifier: run `35360618065`, job `105650721669`, screenshot console `/api/runner-releases/admin/builds` 502
+- observed failure: Desktop workflow completed with `failure`; Windows job failed at `Build SmartAIHub Web assets for desktop` with exit code 1 after about one second.
+- data state: the workflow called `npm --workspace apps/web run build`, which enters `apps/web/scripts/build-atomic.sh`; that script requires Linux `flock`. Local Linux `build` and portable `build:unsafe` both pass.
+- confidence: high for the desktop build failure; medium for the separate runner API 502 because authenticated production DB state is not available in this workspace.
+- next evidence needed: authenticated production response/log for `/api/runner-releases/admin/builds` and migration state 0336–0339.
+
+### Repair
+- Changed `.github/workflows/desktop-release.yml` to use the portable `build:unsafe` path for desktop artifacts while retaining the atomic wrapper for Linux production deploys.
+- Added a workflow contract regression test and a 30-minute stale-state guard so queued/running builds no longer remain indefinitely labeled as active.

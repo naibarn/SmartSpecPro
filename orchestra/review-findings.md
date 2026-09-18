@@ -198,3 +198,16 @@ external release evidence.
   deployment, production, legal, and browser-authentication gates.
 - no_action_needed: feature gating, opaque public identifiers, image-provider
   gating, and technical-evidence disclaimer already covered by existing code.
+## Desktop build stuck review (2026-09-18)
+
+### Round 1 — root-cause and contract review
+- Finding: `desktop-release.yml` invoked the Linux-only atomic wrapper on all matrix OSes; fixed by switching the CI artifact build to the portable Vite/widget command.
+- Finding: queued/running UI state had no upper bound; fixed with the existing 30-minute stale phase and focused regression coverage.
+- Verification: GitHub run `35360618065`/job `105650721669`, local portable build, workflow contract test, DesktopReleasePanel tests.
+- Status: clean after repair; the separate authenticated runner API 502 is not the Desktop Release status path.
+
+### Round 2 — second-order impact review
+- Checked Windows, macOS, and Linux workflow matrix compatibility: the selected web build no longer requires `flock`, `df`, or Linux atomic symlink swapping.
+- Checked DesktopReleasePanel status transitions, stale copy, English/Thai locale JSON, and test timestamps: no new in-scope material finding.
+- Verification rerun: 2 focused test files, 10 tests passed; portable frontend/widget build passed; `git diff --check` passed.
+- Status: clean convergence round 2/2. Production authenticated runner API 502 remains an external migration/log gate, not inferred as fixed locally.

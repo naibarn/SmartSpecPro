@@ -572,16 +572,28 @@ function resolveDesktopReleaseBuildProgressPhase(params: {
     return "idle";
   }
   if (!params.hasWorkflowRunId) {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (!params.workflowRunStatus) {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (params.workflowRunStatus === "queued") {
-    return "queued";
+    const queuedAtMs = toTimestampMs(params.queuedAt);
+    return queuedAtMs > 0 && Date.now() - queuedAtMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "queued";
   }
   if (params.workflowRunStatus === "in_progress") {
-    return "running";
+    const lastUpdateMs = toTimestampMs(params.workflowRunUpdatedAt ?? params.queuedAt);
+    return lastUpdateMs > 0 && Date.now() - lastUpdateMs >= DESKTOP_RELEASE_BUILD_STALE_AFTER_MS
+      ? "stalled"
+      : "running";
   }
   if (params.workflowRunStatus === "completed") {
     if (params.workflowRunConclusion !== "success") {

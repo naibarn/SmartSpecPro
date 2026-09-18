@@ -149,7 +149,10 @@ jobs:
         env:
           VITE_SMARTAIHUB_WEB_URL: ${{ github.event.inputs.web_url }}
           VITE_SMARTSPEC_WEB_URL: ${{ github.event.inputs.web_url }}
-        run: npm --workspace apps/web run build
+        # build: uses the Linux-only atomic deploy wrapper (flock, df, symlink
+        # swap). GitHub Actions builds Windows/macOS too, so use the portable
+        # Vite + widget build for the desktop artifact instead.
+        run: npm --workspace apps/web run build:unsafe
 
       - name: Prepare LiteRT-LM and Gemma 4 bundle
         shell: bash
