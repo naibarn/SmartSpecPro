@@ -568,7 +568,10 @@ describe("DesktopReleasePanel", () => {
       }
       if (href.endsWith("/builds") && init?.method === "POST") {
         return new Response(JSON.stringify({
-          error: "desktop_release_github_token_invalid",
+          error: JSON.stringify({
+            message: "Bad credentials",
+            status: "401",
+          }),
         }), {
           status: 400,
           headers: { "Content-Type": "application/json" },

@@ -360,42 +360,63 @@ function formatBuildPortalSyncError(
   t: Translator,
   error: string,
 ): string {
-  if (error === "desktop_release_github_release_not_ready") {
+  const normalizedError = normalizeGithubErrorMessage(error);
+
+  if (normalizedError === "desktop_release_github_release_not_ready") {
     return t("dashboard:desktopReleases.admin.build.progress.error.releaseNotReady");
   }
 
-  const assetNotReadyMatch = error.match(/^desktop_release_github_asset_not_found_(windows|macos|linux)$/);
+  const assetNotReadyMatch = normalizedError.match(/^desktop_release_github_asset_not_found_(windows|macos|linux)$/);
   if (assetNotReadyMatch) {
     return t("dashboard:desktopReleases.admin.build.progress.error.assetNotReady", {
       platform: formatPlatformLabel(t, assetNotReadyMatch[1] as DesktopReleasePlatform),
     });
   }
 
-  if (error === "desktop_release_github_token_not_configured") {
+  if (normalizedError === "desktop_release_github_token_not_configured") {
     return t("dashboard:desktopReleases.admin.build.progress.error.missingGithubToken");
   }
 
-  if (error === "desktop_release_github_token_invalid") {
+  if (normalizedError === "desktop_release_github_token_invalid") {
     return t("dashboard:desktopReleases.admin.build.progress.error.invalidGithubToken");
   }
 
-  if (error === "desktop_release_github_permission_denied") {
+  if (normalizedError === "desktop_release_github_permission_denied") {
     return t("dashboard:desktopReleases.admin.build.progress.error.githubPermissionDenied");
   }
 
-  if (error === "desktop_release_github_target_not_found") {
+  if (normalizedError === "desktop_release_github_target_not_found") {
     return t("dashboard:desktopReleases.admin.build.progress.error.githubTargetNotFound");
   }
 
-  if (error === "desktop_release_github_dispatch_invalid") {
+  if (normalizedError === "desktop_release_github_dispatch_invalid") {
     return t("dashboard:desktopReleases.admin.build.progress.error.githubDispatchInvalid");
   }
 
-  return error;
+  return normalizedError;
 }
 
 function formatBuildRequestError(t: Translator, error: string): string {
   return formatBuildPortalSyncError(t, error);
+}
+
+function normalizeGithubErrorMessage(error: string): string {
+  try {
+    const parsed = JSON.parse(error) as { message?: unknown; status?: unknown };
+    const status = Number(parsed.status);
+    if (status === 401 || parsed.message === "Bad credentials") {
+      return "desktop_release_github_token_invalid";
+    }
+    if (status === 403) return "desktop_release_github_permission_denied";
+    if (status === 404) return "desktop_release_github_target_not_found";
+    if (status === 422) return "desktop_release_github_dispatch_invalid";
+  } catch {
+    // Keep non-JSON application errors unchanged.
+  }
+  if (/bad credentials/i.test(error)) {
+    return "desktop_release_github_token_invalid";
+  }
+  return error;
 }
 
 function formatCatalogError(t: Translator, error: string | null): string | null {
