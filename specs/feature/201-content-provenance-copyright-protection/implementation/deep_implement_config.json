@@ -33,7 +33,31 @@
     },
     "section-04-content-protection-router": {
       "status": "complete",
-      "commit_hash": "e46e4ec623fab4deed1299dcc558de943592e9c9"
+      "commit_hash": "727489602"
+    },
+    "section-05-worker-protection-job": {
+      "status": "complete",
+      "commit_hash": "727489602"
+    },
+    "section-06-compound-integration": {
+      "status": "complete",
+      "commit_hash": "c67497fc1"
+    },
+    "section-07-ui-workspace": {
+      "status": "complete",
+      "commit_hash": "c67497fc1"
+    },
+    "section-08-dashboard-settings-navigation": {
+      "status": "complete",
+      "commit_hash": "c67497fc1"
+    },
+    "section-09-rights-evidence-review": {
+      "status": "complete",
+      "commit_hash": "dca888e3a"
+    },
+    "section-10-verification-rollout": {
+      "status": "complete",
+      "commit_hash": "dca888e3a"
     }
   },
   "pre_commit": {
