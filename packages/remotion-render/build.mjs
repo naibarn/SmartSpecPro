@@ -17,9 +17,11 @@
 import { execFileSync } from "node:child_process";
 import { build } from "esbuild";
 
+const npxCommand = process.platform === "win32" ? "npx.cmd" : "npx";
+
 console.log("[remotion-render] tsc (declarations)...");
 try {
-  execFileSync("npx", ["tsc", "-p", "tsconfig.json"], { stdio: "inherit" });
+  execFileSync(npxCommand, ["tsc", "-p", "tsconfig.json"], { stdio: "inherit" });
 } catch {
   // tsc may exit non-zero on pre-existing, non-blocking type-only issues
   // (e.g. @types/three JSX intrinsic gaps) while still emitting valid

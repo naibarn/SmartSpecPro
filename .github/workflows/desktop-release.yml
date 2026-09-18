@@ -145,6 +145,11 @@ jobs:
       - name: Set desktop bundle version
         run: node scripts/set-desktop-version.mjs --version "${{ github.event.inputs.tag || github.ref_name }}"
 
+      - name: Build shared Remotion package
+        # The package's dist/ output is intentionally gitignored. Build it in
+        # CI before Vite resolves the browser-safe render-video-schema export.
+        run: npm --workspace @smartspec/remotion-render run build
+
       - name: Build SmartAIHub Web assets for desktop
         env:
           VITE_SMARTAIHUB_WEB_URL: ${{ github.event.inputs.web_url }}
