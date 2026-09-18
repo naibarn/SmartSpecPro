@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/202-ai_rough_cut_video_editor_unified/implementation/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && pnpm exec vitest run --environment jsdom",
+  "sections": [
+    "section-01-ui-foundation",
+    "section-02-revision-conflict-ux",
+    "section-03-execution-capability-jobs",
+    "section-04-ai-review-transcript-qc",
+    "section-05-responsive-visual-consistency",
+    "section-06-browser-evidence-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-18T08:43:23.651375+00:00"
+}

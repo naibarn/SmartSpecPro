@@ -34,16 +34,30 @@ import {
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { mapEditorError } from "@/components/videoeditor/ui/editorUiState";
+import { projectExecutionStatus, type ExecutionJobLike } from "@/components/videoeditor/ui/executionStatusUi";
 
 const STATUS_OPTIONS = [
   "all",
+  "pending",
   "queued",
   "claimed",
+  "leased",
+  "preparing",
+  "waiting_external",
   "running",
+  "rendering",
   "uploading",
   "publishing",
+  "indexing",
+  "qc",
+  "degraded",
+  "retry_scheduled",
   "completed",
+  "succeeded",
   "failed",
+  "expired",
+  "cancelled",
   "canceled",
 ] as const;
 
@@ -103,17 +117,23 @@ function formatJobTypeFilterLabel(jobType: (typeof JOB_TYPE_FILTER_OPTIONS)[numb
 
 const STATUS_LABELS: Record<string, string> = {
   all: "ทั้งหมด",
+  pending: "กำลังเตรียมรับงาน",
   queued: "รอ worker",
+  leased: "กำลังจัดคิวให้ worker",
   claimed: "มี worker รับงานแล้ว",
   preparing: "กำลังเตรียมงาน",
   running: "กำลังเรนเดอร์",
   uploading: "กำลังอัปโหลด",
   publishing: "กำลังเผยแพร่",
   indexing: "กำลังจัดทำดัชนี",
+  waiting_external: "รอระบบภายนอก",
+  retry_scheduled: "รอลองใหม่",
   completed: "สำเร็จ",
+  succeeded: "สำเร็จ",
   failed: "ล้มเหลว",
   canceled: "ยกเลิกแล้ว",
   expired: "หมดเวลา",
+  cancelled: "ยกเลิกแล้ว",
 };
 
 const STATUS_BADGE: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -126,6 +146,13 @@ const STATUS_BADGE: Record<string, "default" | "secondary" | "destructive" | "ou
   publishing: "secondary",
   claimed: "outline",
   queued: "outline",
+  pending: "outline",
+  leased: "outline",
+  preparing: "secondary",
+  waiting_external: "outline",
+  retry_scheduled: "outline",
+  succeeded: "default",
+  cancelled: "destructive",
 };
 
 function formatDate(value: Date | string | null | undefined): string {
@@ -143,17 +170,19 @@ function statusIcon(status: string) {
   if (status === "failed" || status === "canceled" || status === "expired") {
     return <XCircle className="h-4 w-4" />;
   }
-  if (status === "running" || status === "uploading" || status === "publishing") {
-    return <Loader2 className="h-4 w-4 animate-spin" />;
+  if (["running", "uploading", "publishing", "preparing", "retrying", "claimed"].includes(status)) {
+    return <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />;
   }
   return <Clock className="h-4 w-4" />;
 }
 
-function JobStatusBadge({ status }: { status: string }) {
+function JobStatusBadge({ status, job }: { status: string; job?: ExecutionJobLike }) {
+  const projection = job ? projectExecutionStatus(job) : null;
+  const displayStatus = projection?.state ?? status;
   return (
-    <Badge variant={STATUS_BADGE[status] ?? "outline"} className="gap-1">
-      {statusIcon(status)}
-      {STATUS_LABELS[status] ?? status}
+    <Badge variant={STATUS_BADGE[displayStatus] ?? "outline"} className="gap-1" data-status={displayStatus}>
+      {statusIcon(displayStatus)}
+      {projection?.label ?? STATUS_LABELS[status] ?? status}
     </Badge>
   );
 }
@@ -304,7 +333,8 @@ export default function RenderJobsPage() {
       ]);
     },
     onError: (error) => {
-      toast.error(error.message || "ยกเลิกงานไม่สำเร็จ");
+      const projection = mapEditorError(error, "th");
+      toast.error(projection.kind === "unknown" ? "ยกเลิกงานไม่สำเร็จ" : projection.message);
     },
   });
 
@@ -313,6 +343,7 @@ export default function RenderJobsPage() {
     [jobs],
   );
   const detailEvents = (detailQuery.data?.events ?? []) as RenderJobEvent[];
+  const detailProjection = detailQuery.data ? projectExecutionStatus(detailQuery.data) : null;
   const currentShotEvent = getCurrentShotEvent(detailEvents);
   const shotRows = getShotRows(detailEvents);
   const failedShotRows = shotRows.filter((row) => row.status === "failed");
@@ -421,7 +452,7 @@ export default function RenderJobsPage() {
           {listQuery.isError ? (
             <div className="flex items-center gap-2 rounded-2xl border border-rose-300/30 bg-rose-500/10 p-4 text-sm text-rose-100">
               <AlertCircle className="h-4 w-4" />
-              โหลดรายการงานไม่สำเร็จ: {listQuery.error.message}
+              โหลดรายการงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง
             </div>
           ) : null}
 
@@ -466,14 +497,22 @@ export default function RenderJobsPage() {
                         {jobs.map((job) => (
                           <TableRow
                             key={job.id}
-                            className={cn("cursor-pointer", selectedJob === job.id && "bg-cyan-50")}
+                            className={cn("cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500", selectedJob === job.id && "bg-cyan-50")}
+                            tabIndex={0}
+                            aria-selected={selectedJob === job.id}
                             onClick={() => setSelectedJobId(job.id)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                setSelectedJobId(job.id);
+                              }
+                            }}
                           >
                             <TableCell>
                               <div className="font-medium">{formatJobType(job.jobType)}</div>
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
                             </TableCell>
-                            <TableCell><JobStatusBadge status={job.status} /></TableCell>
+                            <TableCell><JobStatusBadge status={job.status} job={job} /></TableCell>
                             <TableCell>
                               {job.worker?.displayName ?? "ยังไม่ assign"}
                               {job.worker?.machineName ? (
@@ -483,6 +522,9 @@ export default function RenderJobsPage() {
                             <TableCell>
                               <div className="max-w-72 truncate text-sm">
                                 {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined)}
+                              </div>
+                              <div className="max-w-72 truncate text-xs text-slate-500">
+                                {projectExecutionStatus(job).reason}
                               </div>
                               {job.latestEvent?.cacheHit ? (
                                 <div className="text-xs text-emerald-600">ใช้ cache แล้ว</div>
@@ -507,18 +549,20 @@ export default function RenderJobsPage() {
                         type="button"
                         onClick={() => setSelectedJobId(job.id)}
                         className={cn(
-                          "rounded-2xl border p-3 text-left",
+                          "rounded-2xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500",
                           selectedJob === job.id && "border-cyan-300 bg-cyan-50",
                         )}
+                        aria-pressed={selectedJob === job.id}
                       >
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <span className="truncate font-medium">{formatJobType(job.jobType)}</span>
-                          <JobStatusBadge status={job.status} />
+                          <JobStatusBadge status={job.status} job={job} />
                         </div>
                         <div className="text-xs text-slate-500">{formatDate(job.createdAt)}</div>
                         <div className="mt-2 truncate text-sm">
                           {formatEventMessage(job.latestEvent as RenderJobEvent | null | undefined) || "ยังไม่มี progress event"}
                         </div>
+                        <div className="mt-1 line-clamp-2 text-xs text-slate-500">{projectExecutionStatus(job).reason}</div>
                       </button>
                     ))}
                   </div>
@@ -540,7 +584,7 @@ export default function RenderJobsPage() {
                   กำลังโหลดรายละเอียด
                 </div>
               ) : detailQuery.isError ? (
-                <div className="p-5 text-sm text-rose-200">{detailQuery.error.message}</div>
+                <div className="p-5 text-sm text-rose-200">โหลดรายละเอียดงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง</div>
               ) : detailQuery.data ? (
                 <div className="max-h-[calc(100vh-260px)] space-y-5 overflow-y-auto p-5">
                   <div className="space-y-3">
@@ -549,7 +593,7 @@ export default function RenderJobsPage() {
                         <div className="truncate font-medium text-white">{formatJobType(detailQuery.data.jobType)}</div>
                         <div className="truncate text-xs text-slate-400">{detailQuery.data.id}</div>
                       </div>
-                      <JobStatusBadge status={detailQuery.data.status} />
+                      <JobStatusBadge status={detailQuery.data.status} job={detailQuery.data} />
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm text-slate-200">
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
@@ -561,6 +605,13 @@ export default function RenderJobsPage() {
                         {formatDate(detailQuery.data.finishedAt)}
                       </div>
                     </div>
+                    {detailProjection ? (
+                      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-400/5 p-3 text-sm text-slate-200" role="status">
+                        <div className="text-xs text-slate-400">เหตุผลสถานะ</div>
+                        <div className="mt-1">{detailProjection.reason}</div>
+                        {detailProjection.context ? <div className="mt-1 break-words text-xs text-slate-400">{detailProjection.context}</div> : null}
+                      </div>
+                    ) : null}
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-200">
                       <div className="text-xs text-slate-400">Worker</div>
                       {detailQuery.data.worker?.displayName ?? "ยังไม่มี worker รับงาน"}
@@ -618,11 +669,9 @@ export default function RenderJobsPage() {
                       ยกเลิกงาน
                     </Button>
                     {detailQuery.data.workflowRunId ? (
-                      <Link href={`/workpacks/${detailQuery.data.workflowRunId}`}>
-                        <Button variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
-                          เปิดงานต้นทาง
-                        </Button>
-                      </Link>
+                      <span className="inline-flex min-h-9 items-center rounded-md border border-white/10 px-3 py-2 text-xs text-slate-400">
+                        Source workflow: {detailQuery.data.workflowRunId}
+                      </span>
                     ) : null}
                   </div>
 
@@ -657,9 +706,9 @@ export default function RenderJobsPage() {
                   </div>
 
                   <div>
-                    <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
-                      <Download className="h-4 w-4" />
-                      ผลลัพธ์ที่ตรวจสอบแล้ว
+                      <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white">
+                        <Download className="h-4 w-4" />
+                      {detailProjection?.outputReady ? "ผลลัพธ์ที่ตรวจสอบแล้ว" : "ผลลัพธ์ (ยังไม่เปิดใช้งาน)"}
                     </h3>
                     {detailQuery.data.outputRefs.length === 0 ? (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-400">
@@ -681,7 +730,7 @@ export default function RenderJobsPage() {
                                   </div>
                                 </div>
                                 <div className="flex shrink-0 flex-wrap gap-2">
-                                  {downloadUrl ? (
+                                  {downloadUrl && detailProjection?.outputReady ? (
                                     <>
                                       {/\.(wav|flac|mp3|aac|m4a|ogg)$/i.test(downloadUrl) || String(ref.artifactType).toLowerCase().includes("audio") ? (
                                         <audio
@@ -698,8 +747,10 @@ export default function RenderJobsPage() {
                                         </a>
                                       </Button>
                                     </>
-                                  ) : null}
-                                  {videoEditorRoute ? (
+                                  ) : detailProjection?.outputReady ? null : (
+                                    <Badge variant="outline" className="border-amber-300/30 text-amber-200">รอ artifact/QC</Badge>
+                                  )}
+                                  {videoEditorRoute && detailProjection?.outputReady ? (
                                     <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
                                       <Link href={videoEditorRoute}>
                                         <Scissors className="mr-2 h-4 w-4" />
@@ -707,7 +758,7 @@ export default function RenderJobsPage() {
                                       </Link>
                                     </Button>
                                   ) : null}
-                                  {ref.publishedItemId ? (
+                                  {ref.publishedItemId && detailProjection?.outputReady ? (
                                     <Button asChild variant="outline" size="sm" className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10">
                                       <Link href={libraryRoute}>
                                         <ExternalLink className="mr-2 h-4 w-4" />

@@ -4,11 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'wouter';
 import { toast } from 'sonner';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { videoEditorMediaLibrary } from '../../services/videoEditorService';
 import type { VideoEditorProject, ExportSettings } from '../../types/videoEditor';
 import type { QueueEditorOperation } from './EditorPanelShared';
+import { useEditorFocusScope } from './ui/focusManagement';
+import { mapEditorError } from './ui/editorUiState';
 
 interface ExportDialogProps {
   project: VideoEditorProject;
@@ -88,6 +91,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
   onCancel,
   onQueueOperation,
 }) => {
+  const dialogRef = useEditorFocusScope<HTMLDivElement>(true, onCancel);
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [customSettings, setCustomSettings] = useState<ExportSettings>(EXPORT_PRESETS[0].settings);
   const [outputPath, setOutputPath] = useState('');
@@ -225,7 +229,8 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           ...(protectionIntent ? { protectionIntent } : {}),
         }, Object.keys(project.assets));
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'ส่งงานเข้า Worker ไม่สำเร็จ');
+        const projection = mapEditorError(error, 'th');
+        toast.error(projection.kind === 'unknown' ? 'ส่งงานเข้า Worker ไม่สำเร็จ' : projection.message);
       }
       return;
     }
@@ -492,12 +497,13 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         }
       `}</style>
 
-      <div className="export-dialog">
+      <div ref={dialogRef} className="export-dialog" role="dialog" aria-modal="true" aria-labelledby="export-dialog-title" aria-describedby="export-dialog-description" tabIndex={-1}>
         {/* Header */}
         <div className="dialog-header">
-          <div className="dialog-title">📤 Export Video</div>
-          <button className="close-button" onClick={onCancel}>×</button>
+          <h2 id="export-dialog-title" className="dialog-title">📤 Export Video</h2>
+          <button type="button" className="close-button" onClick={onCancel} aria-label="Close export dialog">×</button>
         </div>
+        <p id="export-dialog-description" className="sr-only">กำหนดรูปแบบไฟล์และส่งงาน render</p>
 
         {/* Content */}
         <div className="dialog-content">
@@ -589,6 +595,12 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                     ? 'ON: ไฟล์สุดท้ายจะรอตรวจสอบก่อนเผยแพร่'
                     : 'OFF: ผู้ใช้เลือกไม่ใช้ และไฟล์จะถูกระบุว่า unprotected'}
                 </div>
+                <Link
+                  href="/content-protection"
+                  className="mt-2 inline-flex text-[11px] font-medium text-cyan-200 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                >
+                  ดูหลักฐานและการตั้งค่า Content Protection
+                </Link>
               </div>
             </div>
           )}

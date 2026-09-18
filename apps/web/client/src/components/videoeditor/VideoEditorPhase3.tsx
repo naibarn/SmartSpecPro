@@ -76,6 +76,14 @@ import { isTextClipRolloutEnabled } from './textRollout';
 import { WebAssetResolver } from '../../services/webAssetResolver';
 import { buildCanonicalWorkerProject, getAssetSourceUrl, normalizePersistedVideoEditorProject } from './workerEditorProject';
 import { buildWorkerRenderOptions } from './workerRenderHandoff';
+import { EditorStatusBanner } from './ui/EditorStatusBanner';
+import { createEditorStatus, mapEditorError, type EditorErrorProjection } from './ui/editorUiState';
+import { formatRevision } from './ui/editorCopy';
+import { ProjectConflictPanel } from './ProjectConflictPanel';
+import type { ProjectRevisionIdentity } from './ui/projectRevisionUi';
+import { EditorJobStatusPanel } from './EditorJobStatusPanel';
+import { ReviewWorkspacePanel } from './review/ReviewWorkspacePanel';
+import { useEditorFocusScope } from './ui/focusManagement';
 import type { ContentProtectionIntent } from '../../shared/contentProtectionWorker';
 import { analysisWindowDurationMs, analyzeFaceAndActivity } from '../../services/browserVideoAnalysis';
 import {
@@ -100,16 +108,9 @@ const clampClipSpeed = (value: number): number => {
 };
 
 function getErrorMessage(error: unknown, fallback = 'Failed to generate media'): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-  if (error && typeof error === 'object' && 'message' in error) {
-    const raw = (error as { message?: unknown }).message;
-    if (typeof raw === 'string' && raw.trim()) {
-      return raw;
-    }
-  }
-  return fallback;
+  const language = /[ก-๙]/.test(fallback) ? 'th' : 'en';
+  const projection = mapEditorError(error, language);
+  return projection.kind === 'unknown' ? fallback : projection.message;
 }
 
 function parseManagedMediaAssetId(value: unknown): number | null {
@@ -382,12 +383,38 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   }>({ itemId: null, state: null });
 
   // Sidebar view
-  const [sidebarView, setSidebarView] = useState<'library' | 'bin' | 'mediaHistory' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'camera' | 'worker' | 'draftAi' | 'silence' | 'text' | 'aiMusic' | 'aiMediaStudio' | 'voiceover' | 'speakerPlan' | 'subtitles' | 'blur' | 'symbols' | 'codeOverlay'>('bin');
+  const [sidebarView, setSidebarView] = useState<'library' | 'bin' | 'mediaHistory' | 'ducking' | 'aspectRatio' | 'history' | 'transitions' | 'overlay' | 'camera' | 'worker' | 'draftAi' | 'review' | 'silence' | 'text' | 'aiMusic' | 'aiMediaStudio' | 'voiceover' | 'speakerPlan' | 'subtitles' | 'blur' | 'symbols' | 'codeOverlay'>('bin');
+  const sidebarTabItems: Array<{ id: typeof sidebarView; label: string }> = [
+    { id: 'library', label: '📚 Library' },
+    { id: 'bin', label: '🗃️ Bin' },
+    { id: 'mediaHistory', label: '🕘 Media History' },
+    { id: 'ducking', label: '🎚️ Audio' },
+    { id: 'aspectRatio', label: '📐 Ratio' },
+    { id: 'history', label: '📜 History' },
+    { id: 'transitions', label: '✨ FX' },
+    { id: 'overlay', label: '🎨 Overlay' },
+    { id: 'camera', label: '🎯 Camera' },
+    ...(workerHandoff ? [{ id: 'worker' as typeof sidebarView, label: '⚙ Worker' }] : []),
+    { id: 'draftAi', label: '🤖 Draft AI' },
+    { id: 'review', label: '🔎 AI Review' },
+    { id: 'silence', label: '🔇 Silence' },
+    ...(textClipRolloutEnabled ? [{ id: 'text' as typeof sidebarView, label: '🅃 Text' }] : []),
+    { id: 'aiMusic', label: '🎵 AI Music' },
+    { id: 'aiMediaStudio', label: '✨ AI Media' },
+    { id: 'voiceover', label: '🎙️ อัดเสียง' },
+    { id: 'speakerPlan', label: '🗣️ Speaker' },
+    { id: 'subtitles', label: '💬 Subtitle' },
+    { id: 'blur', label: '🕶️ Blur' },
+    { id: 'symbols', label: '✦ Symbols' },
+    { id: 'codeOverlay', label: '⌘ AI Code' },
+  ];
   const [textClipRolloutEnabled, setTextClipRolloutEnabled] = useState<boolean>(() => isTextClipRolloutEnabled());
   const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR_DEFAULT_WIDTH);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   // Mobile sidebar bottom-sheet
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const mobilePanelTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileSidebarFocusRef = useEditorFocusScope<HTMLDivElement>(mobileSidebarOpen, () => setMobileSidebarOpen(false), mobilePanelTriggerRef);
   const editorLayoutRef = React.useRef<HTMLDivElement | null>(null);
   const sidebarResizeRef = React.useRef<{ startX: number; startWidth: number }>({
     startX: 0,
@@ -474,7 +501,14 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   // DB project persistence
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
   const [showProjectList, setShowProjectList] = useState(false);
+  const projectListTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const projectListDialogRef = useEditorFocusScope<HTMLDivElement>(showProjectList, () => setShowProjectList(false), projectListTriggerRef);
   const [isSaving, setIsSaving] = useState(false);
+  const [editorError, setEditorError] = useState<EditorErrorProjection | null>(null);
+  const [projectConflict, setProjectConflict] = useState<{
+    local: ProjectRevisionIdentity;
+    latest: ProjectRevisionIdentity;
+  } | null>(null);
   const projectRevisionRef = useRef<{ id: string; revision: number } | null>(null);
   const [isSubmittingWorkerJob, setIsSubmittingWorkerJob] = useState(false);
   const [workerJobId, setWorkerJobId] = useState<number | null>(null);
@@ -486,12 +520,57 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
   );
   const saveMutation = trpc.videoEditorProjects.save.useMutation();
   const [lastAutoSaveAt, setLastAutoSaveAt] = useState<Date | null>(null);
+  const openProjectConflict = useCallback(async (projection: EditorErrorProjection) => {
+    const local = {
+      revisionId: projectRevisionRef.current?.id ?? projection.revisionId,
+      revision: projectRevisionRef.current?.revision ?? projection.revision,
+    } satisfies ProjectRevisionIdentity;
+    let latest: ProjectRevisionIdentity = {
+      revisionId: projection.revisionId,
+      revision: projection.revision,
+    };
+    if (currentProjectId) {
+      try {
+        const latestProject = await trpcUtils.videoEditorProjects.get.fetch({ id: currentProjectId });
+        if (latestProject) {
+          latest = {
+            revisionId: latestProject.currentRevisionId,
+            revision: latestProject.currentRevision,
+          };
+        }
+      } catch {
+        // Keep the server metadata from the conflict response when refetch is unavailable.
+      }
+    }
+    try {
+      sessionStorage.setItem('videoEditorConflictDraft', JSON.stringify({
+        project,
+        projectId: currentProjectId,
+        local,
+        latest,
+        savedAt: new Date().toISOString(),
+      }));
+    } catch {
+      // Session storage is recovery assistance, not a prerequisite for the dialog.
+    }
+    setProjectConflict({ local, latest });
+    setEditorError(projection);
+  }, [currentProjectId, project, trpcUtils.videoEditorProjects.get]);
   const autoSaveMutation = trpc.videoEditorProjects.autoSave.useMutation({
     onSuccess: (result) => {
       projectRevisionRef.current = { id: result.revisionId, revision: result.revision };
       setLastAutoSaveAt(new Date());
+      setEditorError(null);
     },
-    onError: (err: any) => console.warn('[AutoSave] DB auto-save failed:', err.message),
+    onError: (err: any) => {
+      const projection = mapEditorError(err);
+      if (projection.kind === 'conflict') {
+        void openProjectConflict(projection);
+      } else {
+        setEditorError(projection);
+      }
+      console.warn('[AutoSave] DB auto-save failed:', projection.code);
+    },
   });
   const deleteMutation = trpc.videoEditorProjects.delete.useMutation();
   const submitWorkerJobMutation = trpc.editorMediaJobs.submit.useMutation();
@@ -623,12 +702,99 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       projectRevisionRef.current = { id: result.revisionId, revision: result.revision };
       setIsDirty(false);
       setLastAutoSaveAt(new Date());
+      setEditorError(null);
     } catch (error) {
-      showToast(`Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      const projection = mapEditorError(error);
+      if (projection.kind === 'conflict') {
+        await openProjectConflict(projection);
+      } else {
+        setEditorError(projection);
+      }
+      showToast(projection.message, 'error');
     } finally {
       setIsSaving(false);
     }
   };
+
+  const editorStatus = useMemo(() => {
+    if (editorError) {
+      const key = editorError.kind === 'conflict'
+        ? 'conflict'
+        : editorError.kind === 'capability-blocked'
+          ? 'capability-blocked'
+          : editorError.kind === 'offline'
+            ? 'offline'
+            : 'error';
+      return createEditorStatus(key, editorError.message, {
+        detail: editorError.detail,
+        live: key === 'conflict' || key === 'error' ? 'assertive' : 'polite',
+        revisionId: editorError.revisionId,
+        revision: editorError.revision,
+        actionLabel: editorError.recoverable && editorError.kind !== 'conflict' ? 'ลองอีกครั้ง' : undefined,
+        action: editorError.recoverable && editorError.kind !== 'conflict' ? () => { void handleSave(); } : undefined,
+      });
+    }
+    if (isSaving) return createEditorStatus('saving', 'กำลังบันทึกการแก้ไข', { live: 'polite' });
+    if (autoSaveMutation.isPending) return createEditorStatus('autosaving', 'กำลังบันทึกอัตโนมัติ', { live: 'polite' });
+    if (isDirty) return createEditorStatus('unsaved', 'การแก้ไขยังอยู่ในเครื่องและรอการบันทึก', { live: 'off' });
+    if (lastAutoSaveAt) return createEditorStatus('saved', 'การแก้ไขล่าสุดถูกบันทึกแล้ว', { live: 'off' });
+    return null;
+  }, [autoSaveMutation.isPending, editorError, handleSave, isDirty, isSaving, lastAutoSaveAt]);
+
+  const reloadLatestProject = useCallback(async () => {
+    if (!currentProjectId) return;
+    try {
+      const loaded = await trpcUtils.videoEditorProjects.get.fetch({ id: currentProjectId });
+      const normalized = loaded ? normalizePersistedVideoEditorProject(loaded.projectData) : null;
+      if (!loaded || !normalized) {
+        showToast('ไม่พบเวอร์ชันล่าสุดของโปรเจกต์', 'error');
+        return;
+      }
+      setProject(normalized);
+      setHistory([normalized]);
+      setHistoryIndex(0);
+      setCurrentTime(0);
+      setSelectedClipId(null);
+      setSelectedClipIds([]);
+      setIsDirty(false);
+      projectRevisionRef.current = loaded.currentRevisionId
+        ? { id: loaded.currentRevisionId, revision: loaded.currentRevision ?? 0 }
+        : null;
+      setProjectConflict(null);
+      setEditorError(null);
+      showToast('โหลดเวอร์ชันล่าสุดแล้ว', 'success');
+    } catch (error) {
+      const projection = mapEditorError(error);
+      setEditorError(projection);
+      showToast(projection.message, 'error');
+    }
+  }, [currentProjectId, trpcUtils.videoEditorProjects.get]);
+
+  const saveConflictAsVariant = useCallback(async () => {
+    try {
+      const clipCount = project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0);
+      const result = await saveMutation.mutateAsync({
+        name: `${project.name} (copy)`,
+        projectData: project,
+        clientMutationId: `web-conflict-copy-${generateId('mutation')}`,
+        duration: project.settings.duration,
+        resolution: `${project.settings.width}x${project.settings.height}`,
+        trackCount: project.timeline.tracks.length,
+        clipCount,
+      });
+      setCurrentProjectId(result.id);
+      projectRevisionRef.current = { id: result.revisionId, revision: result.revision };
+      setProjectConflict(null);
+      setEditorError(null);
+      setIsDirty(false);
+      setLastAutoSaveAt(new Date());
+      showToast('เก็บงานเป็นโปรเจกต์ใหม่แล้ว', 'success');
+    } catch (error) {
+      const projection = mapEditorError(error);
+      setEditorError(projection);
+      showToast(projection.message, 'error');
+    }
+  }, [project, saveMutation]);
 
   // Auto-save to DB every 30s when dirty and project is saved
   useEffect(() => {
@@ -671,7 +837,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       setSelectedClipId(null);
       setShowProjectList(false);
     } catch (error) {
-      showToast(`Failed to load: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      showToast(getErrorMessage(error, 'Failed to load project'), 'error');
     }
   };
 
@@ -724,7 +890,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         setEditingProjectName(true);
       } catch (error) {
         if (!cancelled) {
-          showToast(`Failed to open project: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+          showToast(getErrorMessage(error, 'Failed to open project'), 'error');
         }
       }
     };
@@ -769,7 +935,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
         setCurrentProjectId(null);
       }
     } catch (error) {
-      showToast(`Failed to delete: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      showToast(getErrorMessage(error, 'Failed to delete project'), 'error');
     }
   };
 
@@ -812,7 +978,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
     } catch (error) {
       if (error instanceof Error && error.message === 'Load cancelled') return;
       console.error('Load failed:', error);
-      showToast(`Failed to load project: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      showToast(getErrorMessage(error, 'Failed to load project'), 'error');
     }
   };
 
@@ -877,7 +1043,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       setShowRenderProgress(true);
       showToast('Render job submitted. Track progress here or in Task Queue.', 'info', 4000);
     } catch (error) {
-      showToast(`Failed to start export: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      showToast(getErrorMessage(error, 'Failed to start export'), 'error');
     }
   };
 
@@ -1081,12 +1247,11 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       setWorkerJobId(result.job.id);
       setSidebarView('worker');
       showToast('ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
-      setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(result.job.id))}`);
       return String(result.job.id);
     } finally {
       setIsSubmittingWorkerJob(false);
     }
-  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, project, saveMutation, setLocation, submitWorkerJobMutation, workerHandoff]);
+  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, project, saveMutation, submitWorkerJobMutation, workerHandoff]);
 
   const handleRecordingReady = useCallback(async (file: File) => {
     const upload = workerAssetResolverRef.current.uploadAsset(file, undefined, {
@@ -1193,11 +1358,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       } catch (error) {
         if (!cancelled) {
           resetImportIfCurrent();
-          showToast(
-            `Failed to open Library video: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            'error',
-            6000
-          );
+          showToast(getErrorMessage(error, 'Failed to open Library video'), 'error', 6000);
         }
       }
     };
@@ -2436,13 +2597,18 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       showToast(built.unsupported.length > 0
         ? `ส่ง Worker แล้ว แต่มี ${built.unsupported.length} รายการที่ต้องตรวจสอบผลลัพธ์ (overlay/effect จะถูกเก็บไว้ใน revision)`
         : 'ส่งงานเข้า Worker queue แล้ว', 'success', 5000);
-      setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(result.job.id))}`);
     } catch (error) {
-      showToast(getErrorMessage(error, 'ส่งงานเข้า Worker queue ไม่สำเร็จ'), 'error', 6000);
+      const projection = mapEditorError(error);
+      if (projection.kind === 'conflict') {
+        await openProjectConflict(projection);
+      } else {
+        setEditorError(projection);
+      }
+      showToast(projection.message, 'error', 6000);
     } finally {
       setIsSubmittingWorkerJob(false);
     }
-  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, project, saveMutation, setLocation, submitWorkerJobMutation, workerHandoff]);
+  }, [currentProjectId, getAssetSourceUrl, isDirty, isSubmittingWorkerJob, openProjectConflict, project, saveMutation, submitWorkerJobMutation, workerHandoff]);
 
   const handleClipMove = useCallback((clipId: string, newStartTime: number, newTrackId: string) => {
     setProject(prevProject => {
@@ -4145,7 +4311,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
       showToast('Audio extracted to A1', 'success');
     } catch (err: any) {
       console.error('Extract audio failed:', err);
-      showToast(`Audio extraction failed: ${err.message || 'Unknown error'}`, 'error');
+      showToast(getErrorMessage(err, 'Audio extraction failed'), 'error');
     }
   }, [project, selectedClipIds, addToHistory, handleQueueMediaOperation, workerHandoff]);
 
@@ -4400,6 +4566,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
           }
 
           .header-button {
+            min-height: 44px;
             padding: 6px 12px;
             background: #444;
             border: none;
@@ -4408,6 +4575,14 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             cursor: pointer;
             font-size: 12px;
             transition: background 0.2s;
+          }
+
+          .header-button:focus-visible,
+          .mobile-panel-btn:focus-visible,
+          .sidebar-tab:focus-visible,
+          .sidebar-resize-handle:focus-visible {
+            outline: 2px solid #7dd3fc;
+            outline-offset: 2px;
           }
 
           .header-button:hover {
@@ -4491,7 +4666,8 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
 
           .sidebar-tab {
             flex: 0 0 auto;
-            padding: 6px 8px;
+            min-height: 44px;
+            padding: 8px;
             background: transparent;
             border: none;
             border-bottom: 2px solid transparent;
@@ -4518,6 +4694,19 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             overflow-x: hidden;
             display: flex;
             flex-direction: column;
+          }
+
+          .sidebar-content:focus-visible {
+            outline: 2px solid #7dd3fc;
+            outline-offset: -2px;
+          }
+
+          @media (prefers-reduced-motion: reduce) {
+            .sidebar,
+            .header-button,
+            .sidebar-tab {
+              transition: none;
+            }
           }
 
           .ducking-container {
@@ -4644,6 +4833,81 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
           .sidebar-backdrop {
             display: none;
           }
+
+          /* Tablet uses the same reachable bottom panel pattern so the dense
+             desktop sidebar never squeezes the preview/timeline below 1024px. */
+          @media (min-width: 640px) and (max-width: 1023px) {
+            .mobile-panel-btn {
+              display: flex;
+              align-items: center;
+              gap: 4px;
+              min-height: 44px;
+              padding: 6px 12px;
+              background: #0078d4;
+              border: none;
+              border-radius: 4px;
+              color: white;
+              cursor: pointer;
+              font-size: 12px;
+              flex-shrink: 0;
+            }
+
+            .editor-layout {
+              flex-direction: column;
+              overflow: hidden;
+            }
+
+            .editor-main {
+              min-height: 0;
+              overflow: hidden;
+            }
+
+            .timeline-section {
+              height: clamp(240px, 32vh, 360px);
+              min-height: 240px;
+              flex-shrink: 0;
+            }
+
+            .sidebar-resize-handle {
+              display: none;
+            }
+
+            .sidebar {
+              position: fixed;
+              bottom: 0;
+              left: 0;
+              right: 0;
+              width: 100% !important;
+              min-width: 0 !important;
+              max-width: 100% !important;
+              height: min(560px, 70dvh);
+              border-left: none;
+              border-top: 2px solid #0078d4;
+              z-index: 200;
+              transform: translateY(100%);
+              transition: transform 0.3s ease;
+            }
+
+            .sidebar.mobile-open {
+              transform: translateY(0);
+            }
+
+            .sidebar-backdrop {
+              display: block;
+              position: fixed;
+              inset: 0;
+              background: rgba(0, 0, 0, 0.5);
+              z-index: 199;
+            }
+          }
+
+          /* The default rule above intentionally wins only outside the panel
+             breakpoints; keep the backdrop visible whenever the panel opens. */
+          @media (max-width: 1023px) {
+            .sidebar-backdrop {
+              display: block;
+            }
+          }
         `}</style>
 
         {/* Header */}
@@ -4701,6 +4965,13 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             </div>
           )}
           {currentProjectId && <span style={{ fontSize: '10px', color: '#666', marginLeft: '4px' }}>#{currentProjectId}</span>}
+          <span
+            data-testid="editor-revision-indicator"
+            style={{ fontSize: '10px', color: projectRevisionRef.current ? '#9bd7ff' : '#888', marginLeft: '4px' }}
+            title="Canonical project revision"
+          >
+            {formatRevision(projectRevisionRef.current?.revision, projectRevisionRef.current?.id)}
+          </span>
           {isDirty && <span style={{ fontSize: '10px', color: '#ffa500', marginLeft: '4px' }}>unsaved</span>}
           {lastAutoSaveAt && !isDirty && <span style={{ fontSize: '10px', color: '#4caf50', marginLeft: '4px' }}>saved</span>}
           {lastAutoSaveAt && isDirty && currentProjectId && (
@@ -4725,7 +4996,7 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
           <button className="header-button" onClick={handleSave} disabled={isSaving} title="Save to cloud" aria-label="Save project">
             {isSaving ? '...' : '\uD83D\uDCBE'} Save
           </button>
-          <button className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project" aria-label="Open saved projects">
+          <button ref={projectListTriggerRef} className="header-button" onClick={() => { setShowProjectList(true); projectListQuery.refetch(); }} title="Open saved project" aria-label="Open saved projects">
             &#128194; Projects
           </button>
           {workerHandoff && (
@@ -4743,14 +5014,29 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             &#128196; File
           </button>
           <button
+            ref={mobilePanelTriggerRef}
             className="mobile-panel-btn"
             onClick={() => setMobileSidebarOpen(prev => !prev)}
             title="Toggle panel"
             aria-label={mobileSidebarOpen ? 'Close media panel' : 'Open media panel'}
+            aria-expanded={mobileSidebarOpen}
+            aria-controls="editor-sidebar-panel"
           >
             📚 {mobileSidebarOpen ? 'Close' : 'Panel'}
           </button>
         </div>
+
+        <EditorStatusBanner status={editorStatus} className="mx-2 mt-2 shrink-0" />
+        {projectConflict ? (
+          <ProjectConflictPanel
+            local={projectConflict.local}
+            latest={projectConflict.latest}
+            onReloadLatest={() => void reloadLatestProject()}
+            onSaveAsVariant={() => void saveConflictAsVariant()}
+            onDismiss={() => setProjectConflict(null)}
+            isLoading={isSaving || saveMutation.isPending}
+          />
+        ) : null}
 
         {/* Background media generation status banner */}
         {draftMediaBgStatus && (
@@ -4961,105 +5247,41 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             <div
               className="sidebar-backdrop"
               onClick={() => setMobileSidebarOpen(false)}
+              role="presentation"
+              aria-hidden="true"
             />
           )}
 
           {/* Sidebar */}
-          <div className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}`} style={{ width: `${sidebarWidth}px` }}>
-            <div className="sidebar-tabs">
-              <button
-                className={`sidebar-tab ${sidebarView === 'library' ? 'active' : ''}`}
-                onClick={() => setSidebarView('library')}
-              >
-                📚 Library
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'bin' ? 'active' : ''}`}
-                onClick={() => setSidebarView('bin')}
-              >
-                🗃️ Bin
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'mediaHistory' ? 'active' : ''}`}
-                onClick={() => setSidebarView('mediaHistory')}
-              >
-                🕘 Media History
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'ducking' ? 'active' : ''}`}
-                onClick={() => setSidebarView('ducking')}
-              >
-                🎚️ Audio
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'aspectRatio' ? 'active' : ''}`}
-                onClick={() => setSidebarView('aspectRatio')}
-              >
-                📐 Ratio
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'history' ? 'active' : ''}`}
-                onClick={() => setSidebarView('history')}
-              >
-                📜 History
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'transitions' ? 'active' : ''}`}
-                onClick={() => setSidebarView('transitions')}
-              >
-                ✨ FX
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'overlay' ? 'active' : ''}`}
-                onClick={() => setSidebarView('overlay')}
-              >
-                🎨 Overlay
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'camera' ? 'active' : ''}`}
-                onClick={() => setSidebarView('camera')}
-              >
-                🎯 Camera
-              </button>
-              {workerHandoff && (
+          <div
+            className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}`}
+            style={{ width: `${sidebarWidth}px` }}
+            ref={mobileSidebarFocusRef}
+            {...(mobileSidebarOpen ? { role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'editor-mobile-panel-title' } : {})}
+          >
+            <h2 id="editor-mobile-panel-title" className="sr-only">Editor panel</h2>
+            <div className="sidebar-tabs" role="tablist" aria-label="Editor panels">
+              {sidebarTabItems.map((tab) => (
                 <button
-                  className={`sidebar-tab ${sidebarView === 'worker' ? 'active' : ''}`}
-                  onClick={() => setSidebarView('worker')}
+                  key={tab.id}
+                  id={`sidebar-tab-${tab.id}`}
+                  className={`sidebar-tab ${sidebarView === tab.id ? 'active' : ''}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={sidebarView === tab.id}
+                  aria-controls="editor-sidebar-panel"
+                  tabIndex={sidebarView === tab.id ? 0 : -1}
+                  onClick={() => {
+                    setSidebarView(tab.id);
+                    setMobileSidebarOpen(false);
+                  }}
                 >
-                  ⚙ Worker
+                  {tab.label}
                 </button>
-              )}
-              <button
-                className={`sidebar-tab ${sidebarView === 'draftAi' ? 'active' : ''}`}
-                onClick={() => setSidebarView('draftAi')}
-              >
-                🤖 Draft AI
-              </button>
-              <button
-                className={`sidebar-tab ${sidebarView === 'silence' ? 'active' : ''}`}
-                onClick={() => setSidebarView('silence')}
-              >
-                🔇 Silence
-              </button>
-              {textClipRolloutEnabled && (
-                <button
-                  className={`sidebar-tab ${sidebarView === 'text' ? 'active' : ''}`}
-                  onClick={() => setSidebarView('text')}
-                >
-                  🅃 Text
-                </button>
-              )}
-              <button className={`sidebar-tab ${sidebarView === 'aiMusic' ? 'active' : ''}`} onClick={() => setSidebarView('aiMusic')}>🎵 AI Music</button>
-              <button className={`sidebar-tab ${sidebarView === 'aiMediaStudio' ? 'active' : ''}`} onClick={() => setSidebarView('aiMediaStudio')}>✨ AI Media</button>
-              <button className={`sidebar-tab ${sidebarView === 'voiceover' ? 'active' : ''}`} onClick={() => setSidebarView('voiceover')}>🎙️ อัดเสียง</button>
-              <button className={`sidebar-tab ${sidebarView === 'speakerPlan' ? 'active' : ''}`} onClick={() => setSidebarView('speakerPlan')}>🗣️ Speaker</button>
-              <button className={`sidebar-tab ${sidebarView === 'subtitles' ? 'active' : ''}`} onClick={() => setSidebarView('subtitles')}>💬 Subtitle</button>
-              <button className={`sidebar-tab ${sidebarView === 'blur' ? 'active' : ''}`} onClick={() => setSidebarView('blur')}>🕶️ Blur</button>
-              <button className={`sidebar-tab ${sidebarView === 'symbols' ? 'active' : ''}`} onClick={() => setSidebarView('symbols')}>✦ Symbols</button>
-              <button className={`sidebar-tab ${sidebarView === 'codeOverlay' ? 'active' : ''}`} onClick={() => setSidebarView('codeOverlay')}>⌘ AI Code</button>
+              ))}
             </div>
 
-            <div className="sidebar-content">
+            <div id="editor-sidebar-panel" className="sidebar-content" role="tabpanel" aria-labelledby={`sidebar-tab-${sidebarView}`} tabIndex={0}>
               {sidebarView === 'library' && (
                 <MediaLibraryPanel title="📚 Library" initialSourceMode="library" onAddToTimeline={handleAddToTimeline} projectAssets={project.assets} projectId={currentProjectId} />
               )}
@@ -5146,6 +5368,13 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: 9, background: '#222', borderRadius: 5 }}><span>คลิปใน timeline</span><strong>{project.timeline.tracks.reduce((sum, track) => sum + track.clips.length, 0)}</strong></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', padding: 9, background: '#222', borderRadius: 5 }}><span>จำนวน track</span><strong>{project.timeline.tracks.length}</strong></div>
                   </div>
+                  {workerJobId ? (
+                    <EditorJobStatusPanel
+                      jobId={workerJobId}
+                      pinnedRevisionId={projectRevisionRef.current?.id}
+                      onOpenQueue={() => setLocation(`/worker-jobs?jobId=${encodeURIComponent(String(workerJobId))}`)}
+                    />
+                  ) : null}
                   {workerJobId && <p style={{ color: '#86efac', marginBottom: 10 }}>ส่งงานแล้ว: #{workerJobId}</p>}
                   <button type="button" className="header-button primary" style={{ width: '100%' }} onClick={() => void handleSubmitToWorker()} disabled={isSubmittingWorkerJob}>
                     {isSubmittingWorkerJob ? 'กำลังตรวจสอบและส่ง...' : '🚀 ส่งงานเข้า Worker queue'}
@@ -5164,6 +5393,9 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
                   onReplaceFocusedClip={handleReplaceFocusedClipMedia}
                   focusedClipMeta={focusedClipMeta}
                 />
+              )}
+              {sidebarView === 'review' && (
+                <ReviewWorkspacePanel currentRevisionId={projectRevisionRef.current?.id ?? null} />
               )}
               {sidebarView === 'silence' && (
                 <SilenceDetectionPanel
@@ -5252,22 +5484,23 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.7)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-          }} onClick={() => setShowProjectList(false)}>
-            <div onClick={e => e.stopPropagation()} style={{
+          }} onClick={() => setShowProjectList(false)} role="presentation">
+            <div ref={projectListDialogRef} onClick={e => e.stopPropagation()} style={{
               background: '#2a2a2a', border: '1px solid #444', borderRadius: '8px',
               width: '600px', maxWidth: '90vw', maxHeight: '80vh',
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
-            }}>
+            }} role="dialog" aria-modal="true" aria-labelledby="saved-projects-title" aria-describedby="saved-projects-description" tabIndex={-1}>
               <div style={{
                 padding: '16px 20px', borderBottom: '1px solid #444',
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               }}>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#e0e0e0' }}>Saved Projects</span>
-                <button onClick={() => setShowProjectList(false)} style={{
+                <h2 id="saved-projects-title" style={{ fontSize: '16px', fontWeight: 600, color: '#e0e0e0', margin: 0 }}>Saved Projects</h2>
+                <button type="button" aria-label="Close saved projects" onClick={() => setShowProjectList(false)} style={{
                   background: 'transparent', border: 'none', color: '#888',
                   fontSize: '20px', cursor: 'pointer',
                 }}>&times;</button>
               </div>
+              <p id="saved-projects-description" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>เลือกโปรเจกต์ที่บันทึกไว้ หรือสร้างสำเนาเมื่อเกิด conflict</p>
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
                 {projectListQuery.isLoading ? (
                   <div style={{ textAlign: 'center', color: '#888', padding: '24px' }}>Loading...</div>
@@ -5282,9 +5515,8 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
                       padding: '10px 12px', borderRadius: '6px', marginBottom: '4px',
                       background: currentProjectId === p.id ? '#0078d420' : '#1e1e1e',
                       border: `1px solid ${currentProjectId === p.id ? '#0078d4' : '#333'}`,
-                      cursor: 'pointer',
-                    }} onClick={() => handleOpenProject(p.id)}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                    }} role="group" aria-label={`Saved project ${p.name}`}>
+                      <button type="button" onClick={() => handleOpenProject(p.id)} style={{ flex: 1, minWidth: 0, minHeight: '44px', textAlign: 'left', background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer', padding: 0 }}>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: '#e0e0e0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {p.name}
                           {p.isAutoSave && <span style={{ fontSize: '9px', color: '#ffa500', marginLeft: '6px' }}>auto-saved</span>}
@@ -5292,10 +5524,10 @@ export const VideoEditorPhase3: React.FC<VideoEditorPhase3Props> = ({ workerHand
                         <div style={{ fontSize: '11px', color: '#888', marginTop: '2px' }}>
                           {p.clipCount || 0} clips &bull; {p.resolution || 'N/A'} &bull; {new Date(p.updatedAt).toLocaleDateString()}
                         </div>
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }} style={{
+                      </button>
+                      <button type="button" aria-label={`Delete project ${p.name}`} onClick={(e) => { e.stopPropagation(); void handleDeleteProject(p.id); }} style={{
                         background: 'transparent', border: '1px solid #444', borderRadius: '4px',
-                        color: '#888', padding: '4px 8px', cursor: 'pointer', fontSize: '11px', flexShrink: 0,
+                        color: '#888', padding: '4px 8px', cursor: 'pointer', fontSize: '11px', flexShrink: 0, minHeight: '44px',
                       }} title="Delete project">
                         &#128465;
                       </button>

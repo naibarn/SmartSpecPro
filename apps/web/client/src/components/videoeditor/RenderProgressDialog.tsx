@@ -6,6 +6,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { videoEditorRenderService } from '../../services/videoEditorService';
 import type { RenderJob } from '../../services/videoEditorService';
+import { mapEditorError } from './ui/editorUiState';
+import { useEditorFocusScope } from './ui/focusManagement';
 
 interface RenderProgressDialogProps {
   jobId: string;
@@ -20,6 +22,7 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
   onCancel,
   autoCompleteOnDone = false
 }) => {
+  const dialogRef = useEditorFocusScope<HTMLDivElement>(!isMinimized, onCancel);
   const [job, setJob] = useState<RenderJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -56,7 +59,8 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
           if (updatedJob.status === 'completed') {
             // Final handling happens after pollRenderJob resolves.
           } else if (updatedJob.status === 'failed') {
-            setError(updatedJob.error || 'Render failed');
+            const projection = mapEditorError(updatedJob.error || 'Render failed', 'en');
+            setError(projection.kind === 'unknown' ? 'Render failed' : projection.message);
           }
         },
         2000
@@ -66,7 +70,8 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
         notifyComplete(finalJob.outputPath);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      const projection = mapEditorError(err, 'en');
+      setError(projection.kind === 'unknown' ? 'Render failed' : projection.message);
     }
   };
 
@@ -392,13 +397,13 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
         }
       `}</style>
 
-      <div className="render-progress-dialog">
+      <div ref={dialogRef} className="render-progress-dialog" role="dialog" aria-modal="true" aria-labelledby="render-progress-title" aria-describedby="render-progress-description" tabIndex={-1}>
         {/* Status Icon */}
-        <div className="status-icon">{getStatusIcon()}</div>
+        <div className="status-icon" aria-hidden="true">{getStatusIcon()}</div>
 
         {/* Status Text */}
-        <div className="status-text">{getStatusText()}</div>
-        <div className="status-subtext">
+        <h2 id="render-progress-title" className="status-text">{getStatusText()}</h2>
+        <div id="render-progress-description" className="status-subtext" role="status" aria-live="polite">
           {job?.status === 'rendering' && `Elapsed: ${formatTime(elapsedTime)}`}
           {job?.status === 'completed' && 'Your video is ready!'}
         </div>
@@ -422,14 +427,14 @@ export const RenderProgressDialog: React.FC<RenderProgressDialogProps> = ({
 
         {/* Error Message */}
         {error && (
-          <div className="error-message">
+          <div className="error-message" role="alert">
             <strong>Error:</strong> {error}
           </div>
         )}
 
         {/* Success Message */}
         {job?.status === 'completed' && (
-          <div className="success-message">
+          <div className="success-message" role="status">
             Video exported successfully to:<br />
             <strong>{job.outputPath}</strong>
           </div>
