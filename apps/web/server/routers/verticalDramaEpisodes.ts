@@ -2309,6 +2309,7 @@ export async function runReferenceFramePromptInteractiveJob(
     tenantId,
     seriesId,
     episodeId,
+    episodeGenerationSettings: row.generationSettings,
     shotNumber: input.shotNumber,
     instruction: input.instruction,
     referenceFrameMode: true,
@@ -25738,6 +25739,7 @@ export const verticalDramaEpisodesRouter = router({
           publicUrl: ctx.publicUrl ?? undefined,
           seriesId,
           episodeId,
+          episodeGenerationSettings: row.generationSettings,
           shotNumber: input.shotNumber,
           frameRole,
           instruction: input.instruction,
@@ -26496,6 +26498,7 @@ export const verticalDramaEpisodesRouter = router({
           tenantId,
           seriesId,
           episodeId,
+          episodeGenerationSettings: row.generationSettings,
           shotNumber: input.shotNumber,
           instruction: referenceFrameInstruction,
           referenceFrameMode: true,
@@ -32794,6 +32797,11 @@ export const verticalDramaEpisodesRouter = router({
         // whole feed for THIS render only, without touching the saved plan.
         includeTextOverlays: z.boolean().optional(),
         includeWatermark: z.boolean().optional(),
+        protectionIntent: z.object({
+          choice: z.enum(["on", "off"]),
+          choiceSource: z.enum(["per_export", "user_default", "disabled_by_user"]).optional(),
+          requireBeforePublish: z.boolean().optional(),
+        }).optional(),
         // `planning/vd-remotion-render-option/plan.md` wave 1 — OPT-IN
         // Remotion render path for this sub-episode assembly. Omitted/
         // `"ffmpeg"` is BYTE-IDENTICAL to every render before this option
@@ -33140,6 +33148,7 @@ export const verticalDramaEpisodesRouter = router({
         ...(watermarkImagesForJob
           ? { watermarkImages: watermarkImagesForJob }
           : {}),
+        ...(input.protectionIntent ? { protectionIntent: input.protectionIntent } : {}),
       };
       // `planning/vd-remotion-render-option/plan.md` wave 1 — try the
       // opt-in Remotion queue path FIRST when requested; ANY failure falls
@@ -33190,6 +33199,7 @@ export const verticalDramaEpisodesRouter = router({
             broll: brollInputs.length > 0 ? brollInputs : undefined,
             tenantId,
             requestedByUserId: userId,
+            protectionIntent: input.protectionIntent,
             idempotencyKey: input.idempotencyKey,
           });
           jobId = submitted.jobId;

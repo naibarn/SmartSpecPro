@@ -377,6 +377,13 @@ export interface VerticalDramaFinalRenderOptionsView {
    *  section below greys out the subtitle font-size picker whenever this is
    *  `"remotion_queue"`. */
   renderEngine?: "ffmpeg" | "remotion_queue";
+  /** Feature 201 — user-controlled invisible watermark choice for the final
+   * compiled artifact. Optional so older callers/tests keep their payload. */
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
 }
 
 /** Mirrors `VdEpisodeAdBannerExclusion` (`server/routers/verticalDramaEpisodes.ts`) as this file's own independent client view type. */
@@ -408,6 +415,7 @@ export interface VerticalDramaFinalRenderOptionsPanelData {
    *  `VerticalDramaFinalRenderOptionsSection`'s own prop doc. Omit to keep the
    *  no-dialogue warning hidden. */
   subtitleSourceLineCount?: number;
+  contentProtectionEnabled?: boolean;
 }
 
 /** Data needed to render the storyboard_shotgrid stage's dedicated panel. */
@@ -1633,6 +1641,7 @@ export function VerticalDramaEpisodeWorkspace({
                 onChange={finalRenderOptionsPanel?.onChange}
                 lastResult={finalRenderOptionsPanel?.lastResult}
                 adBannerDesigns={adBannerPlanPanel?.designs}
+                contentProtectionEnabled={finalRenderOptionsPanel?.contentProtectionEnabled}
                 subtitleSourceLineCount={
                   finalRenderOptionsPanel?.subtitleSourceLineCount
                 }
@@ -4072,6 +4081,7 @@ function VerticalDramaFinalRenderOptionsSection({
   lastResult,
   adBannerDesigns = [],
   subtitleSourceLineCount,
+  contentProtectionEnabled = false,
 }: {
   locale: VdLocale;
   voiceChainEnabled?: boolean;
@@ -4086,6 +4096,7 @@ function VerticalDramaFinalRenderOptionsSection({
    *  (caller did not supply it) shows no warning at all, so every existing
    *  caller/test renders byte-identically. */
   subtitleSourceLineCount?: number;
+  contentProtectionEnabled?: boolean;
 }) {
   const t = useMemo(() => vdCopy(locale), [locale]);
   const includeDialogueAudio = value?.includeDialogueAudio ?? false;
@@ -4098,6 +4109,7 @@ function VerticalDramaFinalRenderOptionsSection({
   // only an explicit "ffmpeg" opts out. The ffmpeg queue has no worker that can
   // claim its jobs, so defaulting to it produced renders that never ran.
   const remotionRenderEnabled = renderEngine !== "ffmpeg";
+  const protectionChoice = value?.protectionIntent?.choice ?? "off";
   const [confirmServerFfmpeg, setConfirmServerFfmpeg] = useState(false);
 
   function emit(patch: Partial<VerticalDramaFinalRenderOptionsView>) {
@@ -4108,6 +4120,15 @@ function VerticalDramaFinalRenderOptionsSection({
       subtitleFontSize,
       showAgeBadge,
       renderEngine,
+      ...(contentProtectionEnabled
+        ? {
+            protectionIntent: value?.protectionIntent ?? {
+              choice: protectionChoice,
+              choiceSource: "per_export" as const,
+              requireBeforePublish: true,
+            },
+          }
+        : {}),
       ...patch,
     });
   }
@@ -4121,6 +4142,71 @@ function VerticalDramaFinalRenderOptionsSection({
       data-testid="vd-final-render-options-section"
     >
       <h3 className="text-sm font-medium">{t.finalRenderOptionsTitle}</h3>
+
+      {contentProtectionEnabled ? (
+        <div
+          className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-50/50 p-2 dark:bg-emerald-950/20"
+          data-testid="vd-final-render-content-protection"
+        >
+          <p className="text-sm font-medium">
+            {locale === "th"
+              ? "ลายน้ำดิจิทัลของไฟล์วิดีโอสุดท้าย"
+              : "Digital watermark for the final video"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {locale === "th"
+              ? "สร้างหลังการรวม/เรนเดอร์ไฟล์สุดท้ายเท่านั้น และ ON จะรอตรวจสอบก่อนเผยแพร่ ส่วน OFF จะถูกระบุว่าไม่ป้องกัน"
+              : "Created only after the final compound/render bytes exist. ON waits for verification; OFF is explicitly unprotected."}
+          </p>
+          <div className="flex items-center gap-4" role="group" aria-label="Digital watermark choice">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                id="vd-final-render-protection-on"
+                checked={protectionChoice === "on"}
+                onCheckedChange={checked =>
+                  checked &&
+                  emit({
+                    protectionIntent: {
+                      choice: "on",
+                      choiceSource: "per_export",
+                      requireBeforePublish: true,
+                    },
+                  })
+                }
+                data-testid="vd-final-render-protection-on"
+              />
+              ON
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                id="vd-final-render-protection-off"
+                checked={protectionChoice === "off"}
+                onCheckedChange={checked =>
+                  checked &&
+                  emit({
+                    protectionIntent: {
+                      choice: "off",
+                      choiceSource: "per_export",
+                      requireBeforePublish: true,
+                    },
+                  })
+                }
+                data-testid="vd-final-render-protection-off"
+              />
+              OFF
+            </label>
+          </div>
+          <p className="text-[11px] text-muted-foreground" role="status">
+            {protectionChoice === "on"
+              ? locale === "th"
+                ? "ON: จะไม่ถือว่า final artifact พร้อมเผยแพร่จนกว่าการตรวจสอบลายน้ำจะผ่าน"
+                : "ON: the final artifact is not publishable until watermark verification passes"
+              : locale === "th"
+                ? "OFF: ผู้ใช้เลือกไม่ใช้ลายน้ำดิจิทัลสำหรับการส่งออกครั้งนี้"
+                : "OFF: digital watermark is disabled for this export by the user"}
+          </p>
+        </div>
+      ) : null}
 
       {voiceChainEnabled ? (
         <div className="space-y-2">

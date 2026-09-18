@@ -6,6 +6,8 @@
  * explicitly gated off for rollout or safety.
  */
 export interface TenantFeatureFlags {
+  contentProtectionEnabled: boolean; // Feature 201 — Content Protection workspace and export gates
+  contentProtectionImageProviderEnabled: boolean; // Feature 201 — image watermark provider rollout
   multiChannel: boolean; // F01 — Multi-channel adapters
   chatWidget: boolean; // F02 — Embeddable chat widget
   browserTool: boolean; // F03 — Browser automation tool
@@ -262,6 +264,8 @@ export type TenantFeatureFlagKey = keyof TenantFeatureFlags;
  * Used for validation — any keys not in this set are stripped before saving.
  */
 export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureFlagKey>([
+  "contentProtectionEnabled",
+  "contentProtectionImageProviderEnabled",
   "multiChannel",
   "chatWidget",
   "browserTool",
@@ -508,6 +512,8 @@ export const ALLOWED_FEATURE_FLAGS: ReadonlySet<string> = new Set<TenantFeatureF
  * capabilities can stay false until explicitly enabled per tenant.
  */
 export const FEATURE_FLAG_DEFAULTS: Readonly<TenantFeatureFlags> = {
+  contentProtectionEnabled: false,
+  contentProtectionImageProviderEnabled: false,
   multiChannel: true,
   chatWidget: true,
   browserTool: true,

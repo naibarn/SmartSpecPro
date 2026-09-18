@@ -99,11 +99,11 @@ import { useScopedTranslation } from '@/i18n/useScopedTranslation';
 import { useTenantFeatureFlag } from '@/hooks/useTenantFeatureFlag';
 import { useTenant } from '@/contexts/TenantContext';
 
-type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'marketplaceSharing' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'mcpDevices' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
+type SettingsTab = 'profile' | 'account' | 'security' | 'privateVault' | 'preferences' | 'marketplaceSharing' | 'contentProtection' | 'localAi' | 'desktopHost' | 'notifications' | 'automation' | 'mcpDevices' | 'workers' | 'api' | 'billing' | 'integrations' | 'personas';
 
 type TwoFAStep = 'idle' | 'setup' | 'verify' | 'done' | 'disable' | 'regen';
 
-const SETTINGS_TABS: SettingsTab[] = ['profile', 'account', 'security', 'privateVault', 'preferences', 'marketplaceSharing', 'localAi', 'desktopHost', 'notifications', 'automation', 'mcpDevices', 'workers', 'api', 'billing', 'integrations', 'personas'];
+const SETTINGS_TABS: SettingsTab[] = ['profile', 'account', 'security', 'privateVault', 'preferences', 'marketplaceSharing', 'contentProtection', 'localAi', 'desktopHost', 'notifications', 'automation', 'mcpDevices', 'workers', 'api', 'billing', 'integrations', 'personas'];
 const SAFETY_PROFILE_COUNTRIES = [
   { code: 'TH', en: 'Thailand', th: 'ไทย' },
   { code: 'US', en: 'United States', th: 'สหรัฐอเมริกา' },
@@ -617,6 +617,7 @@ export default function Settings() {
   const desktopAdvancedLocalModeEnabled = useTenantFeatureFlag("desktopAdvancedLocalMode");
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
+  const contentProtectionEnabled = useTenantFeatureFlag("contentProtectionEnabled");
   const desktopHostStatus = useDesktopHostStatus(
     desktopHostEnabled && activeTab === 'desktopHost' && Boolean(user?.currentTenantId),
   );
@@ -1181,6 +1182,9 @@ export default function Settings() {
     { id: 'privateVault', label: t('settings.tabs.privateVault'), icon: Lock },
     { id: 'preferences', label: t('settings.tabs.preferences'), icon: Palette },
     { id: 'marketplaceSharing', label: currentUiLanguage === 'th' ? 'แชร์ Marketplace' : 'Marketplace Sharing', icon: Store },
+    ...(contentProtectionEnabled
+      ? [{ id: 'contentProtection' as const, label: currentUiLanguage === 'th' ? 'การปกป้องเนื้อหา' : 'Content Protection', icon: ShieldCheck }]
+      : []),
     ...(localClientLlmModeEnabled
       ? [{ id: 'localAi' as const, label: t('settings.tabs.localAi'), icon: Cpu }]
       : []),
@@ -2644,6 +2648,23 @@ export default function Settings() {
               )}
 
               {activeTab === 'marketplaceSharing' && <MarketplaceSharingSettingsPanel />}
+
+              {activeTab === 'contentProtection' && contentProtectionEnabled && (
+                <div className="space-y-6">
+                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5">
+                    <div className="flex items-start gap-3">
+                      <ShieldCheck className="mt-0.5 h-6 w-6 text-emerald-700" />
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-900">{currentUiLanguage === 'th' ? 'การตั้งค่าลายน้ำดิจิทัล' : 'Digital watermark settings'}</h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">{currentUiLanguage === 'th' ? 'กำหนดค่าเริ่มต้นของคุณเองสำหรับงานส่งออกสุดท้าย ระบบจะแจ้ง ON/OFF ชัดเจนก่อนสร้างลายน้ำ' : 'Set your own default for final exports. The export surface will show the effective ON/OFF choice before a digital watermark is created.'}</p>
+                      </div>
+                    </div>
+                    <Button className="mt-4" variant="outline" onClick={() => setLocation('/content-protection/settings')}>
+                      {currentUiLanguage === 'th' ? 'เปิด workspace Content Protection' : 'Open Content Protection workspace'}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {activeTab === 'localAi' && localClientLlmModeEnabled && (
                 <div className="space-y-6">

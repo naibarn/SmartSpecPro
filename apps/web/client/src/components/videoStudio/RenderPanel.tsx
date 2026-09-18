@@ -28,7 +28,7 @@
  * `planning/video-studio-astryx-migration/plan.md`) — not an accidental
  * violation of that rule.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { PlayCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -60,6 +60,25 @@ export function RenderPanel({
   onGoToQa: () => void;
 }) {
   const [finalConfirmOpen, setFinalConfirmOpen] = useState(false);
+  const [digitalWatermarkChoice, setDigitalWatermarkChoice] = useState<"on" | "off">("off");
+  const [contentProtectionEnabled, setContentProtectionEnabled] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/tenant/current", { credentials: "include" })
+      .then(response => (response.ok ? response.json() : null))
+      .then(payload => {
+        if (active && payload?.tenant?.featureFlags?.contentProtectionEnabled === true) {
+          setContentProtectionEnabled(true);
+        }
+      })
+      .catch(() => {
+        // Feature flags fail closed; the dedicated Content Protection page
+        // remains the authoritative settings surface.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const compileQuery = trpc.videoProjects.compileProject.useQuery(
     { projectId },
@@ -239,6 +258,39 @@ export function RenderPanel({
         </VStack>
       </div>
 
+      {contentProtectionEnabled ? (
+        <Card data-testid="video-studio-content-protection-choice">
+          <VStack gap={2}>
+            <Heading level={5}>
+              {pickCopy(lang, { th: "ลายน้ำดิจิทัลสำหรับไฟล์สุดท้าย", en: "Digital watermark for the final artifact" })}
+            </Heading>
+            <Text type="body" color="secondary">
+              {pickCopy(lang, {
+                th: "ลายน้ำจะถูกสร้างหลัง render ไฟล์สุดท้ายเสร็จ และจะรอตรวจสอบตัวเองก่อนเผยแพร่ ไม่ใช่ลายน้ำโลโก้ที่มองเห็นได้",
+                en: "The invisible watermark is created after the final render bytes exist and must self-verify before publication. This is separate from a visible logo watermark.",
+              })}
+            </Text>
+            <HStack gap={2} wrap="wrap" role="group" aria-label={pickCopy(lang, { th: "ตัวเลือกลายน้ำดิจิทัล", en: "Digital watermark choice" })}>
+              <Button
+                variant={digitalWatermarkChoice === "on" ? "primary" : "secondary"}
+                label={pickCopy(lang, { th: "เปิดใช้ (ON)", en: "ON" })}
+                onClick={() => setDigitalWatermarkChoice("on")}
+              />
+              <Button
+                variant={digitalWatermarkChoice === "off" ? "primary" : "secondary"}
+                label={pickCopy(lang, { th: "ไม่ใช้ (OFF)", en: "OFF" })}
+                onClick={() => setDigitalWatermarkChoice("off")}
+              />
+              <Text type="supporting" color={digitalWatermarkChoice === "on" ? "success" : "secondary"}>
+                {digitalWatermarkChoice === "on"
+                  ? pickCopy(lang, { th: "ON: ไฟล์สุดท้ายจะยังไม่ publish จนกว่าตรวจสอบผ่าน", en: "ON: publication waits for verification" })
+                  : pickCopy(lang, { th: "OFF: ผู้ใช้เลือกไม่ใช้ ไฟล์นี้จะถูกระบุว่า unprotected", en: "OFF: user-disabled and explicitly unprotected" })}
+              </Text>
+            </HStack>
+          </VStack>
+        </Card>
+      ) : null}
+
       <AlertDialog
         isOpen={finalConfirmOpen}
         onOpenChange={setFinalConfirmOpen}
@@ -248,7 +300,19 @@ export function RenderPanel({
         actionLabel={pickCopy(lang, videoStudioCopy.renderFinalConfirmAction)}
         actionVariant="primary"
         isActionLoading={queueRender.isPending}
-        onAction={() => queueRender.mutate({ projectId, profile: "final" })}
+        onAction={() => queueRender.mutate({
+          projectId,
+          profile: "final",
+          ...(contentProtectionEnabled
+            ? {
+                protectionIntent: {
+                  choice: digitalWatermarkChoice,
+                  choiceSource: "per_export" as const,
+                  requireBeforePublish: true,
+                },
+              }
+            : {}),
+        })}
       />
     </div>
   );

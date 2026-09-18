@@ -309,6 +309,21 @@ export default function Dashboard() {
 
   // Tenant feature flags for menu gating
   const tenantFlags = useTenantFeatureFlags();
+  const { data: contentProtectionOverview } = useQuery({
+    queryKey: ["content-protection-overview", tenant?.id ?? "none"],
+    queryFn: async () => {
+      const response = await fetch("/api/trpc/contentProtection.overview");
+      if (!response.ok) throw new Error("content_protection_overview_unavailable");
+      const body = await response.json() as { result?: { data?: unknown } };
+      return body.result?.data as {
+        protected?: number;
+        processing?: number;
+        notProtected?: number;
+      } | undefined;
+    },
+    enabled: isAuthenticated && tenantFlags.contentProtectionEnabled,
+    staleTime: 30_000,
+  });
   const isAdminLike = user?.role === "admin" || user?.role === "domain_admin";
   const analyticsEnabled = isAuthenticated && isAdminLike;
   const desktopGovernanceEnabled =
@@ -1134,6 +1149,10 @@ export default function Dashboard() {
     "finance",
     "finance-reports",
     "media-studio",
+    "content-protection",
+    "content-protection-assets",
+    "content-protection-verify",
+    "content-protection-settings",
     "storyboard-review",
     "vertical-drama-series",
     "video-studio",
@@ -1153,6 +1172,10 @@ export default function Dashboard() {
     finance: "from-slate-700 to-emerald-700",
     "finance-reports": "from-slate-700 to-teal-700",
     "media-studio": "from-slate-700 to-slate-900",
+    "content-protection": "from-slate-700 to-emerald-700",
+    "content-protection-assets": "from-emerald-700 to-teal-700",
+    "content-protection-verify": "from-emerald-700 to-cyan-700",
+    "content-protection-settings": "from-emerald-700 to-slate-700",
     "storyboard-review": "from-slate-700 to-cyan-700",
     "vertical-drama-series": "from-slate-700 to-fuchsia-700",
     "video-studio": "from-slate-700 to-fuchsia-700",
@@ -1183,6 +1206,26 @@ export default function Dashboard() {
       icon: Sparkles,
       href: "/media-studio",
     },
+    "content-protection": {
+      label: "Content Protection",
+      icon: ShieldCheck,
+      href: "/content-protection",
+    },
+    "content-protection-assets": {
+      label: "Protected assets",
+      icon: FileText,
+      href: "/content-protection/assets",
+    },
+    "content-protection-verify": {
+      label: "Verify a copy",
+      icon: ClipboardCheck,
+      href: "/content-protection/verify",
+    },
+    "content-protection-settings": {
+      label: "Protection settings",
+      icon: ShieldCheck,
+      href: "/content-protection/settings",
+    },
     "storyboard-review": {
       label: t("nav:sidebar.storyboard-review"),
       icon: Video,
@@ -1211,6 +1254,7 @@ export default function Dashboard() {
   } as const;
   const quickActions = sidebarQuickActionIds
     .map(id => {
+      if (id.startsWith("content-protection") && !tenantFlags.contentProtectionEnabled) return null;
       const menuItem = mainMenuItems.find(item => item.id === id);
       const fallback =
         quickActionFallbackById[id as keyof typeof quickActionFallbackById];
@@ -1269,6 +1313,21 @@ export default function Dashboard() {
           </button>
         ))}
       </div>
+      {tenantFlags.contentProtectionEnabled ? (
+        <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/70 p-4" data-testid="dashboard-content-protection-status">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-emerald-950">Content Protection status</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-900/80">Final artifacts only: watermark choice is shown before export and technical evidence is available after verification.</p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-emerald-950">
+              <span className="rounded-full bg-white/80 px-2 py-1">Protected: {contentProtectionOverview?.protected ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">Processing: {contentProtectionOverview?.processing ?? 0}</span>
+              <span className="rounded-full bg-white/80 px-2 py-1">Unprotected: {contentProtectionOverview?.notProtected ?? 0}</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </motion.section>
   );
 

@@ -1095,6 +1095,9 @@ function EpisodeWorkspaceShell({
   const enhancedVideoPromptApplyEnabled = useTenantFeatureFlag(
     "verticalDramaEnhancedVideoPromptApply"
   );
+  const contentProtectionEnabled = useTenantFeatureFlag(
+    "contentProtectionEnabled"
+  );
 
   const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -8286,6 +8289,9 @@ function EpisodeWorkspaceShell({
       // value (defaults "medium"/false match the server's own defaults).
       subtitleFontSize: finalRenderOptions.subtitleFontSize,
       showAgeBadge: finalRenderOptions.showAgeBadge,
+      ...(contentProtectionEnabled && finalRenderOptions.protectionIntent
+        ? { protectionIntent: finalRenderOptions.protectionIntent }
+        : {}),
       // `planning/vd-remotion-render-option/plan.md` wave 2 — only sent when
       // the user opted in; omitted (not `"ffmpeg"`) for every other call so
       // the mutate payload stays BYTE-IDENTICAL to before this option
@@ -10697,6 +10703,7 @@ function EpisodeWorkspaceShell({
           finalRenderOptionsPanel={{
             value: finalRenderOptions,
             onChange: setFinalRenderOptions,
+            contentProtectionEnabled,
             lastResult: finalRenderLastResult,
             // Mirrors the server resolver's OWN source order
             // (`resolveEpisodeDialogueAudioAndSubtitlesRunInputs`): the

@@ -117,6 +117,8 @@ export interface AssembleEpisodeVideoOwner {
 
 export interface EpisodeClipSource {
   clipNumber: number;
+  /** Canonical media-library identity for the rendered clip when available. */
+  mediaAssetId?: number;
   /** `videoTask.videoUrl` — may be a same-origin `/api/storage/...` path or an
    *  absolute external provider URL. */
   videoUrl?: string;
@@ -2229,6 +2231,9 @@ export function extractClipSourcesFromMotionPromptPack(
     .sort(compareClipSourceOrder)
     .map(c => ({
       clipNumber: c.clipNumber,
+      ...(Number.isSafeInteger(Number(c.videoTask?.mediaAssetId)) && Number(c.videoTask?.mediaAssetId) > 0
+        ? { mediaAssetId: Number(c.videoTask?.mediaAssetId) }
+        : {}),
       videoUrl: normalizeVerticalDramaStoredAssetUrl(c.videoTask?.videoUrl),
       parentShotNumber: c.parentShotNumber,
       subShotNumber: c.subShotNumber,

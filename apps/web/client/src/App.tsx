@@ -219,6 +219,7 @@ const SocialAutomation = lazy(() => import("./pages/SocialAutomation"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Generate = lazy(() => import("./pages/Generate"));
 const MediaStudio = lazy(() => import("./pages/MediaStudio"));
+const ContentProtection = lazy(() => import("./pages/content-protection/ContentProtectionPage"));
 const ContentComposer = lazy(() => import("./pages/ContentComposer"));
 const StoryboardReviewPage = lazy(() => import("./pages/StoryboardReviewPage"));
 const StoryboardSkillFrameworkPage = lazy(
@@ -1140,6 +1141,21 @@ function Router() {
           <Route path="/media-studio">
             <RequireAuth>
               <MediaStudio />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection">
+            <RequireAuth>
+              <ContentProtection />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection/:section">
+            <RequireAuth>
+              <ContentProtection />
+            </RequireAuth>
+          </Route>
+          <Route path="/content-protection/:section/:assetId">
+            <RequireAuth>
+              <ContentProtection />
             </RequireAuth>
           </Route>
           <Route path="/content-composer">

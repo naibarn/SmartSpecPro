@@ -26,6 +26,7 @@ import { debugError } from "../_core/logger";
 import { db } from "../db";
 import { mediaAssets, workerJobs } from "../../drizzle/schema";
 import { mediaModels } from "../../drizzle/schema";
+import { contentProtectionSettings } from "../../drizzle/schema";
 
 import {
   VideoProjectDocumentSchema,
@@ -85,6 +86,10 @@ import {
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
   type RemotionRenderVideoWorkerInput,
 } from "../../shared/workerRuntime";
+import {
+  contentProtectionIntentSchema,
+  type ContentProtectionIntent,
+} from "../../shared/contentProtectionWorker";
 import {
   dispatchLaneARemotionRenderJob,
   enqueueVideoIntelligenceJob,
@@ -4073,10 +4078,36 @@ export const videoProjectsRouter = router({
     }),
 
   queueRender: videoIntelligenceGenProcedure
-    .input(z.object({ projectId: z.number().int().positive(), profile: RENDER_PROFILE_SCHEMA }))
+    .input(z.object({
+      projectId: z.number().int().positive(),
+      profile: RENDER_PROFILE_SCHEMA,
+      protectionIntent: contentProtectionIntentSchema.optional(),
+    }))
     .mutation(async ({ ctx, input }) => {
       await assertVideoIntelligenceEnabled(ctx.tenantId);
       const auth = requireAuthScope(ctx);
+      const tenantFlags = await getTenantFeatureFlags(auth.tenantId);
+      let protectionIntent: ContentProtectionIntent | undefined;
+      if (input.profile === "final" && tenantFlags.contentProtectionEnabled === true) {
+        if (input.protectionIntent) {
+          protectionIntent = contentProtectionIntentSchema.parse(input.protectionIntent);
+        } else {
+          const [settings] = await db.select({ defaultChoice: contentProtectionSettings.defaultChoice })
+            .from(contentProtectionSettings)
+            .where(and(eq(contentProtectionSettings.tenantId, auth.tenantId), eq(contentProtectionSettings.userId, auth.userId)))
+            .limit(1);
+          protectionIntent = {
+            choice: settings?.defaultChoice === "on" ? "on" : "off",
+            choiceSource: "user_default",
+            requireBeforePublish: true,
+          };
+        }
+      } else if (input.protectionIntent) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Content protection is not enabled for this tenant or preview render",
+        });
+      }
       const traceId = mintTraceId();
       logStage("queue_render", input.projectId, traceId, "start", { profile: input.profile });
 
@@ -4222,6 +4253,7 @@ export const videoProjectsRouter = router({
         ...workerInput,
         tenantId: auth.tenantId,
         requestedByUserId: auth.userId,
+        ...(protectionIntent ? { protectionIntent } : {}),
         isAdminRequester: ctx.user?.role === "admin",
         executionTarget:
           (ctx.req as (typeof ctx.req & { smartaihubMcpRemotionExecutor?: boolean }) | undefined)?.smartaihubMcpRemotionExecutor

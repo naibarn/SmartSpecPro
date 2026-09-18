@@ -38,7 +38,7 @@
 import { createHash } from "crypto";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
-import { verticalDramaEpisodes } from "../../drizzle/schema";
+import { contentProtectionAssets, verticalDramaEpisodes } from "../../drizzle/schema";
 import {
   downloadClipToFile,
   inferDownloadExtension,
@@ -65,6 +65,7 @@ import {
   queueRemotionRenderVideoJob,
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
+import type { ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import { normalizeStorageCapacityError } from "./storageCapacityError";
 import {
@@ -1197,6 +1198,7 @@ export interface SubmitVdRemotionAssemblyInput {
   requestedByUserId?: number | null;
   isAdminRequester?: boolean;
   idempotencyKey?: string | null;
+  protectionIntent?: ContentProtectionIntent;
 }
 
 export interface VdRemotionRenderDeps {
@@ -1698,6 +1700,7 @@ export async function submitVdRemotionAssembly(
     requestedByUserId: input.requestedByUserId ?? undefined,
     isAdminRequester: input.isAdminRequester ?? false,
     idempotencyKey: input.idempotencyKey ?? undefined,
+    ...(input.protectionIntent ? { protectionIntent: input.protectionIntent } : {}),
   });
 
   // No Lane A in-process dispatch here (see this file's header doc comment)
@@ -1747,6 +1750,7 @@ export interface SubmitVdProductionEpisodeAssemblyInput {
   credits?: { text: string; rollDurationSeconds?: number };
   overlays?: ProductionEpisodeOverlayItem[];
   idempotencyKey?: string | null;
+  protectionIntent?: ContentProtectionIntent;
 }
 
 export interface ProductionEpisodeRemotionBgmTrack {
@@ -2106,6 +2110,7 @@ export async function submitVdProductionEpisodeAssembly(
     tenantId: input.owner.tenantId,
     requestedByUserId: input.owner.userId,
     idempotencyKey: input.idempotencyKey ?? undefined,
+    ...(input.protectionIntent ? { protectionIntent: input.protectionIntent } : {}),
   });
   return {
     jobId: job.id,
@@ -2471,6 +2476,38 @@ export async function reconcileVdRemotionAssembly(
   }
 
   if (job.status !== "completed") return { reconciled: false };
+
+  const jobOutput =
+    job.outputJson && typeof job.outputJson === "object" && !Array.isArray(job.outputJson)
+      ? (job.outputJson as Record<string, unknown>)
+      : null;
+  const protectionGate =
+    jobOutput?.contentProtection &&
+    typeof jobOutput.contentProtection === "object" &&
+    !Array.isArray(jobOutput.contentProtection)
+      ? (jobOutput.contentProtection as Record<string, unknown>)
+      : null;
+  if (protectionGate?.status === "PROTECTION_REQUESTED") {
+    const protectionAssetId = String(protectionGate.protectionAssetId ?? "").trim();
+    const [protectionAsset] = protectionAssetId
+      ? await db
+          .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage })
+          .from(contentProtectionAssets)
+          .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
+          .limit(1)
+      : [];
+    if (!protectionAsset || ["QUEUED", "PROCESSING", "INCONCLUSIVE"].includes(protectionAsset.status)) {
+      return { reconciled: false };
+    }
+    if (!["PROTECTED", "PROTECTED_WITH_WARNINGS"].includes(protectionAsset.status)) {
+      await persistCompiledVideoState(owner, {
+        pendingJobId: undefined,
+        status: "failed",
+        error: protectionAsset.errorMessage || "Final artifact protection did not pass verification",
+      });
+      return { reconciled: true, status: "failed" };
+    }
+  }
 
   const rawOutputUrl = await resolveRemotionOutputRef(job as WorkerJob);
   if (!rawOutputUrl) {

@@ -73,6 +73,11 @@ export interface MediaJobEnvelope {
   timelineVersion?: number;
   traceId?: string;
   contractHash?: string;
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
   analysisKind?: string;
   operation: MediaOperation;
   /** Operation-discriminated, server-validated settings. Never contains local paths or secrets. */
@@ -105,7 +110,7 @@ const ASSET_NAMESPACES = new Set<ManagedAssetRef["namespace"]>(["media_asset", "
 export function validateMediaJobEnvelope(value: unknown): MediaJobEnvelope {
   if (!value || typeof value !== "object") throw new Error("MEDIA_JOB_INVALID");
   const envelope = value as Partial<MediaJobEnvelope>;
-  const allowedKeys = new Set(["protocol", "version", "jobId", "tenantId", "projectId", "revisionId", "timelineVersion", "traceId", "contractHash", "analysisKind", "operation", "options", "inputs", "plan", "requirements", "retry", "billing", "attempt", "lease", "renewedUrls"]);
+  const allowedKeys = new Set(["protocol", "version", "jobId", "tenantId", "projectId", "revisionId", "timelineVersion", "traceId", "contractHash", "protectionIntent", "analysisKind", "operation", "options", "inputs", "plan", "requirements", "retry", "billing", "attempt", "lease", "renewedUrls"]);
   const unknownKey = Object.keys(value as Record<string, unknown>).find((key) => !allowedKeys.has(key));
   if (unknownKey) throw new Error(`MEDIA_JOB_UNKNOWN_FIELD:${unknownKey}`);
   if (envelope.protocol !== MEDIA_JOB_PROTOCOL || envelope.version !== MEDIA_JOB_VERSION) {
@@ -132,6 +137,18 @@ export function validateMediaJobEnvelope(value: unknown): MediaJobEnvelope {
   }
   if (envelope.options !== undefined && (typeof envelope.options !== "object" || envelope.options === null || Array.isArray(envelope.options))) {
     throw new Error("MEDIA_JOB_OPTIONS_INVALID");
+  }
+  if (envelope.protectionIntent !== undefined) {
+    const intent = envelope.protectionIntent;
+    if (!intent || typeof intent !== "object" || Array.isArray(intent) || !["on", "off"].includes(intent.choice)) {
+      throw new Error("MEDIA_JOB_PROTECTION_INVALID");
+    }
+    if (intent.choiceSource !== undefined && !["per_export", "user_default", "disabled_by_user"].includes(intent.choiceSource)) {
+      throw new Error("MEDIA_JOB_PROTECTION_INVALID");
+    }
+    if (intent.requireBeforePublish !== undefined && typeof intent.requireBeforePublish !== "boolean") {
+      throw new Error("MEDIA_JOB_PROTECTION_INVALID");
+    }
   }
   // Renewed signed URLs are short-lived execution metadata. They are allowed
   // only in this server-injected field and remain excluded from the immutable

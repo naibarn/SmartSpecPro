@@ -86,6 +86,17 @@ export const defaultMenuItems: MenuItem[] = [
     sortOrder: 2,
   },
   {
+    id: "content-protection",
+    label: "Content Protection",
+    labelTh: "การปกป้องเนื้อหา",
+    icon: "ShieldCheck",
+    path: "/content-protection",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2.01,
+    requiresFeature: "contentProtectionEnabled",
+  },
+  {
     id: "content-composer",
     label: "Content Composer",
     labelTh: "เขียนคอนเทนต์",

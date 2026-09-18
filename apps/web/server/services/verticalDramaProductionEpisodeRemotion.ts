@@ -5,6 +5,7 @@ import {
   verticalDramaEpisodes,
   verticalDramaSeries,
   verticalDramaShotBrollBindings,
+  contentProtectionAssets,
   workerJobs,
   type WorkerJob,
 } from "../../drizzle/schema";
@@ -34,6 +35,7 @@ import {
 } from "./verticalDramaRemotionRender";
 import type { ProductionEpisodeBgmOptions } from "./verticalDramaProductionEpisodeAssembly";
 import type { ProductionEpisodeOverlayItem } from "./verticalDramaFinalRenderGraph";
+import type { ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 
 export interface AssembleProductionEpisodesRemotionArgs {
   tenantId: string;
@@ -52,6 +54,7 @@ export interface AssembleProductionEpisodesRemotionArgs {
   overlays?: ProductionEpisodeOverlayItem[];
   internalBaseUrl: string;
   publicBaseUrl?: string | null;
+  protectionIntent?: ContentProtectionIntent;
 }
 
 export interface AssembleProductionEpisodesRemotionResult {
@@ -280,7 +283,7 @@ function normalizeProductionEpisodeBgm(
 function productionRenderSettingsKey(
   args: Pick<
     AssembleProductionEpisodesRemotionArgs,
-    "bgm" | "credits" | "overlays"
+    "bgm" | "credits" | "overlays" | "protectionIntent"
   >
 ): string {
   return createHash("sha256")
@@ -289,6 +292,7 @@ function productionRenderSettingsKey(
         bgm: normalizeProductionEpisodeBgm(args.bgm) ?? null,
         credits: args.credits ?? null,
         overlays: args.overlays ?? [],
+        protectionIntent: args.protectionIntent ?? null,
       })
     )
     .digest("hex");
@@ -490,6 +494,7 @@ export async function assembleProductionEpisodesWithRemotion(
         bgm: normalizedBgm,
         credits: args.credits,
         overlays: args.overlays,
+        protectionIntent: args.protectionIntent,
         idempotencyKey: `vd-production-episode:${args.seriesId}:${productionEpisodeNumber}:${item.state.startSubEpisode}-${item.state.endSubEpisode}:${args.sourceMode}:${settingsKey}`,
       });
       await patchGroup(args, item.state.index, {
@@ -555,6 +560,35 @@ export async function reconcileProductionEpisodeRemotionJobs(
         error: job.failureReason || `Remotion render ${job.status}`,
       });
       continue;
+    }
+    const jobOutput =
+      job.outputJson && typeof job.outputJson === "object" && !Array.isArray(job.outputJson)
+        ? (job.outputJson as Record<string, unknown>)
+        : null;
+    const protectionGate =
+      jobOutput?.contentProtection &&
+      typeof jobOutput.contentProtection === "object" &&
+      !Array.isArray(jobOutput.contentProtection)
+        ? (jobOutput.contentProtection as Record<string, unknown>)
+        : null;
+    if (protectionGate?.status === "PROTECTION_REQUESTED") {
+      const protectionAssetId = String(protectionGate.protectionAssetId ?? "").trim();
+      const [protectionAsset] = protectionAssetId
+        ? await db
+            .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage })
+            .from(contentProtectionAssets)
+            .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
+            .limit(1)
+        : [];
+      if (!protectionAsset || ["QUEUED", "PROCESSING", "INCONCLUSIVE"].includes(protectionAsset.status)) continue;
+      if (!["PROTECTED", "PROTECTED_WITH_WARNINGS"].includes(protectionAsset.status)) {
+        await patchGroup(owner, group.index, {
+          status: "failed",
+          renderJobId: undefined,
+          error: protectionAsset.errorMessage || "Final artifact protection did not pass verification",
+        });
+        continue;
+      }
     }
     const videoUrl = await resolvePlayableOutput(job);
     if (!videoUrl) {

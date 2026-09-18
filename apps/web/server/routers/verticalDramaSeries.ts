@@ -948,6 +948,7 @@ import {
 } from "../services/verticalDramaSeriesTrailerAssembly";
 import { getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { contentProtectionSettings } from "../../drizzle/schema";
 /**
  * Read-only series share links (Collab-lite L1, task #32, F131AA, added
  * 2026-07-09) — own import block, but a normal STATIC import (unlike the ad
@@ -16446,12 +16447,21 @@ export const verticalDramaSeriesRouter = router({
    * completion).
    */
   generateTrailer: verticalDramaProcedure
-    .input(
+      .input(
       z.object({
         seriesId: z.string().min(1),
         audioUrls: z.array(z.string().min(1)).min(1).max(12),
         audioDurationSeconds: z.number().positive().optional(),
         idempotencyKey: z.string().trim().min(1).max(128),
+        protectionIntent: z
+          .object({
+            choice: z.enum(["on", "off"]),
+            choiceSource: z
+              .enum(["per_export", "user_default", "disabled_by_user"])
+              .optional(),
+            requireBeforePublish: z.boolean().optional(),
+          })
+          .optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -16467,6 +16477,23 @@ export const verticalDramaSeriesRouter = router({
 
       // Ensure the caller owns it (throws NOT_FOUND otherwise).
       const seriesRow = await loadOwnedSeries(tenantId, userId, seriesId);
+
+      let protectionIntent = input.protectionIntent;
+      if (!protectionIntent && (await getTenantFeatureFlags(tenantId)).contentProtectionEnabled) {
+        const [settings] = await db
+          .select({ defaultChoice: contentProtectionSettings.defaultChoice })
+          .from(contentProtectionSettings)
+          .where(and(
+            eq(contentProtectionSettings.tenantId, tenantId),
+            eq(contentProtectionSettings.userId, userId),
+          ))
+          .limit(1);
+        protectionIntent = {
+          choice: settings?.defaultChoice === "on" ? "on" : "off",
+          choiceSource: "user_default" as const,
+          requireBeforePublish: true,
+        };
+      }
 
       const existingTrailer =
         seriesRow.trailer as VerticalDramaSeriesTrailerState | null;
@@ -16609,6 +16636,7 @@ export const verticalDramaSeriesRouter = router({
         imageUrls,
         videoClipUrls,
         internalBaseUrl,
+        ...(protectionIntent ? { protectionIntent } : {}),
       });
 
       return {
@@ -16710,6 +16738,15 @@ export const verticalDramaSeriesRouter = router({
             // feed for the WHOLE batch without touching any saved plan.
             applyTextOverlays: z.boolean().optional(),
             applyWatermark: z.boolean().optional(),
+            protectionIntent: z
+              .object({
+                choice: z.enum(["on", "off"]),
+                choiceSource: z
+                  .enum(["per_export", "user_default", "disabled_by_user"])
+                  .optional(),
+                requireBeforePublish: z.boolean().optional(),
+              })
+              .optional(),
           })
           .optional(),
       })
@@ -16977,6 +17014,9 @@ export const verticalDramaSeriesRouter = router({
             ...(spec.watermarkImages
               ? { watermarkImages: spec.watermarkImages }
               : {}),
+            ...(options.protectionIntent
+              ? { protectionIntent: options.protectionIntent }
+              : {}),
           };
           const { job } = await queueVerticalDramaFfmpegAssemblyJob({
             tenantId,
@@ -17112,6 +17152,15 @@ export const verticalDramaSeriesRouter = router({
             loudnessNormalize: z.boolean().optional(),
           })
           .optional(),
+        protectionIntent: z
+          .object({
+            choice: z.enum(["on", "off"]),
+            choiceSource: z
+              .enum(["per_export", "user_default", "disabled_by_user"])
+              .optional(),
+            requireBeforePublish: z.boolean().optional(),
+          })
+          .optional(),
         // Phase B-1 (`planning/vertical-drama-production-render/plan.md`
         // Phase B) — BGM bed + ducking, attached at the PRODUCTION EPISODE
         // level (never per Sub-Episode). `url` uses `z.string()` (not
@@ -17208,6 +17257,14 @@ export const verticalDramaSeriesRouter = router({
         input.subEpisodesPerProductionEpisode !== undefined ||
         input.sourceMode !== undefined;
 
+      if (input.protectionIntent?.choice === "on" && !useRemotion) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "Protected Production Episode output requires the Remotion worker path with explicit range/source options; the legacy in-process ffmpeg path cannot satisfy the final protection gate.",
+        });
+      }
+
       const runtimeConfig = getCachedAppRuntimeConfig();
       const internalBaseUrl =
         runtimeConfig.internalNodeUrl ||
@@ -17253,6 +17310,7 @@ export const verticalDramaSeriesRouter = router({
                 : input.bgm,
             credits: input.credits,
             overlays: input.overlays,
+            protectionIntent: input.protectionIntent,
             internalBaseUrl,
             publicBaseUrl: ctx.publicUrl,
           });
