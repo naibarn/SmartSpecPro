@@ -1,0 +1,48 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/201-content-provenance-copyright-protection/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/201-content-provenance-copyright-protection/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-shared-contracts",
+    "section-02-persistence-migration",
+    "section-03-protection-service",
+    "section-04-content-protection-router",
+    "section-05-worker-protection-job",
+    "section-06-compound-integration",
+    "section-07-ui-workspace",
+    "section-08-dashboard-settings-navigation",
+    "section-09-rights-evidence-review",
+    "section-10-verification-rollout"
+  ],
+  "sections_state": {
+    "section-01-shared-contracts": {
+      "status": "complete",
+      "commit_hash": "3490900375c7f9cffd1751d7a7317bb78d644c12"
+    },
+    "section-02-persistence-migration": {
+      "status": "complete",
+      "commit_hash": "ffa079c86"
+    },
+    "section-03-protection-service": {
+      "status": "complete",
+      "commit_hash": "7d4f5175d80ae365b1a211ef1bcaf02933e3a848"
+    },
+    "section-04-content-protection-router": {
+      "status": "complete",
+      "commit_hash": "e46e4ec623fab4deed1299dcc558de943592e9c9"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-18T00:26:28.596372+00:00"
+}
