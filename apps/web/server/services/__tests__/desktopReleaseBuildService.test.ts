@@ -53,6 +53,7 @@ vi.mock("../desktopReleaseService", () => ({
 vi.mock("../desktopReleaseSettings", () => ({
   DESKTOP_RELEASE_SETTINGS_CATEGORY: "desktop_release",
   getDesktopReleaseConfig: getDesktopReleaseConfigMock,
+  normalizeGithubToken: (value: string) => value.trim(),
 }));
 
 vi.mock("../../db", () => ({
@@ -175,6 +176,27 @@ describe("desktopReleaseBuildService", () => {
         bundle_mode: "e2b",
       }),
     );
+  });
+
+  it("converts GitHub 401 responses into a safe token error", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({
+      message: "Bad credentials",
+      documentation_url: "https://docs.github.com/rest",
+      status: "401",
+    }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    }));
+
+    await expect(buildDesktopReleaseFromGithubAction({
+      version: "0.1.1",
+      platform: "windows",
+      bundleMode: "on-demand",
+      releaseNotes: "",
+    })).rejects.toMatchObject({
+      message: "desktop_release_github_token_invalid",
+      statusCode: 401,
+    });
   });
 
   it("lists persisted build history entries", async () => {

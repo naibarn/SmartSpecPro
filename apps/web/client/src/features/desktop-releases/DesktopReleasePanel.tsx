@@ -375,7 +375,27 @@ function formatBuildPortalSyncError(
     return t("dashboard:desktopReleases.admin.build.progress.error.missingGithubToken");
   }
 
+  if (error === "desktop_release_github_token_invalid") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.invalidGithubToken");
+  }
+
+  if (error === "desktop_release_github_permission_denied") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubPermissionDenied");
+  }
+
+  if (error === "desktop_release_github_target_not_found") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubTargetNotFound");
+  }
+
+  if (error === "desktop_release_github_dispatch_invalid") {
+    return t("dashboard:desktopReleases.admin.build.progress.error.githubDispatchInvalid");
+  }
+
   return error;
+}
+
+function formatBuildRequestError(t: Translator, error: string): string {
+  return formatBuildPortalSyncError(t, error);
 }
 
 function formatCatalogError(t: Translator, error: string | null): string | null {
@@ -1075,7 +1095,7 @@ export function DesktopReleasePanel(props: {
     } catch (buildError) {
       toast.error(
         buildError instanceof Error
-          ? buildError.message
+          ? formatBuildRequestError(t, buildError.message)
           : t("dashboard:desktopReleases.admin.build.failed"),
       );
     } finally {

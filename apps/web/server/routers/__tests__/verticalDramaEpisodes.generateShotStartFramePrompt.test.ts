@@ -261,6 +261,13 @@ vi.mock("../../services/verticalDramaSceneContinuityLock", () => ({
   resolveShotSceneContinuityLock: vi.fn(async () => ({})),
 }));
 
+const { mockEnqueueVerticalDramaInteractiveJob } = vi.hoisted(() => ({
+  mockEnqueueVerticalDramaInteractiveJob: vi.fn(),
+}));
+vi.mock("../../services/verticalDramaInteractiveJobs", () => ({
+  enqueueVerticalDramaInteractiveJob: mockEnqueueVerticalDramaInteractiveJob,
+}));
+
 // `verticalDramaEpisodes.ts` imports `ensurePromptWithinLimit` from
 // `verticalDramaPromptQc.ts`, which itself imports `verticalDramaStoryBible.ts`
 // -> `enabledLlmModels.ts` -> `llmProviders.ts` (which needs `adminProcedure`,
@@ -398,6 +405,11 @@ beforeEach(() => {
     negativePrompt: "regenerated negative prompt",
     creditsUsed: 4,
     model: "gpt-image-planner",
+  });
+  mockEnqueueVerticalDramaInteractiveJob.mockResolvedValue({
+    jobId: "job-1",
+    status: "queued",
+    deduped: false,
   });
 });
 
@@ -1202,9 +1214,9 @@ describe("generateShotStartFramePrompt", () => {
 /* -------------------------------------------------------------------------- */
 
 describe("generateShotReferenceFramePrompt", () => {
-  it("throws PRECONDITION_FAILED when there is no start-frame plan/frame yet, and never calls the LLM service", async () => {
+  it("throws PRECONDITION_FAILED when there is no start-frame plan/frame yet", async () => {
     const episodeRow = baseEpisodeRow({ startFramePlan: null });
-    mockDb.select.mockReturnValueOnce(selectChain([episodeRow])); // loadOwnedEpisode
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRow]));
 
     await expect(
       router.generateShotReferenceFramePrompt({
@@ -1219,77 +1231,12 @@ describe("generateShotReferenceFramePrompt", () => {
       }),
     ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
 
-    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
+    expect(mockEnqueueVerticalDramaInteractiveJob).not.toHaveBeenCalled();
   });
 
-  it("throws PRECONDITION_FAILED when a selected characterKey is not in the series roster, and never calls the LLM service", async () => {
+  it("submits a valid reference-frame prompt job without running legacy synchronous prompt logic", async () => {
     const episodeRow = baseEpisodeRow();
-    mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
-      .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])); // roster query — only "hero" exists
-
-    await expect(
-      router.generateShotReferenceFramePrompt({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          characterKeys: ["hero", "ghost-key"],
-          instruction: "ไอริณโอบกอดภาคิน",
-        },
-      }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
-
-    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
-  });
-
-  it("builds characterReferenceManifest in the USER'S characterKeys order (not frame.requiredCharacterRefs order), passes referenceFrameMode: true, and never persists onto the episode row", async () => {
-    const episodeRow = baseEpisodeRow({
-      startFramePlan: {
-        mode: "single_frame_per_shot",
-        selectedImageModelId: "google-nano-banana-pro",
-        frames: [
-          {
-            shotNumber: 1,
-            imagePrompt: "two characters in a standoff",
-            negativePrompt: "no blur",
-            // Deliberately the OPPOSITE order from the user's selection below
-            // — the manifest must follow the USER's order, not this.
-            requiredCharacterRefs: ["villain", "hero"],
-            productReferenceAssetIds: [],
-            canonicalShotSummary: "ฉากเผชิญหน้าในซอกตึก",
-          },
-        ],
-      },
-    });
-
-    mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
-      .mockReturnValueOnce(
-        selectChain([{ characterKey: "hero" }, { characterKey: "villain" }]),
-      ) // roster validation query
-      .mockReturnValueOnce(
-        // resolveShotCharacterReferenceEntries's characterRows query — DB
-        // returns rows in yet another (arbitrary) order.
-        selectChain([
-          { id: 2, name: "Villain Name", characterKey: "villain" },
-          { id: 1, name: "Hero Name", characterKey: "hero" },
-        ]),
-      )
-      .mockReturnValueOnce(
-        // resolveShotCharacterIdentitySources
-        selectChain([
-          { characterKey: "hero", name: "Hero Name", role: "protagonist", data: {} },
-          { characterKey: "villain", name: "Villain Name", role: "antagonist", data: {} },
-        ]),
-      );
-
-    mockGetPrimaryPortraitUrl
-      .mockResolvedValueOnce("https://cdn/hero-portrait.png")
-      .mockResolvedValueOnce("https://cdn/villain-portrait.png");
+    mockDb.select.mockReturnValueOnce(selectChain([episodeRow]));
 
     const result = await router.generateShotReferenceFramePrompt({
       ctx: ctx(),
@@ -1297,171 +1244,34 @@ describe("generateShotReferenceFramePrompt", () => {
         seriesId: "10",
         episodeId: "100",
         shotNumber: 1,
-        // User selects hero FIRST, villain second — the opposite of
-        // frame.requiredCharacterRefs above.
         characterKeys: ["hero", "villain"],
         instruction: "ไอริณโอบกอดภาคิน",
+        locationKey: "warehouse",
+        idempotencyKey: "reference-frame-request-1",
       },
     });
-
-    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
-      expect.objectContaining({
-        instruction: "ไอริณโอบกอดภาคิน",
-        referenceFrameMode: true,
-        requiredCharacterRefs: ["hero", "villain"],
-        canonicalShotSummary: "ฉากเผชิญหน้าในซอกตึก",
-        characterReferenceManifest: [
-          { index: 1, characterId: null, name: "Hero Name" },
-          { index: 2, characterId: null, name: "Villain Name" },
-        ],
-      }),
-    );
-    // Never a speakingOrder fact — Phase 6 design (arbitrary user-directed
-    // pose/action, not necessarily this shot's dialogue beat).
-    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalledWith(
-      expect.objectContaining({ speakingOrder: expect.anything() }),
-    );
 
     expect(result).toEqual({
-      prompt: "regenerated start-frame prompt",
-      negativePrompt: "regenerated negative prompt",
-      creditsUsed: 4,
-      model: "gpt-image-planner",
-      characterKeys: ["hero", "villain"],
+      jobId: "job-1",
+      status: "queued",
+      deduped: false,
     });
-
-    // MUST NOT write to `startFramePlan.frames[].imagePrompt` — this is a
-    // prompt-authoring-only call.
-    expect(mockDb.update).not.toHaveBeenCalled();
-    expect(mockDb.transaction).not.toHaveBeenCalled();
-  });
-
-  it("uses and persists an independent View 2 prompt for Dual View", async () => {
-    const episodeRow = baseEpisodeRow({
-      startFramePlan: {
-        mode: "single_frame_per_shot",
-        selectedImageModelId: "google-nano-banana-pro",
-        frames: [
-          {
-            shotNumber: 1,
-            imagePrompt: "VIEW 1 ONLY: ไอริณอยู่ในห้องเก็บของ",
-            negativePrompt: "view 1 negative",
-            requiredCharacterRefs: ["hero"],
-            productReferenceAssetIds: [],
-            barrierMultiView: {
-              enabled: true,
-              scenario: "physical_barrier",
-              barrierType: "closed_door",
-              relation: "same_establishment_adjacent_spaces",
-              startView: {
-                side: "inside",
-                characterRefs: ["hero"],
-                locationKey: "",
-              },
-              referenceView: {
-                side: "outside",
-                characterRefs: ["villain"],
-                locationKey: "",
-                imagePrompt: "VIEW 2 OLD: กฤตอยู่หน้าประตู",
-                negativePrompt: "view 2 negative",
-              },
-              dialogueSideMap: { hero: "inside", villain: "outside" },
-            },
-          },
-        ],
-      },
-    });
-    mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRow]))
-      .mockReturnValueOnce(selectChain([]))
-      .mockReturnValueOnce(selectChain([{ characterKey: "villain" }]))
-      .mockReturnValueOnce(
-        selectChain([{ id: 2, name: "Villain", characterKey: "villain" }]),
-      )
-      .mockReturnValueOnce(
-        selectChain([
-          { characterKey: "villain", name: "Villain", role: "antagonist", data: {} },
-        ]),
-      );
-    mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn/villain.png");
-
-    let capturedSet: any;
-    mockDb.update.mockReturnValueOnce({
-      set: vi.fn((value: any) => {
-        capturedSet = value;
-        return updateChain([episodeRow]);
-      }),
-    });
-    mockDb.transaction.mockImplementationOnce(async (fn: (tx: unknown) => unknown) => {
-      const tx = {
-        select: () => selectChain([{ startFramePlan: episodeRow.startFramePlan }]),
-        update: (...args: unknown[]) => (mockDb.update as any)(...args),
-      };
-      return fn(tx);
-    });
-
-    await router.generateShotReferenceFramePrompt({
-      ctx: ctx(),
-      input: {
+    expect(mockEnqueueVerticalDramaInteractiveJob).toHaveBeenCalledWith({
+      kind: "reference_frame_prompt",
+      tenantId: "tenant-1",
+      userId: 42,
+      scopeKey: "reference-frame:100:1",
+      skillSlug: "vertical-drama-shot-start-frame-prompt",
+      idempotencyKey: "reference-frame-request-1",
+      input: expect.objectContaining({
         seriesId: "10",
         episodeId: "100",
         shotNumber: 1,
-        characterKeys: ["villain"],
-        instruction: "กฤตตะโกนผ่านประตู",
-      },
-    });
-
-    expect(mockGenerateStartFrameShotPrompt).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentPrompt: "VIEW 2 OLD: กฤตอยู่หน้าประตู",
-        currentNegativePrompt: "view 2 negative",
+        characterKeys: ["hero", "villain"],
+        instruction: "ไอริณโอบกอดภาคิน",
+        locationKey: "warehouse",
       }),
-    );
-    expect(capturedSet.startFramePlan.frames[0].imagePrompt).toBe(
-      "VIEW 1 ONLY: ไอริณอยู่ในห้องเก็บของ",
-    );
-    expect(
-      capturedSet.startFramePlan.frames[0].barrierMultiView.referenceView,
-    ).toMatchObject({
-      imagePrompt: "regenerated start-frame prompt",
-      negativePrompt: "regenerated negative prompt",
     });
-  });
-
-  it("maps a VdReferenceMappingError (still-contradictory prompt after one corrective retry) to a PRECONDITION_FAILED TRPCError, and never persists", async () => {
-    mockGenerateStartFrameShotPrompt.mockRejectedValueOnce(
-      new MockVdReferenceMappingError("reference mapping still contradicts the manifest", [
-        { characterName: "Hero Name", claimedImageIndex: 2, expectedImageIndex: 1 },
-      ]),
-    );
-    const episodeRow = baseEpisodeRow();
-    mockDb.select
-      .mockReturnValueOnce(selectChain([episodeRow])) // loadOwnedEpisode
-      .mockReturnValueOnce(selectChain([])) // selected image-model prompt budget
-      .mockReturnValueOnce(selectChain([{ characterKey: "hero" }])) // roster validation
-      .mockReturnValueOnce(
-        selectChain([{ id: 1, name: "Hero Name", characterKey: "hero" }]),
-      ) // resolveShotCharacterReferenceEntries's characterRows query
-      .mockReturnValueOnce(
-        selectChain([
-          { characterKey: "hero", name: "Hero Name", role: "protagonist", data: {} },
-        ]),
-      ); // resolveShotCharacterIdentitySources
-    mockGetPrimaryPortraitUrl.mockResolvedValueOnce("https://cdn/hero-portrait.png");
-
-    await expect(
-      router.generateShotReferenceFramePrompt({
-        ctx: ctx(),
-        input: {
-          seriesId: "10",
-          episodeId: "100",
-          shotNumber: 1,
-          characterKeys: ["hero"],
-          instruction: "fix it",
-        },
-      }),
-    ).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
-
-    expect(mockDb.update).not.toHaveBeenCalled();
+    expect(mockGenerateStartFrameShotPrompt).not.toHaveBeenCalled();
   });
 });

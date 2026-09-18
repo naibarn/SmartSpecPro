@@ -11,6 +11,7 @@ const spies = vi.hoisted(() => ({
   toastErrorMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   mutateMock: vi.fn(),
+  testConnectionMock: vi.fn(),
   refetchMock: vi.fn(),
 }));
 
@@ -41,6 +42,12 @@ vi.mock("@/lib/trpc", () => ({
       updateDesktopReleaseSettings: {
         useMutation: () => ({
           mutate: spies.mutateMock,
+          isPending: false,
+        }),
+      },
+      testDesktopReleaseConnection: {
+        useMutation: () => ({
+          mutate: spies.testConnectionMock,
           isPending: false,
         }),
       },
@@ -141,5 +148,27 @@ describe("DesktopReleaseConfigPanel", () => {
     expect(
       screen.getByRole("button", { name: "common.showLess" })
     ).toBeInTheDocument();
+  });
+
+  it("checks the GitHub connection using the current source settings", async () => {
+    const user = userEvent.setup();
+
+    render(<DesktopReleaseConfigPanel enabled defaultExpanded />);
+
+    await user.type(
+      screen.getByLabelText("dashboard:desktopReleases.admin.config.repository"),
+      "naibarn/SmartSpecPro",
+    );
+    await user.click(
+      screen.getByRole("button", {
+        name: "dashboard:desktopReleases.admin.config.testConnection",
+      }),
+    );
+
+    expect(spies.testConnectionMock).toHaveBeenCalledWith({
+      githubRepository: "naibarn/SmartSpecPro",
+      githubWorkflow: "desktop-release.yml",
+      githubToken: undefined,
+    });
   });
 });

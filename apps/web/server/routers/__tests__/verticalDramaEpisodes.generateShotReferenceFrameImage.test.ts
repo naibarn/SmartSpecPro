@@ -63,6 +63,7 @@ vi.mock("../../_core/trpc", () => {
   return {
     router: (routes: Record<string, unknown>) => routes,
     protectedProcedure: createProcedure(),
+    adminProcedure: createProcedure(),
   };
 });
 
@@ -102,6 +103,10 @@ vi.mock("../../_core/tokens", () => ({
 }));
 
 vi.mock("../../services/rateLimiter", () => ({
+  createRateLimiter: vi.fn(() => ({
+    isAllowed: vi.fn(() => true),
+    getResetTime: vi.fn(() => 0),
+  })),
   mediaGenerationLimiter: {
     isAllowed: vi.fn(() => true),
     getResetTime: vi.fn(() => 0),
@@ -232,13 +237,22 @@ vi.mock("../../services/verticalDramaStartFrameGeneration", () => ({
   VdReferenceMappingError: class extends Error {},
 }));
 
+const { mockEnsurePromptWithinLimit } = vi.hoisted(() => ({
+  mockEnsurePromptWithinLimit: vi.fn(
+    async ({ prompt }: { prompt: string }) => ({
+      prompt,
+      refined: false,
+      creditsUsed: 0,
+      truncated: false,
+    })
+  ),
+}));
 vi.mock("../../services/verticalDramaPromptQc", () => ({
-  ensurePromptWithinLimit: vi.fn(async ({ prompt }: { prompt: string }) => ({
-    prompt,
-    refined: false,
-    creditsUsed: 0,
-    truncated: false,
-  })),
+  mergeImageNegativePromptIntoPrompt: vi.fn(
+    (prompt: string, negativePrompt?: string) =>
+      negativePrompt ? `${prompt}\nNEGATIVE PROMPT: ${negativePrompt}` : prompt
+  ),
+  ensurePromptWithinLimit: mockEnsurePromptWithinLimit,
 }));
 
 vi.mock("../../services/verticalDramaStoryBible", () => ({
@@ -506,12 +520,18 @@ describe("generateShotReferenceFrameImage (Phase 6a)", () => {
 
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
     expect(mockGenerateImageAsync).toHaveBeenCalledTimes(1);
+    expect(mockEnsurePromptWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        maxChars: expect.any(Number),
+        finalizeWithRefiner: false,
+        failClosed: true,
+      })
+    );
     const [request] = mockGenerateImageAsync.mock.calls[0];
     // Current image transports consume one prompt, so exclusions are folded
     // into the positive prompt before submission (same as start-frame render).
-    expect(request.prompt).toBe(
-      "ฝ้าย (Image 1) smiles warmly\nNEGATIVE PROMPT: no blur"
-    );
+    expect(request.prompt).toContain("ฝ้าย (Image 1) smiles warmly");
+    expect(request.prompt).toContain("NEGATIVE PROMPT: no blur");
     expect(request.negativePrompt).toBeUndefined();
     expect(request.referenceImageUrls).toEqual([PORTRAIT_A]);
     expect(request.auditContext).toMatchObject({

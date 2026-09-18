@@ -230,6 +230,7 @@ orchestra/archive/
 .turbo/
 .codex
 .codex/
+apps/runner-app/target/
 default.profraw
 apps/tauri-shell/default.profraw
 apps/tauri-shell/binaries/.downloads/

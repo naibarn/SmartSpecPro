@@ -11,6 +11,7 @@ import { listDesktopReleaseCatalog, persistDesktopReleaseUpload } from "./deskto
 import {
   DESKTOP_RELEASE_SETTINGS_CATEGORY,
   getDesktopReleaseConfig,
+  normalizeGithubToken,
 } from "./desktopReleaseSettings";
 import {
   desktopReleaseBuildBundleModeSchema,
@@ -211,12 +212,21 @@ function normalizeWorkflowRunConclusion(value: string | null | undefined): (type
     : null;
 }
 
-async function githubJson<T>(url: string, init: RequestInit & { token: string }): Promise<T> {
+function githubApiErrorCode(status: number): string {
+  if (status === 401) return "desktop_release_github_token_invalid";
+  if (status === 403) return "desktop_release_github_permission_denied";
+  if (status === 404) return "desktop_release_github_target_not_found";
+  if (status === 422) return "desktop_release_github_dispatch_invalid";
+  return `desktop_release_github_api_failed_${status}`;
+}
+
+async function githubRequest(url: string, init: RequestInit & { token: string }): Promise<Response> {
+  const { token, ...requestInit } = init;
   const response = await fetch(url, {
-    ...init,
+    ...requestInit,
     headers: {
       Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${init.token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       "X-GitHub-Api-Version": "2022-11-28",
       ...(init.headers ?? {}),
@@ -224,14 +234,21 @@ async function githubJson<T>(url: string, init: RequestInit & { token: string })
   });
 
   if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const error = new Error(body || `github_api_request_failed_${response.status}`) as Error & {
+    // Do not forward GitHub's raw response body to the browser. Apart from
+    // leaking provider details, it makes the admin UI show an opaque JSON
+    // toast instead of an actionable configuration error.
+    const error = new Error(githubApiErrorCode(response.status)) as Error & {
       statusCode?: number;
     };
     error.statusCode = response.status;
     throw error;
   }
 
+  return response;
+}
+
+async function githubJson<T>(url: string, init: RequestInit & { token: string }): Promise<T> {
+  const response = await githubRequest(url, init);
   return response.json() as Promise<T>;
 }
 
@@ -702,7 +719,7 @@ async function dispatchGithubWorkflowRun(
   const workflowPath = encodeURIComponent(config.workflow);
   const dispatchUrl = `${apiBase}/actions/workflows/${workflowPath}/dispatches`;
 
-  const dispatchResponse = await fetch(dispatchUrl, {
+  await githubRequest(dispatchUrl, {
     method: "POST",
     headers: {
       Accept: "application/vnd.github+json",
@@ -720,12 +737,8 @@ async function dispatchGithubWorkflowRun(
         release_notes: input.releaseNotes,
       },
     }),
+    token: config.token,
   });
-
-  if (!dispatchResponse.ok) {
-    const body = await dispatchResponse.text().catch(() => "");
-    throw new Error(body || `desktop_release_github_dispatch_failed_${dispatchResponse.status}`);
-  }
 
   const workflowPageUrl = getGithubWorkflowPageUrl(config.repository, config.workflow);
   const startedAt = Date.now() - 1000;
@@ -890,7 +903,7 @@ async function uploadGithubReleaseAssetsToPortal(
     : [context.platform];
 
   const settings = await getDesktopReleaseConfig();
-  const githubToken = settings.githubToken.trim();
+  const githubToken = normalizeGithubToken(settings.githubToken);
   if (!githubToken) {
     throw new Error("desktop_release_github_token_not_configured");
   }
@@ -1017,7 +1030,7 @@ export async function buildDesktopReleaseFromGithubAction(
   const repository = normalizeGithubRepository(settings.githubRepository);
   const workflow = normalizeWorkflowName(settings.githubWorkflow);
   const ref = normalizeWorkflowRef(settings.githubRef);
-  const token = settings.githubToken.trim();
+  const token = normalizeGithubToken(settings.githubToken);
 
   if (!token) {
     throw new Error("desktop_release_github_token_not_configured");
@@ -1082,7 +1095,7 @@ export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
 
   const settings = await getDesktopReleaseConfig();
   const repository = normalizeGithubRepository(settings.githubRepository);
-  const token = settings.githubToken.trim();
+  const token = normalizeGithubToken(settings.githubToken);
 
   if (!token) {
     throw new Error("desktop_release_github_token_not_configured");

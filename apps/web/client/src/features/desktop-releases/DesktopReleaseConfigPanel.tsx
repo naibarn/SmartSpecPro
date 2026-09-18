@@ -60,6 +60,23 @@ function sourceBadgeClass(source: "db" | "env" | "none" | undefined) {
   return "border-slate-200 bg-slate-50 text-slate-500";
 }
 
+function formatGithubConnectionError(
+  t: (key: string, values?: Record<string, string | number>) => string,
+  message: string,
+) {
+  const messages: Record<string, string> = {
+    desktop_release_github_token_not_configured:
+      "dashboard:desktopReleases.admin.config.connectionMissingToken",
+    desktop_release_github_token_invalid:
+      "dashboard:desktopReleases.admin.config.connectionInvalidToken",
+    desktop_release_github_permission_denied:
+      "dashboard:desktopReleases.admin.config.connectionPermissionDenied",
+    desktop_release_github_target_not_found:
+      "dashboard:desktopReleases.admin.config.connectionTargetNotFound",
+  };
+  return t(messages[message] ?? "dashboard:desktopReleases.admin.config.connectionFailed");
+}
+
 export function DesktopReleaseConfigPanel(props: {
   enabled?: boolean;
   defaultExpanded?: boolean;
@@ -101,6 +118,18 @@ export function DesktopReleaseConfigPanel(props: {
           error.message ||
             t("dashboard:desktopReleases.admin.config.saveFailed")
         );
+      },
+    });
+
+  const testConnectionMutation =
+    trpc.systemSettings.testDesktopReleaseConnection.useMutation({
+      onSuccess: () => {
+        toast.success(
+          t("dashboard:desktopReleases.admin.config.testConnectionSuccess"),
+        );
+      },
+      onError: error => {
+        toast.error(formatGithubConnectionError(t, error.message));
       },
     });
 
@@ -169,6 +198,19 @@ export function DesktopReleaseConfigPanel(props: {
       runnerGithubWorkflow: form.runnerGithubWorkflow.trim(),
       githubRef: form.githubRef.trim(),
       webUrl: form.webUrl.trim(),
+      githubToken: form.githubToken.trim() || undefined,
+    });
+  };
+
+  const handleTestConnection = () => {
+    if (!form.githubRepository.trim() || !form.githubWorkflow.trim()) {
+      toast.error(t("dashboard:desktopReleases.admin.config.missingRequired"));
+      return;
+    }
+
+    testConnectionMutation.mutate({
+      githubRepository: form.githubRepository.trim(),
+      githubWorkflow: form.githubWorkflow.trim(),
       githubToken: form.githubToken.trim() || undefined,
     });
   };
@@ -411,7 +453,7 @@ export function DesktopReleaseConfigPanel(props: {
           <Button
             type="button"
             onClick={handleSave}
-            disabled={updateMutation.isPending}
+            disabled={updateMutation.isPending || testConnectionMutation.isPending}
             className="bg-sky-600 hover:bg-sky-700"
           >
             {updateMutation.isPending ? (
@@ -420,6 +462,21 @@ export function DesktopReleaseConfigPanel(props: {
               <Save className="mr-2 h-4 w-4" />
             )}
             {t("dashboard:desktopReleases.admin.config.save")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleTestConnection}
+            disabled={updateMutation.isPending || testConnectionMutation.isPending}
+          >
+            {testConnectionMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="mr-2 h-4 w-4" />
+            )}
+            {testConnectionMutation.isPending
+              ? t("dashboard:desktopReleases.admin.config.testConnectionPending")
+              : t("dashboard:desktopReleases.admin.config.testConnection")}
           </Button>
           <Button
             type="button"

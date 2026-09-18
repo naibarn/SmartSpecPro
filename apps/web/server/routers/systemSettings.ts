@@ -27,6 +27,7 @@ import {
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import {
   getDesktopReleaseConfig,
+  validateDesktopReleaseGithubAccess,
   updateDesktopReleaseConfig,
 } from "../services/desktopReleaseSettings";
 import {
@@ -123,6 +124,12 @@ const desktopReleaseSettingsUpdateSchema = z.object({
   runnerGithubWorkflow: z.string().trim().min(1).max(256).optional(),
   githubRef: z.string().trim().min(1).max(256),
   webUrl: z.string().trim().min(1).max(2048),
+  githubToken: z.string().trim().max(4096).optional(),
+});
+
+const desktopReleaseConnectionTestSchema = z.object({
+  githubRepository: z.string().trim().min(1).max(256),
+  githubWorkflow: z.string().trim().min(1).max(256),
   githubToken: z.string().trim().max(4096).optional(),
 });
 
@@ -1339,6 +1346,13 @@ export const systemSettingsRouter = router({
           githubTokenSource: config.githubTokenSource,
         },
       };
+    }),
+
+  testDesktopReleaseConnection: adminProcedure
+    .input(desktopReleaseConnectionTestSchema)
+    .mutation(async ({ input }) => {
+      const result = await validateDesktopReleaseGithubAccess(input);
+      return { success: true, ...result };
     }),
 
   getGoogleAiSettings: adminProcedure.query(async () => {

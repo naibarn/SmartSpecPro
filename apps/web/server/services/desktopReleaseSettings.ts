@@ -62,6 +62,26 @@ function normalizeWorkflowRef(value: string): string {
   return trimmed || DEFAULT_GITHUB_REF;
 }
 
+export function normalizeGithubToken(value: string): string {
+  return value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^(['"])(.*)\1$/, "$2")
+    .trim();
+}
+
+function githubApiErrorCode(status: number): string {
+  if (status === 401) return "desktop_release_github_token_invalid";
+  if (status === 403) return "desktop_release_github_permission_denied";
+  if (status === 404) return "desktop_release_github_target_not_found";
+  return `desktop_release_github_api_failed_${status}`;
+}
+
+async function assertGithubResponse(response: Response): Promise<void> {
+  if (response.ok) return;
+  throw new Error(githubApiErrorCode(response.status));
+}
+
 function normalizeDesktopReleaseWebUrl(value: string): string {
   const candidate = value.trim() || DEFAULT_WEB_URL;
   const url = new URL(candidate);
@@ -215,7 +235,7 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     DEFAULT_WEB_URL,
   );
   const githubTokenRow = rowMap.get("github_token") as { value: string | null; isSensitive: boolean | null } | undefined;
-  const githubTokenValue = readRowValue(githubTokenRow);
+  const githubTokenValue = normalizeGithubToken(readRowValue(githubTokenRow));
 
   if (githubTokenValue) {
     return {
@@ -235,7 +255,7 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
     };
   }
 
-  if (githubTokenEnv.trim()) {
+  if (normalizeGithubToken(githubTokenEnv)) {
     return {
       githubRepository: githubRepository.value.trim(),
       githubRepositorySource: githubRepository.source,
@@ -247,7 +267,7 @@ export async function getDesktopReleaseConfig(): Promise<DesktopReleaseConfig> {
       githubRefSource: githubRef.source,
       webUrl: webUrl.value.trim() || DEFAULT_WEB_URL,
       webUrlSource: webUrl.source,
-      githubToken: githubTokenEnv.trim(),
+      githubToken: normalizeGithubToken(githubTokenEnv),
       githubTokenConfigured: true,
       githubTokenSource: "env",
     };
@@ -309,7 +329,7 @@ export async function updateDesktopReleaseConfig(
   });
 
   if (typeof input.githubToken === "string") {
-    const token = input.githubToken.trim();
+    const token = normalizeGithubToken(input.githubToken);
     if (token) {
       await upsertDesktopReleaseSetting({
         key: "github_token",
@@ -321,6 +341,36 @@ export async function updateDesktopReleaseConfig(
   }
 
   return getDesktopReleaseConfig();
+}
+
+export async function validateDesktopReleaseGithubAccess(input: {
+  githubRepository?: string;
+  githubWorkflow?: string;
+  githubToken?: string | null;
+}): Promise<{ repository: string; workflow: string }> {
+  const config = await getDesktopReleaseConfig();
+  const repository = normalizeGithubRepository(input.githubRepository || config.githubRepository);
+  const workflow = normalizeWorkflowName(input.githubWorkflow || config.githubWorkflow);
+  const token = normalizeGithubToken(input.githubToken || config.githubToken);
+  if (!token) {
+    throw new Error("desktop_release_github_token_not_configured");
+  }
+
+  const [owner, repo] = repository.split("/");
+  const apiBase = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+
+  await assertGithubResponse(await fetch(apiBase, { headers }));
+  await assertGithubResponse(await fetch(
+    `${apiBase}/actions/workflows/${encodeURIComponent(workflow)}`,
+    { headers },
+  ));
+
+  return { repository, workflow };
 }
 
 export function createDesktopReleaseUploadToken(input: {

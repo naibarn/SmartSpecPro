@@ -26292,181 +26292,6 @@ export const verticalDramaEpisodesRouter = router({
           message: `No start-frame plan for shot ${input.shotNumber} yet — generate the start-frame plan first`,
         });
       }
-      const referenceFrameResolvedFrame = frame;
-
-      let referenceFramePromptMaxChars = VD_IMAGE_PROMPT_MAX;
-      const referenceFrameSelectedImageModelId =
-        plan.selectedImageModelId?.trim();
-      if (referenceFrameSelectedImageModelId) {
-        const [referenceFrameModel] = await db
-          .select({
-            configJson: mediaModels.configJson,
-            provider: mediaModels.provider,
-          })
-          .from(mediaModels)
-          .where(eq(mediaModels.modelId, referenceFrameSelectedImageModelId))
-          .limit(1);
-        referenceFramePromptMaxChars = resolveVdImagePromptBudgetForModel({
-          modelId: referenceFrameSelectedImageModelId,
-          configJson: referenceFrameModel?.configJson,
-          provider: referenceFrameModel?.provider,
-        });
-      }
-
-      // De-dupe the user's own character selection (same tolerant convention
-      // `resolveRequiredShotCharacterAttachmentManifest` uses below in the
-      // sibling image mutation) — the multi-select UI could conceivably
-      // resend the same key twice.
-      const referenceFrameCharacterKeys = Array.from(
-        new Set(input.characterKeys.map(key => key.trim()).filter(Boolean))
-      );
-
-      // Validate every selected key against the series roster BEFORE
-      // spending an LLM call — an unknown key can never resolve to a real
-      // portrait/identity fact at render time either, so failing fast here
-      // is strictly better than discovering it later at the paid image
-      // mutation.
-      const referenceFrameRosterRows = await db
-        .select({ characterKey: verticalDramaCharacters.characterKey })
-        .from(verticalDramaCharacters)
-        .where(
-          and(
-            eq(verticalDramaCharacters.tenantId, tenantId),
-            eq(verticalDramaCharacters.seriesId, seriesId),
-            inArray(
-              verticalDramaCharacters.characterKey,
-              referenceFrameCharacterKeys
-            )
-          )
-        );
-      const referenceFrameKnownKeys = new Set(
-        referenceFrameRosterRows.map(
-          (r: { characterKey: string }) => r.characterKey
-        )
-      );
-      const referenceFrameUnknownKeys = referenceFrameCharacterKeys.filter(
-        key => !referenceFrameKnownKeys.has(key)
-      );
-      if (referenceFrameUnknownKeys.length > 0) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `ไม่พบตัวละครในรายการสำหรับ ${referenceFrameUnknownKeys.join(", ")}`,
-        });
-      }
-
-      // Manifest order = the USER'S selection order (Phase 6 design) — the
-      // SAME order `generateShotReferenceFrameImage`'s
-      // `resolveRequiredShotCharacterAttachmentManifest` call preserves
-      // (first-occurrence order of its own `characterKeys` input, which the
-      // client sends back unchanged as this mutation's own returned
-      // `characterKeys`). Tolerant of a selected character with no portrait
-      // yet at PROMPT time — same "informational for authoring, fail-closed
-      // only at render" convention `generateShotStartFramePrompt` uses for
-      // `frame.requiredCharacterRefs`; `resolveShotCharacterReferenceEntries`
-      // simply omits a portrait-less character here.
-      const referenceFrameCharacterRefEntries =
-        reorderShotCharacterRefEntriesByKeyOrder(
-          await resolveShotCharacterReferenceEntries(
-            tenantId,
-            userId,
-            seriesId,
-            referenceFrameCharacterKeys
-          ),
-          referenceFrameCharacterKeys
-        );
-
-      const referenceFramePromptRoster = await resolveShotCharacterPromptRoster(
-        tenantId,
-        seriesId,
-        referenceFrameCharacterKeys
-      );
-      const referenceFrameCharacterIdentitySources =
-        referenceFramePromptRoster.selectedIdentitySources;
-      const referenceFrameExcludedVisualCharacterNames =
-        referenceFramePromptRoster.excludedVisualCharacterNames;
-
-      const referenceFrameBarrierView = normalizeVerticalDramaBarrierMultiView(
-        frame.barrierMultiView
-      );
-      const referenceFrameLocationEntry =
-        (await resolveShotLocationReferenceEntry(
-          tenantId,
-          userId,
-          seriesId,
-          storyboard,
-          input.shotNumber,
-          input.locationKey?.trim() ||
-            frame.barrierMultiView?.referenceView.locationKey ||
-            frame.locationKey,
-          frame.locationVariantId
-        )) ?? undefined;
-      const referenceFrameResolvedLocation = referenceFrameLocationEntry;
-      const referenceFrameInstruction = referenceFrameBarrierView
-        ? referenceFrameBarrierView.scenario === "physical_barrier"
-          ? `Create ONLY View 2 outside the closed door. Keep the door closed and the adjacent establishment context consistent. Show only View 2 characters; never place View 1 characters in this image. ${input.instruction}`
-          : `Create ONLY View 2 at its independently assigned location. Show only View 2 characters and environment; never merge View 1 characters or location into this image. ${input.instruction}`
-        : input.instruction;
-
-      // Supplementary reference frames are read-only consumers of the scene
-      // lock. They must never spend a second LLM call authoring a missing
-      // state; the primary start-frame authoring path owns that lifecycle.
-      let referenceFrameSceneContinuityLockBlock: string | undefined;
-      if (
-        hasVerticalDramaSceneIdentity(
-          storyboard,
-          input.shotNumber,
-          frame.locationKey
-        ) &&
-        (await resolveVerticalDramaSceneContinuityFlag(tenantId))
-      ) {
-        const { resolveShotSceneContinuityLock } =
-          await import("../services/verticalDramaSceneContinuityLock");
-        const lock = await resolveShotSceneContinuityLock({
-          enabled: true,
-          tenantId,
-          userId,
-          seriesId,
-          episodeId,
-          storyboard,
-          startFramePlan: plan,
-          shotNumber: input.shotNumber,
-          authorIfMissing: false,
-          canonicalShotSummaryByShotNumber: frame.canonicalShotSummary?.trim()
-            ? new Map([[input.shotNumber, frame.canonicalShotSummary.trim()]])
-            : undefined,
-          locationImageUrlByLocationKey:
-            referenceFrameLocationEntry?.url && frame.locationKey
-              ? new Map([
-                  [
-                    frame.locationKey,
-                    resolveReferenceUrl(
-                      referenceFrameLocationEntry.url,
-                      ctx.publicUrl ?? undefined
-                    ),
-                  ],
-                ])
-              : undefined,
-          idempotencyKey: input.idempotencyKey,
-        });
-        referenceFrameSceneContinuityLockBlock = lock.block;
-      }
-
-      const referenceFramePromptLanguage = resolveEffectiveImagePromptLanguage({
-        startFramePlan: plan,
-        motionPromptPack:
-          row.motionPromptPack as VerticalDramaMotionPromptPack | null,
-      });
-
-      // Scene grounding only — same defensive stripping every other call
-      // site applies to a stored prompt before an LLM call.
-      const referenceFrameBasePrompt = stripExistingIdentityLockSuffix(
-        referenceFrameBarrierView?.referenceView.imagePrompt ??
-          frame.imagePrompt ??
-          ""
-      );
-      const referenceFrameBaseNegativePrompt = referenceFrameBarrierView
-        ? (referenceFrameBarrierView.referenceView.negativePrompt ?? "")
-        : (frame.negativePrompt ?? "");
 
       return enqueueVerticalDramaInteractiveJob({
         kind: "reference_frame_prompt",
@@ -26479,208 +26304,6 @@ export const verticalDramaEpisodesRouter = router({
           `reference-frame:${episodeId}:${input.shotNumber}`,
         input,
       });
-
-      const {
-        generateStartFrameShotPrompt,
-        InsufficientCreditsError: ReferenceFramePromptInsufficientCreditsError,
-        VdSchemaValidationError: ReferenceFramePromptSchemaValidationError,
-        RateLimitExceededError: ReferenceFramePromptRateLimitExceededError,
-        VdReferenceMappingError: ReferenceFramePromptReferenceMappingError,
-      } = await import("../services/verticalDramaStartFrameGeneration");
-
-      let referenceFramePromptResult: {
-        prompt: string;
-        negativePrompt: string;
-        creditsUsed: number;
-        model: string;
-      };
-      try {
-        referenceFramePromptResult = await generateStartFrameShotPrompt({
-          userId,
-          tenantId,
-          seriesId,
-          episodeId,
-          episodeGenerationSettings: row.generationSettings,
-          shotNumber: input.shotNumber,
-          instruction: referenceFrameInstruction,
-          referenceFrameMode: true,
-          currentPrompt: referenceFrameBasePrompt,
-          currentNegativePrompt: referenceFrameBaseNegativePrompt,
-          canonicalShotSummary:
-            referenceFrameResolvedFrame.canonicalShotSummary,
-          requiredCharacterRefs: referenceFrameCharacterKeys,
-          supportingPresence: normalizeVerticalDramaSupportingPresence(
-            referenceFrameResolvedFrame.supportingPresence ?? [],
-            {
-              source:
-                referenceFrameResolvedFrame.supportingPresenceCustomized ===
-                true
-                  ? "manual"
-                  : "auto",
-              idPrefix: `shot-${input.shotNumber}-supporting`,
-            }
-          ),
-          excludedVisualCharacterNames:
-            referenceFrameExcludedVisualCharacterNames,
-          characters: referenceFrameCharacterIdentitySources,
-          characterReferenceManifest: referenceFrameCharacterRefEntries.map(
-            (entry, idx) => ({
-              index: idx + 1,
-              characterId: null,
-              name: entry.name,
-            })
-          ),
-          promptLanguage: referenceFramePromptLanguage,
-          // Phase 6 design — no `speakingOrder` fact by design (this is an
-          // arbitrary user-directed pose/action, not necessarily this shot's
-          // dialogue beat).
-          location: referenceFrameResolvedLocation
-            ? {
-                name: referenceFrameResolvedLocation?.name ?? "",
-                description:
-                  referenceFrameResolvedLocation?.description ??
-                  referenceFrameResolvedLocation?.name ??
-                  "",
-                hasReferenceImage: Boolean(referenceFrameResolvedLocation?.url),
-              }
-            : undefined,
-          sceneContinuityLockBlock: referenceFrameSceneContinuityLockBlock,
-          idempotencyKey: input.idempotencyKey,
-        });
-      } catch (err) {
-        if (err instanceof ReferenceFramePromptInsufficientCreditsError) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message:
-              "Insufficient credits to author the reference-frame prompt",
-          });
-        }
-        if (err instanceof ReferenceFramePromptSchemaValidationError) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to author the reference-frame prompt — try again",
-          });
-        }
-        if (err instanceof ReferenceFramePromptRateLimitExceededError) {
-          throw new TRPCError({
-            code: "TOO_MANY_REQUESTS",
-            message: String(err),
-          });
-        }
-        // Same fail-closed convention as `generateShotStartFramePrompt`'s
-        // matching catch branch — a contradictory prompt is never returned
-        // for the user to confirm.
-        if (err instanceof ReferenceFramePromptReferenceMappingError) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: `พรอมต์เฟรมอ้างอิงไม่ตรงกับตัวละครในช็อต ${input.shotNumber} (ลองแก้ให้อัตโนมัติแล้วยังไม่ตรง) — วิธีแก้: กด "สร้างเฟรมอ้างอิง (AI)" ของช็อตนี้ใหม่อีกครั้ง`,
-          });
-        }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: String(err) || "Failed to author the reference-frame prompt",
-        });
-      }
-
-      const referenceFrameIdentityLock = ensureCharacterIdentityLockPrompt(
-        mergeImageNegativePromptIntoPrompt(
-          referenceFramePromptResult.prompt,
-          referenceFramePromptResult.negativePrompt
-        ),
-        referenceFrameCharacterRefEntries.map((entry, index) => ({
-          imageIndex: index + 1,
-          characterKey: entry.characterKey,
-          characterName: entry.name,
-        }))
-      );
-      referenceFramePromptResult.prompt = referenceFrameIdentityLock.prompt;
-      referenceFramePromptResult.negativePrompt = "";
-
-      // Final-prompt QC (hard length cap) — keeps this mutation's returned
-      // prompt within `generateShotReferenceFrameImage`'s own `prompt` zod
-      // max (the selected model's effective image cap), so a user who confirms unmodified never
-      // hits a BAD_REQUEST on the render call.
-      const referenceFramePromptQc = await ensurePromptWithinLimit({
-        kind: "image",
-        prompt: referenceFramePromptResult.prompt,
-        protectedFragments: referenceFrameIdentityLock.identityLockBlock
-          ? [referenceFrameIdentityLock.identityLockBlock!]
-          : undefined,
-        maxChars: referenceFramePromptMaxChars,
-        userId,
-        tenantId,
-        seriesId,
-        idempotencyKey: input.idempotencyKey
-          ? `${input.idempotencyKey}:prompt-qc`
-          : undefined,
-        label: `reference-frame prompt (episode #${episodeId}, shot ${input.shotNumber})`,
-      });
-
-      if (referenceFrameBarrierView) {
-        await db.transaction(async tx => {
-          const [freshRow] = await tx
-            .select({ startFramePlan: verticalDramaEpisodes.startFramePlan })
-            .from(verticalDramaEpisodes)
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
-              )
-            )
-            .for("update")
-            .limit(1);
-          const freshPlan =
-            (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
-            plan;
-          if (!freshPlan) return;
-          const persistedPlan = freshPlan;
-          const targetIndex = persistedPlan.frames.findIndex(
-            candidate => candidate.shotNumber === input.shotNumber
-          );
-          if (targetIndex < 0) return;
-          const freshFrame = persistedPlan.frames[targetIndex];
-          const freshView = normalizeVerticalDramaBarrierMultiView(
-            freshFrame.barrierMultiView
-          );
-          if (!freshView) return;
-          const frames = persistedPlan.frames.slice();
-          frames[targetIndex] = {
-            ...freshFrame,
-            barrierMultiView: {
-              ...freshView,
-              referenceView: {
-                ...freshView.referenceView,
-                imagePrompt: referenceFramePromptQc.prompt,
-                negativePrompt: "",
-              },
-            },
-          };
-          await tx
-            .update(verticalDramaEpisodes)
-            .set({
-              startFramePlan: { ...persistedPlan, frames },
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(verticalDramaEpisodes.id, episodeId),
-                eq(verticalDramaEpisodes.tenantId, tenantId),
-                eq(verticalDramaEpisodes.userId, userId),
-                eq(verticalDramaEpisodes.seriesId, seriesId)
-              )
-            );
-        });
-      }
-
-      return {
-        prompt: referenceFramePromptQc.prompt,
-        negativePrompt: "",
-        creditsUsed: referenceFramePromptResult.creditsUsed,
-        model: referenceFramePromptResult.model,
-        characterKeys: referenceFrameCharacterKeys,
-      };
     }),
 
   /**
@@ -26740,6 +26363,7 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
+      const storyboard = row.storyboard as VerticalDramaShotgrid | null;
 
       // (a) ownership + frame existence.
       const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
@@ -26837,17 +26461,30 @@ export const verticalDramaEpisodesRouter = router({
 
       // (e) capacity assert + reference URL merge + model/pricing/credits/
       // MCP/task submission — mirrors `generateStartFrameImage` structurally.
+      // Keep the confirmed prompt within the same model-specific budget used
+      // by the prompt-authoring worker. This mutation has its own scope and
+      // cannot rely on the prompt route's former local variable.
       const resolvedImageModelId = await resolveEpisodeImageModelId(plan);
-
       const [pricingRow] = await db
         .select({
           creditCost: mediaModels.creditCost,
           configJson: mediaModels.configJson,
+          provider: mediaModels.provider,
         })
         .from(mediaModels)
         .where(eq(mediaModels.modelId, resolvedImageModelId))
         .limit(1);
-      const pricingModel = pricingRow ?? { creditCost: 10, configJson: null };
+      const pricingModel = pricingRow ?? {
+        creditCost: 10,
+        configJson: null,
+        provider: null,
+      };
+      const referenceFramePromptMaxChars =
+        resolveVdImagePromptBudgetForModel({
+          modelId: resolvedImageModelId,
+          configJson: pricingModel.configJson,
+          provider: pricingModel.provider,
+        });
       const imageCapabilities = resolveVerticalDramaCapabilities(
         resolvedImageModelId,
         {
@@ -26925,7 +26562,13 @@ export const verticalDramaEpisodesRouter = router({
           ? [finalReferenceIdentityLock.identityLockBlock]
           : undefined,
         maxChars: referenceFramePromptMaxChars,
-        finalizeWithRefiner: true,
+        // The confirmed reference-frame prompt was already authored by the
+        // interactive prompt job. Do not invoke a second semantic refiner for
+        // an in-cap prompt: if that optional call fails, failClosed would turn
+        // a valid prompt (for example 3738/20000) into a false budget error.
+        // Over-cap prompts still enter the refiner because the QC helper only
+        // bypasses it when `finalizeWithRefiner` is false AND the prompt fits.
+        finalizeWithRefiner: false,
         failClosed: true,
         userId,
         tenantId,

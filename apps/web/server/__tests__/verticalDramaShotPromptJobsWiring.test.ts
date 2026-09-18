@@ -33,6 +33,45 @@ describe("Vertical Drama shot prompt background-job wiring", () => {
     expect(submitProcedure).not.toContain("ensurePromptWithinLimit");
   });
 
+  it("does not retain the removed synchronous reference-frame prompt path", () => {
+    const source = read("../routers/verticalDramaEpisodes.ts");
+    const start = source.indexOf(
+      "generateShotReferenceFramePrompt: verticalDramaProcedure"
+    );
+    const end = source.indexOf(
+      "generateShotReferenceFrameImage: verticalDramaProcedure",
+      start
+    );
+    const submitProcedure = source.slice(start, end);
+
+    expect(submitProcedure).toContain("return enqueueVerticalDramaInteractiveJob");
+    const enqueueIndex = submitProcedure.indexOf(
+      "return enqueueVerticalDramaInteractiveJob"
+    );
+    expect(enqueueIndex).toBeGreaterThan(-1);
+    expect(submitProcedure).not.toContain("resolveShotLocationReferenceEntry");
+    expect(submitProcedure).not.toContain("storyboard");
+  });
+
+  it("declares storyboard before the reference-frame image location lookup", () => {
+    const source = read("../routers/verticalDramaEpisodes.ts");
+    const start = source.indexOf(
+      "generateShotReferenceFrameImage: verticalDramaProcedure"
+    );
+    const end = source.indexOf("generateShotReferenceFrameImage:", start + 1);
+    const imageProcedure = source.slice(start, end === -1 ? undefined : end);
+
+    const storyboardDeclaration = imageProcedure.indexOf(
+      "const storyboard = row.storyboard"
+    );
+    const locationLookup = imageProcedure.indexOf(
+      "resolveShotLocationReferenceEntry"
+    );
+
+    expect(storyboardDeclaration).toBeGreaterThan(-1);
+    expect(locationLookup).toBeGreaterThan(storyboardDeclaration);
+  });
+
   it("restricts the synchronous resolver to a live worker execution token", () => {
     const source = read("../routers/verticalDramaEpisodes.ts");
     const start = source.indexOf(

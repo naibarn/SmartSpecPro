@@ -13,6 +13,7 @@ import type {
 } from "@shared/desktopReleaseBuilds";
 
 const fetchMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 const catalogState = vi.hoisted(() => ({
   catalog: {
     generatedAt: "2026-04-10T10:00:00.000Z",
@@ -50,7 +51,7 @@ vi.mock("../useDesktopReleaseCatalog", () => ({
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn(),
+    error: toastErrorMock,
   },
 }));
 
@@ -90,6 +91,7 @@ describe("DesktopReleasePanel", () => {
   beforeEach(() => {
     sessionStorage.clear();
     fetchMock.mockReset();
+    toastErrorMock.mockReset();
     catalogState.refresh.mockReset();
   });
 
@@ -553,5 +555,42 @@ describe("DesktopReleasePanel", () => {
     expect(await screen.findByText("Run #789")).toBeInTheDocument();
     expect(screen.getByText("dashboard:desktopReleases.admin.build.history.portalSync.completed")).toBeInTheDocument();
     expect(screen.getByText("dashboard:desktopReleases.admin.build.progress.completedBadge")).toBeInTheDocument();
+  });
+
+  it("shows an actionable message when GitHub rejects the build token", async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const href = String(url);
+      if (href.includes("/builds/history")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", builds: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (href.endsWith("/builds") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          error: "desktop_release_github_token_invalid",
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="admin" enabled canTriggerBuild />);
+
+    const versionInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(versionInput, { target: { value: "0.1.1" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "dashboard:desktopReleases.admin.build.trigger",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "dashboard:desktopReleases.admin.build.progress.error.invalidGithubToken",
+      );
+    });
   });
 });
