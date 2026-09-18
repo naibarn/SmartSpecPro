@@ -18,32 +18,32 @@
     "section-01-ui-foundation": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-01-ui-foundation-review.md"
+      "review_file": "code_review/section-01-review.md"
     },
     "section-02-revision-conflict-ux": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-02-revision-conflict-ux-review.md"
+      "review_file": "code_review/section-02-review.md"
     },
     "section-03-execution-capability-jobs": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-03-execution-capability-jobs-review.md"
+      "review_file": "code_review/section-03-review.md"
     },
     "section-04-ai-review-transcript-qc": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-04-ai-review-transcript-qc-review.md"
+      "review_file": "code_review/section-04-review.md"
     },
     "section-05-responsive-visual-consistency": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-05-responsive-visual-consistency-review.md"
+      "review_file": "code_review/section-05-review.md"
     },
     "section-06-browser-evidence-rollout": {
       "status": "complete",
       "commit_hash": "712a86334",
-      "review_file": "code_review/section-06-browser-evidence-rollout-review.md"
+      "review_file": "code_review/section-06-review.md"
     }
   },
   "pre_commit": {
