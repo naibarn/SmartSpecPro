@@ -20,6 +20,7 @@ import { getDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { getOwnershipProfile } from "../services/profileOwnershipService";
 import { storagePut, storageStreamFile } from "../storage";
 import {
   contentProtectionAssets,
@@ -47,13 +48,24 @@ const storageKeySchema = z.string().trim().min(1).max(1024)
   .refine(value => !value.includes("..") && !value.startsWith("/"), "Invalid storage reference");
 
 const caseStatusSchema = z.enum(["open", "reviewing", "ready", "submitted", "closed", "revoked"]);
-const rightsClaimInputSchema = z.object({
+export const rightsClaimInputSchema = z.object({
   assetId: assetIdSchema,
-  displayName: z.string().trim().min(1).max(255),
-  contactEmail: z.string().trim().email().max(320).optional(),
   claimType: z.string().trim().min(1).max(48),
   legalDeclarationConfirmed: z.boolean().default(false),
 }).strict();
+
+export function resolveRightsHolderSnapshot(profile: {
+  displayName?: string | null;
+  legalName?: string | null;
+  contactEmail?: string | null;
+} | null) {
+  const displayName = profile?.displayName?.trim() || profile?.legalName?.trim() || null;
+  if (!displayName) return null;
+  return {
+    displayName,
+    contactEmail: profile?.contactEmail?.trim() || null,
+  };
+}
 
 function createEvidencePdf(title: string, lines: string[]): Buffer {
   const safeLines = [title, ...lines].map(line => line.replace(/[^\x20-\x7E]/g, "?").replace(/[()\\]/g, character => `\\${character}`).slice(0, 180)).slice(0, 44);
@@ -703,14 +715,21 @@ export const contentProtectionRouter = router({
     const auth = requireProtectionAuth(ctx);
     await assertContentProtectionEnabled(auth.tenantId);
     const asset = await loadOwnedProtectionAsset({ ...auth, assetId: input.assetId, admin: isAdmin(ctx.user) });
+    const ownershipProfile = resolveRightsHolderSnapshot(await getOwnershipProfile(auth.userId));
+    if (!ownershipProfile) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: "Complete your creator ownership profile in Settings before creating a rights claim",
+      });
+    }
     const database = await getDb();
     const [holder] = await database.insert(contentRightsHolderProfiles).values({
       id: randomUUID(), tenantId: auth.tenantId, userId: auth.userId,
-      displayName: input.displayName, contactEmail: input.contactEmail ?? null,
+      displayName: ownershipProfile.displayName, contactEmail: ownershipProfile.contactEmail,
       updatedAt: new Date(),
     }).onConflictDoUpdate({
       target: [contentRightsHolderProfiles.tenantId, contentRightsHolderProfiles.userId],
-      set: { displayName: input.displayName, contactEmail: input.contactEmail ?? null, updatedAt: new Date() },
+      set: { displayName: ownershipProfile.displayName, contactEmail: ownershipProfile.contactEmail, updatedAt: new Date() },
     }).returning();
     if (!holder) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Rights holder profile could not be saved" });
     const [claim] = await database.insert(contentRightsClaims).values({

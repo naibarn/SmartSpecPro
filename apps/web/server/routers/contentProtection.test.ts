@@ -3,6 +3,8 @@ import {
   contentProtectionRouter,
   contentProtectionModalitySchema,
   protectAssetInputSchema,
+  resolveRightsHolderSnapshot,
+  rightsClaimInputSchema,
   safeAssetView,
   verifyCopyInputSchema,
 } from "./contentProtection";
@@ -70,5 +72,20 @@ describe("content protection router contract", () => {
     } as any);
     expect(view.publicAssetId).toBe("22222222-2222-4222-8222-222222222222");
     expect(view).not.toHaveProperty("id");
+  });
+
+  it("uses the Settings ownership profile as the rights claim source", () => {
+    expect(resolveRightsHolderSnapshot({
+      displayName: "  Nopporn  ",
+      legalName: "Legal Name",
+      contactEmail: "owner@example.com",
+    })).toEqual({ displayName: "Nopporn", contactEmail: "owner@example.com" });
+    expect(resolveRightsHolderSnapshot({ displayName: "", legalName: "" })).toBeNull();
+    expect(rightsClaimInputSchema.safeParse({
+      assetId: "11111111-1111-4111-8111-111111111111",
+      claimType: "creator",
+      legalDeclarationConfirmed: true,
+      displayName: "duplicate-input",
+    }).success).toBe(false);
   });
 });

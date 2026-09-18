@@ -183,8 +183,6 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
   }>({ pending: false });
   const verifyFileInputRef = useRef<HTMLInputElement>(null);
   const verifyAssetResolver = useMemo(() => new WebAssetResolver(), []);
-  const [rightsDisplayName, setRightsDisplayName] = useState("");
-  const [rightsContactEmail, setRightsContactEmail] = useState("");
   const [rightsClaimType, setRightsClaimType] = useState("creator");
   const [legalDeclarationConfirmed, setLegalDeclarationConfirmed] =
     useState(false);
@@ -252,6 +250,9 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
         feature.enabled && section === "rights" && Boolean(params.assetId),
     }
   );
+  const ownershipProfile = trpc.users.getOwnershipProfile.useQuery(undefined, {
+    enabled: feature.enabled && section === "rights",
+  });
   const certificate = trpc.contentProtection.getCertificate.useQuery(
     { assetId: params.assetId || "00000000-0000-0000-0000-000000000000" },
     {
@@ -278,6 +279,8 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
     trpc.contentProtection.createCertificate.useMutation({
       onSuccess: () => void utils.contentProtection.getCertificate.invalidate(),
     });
+  const ownershipDisplayName =
+    ownershipProfile.data?.displayName?.trim() || ownershipProfile.data?.legalName?.trim() || "";
 
   const sectionQueryError =
     (section === "overview" && (overview.isError || assets.isError || settings.isError)) ||
@@ -285,7 +288,7 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
     (section === "verify" && verify.isError) ||
     (section === "verifications" && verification.isError) ||
     (section === "cases" && (cases.isError || selectedCase.isError)) ||
-    (section === "rights" && rights.isError) ||
+    (section === "rights" && (rights.isError || ownershipProfile.isError)) ||
     (section === "certificate" && certificate.isError) ||
     (section === "settings" && settings.isError);
 
@@ -1030,57 +1033,72 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
             </h2>
             {section === "rights" ? (
               <>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Input
-                    aria-label={t("rightsHolderName")}
-                    placeholder={t("rightsHolderName")}
-                    value={rightsDisplayName}
-                    onChange={e => setRightsDisplayName(e.target.value)}
-                  />
-                  <Input
-                    aria-label={t("contactEmail")}
-                    placeholder={t("contactEmail")}
-                    value={rightsContactEmail}
-                    onChange={e => setRightsContactEmail(e.target.value)}
-                  />
-                  <Input
-                    aria-label={t("claimType")}
-                    placeholder={t("claimType")}
-                    value={rightsClaimType}
-                    onChange={e => setRightsClaimType(e.target.value)}
-                  />
+                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    {t("ownershipProfileSource")}
+                  </p>
+                  {ownershipProfile.isLoading ? (
+                    <p className="mt-2 text-sm text-slate-600" aria-busy="true">
+                      {t("loadingOwnershipProfile")}
+                    </p>
+                  ) : ownershipDisplayName ? (
+                    <p className="mt-2 text-sm text-slate-700">
+                      {ownershipDisplayName}
+                    </p>
+                  ) : (
+                    <p className="mt-2 text-sm text-amber-800" role="alert">
+                      {t("missingOwnershipProfile")}
+                    </p>
+                  )}
+                  <Link
+                    className="mt-2 inline-block text-sm font-medium text-emerald-700 underline"
+                    href="/settings?section=profile"
+                  >
+                    {t("editOwnershipProfile")}
+                  </Link>
                 </div>
-                <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={legalDeclarationConfirmed}
-                    onChange={e =>
-                      setLegalDeclarationConfirmed(e.target.checked)
-                    }
-                  />{" "}
-                  {t("rightsDeclaration")}
-                </label>
-                <Button
-                  className="mt-4"
-                  onClick={() =>
-                    params.assetId &&
-                    createRightsClaim.mutate({
-                      assetId: params.assetId,
-                      displayName: rightsDisplayName,
-                      contactEmail: rightsContactEmail || undefined,
-                      claimType: rightsClaimType,
-                      legalDeclarationConfirmed,
-                    })
-                  }
-                  disabled={
-                    createRightsClaim.isPending ||
-                    !params.assetId ||
-                    !rightsDisplayName.trim() ||
-                    !legalDeclarationConfirmed
-                  }
-                >
-                  {t("saveRightsClaim")}
-                </Button>
+                {params.assetId ? (
+                  <>
+                    <Input
+                      className="mt-4"
+                      aria-label={t("claimType")}
+                      placeholder={t("claimType")}
+                      value={rightsClaimType}
+                      onChange={e => setRightsClaimType(e.target.value)}
+                    />
+                    <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={legalDeclarationConfirmed}
+                        onChange={e =>
+                          setLegalDeclarationConfirmed(e.target.checked)
+                        }
+                      />{" "}
+                      {t("rightsDeclaration")}
+                    </label>
+                    <Button
+                      className="mt-4"
+                      onClick={() =>
+                        createRightsClaim.mutate({
+                          assetId: params.assetId!,
+                          claimType: rightsClaimType,
+                          legalDeclarationConfirmed,
+                        })
+                      }
+                      disabled={
+                        createRightsClaim.isPending ||
+                        !ownershipDisplayName ||
+                        !legalDeclarationConfirmed
+                      }
+                    >
+                      {t("saveRightsClaim")}
+                    </Button>
+                  </>
+                ) : (
+                  <Link className="mt-4 inline-block" href="/content-protection/assets">
+                    <Button variant="outline">{t("chooseAssetForClaim")}</Button>
+                  </Link>
+                )}
                 {rights.isLoading ? (
                   <p className="mt-5 text-sm text-slate-600" aria-busy="true">{t("loadingEvidence")}</p>
                 ) : (
