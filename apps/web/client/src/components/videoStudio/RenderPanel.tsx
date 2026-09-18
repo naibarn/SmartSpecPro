@@ -296,6 +296,12 @@ export function RenderPanel({
                   : pickCopy(lang, { th: "OFF: ผู้ใช้เลือกไม่ใช้ ไฟล์นี้จะถูกระบุว่า unprotected", en: "OFF: user-disabled and explicitly unprotected" })}
               </Text>
             </HStack>
+            <Link
+              href="/content-protection"
+              className="text-sm font-medium text-emerald-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+            >
+              {pickCopy(lang, { th: "ดูหลักฐานและการตั้งค่า Content Protection", en: "View Content Protection evidence and settings" })}
+            </Link>
           </VStack>
         </Card>
       ) : null}

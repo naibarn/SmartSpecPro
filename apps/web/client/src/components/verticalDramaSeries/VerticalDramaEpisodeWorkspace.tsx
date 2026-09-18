@@ -4205,6 +4205,12 @@ function VerticalDramaFinalRenderOptionsSection({
                 ? "OFF: ผู้ใช้เลือกไม่ใช้ลายน้ำดิจิทัลสำหรับการส่งออกครั้งนี้"
                 : "OFF: digital watermark is disabled for this export by the user"}
           </p>
+          <Link
+            href="/content-protection"
+            className="inline-flex text-xs font-medium text-emerald-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+          >
+            {locale === "th" ? "ดูหลักฐานและการตั้งค่า Content Protection" : "View Content Protection evidence and settings"}
+          </Link>
         </div>
       ) : null}
 

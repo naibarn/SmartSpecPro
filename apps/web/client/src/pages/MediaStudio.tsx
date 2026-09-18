@@ -36314,6 +36314,13 @@ export default function MediaStudio() {
                             ? "ลายน้ำดิจิทัลไม่ใช่เครื่องหมายที่มองเห็น และไม่แทนการพิสูจน์ทางกฎหมาย"
                             : "This is an invisible technical provenance signal, not a legal ownership determination."}
                         </p>
+                        <button
+                          type="button"
+                          className="mt-2 text-[11px] font-medium text-emerald-700 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                          onClick={() => setLocation("/content-protection")}
+                        >
+                          {isThaiLocale ? "ดูหลักฐานและการตั้งค่า Content Protection" : "View Content Protection evidence and settings"}
+                        </button>
                       </div>
                     )}
 

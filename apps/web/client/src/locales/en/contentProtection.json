@@ -13,6 +13,7 @@
   "userChoice": "User-controlled ON/OFF",
   "technicalEvidenceOnly": "Technical evidence only.",
   "evidenceDisclaimer": "A watermark, hash, fingerprint, or timestamp does not by itself establish legal ownership. Review rights, licences, and chain-of-title evidence before making a legal declaration.",
+  "workspaceLoadError": "Some protection data could not be loaded. Refresh or open the affected section again.",
   "stageAria": "Digital watermark processing stages",
   "publicId": "Public ID",
   "choice": "Choice",
@@ -90,45 +91,49 @@
   "saveRightsClaim": "Save rights claim",
   "selectAssetRights": "Select a protected asset to inspect rights evidence.",
   "createOrLoadCertificate": "Create or load certificate",
-  "certificateRequirement": "A certificate requires a verified final protected artifact."
-  ,"notEnabledTitle": "Content Protection is not enabled"
-  ,"notEnabledDescription": "Ask your tenant administrator to enable this workspace. No provider credentials or watermark secrets are exposed here."
-  ,"navigationAria": "Content Protection navigation"
-  ,"loadingEvidence": "Loading evidence…"
-  ,"assetArtifact": "{{modality}} final artifact"
-  ,"publicAssetId": "Public asset ID"
-  ,"invisibleImageWatermark": "Invisible image watermark"
-  ,"videoWatermark": "Video watermark"
-  ,"audioWatermark": "Audio watermark"
-  ,"fingerprintSignal": "Fingerprint signal"
-  ,"imageFingerprint": "PDQ / crop-resize alignment"
-  ,"videoFingerprint": "Perceptual video fingerprint"
-  ,"audioFingerprint": "Audio fingerprint"
-  ,"assetNotFound": "Asset not found."
-  ,"signalsReviewed": "Signals reviewed"
-  ,"exactSha256": "Exact SHA-256 integrity"
-  ,"watermarkRecord": "Protected asset watermark record and self-verification status"
-  ,"imageDhash": "Image dHash similarity when an image perceptual hash is available"
-  ,"queryAssetId": "Query media asset ID"
-  ,"verificationModality": "Verification modality"
-  ,"image": "Image"
-  ,"video": "Video"
-  ,"audio": "Audio"
-  ,"defaultChoiceAria": "Default digital watermark choice"
-  ,"loadingCase": "Loading case…"
-  ,"publicCaseId": "Public case ID"
-  ,"caseSummaryFallback": "Technical evidence case"
-  ,"rightsDeclaration": "I confirm this is a user-provided declaration subject to applicable law."
-  ,"reviewerUrlWarning": "Reviewer URL (share only with the intended reviewer):"
-  ,"statusQueued": "Queued"
-  ,"statusProcessing": "Processing"
-  ,"statusProtected": "Protected"
-  ,"statusProtectedWarnings": "Protected with warnings"
-  ,"statusFailed": "Failed"
-  ,"statusRequested": "Protection requested"
-  ,"statusUnprotected": "Unprotected by user choice"
-  ,"statusInconclusive": "Inconclusive"
-  ,"statusDraft": "Draft"
-  ,"statusOpen": "Open"
-  ,"statusCompleted": "Completed"
+  "certificateRequirement": "A certificate requires a verified final protected artifact.",
+  "notEnabledTitle": "Content Protection is not enabled",
+  "notEnabledDescription": "Ask your tenant administrator to enable this workspace. No provider credentials or watermark secrets are exposed here.",
+  "navigationAria": "Content Protection navigation",
+  "loadingEvidence": "Loading evidence…",
+  "loadingOverview": "Loading protection overview…",
+  "loadingAssets": "Loading protected assets…",
+  "loadingCases": "Loading protection cases…",
+  "loadingSettings": "Loading your protection preference…",
+  "assetArtifact": "{{modality}} final artifact",
+  "publicAssetId": "Public asset ID",
+  "invisibleImageWatermark": "Invisible image watermark",
+  "videoWatermark": "Video watermark",
+  "audioWatermark": "Audio watermark",
+  "fingerprintSignal": "Fingerprint signal",
+  "imageFingerprint": "PDQ / crop-resize alignment",
+  "videoFingerprint": "Perceptual video fingerprint",
+  "audioFingerprint": "Audio fingerprint",
+  "assetNotFound": "Asset not found.",
+  "signalsReviewed": "Signals reviewed",
+  "exactSha256": "Exact SHA-256 integrity",
+  "watermarkRecord": "Protected asset watermark record and self-verification status",
+  "imageDhash": "Image dHash similarity when an image perceptual hash is available",
+  "queryAssetId": "Query media asset ID",
+  "verificationModality": "Verification modality",
+  "image": "Image",
+  "video": "Video",
+  "audio": "Audio",
+  "defaultChoiceAria": "Default digital watermark choice",
+  "loadingCase": "Loading case…",
+  "publicCaseId": "Public case ID",
+  "caseSummaryFallback": "Technical evidence case",
+  "rightsDeclaration": "I confirm this is a user-provided declaration subject to applicable law.",
+  "reviewerUrlWarning": "Reviewer URL (share only with the intended reviewer):",
+  "statusQueued": "Queued",
+  "statusProcessing": "Processing",
+  "statusProtected": "Protected",
+  "statusProtectedWarnings": "Protected with warnings",
+  "statusFailed": "Failed",
+  "statusRequested": "Protection requested",
+  "statusUnprotected": "Unprotected by user choice",
+  "statusInconclusive": "Inconclusive",
+  "statusDraft": "Draft",
+  "statusOpen": "Open",
+  "statusCompleted": "Completed"
 }

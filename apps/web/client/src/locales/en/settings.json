@@ -1109,5 +1109,17 @@
   "connectedDevices.revokeAllFailed": "MCP connections could not be revoked",
   "tabs.workers": "Worker bootstrap",
   "tabs.mcpDevices": "MCP & Devices",
-  "tabs.localAi": "Local AI"
+  "tabs.localAi": "Local AI",
+  "contentProtection.title": "Digital watermark settings",
+  "contentProtection.description": "Set your own default for final exports. The export surface will show the effective ON/OFF choice before a digital watermark is created.",
+  "contentProtection.defaultChoice": "Default choice for final exports",
+  "contentProtection.defaultChoiceDescription": "This is your preference; you can change it for each export before the watermark is created.",
+  "contentProtection.choiceAria": "Digital watermark default choice",
+  "contentProtection.on": "ON",
+  "contentProtection.off": "OFF",
+  "contentProtection.currentDefault": "Current default",
+  "contentProtection.loading": "Loading your protection preference...",
+  "contentProtection.error": "Could not load your protection preference. Try again or open the Content Protection workspace.",
+  "contentProtection.saved": "Digital watermark preference saved",
+  "contentProtection.openWorkspace": "Open Content Protection workspace"
 }

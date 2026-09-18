@@ -618,6 +618,17 @@ export default function Settings() {
   const desktopPackageSyncEnabled = useTenantFeatureFlag("desktopPackageSync");
   const desktopWorkerProjectionEnabled = useTenantFeatureFlag("desktopWorkerProjection");
   const contentProtectionEnabled = useTenantFeatureFlag("contentProtectionEnabled");
+  const settingsUtils = trpc.useUtils();
+  const contentProtectionSettingsQuery = trpc.contentProtection.getSettings.useQuery(undefined, {
+    enabled: contentProtectionEnabled && activeTab === "contentProtection",
+  });
+  const saveContentProtectionSettings = trpc.contentProtection.setDefaultChoice.useMutation({
+    onSuccess: async () => {
+      toast.success(t("settings.contentProtection.saved"));
+      await settingsUtils.contentProtection.getSettings.invalidate();
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const desktopHostStatus = useDesktopHostStatus(
     desktopHostEnabled && activeTab === 'desktopHost' && Boolean(user?.currentTenantId),
   );
@@ -1129,6 +1140,12 @@ export default function Settings() {
   }, [activeTab, desktopHostEnabled]);
 
   useEffect(() => {
+    if (activeTab === "contentProtection" && !contentProtectionEnabled) {
+      setActiveTab("preferences");
+    }
+  }, [activeTab, contentProtectionEnabled]);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncVaultToken = () => setPrivateVaultTokenState(getPrivateVaultAccessToken());
     syncVaultToken();
@@ -1433,12 +1450,14 @@ export default function Settings() {
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
+                    type="button"
                     onClick={() => setActiveTab(tab.id)}
+                    aria-current={activeTab === tab.id ? "page" : undefined}
                     className={`flex-shrink-0 lg:w-full flex items-center gap-3 px-3 py-2 lg:px-4 lg:py-3 rounded-xl text-left transition-all ${
                       activeTab === tab.id
                         ? 'bg-gradient-to-r from-blue-500/10 to-cyan-500/10 text-blue-700'
                         : 'text-gray-600 hover:bg-gray-50'
-                    }`}
+                    } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2`}
                   >
                     <tab.icon className="w-5 h-5" />
                     <span className="font-medium">{tab.label}</span>
@@ -2655,12 +2674,49 @@ export default function Settings() {
                     <div className="flex items-start gap-3">
                       <ShieldCheck className="mt-0.5 h-6 w-6 text-emerald-700" />
                       <div>
-                        <h2 className="text-xl font-semibold text-slate-900">{currentUiLanguage === 'th' ? 'การตั้งค่าลายน้ำดิจิทัล' : 'Digital watermark settings'}</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-700">{currentUiLanguage === 'th' ? 'กำหนดค่าเริ่มต้นของคุณเองสำหรับงานส่งออกสุดท้าย ระบบจะแจ้ง ON/OFF ชัดเจนก่อนสร้างลายน้ำ' : 'Set your own default for final exports. The export surface will show the effective ON/OFF choice before a digital watermark is created.'}</p>
+                        <h2 className="text-xl font-semibold text-slate-900">{t('settings.contentProtection.title')}</h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-700">{t('settings.contentProtection.description')}</p>
                       </div>
                     </div>
+                    <div className="mt-4 rounded-xl border border-emerald-200 bg-white/80 p-4" data-testid="settings-content-protection-control">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-900">{t('settings.contentProtection.defaultChoice')}</p>
+                          <p className="mt-1 text-xs text-slate-600">{t('settings.contentProtection.defaultChoiceDescription')}</p>
+                        </div>
+                        <div className="flex gap-2" role="group" aria-label={t('settings.contentProtection.choiceAria')}>
+                          <Button
+                            type="button"
+                            variant={contentProtectionSettingsQuery.data?.defaultChoice === 'on' ? 'default' : 'outline'}
+                            aria-pressed={contentProtectionSettingsQuery.data?.defaultChoice === 'on'}
+                            disabled={contentProtectionSettingsQuery.isLoading || saveContentProtectionSettings.isPending}
+                            onClick={() => saveContentProtectionSettings.mutate({ defaultChoice: 'on' })}
+                          >
+                            {t('settings.contentProtection.on')}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={contentProtectionSettingsQuery.data?.defaultChoice !== 'on' ? 'default' : 'outline'}
+                            aria-pressed={contentProtectionSettingsQuery.data?.defaultChoice !== 'on'}
+                            disabled={contentProtectionSettingsQuery.isLoading || saveContentProtectionSettings.isPending}
+                            onClick={() => saveContentProtectionSettings.mutate({ defaultChoice: 'off' })}
+                          >
+                            {t('settings.contentProtection.off')}
+                          </Button>
+                        </div>
+                      </div>
+                      {contentProtectionSettingsQuery.isLoading ? (
+                        <p className="mt-3 text-xs text-slate-600" aria-busy="true">{t('settings.contentProtection.loading')}</p>
+                      ) : contentProtectionSettingsQuery.isError ? (
+                        <p className="mt-3 text-xs text-red-700" role="alert">{t('settings.contentProtection.error')}</p>
+                      ) : (
+                        <p className="mt-3 text-xs text-slate-600">
+                          {t('settings.contentProtection.currentDefault')}: <strong>{(contentProtectionSettingsQuery.data?.defaultChoice ?? 'off').toUpperCase()}</strong>
+                        </p>
+                      )}
+                    </div>
                     <Button className="mt-4" variant="outline" onClick={() => setLocation('/content-protection')}>
-                      {currentUiLanguage === 'th' ? 'เปิด workspace Content Protection' : 'Open Content Protection workspace'}
+                      {t('settings.contentProtection.openWorkspace')}
                     </Button>
                   </div>
                 </div>

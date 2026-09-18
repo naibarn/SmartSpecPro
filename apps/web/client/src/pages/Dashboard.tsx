@@ -78,6 +78,11 @@ const DesktopReleasePanel = lazy(() =>
     default: module.DesktopReleasePanel,
   }))
 );
+const RunnerReleasePanel = lazy(() =>
+  import("@/features/runner-releases/RunnerReleasePanel").then((module) => ({
+    default: module.RunnerReleasePanel,
+  })),
+);
 const FinanceHub = lazy(() =>
   import("@/components/finance/FinanceHub").then((module) => ({
     default: module.FinanceHub,
@@ -309,7 +314,11 @@ export default function Dashboard() {
 
   // Tenant feature flags for menu gating
   const tenantFlags = useTenantFeatureFlags();
-  const { data: contentProtectionOverview } = useQuery({
+  const {
+    data: contentProtectionOverview,
+    isLoading: isContentProtectionOverviewLoading,
+    isError: isContentProtectionOverviewError,
+  } = useQuery({
     queryKey: ["content-protection-overview", tenant?.id ?? "none"],
     queryFn: async () => {
       const response = await fetch("/api/trpc/contentProtection.overview");
@@ -319,6 +328,8 @@ export default function Dashboard() {
         protected?: number;
         processing?: number;
         notProtected?: number;
+        warning?: number;
+        failed?: number;
       } | undefined;
     },
     enabled: isAuthenticated && tenantFlags.contentProtectionEnabled,
@@ -1320,14 +1331,30 @@ export default function Dashboard() {
               <p className="text-sm font-semibold text-emerald-950">{t("dashboard:contentProtection.statusTitle")}</p>
               <p className="mt-1 text-xs leading-5 text-emerald-900/80">{t("dashboard:contentProtection.statusDescription")}</p>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs text-emerald-950">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-emerald-300 bg-white/80 text-emerald-900 hover:bg-white"
+              onClick={() => navigateTo("/content-protection")}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              {t("dashboard:contentProtection.openWorkspace")}
+            </Button>
+          </div>
+          {isContentProtectionOverviewLoading ? (
+            <p className="mt-3 text-xs text-emerald-900/80" aria-busy="true">{t("dashboard:contentProtection.statusLoading")}</p>
+          ) : isContentProtectionOverviewError ? (
+            <p className="mt-3 text-xs text-red-700" role="alert">{t("dashboard:contentProtection.statusUnavailable")}</p>
+          ) : (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs text-emerald-950">
               <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.protected")}: {contentProtectionOverview?.protected ?? 0}</span>
               <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.processing")}: {contentProtectionOverview?.processing ?? 0}</span>
               <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.warning")}: {contentProtectionOverview?.warning ?? 0}</span>
               <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.failed")}: {contentProtectionOverview?.failed ?? 0}</span>
               <span className="rounded-full bg-white/80 px-2 py-1">{t("dashboard:contentProtection.unprotected")}: {contentProtectionOverview?.notProtected ?? 0}</span>
             </div>
-          </div>
+          )}
         </div>
       ) : null}
     </motion.section>
@@ -2510,6 +2537,21 @@ export default function Dashboard() {
               }
             >
               <DesktopReleasePanel variant="dashboard" enabled={isAuthenticated} />
+            </Suspense>
+          </motion.section>
+
+          <motion.section
+            {...dashboardMotionProps(0.12)}
+            className="mb-8 hidden xl:block"
+          >
+            <Suspense
+              fallback={
+                <div className="rounded-[24px] border border-slate-200/80 bg-white/90 p-5 shadow-sm">
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                </div>
+              }
+            >
+              <RunnerReleasePanel enabled={isAuthenticated} />
             </Suspense>
           </motion.section>
 

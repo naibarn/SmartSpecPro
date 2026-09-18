@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import {
   AlertTriangle,
@@ -171,6 +171,7 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
     "video"
   );
   const [choice, setChoice] = useState<"on" | "off">("off");
+  const [choiceTouched, setChoiceTouched] = useState(false);
   const [caseTitle, setCaseTitle] = useState("");
   const [caseSummary, setCaseSummary] = useState("");
   const [caseAssetIds, setCaseAssetIds] = useState("");
@@ -203,8 +204,15 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
     }
   );
   const settings = trpc.contentProtection.getSettings.useQuery(undefined, {
-    enabled: feature.enabled && section === "settings",
+    enabled: feature.enabled && ["overview", "settings"].includes(section),
   });
+  useEffect(() => {
+    const defaultChoice = settings.data?.defaultChoice;
+    if (choiceTouched || (defaultChoice !== "on" && defaultChoice !== "off")) {
+      return;
+    }
+    setChoice(defaultChoice);
+  }, [choiceTouched, settings.data?.defaultChoice]);
   const saveSettings = trpc.contentProtection.setDefaultChoice.useMutation({
     onSuccess: () => utils.contentProtection.getSettings.invalidate(),
   });
@@ -270,6 +278,16 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
     trpc.contentProtection.createCertificate.useMutation({
       onSuccess: () => void utils.contentProtection.getCertificate.invalidate(),
     });
+
+  const sectionQueryError =
+    (section === "overview" && (overview.isError || assets.isError || settings.isError)) ||
+    (section === "assets" && (assets.isError || asset.isError)) ||
+    (section === "verify" && verify.isError) ||
+    (section === "verifications" && verification.isError) ||
+    (section === "cases" && (cases.isError || selectedCase.isError)) ||
+    (section === "rights" && rights.isError) ||
+    (section === "certificate" && certificate.isError) ||
+    (section === "settings" && settings.isError);
 
   const title = useMemo(
     () => {
@@ -360,6 +378,7 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
             <Link
               key={id}
               href={`/content-protection/${id}`}
+              aria-current={section === id ? "page" : undefined}
               className={cn(
                 "whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
                 section === id
@@ -372,24 +391,35 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
           ))}
         </nav>
         <EvidenceNotice t={t} />
+        {sectionQueryError ? (
+          <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+            {t("workspaceLoadError")}
+          </div>
+        ) : null}
 
         {section === "overview" ? (
           <section className="mt-6 space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-              {Object.entries(overview.data ?? {}).map(([key, value]) => (
-                <div
-                  key={key}
-                  className="rounded-2xl border border-slate-200 bg-white p-4"
-                >
-                  <p className="text-xs uppercase tracking-wide text-slate-500">
-                    {key}
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold text-slate-900">
-                    {String(value)}
-                  </p>
-                </div>
-              ))}
-            </div>
+            {overview.isLoading ? (
+              <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" aria-busy="true">
+                {t("loadingOverview")}
+              </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+                {Object.entries(overview.data ?? {}).map(([key, value]) => (
+                  <div
+                    key={key}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      {key}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-900">
+                      {String(value)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
               <div className="rounded-3xl border border-slate-200 bg-white p-6">
                 <div className="flex items-center gap-3">
@@ -427,21 +457,29 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                   >
                     <button
                       type="button"
+                      aria-pressed={choice === "on"}
                       className={cn(
                         "flex-1 rounded px-2 text-sm",
                         choice === "on" && "bg-emerald-600 text-white"
                       )}
-                      onClick={() => setChoice("on")}
+                      onClick={() => {
+                        setChoiceTouched(true);
+                        setChoice("on");
+                      }}
                     >
                       {t("on")}
                     </button>
                     <button
                       type="button"
+                      aria-pressed={choice === "off"}
                       className={cn(
                         "flex-1 rounded px-2 text-sm",
                         choice === "off" && "bg-slate-200 text-slate-900"
                       )}
-                      onClick={() => setChoice("off")}
+                      onClick={() => {
+                        setChoiceTouched(true);
+                        setChoice("off");
+                      }}
                     >
                       {t("off")}
                     </button>
@@ -502,12 +540,18 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
             </div>
             <div>
               <h2 className="mb-3 text-lg font-semibold text-slate-900">{t("recentAssets")}</h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {(assets.data ?? []).slice(0, 6).map(assetRow => (
-                  <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
-                ))}
-              </div>
-              {assets.data?.length === 0 ? (
+              {assets.isLoading ? (
+                <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" aria-busy="true">
+                  {t("loadingAssets")}
+                </p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {(assets.data ?? []).slice(0, 6).map(assetRow => (
+                    <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
+                  ))}
+                </div>
+              )}
+              {!assets.isLoading && assets.data?.length === 0 ? (
                 <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
                   {t("noAssets")}
                 </p>
@@ -642,11 +686,17 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                 )}
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {(assets.data ?? []).map(assetRow => (
-                  <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
-                ))}
-              </div>
+              assets.isLoading ? (
+                <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" aria-busy="true">
+                  {t("loadingAssets")}
+                </p>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {(assets.data ?? []).map(assetRow => (
+                    <AssetCard key={assetRow.publicAssetId} asset={assetRow} t={t} />
+                  ))}
+                </div>
+              )
             )}
           </section>
         ) : null}
@@ -775,27 +825,39 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
               aria-label={t("defaultChoiceAria")}
             >
               <Button
+                type="button"
                 variant={
                   settings.data?.defaultChoice === "on" ? "default" : "outline"
                 }
+                aria-pressed={settings.data?.defaultChoice === "on"}
+                disabled={settings.isLoading || saveSettings.isPending}
                 onClick={() => saveSettings.mutate({ defaultChoice: "on" })}
               >
                 {t("on")}
               </Button>
               <Button
+                type="button"
                 variant={
                   settings.data?.defaultChoice !== "on" ? "default" : "outline"
                 }
+                aria-pressed={settings.data?.defaultChoice !== "on"}
+                disabled={settings.isLoading || saveSettings.isPending}
                 onClick={() => saveSettings.mutate({ defaultChoice: "off" })}
               >
                 {t("off")}
               </Button>
             </div>
             <p className="mt-4 text-sm text-slate-600">
-              {t("currentDefault")}: {" "}
-              <strong>
-                {settings.data?.defaultChoice?.toUpperCase() ?? "OFF"}
-              </strong>
+              {settings.isLoading ? (
+                t("loadingSettings")
+              ) : (
+                <>
+                  {t("currentDefault")}: {" "}
+                  <strong>
+                    {settings.data?.defaultChoice?.toUpperCase() ?? "OFF"}
+                  </strong>
+                </>
+              )}
             </p>
           </section>
         ) : null}
@@ -868,7 +930,12 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                 </div>
               ) : null}
             </div>
-            {!caseRef ? (cases.data ?? []).map((item: any) => (
+            {!caseRef && cases.isLoading ? (
+              <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600" aria-busy="true">
+                {t("loadingCases")}
+              </p>
+            ) : null}
+            {!caseRef && !cases.isLoading ? (cases.data ?? []).map((item: any) => (
               <div
                 key={item.publicCaseId}
                 className="rounded-2xl border border-slate-200 bg-white p-4"
@@ -947,7 +1014,7 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                 ) : null}
               </div>
             )) : null}
-            {!caseRef && cases.data?.length === 0 ? (
+            {!caseRef && !cases.isLoading && cases.data?.length === 0 ? (
               <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
                 {t("noCases")}
               </p>
@@ -1014,16 +1081,17 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                 >
                   {t("saveRightsClaim")}
                 </Button>
-                <pre className="mt-5 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
-                  {JSON.stringify(
-                    rights.data ?? {
-                      message:
-                        t("selectAssetRights"),
-                    },
-                    null,
-                    2
-                  )}
-                </pre>
+                {rights.isLoading ? (
+                  <p className="mt-5 text-sm text-slate-600" aria-busy="true">{t("loadingEvidence")}</p>
+                ) : (
+                  <pre className="mt-5 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
+                    {JSON.stringify(
+                      rights.data ?? { message: t("selectAssetRights") },
+                      null,
+                      2
+                    )}
+                  </pre>
+                )}
               </>
             ) : (
               <>
@@ -1037,16 +1105,17 @@ export default function ContentProtectionPage({ initialSection }: { initialSecti
                 >
                   {t("createOrLoadCertificate")}
                 </Button>
-                <pre className="mt-4 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
-                  {JSON.stringify(
-                    certificate.data ?? {
-                      message:
-                        t("certificateRequirement"),
-                    },
-                    null,
-                    2
-                  )}
-                </pre>
+                {certificate.isLoading ? (
+                  <p className="mt-4 text-sm text-slate-600" aria-busy="true">{t("loadingEvidence")}</p>
+                ) : (
+                  <pre className="mt-4 overflow-auto rounded-xl bg-slate-950 p-4 text-xs text-slate-100">
+                    {JSON.stringify(
+                      certificate.data ?? { message: t("certificateRequirement") },
+                      null,
+                      2
+                    )}
+                  </pre>
+                )}
               </>
             )}
           </section>

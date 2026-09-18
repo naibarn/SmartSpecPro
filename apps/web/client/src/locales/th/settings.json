@@ -1109,5 +1109,17 @@
   "connectedDevices.revokeAllFailed": "ยกเลิกการเชื่อมต่อ MCP ไม่สำเร็จ",
   "tabs.workers": "Worker bootstrap",
   "tabs.mcpDevices": "MCP และอุปกรณ์",
-  "tabs.localAi": "Local AI"
+  "tabs.localAi": "Local AI",
+  "contentProtection.title": "การตั้งค่าลายน้ำดิจิทัล",
+  "contentProtection.description": "กำหนดค่าเริ่มต้นของคุณเองสำหรับงานส่งออกสุดท้าย ระบบจะแสดงตัวเลือก ON/OFF ก่อนสร้างลายน้ำดิจิทัล",
+  "contentProtection.defaultChoice": "ค่าเริ่มต้นสำหรับไฟล์ส่งออกสุดท้าย",
+  "contentProtection.defaultChoiceDescription": "นี่เป็นความต้องการเริ่มต้นของคุณ และยังเปลี่ยนได้ทุกครั้งก่อนสร้างลายน้ำ",
+  "contentProtection.choiceAria": "ตัวเลือกค่าเริ่มต้นของลายน้ำดิจิทัล",
+  "contentProtection.on": "เปิดใช้ (ON)",
+  "contentProtection.off": "ไม่ใช้ (OFF)",
+  "contentProtection.currentDefault": "ค่าเริ่มต้นปัจจุบัน",
+  "contentProtection.loading": "กำลังโหลดค่าความต้องการคุ้มครองของคุณ...",
+  "contentProtection.error": "โหลดค่าความต้องการคุ้มครองไม่ได้ ลองใหม่หรือเปิด workspace Content Protection",
+  "contentProtection.saved": "บันทึกค่าความต้องการลายน้ำดิจิทัลแล้ว",
+  "contentProtection.openWorkspace": "เปิด workspace Content Protection"
 }

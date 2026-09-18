@@ -1098,6 +1098,10 @@ function EpisodeWorkspaceShell({
   const contentProtectionEnabled = useTenantFeatureFlag(
     "contentProtectionEnabled"
   );
+  const contentProtectionSettings = trpc.contentProtection.getSettings.useQuery(undefined, {
+    enabled: contentProtectionEnabled,
+    retry: false,
+  });
 
   const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
@@ -8173,6 +8177,22 @@ function EpisodeWorkspaceShell({
         return defaults;
       }
     });
+  useEffect(() => {
+    const defaultChoice = contentProtectionSettings.data?.defaultChoice;
+    if (!contentProtectionEnabled || (defaultChoice !== "on" && defaultChoice !== "off")) {
+      return;
+    }
+    setFinalRenderOptions(current => current.protectionIntent
+      ? current
+      : {
+          ...current,
+          protectionIntent: {
+            choice: defaultChoice,
+            choiceSource: "per_export",
+            requireBeforePublish: true,
+          },
+        });
+  }, [contentProtectionEnabled, contentProtectionSettings.data?.defaultChoice]);
   useEffect(() => {
     safeStorageSet(
       finalRenderOptionsStorageKey,
