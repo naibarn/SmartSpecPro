@@ -32,16 +32,17 @@
  * statically (`import type`) — those are fully erased at compile time and
  * carry no runtime module-evaluation risk.
  */
+import { randomUUID } from "crypto";
 import { and, eq } from "drizzle-orm";
 
 import { debugError } from "../_core/logger";
 import { db } from "../db";
-import { verticalDramaEpisodes, verticalDramaSeries } from "../../drizzle/schema";
+import { verticalDramaEpisodes, verticalDramaSeries, workerArtifacts } from "../../drizzle/schema";
 import type { VerticalDramaFfmpegAssemblyJobContract } from "../../shared/workerRuntime";
 import type { VerticalDramaAssemblyManifest } from "@shared/verticalDramaSeries/assembly";
 import type { runAssemblyJob } from "./verticalDramaEpisodeVideoAssembly";
 import type { runProductionEpisodeGroupJob } from "./verticalDramaProductionEpisodeAssembly";
-import type { runTrailerJob } from "./verticalDramaSeriesTrailerAssembly";
+import type { runTrailerJob, TrailerJobResult } from "./verticalDramaSeriesTrailerAssembly";
 
 export type VerticalDramaFfmpegAssemblyRunOutcome = {
   ok: boolean;
@@ -180,7 +181,25 @@ async function runTrailerKind(
 
   // `runTrailerJob` never throws — same "catch internally, persist
   // `series.trailer`" convention as the two functions above.
-  await run({ ...feed, jobId, ffmpegRunner: defaultFfmpegRunner });
+  const result = await run({ ...feed, jobId, ffmpegRunner: defaultFfmpegRunner }) as TrailerJobResult | undefined;
+  if (result?.status === "failed") return { ok: false, error: result.error };
+
+  if (result?.status === "completed") {
+    await db.insert(workerArtifacts).values({
+      id: randomUUID(),
+      workerJobId: jobId,
+      artifactType: "vertical_drama_trailer_video",
+      storageRef: result.storageKey,
+      metadataJson: {
+        contentType: "video/mp4",
+        checksumSha256: result.sha256,
+        source: "vertical_drama.trailer",
+        sourceRefs: result.sourceRefs,
+        finalCompoundArtifact: true,
+      },
+      publishedItemId: null,
+    }).onConflictDoNothing();
+  }
 
   const owner = feed.owner;
   const [row] = await db

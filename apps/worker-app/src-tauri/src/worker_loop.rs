@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::fs;
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
@@ -78,15 +79,17 @@ use crate::worker_executor::{
     build_remotion_render_video_output_json, build_remotion_render_video_progress_event,
     build_remotion_render_video_sidecar_command, build_required_artifact_uploads,
     build_sidecar_command, build_sidecar_manifest, build_worker_job_display_metadata,
-    classify_job_type, compact_json_artifact_metadata, execute_local_llm_job,
-    parse_remotion_sidecar_event, prepare_hyperframes_execution_plan,
-    prepare_remotion_render_video_execution_plan, remotion_render_video_content_hash,
-    sanitize_segment, validate_final_video_artifact, validate_workspace_path, ArtifactUploadPlan,
-    ClaimedWorkerJob, RemotionSidecarEvent, SidecarCommandPlan, WorkerEventPlan, WorkerJobKind,
-    COMFY_CAPABILITY_FAMILIES, COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE,
-    COMFY_WORKFLOW_RUN_JOB_TYPE, EDITOR_MEDIA_CAPABILITY_FAMILY, EDITOR_MEDIA_CLAIM_CAPABILITY,
-    EDITOR_MEDIA_OPERATION_CAPABILITIES, EDITOR_VIDEO_RENDER_JOB_TYPE,
-    HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
+    classify_job_type, compact_json_artifact_metadata, content_protection_runtime_ready,
+    content_protection_value_has_secret_key, execute_local_llm_job,
+    parse_content_protection_job_input, parse_remotion_sidecar_event,
+    prepare_hyperframes_execution_plan, prepare_remotion_render_video_execution_plan,
+    remotion_render_video_content_hash, sanitize_segment, validate_final_video_artifact,
+    validate_workspace_path, ArtifactUploadPlan, ClaimedWorkerJob, RemotionSidecarEvent,
+    SidecarCommandPlan, WorkerEventPlan, WorkerJobKind, COMFY_CAPABILITY_FAMILIES,
+    COMFY_IMAGE_GENERATION_JOB_TYPE, COMFY_VIDEO_GENERATION_JOB_TYPE, COMFY_WORKFLOW_RUN_JOB_TYPE,
+    CONTENT_PROTECTION_CAPABILITY, CONTENT_PROTECTION_JOB_TYPE, EDITOR_MEDIA_CAPABILITY_FAMILY,
+    EDITOR_MEDIA_CLAIM_CAPABILITY, EDITOR_MEDIA_OPERATION_CAPABILITIES,
+    EDITOR_VIDEO_RENDER_JOB_TYPE, HYPERFRAMES_FINAL_VIDEO_MIN_BYTES, HYPERFRAMES_JOB_TYPE,
     REMOTION_RENDER_VIDEO_CAPABILITY_FAMILIES, REMOTION_RENDER_VIDEO_CLAIM_CAPABILITY,
     REMOTION_RENDER_VIDEO_JOB_TYPE, REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
     UNIFIED_AUDIO_ALIGN_JOB_TYPE, UNIFIED_AUDIO_CAPABILITY, UNIFIED_AUDIO_TRAINING_JOB_TYPE,
@@ -1394,6 +1397,10 @@ async fn worker_loop_tick(
         !render_active_now && tts_provider::local_unified_audio_ready(app_data_dir);
     let speaker_aware_runtime_ready =
         !render_active_now && speaker_aware_adapters::probe_configured_runner().is_ok();
+    // Content protection is a separate, explicitly configured provider lane.
+    // It shares the native media slot, but never claims work unless the
+    // provider command is present and the operator has enabled the capability.
+    let content_protection_ready = !render_active_now && content_protection_runtime_ready();
     let active_profile_id = active_comfy_profile(app_data_dir, &settings_snapshot, None)
         .ok()
         .map(|profile| profile.profile_id);
@@ -1483,7 +1490,8 @@ async fn worker_loop_tick(
         || mcp_ready
         || audio_runtime_ready
         || tts_runtime_ready
-        || speaker_aware_runtime_ready;
+        || speaker_aware_runtime_ready
+        || content_protection_ready;
     let accepts_jobs = settings_snapshot.accept_jobs && any_runtime_ready;
     let connection_snapshot = clone_connection(connection)?;
     let hermes_active_now = hermes_active.load(Ordering::Relaxed);
@@ -1543,6 +1551,8 @@ async fn worker_loop_tick(
         tts_runtime_ready && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
     let can_claim_speaker_aware = speaker_aware_runtime_ready
         && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
+    let can_claim_content_protection = content_protection_ready
+        && can_claim_render_job(if render_active_now { 1 } else { 0 }, max_jobs);
 
     if !can_claim_render
         && !can_claim_hermes
@@ -1553,6 +1563,7 @@ async fn worker_loop_tick(
         && !can_claim_audio
         && !can_claim_unified_audio
         && !can_claim_speaker_aware
+        && !can_claim_content_protection
     {
         set_executor_polling(
             executor,
@@ -1581,6 +1592,10 @@ async fn worker_loop_tick(
                     can_claim_speaker_aware,
                     can_claim_editor_media,
                 );
+                if can_claim_content_protection {
+                    hints.push(CONTENT_PROTECTION_CAPABILITY.to_string());
+                    hints.push(CONTENT_PROTECTION_JOB_TYPE.to_string());
+                }
                 if can_claim_unified_audio {
                     hints.extend(tts_provider::capability_hints());
                 }
@@ -1652,6 +1667,36 @@ async fn worker_loop_tick(
     );
 
     match classify_job_type(&job.job_type) {
+        WorkerJobKind::ContentProtection => {
+            // Protection runs in the native media lane and is never treated
+            // as a successful publish until the provider command has emitted
+            // a self-detection result and the uploaded artifact hash is
+            // accepted by the control plane.
+            render_active.store(true, Ordering::Relaxed);
+            let executor = executor.clone();
+            let app_data_dir_owned = app_data_dir.to_path_buf();
+            let resource_dir_owned = resource_dir.to_path_buf();
+            let connection = connection.clone();
+            let settings_owned = settings_snapshot.clone();
+            let cancel = cancel.clone();
+            let render_active = render_active.clone();
+            let terminal_error = terminal_error.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = execute_content_protection_job(
+                    &executor,
+                    &app_data_dir_owned,
+                    &resource_dir_owned,
+                    &connection,
+                    job,
+                    &settings_owned,
+                    &cancel,
+                )
+                .await;
+                render_active.store(false, Ordering::Relaxed);
+                record_terminal_error_if_needed(&terminal_error, result);
+            });
+            Ok(())
+        }
         WorkerJobKind::Hyperframes => {
             render_active.store(true, Ordering::Relaxed);
             let executor = executor.clone();
@@ -2131,6 +2176,457 @@ fn editor_asset_extension(input: &Value, asset_id: &str) -> &'static str {
             _ => "mp4",
         })
         .unwrap_or("mp4")
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ContentProtectionCommandVerification {
+    detected: bool,
+    confidence: f64,
+    #[serde(default)]
+    evidence: Value,
+}
+
+fn content_protection_output_extension(mime_type: &str) -> &'static str {
+    match mime_type.trim().to_ascii_lowercase().as_str() {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "video/webm" => "webm",
+        "video/quicktime" => "mov",
+        "audio/wav" => "wav",
+        "audio/mpeg" => "mp3",
+        "audio/ogg" => "ogg",
+        _ if mime_type.starts_with("image/") => "img",
+        _ if mime_type.starts_with("audio/") => "audio",
+        _ => "mp4",
+    }
+}
+
+fn content_protection_watermark_id(
+    input: &crate::worker_executor::ContentProtectionJobInput,
+) -> String {
+    let mut digest = Sha256::new();
+    digest.update(input.tenant_id.as_bytes());
+    digest.update(b":");
+    digest.update(input.protection_asset_id.as_bytes());
+    digest.update(b":");
+    digest.update(input.source_sha256.as_bytes());
+    format!("public-wm-{:x}", digest.finalize())
+}
+
+async fn download_content_protection_source_asset(
+    url: &reqwest::Url,
+    path: &Path,
+) -> Result<String, String> {
+    const MAX_BYTES: u64 = 512 * 1024 * 1024;
+    let response = reqwest::Client::builder()
+        .timeout(Duration::from_secs(30 * 60))
+        .build()
+        .map_err(|error| format!("failed to build content protection downloader: {error}"))?
+        .get(url.clone())
+        .header("Accept", "image/*,video/*,audio/*,application/octet-stream")
+        .send()
+        .await
+        .map_err(|error| format!("content protection source download failed: {error}"))?;
+    if !response.status().is_success() {
+        return Err(format!(
+            "content protection source download returned HTTP {}",
+            response.status()
+        ));
+    }
+    if response
+        .content_length()
+        .is_some_and(|size| size > MAX_BYTES)
+    {
+        return Err("content protection source is too large".into());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|error| format!("failed to create content protection workspace: {error}"))?;
+    }
+    let partial_path = path.with_extension("part");
+    let _ = fs::remove_file(&partial_path);
+    let result = async {
+        let mut file = fs::File::create(&partial_path)
+            .map_err(|error| format!("failed to create content protection source: {error}"))?;
+        let mut digest = Sha256::new();
+        let mut total_bytes = 0_u64;
+        let mut response = response;
+        while let Some(chunk) = response
+            .chunk()
+            .await
+            .map_err(|error| format!("failed to read content protection source: {error}"))?
+        {
+            total_bytes = total_bytes.saturating_add(chunk.len() as u64);
+            if total_bytes > MAX_BYTES {
+                return Err("content protection source is too large".into());
+            }
+            file.write_all(&chunk)
+                .map_err(|error| format!("failed to stage content protection source: {error}"))?;
+            digest.update(&chunk);
+        }
+        if total_bytes == 0 {
+            return Err("content protection source is empty".into());
+        }
+        file.flush()
+            .map_err(|error| format!("failed to flush content protection source: {error}"))?;
+        drop(file);
+        let _ = fs::remove_file(path);
+        fs::rename(&partial_path, path)
+            .map_err(|error| format!("failed to finalize content protection source: {error}"))?;
+        Ok(format!("{:x}", digest.finalize()))
+    }
+    .await;
+    if result.is_err() {
+        let _ = fs::remove_file(&partial_path);
+    }
+    result
+}
+
+async fn execute_content_protection_job(
+    executor: &Arc<Mutex<ExecutorState>>,
+    app_data_dir: &Path,
+    resource_dir: &Path,
+    connection: &Arc<Mutex<WorkerLoopConnection>>,
+    job: ClaimedWorkerJob,
+    settings: &WorkerAppSettings,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    set_executor_job(executor, &job);
+    let result = async {
+        let input = parse_content_protection_job_input(&job.input_json)
+            .map_err(|error| format!("content_protection_invalid_input:{error}"))?;
+        if !content_protection_runtime_ready() {
+            return Err("content_protection_runtime_unavailable".into());
+        }
+        let configured_provider = env::var("CONTENT_PROTECTION_PROVIDER")
+            .unwrap_or_default()
+            .trim()
+            .to_ascii_lowercase();
+        if configured_provider != input.provider_id {
+            return Err("content_protection_provider_mismatch".into());
+        }
+        let command_path = env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+            .map(PathBuf::from)
+            .map_err(|_| "content_protection_provider_command_missing".to_string())?;
+        if command_path.as_os_str().is_empty() {
+            return Err("content_protection_provider_command_missing".into());
+        }
+        let source_reference_id = input
+            .source_asset_id
+            .map(|value| value.to_string())
+            .or_else(|| input.source_artifact_id.clone())
+            .ok_or_else(|| "content_protection_source_reference_missing".to_string())?;
+        let workspace = workspace_root(settings, resource_dir, app_data_dir)?
+            .join("content-protection")
+            .join(sanitize_segment(&job.id));
+        let source_path = workspace.join("source");
+        let output_path = workspace.join(format!(
+            "protected.{}",
+            content_protection_output_extension(&input.mime_type)
+        ));
+        let verify_path = workspace.join("verification.json");
+        fs::create_dir_all(&workspace)
+            .map_err(|error| format!("content protection workspace failed: {error}"))?;
+
+        let run_result = async {
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.running".into(),
+                    sequence_number: 1,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "validate_contract",
+                        "percent": 5,
+                        "message": "Validating content protection contract",
+                    }),
+                },
+            )
+            .await?;
+            if cancel.load(Ordering::Relaxed) {
+                return Err("content_protection_canceled".into());
+            }
+
+            let mut reference_urls = job.reference_urls.clone();
+            if !reference_urls
+                .iter()
+                .any(|reference| reference.asset_id == source_reference_id)
+            {
+                let connection_snapshot = clone_connection(connection)?;
+                let refreshed =
+                    refresh_reference_urls(&connection_snapshot, &job.id, &job.lease_owner_token)
+                        .await
+                        .map_err(|error| {
+                            format!("content_protection_reference_refresh_failed:{error}")
+                        })?;
+                reference_urls = refreshed.reference_urls;
+            }
+            let reference = reference_urls
+                .iter()
+                .find(|entry| entry.asset_id == source_reference_id)
+                .ok_or_else(|| "content_protection_reference_url_missing".to_string())?;
+            let url = reqwest::Url::parse(&reference.url)
+                .map_err(|_| "content_protection_reference_url_invalid".to_string())?;
+            if url.scheme() != "https"
+                && !(url.scheme() == "http"
+                    && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "::1")))
+            {
+                return Err("content_protection_reference_url_invalid".into());
+            }
+            let downloaded_hash =
+                download_content_protection_source_asset(&url, &source_path).await?;
+            if downloaded_hash != input.source_sha256 {
+                return Err("content_protection_source_hash_mismatch".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 2,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "stage_inputs",
+                        "percent": 20,
+                        "message": "Staged and hash-verified source media",
+                    }),
+                },
+            )
+            .await?;
+
+            if cancel.load(Ordering::Relaxed) {
+                return Err("content_protection_canceled".into());
+            }
+            let watermark_id = content_protection_watermark_id(&input);
+            let mut command = Command::new(&command_path);
+            command
+                .arg("--input")
+                .arg(&source_path)
+                .arg("--output")
+                .arg(&output_path)
+                .arg("--verify-json")
+                .arg(&verify_path)
+                .arg("--modality")
+                .arg(&input.modality)
+                .arg("--provider")
+                .arg(&input.provider_id)
+                .arg("--provider-version")
+                .arg(&input.provider_version)
+                .arg("--watermark-id")
+                .arg(&watermark_id)
+                .current_dir(&workspace)
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            hide_console_window(&mut command);
+            let command_output = command
+                .output()
+                .map_err(|_| "content_protection_provider_start_failed".to_string())?;
+            if !command_output.status.success() {
+                return Err("content_protection_provider_failed".into());
+            }
+            if !output_path.is_file() || !verify_path.is_file() {
+                return Err("content_protection_provider_output_missing".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 3,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "create_digital_watermark",
+                        "percent": 45,
+                        "message": "Created invisible digital watermark",
+                    }),
+                },
+            )
+            .await?;
+
+            let verification_value: Value = serde_json::from_slice(
+                &fs::read(&verify_path)
+                    .map_err(|_| "content_protection_verification_missing".to_string())?,
+            )
+            .map_err(|_| "content_protection_verification_invalid".to_string())?;
+            if content_protection_value_has_secret_key(&verification_value) {
+                return Err("content_protection_verification_contains_secret".into());
+            }
+            let verification: ContentProtectionCommandVerification =
+                serde_json::from_value(verification_value.clone())
+                    .map_err(|_| "content_protection_verification_invalid".to_string())?;
+            if !verification.detected
+                || !verification.confidence.is_finite()
+                || !(0.0..=1.0).contains(&verification.confidence)
+                || verification.confidence < 0.5
+            {
+                return Err("content_protection_self_verify_failed".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 4,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "self_verify_watermark",
+                        "percent": 60,
+                        "message": "Self-verified the expected watermark",
+                        "confidence": verification.confidence,
+                    }),
+                },
+            )
+            .await?;
+
+            let output_sha256 = file_sha256(&output_path)?;
+            let output_size_bytes = fs::metadata(&output_path)
+                .map_err(|_| "content_protection_output_missing".to_string())?
+                .len();
+            if output_size_bytes == 0 {
+                return Err("content_protection_output_empty".into());
+            }
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 5,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "fingerprint_and_c2pa",
+                        "percent": 72,
+                        "message": "Captured fingerprint and provenance evidence",
+                    }),
+                },
+            )
+            .await?;
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.progress".into(),
+                    sequence_number: 6,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "stage": "quality_control",
+                        "percent": 88,
+                        "message": "Validated protected output bytes",
+                    }),
+                },
+            )
+            .await?;
+
+            let uploaded = upload_worker_artifact_file_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                "content_protection_protected",
+                &output_path,
+                &format!(
+                    "protected.{}",
+                    content_protection_output_extension(&input.mime_type)
+                ),
+                &input.mime_type,
+                &job.lease_owner_token,
+                &job.assignment_attempt,
+                json!({
+                    "kind": "content_protection_protected",
+                    "protectionAssetId": input.protection_asset_id,
+                    "sourceAssetId": input.source_asset_id,
+                    "sourceArtifactId": input.source_artifact_id,
+                    "sourceSha256": input.source_sha256,
+                    "outputObjectKey": input.output_object_key,
+                    "outputSha256": output_sha256,
+                    "watermarkId": watermark_id,
+                    "providerId": input.provider_id,
+                    "providerVersion": input.provider_version,
+                    "modality": input.modality,
+                    "detected": verification.detected,
+                    "confidence": verification.confidence,
+                    "evidence": verification.evidence,
+                    "compoundEnvelope": input.compound_envelope,
+                    "requireBeforePublish": input.require_before_publish,
+                }),
+            )
+            .await?;
+            send_event_with_refresh(
+                app_data_dir,
+                connection,
+                &job.id,
+                WorkerEventPlan {
+                    event_type: "job.completed".into(),
+                    sequence_number: 7,
+                    lease_owner_token: job.lease_owner_token.clone(),
+                    assignment_attempt: job.assignment_attempt.clone(),
+                    payload_json: json!({
+                        "status": "completed",
+                        "stage": "publish_artifact",
+                        "artifacts": [uploaded.artifact],
+                        "result": {
+                            "protectionAssetId": input.protection_asset_id,
+                            "modality": input.modality,
+                            "outputObjectKey": input.output_object_key,
+                            "outputSha256": output_sha256,
+                            "providerId": input.provider_id,
+                            "providerVersion": input.provider_version,
+                            "detected": verification.detected,
+                            "confidence": verification.confidence,
+                            "evidence": verification.evidence,
+                        },
+                    }),
+                },
+            )
+            .await?;
+            Ok::<(), String>(())
+        }
+        .await;
+        let _ = fs::remove_dir_all(&workspace);
+        run_result
+    }
+    .await;
+    match &result {
+        Ok(()) => {
+            set_executor_last_job(
+                executor,
+                &job,
+                "success",
+                "Content protection completed and self-verified.",
+                None,
+            );
+            set_executor_job_complete(
+                executor,
+                &job.id,
+                "Content protection completed and self-verified.",
+            );
+        }
+        Err(error) => {
+            let failure = build_failure_event(
+                &job,
+                FAILURE_EVENT_SEQUENCE_NUMBER,
+                "content_protection_failed",
+                error,
+            );
+            let _ = send_event_with_refresh(app_data_dir, connection, &job.id, failure).await;
+            set_executor_last_job(executor, &job, "error", error, None);
+            set_executor_job_error(executor, &job.id, error.clone());
+        }
+    }
+    result
 }
 
 async fn execute_editor_media_job(

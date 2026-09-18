@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
 import {
+  canonicalizeForHash,
+  validateCompoundArtifactEnvelope,
+  type CompoundArtifactEnvelope,
+} from "@smartspec/shared";
+
+import {
   and,
   asc,
   desc,
@@ -28,6 +34,8 @@ import type {
   WorkerScope,
 } from "../../shared/workerRuntime";
 import {
+  CONTENT_PROTECTION_FAILURE_CODES,
+  CONTENT_PROTECTION_PROGRESS_STAGES,
   COMFY_IMAGE_GENERATION_FAILURE_CODES,
   COMFY_IMAGE_GENERATION_PROGRESS_STAGES,
   COMFY_VIDEO_GENERATION_FAILURE_CODES,
@@ -59,6 +67,7 @@ import {
   remotionExecutorCapabilityProfileSchema,
   remotionExecutorReadinessSchema,
 } from "../../shared/workerRuntime";
+import { contentProtectionJobInputSchema } from "../../shared/contentProtectionWorker";
 import {
   getWorkerAccessPermissionScopesForPreset,
   type WorkerAccessPermissionPreset,
@@ -82,6 +91,10 @@ import {
   runtimeProfiles,
   userGroups,
   workerArtifacts,
+  verticalDramaEpisodes,
+  contentProtectionAssets,
+  contentProtectionWatermarks,
+  mediaAssets,
   audioVoiceTrainingRuns,
   audioTrainedVoiceModels,
   workerHeartbeats,
@@ -186,6 +199,554 @@ async function reconcileUnifiedAudioTrainingRun(
     checkpointJson: { candidateModelId: modelId, candidateArtifactId: artifact.id, checksumSha256: metadata.checksumSha256 ?? null },
     updatedAt: new Date(),
   }).where(eq(audioVoiceTrainingRuns.id, run.id));
+}
+
+/**
+ * Desktop content-protection workers publish through the same artifact and
+ * job-event control plane as every other worker. Reconcile the protection
+ * record only from the server-owned artifact row, never from a client event's
+ * claimed storage key or checksum. This keeps the protected asset bound to
+ * the exact uploaded bytes and the causal job.
+ */
+async function reconcileContentProtectionWorkerResult(
+  job: WorkerJobRecord,
+): Promise<void> {
+  if (job.jobType !== "content_protection.protect") return;
+
+  const input = contentProtectionJobInputSchema.parse(job.inputJson ?? {});
+  const database = getDb();
+  const [protectionAsset] = await database
+    .select()
+    .from(contentProtectionAssets)
+    .where(and(
+      eq(contentProtectionAssets.id, input.protectionAssetId),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+    ))
+    .limit(1);
+  if (!protectionAsset || protectionAsset.causalJobId !== job.id) {
+    throw new Error("CONTENT_PROTECTION_CAUSAL_JOB_MISMATCH");
+  }
+  if (
+    protectionAsset.sourceSha256 !== input.sourceSha256
+    || protectionAsset.modality !== input.modality
+    || protectionAsset.watermarkChoice !== "on"
+  ) {
+    throw new Error("CONTENT_PROTECTION_INPUT_MISMATCH");
+  }
+
+  const [artifact] = await database
+    .select()
+    .from(workerArtifacts)
+    .where(and(
+      eq(workerArtifacts.workerJobId, job.id),
+      eq(workerArtifacts.artifactType, "content_protection_protected"),
+    ))
+    .limit(1);
+  if (!artifact || !artifact.storageRef) {
+    throw new Error("CONTENT_PROTECTION_ARTIFACT_MISSING");
+  }
+  const metadata = isPlainObject(artifact.metadataJson)
+    ? artifact.metadataJson
+    : {};
+  const outputSha256 = String(metadata.checksumSha256 ?? "").toLowerCase();
+  const declaredOutputSha256 = String(metadata.outputSha256 ?? "").toLowerCase();
+  const providerId = String(metadata.providerId ?? "").trim();
+  const providerVersion = String(metadata.providerVersion ?? "").trim();
+  const watermarkId = String(metadata.watermarkId ?? "").trim();
+  const detected = metadata.detected === true;
+  const confidence = typeof metadata.confidence === "number"
+    ? metadata.confidence
+    : Number(metadata.confidence);
+  if (
+    !/^[a-f0-9]{64}$/.test(outputSha256)
+    || declaredOutputSha256 !== outputSha256
+    || String(metadata.protectionAssetId ?? "") !== input.protectionAssetId
+    || String(metadata.sourceSha256 ?? "") !== input.sourceSha256
+    || String(metadata.modality ?? "") !== input.modality
+    || !providerId
+    || !providerVersion
+    || !watermarkId
+    || !detected
+    || !Number.isFinite(confidence)
+    || confidence < 0.5
+    || confidence > 1
+  ) {
+    throw new Error("CONTENT_PROTECTION_ARTIFACT_INVALID");
+  }
+
+  const evidence = isPlainObject(metadata.evidence) ? metadata.evidence : {};
+  const now = new Date();
+  const [updated] = await database
+    .update(contentProtectionAssets)
+    .set({
+      status: "PROTECTED",
+      protectedObjectKey: artifact.storageRef,
+      protectedSha256: outputSha256,
+      provider: providerId,
+      algorithmVersion: providerVersion,
+      keyVersion: "worker-managed",
+      protectedAt: now,
+      errorCode: null,
+      errorMessage: null,
+    })
+    .where(and(
+      eq(contentProtectionAssets.id, protectionAsset.id),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+      eq(contentProtectionAssets.causalJobId, job.id),
+      or(
+        eq(contentProtectionAssets.status, "QUEUED"),
+        eq(contentProtectionAssets.status, "PROCESSING"),
+      ),
+    ))
+    .returning({ id: contentProtectionAssets.id });
+  if (!updated) {
+    throw new Error("CONTENT_PROTECTION_STALE_RECORD");
+  }
+
+  await database
+    .insert(contentProtectionWatermarks)
+    .values({
+      id: crypto.randomUUID(),
+      tenantId: job.tenantId,
+      protectedAssetId: protectionAsset.id,
+      provider: providerId,
+      channel: input.modality,
+      algorithmVersion: providerVersion,
+      watermarkId,
+      keyVersion: "worker-managed",
+      embedSettings: {
+        contractVersion: input.contractVersion,
+        sourceSha256: input.sourceSha256,
+        compoundArtifactId: input.compoundEnvelope?.compoundArtifactId ?? null,
+      },
+      selfVerifyMetrics: {
+        ...evidence,
+        detected,
+        confidence,
+        outputSha256,
+      },
+    })
+    .onConflictDoNothing();
+}
+
+type FinalCompoundProtectionHandoff = {
+  protectionAssetId: string;
+  protectionJobId: string;
+  compoundArtifactId: string;
+  compoundPlanDigest: string;
+};
+
+function finalProtectionIntent(job: WorkerJobRecord): {
+  choice: "on" | "off";
+  choiceSource: "per_export" | "user_default" | "disabled_by_user";
+  requireBeforePublish: boolean;
+} | null {
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const renderFeed = isPlainObject(input.renderFeed) ? input.renderFeed : null;
+  const instructions = isPlainObject(job.instructionsJson) ? job.instructionsJson : null;
+  const intent = isPlainObject(input.protectionIntent)
+    ? input.protectionIntent
+    : renderFeed && isPlainObject(renderFeed.protectionIntent)
+      ? renderFeed.protectionIntent
+      : instructions && isPlainObject(instructions.contentProtectionIntent)
+        ? instructions.contentProtectionIntent
+        : null;
+  if (!intent || (intent.choice !== "on" && intent.choice !== "off")) return null;
+  const choiceSource = intent.choiceSource === "per_export" || intent.choiceSource === "user_default"
+    ? intent.choiceSource
+    : "disabled_by_user";
+  return {
+    choice: intent.choice,
+    choiceSource,
+    requireBeforePublish: intent.requireBeforePublish !== false,
+  };
+}
+
+async function ensureVerticalDramaFinalArtifact(job: WorkerJobRecord, database: ReturnType<typeof getDb>): Promise<void> {
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const feed = isPlainObject(input.renderFeed) ? input.renderFeed : null;
+  const owner = feed && isPlainObject(feed.owner) ? feed.owner : null;
+  const episodeId = owner ? Number(owner.episodeId) : NaN;
+  const seriesId = owner ? Number(owner.seriesId) : NaN;
+  const userId = owner ? Number(owner.userId) : NaN;
+  if (!owner || !Number.isSafeInteger(episodeId) || !Number.isSafeInteger(seriesId) || !Number.isSafeInteger(userId)) {
+    throw new Error("CONTENT_PROTECTION_VERTICAL_DRAMA_OWNER_INVALID");
+  }
+  const [row] = await database.select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+    .from(verticalDramaEpisodes)
+    .where(and(
+      eq(verticalDramaEpisodes.id, episodeId),
+      eq(verticalDramaEpisodes.seriesId, seriesId),
+      eq(verticalDramaEpisodes.userId, userId),
+      eq(verticalDramaEpisodes.tenantId, job.tenantId),
+    )).limit(1);
+  const manifest = isPlainObject(row?.assemblyManifest) ? row.assemblyManifest : null;
+  const compiled = manifest && isPlainObject(manifest.compiledVideo) ? manifest.compiledVideo : null;
+  const storageRef = compiled && typeof compiled.storageKey === "string" ? compiled.storageKey.trim() : "";
+  const checksumSha256 = compiled && typeof compiled.checksumSha256 === "string" ? compiled.checksumSha256.toLowerCase() : "";
+  if (!compiled || compiled.status !== "completed" || !storageRef || !/^[a-f0-9]{64}$/.test(checksumSha256)) {
+    throw new Error("CONTENT_PROTECTION_VERTICAL_DRAMA_FINAL_ARTIFACT_UNVERIFIED");
+  }
+  const existing = await database.select({ id: workerArtifacts.id }).from(workerArtifacts)
+    .where(and(eq(workerArtifacts.workerJobId, job.id), eq(workerArtifacts.storageRef, storageRef))).limit(1);
+  if (existing.length > 0) return;
+  await database.insert(workerArtifacts).values({
+    id: crypto.randomUUID(),
+    workerJobId: job.id,
+    artifactType: "vertical_drama_final_video",
+    storageRef,
+    metadataJson: {
+      contentType: "video/mp4",
+      checksumSha256,
+      source: "vertical_drama.compiledVideo",
+      episodeId,
+      seriesId,
+      finalCompoundArtifact: true,
+    },
+    publishedItemId: null,
+  }).onConflictDoNothing();
+}
+
+async function enqueueFinalCompoundProtection(
+  job: WorkerJobRecord,
+): Promise<FinalCompoundProtectionHandoff | null> {
+  if (![
+    "editor_video_render",
+    "editor_video_render_still",
+    "vertical_drama_ffmpeg_assembly",
+    "remotion_render_video",
+  ].includes(job.jobType)) return null;
+  const intent = finalProtectionIntent(job);
+  if (!intent || intent.choice !== "on") return null;
+  if (!intent.requireBeforePublish) {
+    throw new Error("CONTENT_PROTECTION_PUBLISH_GATE_REQUIRED");
+  }
+  if (!job.requestedByUserId) throw new Error("CONTENT_PROTECTION_REQUESTER_MISSING");
+
+  const database = getDb();
+  const input = isPlainObject(job.inputJson) ? job.inputJson : {};
+  const renderKind = typeof input.kind === "string" ? input.kind : "";
+  const isTrailerAssembly = job.jobType === "vertical_drama_ffmpeg_assembly" && renderKind === "trailer";
+  if (job.jobType === "vertical_drama_ffmpeg_assembly" && !isTrailerAssembly) {
+    await ensureVerticalDramaFinalArtifact(job, database);
+  }
+  const artifacts = await database
+    .select()
+    .from(workerArtifacts)
+    .where(eq(workerArtifacts.workerJobId, job.id))
+    .orderBy(desc(workerArtifacts.createdAt))
+    .limit(10);
+  const artifact = artifacts.find(candidate => {
+    const metadata = isPlainObject(candidate.metadataJson) ? candidate.metadataJson : {};
+    const contentType = String(metadata.contentType ?? "").toLowerCase();
+    return job.jobType === "editor_video_render_still"
+      ? contentType.startsWith("image/")
+      : contentType.startsWith("video/");
+  });
+  if (!artifact?.id || !artifact.storageRef) {
+    throw new Error("CONTENT_PROTECTION_FINAL_ARTIFACT_MISSING");
+  }
+  const artifactMetadata = isPlainObject(artifact.metadataJson)
+    ? artifact.metadataJson
+    : {};
+  const sourceSha256 = String(artifactMetadata.checksumSha256 ?? "").toLowerCase();
+  const mimeType = String(
+    artifactMetadata.contentType
+      ?? (job.jobType === "editor_video_render_still" ? "image/png" : "video/mp4"),
+  ).trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(sourceSha256) || !mimeType) {
+    throw new Error("CONTENT_PROTECTION_FINAL_ARTIFACT_UNVERIFIED");
+  }
+
+  const isVerticalDramaAssembly = job.jobType === "vertical_drama_ffmpeg_assembly" && !isTrailerAssembly;
+  const isRemotionRender = job.jobType === "remotion_render_video";
+  const project = isPlainObject(input.inputs) && isPlainObject(input.inputs.project)
+    ? input.inputs.project
+    : null;
+  const tracks = project && Array.isArray(project.tracks) ? project.tracks : [];
+  const orderedRefs: Array<{ id: number; trimStartMs: number; trimEndMs: number; timelineIndex: number }> = [];
+  if (!isVerticalDramaAssembly) {
+    for (const track of tracks) {
+      if (!isPlainObject(track) || !Array.isArray(track.clips)) continue;
+      for (const clip of track.clips) {
+        if (!isPlainObject(clip) || !isPlainObject(clip.asset)) continue;
+        if (clip.asset.namespace !== "media_asset") continue;
+        const id = typeof clip.asset.id === "number" ? clip.asset.id : Number(clip.asset.id);
+        const trimStartMs = Number(clip.sourceInMs);
+        const trimEndMs = Number(clip.sourceOutMs);
+        if (!Number.isSafeInteger(id) || id <= 0 || !Number.isFinite(trimStartMs) || !Number.isFinite(trimEndMs) || trimEndMs <= trimStartMs) {
+          throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+        }
+        orderedRefs.push({ id, trimStartMs, trimEndMs, timelineIndex: orderedRefs.length });
+      }
+    }
+  }
+  let sourceAssetIds: string[];
+  let sourceAssetHashes: string[];
+  let sourceSegments: Array<{ sourceAssetId: string; timelineIndex: number; trimStartMs: number; trimEndMs: number }>;
+  if (isTrailerAssembly) {
+    const sourceRefs = Array.isArray(artifactMetadata.sourceRefs) ? artifactMetadata.sourceRefs : [];
+    const sources = sourceRefs.map((source, index) => {
+      if (!isPlainObject(source)) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      const id = typeof source.sourceAssetId === "string" ? source.sourceAssetId.trim() : "";
+      const hash = typeof source.sourceSha256 === "string" ? source.sourceSha256.toLowerCase() : "";
+      const trimStartMs = Number(source.trimStartMs);
+      const trimEndMs = Number(source.trimEndMs);
+      if (!id || !/^[a-f0-9]{64}$/.test(hash) || !Number.isFinite(trimStartMs) || !Number.isFinite(trimEndMs) || trimEndMs <= trimStartMs) {
+        throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      }
+      return { id, hash, trimStartMs, trimEndMs, timelineIndex: Number(source.timelineIndex ?? index) };
+    });
+    if (sources.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    sourceAssetIds = sources.map(source => source.id);
+    sourceAssetHashes = sources.map(source => source.hash);
+    sourceSegments = sources.map(source => ({
+      sourceAssetId: source.id,
+      timelineIndex: source.timelineIndex,
+      trimStartMs: source.trimStartMs,
+      trimEndMs: source.trimEndMs,
+    }));
+  } else if (isVerticalDramaAssembly) {
+    const feed = isPlainObject(input.renderFeed) ? input.renderFeed : {};
+    const clips = Array.isArray(feed.clips) ? feed.clips : [];
+    if (clips.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const mediaAssetIds = clips.map(clip => isPlainObject(clip) ? Number(clip.mediaAssetId) : NaN);
+    if (mediaAssetIds.some(id => !Number.isSafeInteger(id) || id <= 0)) {
+      throw new Error("CONTENT_PROTECTION_SOURCE_ASSET_ID_MISSING");
+    }
+    const sourceRows = await database
+      .select({ id: mediaAssets.id, checksumSha256: mediaAssets.checksumSha256 })
+      .from(mediaAssets)
+      .where(and(
+        eq(mediaAssets.tenantId, job.tenantId),
+        inArray(mediaAssets.id, [...new Set(mediaAssetIds)]),
+      ));
+    const hashes = new Map(sourceRows.map(row => [row.id, row.checksumSha256]));
+    sourceAssetIds = mediaAssetIds.map(id => String(id));
+    sourceAssetHashes = mediaAssetIds.map(id => {
+      const hash = hashes.get(id);
+      if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return hash.toLowerCase();
+    });
+    sourceSegments = mediaAssetIds.map((_, index) => ({
+      sourceAssetId: sourceAssetIds[index]!,
+      timelineIndex: index,
+      trimStartMs: 0,
+      trimEndMs: 1,
+    }));
+  } else if (isRemotionRender) {
+    const manifest = Array.isArray(input.assetManifest)
+      ? input.assetManifest
+      : isPlainObject(input.assetManifest) && Array.isArray(input.assetManifest.sources)
+        ? input.assetManifest.sources
+        : [];
+    if (manifest.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const sources = manifest.map((source, index) => {
+      if (!isPlainObject(source)) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_INVALID");
+      const hash = typeof source.sha256 === "string" ? source.sha256.toLowerCase() : "";
+      if (!/^[a-f0-9]{64}$/.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return {
+        id: `remotion:${job.id}:source:${index}`,
+        hash,
+      };
+    });
+    sourceAssetIds = sources.map(source => source.id);
+    sourceAssetHashes = sources.map(source => source.hash);
+    sourceSegments = sources.map((source, index) => ({
+      sourceAssetId: source.id,
+      timelineIndex: index,
+      trimStartMs: 0,
+      trimEndMs: 1,
+    }));
+  } else {
+    if (orderedRefs.length === 0) throw new Error("CONTENT_PROTECTION_COMPOUND_INPUT_MISSING");
+    const sourceRows = await database
+      .select({ id: mediaAssets.id, checksumSha256: mediaAssets.checksumSha256 })
+      .from(mediaAssets)
+      .where(and(
+        eq(mediaAssets.tenantId, job.tenantId),
+        inArray(mediaAssets.id, [...new Set(orderedRefs.map(ref => ref.id))]),
+      ));
+    const hashes = new Map(sourceRows.map(row => [row.id, row.checksumSha256]));
+    sourceAssetHashes = orderedRefs.map(ref => {
+      const hash = hashes.get(ref.id);
+      if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) throw new Error("CONTENT_PROTECTION_SOURCE_HASH_MISSING");
+      return hash.toLowerCase();
+    });
+    sourceAssetIds = orderedRefs.map(ref => String(ref.id));
+    sourceSegments = orderedRefs.map(ref => ({
+      sourceAssetId: String(ref.id),
+      timelineIndex: ref.timelineIndex,
+      trimStartMs: ref.trimStartMs,
+      trimEndMs: ref.trimEndMs,
+    }));
+  }
+  const revisionId = typeof input.revisionId === "string" ? input.revisionId : undefined;
+  const compoundPrefix = isTrailerAssembly
+    ? "vertical-drama-trailer"
+    : isVerticalDramaAssembly
+      ? "vertical-drama"
+    : isRemotionRender
+      ? "remotion-render"
+      : "editor-render";
+  const compoundArtifactId = `${compoundPrefix}:${job.id}:${artifact.id}`;
+  const digestSeed = {
+    compoundArtifactId,
+    causalJobId: job.id,
+    sourceAssetIds,
+    sourceAssetHashes,
+    sourceSegments,
+    revisionId,
+    compoundPlanDigest: "pending",
+    preProtectionSha256: sourceSha256,
+    renderSettingsDigest: crypto.createHash("sha256").update(canonicalizeForHash({
+      options: input.options ?? null,
+      plan: input.plan ?? null,
+      revisionId: revisionId ?? null,
+    }), "utf8").digest("hex"),
+  } satisfies CompoundArtifactEnvelope;
+  const compoundPlanDigest = crypto.createHash("sha256")
+    .update(canonicalizeForHash(digestSeed), "utf8")
+    .digest("hex");
+  const compoundEnvelope: CompoundArtifactEnvelope = {
+    ...digestSeed,
+    compoundPlanDigest,
+  };
+  validateCompoundArtifactEnvelope(compoundEnvelope);
+  const idempotencyKey = `content-protection:compound:${job.id}:${compoundPlanDigest}`;
+  const [existing] = await database
+    .select({ id: contentProtectionAssets.id, causalJobId: contentProtectionAssets.causalJobId })
+    .from(contentProtectionAssets)
+    .where(and(
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+      eq(contentProtectionAssets.idempotencyKey, idempotencyKey),
+    ))
+    .limit(1);
+  if (existing?.causalJobId) {
+    return {
+      protectionAssetId: existing.id,
+      protectionJobId: existing.causalJobId,
+      compoundArtifactId,
+      compoundPlanDigest,
+    };
+  }
+  const protectionAssetId = existing?.id ?? crypto.randomUUID();
+  if (!existing) {
+    await database.insert(contentProtectionAssets).values({
+      id: protectionAssetId,
+      tenantId: job.tenantId,
+      ownerUserId: job.requestedByUserId,
+      sourceAssetId: orderedRefs[0]?.id ?? null,
+      sourceVersionId: revisionId ?? null,
+      modality: job.jobType === "editor_video_render_still" ? "image" : "video",
+      profileId: "content-protection-default",
+      profileVersion: "1",
+      status: "QUEUED",
+      watermarkChoice: "on",
+      choiceSource: intent.choiceSource,
+      sourceObjectKey: artifact.storageRef,
+      sourceSha256,
+      mimeType,
+      compoundArtifactId,
+      compoundPlanDigest,
+      causalJobId: null,
+      compoundEnvelope,
+      firstObservedAt: new Date(),
+      idempotencyKey,
+    });
+  }
+
+  const providerId = process.env.CONTENT_PROTECTION_PROVIDER?.trim().toLowerCase() || "videoseal";
+  const { createControlPlaneJob } = await import("./jobControlPlaneGateway");
+  const protectionJob = await createControlPlaneJob({
+    context: {
+      tenantId: job.tenantId,
+      actorType: "user",
+      actorId: job.requestedByUserId,
+      authorizationScope: "content_protection.protect",
+      correlationId: job.id,
+      idempotencyKey,
+    },
+    definition: {
+      contractVersion: "content-protection.v1",
+      jobType: "content_protection.protect",
+      executionClass: "cpu",
+      input: {
+        contractVersion: "content-protection.v1",
+        jobType: "content_protection.protect",
+        protectionAssetId,
+        tenantId: job.tenantId,
+        sourceArtifactId: artifact.id,
+        sourceObjectKey: artifact.storageRef,
+        sourceSha256,
+        mimeType,
+        modality: job.jobType === "editor_video_render_still" ? "image" : "video",
+        effectiveChoice: "on",
+        choiceSource: intent.choiceSource === "per_export" || intent.choiceSource === "user_default" ? intent.choiceSource : "user_default",
+        providerId,
+        providerVersion: "1",
+        outputObjectKey: `${job.tenantId}/content-protection/${protectionAssetId}.${job.jobType === "editor_video_render_still" ? "png" : "mp4"}`,
+        compoundEnvelope,
+        requireBeforePublish: true,
+      },
+      idempotencyKey,
+      requiredCapabilities: {
+        capabilityFamilies: ["content_protection"],
+        requiredClaimCapability: "content-protection-v1",
+        providerId,
+        modalities: [job.jobType === "editor_video_render_still" ? "image" : "video"],
+      },
+      retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
+      timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
+    },
+  });
+  await database.update(contentProtectionAssets).set({
+    causalJobId: protectionJob.jobId,
+  }).where(and(
+    eq(contentProtectionAssets.id, protectionAssetId),
+    eq(contentProtectionAssets.tenantId, job.tenantId),
+  ));
+  return {
+    protectionAssetId,
+    protectionJobId: protectionJob.jobId,
+    compoundArtifactId,
+    compoundPlanDigest,
+  };
+}
+
+/** Inline Vertical Drama render workers do not emit worker-runtime events.
+ * Run the same final-byte protection handoff after their guarded terminal
+ * update so the user choice cannot be lost on that execution path. */
+export async function finalizeInlineRenderProtection(jobId: string): Promise<void> {
+  const database = getDb();
+  const [job] = await database.select().from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
+  if (!job || job.status !== "completed") return;
+  const intent = finalProtectionIntent(job as WorkerJobRecord);
+  if (!intent) return;
+  if (intent.choice === "on") {
+    const handoff = await enqueueFinalCompoundProtection(job as WorkerJobRecord);
+    if (!handoff) return;
+    await database.update(workerJobs).set({
+      outputJson: {
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+        contentProtection: {
+          status: "PROTECTION_REQUESTED",
+          protectionAssetId: handoff.protectionAssetId,
+          protectionJobId: handoff.protectionJobId,
+          compoundArtifactId: handoff.compoundArtifactId,
+          compoundPlanDigest: handoff.compoundPlanDigest,
+          requireBeforePublish: true,
+        },
+      },
+    }).where(eq(workerJobs.id, job.id));
+  } else {
+    await database.update(workerJobs).set({
+      outputJson: {
+        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+        contentProtection: { status: "UNPROTECTED_BY_USER_CHOICE", requireBeforePublish: false },
+      },
+    }).where(eq(workerJobs.id, job.id));
+  }
 }
 
 /**
@@ -1013,7 +1574,7 @@ function readAssignmentAttempt(job: WorkerJobRecord): string | null {
 }
 
 function ensureAssignmentAttempt(job: WorkerJobRecord, assignmentAttempt: string | null | undefined): void {
-  if (job.jobType !== "hyperframes_final_composite" && job.jobType !== "llm_invoke" && !isHermesFabricJobType(job.jobType)) {
+  if (job.jobType !== "hyperframes_final_composite" && job.jobType !== "llm_invoke" && job.jobType !== "content_protection.protect" && !isHermesFabricJobType(job.jobType)) {
     return;
   }
   const activeAttempt = readAssignmentAttempt(job);
@@ -1051,7 +1612,9 @@ function assertRuntimeSpecificJobEventContract(
     }
   }
 
-  const progressStages = job.jobType === "video_assembly"
+  const progressStages = job.jobType === "content_protection.protect"
+    ? CONTENT_PROTECTION_PROGRESS_STAGES
+    : job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_PROGRESS_STAGES
     : job.jobType === "local_folder_ingest"
       ? LOCAL_FOLDER_INGEST_PROGRESS_STAGES
@@ -1068,7 +1631,9 @@ function assertRuntimeSpecificJobEventContract(
               : ["episode_audio_analyze", "minimax_music3_generate", "episode_score_mix"].includes(job.jobType)
                 ? VERTICAL_DRAMA_AUDIO_PROGRESS_STAGES
               : null;
-  const failureCodes = job.jobType === "video_assembly"
+  const failureCodes = job.jobType === "content_protection.protect"
+    ? CONTENT_PROTECTION_FAILURE_CODES
+    : job.jobType === "video_assembly"
     ? VIDEO_ASSEMBLY_FAILURE_CODES
     : job.jobType === "local_folder_ingest"
       ? LOCAL_FOLDER_INGEST_FAILURE_CODES
@@ -1973,6 +2538,7 @@ export async function recordWorkerJobEvent(
   const activeAssignmentAttempt = readAssignmentAttempt(job);
   const assignmentScoped = job.jobType === "hyperframes_final_composite"
     || job.jobType === "llm_invoke"
+    || job.jobType === "content_protection.protect"
     || isHermesFabricJobType(job.jobType);
   const relevantEvents = assignmentScoped && activeAssignmentAttempt
     ? existingEvents.filter(
@@ -2064,16 +2630,56 @@ export async function recordWorkerJobEvent(
 
   if (repo === defaultRepo && nextStatus && isTerminalJobStatus(nextStatus)) {
     const billing = billingEnvelopeFromMetadata(job.instructionsJson?.workerBilling);
-    const actualCreditsUsedRaw = sanitizedPayloadJson?.actualCreditsUsed
+      const actualCreditsUsedRaw = sanitizedPayloadJson?.actualCreditsUsed
       ?? sanitizedPayloadJson?.creditsUsed
       ?? sanitizedPayloadJson?.totalCreditsUsed;
     try {
       if (nextStatus === "completed") {
-        await publishWorkerArtifacts({
-          tenantId: job.tenantId,
-          jobId: job.id,
-          actorUserId: job.requestedByUserId ?? null,
-        });
+        if (job.jobType === "content_protection.protect") {
+          // Validate and settle the protected artifact before publishing it.
+          // A malformed/self-verification-failed result must never become a
+          // published artifact merely because the worker reported completed.
+          await reconcileContentProtectionWorkerResult(job);
+          await publishWorkerArtifacts({
+            tenantId: job.tenantId,
+            jobId: job.id,
+            actorUserId: job.requestedByUserId ?? null,
+          });
+        } else {
+          const finalProtection = await enqueueFinalCompoundProtection(job);
+          if (finalProtection) {
+            const gatedOutput = {
+              ...(isPlainObject(nextJob.outputJson) ? nextJob.outputJson : {}),
+              contentProtection: {
+                status: "PROTECTION_REQUESTED",
+                protectionAssetId: finalProtection.protectionAssetId,
+                protectionJobId: finalProtection.protectionJobId,
+                compoundArtifactId: finalProtection.compoundArtifactId,
+                compoundPlanDigest: finalProtection.compoundPlanDigest,
+                requireBeforePublish: true,
+              },
+            };
+            nextJob = await repo.updateJob(job.id, { outputJson: gatedOutput });
+          } else {
+            await publishWorkerArtifacts({
+              tenantId: job.tenantId,
+              jobId: job.id,
+              actorUserId: job.requestedByUserId ?? null,
+            });
+            if (finalProtectionIntent(job)?.choice === "off") {
+              nextJob = await repo.updateJob(job.id, {
+                outputJson: {
+                  ...(isPlainObject(nextJob.outputJson) ? nextJob.outputJson : {}),
+                  contentProtection: {
+                    status: "UNPROTECTED_BY_USER_CHOICE",
+                    requireBeforePublish: false,
+                  },
+                },
+              });
+            }
+          }
+          await reconcileContentProtectionWorkerResult(job);
+        }
       }
 
       // Feature 180 training completion is a separate lifecycle boundary:

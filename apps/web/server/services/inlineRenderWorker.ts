@@ -140,6 +140,10 @@ async function runClaimedJob(
       .update(workerJobs)
       .set({ ...terminal, finishedAt: new Date() })
       .where(and(eq(workerJobs.id, job.id), eq(workerJobs.status, "running")));
+    if (outcome.ok && dbLike === db) {
+      const { finalizeInlineRenderProtection } = await import("./workerRegistryService");
+      await finalizeInlineRenderProtection(job.id);
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     try {

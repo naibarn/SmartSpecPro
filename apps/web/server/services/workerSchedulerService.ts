@@ -71,6 +71,10 @@ import {
 } from "../../shared/workerRuntime";
 import { evaluateHermesRolloutReadiness } from "../../shared/featureFlags";
 import { comfyMcpDispatchInputSchema } from "../../shared/comfyControlContracts";
+import {
+  contentProtectionIntentSchema,
+  type ContentProtectionIntent,
+} from "../../shared/contentProtectionWorker";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
 import {
   reserveWorkerJobCredits,
@@ -2522,6 +2526,10 @@ export interface QueueRemotionRenderVideoJobInput extends RemotionRenderVideoWor
   isAdminRequester?: boolean;
   executionTarget?: "auto" | "desktop_worker" | "remotion_executor";
   preferredWorkerId?: string | null;
+  /** Control-plane metadata consumed after the final render bytes exist. It
+   * is stored in instructionsJson, not sent to the renderer, so older
+   * Remotion workers remain compatible with the additive protection feature. */
+  protectionIntent?: ContentProtectionIntent;
 }
 
 // The sidecar owns bounded transient retries: 3 x 10 minutes per attempt plus 20s/60s
@@ -2626,9 +2634,13 @@ export async function queueRemotionRenderVideoJob(
     isAdminRequester: _isAdminRequester,
     executionTarget: _executionTarget,
     preferredWorkerId: _preferredWorkerId,
+    protectionIntent: rawProtectionIntent,
     ...corePayload
   } = rawInput;
   const input = remotionRenderVideoWorkerInputSchema.parse(corePayload);
+  const protectionIntent = rawProtectionIntent
+    ? contentProtectionIntentSchema.parse(rawProtectionIntent)
+    : undefined;
   const repo = deps.repo ?? defaultRepo;
   const getFeatureFlags = deps.getFeatureFlags ?? getTenantFeatureFlags;
 
@@ -2805,6 +2817,7 @@ export async function queueRemotionRenderVideoJob(
       instructionsJson: {
         intent: "remotion_render_video",
         requiredProgressStages: [...REMOTION_RENDER_VIDEO_PROGRESS_STAGES],
+        ...(protectionIntent ? { contentProtectionIntent: protectionIntent } : {}),
         workerBilling: buildWorkerBillingMetadata(billing),
       },
       timeoutSeconds,

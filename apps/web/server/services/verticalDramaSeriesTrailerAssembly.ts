@@ -38,7 +38,7 @@
  * fade-out so the narration doesn't cut off abruptly.
  */
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import fsp from "fs/promises";
 import os from "os";
 import path from "path";
@@ -84,8 +84,31 @@ export interface SubmitTrailerJobArgs {
   imageUrls: string[];
   videoClipUrls: string[];
   internalBaseUrl: string;
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
   ffmpegRunner?: FfmpegRunner;
 }
+
+export type TrailerProtectionSourceRef = {
+  sourceAssetId: string;
+  sourceSha256: string;
+  timelineIndex: number;
+  trimStartMs: number;
+  trimEndMs: number;
+};
+
+export type TrailerJobResult =
+  | {
+      status: "completed";
+      videoUrl: string;
+      storageKey: string;
+      sha256: string;
+      sourceRefs: TrailerProtectionSourceRef[];
+    }
+  | { status: "failed"; error: string };
 
 /** One normalized 3s(-ish) segment to be concatenated, in final order. */
 type SegmentPlanItem =
@@ -357,7 +380,7 @@ export function buildMuxNarrationFfmpegArgs(args: {
  * absolute, fetchable URL and download it to `destPath`. Same convention as
  * `verticalDramaEpisodeVideoAssembly.downloadClipToFile`.
  */
-async function downloadToFile(url: string, destPath: string, internalBaseUrl: string): Promise<void> {
+async function downloadToFile(url: string, destPath: string, internalBaseUrl: string): Promise<string> {
   const absoluteUrl = /^https?:\/\//i.test(url) ? url : new URL(url, internalBaseUrl).toString();
   const res = await fetch(absoluteUrl);
   if (!res.ok || !res.body) {
@@ -365,6 +388,7 @@ async function downloadToFile(url: string, destPath: string, internalBaseUrl: st
   }
   const buf = Buffer.from(await res.arrayBuffer());
   await fsp.writeFile(destPath, buf);
+  return createHash("sha256").update(buf).digest("hex");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -439,8 +463,13 @@ export async function runTrailerJob(args: {
   imageUrls: string[];
   videoClipUrls: string[];
   internalBaseUrl: string;
+  protectionIntent?: {
+    choice: "on" | "off";
+    choiceSource?: "per_export" | "user_default" | "disabled_by_user";
+    requireBeforePublish?: boolean;
+  };
   ffmpegRunner: FfmpegRunner;
-}): Promise<void> {
+}): Promise<TrailerJobResult> {
   const { owner, jobId, internalBaseUrl } = args;
   const runner = args.ffmpegRunner;
   jobs.set(jobId, { jobId, owner, status: "processing" });
@@ -497,11 +526,19 @@ export async function runTrailerJob(args: {
 
     // 3. Download + normalize each segment.
     const segmentPaths: string[] = [];
+    const sourceRefs: TrailerProtectionSourceRef[] = [];
     for (let i = 0; i < plan.length; i += 1) {
       const item = plan[i];
       const sourceExt = item.kind === "image" ? "img" : "mp4";
       const sourcePath = path.join(workDir, `src-${String(i).padStart(3, "0")}.${sourceExt}`);
-      await downloadToFile(item.url, sourcePath, internalBaseUrl);
+      const sourceSha256 = await downloadToFile(item.url, sourcePath, internalBaseUrl);
+      sourceRefs.push({
+        sourceAssetId: `trailer:${jobId}:source:${i}`,
+        sourceSha256,
+        timelineIndex: i,
+        trimStartMs: 0,
+        trimEndMs: item.kind === "video" ? VIDEO_SEGMENT_MAX_SECONDS * 1000 : IMAGE_SEGMENT_SECONDS * 1000,
+      });
 
       const segmentPath = path.join(workDir, `seg-${String(i).padStart(3, "0")}.mp4`);
       const ffArgs =
@@ -556,7 +593,8 @@ export async function runTrailerJob(args: {
     const durationSeconds = await probeDurationSeconds(finalPath);
     const storageKey = `vertical-drama/trailer/${owner.seriesId}/${randomUUID()}-trailer.mp4`;
     await assertR2StorageActive();
-    const { url } = await storagePutFromPath(storageKey, finalPath, "video/mp4");
+    const { url, key } = await storagePutFromPath(storageKey, finalPath, "video/mp4");
+    const sha256 = createHash("sha256").update(await fsp.readFile(finalPath)).digest("hex");
 
     const videoClipCountUsed = plan.filter((p) => p.kind === "video").length;
     const imageCountUsed = plan.filter((p) => p.kind === "image").length;
@@ -572,6 +610,7 @@ export async function runTrailerJob(args: {
       sourceCounts: { images: imageCountUsed, videoClips: videoClipCountUsed },
       error: undefined,
     });
+    return { status: "completed", videoUrl: url, storageKey: key, sha256, sourceRefs };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     debugError("verticalDramaSeriesTrailerAssembly", `Trailer job ${jobId} failed for series ${owner.seriesId}`, err);
@@ -583,6 +622,7 @@ export async function runTrailerJob(args: {
     }).catch(() => {
       /* best-effort — job status is still readable via jobs map while process is alive */
     });
+    return { status: "failed", error: message };
   } finally {
     await fsp.rm(workDir, { recursive: true, force: true }).catch(() => {});
   }
@@ -606,6 +646,7 @@ export async function submitTrailerJob(args: SubmitTrailerJobArgs): Promise<{ jo
     imageUrls: args.imageUrls,
     videoClipUrls: args.videoClipUrls,
     internalBaseUrl: args.internalBaseUrl,
+    ...(args.protectionIntent ? { protectionIntent: args.protectionIntent } : {}),
   };
   // Lazy `await import(...)` — see this file's own import-block doc comment
   // above for why this is not a static top-level import.

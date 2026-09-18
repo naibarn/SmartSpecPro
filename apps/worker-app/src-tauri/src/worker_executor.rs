@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::env;
 use std::fs;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
@@ -195,6 +196,128 @@ pub fn editor_media_operation_capability(operation: &str) -> Option<&'static str
         .find_map(|(candidate, capability)| (*candidate == operation).then_some(*capability))
 }
 
+/// Feature 201 — the Worker App only claims this lane when a configured
+/// provider command is explicitly enabled. The command owns the actual
+/// VideoSeal/PixelSeal implementation; Rust owns staging, hashing, and the
+/// canonical lifecycle contract.
+pub const CONTENT_PROTECTION_JOB_TYPE: &str = "content_protection.protect";
+pub const CONTENT_PROTECTION_CAPABILITY: &str = "content-protection-v1";
+pub const CONTENT_PROTECTION_CONTRACT_VERSION: &str = "content-protection.v1";
+
+pub fn content_protection_runtime_ready_from_config(
+    provider: &str,
+    explicitly_enabled: bool,
+    command_configured: bool,
+) -> bool {
+    explicitly_enabled && command_configured && matches!(provider, "videoseal" | "pixelseal")
+}
+
+pub fn content_protection_runtime_ready() -> bool {
+    let provider = env::var("CONTENT_PROTECTION_PROVIDER")
+        .unwrap_or_default()
+        .to_lowercase();
+    let explicitly_enabled = env::var("CONTENT_PROTECTION_WORKER_CAPABILITY")
+        .map(|value| value.eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+    let command_configured = env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .map(|value| !value.trim().is_empty())
+        .unwrap_or(false);
+    content_protection_runtime_ready_from_config(&provider, explicitly_enabled, command_configured)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ContentProtectionJobInput {
+    pub contract_version: String,
+    pub job_type: String,
+    pub protection_asset_id: String,
+    pub tenant_id: String,
+    pub source_asset_id: Option<u64>,
+    pub source_artifact_id: Option<String>,
+    pub source_object_key: String,
+    pub source_sha256: String,
+    pub mime_type: String,
+    pub modality: String,
+    pub effective_choice: String,
+    pub choice_source: String,
+    pub provider_id: String,
+    pub provider_version: String,
+    pub output_object_key: String,
+    pub compound_envelope: Option<Value>,
+    #[serde(default = "default_true")]
+    pub require_before_publish: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+pub fn content_protection_value_has_secret_key(value: &Value) -> bool {
+    match value {
+        Value::Array(items) => items.iter().any(content_protection_value_has_secret_key),
+        Value::Object(map) => map.iter().any(|(key, child)| {
+            key.to_ascii_lowercase().contains("codeword")
+                || key.to_ascii_lowercase().contains("private_key")
+                || key.to_ascii_lowercase().contains("credential")
+                || key.to_ascii_lowercase().contains("secret")
+                || key.eq_ignore_ascii_case("token")
+                || key.to_ascii_lowercase().contains("raw_bytes")
+                || content_protection_value_has_secret_key(child)
+        }),
+        _ => false,
+    }
+}
+
+pub fn parse_content_protection_job_input(
+    value: &Value,
+) -> Result<ContentProtectionJobInput, String> {
+    if content_protection_value_has_secret_key(value) {
+        return Err("content_protection_secret_field_forbidden".into());
+    }
+    let parsed: ContentProtectionJobInput = serde_json::from_value(value.clone())
+        .map_err(|_| "content_protection_contract_invalid".to_string())?;
+    if parsed.contract_version != CONTENT_PROTECTION_CONTRACT_VERSION
+        || parsed.job_type != CONTENT_PROTECTION_JOB_TYPE
+        || parsed.protection_asset_id.trim().is_empty()
+        || parsed.tenant_id.trim().is_empty()
+        || parsed.source_object_key.trim().is_empty()
+        || parsed.source_object_key.contains("..")
+        || parsed.source_object_key.starts_with('/')
+        || parsed.output_object_key.trim().is_empty()
+        || parsed.output_object_key.contains("..")
+        || parsed.output_object_key.starts_with('/')
+        || parsed.source_sha256.len() != 64
+        || !parsed
+            .source_sha256
+            .chars()
+            .all(|ch| ch.is_ascii_hexdigit())
+        || parsed.mime_type.trim().is_empty()
+        || !matches!(parsed.modality.as_str(), "image" | "video" | "audio")
+        || parsed.effective_choice != "on"
+        || !matches!(parsed.choice_source.as_str(), "per_export" | "user_default")
+        || parsed.provider_id.trim().is_empty()
+        || parsed.provider_version.trim().is_empty()
+        || (parsed.source_asset_id.is_some() == parsed.source_artifact_id.is_some())
+    {
+        return Err("content_protection_contract_invalid".into());
+    }
+    if parsed
+        .source_artifact_id
+        .as_deref()
+        .is_some_and(|value| value.trim().is_empty())
+    {
+        return Err("content_protection_contract_invalid".into());
+    }
+    if let Some(Value::Object(envelope)) = &parsed.compound_envelope {
+        if let Some(pre_hash) = envelope.get("preProtectionSha256").and_then(Value::as_str) {
+            if pre_hash != parsed.source_sha256 {
+                return Err("content_protection_stale_compound_envelope".into());
+            }
+        }
+    }
+    Ok(parsed)
+}
+
 pub fn is_known_remotion_render_video_progress_stage(stage: &str) -> bool {
     REMOTION_RENDER_VIDEO_PROGRESS_STAGES.contains(&stage)
 }
@@ -273,6 +396,7 @@ pub fn build_comfy_completed_event(
 pub enum WorkerJobKind {
     LocalLlmInvoke,
     EditorMedia,
+    ContentProtection,
     Hyperframes,
     RemotionRenderVideo,
     ComfyImageGeneration,
@@ -307,6 +431,7 @@ pub fn classify_job_type(job_type: &str) -> WorkerJobKind {
         | EDITOR_MEDIA_PRIVACY_TRACK_JOB_TYPE
         | EDITOR_MEDIA_RECORDING_NORMALIZE_JOB_TYPE
         | EDITOR_VIDEO_RENDER_STILL_JOB_TYPE => WorkerJobKind::EditorMedia,
+        CONTENT_PROTECTION_JOB_TYPE => WorkerJobKind::ContentProtection,
         HYPERFRAMES_JOB_TYPE => WorkerJobKind::Hyperframes,
         REMOTION_RENDER_VIDEO_JOB_TYPE => WorkerJobKind::RemotionRenderVideo,
         COMFY_IMAGE_GENERATION_JOB_TYPE => WorkerJobKind::ComfyImageGeneration,
@@ -1934,6 +2059,76 @@ mod tests {
             WorkerJobKind::UnifiedAudio
         );
         assert_eq!(classify_job_type("video_assembly"), WorkerJobKind::Unknown);
+    }
+
+    #[test]
+    fn classify_job_type_routes_content_protection_to_its_dedicated_lane() {
+        assert_eq!(
+            classify_job_type(CONTENT_PROTECTION_JOB_TYPE),
+            WorkerJobKind::ContentProtection
+        );
+    }
+
+    #[test]
+    fn content_protection_capability_requires_provider_command_and_explicit_enablement() {
+        assert!(content_protection_runtime_ready_from_config(
+            "videoseal",
+            true,
+            true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "videoseal",
+            false,
+            true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "unknown", true, true
+        ));
+        assert!(!content_protection_runtime_ready_from_config(
+            "pixelseal",
+            true,
+            false
+        ));
+    }
+
+    #[test]
+    fn content_protection_payload_parser_rejects_secrets_and_accepts_bound_input() {
+        let parsed = parse_content_protection_job_input(&json!({
+            "contractVersion": CONTENT_PROTECTION_CONTRACT_VERSION,
+            "jobType": CONTENT_PROTECTION_JOB_TYPE,
+            "protectionAssetId": "asset-201",
+            "tenantId": "tenant-a",
+            "sourceAssetId": 42,
+            "sourceObjectKey": "tenant-a/source.mp4",
+            "sourceSha256": "a".repeat(64),
+            "mimeType": "video/mp4",
+            "modality": "video",
+            "effectiveChoice": "on",
+            "choiceSource": "per_export",
+            "providerId": "videoseal",
+            "providerVersion": "1",
+            "outputObjectKey": "tenant-a/protected.mp4",
+            "requireBeforePublish": true,
+        }))
+        .unwrap();
+        assert_eq!(parsed.source_asset_id, Some(42));
+        assert!(parse_content_protection_job_input(&json!({
+            "contractVersion": CONTENT_PROTECTION_CONTRACT_VERSION,
+            "jobType": CONTENT_PROTECTION_JOB_TYPE,
+            "protectionAssetId": "asset-201",
+            "tenantId": "tenant-a",
+            "sourceObjectKey": "tenant-a/source.mp4",
+            "sourceSha256": "a".repeat(64),
+            "mimeType": "video/mp4",
+            "modality": "video",
+            "effectiveChoice": "on",
+            "choiceSource": "per_export",
+            "providerId": "videoseal",
+            "providerVersion": "1",
+            "outputObjectKey": "tenant-a/protected.mp4",
+            "codeword": "secret",
+        }))
+        .is_err());
     }
 
     #[test]
