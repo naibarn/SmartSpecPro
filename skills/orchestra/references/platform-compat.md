@@ -76,7 +76,7 @@ Dispatch (single message, both Task calls simultaneously):
       CONSTRAINTS: Do not modify server files. Use TanStack Query for data fetching.
       CONTRACT: See orchestra/contracts.md — frontend ↔ backend — UserDashboard
       OUTPUT: Dashboard.tsx + StatsCard.tsx created, tests passing
-      QUALITY GATE: cd apps/web && pnpm check && pnpm test
+      QUALITY GATE: repository-defined changed-workspace checks and focused tests; apply typecheck-resource-policy.md
 
   Task #2:
     agent: "ssp-backend"
@@ -92,7 +92,7 @@ Dispatch (single message, both Task calls simultaneously):
       CONSTRAINTS: Enforce tenantId isolation. Validate input with Zod.
       CONTRACT: See orchestra/contracts.md — frontend ↔ backend — UserDashboard
       OUTPUT: dashboard.ts router + dashboardService.ts created, tests passing
-      QUALITY GATE: cd apps/web && pnpm check && pnpm test
+      QUALITY GATE: repository-defined changed-workspace checks and focused tests; apply typecheck-resource-policy.md
 ```
 
 ---
@@ -158,7 +158,7 @@ Task #1:
     CONSTRAINTS: [...]
     CONTRACT: See orchestra/contracts.md — frontend ↔ backend — UserDashboard
     OUTPUT: Dashboard.tsx and StatsCard.tsx created with passing tests
-    QUALITY GATE: cd apps/web && pnpm check && pnpm test
+    QUALITY GATE: repository-defined changed-workspace checks and focused tests; apply typecheck-resource-policy.md
 ```
 
 Use condensed templates (identity + constraints only). Do not inject the full agent file —
@@ -205,7 +205,7 @@ After completing the inline task, announce the exit:
 Following: React 19, Wouter, Radix UI + CVA, TanStack Query. Not modifying backend files.
 
 [Implements Dashboard.tsx and StatsCard.tsx inline]
-[Runs: cd apps/web && pnpm check && pnpm test]
+[Runs: repository-defined changed-workspace checks and focused tests; apply typecheck-resource-policy.md]
 
 --- [Returning to Orchestra Conductor role] ---
 Wave 1 result: [frontend] Added Dashboard.tsx — success

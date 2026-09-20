@@ -241,15 +241,15 @@ is required for auditability, the agent should record the command or artifact pa
 
 | Domain | Gate command |
 |--------|-------------|
-| TypeScript (web) | `cd <absolute-repo-root>/apps/web && pnpm check` |
-| Tests (web) | `cd <absolute-repo-root>/apps/web && pnpm test` |
+| TypeScript (web) | Repository-defined changed-workspace check; full-repository check is explicit-only per `typecheck-resource-policy.md` |
+| Tests (web) | Repository-defined focused test command |
 | Python type check | `cd <absolute-repo-root>/python-backend && mypy app/` |
 | Python lint | `cd <absolute-repo-root>/python-backend && ruff check app/` |
 | Python tests | `cd <absolute-repo-root>/python-backend && pytest` |
 | E2E browser | Use discovered Playwright command, or dispatch `e2e-playwright.md` |
 | Workflow validation | `cd <absolute-repo-root> && bash .github/workflows/tests/workflow-validation.test.sh` |
 | Skill pack validation | `cd <absolute-repo-root> && bash skills/audit-skills.sh` |
-| Visual UI validation | `cd <absolute-repo-root>/apps/web && pnpm check` plus visual polish/accessibility/responsive checklist |
+| Visual UI validation | Repository-defined focused checks plus visual polish/accessibility/responsive checklist; apply `typecheck-resource-policy.md` for TypeScript |
 | Dependency audit | Use ecosystem-specific audit/tree command if installed; otherwise dispatch `dependency-supply-chain.md` |
 | Read-only audit | `skipped (read-only — no files modified)` |
 
@@ -274,7 +274,7 @@ Task(
     CONSTRAINTS: ...
     CONTRACT: N/A
     OUTPUT: ...
-    QUALITY GATE: cd apps/web && pnpm check
+    QUALITY GATE: repository-defined changed-workspace check; apply typecheck-resource-policy.md
   "
 )
 ```
@@ -386,8 +386,8 @@ OUTPUT:
   Return a Result Report per result-report.schema.md.
 
 QUALITY GATE:
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
-  - Tests: cd <absolute-repo-root>/apps/web && pnpm test
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
+  - Tests: repository-defined focused test command
 ```
 
 ---
@@ -443,8 +443,8 @@ OUTPUT:
   Return a Result Report per result-report.schema.md.
 
 QUALITY GATE:
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
-  - Tests: cd <absolute-repo-root>/apps/web && pnpm test
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
+  - Tests: repository-defined focused test command
 ```
 
 ---
@@ -484,7 +484,7 @@ CONSTRAINTS:
   - MANDATORY: Follow the CLAUDE.md Database Safety Protocol before running ANY migration:
       1. Back up the skills table: pg_dump "$DATABASE_URL" --data-only --table=skills
       2. Record row count: psql "$DATABASE_URL" -c "SELECT count(*) FROM skills"
-      3. THEN run: cd apps/web && pnpm db:push
+      3. THEN run the repository-defined database migration command
       4. Verify row count matches after migration
   - Add with a DEFAULT ("active") so existing rows are not broken
   - Do NOT use NOT NULL without a DEFAULT on an existing table
@@ -496,13 +496,13 @@ OUTPUT:
   Modify <absolute-repo-root>/apps/web/server/db/schema.ts:
     - Add statusEnum definition: pgEnum("skill_status", ["active", "inactive", "archived"])
     - Add status column to skills table: status: statusEnum("status").default("active").notNull()
-  Run: cd <absolute-repo-root>/apps/web && pnpm db:push
+  Run: the repository-defined database migration command
   Return a Result Report per result-report.schema.md with pre- and post-migration row counts in next_steps.
 
 QUALITY GATE:
-  - Migration applied: pnpm db:push completes without error
+  - Migration applied: the repository-defined database migration command completes without error
   - Row count preserved: pre-migration count == post-migration count
-  - TypeScript: cd <absolute-repo-root>/apps/web && pnpm check
+  - TypeScript: repository-defined changed-workspace check; full-repository check is explicit-only
 
 ```
 

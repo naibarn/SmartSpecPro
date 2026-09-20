@@ -18,6 +18,10 @@ Maintain scenario coverage for:
 - final completion for medium+ work requires review convergence evidence; Codex standard
   light mode may use one targeted clean round for implementation-ready medium work
 - review/gate-driven fixes mark covered gates stale and require reruns
+- behavior changes require a requirement-to-test matrix with RED/GREEN evidence and a declared residual proof boundary
+- shallow tests (call-only mocks, assertion-free tests, happy-path-only failure coverage) are rejected by the Test Design Gate
+- ordinary TypeScript changes do not trigger root full-repository typecheck; explicit typecheck uses serial resource-aware execution
+- OOM, timeout, and session-loss typecheck results are unverified and are never blindly retried or reported as pass
 - bug/debug requests require data-first evidence before code fixes; UI-only symptoms
   must route to evidence collection or a narrow user question, not direct guessing
 - Fable-style coding loop requests with `orchestra_id` or `loop_policy` activate
