@@ -24,11 +24,12 @@ Parse all available state from the filesystem using digest-first loading:
 
 1. Parse `orchestra/snapshot.json` → extract all 9 fields from the `checkpoint` object.
 2. Read `orchestra/snapshot.md` → load the human-readable summary for additional context that may not be captured structurally in the JSON.
-3. Inspect every file listed in `checkpoint.key_files` (absolute paths) for existence and
+3. Read `orchestra/lifecycle.md` → restore current stage, open gaps, and `resume_from`.
+4. Inspect every file listed in `checkpoint.key_files` (absolute paths) for existence and
    freshness. Read only the recorded line/section hints, digest, or first relevant window
    first. Read the full file only when it is small, changed since the snapshot, or the
    digest does not contain enough information to resume safely.
-4. If more than 8 key files need full reads, pause full rehydration and narrow by current
+5. If more than 8 key files need full reads, pause full rehydration and narrow by current
    phase/pending wave before opening more files.
 
 **If `orchestra/snapshot.json` is corrupt or unparseable:** Fall back to reading `orchestra/snapshot.md` only. Reconstruct state from the human-readable summary. Note the parse failure in the resume banner.
@@ -45,6 +46,8 @@ Re-establish the complete in-context mental model:
 - **Which waves are done:** From `checkpoint.completed_waves` — understand what has been delivered and integrated.
 - **What is in-progress:** From `checkpoint.in_progress` — understand where work was interrupted.
 - **What is pending:** From `checkpoint.pending_waves` — understand the remaining work plan.
+- **What must be recovered:** From `orchestra/lifecycle.md` — use the earliest affected stage,
+  open gap evidence, and `resume_from`; never infer completion from later artifacts.
 
 ### Step 3: Reconcile
 
@@ -59,6 +62,8 @@ Verify that actual filesystem state matches the snapshot's recorded state:
 2. For each wave in `checkpoint.completed_waves`:
    - Verify that the output artifacts for that wave exist. If a wave's output file is missing, flag that wave's status as `NEEDS_VERIFICATION` before resuming.
 3. If any blockers were identified: list them in the resume banner, then continue automatically from the earliest safe incomplete stage. Ask the user only if resolving the blocker would require destructive reset/archive, accepted-risk security bypass, or a product-direction decision.
+4. If the lifecycle ledger has an open gap, stale stage, or blocked stage, reconcile it
+   before selecting the next wave and preserve its `resume_from` pointer.
 
 ### Step 4: Resume
 
@@ -78,10 +83,12 @@ SESSION RESUMED
 ═══════════════════════════════════════════════════════════════
 Task:           {task_description}
 Phase:          {phase}
+Lifecycle:      {current_stage} (resume_from: {resume_from})
 Completed:      {completed_waves joined by ", "}
 In progress:    {in_progress.wave} ({in_progress.step}, {in_progress.sub_agents_complete} of {in_progress.sub_agents_launched} complete)
 Pending:        {pending_waves joined by ", "}
 Blockers:       {blockers joined by ", " or "None"}
+Open gaps:       {gap_ids joined by ", " or "None"}
 Key files:      {count} files read and verified
 
 Continuing from: {in_progress.step description}

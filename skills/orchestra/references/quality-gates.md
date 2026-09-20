@@ -1,6 +1,6 @@
 # Quality Gates
 
-Defines all 19 gate types that the orchestra conductor runs before and after agent work.
+Defines all 20 gate types that the orchestra conductor runs before and after agent work.
 Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below
 are repository example defaults. If the active plan or repository docs define explicit
 `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
@@ -32,6 +32,7 @@ examples below.
 | 17 | Installed Skill Gate | Run the matching skill from `installed-skill-routing.md` | SEO, security, launch, deploy, release, content, analytics, generator, health, or docs tasks | Follows the selected skill's safety policy; CRITICAL security and deploy/release side effects block | 2 |
 | 18 | Test Design Gate | Requirement-to-test matrix with RED/GREEN evidence and residual proof boundary | Any behavior change; mandatory before implementation for MEDIUM+ or HIGH/CRITICAL work | Blocking before implementation when required fields are missing | 3 review rounds |
 | 19 | Review Convergence Gate | Apply `review-convergence.md`; dispatch relevant reviewers and rerun stale gates | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached | 5/8/10 by scope |
+| 20 | Lifecycle Convergence Gate | Apply `completion-loop.md`; reconcile seven stages, gaps, stale gates, and resume pointer | Every non-trivial implementation, debugging, review/repair, or skill-system task | Blocking until lifecycle invariants pass or a typed blocked/deferred stop is recorded | 1 per stage transition |
 
 ---
 
@@ -56,8 +57,11 @@ Long-running gates:
 - Apply `typecheck-resource-policy.md` to every TypeScript check: preflight available
   memory, run workspaces serially, capture logs, and use a session-survivable wrapper
   for explicitly requested long checks.
-- If a low/medium non-blocking gate exceeds 10 minutes, stop waiting, record it as skipped
-  with residual risk, and continue.
+- Apply `completion-loop.md` after every gate and before each stage transition; a
+  failed gate creates a gap and backtracks instead of becoming a skipped gate.
+- If a low/medium non-blocking gate exceeds 10 minutes, stop waiting, record a lifecycle
+  gap with residual risk, and continue recovery from the earliest affected stage; do not
+  treat the timeout as a completed or silently skipped stage.
 - If a high/critical blocking gate exceeds 10 minutes, stop and report the command,
   elapsed time, and next recommended command instead of silently waiting.
 
@@ -275,9 +279,10 @@ When a gate fails:
    transcripts into CONTEXT.
 4. **Re-dispatch the same agent type** that produced the failing code.
 5. **Increment the retry counter** for this (gate, wave) pair.
-6. **If retry counter reaches 3** — STOP. Report to user with command, exit code,
-   decisive error excerpts, artifact paths, and compact summaries of all 3 attempts. Do
-   NOT attempt a 4th dispatch.
+6. **If retry counter reaches 3** — create/update a lifecycle gap, mark downstream
+   evidence stale, and run `completion-loop.md` recovery. Do not mark the stage
+   skipped or complete. Stop only as a typed blocked state when safe recovery is
+   impossible or a loop policy limit is reached.
 
 Resource failures are a separate class from code failures. If a process is killed by OOM,
 the host loses SSH/session, or a bounded resource timeout expires, record the typed status
@@ -318,6 +323,24 @@ The gate must prove:
 
 If the gate finds new material issues, dispatch the owning sub-agent or fix wave, rerun
 stale gates, and repeat until the stop rules in `review-convergence.md` are satisfied.
+
+## Gate 20: Lifecycle Convergence Gate
+
+Read `completion-loop.md` and verify `orchestra/lifecycle.md` after every wave,
+gate, repair, and review round. Confirm:
+
+- `PLANNING`, `TDD_DESIGN`, `IMPLEMENT`, `VERIFY`, `DEBUG_FIX`, `REVIEW`, and
+  `FINAL_VERIFY` are each `COMPLETE` or explicitly justified `NOT_APPLICABLE`;
+- every open gap has an owner, action, evidence, earliest affected stage, and
+  `resume_from`;
+- no `MUST_FIX`, `MUST_DO_NOW`, or `VERIFY_ONLY` gap remains open;
+- every repair made downstream evidence stale and the affected gates were rerun;
+- `current_stage` equals `resume_from` while recovery is active;
+- final verification is fresh and all completion invariants are true.
+
+If any condition fails, leave the lifecycle open and continue from the earliest
+affected stage. If safe recovery is impossible, record a typed blocked/deferred
+stop with residual risk; never report a successful completion.
 
 ---
 

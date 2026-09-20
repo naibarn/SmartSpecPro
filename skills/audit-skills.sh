@@ -210,6 +210,7 @@ if sub_agents_dir.exists() and sub_agents_readme.exists():
         "Responsive Gate",
         "Component State Gate",
         "Test Design Gate",
+        "Lifecycle Convergence Gate",
         "Review Convergence Gate",
     ]:
         if required_gate not in quality_gates_text:
@@ -224,6 +225,7 @@ required_orchestra_refs = [
     "tdd-discipline.md",
     "test-design-contract.md",
     "typecheck-resource-policy.md",
+    "completion-loop.md",
     "branch-finishing.md",
     "skill-behavior-tests.md",
     "skill-behavior-scenarios.json",
@@ -336,6 +338,7 @@ if orchestra_skill_path.exists():
         "references/gap-closure-before-final.md",
         "references/test-design-contract.md",
         "references/typecheck-resource-policy.md",
+        "references/completion-loop.md",
     ]:
         if required_policy_ref not in orchestra_skill_text:
             errors.append(f"{orchestra_skill_path}: missing orchestra policy reference: {required_policy_ref}")
@@ -617,6 +620,11 @@ if scenario_path.exists():
         "IMPACT-RIPPLE-001",
         "STALE-GATE-001",
         "GAP-CLOSURE-001",
+        "LIFECYCLE-001",
+        "LIFECYCLE-002",
+        "LIFECYCLE-003",
+        "LIFECYCLE-004",
+        "LIFECYCLE-005",
         "DEBUG-DATA-001",
         "DEBUG-DATA-002",
         "LOOP-POLICY-001",

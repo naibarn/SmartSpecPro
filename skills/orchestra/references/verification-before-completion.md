@@ -18,6 +18,7 @@ At least one fresh verification signal is required before final summary:
 - review convergence evidence for medium+ scope/risk or any task with review findings
 - final Loop Policy ledger from `agent-loop-policy.md`
 - gap closure triage from `gap-closure-before-final.md`
+- lifecycle convergence evidence from `completion-loop.md` and `orchestra/lifecycle.md`
 
 For TypeScript, apply `typecheck-resource-policy.md`. A typecheck status of
 `SKIPPED_POLICY`, `BLOCKED_RESOURCE`, `UNVERIFIED_OOM`, `UNVERIFIED_TIMEOUT`,
@@ -40,6 +41,7 @@ The final summary must include:
 - residual risk if a gate could not run
 - TypeScript status, including whether it was explicit, changed-scope, skipped
   by policy, or unverified due to resource/session limits
+- seven-stage lifecycle status, current/resume stage, open gaps, and typed stop reason
 
 ## No-Evidence Rule
 
@@ -52,6 +54,16 @@ For medium+ scope/risk, or any task where review/gate feedback caused fixes, the
 must not describe the task as complete until `review-convergence.md` criteria pass or a stop
 condition is reached and reported. A single post-completion review is not enough after
 material fixes; run the required consecutive clean rounds.
+
+## Lifecycle No-Skip Rule
+
+For non-trivial work, do not finalize unless `PLANNING`, `TDD_DESIGN`,
+`IMPLEMENT`, `VERIFY`, `DEBUG_FIX`, `REVIEW`, and `FINAL_VERIFY` are all closed
+in `orchestra/lifecycle.md`. A `BLOCKED`, `IN_PROGRESS`, stale, or missing stage
+must trigger recovery from `resume_from`, or a final
+`implemented_but_blocked`/`implemented_with_deferred_gap` report with the open
+gap and smallest next action. A blocker is never evidence that a stage was
+skipped safely.
 
 ## No-Unclosed-Must-Do Gap Rule
 

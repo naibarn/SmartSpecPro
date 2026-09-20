@@ -66,6 +66,7 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/data-first-debug.md` | Always for bug reports, error/debug/fix requests, stuck jobs, failed runs, audit/log investigations, or repair loops caused by runtime behavior |
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
 | `references/typecheck-resource-policy.md` | Whenever TypeScript checks, full-repo checks, OOM, timeout, or session-loss risk is in scope |
+| `references/completion-loop.md` | Always for non-trivial implementation, debugging, review/repair, or skill-system work |
 | `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
@@ -259,7 +260,7 @@ Orchestra halts and waits for user input when any of these conditions occur. Do 
 | A destructive reset/archive is required before planning can continue | Create a timestamped backup/dump first and continue automatically. STOP only if no reliable backup can be produced or the operation would still cause irreversible external loss |
 | Product intent remains ambiguous after codebase/spec analysis | Present the ambiguity clearly, ask only for the product decision, STOP |
 | `/orchestra resume` after an automatic deep-* chain AND expected artifact paths are still missing | Reconstruct from the earliest incomplete safe stage automatically. STOP only if recovery would require destructive reset, accepted-risk security bypass, or ambiguous product intent |
-| Quality gate fails after 3 retry attempts (Step 6) | Report full failure details, STOP |
+| Quality gate fails after 3 retry attempts (Step 6) | Record a lifecycle gap and backtrack through `completion-loop.md`; STOP only as a typed blocked state when safe recovery is impossible or a loop limit is reached |
 | CRITICAL security findings found (Step 6) | Present each finding, STOP — cannot auto-proceed |
 | Circular dependency detected in wave plan (Step 3) | Report cycle with affected task names, STOP until resolved |
 | A wave returns rate-limit / 429 / overload errors, or agents stall | Halt dispatch, preserve partials, report per `references/rate-limit-safety.md`, STOP - do not blind-retry |
@@ -412,6 +413,16 @@ identify the RED evidence, GREEN command, test level, and residual proof
 boundary for each requirement. Do not use a full-repository command as the
 default test design when a focused proof is available.
 
+### Completion Loop Preflight
+
+Read `references/completion-loop.md` before implementation. Initialize
+`orchestra/lifecycle.md` with the seven stages:
+`PLANNING → TDD_DESIGN → IMPLEMENT → VERIFY → DEBUG_FIX → REVIEW → FINAL_VERIFY`.
+Record `current_stage`, `resume_from`, the stage ledger, gap ledger, and
+completion invariants. For behavior-changing work, all seven stages are
+mandatory; a clean Debug/Fix stage must record `no_gap_found` rather than being
+skipped. A blocker is a recovery state, never a completed stage.
+
 ---
 
 ## Step 2: Routing Decision
@@ -454,6 +465,11 @@ route and run the pre-merge security gate before final completion.
 > **Quick planning rule:** If the user provides only a short request and no `spec.md`, but the task still benefits from planning, orchestra should route to `deep-plan-quick` instead of forcing a full spec-first flow.
 
 **Resume after automatic deep-* chaining:** When `/orchestra resume` is invoked, read `orchestra/backlog.md`. Check that all expected artifact paths exist. If some are missing, fall back to the earliest incomplete safe automatic stage and continue; stop only if recovery would require destructive reset or product-direction clarification.
+
+**Resume after any blocker or gate failure:** Read `orchestra/lifecycle.md` and
+resume at its `resume_from` stage. Reconcile open gaps before dispatching or
+editing. Do not start at the next stage while an earlier stage is `BLOCKED`,
+`IN_PROGRESS`, or stale.
 
 ---
 
@@ -585,6 +601,13 @@ Read `references/result-integration.md`.
 5. Update `orchestra/progress.md` with wave status: `COMPLETE`, `PARTIAL`, or `FAILED`.
 6. Append all auto-resolution decisions to `orchestra/decisions.md` with ISO timestamp.
 
+**Lifecycle recovery after integration:** Read `references/completion-loop.md`.
+Every partial/failed result, missing artifact, contract mismatch, or new impact
+surface must create/update a gap in `orchestra/lifecycle.md`, set its
+`earliest_affected_stage`, mark downstream evidence stale, and set `resume_from`.
+Repair safe in-scope gaps before advancing to the next wave. A `PARTIAL` or
+`FAILED` wave is not a completed stage and cannot be hidden in `backlog.md`.
+
 **Pre-merge security gate trigger check (run AFTER integration, BEFORE quality gates):**
 
 Check whether ANY of these conditions apply to the completed wave's file changes:
@@ -618,6 +641,7 @@ selected, requested, or blocked by resources.
 |------|---------|---------|-----------|
 | TypeScript check | Repository-defined changed-workspace command; full-repository command is explicit-only | Explicit request, documented release gate, or a safe changed-scope check selected by policy | Blocking only when explicitly required and HIGH/CRITICAL |
 | Test Design Gate | Requirement-to-test matrix plus RED/GREEN evidence and residual proof boundaries | Any behavior-changing task; mandatory before implementation for MEDIUM+ or HIGH/CRITICAL work | Blocking before implementation when required fields are missing |
+| Lifecycle Convergence Gate | `references/completion-loop.md` and `orchestra/lifecycle.md` stage/gap reconciliation | Every non-trivial implementation, debugging, review/repair, or skill-system task | Blocking until lifecycle invariants pass or a typed blocked/deferred stop is recorded |
 | Python lint | `repo Python lint command` (repository example default: `cd python-backend && ruff check app/`) | Any `.py` changed | Yes for HIGH/CRITICAL |
 | Unit tests | Repository-defined focused unit/integration command(s) | Risk ≥ medium | Yes for HIGH/CRITICAL |
 | E2E browser tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | Yes for HIGH/CRITICAL |
@@ -650,7 +674,8 @@ selected, requested, or blocked by resources.
   to `orchestra/progress.md` with the command, elapsed time, and whether it is still
   blocking.
 - If a non-blocking low/medium gate exceeds the timeout budget, stop waiting, record it as
-  skipped with residual risk, and continue to final summary.
+  a timed-out gap with residual risk, backtrack through the lifecycle, and continue
+  recovery; do not finalize while the required evidence is stale or missing.
 - If a blocking high/critical gate exceeds the timeout budget, pause with a compact status
   report instead of silently waiting.
 
@@ -665,7 +690,15 @@ selected, requested, or blocked by resources.
 4. After each fix, mark all gates covering changed files/contracts/runtime paths as stale
 5. Re-run stale gates and impact closure before continuing
 6. Maximum 3 retry attempts per blocking gate
-7. If 3 attempts fail → STOP (see STOP Conditions section above)
+7. If 3 attempts fail, create/update the lifecycle gap and enter the recovery
+   algorithm before stopping; do not mark the stage skipped or complete.
+
+**Gate failure recovery rule:** Reaching the retry limit is not a skip and does
+not close the lifecycle stage. Before stopping, create/update a lifecycle gap
+with `classification`, evidence, attempts, stale gates, and `resume_from`.
+Continue through `completion-loop.md` when the repair is safe and in scope. If
+the loop policy or an external blocker prevents recovery, stop as
+`implemented_but_blocked` with the open gap and exact resume stage.
 
 Resource failures are not code-failure retries. If the process is killed by
 OOM, the host loses the session, or the bounded resource budget expires, stop
@@ -704,6 +737,8 @@ After all 3 complete, orchestra dispatches `ssp-security-review` as aggregator w
 
 Update all `orchestra/` state files:
 
+- `orchestra/lifecycle.md` — update stage status, open gaps, stale evidence,
+  current stage, `resume_from`, and completion invariants before any summary
 - `orchestra/progress.md` — mark current wave complete; update remaining wave list
 - `orchestra/backlog.md` — if scope changed or new tasks were discovered during the wave, add them
 - `orchestra/decisions.md` — append all auto-approved decisions with ISO timestamp and reason
@@ -720,6 +755,11 @@ Files affected: [list]
 ---
 
 ## Step 8: Context Health Check + Repeat or Finalize
+
+Before deciding to finalize, apply `references/completion-loop.md` and reconcile
+the lifecycle ledger. If any mandatory stage is incomplete, any gap is open, or
+any required gate is stale, continue from `resume_from` and do not finalize.
+Only a converged lifecycle may enter the final-summary path.
 
 Read `references/compaction-safety.md` **only** when context state is `yellow` or `red`.
 
@@ -785,8 +825,8 @@ All paths in `key_files` must be **absolute paths**. See `references/compaction-
 
 - If more waves remain → return to Step 4 for the next wave.
 - If all waves complete → run the **Post-Completion Review and Convergence Loop** (see
-  below), then print final summary only after convergence criteria pass or a stop condition
-  is reached.
+  below), then return to the earliest affected lifecycle stage for every material finding;
+  print final summary only after lifecycle convergence or a typed blocked/deferred stop.
 
 ---
 
@@ -833,6 +873,13 @@ For every post-completion finding:
 - Run another review round until `review-convergence.md` stop rules are satisfied.
 - Defer only LOW/optional or genuinely out-of-scope improvements, with rationale in
   `orchestra/backlog.md`.
+- For every finding, update `orchestra/lifecycle.md` before fixing: set the gap's
+  `earliest_affected_stage`, mark downstream stages/gates stale, and set `resume_from`.
+- A finding that requires a missing test design returns to `TDD_DESIGN`; a code or
+  contract finding returns to `IMPLEMENT`; an evidence-only finding returns to `VERIFY`;
+  a root-cause defect returns to `DEBUG_FIX`.
+- A clean review is not final completion until `DEBUG_FIX` and `FINAL_VERIFY` have
+  explicit evidence in the lifecycle ledger.
 - Do not finalize after a single clean-looking pass when medium+ work had fixes; require the
   minimum consecutive clean rounds from `review-convergence.md`.
 
@@ -895,6 +942,10 @@ Before printing the final summary, apply `references/verification-before-complet
 Apply `references/gap-closure-before-final.md` and fix every safe in-scope
 `must_do_now` gap before finalizing. Do not turn a required fix into a
 recommended next step merely because the user did not ask a second time.
+Apply `references/completion-loop.md`; if any mandatory stage is incomplete,
+blocked, stale, or has an open gap, continue from `resume_from` or report a
+typed blocked/deferred outcome. Never report completion from the post-completion
+review while the lifecycle ledger is unresolved.
 If the user asked to commit, push, open a PR, keep, discard, or otherwise finish the
 branch, also apply `references/branch-finishing.md`.
 
@@ -918,20 +969,22 @@ Print the final summary:
 
 1. Check `orchestra/snapshot.json` — parse the `checkpoint` object to restore session state.
 2. Read `orchestra/snapshot.md` — the human-readable summary restores understanding of the task.
-3. Read `checkpoint.key_files` digest-first: verify existence and inspect only recorded
+3. Read `orchestra/lifecycle.md` — restore the current stage, open gaps, and `resume_from`.
+4. Read `checkpoint.key_files` digest-first: verify existence and inspect only recorded
    line/section hints or compact summaries first. Read full files only when they are small,
    changed since the snapshot, or the digest is insufficient to resume safely.
-4. Read `orchestra/contracts.md` as a digest first. Read the full file only when active
+5. Read `orchestra/contracts.md` as a digest first. Read the full file only when active
    contracts are missing from the digest or a pending wave depends on exact contract text.
-5. Continue from `checkpoint.phase` — **never re-execute waves in `completed_waves`** unless a key file from that wave is missing.
-6. If `checkpoint.in_progress` is set, that step is where work resumes.
-7. Print a resume banner listing: task, completed waves, in-progress step, pending waves, any blockers.
+6. Continue from `checkpoint.phase` and `resume_from` — **never re-execute waves in `completed_waves`** unless a key file from that wave is missing.
+7. If `checkpoint.in_progress` is set, that step is where work resumes.
+8. Print a resume banner listing: task, current/resume stage, completed waves, in-progress step, pending waves, open gaps, and blockers.
 
 This is the R4 algorithm from `references/session-resume.md`. On resume, read that file for the full procedure including edge cases.
 
 **Key files to read on resume (in order):**
 - `orchestra/snapshot.json` — structured state
 - `orchestra/snapshot.md` — human summary
+- `orchestra/lifecycle.md` — current stage, gap ledger, and recovery pointer
 - `orchestra/contracts.md` — active contract digest first, exact sections when needed
 - `orchestra/plan.md` — current phase/wave sections first
 - `orchestra/decisions.md` — most recent relevant decisions first

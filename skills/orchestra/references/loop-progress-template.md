@@ -10,6 +10,8 @@ round, and verification command.
 Loop policy:
   orchestra_id: fable_style_coding_orchestra
   purpose: coding webapp with an agent loop
+  current_stage: PLANNING
+  resume_from: PLANNING
   iteration: 0/12
   tool_call_batches: 0/30
   estimated_cost_usd: unknown <= 0.50
@@ -19,7 +21,7 @@ Loop policy:
   required_subagent_wait: 0/10 minutes
   background_subagent_wait: 0/15 minutes
   repair_rounds: 0/5
-  stop_conditions: success_criteria_met, tests_passed, no_open_blockers
+  stop_conditions: lifecycle_converged, tests_passed, no_open_blockers
   stop_reason: active
 ```
 
@@ -75,17 +77,22 @@ Evidence ledger:
 - Increment `repair_rounds` only for review/gate-driven repair loops.
 - Keep raw logs, diffs, and long transcripts out of `progress.md`; store paths
   and short excerpts only.
+- Reconcile `orchestra/lifecycle.md` before each update. If an open gap has an
+  earlier affected stage, set `current_stage` and `resume_from` to that recovery
+  point before starting more work.
 
 ## Final Ledger
 
 ```text
 Loop policy final:
+  current_stage: FINAL_VERIFY | BLOCKED
+  resume_from: <stage or none>
   iterations_used: <n>/12
   tool_call_batches_used: <n or unknown>/30
   estimated_cost_usd: <value or unknown>/0.50
   dispatch_waves_used: <n>/6
   timed_out_subagents: <none | names>
   repair_rounds_used: <n>/5
-  stop_conditions_met: [success_criteria_met, tests_passed, no_open_blockers]
+  stop_conditions_met: [lifecycle_converged, tests_passed, no_open_blockers]
   stop_reason: <success | blocked reason>
 ```

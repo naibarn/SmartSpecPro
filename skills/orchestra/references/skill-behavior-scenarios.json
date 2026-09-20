@@ -1066,6 +1066,95 @@
       "why": "A gate that passed before later fixes is stale and must be rerun before final summary."
     },
     {
+      "id": "LIFECYCLE-001",
+      "user_message": "ทำ feature นี้ให้ครบตั้งแต่ planning, TDD, implement, verify, debug/fix, review จน final verify ถ้าขาดขั้นตอนไหนให้ย้อนกลับไปเก็บ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Test Design Gate",
+        "Lifecycle Convergence Gate",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "silent-stage-skip",
+        "blocked-stage-as-complete",
+        "backlog-only-gap",
+        "finalize-with-open-gap"
+      ],
+      "why": "The conductor must close every lifecycle stage and backtrack through a durable gap ledger when a prerequisite is missing."
+    },
+    {
+      "id": "LIFECYCLE-002",
+      "user_message": "verify พบว่าขาด negative test ให้แก้แล้วกลับไปทำ TDD/Test Design และ verify ใหม่ อย่าข้ามไป review",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Test Design Gate",
+        "Lifecycle Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "verify-to-review-skip",
+        "stale-gate-pass",
+        "single-review-only"
+      ],
+      "why": "A coverage gap discovered during verification must backtrack to TDD design and invalidate downstream evidence."
+    },
+    {
+      "id": "LIFECYCLE-003",
+      "user_message": "review พบ contract gap ให้ย้อนกลับไปแก้ implementation แล้ว rerun verify และ review จน clean",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Lifecycle Convergence Gate",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "review-finding-as-next-step",
+        "finalize-before-rerun"
+      ],
+      "why": "Review findings are repair inputs, not a terminal report; affected gates must become stale and run again."
+    },
+    {
+      "id": "LIFECYCLE-004",
+      "user_message": "ถ้าทุก verification ผ่านและไม่พบ defect ให้ปิด Debug/Fix เป็น no_gap_found แล้วไป review และ final verify",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Lifecycle Convergence Gate",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "debug-fix-stage-omitted",
+        "final-verify-omitted"
+      ],
+      "why": "A clean verification still needs explicit Debug/Fix and Final Verify evidence."
+    },
+    {
+      "id": "LIFECYCLE-005",
+      "user_message": "ถ้าแก้ครบ retry และยังติด external dependency ให้หยุดแบบ blocked พร้อม gap และ resume_from ห้ามรายงานว่างานเสร็จ",
+      "expected_owner": "orchestra",
+      "expected_route": "multi-agent-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Lifecycle Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "blocked-as-complete",
+        "drop-open-gap",
+        "retry-without-new-evidence"
+      ],
+      "why": "A genuine external blocker is a resumable blocked state with residual risk, not permission to skip stages or claim completion."
+    },
+    {
       "id": "GAP-CLOSURE-001",
       "user_message": "ก่อนปิดงานให้บอก gap ที่เจอระหว่างทาง และถ้าเป็น gap ที่ต้องทำแน่ ๆ ให้ทำเลยไม่ต้องรอให้สั่งซ้ำ",
       "expected_owner": "orchestra",
