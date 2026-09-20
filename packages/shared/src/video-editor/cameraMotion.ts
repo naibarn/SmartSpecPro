@@ -134,7 +134,8 @@ const AUTO_CAMERA_MIN_DRIFT_Y = 0.09;
 // into a continuous drift. Require a sustained edge exit, hold the current
 // composition for at least 15 seconds, then use one short corrective move.
 const AUTO_CAMERA_FACE_MIN_HOLD_MS = 15_000;
-const AUTO_CAMERA_FACE_MOVE_MS = 1_800;
+const AUTO_CAMERA_FACE_MIN_MOVE_MS = 3_000;
+const AUTO_CAMERA_FACE_MAX_MOVE_MS = 6_000;
 const AUTO_CAMERA_FACE_EXIT_CONFIRMATIONS = 3;
 // A face can remain safely inside a tall crop while still looking visibly
 // off-centre. Reframe material composition drift sooner than the edge-exit
@@ -143,11 +144,12 @@ const AUTO_CAMERA_FACE_EXIT_CONFIRMATIONS = 3;
 const AUTO_CAMERA_FACE_CENTER_DEADBAND = 0.055;
 const AUTO_CAMERA_FACE_CENTER_HOLD_MS = 3_500;
 const AUTO_CAMERA_ACTIVITY_MIN_HOLD_MS = 4_500;
-const AUTO_CAMERA_ACTIVITY_MOVE_MS = 1_800;
+const AUTO_CAMERA_ACTIVITY_MIN_MOVE_MS = 3_000;
+const AUTO_CAMERA_ACTIVITY_MAX_MOVE_MS = 6_000;
 const AUTO_CAMERA_ACTIVITY_CONFIRMATIONS = 2;
 const AUTO_CAMERA_ACTIVITY_EVIDENCE_MAX_AGE_MS = 2_500;
 const AUTO_CAMERA_ACTIVITY_SAFE_FRACTION = 0.35;
-const AUTO_CAMERA_ACTIVITY_RETURN_AFTER_MS = 3_000;
+const AUTO_CAMERA_ACTIVITY_RETURN_AFTER_MS = 3_500;
 const AUTO_CAMERA_ACTIVITY_FACE_CENTRAL_MIN = 0.36;
 const AUTO_CAMERA_ACTIVITY_FACE_CENTRAL_MAX = 0.64;
 // A clearly separated, persistent activity can briefly become the visual
@@ -157,9 +159,9 @@ const AUTO_CAMERA_STRONG_ACTIVITY_MIN_DISTANCE = 0.28;
 const AUTO_CAMERA_STRONG_ACTIVITY_MIN_CONFIDENCE = 0.65;
 const AUTO_CAMERA_STRONG_ACTIVITY_MIN_EXTENT = 0.07;
 const AUTO_CAMERA_STRONG_ACTIVITY_MIN_HOLD_MS = 3_500;
-const AUTO_CAMERA_STRONG_ACTIVITY_MOVE_MS = 1_700;
-const AUTO_CAMERA_STRONG_ACTIVITY_RETURN_AFTER_MS = 2_600;
-const AUTO_CAMERA_STRONG_ACTIVITY_ZOOM_BOOST = 0.1;
+const AUTO_CAMERA_STRONG_ACTIVITY_RETURN_AFTER_MS = 4_000;
+const AUTO_CAMERA_ACTIVITY_COOLDOWN_MS = 2_500;
+const AUTO_CAMERA_ACTIVITY_MAX_ZOOM = 1.38;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -226,6 +228,120 @@ function clampToBounds(
     x: clamp(point.x, bounds.minX, bounds.maxX),
     y: clamp(point.y, bounds.minY, bounds.maxY),
   };
+}
+
+type CameraMotionRect = {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+};
+
+function rectForMotionPoint(
+  point: Pick<CameraMotionTrackPoint, "x" | "y" | "width" | "height">,
+  fallbackWidth: number,
+  fallbackHeight: number,
+): CameraMotionRect {
+  const width = clamp(finiteOr(point.width, fallbackWidth), 0.02, 0.8);
+  const height = clamp(finiteOr(point.height, fallbackHeight), 0.02, 0.8);
+  return {
+    minX: clamp(point.x - width / 2, 0, 1),
+    maxX: clamp(point.x + width / 2, 0, 1),
+    minY: clamp(point.y - height / 2, 0, 1),
+    maxY: clamp(point.y + height / 2, 0, 1),
+  };
+}
+
+function cropDimensions(
+  bounds: ReturnType<typeof getFeasibleCameraAnchorBounds>,
+): { width: number; height: number } {
+  return {
+    width: clamp(bounds.minX * 2, 0.01, 1),
+    height: clamp(bounds.minY * 2, 0.01, 1),
+  };
+}
+
+/**
+ * Chooses the closest useful activity framing while keeping the face and the
+ * moving region inside the same crop whenever the source geometry allows it.
+ * The old planner blended the two centres, which could place the crop between
+ * both subjects without actually framing either one well.
+ */
+function buildJointActivityComposition(input: {
+  face: Pick<CameraMotionTrackPoint, "x" | "y" | "width" | "height"> & {
+    scale: number;
+  };
+  activity: Pick<CameraMotionTrackPoint, "x" | "y" | "width" | "height">;
+  baseScale: number;
+  outputAspectRatio?: number;
+  sourceAspectRatio: number;
+}): { target: { x: number; y: number }; scale: number; fitsBoth: boolean } {
+  const faceRect = rectForMotionPoint(input.face, 0.1, 0.14);
+  const activityRect = rectForMotionPoint(input.activity, 0.08, 0.08);
+  const union = {
+    minX: clamp(Math.min(faceRect.minX, activityRect.minX) - 0.025, 0, 1),
+    maxX: clamp(Math.max(faceRect.maxX, activityRect.maxX) + 0.025, 0, 1),
+    minY: clamp(Math.min(faceRect.minY, activityRect.minY) - 0.025, 0, 1),
+    maxY: clamp(Math.max(faceRect.maxY, activityRect.maxY) + 0.025, 0, 1),
+  };
+  const desiredScale = clamp(
+    Math.max(input.baseScale + 0.08, input.face.scale + 0.08),
+    1,
+    AUTO_CAMERA_ACTIVITY_MAX_ZOOM,
+  );
+
+  // Prefer the most useful zoom, then gracefully reduce it until both the
+  // presenter and the moving item fit. This creates a real zoom-to-product
+  // shot without trading away the face.
+  for (let step = 0; step <= 20; step += 1) {
+    const scale = Math.max(1, desiredScale - step * 0.02);
+    const bounds = getFeasibleCameraAnchorBounds(
+      input.outputAspectRatio,
+      input.sourceAspectRatio,
+      scale,
+    );
+    const crop = cropDimensions(bounds);
+    const minAnchorX = Math.max(bounds.minX, union.maxX - crop.width / 2);
+    const maxAnchorX = Math.min(bounds.maxX, union.minX + crop.width / 2);
+    const minAnchorY = Math.max(bounds.minY, union.maxY - crop.height / 2);
+    const maxAnchorY = Math.min(bounds.maxY, union.minY + crop.height / 2);
+    if (minAnchorX <= maxAnchorX && minAnchorY <= maxAnchorY) {
+      return {
+        target: {
+          x: clamp(input.activity.x, minAnchorX, maxAnchorX),
+          y: clamp(input.activity.y, minAnchorY, maxAnchorY),
+        },
+        scale,
+        fitsBoth: true,
+      };
+    }
+  }
+
+  // The two regions cannot coexist in one crop at a useful scale. Keep the
+  // movement deterministic and let the strong-activity path make a slow,
+  // intentional reveal instead of producing a large blended jump.
+  const fallbackBounds = getFeasibleCameraAnchorBounds(
+    input.outputAspectRatio,
+    input.sourceAspectRatio,
+    1,
+  );
+  return {
+    target: clampToBounds(input.activity, fallbackBounds),
+    scale: 1,
+    fitsBoth: false,
+  };
+}
+
+function adaptiveCameraMoveDurationMs(
+  from: { x: number; y: number; scale: number },
+  to: { x: number; y: number; scale: number },
+  minMs: number,
+  maxMs: number,
+): number {
+  const positionDistance = Math.hypot(to.x - from.x, to.y - from.y);
+  const zoomDistance = Math.abs(to.scale - from.scale) * 0.75;
+  const travel = Math.max(positionDistance, zoomDistance);
+  return clamp(Math.round(minMs + travel * 9_000), minMs, maxMs);
 }
 
 function activityScoreAt(
@@ -467,6 +583,7 @@ function buildFaceActivityKeyframes(
   let lastActivityEvidenceTimeMs = -1;
   let activityTargetUntilMs = -1;
   let activityTargetIsStrong = false;
+  let activityCooldownUntilMs = -1;
   for (const candidate of candidates.slice(1)) {
     const isFaceTarget =
       candidate.kind === "face" || candidate.kind === "person";
@@ -524,7 +641,12 @@ function buildFaceActivityKeyframes(
       // toward it. The target is always clamped to the range that keeps the
       // current face fully inside the crop, so activity can improve framing
       // without recreating the old right-edge failure.
-      if (input.mode === "face_activity" && activityPoints.length > 0) {
+      const canStartActivityShot =
+        input.mode === "face_activity"
+        && activityPoints.length > 0
+        && activityTargetUntilMs < 0
+        && candidate.timeMs >= activityCooldownUntilMs;
+      if (canStartActivityShot) {
         const activityPoint = [...activityPoints]
           .reverse()
           .find(
@@ -566,42 +688,64 @@ function buildFaceActivityKeyframes(
           (faceIsCentralEnough || (isStrongActivity && faceCanYieldToStrongActivity)) &&
           activityPoint.timeMs > lastActivityEvidenceTimeMs
         ) {
+          const desired = {
+            x: candidate.x * (isStrongActivity ? 0.18 : 0.38) + activityPoint.x * (isStrongActivity ? 0.82 : 0.62),
+            y: candidate.y * (isStrongActivity ? 0.18 : 0.38) + activityPoint.y * (isStrongActivity ? 0.82 : 0.62),
+          };
+          const isAttachedActivity =
+            activityPoint.trackId === "full-scan-attached-motion";
+          const jointComposition = isAttachedActivity
+            ? buildJointActivityComposition({
+              face: candidate,
+              activity: activityPoint,
+              baseScale,
+              outputAspectRatio: input.outputAspectRatio,
+              sourceAspectRatio: sourceAspect,
+            })
+            : null;
           const activityBounds = getFeasibleCameraAnchorBounds(
             input.outputAspectRatio,
             sourceAspect,
             candidate.scale,
           );
-          const desired = {
-            x: candidate.x * (isStrongActivity ? 0.18 : 0.38) + activityPoint.x * (isStrongActivity ? 0.82 : 0.62),
-            y: candidate.y * (isStrongActivity ? 0.18 : 0.38) + activityPoint.y * (isStrongActivity ? 0.82 : 0.62),
-          };
-          const faceSafeTarget = isStrongActivity
-            ? clampToBounds(desired, activityBounds)
-            : clampToBounds(
-              {
-                x: clamp(
-                  desired.x,
-                  candidate.x -
-                    availableHalfX * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
-                  candidate.x +
-                    availableHalfX * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
-                ),
-                y: clamp(
-                  desired.y,
-                  candidate.y -
-                    availableHalfY * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
-                  candidate.y +
-                    availableHalfY * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
-                ),
-              },
-              activityBounds,
-            );
+          const faceSafeTarget = jointComposition
+            ? jointComposition.target
+            : isStrongActivity
+              ? clampToBounds(desired, activityBounds)
+              : clampToBounds(
+                {
+                  x: clamp(
+                    desired.x,
+                    candidate.x -
+                      availableHalfX * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
+                    candidate.x +
+                      availableHalfX * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
+                  ),
+                  y: clamp(
+                    desired.y,
+                    candidate.y -
+                      availableHalfY * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
+                    candidate.y +
+                      availableHalfY * AUTO_CAMERA_ACTIVITY_SAFE_FRACTION,
+                  ),
+                },
+                activityBounds,
+              );
+          // Untagged activity is legacy/project evidence. Preserve its old
+          // strong handoff behavior while new Full Scan evidence uses the
+          // joint face+activity composition above.
+          const activityScale = jointComposition?.scale
+            ?? (isStrongActivity
+              ? Math.min(AUTO_CAMERA_ACTIVITY_MAX_ZOOM, candidate.scale + 0.1)
+              : candidate.scale);
+          const canUseActivityComposition =
+            !jointComposition || jointComposition.fitsBoth || isStrongActivity || isAttachedActivity;
           const activityDelta = Math.hypot(
             faceSafeTarget.x - previous.x,
             faceSafeTarget.y - previous.y,
           );
           lastActivityEvidenceTimeMs = activityPoint.timeMs;
-          if (activityDelta >= 0.025) {
+          if (canUseActivityComposition && activityDelta >= 0.025) {
             const previousActivity: {
               x: number;
               y: number;
@@ -633,12 +777,7 @@ function buildFaceActivityKeyframes(
                 timeMs: activityPoint.timeMs,
                 count: activity.count + 1,
                 strong: isStrongActivity,
-                scale: Math.max(
-                  activity.scale,
-                  isStrongActivity
-                    ? Math.min(1.55, candidate.scale + AUTO_CAMERA_STRONG_ACTIVITY_ZOOM_BOOST)
-                    : candidate.scale,
-                ),
+                scale: Math.max(activity.scale, activityScale),
               };
             } else {
               pendingActivity = {
@@ -647,9 +786,7 @@ function buildFaceActivityKeyframes(
                 timeMs: activityPoint.timeMs,
                 count: 1,
                 strong: isStrongActivity,
-                scale: isStrongActivity
-                  ? Math.min(1.55, candidate.scale + AUTO_CAMERA_STRONG_ACTIVITY_ZOOM_BOOST)
-                  : candidate.scale,
+                scale: activityScale,
               };
             }
             const holdElapsed =
@@ -667,10 +804,15 @@ function buildFaceActivityKeyframes(
               );
               const moveEndTimeMs = Math.min(
                 durationMs,
-                moveStartTimeMs + (
-                  pendingActivity.strong
-                    ? AUTO_CAMERA_STRONG_ACTIVITY_MOVE_MS
-                    : AUTO_CAMERA_ACTIVITY_MOVE_MS
+                moveStartTimeMs + adaptiveCameraMoveDurationMs(
+                  { ...previous, scale: previousScale },
+                  {
+                    x: pendingActivity.x,
+                    y: pendingActivity.y,
+                    scale: pendingActivity.scale,
+                  },
+                  AUTO_CAMERA_ACTIVITY_MIN_MOVE_MS,
+                  AUTO_CAMERA_ACTIVITY_MAX_MOVE_MS,
                 ),
               );
               if (moveEndTimeMs > moveStartTimeMs) {
@@ -689,7 +831,7 @@ function buildFaceActivityKeyframes(
                     pendingActivity.x,
                     pendingActivity.y,
                     pendingActivity.scale,
-                    "linear",
+                    "ease-in-out",
                   ),
                 );
                 previous = { x: pendingActivity.x, y: pendingActivity.y };
@@ -733,7 +875,12 @@ function buildFaceActivityKeyframes(
         );
         const moveEndTimeMs = Math.min(
           durationMs,
-          moveStartTimeMs + AUTO_CAMERA_ACTIVITY_MOVE_MS,
+          moveStartTimeMs + adaptiveCameraMoveDurationMs(
+            { ...previous, scale: previousScale },
+            { ...returnTarget, scale: candidate.scale },
+            AUTO_CAMERA_ACTIVITY_MIN_MOVE_MS,
+            AUTO_CAMERA_ACTIVITY_MAX_MOVE_MS,
+          ),
         );
         if (moveEndTimeMs > moveStartTimeMs) {
           keyframes.push(
@@ -751,7 +898,7 @@ function buildFaceActivityKeyframes(
               returnTarget.x,
               returnTarget.y,
               candidate.scale,
-              "linear",
+              "ease-in-out",
             ),
           );
           previous = returnTarget;
@@ -759,6 +906,7 @@ function buildFaceActivityKeyframes(
           previousMoveTimeMs = moveEndTimeMs;
           activityTargetUntilMs = -1;
           activityTargetIsStrong = false;
+          activityCooldownUntilMs = moveEndTimeMs + AUTO_CAMERA_ACTIVITY_COOLDOWN_MS;
           pendingFaceExit = null;
           continue;
         }
@@ -840,7 +988,12 @@ function buildFaceActivityKeyframes(
       );
       const moveEndTimeMs = Math.min(
         durationMs,
-        moveStartTimeMs + AUTO_CAMERA_FACE_MOVE_MS,
+        moveStartTimeMs + adaptiveCameraMoveDurationMs(
+          { ...previous, scale: previousScale },
+          { ...target, scale: pendingFaceExit.scale },
+          AUTO_CAMERA_FACE_MIN_MOVE_MS,
+          AUTO_CAMERA_FACE_MAX_MOVE_MS,
+        ),
       );
       if (moveEndTimeMs <= moveStartTimeMs) continue;
 
@@ -862,7 +1015,7 @@ function buildFaceActivityKeyframes(
           target.x,
           target.y,
           pendingFaceExit.scale,
-          "linear",
+          "ease-in-out",
         ),
       );
       previous = target;
@@ -916,6 +1069,51 @@ function buildFaceActivityKeyframes(
     keyframes.push(
       autoKeyframe(candidate.timeMs, previous.x, previous.y, candidate.scale),
     );
+  }
+  // A scan may end before another face sample arrives after the activity
+  // hold. Still reserve a slow return segment so the last part of the clip
+  // does not remain parked on the product/background indefinitely.
+  if (activityTargetUntilMs >= 0 && candidates.length > 0 && previousMoveTimeMs < durationMs) {
+    const lastFace = candidates[candidates.length - 1];
+    const returnTarget = clampToBounds(
+      { x: lastFace.x, y: lastFace.y },
+      lastFace.bounds,
+    );
+    const returnDurationMs = adaptiveCameraMoveDurationMs(
+      { ...previous, scale: previousScale },
+      { ...returnTarget, scale: lastFace.scale },
+      AUTO_CAMERA_ACTIVITY_MIN_MOVE_MS,
+      AUTO_CAMERA_ACTIVITY_MAX_MOVE_MS,
+    );
+    const latestStartMs = Math.max(
+      previousMoveTimeMs,
+      durationMs - returnDurationMs,
+    );
+    const returnStartMs = Math.min(
+      latestStartMs,
+      Math.max(previousMoveTimeMs, activityTargetUntilMs),
+    );
+    const returnEndMs = Math.min(durationMs, returnStartMs + returnDurationMs);
+    if (returnEndMs > returnStartMs) {
+      keyframes.push(
+        autoKeyframe(
+          returnStartMs,
+          previous.x,
+          previous.y,
+          previousScale,
+          "ease-in-out",
+        ),
+      );
+      keyframes.push(
+        autoKeyframe(
+          returnEndMs,
+          returnTarget.x,
+          returnTarget.y,
+          lastFace.scale,
+          "ease-in-out",
+        ),
+      );
+    }
   }
   const marked = buildMarkedKeyframes(
     durationMs,

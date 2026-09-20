@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createDesktopReleaseRouter } from "../desktopReleases";
 
@@ -48,11 +48,16 @@ async function invokeJsonRouteAsync(routePath: string, req: any = {}) {
 }
 
 describe("SmartAIHub Companion public releases", () => {
+  it("registers the admin portal-sync retry route for completed GitHub builds", () => {
+    expect(getRouteHandler("/builds/:runId/sync")).toBeTypeOf("function");
+  });
+
   it("registers canonical and legacy latest/download routes", () => {
     expect(getRouteHandler("/companion-extension/latest")).toBeTypeOf("function");
     expect(getRouteHandler("/companion-extension/download")).toBeTypeOf("function");
     expect(getRouteHandler("/marketplace-extension/latest")).toBeTypeOf("function");
     expect(getRouteHandler("/marketplace-extension/download")).toBeTypeOf("function");
+    expect(getRouteHandler("/worker-app/history")).toBeTypeOf("function");
   });
 
   it("selects the highest release across canonical and legacy filenames", () => {
@@ -144,5 +149,76 @@ describe("SmartAIHub Worker App public releases", () => {
     });
 
     expect(payload).toEqual({ error: "worker_app_macos_arm64_required" });
+  });
+
+  it("returns the latest release plus ten older Worker App versions", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-history-test-"));
+    temporaryDirs.push(releaseDir);
+    for (let version = 201; version <= 211; version += 1) {
+      fs.writeFileSync(
+        path.join(releaseDir, `smart-ai-hub-worker-app-0.1.${version}-x64-setup.exe`),
+        `release-${version}`,
+      );
+    }
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/history", {
+      query: { platform: "windows", architecture: "x64" },
+    });
+
+    expect(payload?.latest).toMatchObject({ version: "0.1.211" });
+    expect(payload?.history).toHaveLength(10);
+    expect(payload?.history.map((release: { version: string }) => release.version)).toEqual([
+      "0.1.210",
+      "0.1.209",
+      "0.1.208",
+      "0.1.207",
+      "0.1.206",
+      "0.1.205",
+      "0.1.204",
+      "0.1.203",
+      "0.1.202",
+      "0.1.201",
+    ]);
+    expect(payload?.history[0].downloadUrl).toBe(
+      "/api/desktop-releases/worker-app/download?version=0.1.210",
+    );
+  });
+
+  it("selects an exact Worker App version for download and rejects unknown versions", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-version-download-test-"));
+    temporaryDirs.push(releaseDir);
+    const selectedPath = path.join(releaseDir, "smart-ai-hub-worker-app-0.1.208-x64-setup.exe");
+    fs.writeFileSync(selectedPath, "selected-release");
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.211-x64-setup.exe"), "latest-release");
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const handler = getRouteHandler("/worker-app/download");
+    expect(handler).toBeTypeOf("function");
+    const createReadStreamSpy = vi.spyOn(fs, "createReadStream").mockReturnValue({ pipe: vi.fn() } as any);
+    try {
+      const response = {
+        setHeader: vi.fn(),
+        status: vi.fn(function status() { return response; }),
+        json: vi.fn(function json() { return response; }),
+      };
+
+      await handler?.({ query: { version: "0.1.208", platform: "windows", architecture: "x64" } }, response);
+
+      expect(createReadStreamSpy).toHaveBeenCalledWith(selectedPath);
+      expect(response.status).not.toHaveBeenCalledWith(404);
+
+      const missingResponse = {
+        setHeader: vi.fn(),
+        status: vi.fn(function status() { return missingResponse; }),
+        json: vi.fn(function json() { return missingResponse; }),
+      };
+      await handler?.({ query: { version: "../0.1.999", platform: "windows", architecture: "x64" } }, missingResponse);
+
+      expect(missingResponse.status).toHaveBeenCalledWith(404);
+      expect(missingResponse.json).toHaveBeenCalledWith({ error: "worker_app_release_not_found" });
+    } finally {
+      createReadStreamSpy.mockRestore();
+    }
   });
 });

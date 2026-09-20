@@ -101,6 +101,20 @@ desktop release สามารถแบ่งตาม channel ได้:
 5. เลือกว่าจะเผยแพร่ทันทีหรือไม่
 6. เผยแพร่ ยกเลิกเผยแพร่ รีเฟรช หรือลบ release ตามต้องการ
 
+## สั่ง build จาก GitHub Actions ผ่าน UI
+
+หน้า Admin Desktop Host จะสั่ง workflow แบบ manual และนำ release asset กลับเข้า catalog ของ SmartAIHub อัตโนมัติ โดยไม่ต้องเปิด GitHub ให้ผู้ใช้ทั่วไป
+
+ก่อนสั่ง build ให้ตั้งค่า GitHub ในแผง **ต้นทางรีลีส**:
+
+1. ใน GitHub เปิด repository ที่ใช้ build แล้วไปที่ **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**
+2. ตั้ง **Resource owner** ให้เป็น owner ของ repository และตั้ง **Repository access → Only select repositories** แล้วเลือก repository ที่กรอกใน UI
+3. ใน **Repository permissions** ตั้ง `Actions` เป็น **Read and write** และ `Contents` เป็น **Read-only** แล้วกด **Generate token**
+4. คัดลอก token ทันที แล้ววางในช่อง **GitHub access token** บน SmartAIHub จากนั้นกด **บันทึกการตั้งค่า** และ **ตรวจสอบการเชื่อมต่อ GitHub**
+5. กรอก repository เช่น `naibarn/SmartSpecPro`, workflow `desktop-release.yml`, ref `main` แล้วสั่ง build
+
+สิทธิ์ `Contents: Read-only` จำเป็นเพราะ SmartAIHub ต้องอ่านและดาวน์โหลด release asset หลัง workflow build เสร็จ หากให้เฉพาะ `Actions: write` จะสั่ง build สำเร็จได้ แต่ catalog จะยังไม่มีรายการให้ดาวน์โหลด
+
 ## ขั้นตอนการอัปโหลด
 
 ตอนอัปโหลด release ให้เตรียม:

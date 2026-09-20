@@ -43,6 +43,7 @@ import {
   hasRenderableFaceCameraPlan,
   hasRenderableFaceScanCoverage,
   observedFaceLandmarks,
+  resetMediaPipeDetectorSession,
   selectFallbackFaceCandidate,
   selectFreshOrPreviousCameraPlan,
   selectTrackedFaceCandidate,
@@ -75,6 +76,7 @@ import {
   getNoiseThresholdDb,
   getWaveformThresholdTopPercent,
   normalizeSilenceRanges,
+  shouldCommitLoadedMetadataToSourceTimeline,
   type AudioTrackInfo,
   type DeadAirRenderSelection,
   type WaveformBin,
@@ -493,6 +495,7 @@ export function MediaVideoEditorPlayer({
   const videoFileNameRef = useRef(videoFile?.name);
   const mediaPipeFaceDetectorRef = useRef<MediaPipeFaceDetector | null>(null);
   const mediaPipeFaceDetectorInitRef = useRef<Promise<MediaPipeFaceDetector | null> | null>(null);
+  const mediaPipeDetectorGenerationRef = useRef(0);
   const mediaPipeLastTimestampRef = useRef(-1);
   const faceTrackingConfigRef = useRef<{ aspectRatio: PreviewAspectRatio; scale: number; targetRatio: number | null }>({
     aspectRatio: propsReframe9x16 === false ? "source" : "9:16",
@@ -520,8 +523,20 @@ export function MediaVideoEditorPlayer({
       : faceDetectorStatus === "not_found"
         ? t("ยังไม่พบใบหน้า", "Face not found")
         : faceDetectorStatus === "error"
-          ? t("ตัวตรวจจับขัดข้อง", "Detector error")
-          : t("พร้อมตรวจจับ", "Ready to detect");
+      ? t("ตัวตรวจจับขัดข้อง", "Detector error")
+      : t("พร้อมตรวจจับ", "Ready to detect");
+
+  const resetMediaPipeDetector = useCallback(() => {
+    const nextSession = resetMediaPipeDetectorSession({
+      detector: mediaPipeFaceDetectorRef.current,
+      initPromise: mediaPipeFaceDetectorInitRef.current,
+      lastTimestamp: mediaPipeLastTimestampRef.current,
+    });
+    mediaPipeDetectorGenerationRef.current += 1;
+    mediaPipeFaceDetectorRef.current = nextSession.detector;
+    mediaPipeFaceDetectorInitRef.current = nextSession.initPromise;
+    mediaPipeLastTimestampRef.current = nextSession.lastTimestamp;
+  }, []);
 
   useEffect(() => {
     focusXRef.current = focusX;
@@ -536,11 +551,11 @@ export function MediaVideoEditorPlayer({
     personAnchorRef.current = null;
     trackedFaceCandidateRef.current = null;
     startupPersonLockRef.current = true;
-    mediaPipeLastTimestampRef.current = -1;
+    resetMediaPipeDetector();
     setFaceFrameDiagnostic(null);
     setFaceScanSummary(null);
     if (mediaPipeFaceDetectorRef.current) setFaceDetectorStatus("ready");
-  }, [videoFile?.name, videoFile?.path]);
+  }, [resetMediaPipeDetector, videoFile?.name, videoFile?.path]);
 
   // Apply the detected anchor atomically. Detection resolves asynchronously,
   // so refs keep the tracking source current between React renders.
@@ -597,6 +612,7 @@ export function MediaVideoEditorPlayer({
     if (mediaPipeFaceDetectorInitRef.current) return mediaPipeFaceDetectorInitRef.current;
 
     setFaceDetectorStatus("loading");
+    const detectorGeneration = mediaPipeDetectorGenerationRef.current;
     const initPromise = (async () => {
       const { FaceDetector, FilesetResolver } = await import("@mediapipe/tasks-vision");
       const wasmRoot = "/mediapipe/wasm/";
@@ -623,7 +639,7 @@ export function MediaVideoEditorPlayer({
         });
       }
 
-      if (!mountedRef.current) {
+      if (!mountedRef.current || detectorGeneration !== mediaPipeDetectorGenerationRef.current) {
         detector.close();
         return null;
       }
@@ -852,19 +868,32 @@ export function MediaVideoEditorPlayer({
   // render can be compared with the Full Scan that produced its plan.
   const mediaDebugSessionIdRef = useRef(`media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const mediaDebugLogPathRef = useRef<string | null>(null);
-  const writeMediaDebugEvent = useCallback((event: string, details: Record<string, unknown>) => {
+  const mediaDebugSequenceRef = useRef(0);
+  const mediaDebugWriteQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const activeMediaRenderIdRef = useRef<string | null>(null);
+  const [mediaDebugLogPath, setMediaDebugLogPath] = useState<string | null>(null);
+  const writeMediaDebugEvent = useCallback((event: string, details: Record<string, unknown>, renderId?: string | null) => {
+    const resolvedRenderId = renderId ?? activeMediaRenderIdRef.current;
     const payload = {
       debugSessionId: mediaDebugSessionIdRef.current,
       component: "MediaVideoEditorPlayer",
+      renderId: resolvedRenderId,
+      sequence: ++mediaDebugSequenceRef.current,
       ...details,
     };
-    void invoke<string>("worker_app_append_media_debug_event", { event, details: payload })
-      .then((path) => {
+    const write = async () => {
+      try {
+        const path = await invoke<string>("worker_app_append_media_debug_event", { event, details: payload });
         mediaDebugLogPathRef.current = path;
-      })
-      .catch((error) => {
+        setMediaDebugLogPath(path);
+      } catch (error) {
         console.warn("Media debug event could not be persisted:", error);
-      });
+      }
+    };
+    const next = mediaDebugWriteQueueRef.current.then(write, write);
+    // A failed write must not prevent later events from reaching the file.
+    mediaDebugWriteQueueRef.current = next.then(() => undefined, () => undefined);
+    return next;
   }, []);
 
   // Full Scan and native FFmpeg must receive the exact same source path.
@@ -2438,6 +2467,14 @@ export function MediaVideoEditorPlayer({
     cameraScanStatusRef.current = "scanning";
     setCameraScanStatus("scanning");
     authoritativeCameraPlanRef.current = null;
+    // MediaPipe VIDEO mode stores a monotonic timestamp inside the native
+    // graph. A second Full Scan must not reuse the graph after the video seek
+    // returns to time zero, otherwise the graph rejects lower timestamps and
+    // the UI appears to hang while the old plan is reused.
+    resetMediaPipeDetector();
+    writeMediaDebugEvent("media.full_scan.detector_reset", {
+      reason: "new_full_scan_session",
+    });
     // A new scan is authoritative. Do not leave the previous plan/evidence
     // visible or let a render accidentally reuse it while this pass seeks
     // through the source video.
@@ -2524,9 +2561,13 @@ export function MediaVideoEditorPlayer({
     let scanPreviewFace: TrackedFaceCandidate | null = null;
     let detectedFrames = 0;
     let landmarkFrames = 0;
+    // 64x36 made a hand-held product only a few pixels wide in many 9:16
+    // clips. Keep the scan bounded, but retain enough spatial detail for the
+    // attached-motion clusterer to distinguish the hand/product from nearby
+    // background movement.
     const motionCanvas = document.createElement("canvas");
-    motionCanvas.width = 64;
-    motionCanvas.height = 36;
+    motionCanvas.width = 128;
+    motionCanvas.height = 72;
     let motionContext: CanvasRenderingContext2D | null = null;
     let motionEvidenceAvailable = true;
     try {
@@ -2606,7 +2647,7 @@ export function MediaVideoEditorPlayer({
       // Do not carry a timestamp from an earlier live playback scan into this
       // source-timeline pass. The detector clock must restart at the first
       // decoded frame while remaining monotonic within this scan.
-      mediaPipeLastTimestampRef.current = 0;
+      mediaPipeLastTimestampRef.current = -1;
       let sampleIndex = 0;
       for (const timeMs of scanTimesMs) {
         if (faceFrames.length >= 256) break;
@@ -2909,6 +2950,12 @@ export function MediaVideoEditorPlayer({
         scanStatus: nextScanStatus,
         points: reducedPoints,
         activityIntervals: intervals.slice(0, 256),
+        motionAnalysis: {
+          detector: "attached-pixel-cluster",
+          width: motionCanvas.width,
+          height: motionCanvas.height,
+          sampleCount: motionFrames.length,
+        },
         initialFaceLock: reducedPoints.find((point) => point.kind === "face") ?? null,
         cameraMotionPlan: scannedPlan,
         cameraPlanInitialKeyframe: scannedPlan?.keyframes[0] ?? null,
@@ -2970,7 +3017,7 @@ export function MediaVideoEditorPlayer({
         }
       }
     }
-  }, [activeSourceDimensions, analysisSourcePath, canonicalSourceGeometry, createFullScanCameraPlan, detectPersonCenter, initializeMediaPipeFaceDetector, playbackSilenceSegments, renderSourcePath, t, writeMediaDebugEvent]);
+  }, [activeSourceDimensions, analysisSourcePath, canonicalSourceGeometry, createFullScanCameraPlan, detectPersonCenter, initializeMediaPipeFaceDetector, playbackSilenceSegments, renderSourcePath, resetMediaPipeDetector, t, writeMediaDebugEvent]);
 
   // Every export surface must use the same authoritative evidence pass. The
   // direct FFmpeg button used to refresh this plan, while the Remotion/queue
@@ -3328,6 +3375,7 @@ export function MediaVideoEditorPlayer({
       const dur = videoRef.current.duration;
       const vw = videoRef.current.videoWidth || 1920;
       const vh = videoRef.current.videoHeight || 1080;
+      const commitToSourceTimeline = shouldCommitLoadedMetadataToSourceTimeline(Boolean(overrideVideoSrc));
       setDuration(dur);
       setVideoDimensions({ width: vw, height: vh });
       const loadedSourcePath = analysisSourcePath && !isProjectFilePath(analysisSourcePath)
@@ -3355,8 +3403,9 @@ export function MediaVideoEditorPlayer({
         loadedSourceGeometry: loadedGeometry,
         analysisSourcePath,
         renderSourcePath,
+        isRenderedPreview: Boolean(overrideVideoSrc),
       });
-      if (loadedGeometry) {
+      if (commitToSourceTimeline && loadedGeometry) {
         loadedSourceGeometryRef.current = loadedGeometry;
         setNleProject((previous) => {
           if (!previous) return previous;
@@ -3385,10 +3434,10 @@ export function MediaVideoEditorPlayer({
           };
         });
       }
-      if (trimEnd === 0 || trimEnd > dur) {
+      if (commitToSourceTimeline && (trimEnd === 0 || trimEnd > dur)) {
         setTrimEnd(dur);
       }
-      if (focusMode === "auto_person") {
+      if (commitToSourceTimeline && focusMode === "auto_person") {
         setTimeout(() => detectPersonCenter(true), 200);
       }
     }
@@ -4013,6 +4062,63 @@ export function MediaVideoEditorPlayer({
       ? t("กำลังเตรียม Render ตัด Dead Air…", "Preparing dead-air render…")
       : t("กำลังเตรียม Render…", "Preparing render…"));
 
+    const renderId = `render-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    activeMediaRenderIdRef.current = renderId;
+    const renderStartedAt = new Date().toISOString();
+    const sourceVideo = videoRef.current;
+    writeMediaDebugEvent("media.render.transaction_started", {
+      renderId,
+      startedAt: renderStartedAt,
+      removeDeadAir,
+      sourcePath: renderSourcePath,
+      analysisSourcePath,
+      selectedAnalysisSourcePath: selectedAnalysisSource?.path ?? null,
+      openedFilePath: videoFile?.path ?? null,
+      videoSrc,
+      elementCurrentSrc: sourceVideo?.currentSrc ?? null,
+      overrideVideoSrcActive: Boolean(overrideVideoSrc),
+      elementDurationSec: sourceVideo?.duration ?? 0,
+      elementVideoWidth: sourceVideo?.videoWidth ?? 0,
+      elementVideoHeight: sourceVideo?.videoHeight ?? 0,
+      reactDurationSec: duration,
+      effectiveDurationSec: effectiveDuration,
+      timelineMaxDurationSec,
+      trimStartMs: Math.round(trimStart * 1000),
+      trimEndMs: Math.round(trimEnd * 1000),
+      silenceSegments,
+      silenceCutCount: detectedCutCount,
+      timeSavedMs,
+      activeSourceGeometry,
+      project: nleProject
+        ? {
+          projectId: nleProject.projectId,
+          updatedAt: nleProject.updatedAt,
+          canvas: nleProject.canvas,
+          metadata: {
+            originalSourceVideo: nleProject.metadata?.originalSourceVideo ?? null,
+            sourceGeometry: nleProject.metadata?.sourceGeometry ?? null,
+            deadAirCutFingerprint: nleProject.metadata?.deadAirCutFingerprint ?? null,
+            deadAirCutRanges: nleProject.metadata?.deadAirCutRanges ?? [],
+            deadAirCutCount: nleProject.metadata?.deadAirCutCount ?? 0,
+            timeSavedMs: nleProject.metadata?.timeSavedMs ?? 0,
+            deadAirAudioStreamIndex: nleProject.metadata?.deadAirAudioStreamIndex ?? null,
+          },
+          videoClips: nleProject.tracks
+            .filter((track) => track.type === "video_main" || track.type === "video_broll" || track.id === "track_v1" || track.id === "track_v2")
+            .flatMap((track) => track.clips.map((clip) => ({
+              trackId: track.id,
+              clipId: clip.id,
+              sourcePath: clip.sourcePath ?? null,
+              sourceUrl: clip.sourceUrl ?? null,
+              timelineStartMs: clip.timelineStartMs,
+              durationMs: clip.durationMs,
+              trimInMs: clip.trimInMs ?? null,
+              trimOutMs: clip.trimOutMs ?? null,
+            }))),
+        }
+        : null,
+    }, renderId);
+
     try {
       const { confirm } = await import("@tauri-apps/plugin-dialog");
       if (nleProject) {
@@ -4027,6 +4133,23 @@ export function MediaVideoEditorPlayer({
         }
       }
       await restoreOriginalPreviewSourceForRender();
+      const restoredVideo = videoRef.current;
+      writeMediaDebugEvent("media.render.transaction_after_source_restore", {
+        sourcePath: renderSourcePath,
+        analysisSourcePath,
+        videoSrc,
+        elementCurrentSrc: restoredVideo?.currentSrc ?? null,
+        elementDurationSec: restoredVideo?.duration ?? 0,
+        elementVideoWidth: restoredVideo?.videoWidth ?? 0,
+        elementVideoHeight: restoredVideo?.videoHeight ?? 0,
+        elementCurrentTimeSec: restoredVideo?.currentTime ?? 0,
+        overrideVideoSrcBeforeRestore: Boolean(overrideVideoSrc),
+        sourceRestoredToExpectedPath: Boolean(
+          restoredVideo?.currentSrc
+          && videoSrc
+          && restoredVideo.currentSrc.includes(videoSrc.split("?")[0]),
+        ),
+      }, renderId);
     // Quick tracking is intentionally lightweight, but every Face + Activity
     // render must use a fresh whole-clip scan. Never reuse a completed scan or
     // the currently persisted camera plan: the source, edits, or detector
@@ -4053,7 +4176,59 @@ export function MediaVideoEditorPlayer({
     setProjectStatusMsg(renderCameraMotionPlan
       ? t(`กำลังส่ง Render ด้วยแผน Full Scan (${planKeyframes} จุดกล้อง)…`, `Sending render with the Full Scan camera plan (${planKeyframes} keyframes)…`)
       : t("กำลังส่งคำสั่ง FFmpeg และตัด Dead Air…", "Sending FFmpeg render command…"));
-    writeMediaDebugEvent("media.render.frontend_request", {
+    const renderRequest = {
+      sourcePath: renderSourcePath,
+      trimStartMs: Math.round(trimStart * 1000),
+      trimEndMs: Math.round(trimEnd * 1000),
+      removeDeadAir,
+      aspectRatio,
+      focusMode,
+      focusX,
+      focusY,
+      // Manual crop resizing uses the same scale path as the automated
+      // camera so FFmpeg receives the exact framing shown in the preview.
+      autoPanZoom: aspectRatio !== "source" && (
+        smartDirectorMode !== "off"
+        || manualScale > 1.0
+        || Boolean(renderCameraMotionPlan)
+      ),
+      autoPanZoomMode: smartDirectorMode === "off" ? "manual_region" : smartDirectorMode,
+      autoPanZoomScale: smartDirectorMode === "face_focus"
+        ? 1.18
+        : smartDirectorMode === "product_focus"
+          ? Math.max(1.0, manualScale || 1.18)
+          : Math.max(1.0, manualScale || 1.0),
+      cameraMotionPlan: renderCameraMotionPlan,
+      sourceGeometry: activeSourceGeometry
+        ? {
+          width: activeSourceGeometry.width,
+          height: activeSourceGeometry.height,
+          rotationDegrees: activeSourceGeometry.rotationDegrees,
+        }
+        : activeSourceDimensions.width > 0 && activeSourceDimensions.height > 0
+          ? {
+            width: activeSourceDimensions.width,
+            height: activeSourceDimensions.height,
+            rotationDegrees: 0,
+          }
+          : null,
+      seriesId: seriesId || null,
+      volumeThresholdPct: volumeThreshold,
+      minDurationSec: minDuration,
+      softeningBufferSec: softeningBuffer,
+      audioStreamIndex: selectedAudioStreamIndex,
+      customSilenceSegments: removeDeadAir
+        ? silenceSegments.map((segment) => ({
+          startMs: segment.startMs,
+          endMs: segment.endMs ?? null,
+          isManual: segment.classification === "manual",
+        }))
+        : [],
+      targetWidth: nleProject?.canvas?.width || 1080,
+      targetHeight: nleProject?.canvas?.height || 1920,
+      debugRenderId: renderId,
+    };
+    writeMediaDebugEvent("media.render.transaction_state_before_request", {
       sourcePath: renderSourcePath,
       analysisSourcePath,
       elementCurrentSrc: videoRef.current?.currentSrc ?? null,
@@ -4073,65 +4248,40 @@ export function MediaVideoEditorPlayer({
       cameraAnalysisMode,
       cameraScanStatus,
       cameraScanSummary: faceScanSummary,
-      customSilenceSegments: removeDeadAir ? silenceSegments : [],
+      customSilenceSegments: renderRequest.customSilenceSegments,
+      renderRequest,
+      planSummary: renderCameraMotionPlan
+        ? {
+          durationMs: renderCameraMotionPlan.durationMs,
+          keyframes: renderCameraMotionPlan.keyframes.length,
+          firstKeyframe: renderCameraMotionPlan.keyframes[0] ?? null,
+          lastKeyframe: renderCameraMotionPlan.keyframes[renderCameraMotionPlan.keyframes.length - 1] ?? null,
+          analysisMode: renderCameraMotionPlan.analysisMode ?? null,
+          evidence: renderCameraMotionPlan.evidence ?? null,
+        }
+        : null,
+      projectTimeline: nleProject
+        ? {
+          canvasDurationMs: nleProject.canvas.durationMs,
+          timelineMaxDurationSec,
+          deadAirCutRanges: nleProject.metadata?.deadAirCutRanges ?? [],
+          videoClipCount: nleProject.tracks
+            .filter((track) => track.type === "video_main" || track.type === "video_broll" || track.id === "track_v1" || track.id === "track_v2")
+            .reduce((count, track) => count + track.clips.length, 0),
+        }
+        : null,
     });
     const res = await invoke<InteractiveProcessResult>("worker_app_process_media_interactive", {
-        request: {
-          sourcePath: renderSourcePath,
-          trimStartMs: Math.round(trimStart * 1000),
-          trimEndMs: Math.round(trimEnd * 1000),
-          removeDeadAir,
-          aspectRatio,
-          focusMode,
-          focusX,
-          focusY,
-          // Manual crop resizing uses the same scale path as the automated
-          // camera so FFmpeg receives the exact framing shown in the preview.
-          autoPanZoom: aspectRatio !== "source" && (
-            smartDirectorMode !== "off"
-            || manualScale > 1.0
-            || Boolean(renderCameraMotionPlan)
-          ),
-          autoPanZoomMode: smartDirectorMode === "off" ? "manual_region" : smartDirectorMode,
-          autoPanZoomScale: smartDirectorMode === "face_focus"
-            ? 1.18
-            : smartDirectorMode === "product_focus"
-              ? Math.max(1.0, manualScale || 1.18)
-              : Math.max(1.0, manualScale || 1.0),
-          cameraMotionPlan: renderCameraMotionPlan,
-          sourceGeometry: activeSourceGeometry
-            ? {
-              width: activeSourceGeometry.width,
-              height: activeSourceGeometry.height,
-              rotationDegrees: activeSourceGeometry.rotationDegrees,
-            }
-            : activeSourceDimensions.width > 0 && activeSourceDimensions.height > 0
-              ? {
-                width: activeSourceDimensions.width,
-                height: activeSourceDimensions.height,
-                rotationDegrees: 0,
-              }
-              : null,
-          seriesId: seriesId || null,
-          volumeThresholdPct: volumeThreshold,
-          minDurationSec: minDuration,
-          softeningBufferSec: softeningBuffer,
-          audioStreamIndex: selectedAudioStreamIndex,
-          customSilenceSegments: removeDeadAir
-            ? silenceSegments.map((segment) => ({
-              startMs: segment.startMs,
-              endMs: segment.endMs ?? null,
-              isManual: segment.classification === "manual",
-            }))
-            : [],
-          targetWidth: nleProject?.canvas?.width || 1080,
-          targetHeight: nleProject?.canvas?.height || 1920,
-        },
-      });
+      request: renderRequest,
+    });
       writeMediaDebugEvent("media.render.frontend_completed", {
         sourcePath: renderSourcePath,
         result: res,
         cameraMotionPlan: renderCameraMotionPlan,
+        outputPath: res.outputPath,
+        outputDurationMs: res.durationMs,
+        outputDimensions: { width: res.width, height: res.height },
+        nativeDebugLogPath: res.mediaDebugLogPath ?? null,
       });
       setProcessResult(res);
       setIsRenderPanelCollapsed(false);
@@ -4185,6 +4335,13 @@ export function MediaVideoEditorPlayer({
           : errorText,
       );
     } finally {
+      writeMediaDebugEvent("media.render.transaction_finished", {
+        sourcePath: renderSourcePath,
+        finishedAt: new Date().toISOString(),
+        elapsedMs: Date.now() - Date.parse(renderStartedAt),
+        processResultAvailable: Boolean(processResult),
+      }, renderId);
+      if (activeMediaRenderIdRef.current === renderId) activeMediaRenderIdRef.current = null;
       setIsProcessing(false);
     }
   };
@@ -4219,6 +4376,18 @@ export function MediaVideoEditorPlayer({
       await invoke("worker_app_reveal_file", { path: processResult.outputPath });
     } catch (e) {
       console.warn("Open folder error:", e);
+    }
+  };
+
+  const handleCopyMediaDebugPath = async (path?: string | null) => {
+    const debugPath = path || mediaDebugLogPath;
+    if (!debugPath) return;
+    try {
+      await navigator.clipboard?.writeText(debugPath);
+      setProjectStatusMsg(`📋 คัดลอกตำแหน่ง Debug log แล้ว: ${debugPath}`);
+    } catch (error) {
+      console.warn("Copy media debug path failed:", error);
+      setProjectStatusMsg(`🔎 Debug log: ${debugPath}`);
     }
   };
 
@@ -7252,6 +7421,17 @@ export function MediaVideoEditorPlayer({
                     📂 เปิดโฟลเดอร์ไฟล์ (Open Folder)
                   </button>
 
+                  {(processResult.mediaDebugLogPath || mediaDebugLogPath) && (
+                    <button
+                      type="button"
+                      className="render-action-btn"
+                      onClick={() => void handleCopyMediaDebugPath(processResult.mediaDebugLogPath || mediaDebugLogPath)}
+                      title="คัดลอกตำแหน่งไฟล์ Debug JSONL เพื่อส่งให้ทีมแก้ปัญหา"
+                    >
+                      📋 คัดลอกตำแหน่ง Debug log
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     className="render-action-btn btn-play-result"
@@ -7281,6 +7461,18 @@ export function MediaVideoEditorPlayer({
       {processError && (
         <div className="status-notification error">
           <span>⚠️ {processError}</span>
+        </div>
+      )}
+      {mediaDebugLogPath && (
+        <div className="status-notification" style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+          <span>🔎 Debug render log: <strong>{mediaDebugLogPath}</strong></span>
+          <button
+            type="button"
+            onClick={() => void handleCopyMediaDebugPath(mediaDebugLogPath)}
+            style={{ cursor: "pointer" }}
+          >
+            📋 คัดลอก path
+          </button>
         </div>
       )}
       {uploadError && (
@@ -7718,6 +7910,17 @@ export function MediaVideoEditorPlayer({
                     >
                       📂 เปิดโฟลเดอร์ไฟล์ (Open Folder)
                     </button>
+
+                    {(processResult.mediaDebugLogPath || mediaDebugLogPath) && (
+                      <button
+                        type="button"
+                        className="render-action-btn"
+                        onClick={() => void handleCopyMediaDebugPath(processResult.mediaDebugLogPath || mediaDebugLogPath)}
+                        title="คัดลอกตำแหน่งไฟล์ Debug JSONL เพื่อส่งให้ทีมแก้ปัญหา"
+                      >
+                        📋 คัดลอกตำแหน่ง Debug log
+                      </button>
+                    )}
 
                     <button
                       type="button"

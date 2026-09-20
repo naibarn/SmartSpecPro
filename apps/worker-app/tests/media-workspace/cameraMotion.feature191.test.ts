@@ -236,10 +236,11 @@ describe("Feature 191 Face + Activity camera planner", () => {
       ],
     });
 
-    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0, 20_000, 21_800]);
+    expect(plan.keyframes.map((frame) => frame.timeMs)).toEqual([0, 20_000, 24_800]);
     expect(evaluateCameraMotionPlan(plan, 19_999).x).toBeCloseTo(0.5, 3);
     expect(evaluateCameraMotionPlan(plan, 20_900).x).toBeGreaterThan(0.5);
-    expect(evaluateCameraMotionPlan(plan, 22_000).x).toBeCloseTo(0.7, 2);
+    expect(evaluateCameraMotionPlan(plan, 22_000).x).toBeGreaterThan(0.5);
+    expect(evaluateCameraMotionPlan(plan, 22_000).x).toBeLessThan(0.7);
   });
 
   it("keeps a full-minute shot static while the same person remains safely framed", () => {
@@ -288,6 +289,57 @@ describe("Feature 191 Face + Activity camera planner", () => {
     expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeLessThan(0.6);
   });
 
+  it("uses a multi-second eased move for attached activity instead of a snap", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 24_000,
+      focusX: 0.5,
+      focusY: 0.48,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 5_000, x: 0.78, y: 0.63, confidence: 0.9, kind: "activity", width: 0.12, height: 0.12, trackId: "full-scan-attached-motion" },
+        { timeMs: 8_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.1, height: 0.14 },
+        { timeMs: 8_000, x: 0.82, y: 0.65, confidence: 0.92, kind: "activity", width: 0.12, height: 0.12, trackId: "full-scan-attached-motion" },
+      ],
+    });
+
+    const moveStart = plan.keyframes.find((frame) => frame.timeMs === 8_000);
+    const moveEnd = plan.keyframes.find((frame) => frame.timeMs > 8_000 && frame.x > 0.55);
+    expect(moveStart?.easing).toBe("ease-in-out");
+    expect(moveEnd).toBeDefined();
+    expect(moveEnd!.timeMs - moveStart!.timeMs).toBeGreaterThanOrEqual(2_800);
+    expect(moveEnd!.easing).toBe("ease-in-out");
+    expect(evaluateCameraMotionPlan(plan, moveStart!.timeMs + 900).x).toBeLessThan(moveEnd!.x);
+  });
+
+  it("keeps the face and nearby activity jointly framed while zooming toward the activity", () => {
+    const plan = createCameraMotionPlan({
+      mode: "face_activity",
+      durationMs: 16_000,
+      focusX: 0.5,
+      focusY: 0.48,
+      outputAspectRatio: 9 / 16,
+      sourceAspectRatio: 16 / 9,
+      analysisMode: "full_scan",
+      trackPoints: [
+        { timeMs: 0, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.12, height: 0.16 },
+        { timeMs: 5_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.12, height: 0.16 },
+        { timeMs: 5_000, x: 0.59, y: 0.56, confidence: 0.9, kind: "activity", width: 0.06, height: 0.08, trackId: "full-scan-attached-motion" },
+        { timeMs: 8_000, x: 0.5, y: 0.48, confidence: 0.96, kind: "face", width: 0.12, height: 0.16 },
+        { timeMs: 8_000, x: 0.62, y: 0.58, confidence: 0.92, kind: "activity", width: 0.06, height: 0.08, trackId: "full-scan-attached-motion" },
+      ],
+    });
+
+    const activityFrame = plan.keyframes.find((frame) => frame.timeMs > 8_000 && frame.scale > 1.2);
+    expect(activityFrame).toBeDefined();
+    expect(activityFrame!.x).toBeLessThan(0.65);
+    expect(activityFrame!.scale).toBeGreaterThan(1.2);
+  });
+
   it("allows confirmed distant activity to take focus briefly, then returns to the face", () => {
     const plan = createCameraMotionPlan({
       mode: "face_activity",
@@ -309,8 +361,9 @@ describe("Feature 191 Face + Activity camera planner", () => {
     });
 
     expect(plan.keyframes.some((frame) => frame.x > 0.7 && frame.scale > 1.2)).toBe(true);
-    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeGreaterThan(0.65);
-    expect(evaluateCameraMotionPlan(plan, 13_500).x).toBeLessThan(0.58);
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeGreaterThan(0.5);
+    expect(evaluateCameraMotionPlan(plan, 7_800).x).toBeLessThan(0.8);
+    expect(evaluateCameraMotionPlan(plan, 15_500).x).toBeLessThan(0.65);
   });
 
   it("keeps global pixel motion face-safe instead of treating it as a distant subject", () => {
@@ -354,8 +407,8 @@ describe("Feature 191 Face + Activity camera planner", () => {
       ],
     });
 
-    expect(plan.keyframes.some((frame) => frame.timeMs === 11_000)).toBe(true);
-    expect(evaluateCameraMotionPlan(plan, 12_800).x).toBeGreaterThan(0.6);
+    expect(plan.keyframes.some((frame) => frame.timeMs >= 13_000)).toBe(true);
+    expect(evaluateCameraMotionPlan(plan, 14_500).x).toBeGreaterThan(0.6);
   });
 
   it("does not chase activity when the verified face is already near a horizontal edge", () => {

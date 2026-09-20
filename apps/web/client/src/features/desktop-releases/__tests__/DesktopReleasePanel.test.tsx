@@ -507,6 +507,88 @@ describe("DesktopReleasePanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps Worker App version history collapsed and downloads a selected older version", async () => {
+    const history = Array.from({ length: 10 }, (_, index) => {
+      const version = `0.1.${210 - index}`;
+      return {
+        version,
+        fileName: `smart-ai-hub-worker-app-${version}-x64-setup.exe`,
+        fileSizeBytes: 2_000_000 + index,
+        updatedAt: `2026-04-${String(10 - index).padStart(2, "0")}T10:00:00.000Z`,
+        downloadUrl: `/api/desktop-releases/worker-app/download?version=${version}`,
+        installerFormat: "exe",
+        platform: "windows",
+        architecture: "x64",
+      };
+    });
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/companion-extension/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href === "/api/desktop-releases/worker-app/latest") {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          release: {
+            version: "0.1.211",
+            fileName: "smart-ai-hub-worker-app-0.1.211-x64-setup.exe",
+            fileSizeBytes: 2_100_000,
+            updatedAt: "2026-04-10T10:00:00.000Z",
+            downloadUrl: "/api/desktop-releases/worker-app/download",
+            installerFormat: "exe",
+            platform: "windows",
+            architecture: "x64",
+          },
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/history")) {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          latest: null,
+          history,
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest?platform=macos&architecture=arm64")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/worker-app/macos-source/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/api/workers/runtime-pack/manifest")) {
+        return new Response(JSON.stringify({ runtimeId: "hyperframes-macos-arm64", version: "0.0.0", allowed: false }), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    const historyTrigger = await screen.findByRole("button", {
+      name: /dashboard:desktopReleases\.workerApp\.history\.title/,
+    });
+    expect(historyTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/desktop-releases/worker-app/history?platform=windows&architecture=x64",
+      expect.anything(),
+    );
+
+    fireEvent.click(historyTrigger);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/desktop-releases/worker-app/history?platform=windows&architecture=x64",
+      expect.objectContaining({ credentials: "include" }),
+    ));
+    expect(await screen.findByText(/smart-ai-hub-worker-app-0\.1\.210-x64-setup\.exe/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", {
+      name: /dashboard:desktopReleases\.workerApp\.history\.download/,
+    })).toHaveLength(10);
+    expect(
+      screen.getAllByRole("link", {
+        name: /dashboard:desktopReleases\.workerApp\.history\.download/,
+      }).find((link) => link.getAttribute("href")?.includes("version=0.1.210")),
+    ).toHaveAttribute("href", "/api/desktop-releases/worker-app/download?version=0.1.210");
+  });
+
   it("shows the native macOS Worker App installer separately from the source bundle", async () => {
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);

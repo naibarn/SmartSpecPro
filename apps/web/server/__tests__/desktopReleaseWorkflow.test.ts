@@ -34,4 +34,13 @@ describe("desktop release workflow build contract", () => {
 
     expect(buildScript).toContain('process.platform === "win32" ? "npx.cmd" : "npx"');
   });
+
+  it("publishes the GitHub release so the portal can sync without draft-only visibility", () => {
+    const workflow = readFileSync(
+      fileURLToPath(new URL("../../../../.github/workflows/desktop-release.yml", import.meta.url)),
+      "utf8",
+    );
+
+    expect(workflow).toContain("releaseDraft: false");
+  });
 });

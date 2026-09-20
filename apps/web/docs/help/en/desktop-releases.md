@@ -102,6 +102,20 @@ Typical admin tasks:
 5. Decide whether to publish immediately.
 6. Publish, unpublish, refresh, or delete releases as needed.
 
+## Trigger a build from the UI
+
+Admin Desktop Host dispatches the workflow manually and imports the release assets into the SmartAIHub catalog. End users do not need to open GitHub or know the repository.
+
+Before triggering a build, configure GitHub in the **Release source** panel:
+
+1. In GitHub, open the build repository and go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. Set the **Resource owner**, choose **Repository access → Only select repositories**, and select the repository entered in SmartAIHub.
+3. Under **Repository permissions**, set `Actions` to **Read and write** and `Contents` to **Read-only**, then click **Generate token**.
+4. Copy the token immediately, paste it into **GitHub access token** in SmartAIHub, then click **Save configuration** and **Test GitHub connection**.
+5. Enter the repository such as `naibarn/SmartSpecPro`, workflow `desktop-release.yml`, and ref `main`, then queue the build.
+
+`Contents: Read-only` is required because SmartAIHub reads and downloads the release assets after the workflow finishes. A token with only `Actions: write` can queue a successful build, but the portal catalog will remain empty.
+
 ## Upload workflow
 
 When uploading a release, provide:

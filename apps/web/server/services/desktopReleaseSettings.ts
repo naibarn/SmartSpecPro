@@ -369,6 +369,10 @@ export async function validateDesktopReleaseGithubAccess(input: {
     `${apiBase}/actions/workflows/${encodeURIComponent(workflow)}`,
     { headers },
   ));
+  await assertGithubResponse(await fetch(
+    `${apiBase}/releases?per_page=1`,
+    { headers },
+  ));
 
   return { repository, workflow };
 }

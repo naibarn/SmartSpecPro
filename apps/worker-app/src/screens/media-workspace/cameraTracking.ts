@@ -5,6 +5,33 @@ export type NormalizedCameraPoint = {
   y: number;
 };
 
+export type MediaPipeDetectorSession<TDetector extends { close?: () => void }> = {
+  detector: TDetector | null;
+  initPromise: Promise<TDetector | null> | null;
+  lastTimestamp: number;
+};
+
+/**
+ * MediaPipe's VIDEO graph keeps its own timestamp state. Resetting only the
+ * caller's timestamp counter is not enough for a second full scan: the next
+ * frame can be lower than the graph's previous timestamp and the graph then
+ * rejects the scan. Always close the graph and start a fresh session.
+ */
+export function resetMediaPipeDetectorSession<TDetector extends { close?: () => void }>(
+  session: MediaPipeDetectorSession<TDetector>,
+): MediaPipeDetectorSession<TDetector> {
+  try {
+    session.detector?.close?.();
+  } catch {
+    // A stale detector must not prevent the next scan from creating a fresh one.
+  }
+  return {
+    detector: null,
+    initPromise: null,
+    lastTimestamp: -1,
+  };
+}
+
 // BlazeFace provides six observed keypoints (eyes, nose, mouth and ears).
 // A box without at least five real, normalized points is not sufficient
 // evidence for an automatic Face + Activity camera plan. Do not require a
@@ -405,10 +432,14 @@ export function buildDominantFaceTrack(
     // Prefer detector confidence first, then temporal persistence; keep area
     // as a bounded tie-breaker so long-shot presenters remain eligible.
     const score = (entry: typeof left) => (
-      entry.confidence * 0.45
-      + entry.coverage * 0.25
-      + entry.span * 0.15
-      + Math.min(1, entry.medianArea * 35) * 0.15
+      // A real presenter can be smaller and visible for a shorter part of a
+      // clip than a printed/background face. Detector confidence is the
+      // strongest semantic signal; persistence and area only break ties after
+      // the confidence signal has identified the likely presenter.
+      entry.confidence * 0.75
+      + entry.coverage * 0.08
+      + entry.span * 0.04
+      + Math.min(1, entry.medianArea * 35) * 0.13
     );
     return score(right) - score(left);
   });
@@ -467,14 +498,10 @@ export function detectAttachedMotionPoint(
   const faceMaxX = (face.x + Math.max(face.width * 1.45, 0.045)) * width;
   const faceMinY = (face.y - Math.max(face.height * 1.55, 0.065)) * height;
   const faceMaxY = (face.y + Math.max(face.height * 1.55, 0.065)) * height;
-  let weightedX = 0;
-  let weightedY = 0;
-  let totalWeight = 0;
-  let changedPixels = 0;
-  let minX = width;
-  let maxX = -1;
-  let minY = height;
-  let maxY = -1;
+  const gridWidth = 8;
+  const gridHeight = 6;
+  const gridWeights = new Float64Array(gridWidth * gridHeight);
+  const changedSamples: Array<{ x: number; y: number; weight: number; gridIndex: number }> = [];
   for (let y = roiMinY; y <= roiMaxY; y += 1) {
     for (let x = roiMinX; x <= roiMaxX; x += 1) {
       if (x >= faceMinX && x <= faceMaxX && y >= faceMinY && y <= faceMaxY) continue;
@@ -488,15 +515,47 @@ export function detectAttachedMotionPoint(
       const difference = Math.abs(currentLuma - previousLuma);
       if (difference < 18) continue;
       const weight = difference - 17;
-      weightedX += x * weight;
-      weightedY += y * weight;
-      totalWeight += weight;
-      changedPixels += 1;
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
+      const gridX = Math.min(gridWidth - 1, Math.floor((x / width) * gridWidth));
+      const gridY = Math.min(gridHeight - 1, Math.floor((y / height) * gridHeight));
+      const gridIndex = gridY * gridWidth + gridX;
+      changedSamples.push({ x, y, weight, gridIndex });
+      gridWeights[gridIndex] += weight;
     }
+  }
+  if (changedSamples.length < 6) return null;
+  let strongestGridIndex = 0;
+  for (let index = 1; index < gridWeights.length; index += 1) {
+    if (gridWeights[index] > gridWeights[strongestGridIndex]) strongestGridIndex = index;
+  }
+  const strongestGridX = strongestGridIndex % gridWidth;
+  const strongestGridY = Math.floor(strongestGridIndex / gridWidth);
+  const selectedGridCells = new Set<number>();
+  for (let gridY = Math.max(0, strongestGridY - 1); gridY <= Math.min(gridHeight - 1, strongestGridY + 1); gridY += 1) {
+    for (let gridX = Math.max(0, strongestGridX - 1); gridX <= Math.min(gridWidth - 1, strongestGridX + 1); gridX += 1) {
+      const gridIndex = gridY * gridWidth + gridX;
+      if (gridWeights[gridIndex] >= gridWeights[strongestGridIndex] * 0.18) {
+        selectedGridCells.add(gridIndex);
+      }
+    }
+  }
+  let weightedX = 0;
+  let weightedY = 0;
+  let totalWeight = 0;
+  let changedPixels = 0;
+  let minX = width;
+  let maxX = -1;
+  let minY = height;
+  let maxY = -1;
+  for (const sample of changedSamples) {
+    if (!selectedGridCells.has(sample.gridIndex)) continue;
+    weightedX += sample.x * sample.weight;
+    weightedY += sample.y * sample.weight;
+    totalWeight += sample.weight;
+    changedPixels += 1;
+    minX = Math.min(minX, sample.x);
+    maxX = Math.max(maxX, sample.x);
+    minY = Math.min(minY, sample.y);
+    maxY = Math.max(maxY, sample.y);
   }
   if (changedPixels < 6 || totalWeight < 280) return null;
   const confidence = Math.max(

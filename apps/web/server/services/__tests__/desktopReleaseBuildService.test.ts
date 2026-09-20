@@ -66,6 +66,7 @@ import {
   fetchGithubRelease,
   getDesktopReleaseBuildRunStatus,
   listDesktopReleaseBuildHistory,
+  syncDesktopReleasePortalNow,
   suggestDesktopReleaseBuildVersion,
 } from "../desktopReleaseBuildService";
 
@@ -244,7 +245,7 @@ describe("desktopReleaseBuildService", () => {
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
 
-      if (href.includes("/releases/tags/v0.1.3")) {
+      if (href.includes("/releases/tags/v0.1.3") || href.includes("/releases/tags/0.1.3")) {
         return new Response(JSON.stringify({ message: "Not Found" }), {
           status: 404,
           headers: {
@@ -287,6 +288,163 @@ describe("desktopReleaseBuildService", () => {
         draft: true,
       }),
     );
+  });
+
+  it("synchronously imports the completed GitHub installer into the portal catalog", async () => {
+    systemSettingsRows.push({
+      id: 12,
+      category: "desktop_release",
+      key: "build_job:456",
+      valueJson: {
+        workflowRunId: "456",
+        repository: "naibarn/SmartSpecPro",
+        workflow: "desktop-release.yml",
+        ref: "main",
+        queuedAt: "2026-09-18T17:00:00.000Z",
+        workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/456",
+        workflowRunStatus: "completed",
+        workflowRunConclusion: "success",
+        workflowRunUpdatedAt: "2026-09-18T17:14:00.000Z",
+        version: "0.1.5",
+        platform: "windows",
+        bundleMode: "on-demand",
+        releaseNotes: "Installer sync",
+        requestedByUserId: 1,
+        uploadedPlatforms: [],
+        portalSyncStatus: "idle",
+        portalSyncUpdatedAt: null,
+        portalSyncError: null,
+        portalSyncAttempts: null,
+      },
+      isSensitive: false,
+      updatedAt: new Date("2026-09-18T17:14:00.000Z"),
+    });
+    persistDesktopReleaseUploadMock.mockResolvedValue({ id: 99 });
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/releases/tags/v0.1.5") || href.includes("/releases/tags/0.1.5")) {
+        return new Response(JSON.stringify({ message: "Not Found" }), { status: 404 });
+      }
+      if (href.includes("/releases?per_page=50")) {
+        return new Response(JSON.stringify([{
+          id: 999,
+          tag_name: "v0.1.5",
+          html_url: "https://github.com/naibarn/SmartSpecPro/releases/tag/v0.1.5",
+          draft: true,
+          prerelease: false,
+          body: "Installer sync",
+          assets: [{
+            id: 1000,
+            name: "SmartAIHub.Desktop_0.1.5_x64-setup.exe",
+            content_type: "application/octet-stream",
+            browser_download_url: "https://github.com/naibarn/SmartSpecPro/releases/download/v0.1.5/installer.exe",
+            url: "https://api.github.com/repos/naibarn/SmartSpecPro/releases/assets/1000",
+            size: 7,
+          }],
+        }]), { status: 200 });
+      }
+      if (href.includes("/releases/assets/1000")) {
+        return new Response(Buffer.from("installer"), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    await expect(syncDesktopReleasePortalNow("456")).resolves.toMatchObject({
+      status: "completed",
+      lastError: null,
+    });
+    expect(persistDesktopReleaseUploadMock).toHaveBeenCalledWith(expect.objectContaining({
+      version: "0.1.5",
+      platform: "windows",
+      fileName: "SmartAIHub.Desktop_0.1.5_x64-setup.exe",
+      publish: true,
+    }));
+  });
+
+  it("selects the target-platform installer when GitHub uses an unprefixed release tag", async () => {
+    systemSettingsRows.push({
+      id: 13,
+      category: "desktop_release",
+      key: "build_job:457",
+      valueJson: {
+        workflowRunId: "457",
+        repository: "naibarn/SmartSpecPro",
+        workflow: "desktop-release.yml",
+        ref: "main",
+        queuedAt: "2026-09-18T17:00:00.000Z",
+        workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/457",
+        workflowRunStatus: "completed",
+        workflowRunConclusion: "success",
+        workflowRunUpdatedAt: "2026-09-18T17:14:00.000Z",
+        version: "0.1.6",
+        platform: "windows",
+        bundleMode: "on-demand",
+        releaseNotes: "Unprefixed release tag",
+        requestedByUserId: 1,
+        uploadedPlatforms: [],
+        portalSyncStatus: "idle",
+        portalSyncUpdatedAt: null,
+        portalSyncError: null,
+        portalSyncAttempts: null,
+      },
+      isSensitive: false,
+      updatedAt: new Date("2026-09-18T17:14:00.000Z"),
+    });
+    persistDesktopReleaseUploadMock.mockResolvedValue({ id: 100 });
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/releases/tags/v0.1.6") || href.includes("/releases/tags/0.1.6")) {
+        return new Response(JSON.stringify({ message: "Not Found" }), { status: 404 });
+      }
+      if (href.includes("/releases?per_page=50")) {
+        return new Response(JSON.stringify([
+          {
+            id: 1001,
+            tag_name: "v0.1.6",
+            html_url: "https://github.com/naibarn/SmartSpecPro/releases/tag/v0.1.6",
+            draft: true,
+            prerelease: false,
+            body: "Old release without the Windows installer",
+            created_at: "2026-09-18T17:00:00.000Z",
+            updated_at: "2026-09-18T17:15:00.000Z",
+            assets: [],
+          },
+          {
+            id: 1002,
+            tag_name: "0.1.6",
+            html_url: "https://github.com/naibarn/SmartSpecPro/releases/tag/0.1.6",
+            draft: true,
+            prerelease: false,
+            body: "Fresh Windows installer",
+            created_at: "2026-09-18T17:10:00.000Z",
+            updated_at: "2026-09-18T17:14:30.000Z",
+            assets: [{
+              id: 1600,
+              name: "SmartAIHub.Desktop_0.1.6_x64-setup.exe",
+              content_type: "application/octet-stream",
+              browser_download_url: "https://github.com/naibarn/SmartSpecPro/releases/download/0.1.6/installer.exe",
+              url: "https://api.github.com/repos/naibarn/SmartSpecPro/releases/assets/1600",
+              size: 7,
+            }],
+          },
+        ]), { status: 200 });
+      }
+      if (href.includes("/releases/assets/1600")) {
+        return new Response(Buffer.from("installer"), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    await expect(syncDesktopReleasePortalNow("457")).resolves.toMatchObject({
+      status: "completed",
+      lastError: null,
+    });
+    expect(persistDesktopReleaseUploadMock).toHaveBeenCalledWith(expect.objectContaining({
+      version: "0.1.6",
+      platform: "windows",
+      fileName: "SmartAIHub.Desktop_0.1.6_x64-setup.exe",
+      publish: true,
+    }));
   });
 
   it("resets portal sync state back to idle while the workflow is still running", async () => {

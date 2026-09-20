@@ -19,6 +19,7 @@ const checkRuntime = args.has("--check-runtime");
 const skipBuild = args.has("--skip-build");
 const skipFrontendTypecheck = args.has("--skip-frontend-typecheck");
 const allowPlaceholderRuntime = args.has("--allow-placeholder-runtime");
+const canBundleWindowsContentProtection = process.platform === "win32";
 
 function argValue(flag) {
   const index = process.argv.indexOf(flag);
@@ -325,6 +326,14 @@ writeJson(tauriConfigPath, tauriConfig);
 updateCargoVersion(nextVersion);
 
 run("npm", ["run", "runtime:pack"]);
+if (canBundleWindowsContentProtection) {
+  run("npm", ["run", "content-protection:pack"]);
+} else {
+  // The provider is a native PyInstaller executable. A Linux cross-build
+  // must not embed a Linux ELF provider in a Windows installer, and the
+  // resulting resource set is large enough to exceed NSIS mmap limits.
+  console.log("[worker-app] cross-build host is not Windows; omitting native Windows content-protection resources.");
+}
 assertReleaseRuntimePack();
 
 if (!skipBuild) {
@@ -341,11 +350,19 @@ if (!skipBuild) {
     // The standard `build` script runs `tsc --noEmit` before Vite. Keep the
     // release path usable on constrained build hosts by asking Tauri to run
     // Vite directly while retaining the same frontendDist output.
-    tauriBuildArgs.push(
-      "--config",
-      JSON.stringify({ build: { beforeBuildCommand: "npm exec vite -- build" } }),
-    );
     console.log("[worker-app] frontend typecheck skipped; Tauri will run Vite directly.");
+  }
+  const buildConfig = {};
+  if (skipFrontendTypecheck) {
+    buildConfig.build = { beforeBuildCommand: "npm exec vite -- build" };
+  }
+  if (!canBundleWindowsContentProtection) {
+    // tauri.conf.json contains the native resource for Windows-host builds.
+    // An array override replaces that object during a Linux cross-build.
+    buildConfig.bundle = { resources: [] };
+  }
+  if (Object.keys(buildConfig).length > 0) {
+    tauriBuildArgs.push("--config", JSON.stringify(buildConfig));
   }
   run("npm", tauriBuildArgs);
 }

@@ -34,7 +34,7 @@ describe("desktopReleaseSettings GitHub access", () => {
     expect(normalizeGithubToken('  Bearer "github_pat_test"  ')).toBe("github_pat_test");
   });
 
-  it("checks both repository and workflow access without returning the token", async () => {
+  it("checks repository, workflow, and release access without returning the token", async () => {
     fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
 
     await expect(validateDesktopReleaseGithubAccess({
@@ -46,12 +46,13 @@ describe("desktopReleaseSettings GitHub access", () => {
       workflow: "desktop-release.yml",
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       headers: expect.objectContaining({
         Authorization: "Bearer github_pat_test",
       }),
     });
+    expect(String(fetchMock.mock.calls[2][0])).toContain("/releases?per_page=1");
   });
 
   it("returns a safe token error for GitHub 401 responses", async () => {

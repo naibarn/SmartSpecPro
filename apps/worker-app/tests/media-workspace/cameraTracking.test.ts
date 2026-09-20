@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildDominantFaceTrack,
   deduplicateFaceCandidates,
@@ -13,6 +13,7 @@ import {
   selectFallbackFaceCandidate,
   selectTrackedFaceCandidate,
   stableFaceCenter,
+  resetMediaPipeDetectorSession,
   shouldResumeLiveFaceProbeAfterFullScan,
   selectFreshOrPreviousCameraPlan,
 } from "../../src/screens/media-workspace/cameraTracking";
@@ -159,6 +160,45 @@ describe("MediaPipe camera tracking coordinates", () => {
     expect(track.every((point) => point.x > 0.3)).toBe(true);
   });
 
+  it("prefers a smaller high-confidence presenter over a larger persistent false face", () => {
+    const frames = Array.from({ length: 101 }, (_, index) => ({
+      timeMs: index * 1_200,
+      candidates: [
+        ...(index >= 17 ? [{
+          x: 0.205,
+          y: 0.875,
+          width: 0.057,
+          height: 0.101,
+          confidence: 0.44,
+        }] : []),
+        ...(index >= 24 && index <= 64 ? [{
+          x: 0.43 + (index % 3) * 0.004,
+          y: 0.50,
+          width: 0.039,
+          height: 0.070,
+          confidence: 0.55,
+        }] : []),
+      ],
+    }));
+
+    const track = buildDominantFaceTrack(frames);
+
+    expect(track.length).toBeGreaterThanOrEqual(30);
+    expect(track.every((point) => point.x > 0.3)).toBe(true);
+  });
+
+  it("closes the old detector and resets the MediaPipe session clock", () => {
+    const close = vi.fn();
+    const state = resetMediaPipeDetectorSession({
+      detector: { close },
+      initPromise: Promise.resolve(null),
+      lastTimestamp: 120_518_001,
+    });
+
+    expect(close).toHaveBeenCalledOnce();
+    expect(state).toEqual({ detector: null, initPromise: null, lastTimestamp: -1 });
+  });
+
   it("chooses the largest credible face for the initial subject lock", () => {
     const person = { x: 0.62, y: 0.4, width: 0.18, height: 0.24, confidence: 0.82 };
     const printedFace = { x: 0.35, y: 0.7, width: 0.04, height: 0.05, confidence: 0.99 };
@@ -294,6 +334,40 @@ describe("MediaPipe camera tracking coordinates", () => {
     expect(motion).not.toBeNull();
     expect(motion!.x).toBeGreaterThan(0.6);
     expect(motion!.confidence).toBeGreaterThanOrEqual(0.3);
+  });
+
+  it("selects the strongest attached motion cluster instead of blending separate moving regions", () => {
+    const width = 64;
+    const height = 36;
+    const makeFrame = (smallX: number, largeX: number) => {
+      const pixels = new Uint8ClampedArray(width * height * 4);
+      for (let index = 0; index < pixels.length; index += 4) pixels[index + 3] = 255;
+      for (let y = 15; y <= 17; y += 1) {
+        for (let x = smallX; x <= smallX + 2; x += 1) {
+          const offset = (y * width + x) * 4;
+          pixels[offset] = 255;
+          pixels[offset + 1] = 255;
+          pixels[offset + 2] = 255;
+        }
+      }
+      for (let y = 13; y <= 19; y += 1) {
+        for (let x = largeX; x <= largeX + 6; x += 1) {
+          const offset = (y * width + x) * 4;
+          pixels[offset] = 255;
+          pixels[offset + 1] = 255;
+          pixels[offset + 2] = 255;
+        }
+      }
+      return { timeMs: smallX, width, height, pixels };
+    };
+    const motion = detectAttachedMotionPoint(
+      makeFrame(8, 46),
+      makeFrame(11, 50),
+      { x: 0.35, y: 0.4, width: 0.12, height: 0.16, confidence: 0.9 },
+    );
+    expect(motion).not.toBeNull();
+    expect(motion!.x).toBeGreaterThan(0.7);
+    expect(motion!.width).toBeGreaterThan(0.1);
   });
 
   it("finds a strong moving subject away from the face without treating the whole frame as activity", () => {

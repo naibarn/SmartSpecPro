@@ -787,6 +787,15 @@ function getGithubReleaseTag(version: string): string {
   return `v${version}`;
 }
 
+function getGithubReleaseTagCandidates(tag: string): string[] {
+  const normalizedTag = tag.trim().replace(/^v/i, "");
+  if (!normalizedTag) {
+    return [tag];
+  }
+
+  return [...new Set([tag, `v${normalizedTag}`, normalizedTag])];
+}
+
 function isGithubNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) {
     return false;
@@ -803,9 +812,14 @@ function isGithubNotFoundError(error: unknown): boolean {
 function selectGithubReleaseByTag(
   releases: GithubRelease[],
   tag: string,
+  targetPlatforms: DesktopReleasePlatform[] = [],
 ): GithubRelease | null {
+  const tagCandidates = new Set(getGithubReleaseTagCandidates(tag));
   return releases
-    .filter((release) => release.tag_name === tag)
+    .filter((release) => tagCandidates.has(release.tag_name))
+    .filter((release) => targetPlatforms.every((platform) => (
+      Boolean(selectGithubReleaseAsset(release.assets ?? [], platform))
+    )))
     .sort((left, right) => {
       const leftUpdatedAt = Date.parse(left.updated_at ?? left.created_at ?? "");
       const rightUpdatedAt = Date.parse(right.updated_at ?? right.created_at ?? "");
@@ -862,17 +876,32 @@ async function downloadGithubReleaseAsset(
   await pipeline(Readable.fromWeb(response.body as any), fs.createWriteStream(destinationPath));
 }
 
-export async function fetchGithubRelease(repository: string, token: string, tag: string): Promise<GithubRelease> {
+export async function fetchGithubRelease(
+  repository: string,
+  token: string,
+  tag: string,
+  targetPlatforms: DesktopReleasePlatform[] = [],
+): Promise<GithubRelease> {
   const apiBase = getGithubApiBase(repository);
 
-  try {
-    return await githubJson<GithubRelease>(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`, {
-      method: "GET",
-      token,
-    });
-  } catch (error) {
-    if (!isGithubNotFoundError(error)) {
-      throw error;
+  for (const tagCandidate of getGithubReleaseTagCandidates(tag)) {
+    try {
+      const release = await githubJson<GithubRelease>(
+        `${apiBase}/releases/tags/${encodeURIComponent(tagCandidate)}`,
+        {
+          method: "GET",
+          token,
+        },
+      );
+      if (targetPlatforms.every((platform) => (
+        Boolean(selectGithubReleaseAsset(release.assets ?? [], platform))
+      ))) {
+        return release;
+      }
+    } catch (error) {
+      if (!isGithubNotFoundError(error)) {
+        throw error;
+      }
     }
   }
 
@@ -880,7 +909,7 @@ export async function fetchGithubRelease(repository: string, token: string, tag:
     method: "GET",
     token,
   });
-  const fallbackRelease = selectGithubReleaseByTag(releases, tag);
+  const fallbackRelease = selectGithubReleaseByTag(releases, tag, targetPlatforms);
   if (fallbackRelease) {
     return fallbackRelease;
   }
@@ -908,10 +937,16 @@ async function uploadGithubReleaseAssetsToPortal(
     throw new Error("desktop_release_github_token_not_configured");
   }
 
-  const release = await fetchGithubRelease(context.repository, githubToken, getGithubReleaseTag(context.version));
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartaihub-desktop-release-"));
 
   try {
+    const release = await fetchGithubRelease(
+      context.repository,
+      githubToken,
+      getGithubReleaseTag(context.version),
+      targetPlatforms,
+    );
+
     for (const platform of targetPlatforms) {
       if (uploadedPlatforms.has(platform)) {
         continue;
@@ -1009,6 +1044,54 @@ async function startDesktopReleasePortalSync(
       desktopReleasePortalSyncActiveRuns.delete(workflowRunId);
     }
   })();
+}
+
+/**
+ * Run one portal-sync attempt in the foreground.
+ *
+ * The normal reconciler intentionally runs in the background, but a release
+ * status request must also be able to complete the import when the app is
+ * running in a request-scoped/serverless process. Without this path a
+ * fire-and-forget upload can be terminated as soon as the status response is
+ * returned, leaving GitHub with assets while the SmartAIHub catalog remains
+ * empty.
+ */
+export async function syncDesktopReleasePortalNow(
+  workflowRunId: string,
+): Promise<DesktopReleasePortalSyncState> {
+  const context = await hydrateDesktopReleaseBuildContext(workflowRunId);
+  if (!context) {
+    throw new Error("desktop_release_build_context_not_found");
+  }
+
+  const existingState = getPortalSyncState(workflowRunId);
+  if (existingState.status === "completed") {
+    return existingState;
+  }
+  if (desktopReleasePortalSyncActiveRuns.has(workflowRunId)) {
+    return existingState;
+  }
+
+  desktopReleasePortalSyncActiveRuns.add(workflowRunId);
+  const attempt = (existingState.attempts ?? 0) + 1;
+  setPortalSyncState(workflowRunId, "syncing", {
+    lastError: null,
+    attempts: attempt,
+  });
+
+  try {
+    await uploadGithubReleaseAssetsToPortal(workflowRunId, context);
+    return getPortalSyncState(workflowRunId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "desktop_release_portal_sync_failed";
+    setPortalSyncState(workflowRunId, "failed", {
+      lastError: message,
+      attempts: attempt,
+    });
+    throw error;
+  } finally {
+    desktopReleasePortalSyncActiveRuns.delete(workflowRunId);
+  }
 }
 
 export async function suggestDesktopReleaseBuildVersion(): Promise<string> {
@@ -1119,7 +1202,15 @@ export async function getDesktopReleaseBuildRunStatus(workflowRunId: string) {
 
   if (normalizedWorkflowStatus === "completed" && normalizedWorkflowConclusion === "success") {
     if (!isTestRuntime()) {
-      void startDesktopReleasePortalSync(workflowRunId);
+      const portalSyncState = getPortalSyncState(workflowRunId);
+      if (portalSyncState.status !== "completed") {
+        try {
+          await syncDesktopReleasePortalNow(workflowRunId);
+        } catch {
+          // The status payload carries the persisted sync error so the admin
+          // UI can show the actionable failure and offer a retry.
+        }
+      }
     }
   } else {
     const portalSyncState = getPortalSyncState(workflowRunId);
