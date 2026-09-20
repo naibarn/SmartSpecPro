@@ -1,0 +1,189 @@
+{
+  "profile_schema_version": "1.4",
+  "contract_profile_revision": 20,
+  "spec_revision": 20,
+  "corpus_version": "spec-212-r20-2930-bilingual",
+  "corpus_identity_revision": 20,
+  "authoritative_artifacts": {
+    "spec": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md",
+    "use_cases": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-212-use-cases-2930-bilingual.json",
+    "marketplace_catalog": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-212-marketplace-catalog-2930-bilingual.json",
+    "corpus_manifest": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-212-corpus-manifest-r20.json",
+    "contract_profile": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-212-current-contract-profile-r20.json",
+    "node_contract_spec": "specs/feature/214-node-type-contract-architecture/spec.md",
+    "runtime_spec": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
+    "node_coverage_manifest": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-spec212-coverage-manifest-r20.json",
+    "implemented_node_disposition": null,
+    "workflow_studio_spec": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
+  },
+  "identity": {
+    "use_case_model": "one language-independent UC identity with th/en localizations",
+    "first_id": "UC-0001",
+    "last_id": "UC-2930",
+    "use_case_count": 2930,
+    "canonical_prompt_executions": 5860,
+    "revision_19_adds_use_cases": true,
+    "revision_20_adds_use_cases": true
+  },
+  "ownership": {
+    "spec_212": [
+      "Marketplace",
+      "Use Case catalog",
+      "Solution Variants",
+      "Template marketplace UX",
+      "Capability Lab",
+      "certification",
+      "reviews/ratings/discovery semantics",
+      "black-box regression and gap attribution",
+      "Mini App Marketplace product requirements",
+      "Mini App public publication certification/regression"
+    ],
+    "spec_209": [
+      "Workflow Studio authoring UX",
+      "AI Builder / Composer user interaction",
+      "Canvas / change preview / run-controls API facade",
+      "Workflow Version authoring experience",
+      "Mini App Builder / interaction projection / preview / publication UX"
+    ],
+    "spec_214": [
+      "Canonical 16 Node Type taxonomy",
+      "NodeTypeManifest / NodePreset / NodeInstance contracts",
+      "Node binding / schema projection contracts",
+      "AI Builder node discovery contract",
+      "Node-Type admission rules"
+    ],
+    "spec_215": [
+      "WorkflowInterface / WorkflowDefinition",
+      "WorkflowBinding / ExecutionScope / PolicyAttachment / InstrumentationAttachment",
+      "Workflow Compiler / immutable ExecutionPlan",
+      "WorkflowRun / NodeRun / NodeAttempt logical runtime",
+      "Capability and placement resolution orchestration",
+      "retry/resume/checkpoint/side-effect commit/recovery semantics"
+    ],
+    "feature_195": [
+      "worker_jobs durable physical execution source of truth"
+    ],
+    "spec_200": [
+      "External Agent Gateway"
+    ],
+    "spec_206": [
+      "A2A interoperability"
+    ],
+    "spec_208": [
+      "Computer Use"
+    ],
+    "spec_211": [
+      "ACP/runtime fabric"
+    ],
+    "spec_207": [
+      "billing/economic authority",
+      "Mini App quote/reservation/charge",
+      "Mini App fee revenue allocation and settlement"
+    ]
+  },
+  "node_taxonomy": {
+    "spec": 214,
+    "revision": 5,
+    "canonical_core_type_count": 16,
+    "clean_slate": true,
+    "preserve_precanonical_112_ids": false,
+    "non_node_constructs": [
+      "WorkflowInterface",
+      "WorkflowBinding",
+      "SecretBinding",
+      "ContextBinding",
+      "ConcurrencyScope",
+      "ErrorBoundaryScope",
+      "TransactionSagaScope",
+      "PolicyAttachment",
+      "InstrumentationAttachment"
+    ]
+  },
+  "runtime": {
+    "spec": 215,
+    "revision": 3,
+    "may_invent_node_types": false,
+    "legacy_alias_normalization_required": false
+  },
+  "mandatory_release_gates": [
+    "manifest_integrity",
+    "schema_compatibility",
+    "critical_security_policy",
+    "critical_bilingual_parity",
+    "critical_search_retrieval",
+    "node_reality",
+    "binding_and_non_node_construct_reality",
+    "capability_reality",
+    "compiler_conformance",
+    "dependency_and_adapter_conformance",
+    "removed_112_id_rejection",
+    "performance_slo",
+    "open_critical_incident_check",
+    "mini_app_publication_preflight",
+    "mini_app_economic_quote_and_allocation",
+    "mini_app_public_security"
+  ],
+  "current_core_contracts": [
+    "Use Case -> Solution Variant -> Template Version -> User Fork/Workflow Instance",
+    "Prepared Variants + Dynamic BYOC Variant Synthesis",
+    "Requirement Manifest provider-neutral WHAT; resolver chooses HOW within constraints",
+    "Spec 209 authors; Spec 214 defines 16 semantic nodes; Spec 215 owns interfaces/bindings/scopes/policies/instrumentation and compiles/runs; Spec 212 verifies",
+    "Dependency Manifest + Workflow BOM + attestation + resolution path",
+    "Certification = Variant x Template Version x Environment Profile x Dependency Path",
+    "TH/EN language-localized identity with language-aware capability routing",
+    "Policy, approvals, grants, budgets and side effects revalidated before material execution",
+    "Feature 195 worker_jobs remains durable physical job source of truth"
+  ],
+  "compatibility_expectations": {
+    "fail_fast_on_incompatible_contract_profile": true,
+    "historical_sections_authoritative": false,
+    "current_profile_must_match_manifest": true,
+    "spec_209_pre_split_runtime_ownership_superseded": true,
+    "precanonical_112_node_ids_are_contracts": false
+  },
+  "cross_spec_flow": "Spec 212 use case -> Spec 209 AI Builder -> Spec 214 semantic Node Types/bindings -> WorkflowDefinition -> Spec 215 Compiler/Runtime -> Feature 195/adapters -> Spec 212 verification",
+  "coverage_expectation": {
+    "canonical_use_cases": 2930,
+    "required_locales": [
+      "th",
+      "en"
+    ],
+    "canonical_prompt_executions": 5860,
+    "node_type_coverage_manifest": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-spec212-coverage-manifest-r20.json",
+    "implemented_node_disposition": null,
+    "multiple_valid_graphs_allowed": true
+  },
+  "mini_app_productization": {
+    "revision": 19,
+    "new_use_cases": 20,
+    "first_id": "UC-2811",
+    "last_id": "UC-2830",
+    "public_publish_authority": "admin",
+    "user_publication": "submit_for_admin_approval",
+    "consumer_charge": "execution_usage_plus_mini_app_usage_fee",
+    "user_owned_public_fee_recipients": [
+      "platform",
+      "mini_app_owner"
+    ],
+    "default_split_bps": {
+      "platform": 5000,
+      "owner": 5000
+    },
+    "economic_owner": "Spec 207"
+  },
+  "revision_20_expansion": {
+    "new_use_cases": 100,
+    "first_id": "UC-2831",
+    "last_id": "UC-2930",
+    "families": {
+      "TENANT_WHITE_LABEL_PRODUCT_PLATFORM": 20,
+      "AGENTIC_PRODUCT_DEVELOPMENT": 20,
+      "MANAGED_RUNTIME_DEPLOYMENT": 15,
+      "TENANT_DATA_CAPABILITY_SECURITY": 15,
+      "SKILL_PRODUCT_CAPABILITY_LOOP": 15,
+      "AGENTIC_CONTEXT_HARNESS_SECURITY": 15
+    },
+    "canonical_prompt_executions": 200,
+    "purpose": "Tenant product platform, agentic development, managed deployment, capability security, skill lifecycle and harness security coverage"
+  }
+}

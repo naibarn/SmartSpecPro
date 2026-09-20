@@ -1,0 +1,76 @@
+{
+  "package": "SmartAIHub AI Product / Skill / Agentic Development Architecture",
+  "revision": "R3",
+  "date": "2026-09-20",
+  "specs": {
+    "217": {
+      "owner": "Tenant, Brand, Product, Product Shell, Mini App composition, white-label UX",
+      "contract": "SAH-PRODUCT-1"
+    },
+    "218": {
+      "owner": "DevelopmentJob, source workspace, Git, build/test/preview, ReleaseCandidate",
+      "contract": "SAH-DEV-1"
+    },
+    "219": {
+      "owner": "Release admission, production runtime, domains, Cloudflare/BYOC deployment",
+      "contract": "SAH-RELEASE-1"
+    },
+    "220": {
+      "owner": "Data/Asset/Capability gateway, authz, secrets, Product SDK/MCP",
+      "contracts": [
+        "SAH-CAP-1",
+        "SAH-ASSET-1",
+        "SAH-CONTEXT-1"
+      ]
+    },
+    "221": {
+      "owner": "SmartAIHub Runtime Skill engineering/evals/review/release",
+      "contract": "SAH-SKILL-1"
+    },
+    "222": {
+      "owner": "Harness bootstrap, ProjectContextPack, Superpowers bridge, engineering skill pack",
+      "contract": "SAH-DEVCTX-1"
+    },
+    "212": {
+      "owner": "Black-box validation/release oracle",
+      "revision": 20,
+      "use_cases": 2930
+    }
+  },
+  "shared_existing_contracts": {
+    "SAH-EXEC-1": "Execution/job correlation; Feature 195/Spec 215 alignment",
+    "SAH-CAP-1": "Capability identity/invocation",
+    "SAH-RUNNER-1": "Runner control/capability presence",
+    "SAH-CONTEXT-1": "Context identity/scope",
+    "SAH-ASSET-1": "AssetRef/ArtifactRef authorization"
+  },
+  "invariants": [
+    "SmartAIHub Runtime Skill != Harness Engineering Skill",
+    "No custom Product or Skill gets direct Core SQL/R2/Vector/provider/deployment master credentials",
+    "Git push != Product/Skill publication",
+    "Runner/harness can modify source but cannot grant production authority",
+    "Production releases pin execution-affecting dependencies",
+    "Spec 207 remains sole monetary authority",
+    "Spec 215/Feature 195 remain workflow/physical execution authorities",
+    "Custom domains do not create a second identity system",
+    "Development sandbox/harness is never a production dependency",
+    "Capability-gap engineering is reuse-first, bounded and auditable"
+  ],
+  "implementation_order": {
+    "mode": "ordered_waves_with_parallel_spec_213_lane",
+    "waves": [
+      {"wave": 0, "specs": [195, 199, 200, 206, 207, 208, 209, 211], "purpose": "freeze existing authorities and baseline"},
+      {"wave": 1, "specs": [214, 215], "purpose": "canonical node and logical execution contracts"},
+      {"wave": 2, "specs": [216], "purpose": "Workflow Studio authoring and runtime cutover"},
+      {"wave": 3, "specs": [220], "purpose": "gateway core and tenant-safe capability access"},
+      {"wave": 4, "specs": [217], "purpose": "Product/Tenant identity and release lineage"},
+      {"wave": 5, "specs": [222, 221], "purpose": "context/harness and Runtime Skill foundations"},
+      {"wave": 6, "specs": [218], "purpose": "development control plane and ReleaseCandidate evidence"},
+      {"wave": 7, "specs": [219], "purpose": "managed runtime and deployment admission"},
+      {"wave": 8, "specs": [216, 217, 220, 221, 222], "purpose": "full integration hardening"},
+      {"wave": 9, "specs": [212], "purpose": "R20 certification and release oracle"}
+    ],
+    "parallel_lane": {"specs": [213], "purpose": "Spec 208 provider hardening; gate Computer Use integrations before affected certification"},
+    "rule": "Depends-on metadata for Waves 3–8 is integration-aware and must not be interpreted as a cyclic bootstrap dependency"
+  }
+}

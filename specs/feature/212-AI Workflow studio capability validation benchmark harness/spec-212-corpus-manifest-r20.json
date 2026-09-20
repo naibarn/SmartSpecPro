@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.9",
+  "corpus_version": "spec-212-r20-2930-bilingual",
+  "spec_revision": 20,
+  "contract_profile_revision": 20,
+  "use_case_identity_revision": 20,
+  "use_case_count": 2930,
+  "canonical_prompt_executions": 5860,
+  "required_locales": ["th", "en"],
+  "first_id": "UC-0001",
+  "last_id": "UC-2930",
+  "parent_spec_revision": 19,
+  "revision_19": {
+    "adds_use_cases": true,
+    "count": 20,
+    "first_id": "UC-2811",
+    "last_id": "UC-2830",
+    "family": "MINI_APP_PRODUCTIZATION_MONETIZATION",
+    "purpose": "Historical R19 flow-to-Mini-App generation, publication approval and monetization coverage"
+  },
+  "revision_20": {
+    "adds_use_cases": true,
+    "count": 100,
+    "first_id": "UC-2831",
+    "last_id": "UC-2930",
+    "family": "SIX_FAMILY_EXPANSION",
+    "families": {
+      "TENANT_WHITE_LABEL_PRODUCT_PLATFORM": 20,
+      "AGENTIC_PRODUCT_DEVELOPMENT": 20,
+      "MANAGED_RUNTIME_DEPLOYMENT": 15,
+      "TENANT_DATA_CAPABILITY_SECURITY": 15,
+      "SKILL_PRODUCT_CAPABILITY_LOOP": 15,
+      "AGENTIC_CONTEXT_HARNESS_SECURITY": 15
+    },
+    "canonical_prompt_executions": 200,
+    "purpose": "Extend bilingual benchmark coverage for tenant product, agentic development, managed runtime, capability security, skill lifecycle and harness security"
+  },
+  "files": {
+    "spec-212-use-cases-2930-bilingual.json": {
+      "sha256": "7bd01f60b315b08d0ac36f5ba40950a410850ea94c45a804e10a85c4e8ffb9a3",
+      "records": 2930
+    },
+    "spec-212-marketplace-catalog-2930-bilingual.json": {
+      "sha256": "d6f0c445c23f4cb1f9147340d5e71004b4caf87a1826c06509d5cc11a8120105",
+      "records": 2930
+    },
+    "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md": {
+      "sha256": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942"
+    },
+    "spec-212-current-contract-profile-r20.json": {
+      "sha256": "dd1458ed04ce1077f268c586464332c85642bcd6f19d09fdce438b6c39527121"
+    },
+    "spec-214-spec212-coverage-manifest-r20.json": {
+      "sha256": "c674ae2edf8a0c97a63ac7b31864ea5916a89852d4984d7c554f5007f9ab511d"
+    },
+    "specs/feature/214-node-type-contract-architecture/spec.md": {
+      "sha256": "91538fcb54fd37f2918521068317d11669dbcc9afefb11284ebb151ced050ef8"
+    },
+    "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md": {
+      "sha256": "1b9c3ebcba98ca7245c7cd21ff97691415f067dbee3d176623930fbb821efd08"
+    }
+  }
+}
