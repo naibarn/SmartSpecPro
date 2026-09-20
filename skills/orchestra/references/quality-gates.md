@@ -1,9 +1,11 @@
 # Quality Gates
 
-Defines all 18 gate types that the orchestra conductor runs after each wave of agent work.
+Defines all 19 gate types that the orchestra conductor runs before and after agent work.
 Read by SKILL.md Step 6. Risk level terminology follows `task-analysis.md`. Commands below
 are repository example defaults. If the active plan or repository docs define explicit
 `typecheck`, `lint`, or `test` commands, those discovered commands override the defaults.
+The active repository's package manager and resource policy always override generic
+examples below.
 
 ---
 
@@ -11,15 +13,15 @@ are repository example defaults. If the active plan or repository docs define ex
 
 | # | Gate | Command | Trigger | Blocking Level | Max Retries |
 |---|------|---------|---------|----------------|-------------|
-| 1 | TypeScript Check | `cd apps/web && pnpm check` | Any `.ts` or `.tsx` files changed | HIGH/CRITICAL: blocking; LOW/MEDIUM: warning | 3 |
+| 1 | TypeScript Check | Repository-defined changed-workspace command; full-repository command is explicit-only | Explicit user request, documented release gate, or a safe changed-scope check selected by policy | Blocking only when explicitly required and HIGH/CRITICAL | 3; no retry for resource failure |
 | 2 | Python Lint | `cd python-backend && ruff check app/` | Any `.py` files changed | HIGH/CRITICAL: blocking; LOW/MEDIUM: warning | 3 |
-| 3 | Unit Tests | `cd apps/web && pnpm test` and/or `cd python-backend && pytest` | Medium risk or higher; or when test files exist for changed code | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
+| 3 | Unit Tests | Repository-defined focused unit/integration commands | Medium risk or higher; or when test files exist for changed code | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
 | 4 | E2E Browser Tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 2 |
 | 5 | Performance Gate | Dispatch `performance.md`; run load/benchmark command when available | Performance-sensitive endpoint, query, cache, or load-test change | CRITICAL: blocking; HIGH: warning unless latency budget is explicit | 2 |
 | 6 | CI/Release Gate | Dispatch `ci-release.md`; run workflow validation scripts | `.github/workflows/*`, deployment, release, or rollback files changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
 | 7 | Dependency/Supply-Chain Gate | Dispatch `dependency-supply-chain.md`; run available audit/tree commands | Dependency manifests, lockfiles, Docker images, or Actions versions changed | HIGH/CRITICAL: blocking; MEDIUM: warning | 3 |
 | 8 | Security Review (General) | Dispatch `security.md` agent (spot check only — not the full pre-merge gate) | Task risk level is HIGH | CRITICAL findings: blocking; HIGH findings: warning unless task is CRITICAL | 3 |
-| 9 | Full Test Suite | `cd apps/web && pnpm test` AND `cd python-backend && pytest` | CRITICAL risk tasks | Always blocking | 3 |
+| 9 | Full Test Suite | All relevant repository-defined test suites | CRITICAL risk tasks or explicit exhaustive verification | Always blocking | 3 |
 | 10 | Pre-Merge Security Gate | Dispatch `ssp-security-trpc` + `ssp-security-fastapi` + `ssp-security-frontend` in parallel when Task tooling exists; otherwise run the same specialist roles sequentially inline, then route findings to `ssp-security-review` aggregator (see `security-review-protocol.md`) | Trigger conditions defined in `security-review-protocol.md` | Always blocking until verdict returned | 3 per specialist (managed by security-review-protocol.md) |
 | 11 | Visual Polish Gate | Apply `visual-ui-enhancement/references/visual-polish-checklist.md`; dispatch `visual-ux-reviewer` when needed | UI visual polish, premium/modern UI, or major page/component layout changed | Warning for LOW/MEDIUM; blocking for HIGH/CRITICAL user-facing launch surfaces | 2 |
 | 12 | Accessibility Gate | Apply `visual-ui-enhancement/references/accessibility-qa.md`; dispatch `accessibility-reviewer` | Interactive UI, forms, navigation, icon-only buttons, focus or keyboard behavior changed | Blocking for user-facing interactive changes; warning for read-only visual copy | 2 |
@@ -28,7 +30,8 @@ are repository example defaults. If the active plan or repository docs define ex
 | 15 | Dark/Light Mode Gate | Inspect semantic tokens and dark-mode classes | UI surface uses color/surfaces or theme-aware components | Warning; blocking when contrast/readability fails on primary workflow | 2 |
 | 16 | UI Screenshot/E2E Gate | Dispatch `e2e-playwright.md` or run discovered Playwright screenshot command | Browser-visible workflow, responsive behavior, or route-level UI changed | HIGH/CRITICAL blocking; MEDIUM warning unless explicitly requested | 2 |
 | 17 | Installed Skill Gate | Run the matching skill from `installed-skill-routing.md` | SEO, security, launch, deploy, release, content, analytics, generator, health, or docs tasks | Follows the selected skill's safety policy; CRITICAL security and deploy/release side effects block | 2 |
-| 18 | Review Convergence Gate | Apply `review-convergence.md`; dispatch relevant reviewers and rerun stale gates | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached | 5/8/10 by scope |
+| 18 | Test Design Gate | Requirement-to-test matrix with RED/GREEN evidence and residual proof boundary | Any behavior change; mandatory before implementation for MEDIUM+ or HIGH/CRITICAL work | Blocking before implementation when required fields are missing | 3 review rounds |
+| 19 | Review Convergence Gate | Apply `review-convergence.md`; dispatch relevant reviewers and rerun stale gates | Medium+ scope/risk, any review finding, or any fix after review/gate feedback | Blocking until convergence criteria pass or a stop condition is reached | 5/8/10 by scope |
 
 ---
 
@@ -40,15 +43,19 @@ changed surface without turning routine work into a long-running orchestration s
 Defaults:
 - `small` / low risk: run one targeted static or unit check when available; otherwise do a
   targeted file review and report skipped commands.
-- `small` / medium risk: run the relevant typecheck/lint plus focused tests for changed
-  behavior when they exist.
-- implementation-ready `medium` / medium risk: run relevant typecheck/lint and focused
-  tests/E2E only for the touched workflow.
+- `small` / medium risk: run focused lint/tests for changed behavior when they exist;
+  do not infer permission to run a full-repository typecheck.
+- implementation-ready `medium` / medium risk: run the Test Design Gate, focused
+  lint/tests/E2E for the touched workflow, and a changed-workspace typecheck only when
+  the repository resource policy permits it.
 - Do not dispatch reviewer agents, visual reviewers, or full suites unless the user asked
   for that depth, the task is high/critical risk, or the touched surface requires it.
 
 Long-running gates:
 - Prefer focused commands over full suites.
+- Apply `typecheck-resource-policy.md` to every TypeScript check: preflight available
+  memory, run workspaces serially, capture logs, and use a session-survivable wrapper
+  for explicitly requested long checks.
 - If a low/medium non-blocking gate exceeds 10 minutes, stop waiting, record it as skipped
   with residual risk, and continue.
 - If a high/critical blocking gate exceeds 10 minutes, stop and report the command,
@@ -60,10 +67,10 @@ Long-running gates:
 
 | Risk Level | TypeScript Check | Python Lint | Unit Tests | Security (General) | Full Test Suite |
 |------------|-----------------|-------------|------------|-------------------|-----------------|
-| low | warning | warning | skip | skip | skip |
-| medium | warning | warning | warning | skip | skip |
-| high | **blocking** | **blocking** | **blocking** | **blocking** | skip |
-| critical | **blocking** | **blocking** | **blocking** | **blocking** | **blocking** |
+| low | policy/resource status | warning | skip | skip | skip |
+| medium | policy/resource status | warning | warning | skip | skip |
+| high | **blocking only when explicitly required** | **blocking** | **blocking** | **blocking** | skip |
+| critical | **blocking only when explicitly required** | **blocking** | **blocking** | **blocking** | **blocking** |
 
 Orchestra logs warnings and continues. Blocking gates must pass before proceeding to the
 next wave or the final summary.
@@ -74,13 +81,25 @@ next wave or the final summary.
 
 ### Gate 1: TypeScript Check
 
-```bash
-cd apps/web && pnpm check
-```
+Apply `typecheck-resource-policy.md` before selecting a command. Map changed files to the
+smallest affected workspace and use the repository-defined package manager. A root
+aggregate such as `turbo run typecheck` is explicit-only. Run independent workspace
+checks serially and capture the command, exit status, resource preflight, and log path.
 
-Runs `tsc --noEmit` (configured in `apps/web/tsconfig.json`). Catches type errors, missing
-imports, and schema shape mismatches across the full web app. This is the fastest signal
-of a broken contract between frontend and backend.
+Only a completed command with fresh exit-zero evidence is `PASS`. Record
+`SKIPPED_POLICY`, `BLOCKED_RESOURCE`, `UNVERIFIED_OOM`, `UNVERIFIED_TIMEOUT`, and
+`UNVERIFIED_SESSION_LOSS` as unverified statuses; none may be reported as passing.
+Never blindly retry the same command after a resource or session failure.
+
+### Gate 18: Test Design Gate
+
+Read `test-design-contract.md` and `tdd-discipline.md`. For each behavior-changing
+requirement, verify a requirement-to-test row with an observable behavior, test level,
+exact location/command, RED evidence, GREEN evidence plan, and residual proof boundary.
+Reject shallow call-only mocks, assertion-free tests, happy-path-only coverage for
+failure-prone behavior, broad commands where focused evidence exists, and unit tests
+that claim browser/provider/production/restart proof. Documentation-only and purely
+visual work must record its accepted test-backed or manual-proof exception.
 
 ### Gate 2: Python Lint
 
@@ -96,7 +115,7 @@ For type safety, use `mypy app/` as a separate manual step.
 
 ```bash
 # Node.js tests
-cd apps/web && pnpm test
+# Use the repository-defined package manager and focused command.
 
 # Python tests
 cd python-backend && pytest
@@ -139,7 +158,8 @@ specialist sub-agents.
 ### Gate 9: Full Test Suite
 
 ```bash
-cd apps/web && pnpm test && cd ../../python-backend && pytest
+# Use all relevant repository-defined test suites only for CRITICAL risk or
+# explicitly requested exhaustive verification.
 ```
 
 Run both test suites end-to-end. Required for CRITICAL risk tasks. Blocking regardless of
@@ -259,6 +279,11 @@ When a gate fails:
    decisive error excerpts, artifact paths, and compact summaries of all 3 attempts. Do
    NOT attempt a 4th dispatch.
 
+Resource failures are a separate class from code failures. If a process is killed by OOM,
+the host loses SSH/session, or a bounded resource timeout expires, record the typed status
+and evidence path, do not dispatch the same command again, and use focused proof or stop
+when the explicit gate is blocking.
+
 The retry counter resets per wave, per gate. A gate that fails in wave 2 and succeeds on
 retry 1 starts fresh in wave 3.
 
@@ -279,7 +304,7 @@ In standard light mode, rerun only stale gates that cover the changed files/runt
 Do not upgrade to full-suite reruns unless risk is high/critical, a broad shared contract
 changed, or the user requested exhaustive verification.
 
-## Gate 18: Review Convergence Gate
+## Gate 19: Review Convergence Gate
 
 Read `review-convergence.md`. This gate prevents Orchestra from completing after only one
 post-completion review when fixes may have created second-order issues.
@@ -299,14 +324,15 @@ stale gates, and repeat until the stop rules in `review-convergence.md` are sati
 ## Gate Command Reference
 
 ```bash
-# TypeScript type check (web app)
-cd apps/web && pnpm check
+# TypeScript type check
+# Select the repository-defined changed-workspace command only after applying
+# skills/orchestra/references/typecheck-resource-policy.md.
 
 # Python lint
 cd python-backend && ruff check app/
 
 # Node.js unit tests
-cd apps/web && pnpm test
+cd apps/web && npm test
 
 # Python unit tests
 cd python-backend && pytest
@@ -322,5 +348,5 @@ bash skills/publish-to-installed-skills.sh
 bash skills/verify-installed-skills-sync.sh
 
 # Full test suite (both repository example defaults)
-cd apps/web && pnpm test && cd ../../python-backend && pytest
+cd apps/web && npm test && cd ../../python-backend && pytest
 ```

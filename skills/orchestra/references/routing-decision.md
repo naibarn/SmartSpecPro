@@ -23,6 +23,14 @@ This reference defines when orchestra should stay in its normal wave model and w
 
 Do not stop merely to ask the user to run another skill.
 
+Before any implementation route, run the Test Design preflight from
+`test-design-contract.md` and `tdd-discipline.md`. The selected route must carry
+the requirement-to-test matrix into its plan and implementation artifacts.
+
+Full-repository TypeScript checks are explicit-only. For ordinary routing,
+select focused changed-workspace proof or record `SKIPPED_POLICY`; apply
+`typecheck-resource-policy.md` before any explicit typecheck.
+
 For coding, debugging, implementation, review/repair, or user-supplied
 `loop_policy` work, read `agent-loop-policy.md` before finalizing the route. Record the
 Loop Policy ledger in `orchestra/progress.md`, including iteration, tool-call batch,
@@ -246,9 +254,10 @@ Execution:
 2. Auto-review the spec for completeness, clarity, scope boundary, and technical risk.
 3. Apply planner-owned technical improvements automatically.
 4. Ask the user only if product intent is still ambiguous.
-5. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute it.
-6. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist.
-7. Continue directly into `deep-implement`.
+5. Create or refresh the requirement-to-test matrix before planning output.
+6. Read `../../deep-plan/skills/deep-plan/SKILL.md` and execute it.
+7. Verify `claude-plan.md`, `claude-plan-tdd.md`, and `sections/index.md` exist.
+8. Continue directly into `deep-implement` with the test design contract.
 
 ## Route: `full-pipeline`
 

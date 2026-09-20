@@ -8,6 +8,8 @@ current worktree.
 At least one fresh verification signal is required before final summary:
 
 - targeted unit or integration tests
+- a completed Test Design Gate with requirement-to-test rows, RED/GREEN evidence,
+  and residual proof boundaries for behavior-changing work
 - typecheck or lint command for touched language/runtime
 - `bash skills/audit-skills.sh` for skill-system changes
 - `bash skills/verify-installed-skills-sync.sh` after publishing skills
@@ -16,6 +18,12 @@ At least one fresh verification signal is required before final summary:
 - review convergence evidence for medium+ scope/risk or any task with review findings
 - final Loop Policy ledger from `agent-loop-policy.md`
 - gap closure triage from `gap-closure-before-final.md`
+
+For TypeScript, apply `typecheck-resource-policy.md`. A typecheck status of
+`SKIPPED_POLICY`, `BLOCKED_RESOURCE`, `UNVERIFIED_OOM`, `UNVERIFIED_TIMEOUT`,
+or `UNVERIFIED_SESSION_LOSS` is not a passing verification signal. Report the
+status and residual risk explicitly; never convert it to pass because the
+process was retried or the SSH session ended.
 
 ## Final Summary Requirements
 
@@ -30,6 +38,8 @@ The final summary must include:
   telemetry when unavailable
 - known unrelated dirty work that was not touched
 - residual risk if a gate could not run
+- TypeScript status, including whether it was explicit, changed-scope, skipped
+  by policy, or unverified due to resource/session limits
 
 ## No-Evidence Rule
 

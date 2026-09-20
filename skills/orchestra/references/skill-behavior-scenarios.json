@@ -5,7 +5,7 @@
       "id": "LOOP-POLICY-001",
       "user_message": "ใช้ orchestra_id fable_style_coding_orchestra ทำ coding webapp แบบ agent loop max_iterations 12 max_tool_calls 30 max_cost_usd 0.5 stop เมื่อ tests ผ่านและไม่มี blocker",
       "expected_owner": "orchestra",
-      "expected_route": "multi-agent-waves",
+      "expected_route": "deep-plan-chain",
       "expected_agents": [
         "backend",
         "frontend",
@@ -38,7 +38,7 @@
       "id": "LOOP-POLICY-002",
       "user_message": "ทำ repair loop ต่อจนกว่าจะผ่าน แต่ห้ามเกิน budget และห้ามปล่อย subagents ค้าง",
       "expected_owner": "orchestra",
-      "expected_route": "multi-agent-waves",
+      "expected_route": "direct-inline-waves",
       "expected_agents": [
         "reviewer",
         "test-qa"
@@ -59,7 +59,7 @@
       "id": "DEBUG-DATA-001",
       "user_message": "แก้ bug หน้า workflow จาก UI มันขึ้น failed แต่ไม่มี log หรือ run id",
       "expected_owner": "orchestra",
-      "expected_route": "multi-agent-waves",
+      "expected_route": "direct-inline-waves",
       "expected_agents": [
         "error-detective"
       ],
@@ -309,6 +309,59 @@
         "Verification Before Completion"
       ],
       "why": "Routing behavior changes should be test-backed and verified through skill behavior scenarios."
+    },
+    {
+      "id": "TDD-002",
+      "user_message": "อ่าน spec ที่มีอยู่แล้ว แล้ววางแผนและ implement feature ใหญ่ให้ครบตาม requirement",
+      "expected_owner": "orchestra",
+      "expected_route": "deep-plan-chain",
+      "expected_agents": [],
+      "expected_gates": [
+        "Test Design Gate",
+        "Unit Tests",
+        "Review Convergence Gate",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "implementation-before-test-design",
+        "requirement-without-test-row",
+        "full-repo-typecheck-by-default"
+      ],
+      "why": "Existing large specs need a requirement-to-test matrix before deep-plan and deep-implement, with explicit residual proof boundaries."
+    },
+    {
+      "id": "TYPECHECK-RESOURCE-001",
+      "user_message": "แก้ไฟล์ TypeScript ไม่กี่ไฟล์ ให้ทดสอบเฉพาะส่วนที่เปลี่ยนและอย่ารัน typecheck ทั้ง repo",
+      "expected_owner": "orchestra",
+      "expected_route": "direct-inline-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "Test Design Gate",
+        "Unit Tests",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "root-full-repo-typecheck",
+        "parallel-typecheck-processes"
+      ],
+      "why": "Routine TypeScript changes use changed-scope proof and must not trigger a memory-heavy aggregate check."
+    },
+    {
+      "id": "TYPECHECK-RESOURCE-002",
+      "user_message": "ขอ full typecheck ทั้ง repo อย่างชัดเจน ให้ตรวจ RAM รันทีละ workspace ผ่าน tmux และถ้า OOM ห้าม retry คำสั่งเดิม",
+      "expected_owner": "orchestra",
+      "expected_route": "direct-inline-waves",
+      "expected_agents": [],
+      "expected_gates": [
+        "TypeScript Check",
+        "Verification Before Completion"
+      ],
+      "forbidden_execution": [
+        "blind-resource-retry",
+        "parallel-typecheck-processes",
+        "resource-status-as-pass"
+      ],
+      "why": "Explicit exhaustive verification is allowed only with resource preflight, serial execution, survivable logs, and typed unverified outcomes."
     },
     {
       "id": "IMAGE-001",

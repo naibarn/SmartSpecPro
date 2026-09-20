@@ -62,8 +62,10 @@ Orchestra reads reference files only when needed. This avoids unnecessary overhe
 | `references/meta-activation.md` | Always — before Step 1 skill/route classification |
 | `references/worktree-discipline.md` | When scope is `large`/`project`, risk is `high`/`critical`, or unrelated dirty files overlap planned edits |
 | `references/tdd-discipline.md` | When changing routing, gates, security behavior, orchestration behavior, or bug fixes with reproducible failures |
+| `references/test-design-contract.md` | Before implementation of behavior-changing work; required for medium+ scope or high-risk work |
 | `references/data-first-debug.md` | Always for bug reports, error/debug/fix requests, stuck jobs, failed runs, audit/log investigations, or repair loops caused by runtime behavior |
 | `references/verification-before-completion.md` | Always before final summary and after every implementation wave |
+| `references/typecheck-resource-policy.md` | Whenever TypeScript checks, full-repo checks, OOM, timeout, or session-loss risk is in scope |
 | `references/gap-closure-before-final.md` | Always before final summary after implementation, debugging, review, repair, or skill-system work |
 | `references/review-convergence.md` | Before final summary for medium+ scope/risk, after any review findings, or after any fix caused by review/gate feedback |
 | `references/branch-finishing.md` | When the user asks to commit, push, open PR, keep, discard, or finish a branch |
@@ -401,6 +403,15 @@ For implementation, feature, refactor, and bug-fix tasks, perform impact preflig
 
 If SocratiCode is unavailable, do the same preflight with targeted shell search and record the fallback.
 
+### Test Design Preflight
+
+Read `references/test-design-contract.md` and `references/tdd-discipline.md`
+before implementation. For behavior-changing work, create or update the
+requirement-to-test matrix before dispatching or editing code. The matrix must
+identify the RED evidence, GREEN command, test level, and residual proof
+boundary for each requirement. Do not use a full-repository command as the
+default test design when a focused proof is available.
+
 ---
 
 ## Step 2: Routing Decision
@@ -598,14 +609,17 @@ If ANY trigger applies: set `security_gate_required = true`. Gate runs in Step 6
 
 Read `references/quality-gates.md`.
 Read `references/verification-before-completion.md` before reporting any wave or final completion status.
+Read `references/typecheck-resource-policy.md` whenever a TypeScript check is
+selected, requested, or blocked by resources.
 
 **Gate inventory:**
 
 | Gate | Command | Trigger | Blocking? |
 |------|---------|---------|-----------|
-| TypeScript check | `repo typecheck command` (repository example default: `cd apps/web && pnpm check`) | Any type-checked source changed | Yes for HIGH/CRITICAL |
+| TypeScript check | Repository-defined changed-workspace command; full-repository command is explicit-only | Explicit request, documented release gate, or a safe changed-scope check selected by policy | Blocking only when explicitly required and HIGH/CRITICAL |
+| Test Design Gate | Requirement-to-test matrix plus RED/GREEN evidence and residual proof boundaries | Any behavior-changing task; mandatory before implementation for MEDIUM+ or HIGH/CRITICAL work | Blocking before implementation when required fields are missing |
 | Python lint | `repo Python lint command` (repository example default: `cd python-backend && ruff check app/`) | Any `.py` changed | Yes for HIGH/CRITICAL |
-| Unit tests | `repo unit/integration test command(s)` (repository example defaults: `cd apps/web && pnpm test`, `cd python-backend && pytest`) | Risk ≥ medium | Yes for HIGH/CRITICAL |
+| Unit tests | Repository-defined focused unit/integration command(s) | Risk ≥ medium | Yes for HIGH/CRITICAL |
 | E2E browser tests | Dispatch `e2e-playwright.md` or run discovered Playwright command | User workflow, routing, auth flow, or browser regression changed | Yes for HIGH/CRITICAL |
 | Performance gate | Dispatch `performance.md`; run load/benchmark command when available | Performance-sensitive endpoint, query, cache, bundle, or load-test change | Blocking for CRITICAL; warning for HIGH unless latency budget is explicit |
 | CI/release gate | Dispatch `ci-release.md`; run workflow validation scripts | GitHub Actions, deployment, release, or rollback files changed | Yes for HIGH/CRITICAL |
@@ -620,12 +634,18 @@ Read `references/verification-before-completion.md` before reporting any wave or
 - LOW/MEDIUM risk tasks: gate failures are warnings (log and continue)
 - HIGH/CRITICAL risk tasks: gate failures block progression to next wave
 - In standard light mode, run the smallest relevant gate set for `small`/`medium` work:
-  typecheck/lint/tests that directly cover changed files, plus explicitly requested
-  browser/security checks. Do not launch reviewer agents or full gate suites for
-  low/medium risk unless the change surface demands it or the user asked for that depth.
+  focused tests/lint and the Test Design Gate for changed behavior. Do not launch
+  reviewer agents, full gate suites, or full-repository typechecks unless the
+  change surface, an explicit user request, or a documented release gate requires it.
+- A typecheck result of `SKIPPED_POLICY`, `BLOCKED_RESOURCE`, `UNVERIFIED_OOM`,
+  `UNVERIFIED_TIMEOUT`, or `UNVERIFIED_SESSION_LOSS` is never a pass. Preserve
+  the residual risk in the final report.
 
 **Long-running gate protocol:**
 - Prefer narrow commands and repository-defined focused scripts.
+- For TypeScript, apply `references/typecheck-resource-policy.md`: preflight
+  memory, run one workspace at a time, capture logs, and use a session-survivable
+  wrapper for explicitly requested long checks.
 - For any command or sub-agent wait that runs longer than 10 minutes, write a status entry
   to `orchestra/progress.md` with the command, elapsed time, and whether it is still
   blocking.
@@ -646,6 +666,11 @@ Read `references/verification-before-completion.md` before reporting any wave or
 5. Re-run stale gates and impact closure before continuing
 6. Maximum 3 retry attempts per blocking gate
 7. If 3 attempts fail → STOP (see STOP Conditions section above)
+
+Resource failures are not code-failure retries. If the process is killed by
+OOM, the host loses the session, or the bounded resource budget expires, stop
+that check immediately, record the typed resource status and evidence path, and
+do not retry the same command automatically.
 
 **Pre-merge security gate (when `security_gate_required = true`):**
 
