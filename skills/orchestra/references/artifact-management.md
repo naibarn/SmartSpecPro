@@ -18,6 +18,7 @@ The `orchestra/` working directory is the single source of truth for an orchestr
 | `decisions.md` | First auto-decision | Every auto-decision (append-only) | Never | Timestamped log of all conductor decisions |
 | `contracts.md` | Step 3 (contract definition) | Never after Wave 1 | Never | Agent interface contracts (frozen after Wave 1) |
 | `review-findings.md` | First review convergence round | Every convergence round | Never | Review rounds, material findings, stale gates, fixes, and stop reason |
+| `lifecycle.md` | Before implementation for every non-trivial task | Every stage transition, gap, repair, and final verification | Never | Seven-stage lifecycle ledger, gap ownership, recovery pointer, and completion invariants |
 | `loop-progress-template.md` reference content in `progress.md` | Step 0/1 when `agent-loop-policy.md` is active | Every loop iteration, wave integration, sub-agent return/timeout, repair round, and verification command | Never | Bounded loop counters, sub-agent lifecycle, timeout state, and final stop reason |
 | `learning-log.md` | First loop completion, blocked stop, timeout, evidence-gated debug, or repeated repair | Append after each qualifying loop completion/stop | Never | Compact self-improvement signals for future routing, evidence, gate, and policy tuning |
 | `platform.md` | First platform detection | Never (permanent) | User deletes it | Detected platform (claude-code / standard / open-code) |
@@ -67,6 +68,16 @@ the top of the file. Update the ledger after every iteration, tool-call batch,
 sub-agent dispatch/return/timeout, repair round, and verification command. Do
 not start replacement agents until the lifecycle ledger records the missing
 agent as `timed_out` or `blocked`.
+
+### `lifecycle.md` — Stage and Gap Source of Truth
+
+Initialize `lifecycle.md` from `completion-loop.md` before implementation,
+including the seven stage rows and completion invariants. Update it before and
+after every stage transition, gate result, blocker, review finding, repair, and
+final verification. A blocker must leave the current stage `BLOCKED` or
+`IN_PROGRESS` with `resume_from`; it must never be converted to `COMPLETE` or
+silently removed from the ledger. `backlog.md` may link to an open gap only
+after the gap exists in `lifecycle.md`.
 
 ### `learning-log.md` — Self-Improvement Memory
 

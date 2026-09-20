@@ -26,6 +26,7 @@ Use this profile unless the user or a plan artifact provides a stricter one:
     "max_context_capsule_words": 1500,
     "stop_conditions": [
       "success_criteria_met",
+      "lifecycle_converged",
       "tests_passed",
       "no_open_blockers"
     ]
@@ -103,8 +104,10 @@ Stop successfully only when all requested policy stop conditions are true:
   or explicitly deferred with rationale
 - `tests_passed`: fresh relevant tests/typecheck/lint/gates passed after the last
   code or skill-doc change, or a skipped gate is recorded with residual risk
-- `no_open_blockers`: no `MUST_FIX`, missing evidence, stale gate, unresolved
-  contract violation, or blocked sub-agent remains
+- `lifecycle_converged`: all mandatory stages in `completion-loop.md` are closed,
+  including a clean `DEBUG_FIX` stage, and final verification is fresh
+- `no_open_blockers`: no `MUST_FIX`, `MUST_DO_NOW`, missing evidence, stale gate,
+  unresolved contract violation, or blocked stage remains
 
 Stop blocked with a concrete `stop_reason` when any of these occurs:
 
@@ -119,6 +122,11 @@ Stop blocked with a concrete `stop_reason` when any of these occurs:
 - `blocking_gate_failed`
 - `user_decision_required`
 - `external_dependency_unavailable`
+
+When a stop condition occurs before lifecycle convergence, preserve the open gap
+rows and `resume_from` stage in `orchestra/lifecycle.md`. A loop-policy limit is
+a blocked stop, not permission to skip remaining lifecycle stages or report
+success.
 
 The final summary must report the stop reason.
 
@@ -199,7 +207,7 @@ Loop policy final:
   dispatch_waves_used: <n>/<max>
   timed_out_subagents: <none | names>
   repair_rounds_used: <n>/<max>
-  stop_conditions_met: [success_criteria_met, tests_passed, no_open_blockers]
+  stop_conditions_met: [success_criteria_met, lifecycle_converged, tests_passed, no_open_blockers]
   stop_reason: <success | blocked reason>
 ```
 

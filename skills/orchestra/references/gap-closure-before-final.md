@@ -4,6 +4,12 @@ Use this protocol before every final response after implementation, debugging,
 review, repair, or skill-system work. Its purpose is to prevent long-running work
 from ending with obvious in-scope gaps that the conductor already found.
 
+This protocol is a recovery checkpoint, not a one-time final checklist. Every
+gap must first be written to `orchestra/lifecycle.md` with an earliest affected
+stage and `resume_from`. Safe in-scope gaps are repaired by backtracking through
+`completion-loop.md`; `backlog.md` is only a secondary pointer and never closes
+an open gap.
+
 ## Required Gap Triage
 
 Create a compact gap triage before final summary:
@@ -74,3 +80,12 @@ The final summary must include a short gap closure status:
 
 If any `must_do_now` item remains unfixed, do not call the work complete. Report
 the blocker and the smallest required next action.
+
+## Recovery Requirement
+
+If triage discovers a `must_do_now` or `VERIFY_ONLY` gap, set the lifecycle
+stage to `IN_PROGRESS`, set `resume_from` to the earliest affected stage, mark
+downstream evidence stale, repair or prove the gap, and rerun the affected
+verification/review path. A final summary may be emitted only after the
+lifecycle invariants pass or with a typed blocked/deferred outcome that keeps
+the gap and resume pointer open.

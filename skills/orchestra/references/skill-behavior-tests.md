@@ -22,6 +22,11 @@ Maintain scenario coverage for:
 - shallow tests (call-only mocks, assertion-free tests, happy-path-only failure coverage) are rejected by the Test Design Gate
 - ordinary TypeScript changes do not trigger root full-repository typecheck; explicit typecheck uses serial resource-aware execution
 - OOM, timeout, and session-loss typecheck results are unverified and are never blindly retried or reported as pass
+- non-trivial work records and closes the lifecycle stages Planning → TDD/Test Design → Implement → Verify → Debug/Fix → Review → Final Verify
+- a blocker or missing prerequisite creates a lifecycle gap with `resume_from` and backtracks to the earliest affected stage instead of silently skipping
+- review findings route back to the earliest affected stage, invalidate downstream evidence, and rerun stale gates
+- a clean run records Debug/Fix as `no_gap_found`; it is not omitted because verification passed
+- loop/retry limits produce a typed blocked resumable state and never false completion
 - bug/debug requests require data-first evidence before code fixes; UI-only symptoms
   must route to evidence collection or a narrow user question, not direct guessing
 - Fable-style coding loop requests with `orchestra_id` or `loop_policy` activate
@@ -95,6 +100,8 @@ Level 2 behavioral validation:
   `ui-only-root-cause` fixes unless the issue is purely presentational
 - loop-policy scenarios require `agent-loop-policy.md`, compact progress ledgers,
   sub-agent fanout limits, and final stop reasons
+- lifecycle scenarios require `completion-loop.md`, a durable gap ledger, stale-gate
+  invalidation, earliest-stage backtracking, and a typed resume pointer
 - generated `.claude/agents/ssp-*` definitions match portable source content
 
 Level 3 live validation:
