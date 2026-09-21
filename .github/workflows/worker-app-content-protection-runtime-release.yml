@@ -1,0 +1,70 @@
+name: Worker App Content Protection Runtime Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Content Protection runtime version (defaults to Worker App package version)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-content-protection-runtime:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify Windows x64 host
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64") { throw "Content Protection runtime must be built on Windows x64" }
+          if ((node -p "process.platform") -ne "win32") { throw "Node is not running on Windows" }
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build standalone Content Protection runtime
+        env:
+          CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        shell: pwsh
+        run: |
+          if ($env:RELEASE_VERSION) {
+            npm --workspace apps/worker-app run content-protection:release -- --version $env:RELEASE_VERSION
+          } else {
+            npm --workspace apps/worker-app run content-protection:release
+          }
+
+      - name: Verify standalone archive and detached release metadata
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem apps/worker-app/.content-protection-release -Filter "smart-ai-hub-content-protection-runtime-windows-x64-*.zip" | Select-Object -First 1
+          if (-not $archive -or $archive.Length -le 0) { throw "Content Protection runtime ZIP was not produced" }
+          $metadata = Get-Item "$($archive.FullName -replace '\.zip$', '.manifest.json')"
+          if (-not $metadata) { throw "Detached Content Protection release metadata is missing" }
+          npm --workspace apps/worker-app run content-protection:check -- --bundle-root apps/worker-app/.content-protection-build/generated
+          Get-FileHash $archive.FullName -Algorithm SHA256
+
+      - name: Upload standalone runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-ai-hub-content-protection-runtime-windows-x64
+          path: apps/worker-app/.content-protection-release/*
+          if-no-files-found: error
+          retention-days: 14

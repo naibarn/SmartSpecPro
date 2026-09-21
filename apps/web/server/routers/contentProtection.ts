@@ -13,6 +13,8 @@ import {
 import {
   CONTENT_PROTECTION_CONTRACT_VERSION,
   CONTENT_PROTECTION_JOB_TYPE,
+  CONTENT_PROTECTION_RUNTIME_TYPE,
+  CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
   CONTENT_PROTECTION_VERIFY_JOB_TYPE,
 } from "../../shared/contentProtectionWorker";
@@ -484,13 +486,14 @@ export const contentProtectionRouter = router({
           idempotencyKey: `content-protection:${created.id}`,
           requiredCapabilities: {
             capabilityFamilies: ["content_protection"],
-            requiredClaimCapability: "content-protection-v1",
+            requiredClaimCapability: CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
             providerId,
             modalities: [input.modality],
           },
           retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
           timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
         },
+        createOptions: { runtimeType: CONTENT_PROTECTION_RUNTIME_TYPE },
       });
       const [bound] = await database.update(contentProtectionAssets).set({
         causalJobId: job.jobId,

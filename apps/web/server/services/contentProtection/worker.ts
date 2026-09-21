@@ -132,8 +132,10 @@ export async function runContentProtectionWorker(
 export function isContentProtectionCapabilityAdvertised(): boolean {
   const provider =
     process.env.CONTENT_PROTECTION_PROVIDER?.trim().toLowerCase();
+  const providerCommand = process.env.CONTENT_PROTECTION_PROVIDER_COMMAND?.trim();
   return (
     process.env.CONTENT_PROTECTION_WORKER_CAPABILITY === "true" &&
+    Boolean(providerCommand) &&
     (provider === "videoseal" || provider === "pixelseal")
   );
 }

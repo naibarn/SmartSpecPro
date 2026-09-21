@@ -7,6 +7,7 @@ pub mod comfy_mcp_runtime;
 pub mod comfy_mcp_transport;
 pub mod comfy_profiles;
 pub mod comfy_ssh_tunnel;
+pub mod content_protection_runtime;
 pub mod commands;
 pub mod control_plane;
 pub mod credentials;
@@ -147,6 +148,15 @@ pub fn run() {
             let settings = data_dir.as_deref().map(load_settings).unwrap_or_default();
             if let Ok(resource_dir) = app.path().resource_dir() {
                 speaker_aware_adapters::configure_bundled_runner(&resource_dir, data_dir.as_deref());
+                if let Some(app_data_dir) = data_dir.as_deref() {
+                    if let Ok(effective_runtime_dir) = commands::get_effective_runtime_dir(&app.handle()) {
+                        worker_executor::configure_installed_content_protection(
+                            app_data_dir,
+                            &effective_runtime_dir,
+                            &resource_dir,
+                        );
+                    }
+                }
             }
             if let Some(dir) = data_dir.as_deref() {
                 speaker_model_manager::apply(dir);
@@ -304,6 +314,8 @@ pub fn run() {
             commands::worker_app_open_managed_wsl_runtime_log,
             commands::worker_app_export_managed_wsl_runtime_log,
             commands::worker_app_install_runtime_pack,
+            content_protection_runtime::worker_app_get_content_protection_runtime_status,
+            content_protection_runtime::worker_app_install_content_protection_runtime,
             commands::worker_app_clear_runtime_pack,
             commands::worker_app_install_hermes_runtime,
             commands::worker_app_hermes_doctor,

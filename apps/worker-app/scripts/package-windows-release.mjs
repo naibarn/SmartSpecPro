@@ -19,7 +19,6 @@ const checkRuntime = args.has("--check-runtime");
 const skipBuild = args.has("--skip-build");
 const skipFrontendTypecheck = args.has("--skip-frontend-typecheck");
 const allowPlaceholderRuntime = args.has("--allow-placeholder-runtime");
-const canBundleWindowsContentProtection = process.platform === "win32";
 
 function argValue(flag) {
   const index = process.argv.indexOf(flag);
@@ -326,14 +325,7 @@ writeJson(tauriConfigPath, tauriConfig);
 updateCargoVersion(nextVersion);
 
 run("npm", ["run", "runtime:pack"]);
-if (canBundleWindowsContentProtection) {
-  run("npm", ["run", "content-protection:pack"]);
-} else {
-  // The provider is a native PyInstaller executable. A Linux cross-build
-  // must not embed a Linux ELF provider in a Windows installer, and the
-  // resulting resource set is large enough to exceed NSIS mmap limits.
-  console.log("[worker-app] cross-build host is not Windows; omitting native Windows content-protection resources.");
-}
+console.log("[worker-app] Content Protection is published as an optional runtime and is not bundled in the Worker App installer.");
 assertReleaseRuntimePack();
 
 if (!skipBuild) {
@@ -341,11 +333,11 @@ if (!skipBuild) {
     "run",
     "tauri:build",
     "--",
-    "--runner",
-    "cargo-xwin",
-    "--target",
-    "x86_64-pc-windows-msvc",
   ];
+  if (process.platform !== "win32") {
+    tauriBuildArgs.push("--runner", "cargo-xwin");
+  }
+  tauriBuildArgs.push("--target", "x86_64-pc-windows-msvc");
   if (skipFrontendTypecheck) {
     // The standard `build` script runs `tsc --noEmit` before Vite. Keep the
     // release path usable on constrained build hosts by asking Tauri to run
@@ -355,11 +347,6 @@ if (!skipBuild) {
   const buildConfig = {};
   if (skipFrontendTypecheck) {
     buildConfig.build = { beforeBuildCommand: "npm exec vite -- build" };
-  }
-  if (!canBundleWindowsContentProtection) {
-    // tauri.conf.json contains the native resource for Windows-host builds.
-    // An array override replaces that object during a Linux cross-build.
-    buildConfig.bundle = { resources: [] };
   }
   if (Object.keys(buildConfig).length > 0) {
     tauriBuildArgs.push("--config", JSON.stringify(buildConfig));

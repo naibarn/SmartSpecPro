@@ -44,7 +44,8 @@ FFmpeg/FFprobe ไม่ซ้ำอยู่ใน archive แต่ชี้�
 Manifest ต้องระบุอย่างน้อย `contractVersion`, `runtimeId`, `version`,
 `targetPlatform`, `provider`, `providerCommand`, `modelPath`,
 `videoSealCommit`, `requiresWorkerRuntimeVersion` และรายการ checksum ของไฟล์
-ภายใน archive พร้อมลายเซ็นของ release manifest
+ภายใน archive ส่วน archive SHA-256 และลายเซ็นของ release metadata อยู่ใน
+server catalog/manifest response เพื่อไม่สร้าง self-referential archive hash
 
 ### 3. Release and download control plane
 

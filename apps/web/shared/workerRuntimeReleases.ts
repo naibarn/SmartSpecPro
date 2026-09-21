@@ -4,6 +4,7 @@ export const workerRuntimeIdValues = [
   "hyperframes-wsl2",
   "hyperframes-windows-x64",
   "hyperframes-macos-arm64",
+  "content-protection-windows-x64",
 ] as const;
 export const workerRuntimeChannelValues = [
   "stable",

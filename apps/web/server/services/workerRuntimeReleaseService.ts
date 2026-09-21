@@ -30,6 +30,7 @@ import {
 } from "../../shared/workerRuntimeReleases";
 import {
   isSupportedSpeakerAwareRunnerVersion,
+  validateContentProtectionRuntimeArchive,
   validateRuntimePackArchive,
 } from "./workerRuntimePackValidation";
 import { getWorkerRuntimeSigningKey } from "./workerRuntimeSigningKeyService";
@@ -64,6 +65,12 @@ function expectedPlatform(runtimeId: WorkerRuntimeId): WorkerRuntimePlatform {
   return runtimeId === "hyperframes-macos-arm64" ? "macos" : "windows";
 }
 
+function expectedFileName(runtimeId: WorkerRuntimeId, version: string): string {
+  return runtimeId === "content-protection-windows-x64"
+    ? `smart-ai-hub-content-protection-runtime-windows-x64-${version}.zip`
+    : `smart-ai-hub-worker-runtime-${runtimeId}-${version}.zip`;
+}
+
 function sanitizePathSegment(value: string): string {
   return (
     value
@@ -81,7 +88,7 @@ function validateUploadInput(
   const parsed = workerRuntimeReleaseUploadSchema.parse(
     input
   ) as WorkerRuntimeReleaseUpload;
-  const expectedName = `smart-ai-hub-worker-runtime-${parsed.runtimeId}-${parsed.version}.zip`;
+  const expectedName = expectedFileName(parsed.runtimeId, parsed.version);
   if (parsed.platform !== expectedPlatform(parsed.runtimeId)) {
     throw new WorkerRuntimeReleaseError(
       "worker_runtime_platform_mismatch",
@@ -164,7 +171,7 @@ function findLocalRuntimeReleasePath(input: {
   runtimeId: WorkerRuntimeId;
   version: string;
 }): string | null {
-  const fileName = `smart-ai-hub-worker-runtime-${input.runtimeId}-${input.version}.zip`;
+  const fileName = expectedFileName(input.runtimeId, input.version);
   for (const releaseDir of localRuntimeReleaseDirs()) {
     const candidate = path.join(releaseDir, fileName);
     const candidateRoot = path.resolve(releaseDir) + path.sep;
@@ -492,13 +499,20 @@ async function insertValidatedRelease(input: {
   }
   const fileSha256 = await hashFileSha256(input.filePath);
   const signingKey = await getWorkerRuntimeSigningKey();
-  const validation = await validateRuntimePackArchive({
-    filePath: input.filePath,
-    fileName: upload.fileName,
-    version: upload.version,
-    runtimeId: upload.runtimeId,
-    publicKey: signingKey.active?.publicKey ?? null,
-  });
+  const validation = upload.runtimeId === "content-protection-windows-x64"
+      ? await validateContentProtectionRuntimeArchive({
+          filePath: input.filePath,
+          fileName: upload.fileName,
+          version: upload.version,
+          publicKey: signingKey.active?.publicKey ?? null,
+        })
+    : await validateRuntimePackArchive({
+        filePath: input.filePath,
+        fileName: upload.fileName,
+        version: upload.version,
+        runtimeId: upload.runtimeId,
+        publicKey: signingKey.active?.publicKey ?? null,
+      });
   if (!validation.valid || !validation.manifest) {
     throw new WorkerRuntimeReleaseError(
       "worker_runtime_release_invalid",

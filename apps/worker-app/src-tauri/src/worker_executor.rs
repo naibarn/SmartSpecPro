@@ -220,9 +220,118 @@ pub fn content_protection_runtime_ready() -> bool {
         .map(|value| value.eq_ignore_ascii_case("true"))
         .unwrap_or(false);
     let command_configured = env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
-        .map(|value| !value.trim().is_empty())
+        .map(|value| {
+            let trimmed = value.trim();
+            !trimmed.is_empty() && Path::new(trimmed).is_file()
+        })
         .unwrap_or(false);
+    let runtime_paths_ready = [
+        "CONTENT_PROTECTION_PYTHON",
+        "CONTENT_PROTECTION_FFMPEG",
+        "CONTENT_PROTECTION_FFPROBE",
+    ]
+    .iter()
+    .all(|name| {
+        env::var(name)
+            .map(|value| !value.trim().is_empty() && Path::new(value.trim()).is_file())
+            .unwrap_or(true)
+    });
+    let model_ready = env::var("CONTENT_PROTECTION_MODEL_DIR")
+        .map(|root| {
+            Path::new(root.trim())
+                .join("ckpts/videoseal_y_256b_img.pth")
+                .is_file()
+        })
+        .unwrap_or(true);
     content_protection_runtime_ready_from_config(&provider, explicitly_enabled, command_configured)
+        && runtime_paths_ready
+        && model_ready
+}
+
+/// Resolve the provider shipped inside the Tauri installer. Explicit operator
+/// configuration remains authoritative; this path is only used when the app
+/// has no provider command configured, which makes an installed Worker App
+/// zero-configuration while preserving development overrides.
+pub fn configure_bundled_content_protection(resource_dir: &Path) -> Option<PathBuf> {
+    if env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return None;
+    }
+
+    let (root, provider, _model, ffmpeg, ffprobe) = bundled_content_protection_paths(resource_dir)?;
+    env::set_var("CONTENT_PROTECTION_PROVIDER", "videoseal");
+    env::set_var("CONTENT_PROTECTION_PROVIDER_COMMAND", &provider);
+    env::set_var("CONTENT_PROTECTION_MODEL_DIR", &root);
+    env::set_var("CONTENT_PROTECTION_FFMPEG", &ffmpeg);
+    env::set_var("CONTENT_PROTECTION_FFPROBE", &ffprobe);
+    env::set_var("CONTENT_PROTECTION_WORKER_CAPABILITY", "true");
+    Some(provider)
+}
+
+/// Configure the separately installed Windows Content Protection runtime.
+/// Explicit operator overrides remain authoritative and are never replaced by
+/// the managed AppData runtime.
+pub fn configure_installed_content_protection(
+    app_data_dir: &Path,
+    effective_runtime_dir: &Path,
+    resource_dir: &Path,
+) -> Option<PathBuf> {
+    if env::var("CONTENT_PROTECTION_PROVIDER_COMMAND")
+        .ok()
+        .is_some_and(|value| !value.trim().is_empty())
+    {
+        return None;
+    }
+    let root = app_data_dir.join("content-protection-runtime/current");
+    let provider = root.join("provider/videoseal-provider.exe");
+    let model = root.join("ckpts/videoseal_y_256b_img.pth");
+    let ffmpeg = effective_runtime_dir.join("runtime-pack/bin/ffmpeg.exe");
+    let ffprobe = effective_runtime_dir.join("runtime-pack/bin/ffprobe.exe");
+    let fallback_ffmpeg = resource_dir.join("runtime-pack/bin/ffmpeg.exe");
+    let fallback_ffprobe = resource_dir.join("runtime-pack/bin/ffprobe.exe");
+    if !provider.is_file() || !model.is_file() {
+        return None;
+    }
+    let ffmpeg = if ffmpeg.is_file() { ffmpeg } else { fallback_ffmpeg };
+    let ffprobe = if ffprobe.is_file() { ffprobe } else { fallback_ffprobe };
+    if !ffmpeg.is_file() || !ffprobe.is_file() {
+        return None;
+    }
+    env::set_var("CONTENT_PROTECTION_PROVIDER", "videoseal");
+    env::set_var("CONTENT_PROTECTION_PROVIDER_COMMAND", &provider);
+    env::set_var("CONTENT_PROTECTION_MODEL_DIR", &root);
+    env::set_var("CONTENT_PROTECTION_FFMPEG", &ffmpeg);
+    env::set_var("CONTENT_PROTECTION_FFPROBE", &ffprobe);
+    env::set_var("CONTENT_PROTECTION_WORKER_CAPABILITY", "true");
+    Some(provider)
+}
+
+fn bundled_content_protection_paths(
+    resource_dir: &Path,
+) -> Option<(PathBuf, PathBuf, PathBuf, PathBuf, PathBuf)> {
+    let root = resource_dir.join("content-protection");
+    let provider = if cfg!(windows) {
+        root.join("provider/videoseal-provider.exe")
+    } else {
+        root.join("provider/videoseal-provider")
+    };
+    let model = root.join("ckpts/videoseal_y_256b_img.pth");
+    let ffmpeg = resource_dir.join(if cfg!(windows) {
+        "runtime-pack/bin/ffmpeg.exe"
+    } else {
+        "runtime-pack/bin/ffmpeg"
+    });
+    let ffprobe = resource_dir.join(if cfg!(windows) {
+        "runtime-pack/bin/ffprobe.exe"
+    } else {
+        "runtime-pack/bin/ffprobe"
+    });
+    if !provider.is_file() || !model.is_file() || !ffmpeg.is_file() || !ffprobe.is_file() {
+        return None;
+    }
+    Some((root, provider, model, ffmpeg, ffprobe))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -2089,6 +2198,56 @@ mod tests {
             true,
             false
         ));
+    }
+
+    #[test]
+    fn bundled_content_protection_requires_provider_model_and_media_tools() {
+        let root = tempfile::tempdir().unwrap();
+        let resource_dir = root.path();
+        assert!(bundled_content_protection_paths(resource_dir).is_none());
+
+        let content_root = resource_dir.join("content-protection");
+        fs::create_dir_all(content_root.join("provider")).unwrap();
+        fs::create_dir_all(content_root.join("ckpts")).unwrap();
+        fs::create_dir_all(resource_dir.join("runtime-pack/bin")).unwrap();
+        fs::write(
+            content_root.join(if cfg!(windows) {
+                "provider/videoseal-provider.exe"
+            } else {
+                "provider/videoseal-provider"
+            }),
+            b"provider",
+        )
+        .unwrap();
+        fs::write(
+            content_root.join("ckpts/videoseal_y_256b_img.pth"),
+            b"checkpoint",
+        )
+        .unwrap();
+        fs::write(
+            resource_dir.join(if cfg!(windows) {
+                "runtime-pack/bin/ffmpeg.exe"
+            } else {
+                "runtime-pack/bin/ffmpeg"
+            }),
+            b"ffmpeg",
+        )
+        .unwrap();
+        fs::write(
+            resource_dir.join(if cfg!(windows) {
+                "runtime-pack/bin/ffprobe.exe"
+            } else {
+                "runtime-pack/bin/ffprobe"
+            }),
+            b"ffprobe",
+        )
+        .unwrap();
+
+        let paths = bundled_content_protection_paths(resource_dir).unwrap();
+        assert!(paths.1.is_file());
+        assert!(paths.2.is_file());
+        assert!(paths.3.is_file());
+        assert!(paths.4.is_file());
     }
 
     #[test]

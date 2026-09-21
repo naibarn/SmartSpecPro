@@ -20,11 +20,14 @@ export function assertCanonicalTimebase(
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("TIMEBASE_INVALID");
   const candidate = value as Partial<CanonicalTimebase>;
+  const { num, den } = candidate;
   if (
-    !Number.isSafeInteger(candidate.num) ||
-    candidate.num <= 0 ||
-    !Number.isSafeInteger(candidate.den) ||
-    candidate.den <= 0
+    typeof num !== "number" ||
+    !Number.isSafeInteger(num) ||
+    num <= 0 ||
+    typeof den !== "number" ||
+    !Number.isSafeInteger(den) ||
+    den <= 0
   ) {
     throw new Error("TIMEBASE_INVALID");
   }
@@ -61,10 +64,12 @@ export function assertCanonicalTime(
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("TIME_INVALID");
   const candidate = value as Partial<CanonicalTime>;
+  const { domain, ticks } = candidate;
   if (
-    !["source", "absolute", "trimmed"].includes(candidate.domain ?? "") ||
-    !Number.isSafeInteger(candidate.ticks) ||
-    candidate.ticks < 0
+    !["source", "absolute", "trimmed"].includes(domain ?? "") ||
+    typeof ticks !== "number" ||
+    !Number.isSafeInteger(ticks) ||
+    ticks < 0
   ) {
     throw new Error("TIME_INVALID");
   }

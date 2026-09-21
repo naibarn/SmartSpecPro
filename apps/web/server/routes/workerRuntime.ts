@@ -110,6 +110,7 @@ import {
   isRemotionRuntimeReadyManifest,
   releaseRequiresRemotion,
   requiredRuntimeArchiveFiles,
+  validateContentProtectionRuntimeArchive,
 } from "../services/workerRuntimePackValidation";
 import {
   workerRuntimeChannelValues,
@@ -161,9 +162,12 @@ const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set([
   "hyperframes-wsl2",
   "hyperframes-windows-x64",
   "hyperframes-macos-arm64",
+  "content-protection-windows-x64",
 ]);
 const WORKER_RUNTIME_PACK_FILE_PATTERN =
   /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64|macos-arm64))-(.+)\.zip$/i;
+const CONTENT_PROTECTION_RUNTIME_PACK_FILE_PATTERN =
+  /^smart-ai-hub-content-protection-runtime-(content-protection-windows-x64)-(.+)\.zip$/i;
 // Feature 135 §11 — Hermes runtime pack ids, additive and independent of the
 // HyperFrames pack family above (own file-name pattern, own manifest shape,
 // own allow-gate). Windows and macOS Apple Silicon are separate runtime packs;
@@ -658,6 +662,35 @@ function findLatestAllowedRuntimePack(
       return versionCompare || right.updatedAt.localeCompare(left.updatedAt);
     })[0] ?? null
   );
+}
+
+function findLatestContentProtectionRuntimePack(releaseDirs: string[]) {
+  const candidates: Array<NonNullable<ReturnType<typeof findLatestRuntimePack>>> = [];
+  for (const releaseDir of releaseDirs) {
+    if (!fs.existsSync(releaseDir)) continue;
+    for (const fileName of fs.readdirSync(releaseDir)) {
+      const match = fileName.match(CONTENT_PROTECTION_RUNTIME_PACK_FILE_PATTERN);
+      if (!match?.[1] || !match?.[2]) continue;
+      const filePath = path.join(releaseDir, fileName);
+      const stat = fs.statSync(filePath);
+      if (!stat.isFile()) continue;
+      candidates.push({
+        fileName,
+        filePath,
+        runtimeId: match[1],
+        version: match[2],
+        updatedAt: stat.mtime.toISOString(),
+        sizeBytes: stat.size,
+      });
+    }
+  }
+  return candidates.sort((left, right) => {
+    const versionCompare = right.version.localeCompare(left.version, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+    return versionCompare || right.updatedAt.localeCompare(left.updatedAt);
+  })[0] ?? null;
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1447,7 +1480,8 @@ export function registerWorkerRuntimeRoutes(
           runtimeId as
             | "hyperframes-wsl2"
             | "hyperframes-windows-x64"
-            | "hyperframes-macos-arm64",
+            | "hyperframes-macos-arm64"
+            | "content-protection-windows-x64",
           requestedRuntimeChannel(req.query.channel)
         ).catch(() => null);
         if (durableRelease) {
@@ -1465,6 +1499,7 @@ export function registerWorkerRuntimeRoutes(
           if (durableRemotionReady) {
             res.json({
               ...(durableRelease.manifestJson ?? {}),
+              allowed: durableManifest?.allowed ?? true,
               runtimeId: durableRelease.runtimeId,
               version: durableRelease.version,
               archiveFileName: durableRelease.fileName,
@@ -1478,6 +1513,48 @@ export function registerWorkerRuntimeRoutes(
             });
             return;
           }
+        }
+        if (runtimeId === "content-protection-windows-x64") {
+          const localPack = findLatestContentProtectionRuntimePack(
+            runtimePackReleaseDirs,
+          );
+          if (localPack) {
+            const validation = await validateContentProtectionRuntimeArchive({
+              filePath: localPack.filePath,
+              fileName: localPack.fileName,
+              version: localPack.version,
+              publicKey: runtimePackPublicKey,
+            });
+            if (validation.valid && validation.manifest) {
+              res.json({
+                ...validation.manifest,
+                runtimeId: localPack.runtimeId,
+                version: localPack.version,
+                archiveFileName: localPack.fileName,
+                archiveSha256: sha256File(localPack.filePath),
+                archiveSizeBytes: localPack.sizeBytes,
+                archiveUrl: `/api/workers/runtime-pack/download/${encodeURIComponent(localPack.fileName)}`,
+                updatedAt: localPack.updatedAt,
+              });
+              return;
+            }
+            sendApiError(
+              res,
+              409,
+              "runtime_pack_not_allowed",
+              "The local Content Protection runtime is present but failed archive validation.",
+              "invalid_request_error",
+            );
+            return;
+          }
+          sendApiError(
+            res,
+            404,
+            "runtime_pack_not_published",
+            "The standalone Content Protection runtime has not been published yet.",
+            "not_found_error",
+          );
+          return;
         }
         const pack = findLatestAllowedRuntimePack(
           runtimePackReleaseDirs,
@@ -1608,6 +1685,80 @@ export function registerWorkerRuntimeRoutes(
             `attachment; filename="${executorPack.fileName.replace(/"/g, "")}"`
           );
           fs.createReadStream(executorPack.filePath).pipe(res);
+          return;
+        }
+
+        const contentProtectionMatch = fileName.match(
+          CONTENT_PROTECTION_RUNTIME_PACK_FILE_PATTERN,
+        );
+        if (
+          contentProtectionMatch?.[1] === "content-protection-windows-x64"
+        ) {
+          const durableRelease = await getPublishedWorkerRuntimeReleaseByFileName(
+            fileName,
+          ).catch(() => null);
+          if (
+            !durableRelease ||
+            durableRelease.runtimeId !== "content-protection-windows-x64"
+          ) {
+            const localPack = findLatestContentProtectionRuntimePack(
+              runtimePackReleaseDirs,
+            );
+            if (!localPack || localPack.fileName !== fileName) {
+              sendApiError(res, 404, "runtime_pack_not_found", "Standalone Content Protection runtime was not found", "not_found_error");
+              return;
+            }
+            const validation = await validateContentProtectionRuntimeArchive({
+              filePath: localPack.filePath,
+              fileName: localPack.fileName,
+              version: localPack.version,
+              publicKey: runtimePackPublicKey,
+            });
+            if (!validation.valid) {
+              sendApiError(res, 409, "runtime_pack_not_allowed", "The local Content Protection runtime failed archive validation.", "invalid_request_error");
+              return;
+            }
+            res.setHeader("Content-Type", "application/zip");
+            res.setHeader("Content-Length", String(localPack.sizeBytes));
+            res.setHeader("Content-Disposition", `attachment; filename="${localPack.fileName.replace(/"/g, '\\"')}"`);
+            fs.createReadStream(localPack.filePath).pipe(res);
+            return;
+          }
+          const stored = await storageStreamFile(durableRelease.storageKey);
+          if (!stored) {
+            sendApiError(
+              res,
+              404,
+              "runtime_pack_not_found",
+              "Content Protection runtime file was not found in storage",
+              "not_found_error",
+            );
+            return;
+          }
+          res.setHeader(
+            "Content-Type",
+            durableRelease.contentType || "application/zip",
+          );
+          if (stored.contentLength !== undefined)
+            res.setHeader("Content-Length", String(stored.contentLength));
+          res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${durableRelease.fileName.replace(/"/g, '\\"')}"`,
+          );
+          const nodeStream = stored.stream as NodeJS.ReadableStream;
+          if (typeof (nodeStream as any).pipe === "function") {
+            (nodeStream as any).pipe(res);
+          } else {
+            const reader = (
+              stored.stream as ReadableStream<Uint8Array>
+            ).getReader();
+            while (true) {
+              const chunk = await reader.read();
+              if (chunk.done) break;
+              res.write(chunk.value);
+            }
+            res.end();
+          }
           return;
         }
 

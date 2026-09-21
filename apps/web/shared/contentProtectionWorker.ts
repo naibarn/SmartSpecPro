@@ -11,6 +11,16 @@ export const CONTENT_PROTECTION_VERIFY_JOB_TYPE =
   "content_protection.verify" as const;
 export const CONTENT_PROTECTION_CONTRACT_VERSION =
   "content-protection.v1" as const;
+/**
+ * Protection is executed by the native Worker App.  Keeping this routing
+ * value next to the frozen job contract prevents producers from silently
+ * falling back to the web/Node executor, whose provider boundary is
+ * intentionally fail-closed.
+ */
+export const CONTENT_PROTECTION_RUNTIME_TYPE =
+  "desktop_zeroclaw_managed" as const;
+export const CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY =
+  "content-protection-v1" as const;
 export const CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION =
   "content-protection.verify.v1" as const;
 export const CONTENT_PROTECTION_PROGRESS_STAGES = [

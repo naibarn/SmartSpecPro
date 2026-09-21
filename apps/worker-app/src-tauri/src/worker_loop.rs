@@ -2215,6 +2215,25 @@ fn content_protection_watermark_id(
     format!("public-wm-{:x}", digest.finalize())
 }
 
+/// Windows does not execute `.cmd`/`.bat` files through CreateProcess
+/// directly. The provider command is operator-configured, so support the
+/// bundled Python launcher without weakening the command boundary on other
+/// platforms.
+fn content_protection_provider_command(command_path: &Path) -> Command {
+    let is_batch_launcher = command_path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| matches!(extension.to_ascii_lowercase().as_str(), "cmd" | "bat"))
+        .unwrap_or(false);
+    if cfg!(windows) && is_batch_launcher {
+        let mut command = Command::new("cmd.exe");
+        command.arg("/D").arg("/S").arg("/C").arg(command_path);
+        command
+    } else {
+        Command::new(command_path)
+    }
+}
+
 async fn download_content_protection_source_asset(
     url: &reqwest::Url,
     path: &Path,
@@ -2405,7 +2424,7 @@ async fn execute_content_protection_job(
                 return Err("content_protection_canceled".into());
             }
             let watermark_id = content_protection_watermark_id(&input);
-            let mut command = Command::new(&command_path);
+            let mut command = content_protection_provider_command(&command_path);
             command
                 .arg("--input")
                 .arg(&source_path)

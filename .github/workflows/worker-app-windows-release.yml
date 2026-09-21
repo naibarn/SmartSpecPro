@@ -1,0 +1,71 @@
+name: Worker App Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Worker App version (leave empty to use the next patch version)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows-worker-app:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.22.3"
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Verify Windows x64 host
+        shell: pwsh
+        run: |
+          if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64") { throw "Worker App must be built on Windows x64" }
+          if ((node -p "process.platform") -ne "win32") { throw "Node is not running on Windows" }
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build and sign Worker App installer
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw "TAURI_SIGNING_PRIVATE_KEY is required for a production Worker App release" }
+          if ($env:RELEASE_VERSION) {
+            npm --workspace apps/worker-app run release:windows -- --release-version $env:RELEASE_VERSION --skip-frontend-typecheck
+          } else {
+            npm --workspace apps/worker-app run release:windows -- --skip-frontend-typecheck
+          }
+
+      - name: Verify installer artifact
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem apps/web/client/public/releases -Filter "smart-ai-hub-worker-app-*-x64-setup.exe" | Sort-Object LastWriteTime | Select-Object -Last 1
+          if (-not $installer -or $installer.Length -le 0) { throw "Worker App installer was not produced" }
+          $bytes = [System.IO.File]::ReadAllBytes($installer.FullName)
+          if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw "Worker App installer is not a Windows PE executable" }
+          Get-FileHash $installer.FullName -Algorithm SHA256
+
+      - name: Upload signed Worker App installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: smart-ai-hub-worker-app-windows-x64
+          path: apps/web/client/public/releases/smart-ai-hub-worker-app-*-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 14

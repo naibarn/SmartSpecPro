@@ -22,6 +22,7 @@ import { WorkerPermissionsPanel } from "./screens/WorkerPermissionsPanel";
 import { LocalLlmSettingsScreen } from "./screens/LocalLlmSettingsScreen";
 import { AudioStudioSettingsCard } from "./screens/AudioStudioSettingsCard";
 import { SpeakerModelManagerCard } from "./screens/SpeakerModelManagerCard";
+import { ContentProtectionRuntimeCard } from "./screens/ContentProtectionRuntimeCard";
 import {
   fetchJsonWithTimeout,
   buildWorkerAppDownloadUrl,
@@ -2923,6 +2924,8 @@ function App() {
               </>
             ) : null}
           </article>
+
+          <ContentProtectionRuntimeCard />
 
           <SpeakerModelManagerCard locale={settings.locale} />
 

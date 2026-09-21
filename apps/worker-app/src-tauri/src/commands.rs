@@ -215,7 +215,7 @@ struct WorkerConnectRefreshEnvelope {
     pub tokens: WorkerConnectTokens,
 }
 
-fn get_effective_runtime_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn get_effective_runtime_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let app_data_dir = app
         .path()
         .app_data_dir()

@@ -220,6 +220,27 @@ function verifyChecksumSignature(
   }
 }
 
+function verifyContentProtectionManifestSignature(
+  manifest: Record<string, unknown> | null,
+  publicKey: string | null | undefined,
+): boolean {
+  if (!manifest || !publicKey) return false;
+  const signatureText = stringField(manifest.signature);
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(signatureText)) return false;
+  try {
+    const payload = { ...manifest };
+    delete payload.signature;
+    return crypto.verify(
+      null,
+      Buffer.from(JSON.stringify(payload), "utf8"),
+      crypto.createPublicKey(publicKey),
+      Buffer.from(signatureText, "base64"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function isOfficialRuntimePackManifest(
   manifest: Record<string, unknown> | null,
   runtimeId: WorkerRuntimeId | string,
@@ -345,6 +366,18 @@ type RuntimeArchiveMetadata = {
   files: Map<string, string>;
 };
 
+const CONTENT_PROTECTION_RUNTIME_ID = "content-protection-windows-x64";
+const CONTENT_PROTECTION_VIDEOSEAL_COMMIT =
+  "870ca7fb33578b90f14c602016b6c2788096226e";
+const CONTENT_PROTECTION_MIN_MODEL_BYTES = 100 * 1024 * 1024;
+
+type ContentProtectionArchiveMetadata = {
+  entries: Set<string>;
+  entrySizes: Map<string, number>;
+  manifestText: string;
+  providerHeader: string;
+};
+
 async function readRuntimeArchiveMetadata(
   filePath: string
 ): Promise<RuntimeArchiveMetadata> {
@@ -393,6 +426,197 @@ async function readRuntimeArchiveMetadata(
   } finally {
     zip.close();
   }
+}
+
+async function readContentProtectionArchiveMetadata(
+  filePath: string,
+): Promise<ContentProtectionArchiveMetadata> {
+  const zip = await yauzl.openPromise(filePath, {
+    autoClose: false,
+    decodeStrings: true,
+    strictFileNames: true,
+    validateEntrySizes: true,
+  });
+  const entries = new Set<string>();
+  const entrySizes = new Map<string, number>();
+  let manifestText = "";
+  let providerHeader = "";
+  try {
+    for await (const entry of zip.eachEntry()) {
+      if (entries.has(entry.fileName)) {
+        throw new Error(`Duplicate ZIP entry: ${entry.fileName}`);
+      }
+      if (
+        entry.fileName.startsWith("/") ||
+        entry.fileName.includes("\\") ||
+        entry.fileName.split("/").includes("..")
+      ) {
+        throw new Error(`Unsafe ZIP entry: ${entry.fileName}`);
+      }
+      entries.add(entry.fileName);
+      entrySizes.set(entry.fileName, entry.uncompressedSize);
+      if (entry.fileName.endsWith("/")) continue;
+      if (
+        entry.fileName !== "content-protection-manifest.json" &&
+        entry.fileName !== "provider/videoseal-provider.exe"
+      ) {
+        continue;
+      }
+      if (
+        entry.fileName === "content-protection-manifest.json" &&
+        entry.uncompressedSize > MAX_VALIDATION_METADATA_BYTES
+      ) {
+        throw new Error(`ZIP metadata entry is unexpectedly large: ${entry.fileName}`);
+      }
+      const stream = await zip.openReadStreamPromise(entry);
+      const chunks: Buffer[] = [];
+      let size = 0;
+      for await (const chunk of stream) {
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+        size += buffer.length;
+        if (entry.fileName === "provider/videoseal-provider.exe" && size > 2) {
+          chunks.push(buffer.subarray(0, Math.max(0, 2 - (size - buffer.length))));
+          stream.destroy();
+          break;
+        }
+        if (size > MAX_VALIDATION_METADATA_BYTES) {
+          stream.destroy();
+          throw new Error(`ZIP metadata entry exceeded the validation limit: ${entry.fileName}`);
+        }
+        chunks.push(buffer);
+      }
+      if (entry.fileName === "content-protection-manifest.json") {
+        manifestText = Buffer.concat(chunks).toString("utf8");
+      } else {
+        providerHeader = Buffer.concat(chunks).toString("ascii");
+      }
+    }
+    return { entries, entrySizes, manifestText, providerHeader };
+  } finally {
+    zip.close();
+  }
+}
+
+function isSafeContentProtectionPath(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    !value.startsWith("/") &&
+    !value.includes("\\") &&
+    !value.split("/").includes("..")
+  );
+}
+
+export async function validateContentProtectionRuntimeArchive(input: {
+  filePath: string;
+  fileName: string;
+  version: string;
+  publicKey?: string | null;
+}): Promise<{
+  manifest: Record<string, unknown> | null;
+  checks: WorkerRuntimeValidationCheck[];
+  valid: boolean;
+}> {
+  const checks: WorkerRuntimeValidationCheck[] = [];
+  const check = (id: string, ok: boolean, message: string) =>
+    checks.push({ id, status: ok ? "ok" : "error", message });
+  let archive: ContentProtectionArchiveMetadata;
+  try {
+    archive = await readContentProtectionArchiveMetadata(input.filePath);
+  } catch {
+    check("archive", false, "The uploaded Content Protection file is not a readable ZIP archive.");
+    return { manifest: null, checks, valid: false };
+  }
+  const expectedName = `smart-ai-hub-content-protection-runtime-windows-x64-${input.version}.zip`;
+  check("filename", input.fileName === expectedName, `Filename must be ${expectedName}.`);
+  let manifest: Record<string, unknown> | null = null;
+  try {
+    const parsed: unknown = JSON.parse(archive.manifestText);
+    manifest = parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    manifest = null;
+  }
+  check("manifest", Boolean(manifest), "Content Protection manifest is present and valid JSON.");
+  check(
+    "manifest_identity",
+    Boolean(
+      manifest &&
+        manifest.contractVersion === "content-protection.runtime.v1" &&
+        manifest.runtimeId === CONTENT_PROTECTION_RUNTIME_ID &&
+        manifest.version === input.version &&
+        manifest.targetPlatform === "windows-x64" &&
+        manifest.provider === "videoseal" &&
+        manifest.providerVersion === "videoseal-1.0" &&
+        manifest.videoSealCommit === CONTENT_PROTECTION_VIDEOSEAL_COMMIT &&
+        manifest.healthChecked === true &&
+        stringField(manifest.requiresWorkerRuntimeVersion).length > 0,
+    ),
+    "Content Protection manifest identity and health contract are valid.",
+  );
+  check(
+    "signature",
+    verifyContentProtectionManifestSignature(manifest, input.publicKey),
+    "Content Protection manifest signature verifies against the configured Ed25519 public key.",
+  );
+  const providerPath = stringField(manifest?.providerCommand);
+  const modelPath = stringField(manifest?.modelPath);
+  const licensePath = stringField(manifest?.licenseNotice);
+  check(
+    "required_files",
+    providerPath === "provider/videoseal-provider.exe" &&
+      modelPath.length > 0 &&
+      licensePath.length > 0 &&
+      isSafeContentProtectionPath(providerPath) &&
+      isSafeContentProtectionPath(modelPath) &&
+      isSafeContentProtectionPath(licensePath) &&
+      archive.entries.has(providerPath) &&
+      archive.entries.has(modelPath) &&
+      archive.entries.has(licensePath),
+    "Provider, model, and license files are present with safe paths.",
+  );
+  check(
+    "provider_binary",
+    providerPath === "provider/videoseal-provider.exe" && archive.providerHeader === "MZ",
+    "Content Protection provider is a Windows PE executable.",
+  );
+  check(
+    "model_size",
+    Boolean(modelPath && (archive.entrySizes.get(modelPath) ?? 0) >= CONTENT_PROTECTION_MIN_MODEL_BYTES),
+    "Content Protection model meets the minimum packaged size.",
+  );
+  const files = Array.isArray(manifest?.files) ? manifest.files : [];
+  const boundPaths = new Set(
+    files.flatMap(file =>
+      file && typeof file === "object" && !Array.isArray(file)
+        ? [stringField((file as Record<string, unknown>).path)]
+        : [],
+    ),
+  );
+  check(
+    "file_bindings",
+    files.length > 0 &&
+      boundPaths.has(providerPath) &&
+      boundPaths.has(modelPath) &&
+      boundPaths.has(licensePath) &&
+      files.every(file => {
+      if (!file || typeof file !== "object" || Array.isArray(file)) return false;
+      const record = file as Record<string, unknown>;
+      return isSafeContentProtectionPath(record.path) &&
+        /^[a-f0-9]{64}$/i.test(stringField(record.sha256)) &&
+        archive.entries.has(record.path);
+      }),
+    "Manifest file bindings are safe and cover packaged entries.",
+  );
+  let archiveStat: fs.Stats | null = null;
+  try {
+    archiveStat = fs.statSync(input.filePath);
+  } catch {
+    archiveStat = null;
+  }
+  check("archive_size", Boolean(archiveStat?.isFile() && archiveStat.size > 0), "Archive has a non-zero size.");
+  return { manifest, checks, valid: checks.every(item => item.status === "ok") };
 }
 
 export async function validateRuntimePackArchive(input: {
