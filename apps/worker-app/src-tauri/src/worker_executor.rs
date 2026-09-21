@@ -287,18 +287,15 @@ pub fn configure_installed_content_protection(
     let root = app_data_dir.join("content-protection-runtime/current");
     let provider = root.join("provider/videoseal-provider.exe");
     let model = root.join("ckpts/videoseal_y_256b_img.pth");
-    let ffmpeg = effective_runtime_dir.join("runtime-pack/bin/ffmpeg.exe");
-    let ffprobe = effective_runtime_dir.join("runtime-pack/bin/ffprobe.exe");
-    let fallback_ffmpeg = resource_dir.join("runtime-pack/bin/ffmpeg.exe");
-    let fallback_ffprobe = resource_dir.join("runtime-pack/bin/ffprobe.exe");
     if !provider.is_file() || !model.is_file() {
         return None;
     }
-    let ffmpeg = if ffmpeg.is_file() { ffmpeg } else { fallback_ffmpeg };
-    let ffprobe = if ffprobe.is_file() { ffprobe } else { fallback_ffprobe };
-    if !ffmpeg.is_file() || !ffprobe.is_file() {
-        return None;
-    }
+    let (ffmpeg, ffprobe) =
+        crate::content_protection_runtime::resolve_content_protection_media_tools(
+            &root,
+            effective_runtime_dir,
+            resource_dir,
+        )?;
     env::set_var("CONTENT_PROTECTION_PROVIDER", "videoseal");
     env::set_var("CONTENT_PROTECTION_PROVIDER_COMMAND", &provider);
     env::set_var("CONTENT_PROTECTION_MODEL_DIR", &root);

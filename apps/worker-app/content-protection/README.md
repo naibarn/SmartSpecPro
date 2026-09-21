@@ -18,14 +18,14 @@ packages without replacing the backend's existing Torch runtime, restores the
 model config files omitted by the pip package, downloads the checkpoint, and
 loads the model before reporting success.
 
-The main Worker App installer does not contain this provider or its model. On
-Windows x64, the separate `content-protection:release` workflow creates the
-optional `smart-ai-hub-content-protection-runtime-windows-x64-{version}.zip`.
-Users install it from the Worker App's Runtime screen. The app verifies the
-published archive hash, manifest, PE provider, model, license, and provider
-health check before activating it under AppData, then reuses FFmpeg/FFprobe
-from the separately managed Worker runtime pack. No Python, API keys,
-environment variables, or shell script are required for the production flow.
+The main Worker App installer does not contain this provider, its model, or its
+media tools. On Windows x64, the separate `content-protection:release` workflow
+creates the optional `smart-ai-hub-content-protection-runtime-windows-x64-{version}.zip`
+with its own Windows `ffmpeg.exe` and `ffprobe.exe`. Users install it from the
+Worker App's Runtime screen. The app verifies the published archive hash,
+manifest, PE provider, model, license, bundled media tools, and provider health
+check before activating it under AppData. No Python, API keys, environment
+variables, or shell script are required for the production flow.
 
 Install FFmpeg and FFprobe, then configure the Worker App process:
 

@@ -2,6 +2,7 @@
 
 import { execFileSync } from "node:child_process";
 import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
+import { createRequire } from "node:module";
 import {
   cpSync,
   existsSync,
@@ -25,6 +26,7 @@ const defaultOutputDir = join(appDir, ".content-protection-release");
 const runtimeId = "content-protection-windows-x64";
 const modelMinimumBytes = 100 * 1024 * 1024;
 const videoSealCommit = "870ca7fb33578b90f14c602016b6c2788096226e";
+const nodeRequire = createRequire(import.meta.url);
 
 const args = new Set(process.argv.slice(2));
 const checkOnly = args.has("--check-only");
@@ -36,6 +38,33 @@ function argValue(flag) {
 
 function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
+}
+
+function bundleWindowsMediaTools() {
+  if (process.platform !== "win32") {
+    throw new Error("Content Protection runtime media tools must be bundled on Windows x64.");
+  }
+  const ffmpegPackageEntry = nodeRequire.resolve("ffmpeg-static");
+  const ffmpegPath = nodeRequire("ffmpeg-static");
+  const ffprobePackageEntry = nodeRequire.resolve("ffprobe-static");
+  const ffprobePath = nodeRequire("ffprobe-static").path;
+  if (!ffmpegPath || !ffprobePath || !existsSync(ffmpegPath) || !existsSync(ffprobePath)) {
+    throw new Error("Windows FFmpeg and FFprobe binaries are required for the standalone Content Protection runtime.");
+  }
+
+  const targetDir = join(stagingRoot, "runtime-pack/bin");
+  mkdirSync(targetDir, { recursive: true });
+  cpSync(ffmpegPath, join(targetDir, "ffmpeg.exe"));
+  cpSync(ffprobePath, join(targetDir, "ffprobe.exe"));
+
+  const noticesPath = join(stagingRoot, "THIRD_PARTY_NOTICES.txt");
+  const ffmpegLicense = readFileSync(join(dirname(ffmpegPackageEntry), "ffmpeg.LICENSE"), "utf8");
+  const ffprobeLicense = readFileSync(join(dirname(ffprobePackageEntry), "LICENSE"), "utf8");
+  writeFileSync(
+    noticesPath,
+    `${readFileSync(noticesPath, "utf8")}\n\nFFmpeg binary (ffmpeg-static) license:\n${ffmpegLicense}\n\nFFprobe binary (ffprobe-static) license:\n${ffprobeLicense}`,
+    "utf8",
+  );
 }
 
 function sha256File(filePath) {
@@ -113,6 +142,11 @@ function assertStandaloneBundle(bundleRoot, expectedVersion = null) {
   if (!Array.isArray(manifest.files) || manifest.files.length === 0) {
     throw new Error("Content Protection manifest must bind its payload files");
   }
+  for (const mediaTool of ["runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"]) {
+    if (!existsSync(join(bundleRoot, mediaTool)) || !manifest.files.some(file => file.path === mediaTool)) {
+      throw new Error(`Content Protection media tool is missing or unbound: ${mediaTool}`);
+    }
+  }
   for (const file of manifest.files) {
     if (!file || !safeRelativePath(file.path) || !/^[a-f0-9]{64}$/i.test(file.sha256)) {
       throw new Error("Content Protection file checksum entry is invalid");
@@ -166,6 +200,8 @@ execFileSync(process.execPath, [prepareScript], {
   },
   stdio: "inherit",
 });
+
+bundleWindowsMediaTools();
 
 const existingManifest = readJson(join(stagingRoot, "content-protection-manifest.json"));
 const payloadFiles = walkFiles(stagingRoot).filter(file => file !== "content-protection-manifest.json");

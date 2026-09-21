@@ -169,6 +169,13 @@ fn validate_bundle(root: &Path) -> Result<ContentProtectionManifest, String> {
     if manifest.files.is_empty() {
         return Err("content_protection_file_bindings_missing".into());
     }
+    for media_tool in ["runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe"] {
+        if !root.join(media_tool).is_file()
+            || !manifest.files.iter().any(|binding| binding.path == media_tool)
+        {
+            return Err("content_protection_worker_runtime_media_tools_missing".into());
+        }
+    }
     if manifest.requires_worker_runtime_version.trim().is_empty()
         || !manifest
             .files
@@ -365,6 +372,30 @@ fn install_staging(staging_root: &Path, current_root: &Path) -> Result<(), Strin
     Ok(())
 }
 
+pub(crate) fn resolve_content_protection_media_tools(
+    content_protection_root: &Path,
+    effective_runtime_dir: &Path,
+    resource_dir: &Path,
+) -> Option<(PathBuf, PathBuf)> {
+    let candidates = [
+        (
+            content_protection_root.join("runtime-pack/bin/ffmpeg.exe"),
+            content_protection_root.join("runtime-pack/bin/ffprobe.exe"),
+        ),
+        (
+            effective_runtime_dir.join("runtime-pack/bin/ffmpeg.exe"),
+            effective_runtime_dir.join("runtime-pack/bin/ffprobe.exe"),
+        ),
+        (
+            resource_dir.join("runtime-pack/bin/ffmpeg.exe"),
+            resource_dir.join("runtime-pack/bin/ffprobe.exe"),
+        ),
+    ];
+    candidates
+        .into_iter()
+        .find(|(ffmpeg, ffprobe)| ffmpeg.is_file() && ffprobe.is_file())
+}
+
 fn run_provider_health(
     root: &Path,
     manifest: &ContentProtectionManifest,
@@ -372,21 +403,12 @@ fn run_provider_health(
     resource_dir: &Path,
 ) -> Result<(), String> {
     let provider = root.join(&manifest.provider_command);
-    let ffmpeg = effective_runtime_dir.join("runtime-pack/bin/ffmpeg.exe");
-    let ffprobe = effective_runtime_dir.join("runtime-pack/bin/ffprobe.exe");
-    let ffmpeg = if ffmpeg.is_file() {
-        ffmpeg
-    } else {
-        resource_dir.join("runtime-pack/bin/ffmpeg.exe")
-    };
-    let ffprobe = if ffprobe.is_file() {
-        ffprobe
-    } else {
-        resource_dir.join("runtime-pack/bin/ffprobe.exe")
-    };
-    if !ffmpeg.is_file() || !ffprobe.is_file() {
-        return Err("content_protection_worker_runtime_media_tools_missing".into());
-    }
+    let (ffmpeg, ffprobe) = resolve_content_protection_media_tools(
+        root,
+        effective_runtime_dir,
+        resource_dir,
+    )
+    .ok_or_else(|| "content_protection_worker_runtime_media_tools_missing".to_string())?;
     let output = Command::new(&provider)
         .arg("--health")
         .env("CONTENT_PROTECTION_MODEL_DIR", root)
@@ -547,12 +569,35 @@ pub async fn worker_app_install_content_protection_runtime(
 
 #[cfg(test)]
 mod tests {
-    use super::safe_relative_path;
+    use super::{resolve_content_protection_media_tools, safe_relative_path};
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn rejects_archive_traversal_paths() {
         assert!(!safe_relative_path("../provider.exe"));
         assert!(!safe_relative_path("C:\\provider.exe"));
         assert!(safe_relative_path("provider/videoseal-provider.exe"));
+    }
+
+    #[test]
+    fn prefers_media_tools_bundled_with_optional_runtime() {
+        let content_protection = tempdir().unwrap();
+        let effective_runtime = tempdir().unwrap();
+        let resource = tempdir().unwrap();
+        let bin = content_protection.path().join("runtime-pack/bin");
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(bin.join("ffmpeg.exe"), b"optional-runtime").unwrap();
+        fs::write(bin.join("ffprobe.exe"), b"optional-runtime").unwrap();
+
+        let resolved = resolve_content_protection_media_tools(
+            content_protection.path(),
+            effective_runtime.path(),
+            resource.path(),
+        )
+        .unwrap();
+
+        assert_eq!(resolved.0, bin.join("ffmpeg.exe"));
+        assert_eq!(resolved.1, bin.join("ffprobe.exe"));
     }
 }

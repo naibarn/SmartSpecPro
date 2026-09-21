@@ -1,6 +1,6 @@
 [package]
 name = "smart-ai-hub-worker-app"
-version = "0.1.414"
+version = "0.1.415"
 description = "Smart AI Hub Worker App"
 authors = ["SmartAIHub"]
 edition = "2021"

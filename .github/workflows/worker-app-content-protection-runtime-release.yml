@@ -61,6 +61,17 @@ jobs:
           npm --workspace apps/worker-app run content-protection:check -- --bundle-root .content-protection-build/generated
           Get-FileHash $archive.FullName -Algorithm SHA256
 
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($archive.FullName)
+          try {
+            $entries = $zip.Entries.FullName
+            foreach ($required in @("runtime-pack/bin/ffmpeg.exe", "runtime-pack/bin/ffprobe.exe")) {
+              if ($entries -notcontains $required) { throw "Standalone archive is missing $required" }
+            }
+          } finally {
+            $zip.Dispose()
+          }
+
       - name: Verify matching verification public key
         shell: pwsh
         run: |
