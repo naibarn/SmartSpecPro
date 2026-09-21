@@ -129,19 +129,6 @@
 
   <body>
     <div id="root"></div>
-    <!--
-      Removed (2026-07-14): legacy "remove preview/staging banners" inline
-      script from the old Manus-previewer hosting era. Its MutationObserver
-      swept every DOM mutation forever and deleted any body > div that was
-      position:fixed with offsetHeight < 100 — which matched React-managed
-      Radix dialog portals the moment React Suspense hid them
-      (display:none !important) during a lazy route transition. That external
-      removal made React's own teardown throw
-      "NotFoundError: removeChild" into the app ErrorBoundary (e.g. every
-      Create Series wizard completion). Production (smartaihub.app) has no
-      previewer banners; if ever needed again, recover it from git history
-      and scope it to the previewer hostname.
-    -->
     <script type="module" src="/src/main.tsx"></script>
     <!-- Analytics disabled: Uncomment and set VITE_ANALYTICS_ENDPOINT and VITE_ANALYTICS_WEBSITE_ID in .env to enable
     <script

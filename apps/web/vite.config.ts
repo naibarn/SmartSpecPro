@@ -4,7 +4,6 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "path";
 import { defineConfig } from "vite";
-import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 function stripAstryxPropertyRegistrationWarnings() {
@@ -27,13 +26,11 @@ const require = createRequire(import.meta.url);
 const reactPath = path.dirname(require.resolve("react/package.json"));
 const reactDomPath = path.dirname(require.resolve("react-dom/package.json"));
 
-export default defineConfig(({ command, mode }) => {
-  const isDev = command === "serve" || mode === "development";
+export default defineConfig(() => {
   const plugins = [
     stripAstryxPropertyRegistrationWarnings(),
     react(),
     tailwindcss(),
-    ...(isDev ? [vitePluginManusRuntime()] : []),
   ];
 
   // Conditionally add Sentry source map upload plugin (CI builds only)
