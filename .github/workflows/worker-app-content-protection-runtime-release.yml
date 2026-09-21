@@ -61,6 +61,14 @@ jobs:
           npm --workspace apps/worker-app run content-protection:check -- --bundle-root .content-protection-build/generated
           Get-FileHash $archive.FullName -Algorithm SHA256
 
+      - name: Export matching verification public key
+        env:
+          CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}
+        shell: pwsh
+        run: |
+          $publicKey = node --input-type=module -e 'import { createPrivateKey, createPublicKey } from "node:crypto"; process.stdout.write(createPublicKey(createPrivateKey(process.env.CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY)).export({ type: "spki", format: "pem" }).toString())'
+          Set-Content -Path "apps/worker-app/.content-protection-release/content-protection-signing-public-key.pem" -Value $publicKey -NoNewline
+
       - name: Upload standalone runtime artifacts
         uses: actions/upload-artifact@v4
         with:

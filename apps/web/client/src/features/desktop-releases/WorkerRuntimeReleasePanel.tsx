@@ -85,7 +85,12 @@ type LocalImportOperation = {
   id: string;
   status: "running" | "succeeded" | "failed";
   release?: WorkerRuntimeReleaseAsset | null;
-  error?: { message?: string } | null;
+  error?: {
+    message?: string;
+    details?: {
+      checks?: Array<{ status?: string; message?: string }>;
+    };
+  } | null;
 };
 
 const delay = (milliseconds: number) =>
@@ -106,8 +111,14 @@ async function waitForImport(
     const operation = payload?.operation as LocalImportOperation | undefined;
     if (operation?.status === "succeeded") return;
     if (operation?.status === "failed") {
+      const failedChecks = (operation.error?.details?.checks ?? [])
+        .filter(check => check.status === "error")
+        .map(check => check.message)
+        .filter((message): message is string => Boolean(message))
+        .join(" ");
       throw new Error(
-        operation.error?.message || "Server runtime import failed."
+        [operation.error?.message, failedChecks].filter(Boolean).join(" ") ||
+          "Server runtime import failed."
       );
     }
   }
