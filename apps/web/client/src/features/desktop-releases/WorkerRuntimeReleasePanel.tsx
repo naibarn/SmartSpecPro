@@ -378,10 +378,7 @@ export function WorkerRuntimeReleasePanel() {
 
   const upload = async () => {
     if (!file) {
-      setMessage({
-        kind: "error",
-        text: "เลือกไฟล์ ZIP ของ runtime ก่อนอัปโหลด",
-      });
+      fileInputRef.current?.click();
       return;
     }
     if (!version.trim()) {
@@ -512,12 +509,22 @@ export function WorkerRuntimeReleasePanel() {
       });
       await refresh();
     } catch (error) {
+      const errorText =
+        error instanceof Error ? error.message : "Server runtime import failed.";
+      if (
+        runtimeId === "content-protection-windows-x64" &&
+        /archive was not found|local archive/i.test(errorText)
+      ) {
+        setMessage({
+          kind: "success",
+          text: "ไม่พบ ZIP ในโฟลเดอร์ server — กำลังลองนำเข้าจาก GitHub Actions อัตโนมัติ…",
+        });
+        await importFromGithubActions();
+        return;
+      }
       setMessage({
         kind: "error",
-        text:
-          error instanceof Error
-            ? error.message
-            : "Server runtime import failed.",
+        text: errorText,
       });
     } finally {
       setBusy(false);
@@ -1104,11 +1111,10 @@ npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PA
                 <Server className="mr-2 h-4 w-4" />
                 {busyAction === "import"
                   ? "กำลังนำเข้าจาก server…"
-                  : "Import server artifact"}
+                  : "Import server artifact (local)"}
               </Button>
               <Button
                 type="button"
-                variant="outline"
                 className="w-fit"
                 onClick={() => void importFromGithubActions()}
                 disabled={busy || !version.trim()}
