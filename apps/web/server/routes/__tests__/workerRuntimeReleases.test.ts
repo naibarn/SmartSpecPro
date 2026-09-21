@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockAuthenticateRequest,
   mockCatalog,
+  mockImportGithubActions,
   mockImportLocal,
   mockRunnerCatalog,
   mockRunnerFinalize,
@@ -16,6 +17,7 @@ const {
 } = vi.hoisted(() => ({
   mockAuthenticateRequest: vi.fn(),
   mockCatalog: vi.fn(),
+  mockImportGithubActions: vi.fn(),
   mockImportLocal: vi.fn(),
   mockRunnerCatalog: vi.fn(),
   mockRunnerFinalize: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock("../../_core/sdk", () => ({
 
 vi.mock("../../services/workerRuntimeReleaseService", () => ({
   finalizeWorkerRuntimeReleaseUpload: vi.fn(),
+  importGithubActionsWorkerRuntimeRelease: mockImportGithubActions,
   importLocalWorkerRuntimeRelease: mockImportLocal,
   listWorkerRuntimeReleaseCatalog: mockCatalog,
   persistWorkerRuntimeReleaseUploadFromPath: vi.fn(),
@@ -106,6 +109,32 @@ describe("worker runtime release admin routes", () => {
       uploadedByName: "Admin",
       downloadUrl:
         "/api/workers/runtime-pack/download/smart-ai-hub-worker-runtime-hyperframes-wsl2-2026.09.07.1.zip",
+    });
+    mockImportGithubActions.mockResolvedValue({
+      id: 44,
+      version: "0.1.414",
+      runtimeId: "content-protection-windows-x64",
+      platform: "windows",
+      channel: "stable",
+      fileName:
+        "smart-ai-hub-content-protection-runtime-windows-x64-0.1.414.zip",
+      contentType: "application/zip",
+      fileSizeBytes: 566423680,
+      fileSha256: "b".repeat(64),
+      manifest: { runtimeId: "content-protection-windows-x64" },
+      validationStatus: "valid",
+      validationChecks: [
+        { id: "manifest", status: "ok", message: "Manifest is valid." },
+      ],
+      isPublished: false,
+      publishedAt: null,
+      withdrawnAt: null,
+      uploadedAt: "2026-09-21T00:00:00.000Z",
+      updatedAt: "2026-09-21T00:00:00.000Z",
+      uploadedByUserId: 1,
+      uploadedByName: "Admin",
+      downloadUrl:
+        "/api/workers/runtime-pack/download/smart-ai-hub-content-protection-runtime-windows-x64-0.1.414.zip",
     });
     mockRunnerCatalog.mockResolvedValue({
       generatedAt: "2026-09-08T00:00:00.000Z",
@@ -264,6 +293,36 @@ describe("worker runtime release admin routes", () => {
     expect(statusResponse.status).toBe(200);
     expect(statusResponse.body.operation.status).toBe("succeeded");
     expect(statusResponse.body.operation.release.version).toBe("2026.09.07.1");
+  });
+
+  it("starts a GitHub Actions runtime import without a browser file upload", async () => {
+    mockAuthenticateRequest.mockResolvedValue({ id: 1, role: "admin" });
+
+    const response = await request(await makeApp())
+      .post("/api/admin/worker-runtime/releases/import-github-actions")
+      .send({
+        version: "0.1.414",
+        runtimeId: "content-protection-windows-x64",
+        channel: "stable",
+      });
+
+    expect(response.status).toBe(202);
+    await vi.waitFor(() =>
+      expect(mockImportGithubActions).toHaveBeenCalledWith({
+        release: {
+          version: "0.1.414",
+          runtimeId: "content-protection-windows-x64",
+          channel: "stable",
+        },
+        uploadedByUserId: 1,
+      })
+    );
+
+    const statusResponse = await request(await makeApp()).get(
+      `/api/admin/worker-runtime/releases/import-github-actions/${response.body.operation.id}`
+    );
+    expect(statusResponse.status).toBe(200);
+    expect(statusResponse.body.operation.status).toBe("succeeded");
   });
 
   it("deduplicates concurrent server-side runtime imports", async () => {

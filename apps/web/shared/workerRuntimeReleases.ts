@@ -165,6 +165,19 @@ export type WorkerRuntimeReleaseLocalImport = z.output<
   typeof workerRuntimeReleaseLocalImportSchema
 >;
 
+export const workerRuntimeReleaseGithubImportSchema =
+  workerRuntimeReleaseLocalImportSchema.extend({
+    workflowRunId: z
+      .string()
+      .trim()
+      .regex(/^\d+$/, "Invalid GitHub Actions workflow run ID.")
+      .optional(),
+  });
+
+export type WorkerRuntimeReleaseGithubImport = z.output<
+  typeof workerRuntimeReleaseGithubImportSchema
+>;
+
 export const workerRuntimeReleaseFinalizeSchema =
   workerRuntimeReleaseUploadSchema.extend({
     storageKey: z.string().min(1),

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import {
   CheckCircle2,
   CloudUpload,
+  GitBranch,
   KeyRound,
   RefreshCw,
   Server,
@@ -90,12 +91,15 @@ type LocalImportOperation = {
 const delay = (milliseconds: number) =>
   new Promise(resolve => window.setTimeout(resolve, milliseconds));
 
-async function waitForLocalImport(operationId: string): Promise<void> {
+async function waitForImport(
+  operationPath: "import-local" | "import-github-actions",
+  operationId: string
+): Promise<void> {
   const deadline = Date.now() + 30 * 60 * 1000;
   while (Date.now() < deadline) {
     await delay(2_000);
     const response = await fetch(
-      `/api/admin/worker-runtime/releases/import-local/${encodeURIComponent(operationId)}`,
+      `/api/admin/worker-runtime/releases/${operationPath}/${encodeURIComponent(operationId)}`,
       { credentials: "include" }
     );
     const payload = await readJson(response);
@@ -170,9 +174,9 @@ export function WorkerRuntimeReleasePanel() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [busyAction, setBusyAction] = useState<"upload" | "import" | null>(
-    null
-  );
+  const [busyAction, setBusyAction] = useState<
+    "upload" | "import" | "github-import" | null
+  >(null);
   const [progress, setProgress] = useState(0);
   const [message, setMessage] = useState<{
     kind: "success" | "error";
@@ -498,7 +502,7 @@ export function WorkerRuntimeReleasePanel() {
           kind: "success",
           text: "Server รับงานนำเข้าแล้ว กำลังส่งไฟล์ไปยัง storage และตรวจสอบลายเซ็น…",
         });
-        await waitForLocalImport(operation.id);
+        await waitForImport("import-local", operation.id);
       } else if (!payload?.release && operation?.status !== "succeeded") {
         throw new Error("Server did not return a runtime import operation.");
       }
@@ -514,6 +518,62 @@ export function WorkerRuntimeReleasePanel() {
           error instanceof Error
             ? error.message
             : "Server runtime import failed.",
+      });
+    } finally {
+      setBusy(false);
+      setBusyAction(null);
+    }
+  };
+
+  const importFromGithubActions = async () => {
+    if (!version.trim()) {
+      setMessage({
+        kind: "error",
+        text: "กรุณาระบุ version ให้ตรงกับ runtime ที่ build สำเร็จใน GitHub Actions",
+      });
+      return;
+    }
+    try {
+      setBusy(true);
+      setBusyAction("github-import");
+      setProgress(0);
+      setMessage(null);
+      const response = await fetch(
+        "/api/admin/worker-runtime/releases/import-github-actions",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            version: version.trim(),
+            runtimeId,
+            channel,
+          }),
+        }
+      );
+      const payload = await readJson(response);
+      const operation = payload?.operation as LocalImportOperation | undefined;
+      if (operation?.status === "running") {
+        setMessage({
+          kind: "success",
+          text: "Server รับงานจาก GitHub Actions แล้ว กำลังดาวน์โหลด ตรวจสอบลายเซ็น และบันทึก runtime…",
+        });
+        await waitForImport("import-github-actions", operation.id);
+      } else if (!payload?.release && operation?.status !== "succeeded") {
+        throw new Error("Server did not return a GitHub Actions import operation.");
+      }
+      setMessage({
+        kind: "success",
+        text: "นำเข้า runtime จาก GitHub Actions สำเร็จแล้ว — กด Publish ในประวัติ release เพื่อเปิดใช้งาน",
+      });
+      await refresh();
+    } catch (error) {
+      setMessage({
+        kind: "error",
+        text:
+          error instanceof Error
+            ? error.message
+            : "GitHub Actions runtime import failed.",
       });
     } finally {
       setBusy(false);
@@ -1026,7 +1086,7 @@ npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PA
                 className="w-fit"
                 onClick={() => void upload()}
                 disabled={
-                  busy || selectedFileNameMismatch || !file || !version.trim()
+                  busy || selectedFileNameMismatch || !version.trim()
                 }
               >
                 <CloudUpload className="mr-2 h-4 w-4" />
@@ -1046,10 +1106,26 @@ npm --workspace apps/worker-app run runtime:release -- --speaker-aware-runner PA
                   ? "กำลังนำเข้าจาก server…"
                   : "Import server artifact"}
               </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={() => void importFromGithubActions()}
+                disabled={busy || !version.trim()}
+              >
+                <GitBranch className="mr-2 h-4 w-4" />
+                {busyAction === "github-import"
+                  ? "กำลังนำเข้าจาก GitHub Actions…"
+                  : "Import from GitHub Actions"}
+              </Button>
             </div>
             <span>
               Import server artifact จะใช้ ZIP ชื่อมาตรฐานจาก release directory
               ของ server โดยไม่ต้องเลือกไฟล์ผ่าน Browser
+            </span>
+            <span>
+              Import from GitHub Actions จะให้ server ดาวน์โหลด artifact ที่ build สำเร็จ
+              โดยไม่ต้องดาวน์โหลด ZIP ขนาดใหญ่ผ่าน Browser
             </span>
             <span className="text-amber-700">
               ปุ่มนี้ไม่อ่านไฟล์จากเครื่องที่เปิด Browser — ถ้า ZIP อยู่ในเครื่องของคุณ

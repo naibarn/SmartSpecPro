@@ -4,6 +4,7 @@ import os from "os";
 import path from "path";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
+import yauzl from "yauzl";
 
 import { and, desc, eq, isNull } from "drizzle-orm";
 
@@ -25,6 +26,7 @@ import {
   type WorkerRuntimePlatform,
   type WorkerRuntimeReleaseAsset,
   type WorkerRuntimeReleaseCatalog,
+  type WorkerRuntimeReleaseGithubImport,
   type WorkerRuntimeReleaseLocalImport,
   type WorkerRuntimeReleaseUpload,
 } from "../../shared/workerRuntimeReleases";
@@ -34,6 +36,7 @@ import {
   validateRuntimePackArchive,
 } from "./workerRuntimePackValidation";
 import { getWorkerRuntimeSigningKey } from "./workerRuntimeSigningKeyService";
+import { getDesktopReleaseConfig } from "./desktopReleaseSettings";
 
 export const WORKER_RUNTIME_RELEASE_STORAGE_PREFIX = "worker-runtime-releases/";
 export const MAX_WORKER_RUNTIME_RELEASE_BYTES = 8 * 1024 * 1024 * 1024;
@@ -43,6 +46,8 @@ const TEMP_RUNTIME_RELEASE_DIR = path.join(
   "smartspec-worker-runtime-releases"
 );
 fs.mkdirSync(TEMP_RUNTIME_RELEASE_DIR, { recursive: true });
+const CONTENT_PROTECTION_GITHUB_WORKFLOW =
+  "worker-app-content-protection-runtime-release.yml";
 
 type ReleaseRow = typeof workerRuntimeReleases.$inferSelect;
 type ReleaseWithUploader = ReleaseRow & {
@@ -712,6 +717,236 @@ export async function importLocalWorkerRuntimeRelease(input: {
     filePath,
     uploadedByUserId: input.uploadedByUserId,
   });
+}
+
+type GithubActionsRun = {
+  id: number;
+  status: string | null;
+  conclusion: string | null;
+};
+
+type GithubActionsArtifact = {
+  id: number;
+  name: string;
+  expired: boolean;
+  size_in_bytes: number;
+};
+
+function githubActionsApiBase(repository: string): string {
+  const [owner, repo] = repository.split("/");
+  return `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
+async function githubActionsFetch(
+  url: string,
+  token: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(init.headers ?? {}),
+    },
+  });
+  if (!response.ok) {
+    throw new WorkerRuntimeReleaseError(
+      response.status === 404
+        ? "worker_runtime_github_artifact_not_found"
+        : response.status === 401 || response.status === 403
+          ? "worker_runtime_github_access_denied"
+          : "worker_runtime_github_request_failed",
+      response.status >= 500 ? 503 : response.status,
+      `GitHub Actions request failed (HTTP ${response.status}).`
+    );
+  }
+  return response;
+}
+
+async function extractGithubArtifactRuntimeArchive(
+  artifactZipPath: string,
+  expectedName: string,
+  destinationPath: string
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    yauzl.open(artifactZipPath, { lazyEntries: true }, (openError, zipFile) => {
+      if (openError || !zipFile) {
+        reject(openError || new Error("GitHub Actions artifact is not a ZIP archive."));
+        return;
+      }
+      let found = false;
+      let settled = false;
+      const fail = (error: unknown) => {
+        if (settled) return;
+        settled = true;
+        zipFile.close();
+        reject(error);
+      };
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        zipFile.close();
+        if (found) resolve();
+        else reject(
+          new WorkerRuntimeReleaseError(
+            "worker_runtime_github_archive_entry_not_found",
+            422,
+            `GitHub Actions artifact does not contain ${expectedName}.`
+          )
+        );
+      };
+      zipFile.on("error", fail);
+      zipFile.on("end", finish);
+      zipFile.on("entry", entry => {
+        if (found) return;
+        const entryName = entry.fileName.replaceAll("\\", "/");
+        if (entryName.endsWith("/") || path.basename(entryName) !== expectedName) {
+          zipFile.readEntry();
+          return;
+        }
+        found = true;
+        zipFile.openReadStream(entry, (streamError, stream) => {
+          if (streamError || !stream) {
+            fail(streamError || new Error("Could not read GitHub Actions artifact entry."));
+            return;
+          }
+          void pipeline(stream, fs.createWriteStream(destinationPath))
+            .then(() => finish())
+            .catch(fail);
+        });
+      });
+      zipFile.readEntry();
+    });
+  });
+}
+
+async function downloadGithubActionsRuntimeArchive(input: {
+  repository: string;
+  token: string;
+  workflowRunId?: string;
+  expectedName: string;
+  destinationPath: string;
+}): Promise<void> {
+  const apiBase = githubActionsApiBase(input.repository);
+  let run: GithubActionsRun | null = null;
+  if (input.workflowRunId) {
+    const response = await githubActionsFetch(
+      `${apiBase}/actions/runs/${encodeURIComponent(input.workflowRunId)}`,
+      input.token
+    );
+    run = (await response.json()) as GithubActionsRun;
+  } else {
+    const response = await githubActionsFetch(
+      `${apiBase}/actions/workflows/${encodeURIComponent(CONTENT_PROTECTION_GITHUB_WORKFLOW)}/runs?event=workflow_dispatch&per_page=20`,
+      input.token
+    );
+    const payload = (await response.json()) as { workflow_runs?: GithubActionsRun[] };
+    run = payload.workflow_runs?.find(
+      candidate => candidate.status === "completed" && candidate.conclusion === "success"
+    ) ?? null;
+  }
+  if (!run || run.status !== "completed" || run.conclusion !== "success") {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_github_run_not_successful",
+      422,
+      "The selected GitHub Actions run has not completed successfully."
+    );
+  }
+
+  const artifactsResponse = await githubActionsFetch(
+    `${apiBase}/actions/runs/${run.id}/artifacts?per_page=100`,
+    input.token
+  );
+  const artifacts = ((await artifactsResponse.json()) as {
+    artifacts?: GithubActionsArtifact[];
+  }).artifacts ?? [];
+  const artifact = artifacts.find(
+    candidate =>
+      candidate.name === "smart-ai-hub-content-protection-runtime-windows-x64" &&
+      !candidate.expired
+  );
+  if (!artifact) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_github_artifact_not_found",
+      404,
+      "The successful GitHub Actions run does not contain the Content Protection runtime artifact."
+    );
+  }
+
+  const download = await githubActionsFetch(
+    `${apiBase}/actions/artifacts/${artifact.id}/zip`,
+    input.token,
+    { headers: { Accept: "application/octet-stream" } }
+  );
+  if (!download.body) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_github_artifact_empty",
+      502,
+      "GitHub Actions returned an empty runtime artifact."
+    );
+  }
+  const outerArchivePath = `${input.destinationPath}.github-artifact.zip`;
+  try {
+    await pipeline(
+      Readable.fromWeb(download.body as any),
+      fs.createWriteStream(outerArchivePath)
+    );
+    await extractGithubArtifactRuntimeArchive(
+      outerArchivePath,
+      input.expectedName,
+      input.destinationPath
+    );
+  } finally {
+    await fs.promises.rm(outerArchivePath, { force: true }).catch(() => undefined);
+  }
+}
+
+export async function importGithubActionsWorkerRuntimeRelease(input: {
+  release: WorkerRuntimeReleaseGithubImport;
+  uploadedByUserId: number;
+}): Promise<WorkerRuntimeReleaseAsset> {
+  const existing = await selectRowByIdentity(input.release);
+  if (existing) return mapRelease(existing);
+  const config = await getDesktopReleaseConfig();
+  if (!config.githubRepository || !config.githubTokenConfigured) {
+    throw new WorkerRuntimeReleaseError(
+      "worker_runtime_github_not_configured",
+      503,
+      "Configure the GitHub repository and token in Desktop Release Settings before importing a GitHub Actions artifact."
+    );
+  }
+  const fileName = expectedFileName(input.release.runtimeId, input.release.version);
+  const filePath = path.join(
+    TEMP_RUNTIME_RELEASE_DIR,
+    `${Date.now()}-${crypto.randomBytes(8).toString("hex")}-${fileName}`
+  );
+  try {
+    await downloadGithubActionsRuntimeArchive({
+      repository: config.githubRepository,
+      token: config.githubToken,
+      workflowRunId: input.release.workflowRunId,
+      expectedName: fileName,
+      destinationPath: filePath,
+    });
+    const stat = await fs.promises.stat(filePath);
+    return await persistWorkerRuntimeReleaseUploadFromPath({
+      upload: {
+        version: input.release.version,
+        runtimeId: input.release.runtimeId,
+        platform: expectedPlatform(input.release.runtimeId),
+        channel: input.release.channel,
+        fileName,
+        contentType: "application/zip",
+        fileSizeBytes: stat.size,
+      },
+      filePath,
+      uploadedByUserId: input.uploadedByUserId,
+    });
+  } finally {
+    await fs.promises.rm(filePath, { force: true }).catch(() => undefined);
+  }
 }
 
 export async function publishWorkerRuntimeRelease(

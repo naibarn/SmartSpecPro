@@ -10,6 +10,7 @@ import { sdk } from "../_core/sdk";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
 import {
   finalizeWorkerRuntimeReleaseUpload,
+  importGithubActionsWorkerRuntimeRelease,
   importLocalWorkerRuntimeRelease,
   listWorkerRuntimeReleaseCatalog,
   persistWorkerRuntimeReleaseUploadFromPath,
@@ -38,6 +39,7 @@ import {
   workerRuntimeReleaseAssetSchema,
   workerRuntimeReleaseCatalogSchema,
   workerRuntimeReleaseFinalizeSchema,
+  workerRuntimeReleaseGithubImportSchema,
   workerRuntimeReleaseLocalImportSchema,
   workerRuntimeReleaseUploadSchema,
   workerRuntimeRunnerArtifactCatalogSchema,
@@ -47,6 +49,7 @@ import {
   workerRuntimeSigningKeyCatalogSchema,
   workerRuntimeSigningKeyUpdateSchema,
   type WorkerRuntimeReleaseFinalize,
+  type WorkerRuntimeReleaseGithubImport,
   type WorkerRuntimeReleaseUpload,
 } from "../../shared/workerRuntimeReleases";
 
@@ -73,6 +76,8 @@ type LocalImportOperation = {
 
 const localImportOperations = new Map<string, LocalImportOperation>();
 const localImportOperationIdsByKey = new Map<string, string>();
+const githubImportOperations = new Map<string, LocalImportOperation>();
+const githubImportOperationIdsByKey = new Map<string, string>();
 const LOCAL_IMPORT_OPERATION_TTL_MS = 24 * 60 * 60 * 1000;
 
 function publicLocalImportOperation(operation: LocalImportOperation) {
@@ -87,12 +92,17 @@ function publicLocalImportOperation(operation: LocalImportOperation) {
 }
 
 function pruneLocalImportOperations(now = Date.now()): void {
-  for (const [id, operation] of localImportOperations) {
-    if (now - Date.parse(operation.updatedAt) <= LOCAL_IMPORT_OPERATION_TTL_MS)
-      continue;
-    localImportOperations.delete(id);
-    if (localImportOperationIdsByKey.get(operation.key) === id)
-      localImportOperationIdsByKey.delete(operation.key);
+  for (const [operations, operationIdsByKey] of [
+    [localImportOperations, localImportOperationIdsByKey],
+    [githubImportOperations, githubImportOperationIdsByKey],
+  ] as const) {
+    for (const [id, operation] of operations) {
+      if (now - Date.parse(operation.updatedAt) <= LOCAL_IMPORT_OPERATION_TTL_MS)
+        continue;
+      operations.delete(id);
+      if (operationIdsByKey.get(operation.key) === id)
+        operationIdsByKey.delete(operation.key);
+    }
   }
 }
 
@@ -144,6 +154,66 @@ function startLocalImportOperation(input: {
         };
         operation.updatedAt = new Date().toISOString();
         console.error("[WorkerRuntime] Server artifact import failed", {
+          operationId: operation.id,
+          key: operation.key,
+          error: operation.error,
+        });
+      });
+  });
+  return operation;
+}
+
+function startGithubImportOperation(input: {
+  release: WorkerRuntimeReleaseGithubImport;
+  uploadedByUserId: number;
+}): LocalImportOperation {
+  pruneLocalImportOperations();
+  const key = `${input.release.runtimeId}:${input.release.version}:${input.release.channel}:${input.release.workflowRunId ?? "latest"}`;
+  const activeId = githubImportOperationIdsByKey.get(key);
+  const active = activeId ? githubImportOperations.get(activeId) : null;
+  if (active?.status === "running") return active;
+
+  const now = new Date().toISOString();
+  const operation: LocalImportOperation = {
+    id: crypto.randomUUID(),
+    key,
+    status: "running",
+    createdAt: now,
+    updatedAt: now,
+    release: null,
+    error: null,
+  };
+  githubImportOperations.set(operation.id, operation);
+  githubImportOperationIdsByKey.set(key, operation.id);
+
+  setImmediate(() => {
+    void importGithubActionsWorkerRuntimeRelease({
+      release: input.release,
+      uploadedByUserId: input.uploadedByUserId,
+    })
+      .then(release => {
+        operation.status = "succeeded";
+        operation.release = release;
+        operation.updatedAt = new Date().toISOString();
+      })
+      .catch(error => {
+        operation.status = "failed";
+        operation.error = {
+          code:
+            error instanceof WorkerRuntimeReleaseError
+              ? error.code
+              : "worker_runtime_release_failed",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Worker runtime release operation failed",
+          details:
+            error instanceof WorkerRuntimeReleaseError
+              ? error.details
+              : undefined,
+        };
+        operation.updatedAt = new Date().toISOString();
+        console.error("[WorkerRuntime] GitHub Actions artifact import failed", {
           operationId: operation.id,
           key: operation.key,
           error: operation.error,
@@ -607,10 +677,51 @@ export function createWorkerRuntimeReleaseRouter(): Router {
     }
   );
 
+  router.post(
+    "/releases/import-github-actions",
+    enforceJsonBodyMaxBytes(16 * 1024),
+    async (req, res) => {
+      const userId = await requireSystemAdmin(req, res);
+      if (userId === null) return;
+      try {
+        const release = workerRuntimeReleaseGithubImportSchema.parse(
+          req.body ?? {}
+        );
+        const operation = startGithubImportOperation({
+          release,
+          uploadedByUserId: userId,
+        });
+        res.status(202).json({
+          operation: publicLocalImportOperation(operation),
+        });
+      } catch (error) {
+        sendError(res, error);
+      }
+    }
+  );
+
   router.get("/releases/import-local/:operationId", async (req, res) => {
     if ((await requireSystemAdmin(req, res)) === null) return;
     pruneLocalImportOperations();
     const operation = localImportOperations.get(
+      String(req.params.operationId || "")
+    );
+    if (!operation) {
+      res.status(404).json({
+        error: {
+          code: "worker_runtime_import_operation_not_found",
+          message: "Runtime import operation was not found or has expired.",
+        },
+      });
+      return;
+    }
+    res.json({ operation: publicLocalImportOperation(operation) });
+  });
+
+  router.get("/releases/import-github-actions/:operationId", async (req, res) => {
+    if ((await requireSystemAdmin(req, res)) === null) return;
+    pruneLocalImportOperations();
+    const operation = githubImportOperations.get(
       String(req.params.operationId || "")
     );
     if (!operation) {
