@@ -34,9 +34,13 @@ const labels: Record<WorkerRuntimeId, string> = {
   "hyperframes-wsl2": "Windows / WSL2",
   "hyperframes-windows-x64": "Windows native",
   "hyperframes-macos-arm64": "macOS arm64",
+  "content-protection-windows-x64": "Content Protection native (Windows x64)",
 };
 
 function expectedFileName(runtimeId: WorkerRuntimeId, version: string): string {
+  if (runtimeId === "content-protection-windows-x64") {
+    return `smart-ai-hub-content-protection-runtime-windows-x64-${version}.zip`;
+  }
   return `smart-ai-hub-worker-runtime-${runtimeId}-${version}.zip`;
 }
 
