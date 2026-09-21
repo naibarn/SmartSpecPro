@@ -61,13 +61,13 @@ jobs:
           npm --workspace apps/worker-app run content-protection:check -- --bundle-root .content-protection-build/generated
           Get-FileHash $archive.FullName -Algorithm SHA256
 
-      - name: Export matching verification public key
-        env:
-          CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY: ${{ secrets.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY }}
+      - name: Verify matching verification public key
         shell: pwsh
         run: |
-          $env:CONTENT_PROTECTION_RUNTIME_SIGNING_PUBLIC_KEY_PATH = Join-Path (Get-Location) "apps/worker-app/.content-protection-release/content-protection-signing-public-key.pem"
-          node --input-type=module -e 'import { createPrivateKey, createPublicKey } from "node:crypto"; import { writeFileSync } from "node:fs"; const publicKey = createPublicKey(createPrivateKey(process.env.CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY)).export({ type: "spki", format: "pem" }).toString(); createPublicKey(publicKey); writeFileSync(process.env.CONTENT_PROTECTION_RUNTIME_SIGNING_PUBLIC_KEY_PATH, publicKey, "utf8");'
+          $publicKeyPath = Join-Path (Get-Location) "apps/worker-app/.content-protection-release/content-protection-signing-public-key.pem"
+          if (-not (Test-Path $publicKeyPath)) { throw "Content Protection signing public key was not produced by the packaging step" }
+          $env:CONTENT_PROTECTION_RUNTIME_SIGNING_PUBLIC_KEY_PATH = $publicKeyPath
+          node --input-type=module -e 'import { createPublicKey } from "node:crypto"; import { readFileSync } from "node:fs"; createPublicKey(readFileSync(process.env.CONTENT_PROTECTION_RUNTIME_SIGNING_PUBLIC_KEY_PATH, "utf8"));'
 
       - name: Upload standalone runtime artifacts
         uses: actions/upload-artifact@v4

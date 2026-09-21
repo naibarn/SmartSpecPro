@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
-import { createHash, createPrivateKey, sign } from "node:crypto";
+import { createHash, createPrivateKey, createPublicKey, sign } from "node:crypto";
 import {
   cpSync,
   existsSync,
@@ -42,7 +42,7 @@ function sha256File(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
-function signManifest(manifest) {
+function loadSigningPrivateKey() {
   const privateKeySource = process.env.CONTENT_PROTECTION_RUNTIME_SIGNING_PRIVATE_KEY ||
     process.env.SMARTAIHUB_RUNTIME_PACK_SIGNING_PRIVATE_KEY || "";
   if (!privateKeySource.trim()) {
@@ -52,6 +52,10 @@ function signManifest(manifest) {
   if (privateKey.asymmetricKeyType !== "ed25519") {
     throw new Error("Content Protection runtime signing key must be Ed25519.");
   }
+  return privateKey;
+}
+
+function signManifest(manifest, privateKey) {
   return sign(null, Buffer.from(JSON.stringify(manifest)), privateKey).toString("base64");
 }
 
@@ -174,7 +178,8 @@ const manifest = {
   requiresWorkerRuntimeVersion: process.env.CONTENT_PROTECTION_MIN_WORKER_VERSION || packageJson.version,
   files: payloadFiles.map(file => ({ path: file, sha256: sha256File(join(stagingRoot, file)) })),
 };
-manifest.signature = signManifest(manifest);
+const signingPrivateKey = loadSigningPrivateKey();
+manifest.signature = signManifest(manifest, signingPrivateKey);
 writeFileSync(join(stagingRoot, "content-protection-manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 assertStandaloneBundle(stagingRoot, version);
 
@@ -197,5 +202,10 @@ writeFileSync(
   `${JSON.stringify(releaseManifest, null, 2)}\n`,
 );
 cpSync(join(stagingRoot, "content-protection-manifest.json"), join(outputDir, "content-protection-manifest.json"));
+writeFileSync(
+  join(outputDir, "content-protection-signing-public-key.pem"),
+  createPublicKey(signingPrivateKey).export({ type: "spki", format: "pem" }).toString(),
+  "utf8",
+);
 console.log(`[worker-app] created optional Content Protection runtime: ${archivePath}`);
 console.log(`[worker-app] archive sha256: ${archiveSha256}`);
