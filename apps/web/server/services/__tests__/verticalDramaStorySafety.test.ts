@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeVerticalDramaStorySafety,
   buildVerticalDramaImagePromptSafetyInput,
+  buildVerticalDramaScriptSafetyInput,
   buildVerticalDramaVideoPromptSafetyInput,
   formatVerticalDramaStorySafetyWarnings,
   isBlockingVerticalDramaStorySafety,
@@ -256,6 +257,60 @@ describe("vertical drama story safety", () => {
   it("does not flag a Thai negative statement that says the adult does not force the child", () => {
     const result = analyzeVerticalDramaStorySafety(
       "ผู้ใหญ่หยิบของเล่นมาให้เด็กดู แต่ยังไม่ยื่นบังคับ เด็กเลือกเข้าหาเองได้"
+    );
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("does not treat generated script diagnostics as an authored unsafe scene", () => {
+    const script = {
+      contract_version: 1,
+      episode_title: "หลักฐานที่หายไป",
+      hook: "ผู้ใหญ่สามคนตรวจเอกสารในสำนักงานอย่างสงบ",
+      scene_dialogue_summary: [
+        {
+          scene: 1,
+          summary: "ผู้ใหญ่ตรวจเอกสารและค้นข้อมูลร่วมกัน",
+        },
+      ],
+      warnings: [
+        {
+          code: "POLICY_GUIDANCE",
+          message:
+            "Keep children safe; do not depict danger, surveillance, abuse, or coercion.",
+        },
+      ],
+      repair_queue: [
+        {
+          code: "SAFETY_REVIEW",
+          message: "Review any child threat or forced action before rendering.",
+        },
+      ],
+      evidence_refs: [
+        {
+          field_path: "character.role",
+          excerpt: "child under adult supervision",
+        },
+      ],
+    };
+
+    expect(analyzeVerticalDramaStorySafety(script).level).toBe("high");
+    const result = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaScriptSafetyInput(script),
+    );
+
+    expect(result.level).toBe("low");
+    expect(result.findings).toEqual([]);
+  });
+
+  it("does not combine unrelated top-level script fields into one unsafe scene", () => {
+    const result = analyzeVerticalDramaStorySafety(
+      buildVerticalDramaScriptSafetyInput({
+        episode_title: "เด็กกับความลับในบ้าน",
+        hook: "ผู้ใหญ่ตรวจเอกสารอย่างสงบ",
+        cliffhanger: "ภัยคุกคามถูกพบในจดหมายของผู้ใหญ่",
+      }),
     );
 
     expect(result.level).toBe("low");

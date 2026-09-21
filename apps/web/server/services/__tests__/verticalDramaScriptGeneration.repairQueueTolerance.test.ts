@@ -103,6 +103,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 6,
     episodeId: 42,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 2",
     episodeNumber: 2,
     locale: "th" as const,
@@ -211,6 +212,54 @@ describe("generateEpisodeScript — end-to-end tolerance for a drifted repair_qu
 
     expect(result.script.repair_queue).toEqual([]);
     expect(result.script.warnings).toEqual([{ code: "none", message: "no blocking issues" }]);
+  });
+
+  it("does not block a safe episode because diagnostics mention prohibited contexts", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      scene_dialogue_summary: [
+        { scene: 1, summary: "ผู้ใหญ่ตรวจเอกสารร่วมกันในสำนักงาน" },
+      ],
+      warnings: [
+        {
+          code: "POLICY_GUIDANCE",
+          message:
+            "Keep children safe; do not depict danger, surveillance, abuse, or coercion.",
+        },
+      ],
+      repair_queue: [
+        {
+          code: "SAFETY_REVIEW",
+          message: "Review any child threat or forced action before rendering.",
+        },
+      ],
+      evidence_refs: [
+        { field_path: "character.role", excerpt: "child under supervision" },
+      ],
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+
+    expect(result.script.episode_title).toBe("Midnight Verdict");
+    expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
+  });
+
+  it("still blocks an authored unsafe scene after metadata projection", async () => {
+    mockLlmResponse({
+      ...BASE_SCRIPT,
+      scene_dialogue_summary: [
+        {
+          scene: 1,
+          summary: "A child is unaware while someone secretly photographs the room.",
+        },
+      ],
+      warnings: [],
+      repair_queue: [],
+    });
+
+    await expect(generateEpisodeScript(baseParams())).rejects.toMatchObject({
+      code: "VD_STORY_POLICY_RISK",
+    });
   });
 });
 

@@ -172,6 +172,27 @@ const SAFETY_METADATA_KEYS = new Set([
   "policySafetyContract",
 ]);
 
+// A script result also carries transport/diagnostic fields beside the
+// authored episode. Those fields may contain policy instructions, model
+// findings, or evidence excerpts and must not be interpreted as scenes.
+const SCRIPT_STORY_SAFETY_KEYS = [
+  "episode_title",
+  "hook",
+  "structure",
+  "scene_dialogue_summary",
+  "cliffhanger",
+  "character_state_deltas",
+  "product_tie_in_plan",
+  "continuity_notes",
+  "character_emotional_arcs",
+  "open_loops",
+  "retention_loop",
+  "episode_memory",
+  "thread_actions",
+  "romance_beat",
+  "advantage_beat",
+] as const;
+
 /**
  * Provider prompts contain deterministic grounding contracts alongside the
  * authored scene. Those contracts may legitimately mention age, children, or
@@ -249,6 +270,26 @@ export function buildVerticalDramaImagePromptSafetyInput(params: {
   return {
     imagePrompt: extractVerticalDramaImagePromptStoryText(params.imagePrompt),
     shotContext: storyContext,
+  };
+}
+
+/**
+ * Build the bounded safety input for an episode script. The script-builder
+ * contract contains both authored story fields and generated diagnostics;
+ * only the former are valid evidence for a story-level policy decision.
+ */
+export function buildVerticalDramaScriptSafetyInput(
+  script: unknown,
+): Record<string, unknown> {
+  if (!script || typeof script !== "object" || Array.isArray(script)) {
+    return { story: script };
+  }
+
+  const source = script as Record<string, unknown>;
+  return {
+    story_units: SCRIPT_STORY_SAFETY_KEYS.filter(key => key in source).map(
+      key => ({ [key]: source[key] }),
+    ),
   };
 }
 

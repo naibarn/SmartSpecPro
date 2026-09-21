@@ -110,6 +110,7 @@ import type {
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import {
   analyzeVerticalDramaStorySafety,
+  buildVerticalDramaScriptSafetyInput,
   isBlockingVerticalDramaStorySafety,
 } from "./verticalDramaStorySafety";
 
@@ -1954,7 +1955,14 @@ export async function generateEpisodeScript(
       })
     : rawValidatedData;
 
-  const storySafety = analyzeVerticalDramaStorySafety(validatedData);
+  // The script contract contains generated diagnostics (`warnings`,
+  // `repair_queue`, evidence refs, and provider metadata) alongside the
+  // authored episode. Safety admission must inspect only story-bearing fields;
+  // otherwise a defensive instruction such as "do not depict child danger"
+  // can be misread as an unsafe scene and block an otherwise valid episode.
+  const storySafety = analyzeVerticalDramaStorySafety(
+    buildVerticalDramaScriptSafetyInput(validatedData),
+  );
   if (isBlockingVerticalDramaStorySafety(storySafety)) {
     const error = new VdStorySafetyError(
       "Episode story contains a high-risk policy context; rewrite before media generation.",
