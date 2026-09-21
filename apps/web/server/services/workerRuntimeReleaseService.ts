@@ -877,8 +877,7 @@ async function downloadGithubActionsRuntimeArchive(input: {
 
   const download = await githubActionsFetch(
     `${apiBase}/actions/artifacts/${artifact.id}/zip`,
-    input.token,
-    { headers: { Accept: "application/octet-stream" } }
+    input.token
   );
   if (!download.body) {
     throw new WorkerRuntimeReleaseError(
