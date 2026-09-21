@@ -40,6 +40,17 @@ function readJson(filePath) {
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
+function readPackageLicense(packageEntry, preferredNames) {
+  const packageDir = dirname(packageEntry);
+  const licensePath = preferredNames
+    .map(name => join(packageDir, name))
+    .find(existsSync);
+  if (!licensePath) {
+    throw new Error(`A license notice is required for package ${packageDir}.`);
+  }
+  return readFileSync(licensePath, "utf8");
+}
+
 function bundleWindowsMediaTools() {
   if (process.platform !== "win32") {
     throw new Error("Content Protection runtime media tools must be bundled on Windows x64.");
@@ -58,8 +69,8 @@ function bundleWindowsMediaTools() {
   cpSync(ffprobePath, join(targetDir, "ffprobe.exe"));
 
   const noticesPath = join(stagingRoot, "THIRD_PARTY_NOTICES.txt");
-  const ffmpegLicense = readFileSync(join(dirname(ffmpegPackageEntry), "ffmpeg.LICENSE"), "utf8");
-  const ffprobeLicense = readFileSync(join(dirname(ffprobePackageEntry), "LICENSE"), "utf8");
+  const ffmpegLicense = readPackageLicense(ffmpegPackageEntry, ["ffmpeg.LICENSE", "LICENSE"]);
+  const ffprobeLicense = readPackageLicense(ffprobePackageEntry, ["LICENSE"]);
   writeFileSync(
     noticesPath,
     `${readFileSync(noticesPath, "utf8")}\n\nFFmpeg binary (ffmpeg-static) license:\n${ffmpegLicense}\n\nFFprobe binary (ffprobe-static) license:\n${ffprobeLicense}`,
