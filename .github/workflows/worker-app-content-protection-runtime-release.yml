@@ -67,4 +67,5 @@ jobs:
           name: smart-ai-hub-content-protection-runtime-windows-x64
           path: apps/worker-app/.content-protection-release/*
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
