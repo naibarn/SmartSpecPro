@@ -58,7 +58,7 @@ jobs:
           if (-not $archive -or $archive.Length -le 0) { throw "Content Protection runtime ZIP was not produced" }
           $metadata = Get-Item "$($archive.FullName -replace '\.zip$', '.manifest.json')"
           if (-not $metadata) { throw "Detached Content Protection release metadata is missing" }
-          npm --workspace apps/worker-app run content-protection:check -- --bundle-root apps/worker-app/.content-protection-build/generated
+          npm --workspace apps/worker-app run content-protection:check -- --bundle-root .content-protection-build/generated
           Get-FileHash $archive.FullName -Algorithm SHA256
 
       - name: Upload standalone runtime artifacts
