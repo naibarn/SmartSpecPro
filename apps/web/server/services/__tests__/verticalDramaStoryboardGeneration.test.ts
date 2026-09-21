@@ -37,6 +37,15 @@ vi.mock("fs", async () => {
 vi.mock("../verticalDramaImproveScript", () => ({
   resolveStoryboardModel: vi.fn(),
 }));
+vi.mock("../verticalDramaLlmPolicy", async () => {
+  const actual = await vi.importActual<typeof import("../verticalDramaLlmPolicy")>(
+    "../verticalDramaLlmPolicy"
+  );
+  return {
+    ...actual,
+    loadVerticalDramaGenerationSettings: vi.fn(async () => null),
+  };
+});
 
 import fs from "fs";
 import { parseSkillFile } from "@smartspec/skills";
@@ -295,7 +304,7 @@ describe("generateStoryboardShotgrid", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
-  it("retains the last candidate and structured findings when policy recovery is exhausted", async () => {
+  it("rewrites and returns the last candidate with warnings when policy recovery is exhausted", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     const unsafeCandidates = Array.from({ length: 4 }, (_, index) => {
       const candidate = validOutput();
@@ -306,33 +315,18 @@ describe("generateStoryboardShotgrid", () => {
       mockExecute.mockResolvedValueOnce(successResponse(candidate));
     });
 
-    let caught: unknown;
-    try {
-      await generateStoryboardShotgrid(baseParams());
-    } catch (error) {
-      caught = error;
-    }
+    const result = await generateStoryboardShotgrid(baseParams());
 
-    expect(caught).toMatchObject({
-      code: "VD_STORY_POLICY_RISK",
-      repairAttempts: 3,
-      candidate: expect.objectContaining({
-        shots: expect.arrayContaining([
-          expect.objectContaining({
-            visual_description:
-              "A child is unaware while someone threatens room 4.",
-          }),
-        ]),
-      }),
-      safety: expect.objectContaining({
-        level: "high",
-        findings: expect.arrayContaining([
-          expect.objectContaining({ code: "minor_threat_or_surveillance" }),
-        ]),
-      }),
-    });
+    expect(result.storyboard.shots[0]!.visual_description).not.toContain(
+      "threatens room 4"
+    );
+    expect(result.storyboard.policy_safety_warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("minor_threat_or_surveillance"),
+      ])
+    );
     expect(mockExecute).toHaveBeenCalledTimes(4);
-    expect(mockDeductCredits).not.toHaveBeenCalled();
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
   it("injects the shared spoken-English profile for dialogue excerpts and subtitles", async () => {

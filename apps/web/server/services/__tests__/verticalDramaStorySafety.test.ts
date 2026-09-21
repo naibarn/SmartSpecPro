@@ -4,8 +4,11 @@ import {
   buildVerticalDramaImagePromptSafetyInput,
   buildVerticalDramaScriptSafetyInput,
   buildVerticalDramaVideoPromptSafetyInput,
+  buildVerticalDramaStorySafetyDiagnostic,
+  buildVerticalDramaStorySafetyRewriteInstruction,
   formatVerticalDramaStorySafetyWarnings,
   isBlockingVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
 } from "../verticalDramaStorySafety";
 
 describe("vertical drama story safety", () => {
@@ -261,6 +264,54 @@ describe("vertical drama story safety", () => {
 
     expect(result.level).toBe("low");
     expect(result.findings).toEqual([]);
+  });
+
+  it("builds a provider-facing rewrite instruction for a high-risk story", () => {
+    const story = "A child is unaware while someone threatens the room.";
+    const result = analyzeVerticalDramaStorySafety(story);
+
+    expect(buildVerticalDramaStorySafetyRewriteInstruction(story, result)).toContain(
+      "Preserve the plot purpose"
+    );
+  });
+
+  it("rewrites risky story text without rewriting policy metadata", () => {
+    const source = {
+      scene: "A child is unaware while someone secretly photographs the room.",
+      policy_safety_contract:
+        "Do not depict a child being threatened or secretly photographed.",
+    };
+
+    const result = rewriteVerticalDramaStoryForSafeMedia(source);
+
+    expect(result.changed).toBe(true);
+    expect(result.value).toMatchObject({
+      policy_safety_contract: source.policy_safety_contract,
+    });
+    expect(result.value).toMatchObject({
+      scene: expect.not.stringContaining("secretly photographs"),
+    });
+    expect(analyzeVerticalDramaStorySafety(result.value).level).not.toBe("high");
+  });
+
+  it("creates a redacted diagnostic projection with stable correlation fields", () => {
+    const story = { scene: "ผู้ตรวจพบศพในห้องเก็บของ" };
+    const result = analyzeVerticalDramaStorySafety(story);
+    const diagnostic = buildVerticalDramaStorySafetyDiagnostic(story, result);
+
+    expect(diagnostic).toMatchObject({
+      level: "high",
+      textLength: expect.any(Number),
+      textHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+      findings: [
+        expect.objectContaining({
+          code: "graphic_violence",
+          fieldPath: "$.scene",
+          matchedRule: "graphic_violence",
+        }),
+      ],
+    });
+    expect(JSON.stringify(diagnostic)).not.toContain("ศพในห้องเก็บของ");
   });
 
   it("does not treat generated script diagnostics as an authored unsafe scene", () => {

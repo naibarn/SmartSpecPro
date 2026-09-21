@@ -107,7 +107,10 @@ import {
 import { readVerticalDramaStoryControlSeed } from "@shared/verticalDramaSeries/storyControl";
 import { buildVerticalDramaDialogueLanguageProfileFromBible } from "@shared/verticalDramaSeries/dialogueLanguageProfile";
 import { resolveCharacterCastingAgeProfile } from "@shared/verticalDramaSeries/characterCastingAge";
-import { analyzeVerticalDramaStorySafety } from "./verticalDramaStorySafety";
+import {
+  analyzeVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
+} from "./verticalDramaStorySafety";
 import {
   verticalDramaSeriesMemoryService,
   type VerticalDramaSeriesMemoryService,
@@ -416,6 +419,35 @@ export const VERTICAL_DRAMA_ASYNC_STAGES: ReadonlySet<VerticalDramaPipelineStage
 
 /** Stable machine-readable error code for a schema-validation failure (spec §11.5). */
 export const VD_SCHEMA_VALIDATION_FAILED = "VD_SCHEMA_VALIDATION_FAILED";
+
+type ScriptBuilderOutputWithPolicyWarnings = ScriptBuilderOutput & {
+  policy_safety_warnings?: unknown;
+};
+
+export function rewriteVerticalDramaStartFramePolicyRisk<
+  T extends { imagePrompt?: unknown },
+>(frames: T[]): { frames: T[]; warnings: string[] } {
+  const warnings: string[] = [];
+  const rewrittenFrames = frames.map(frame => {
+    const prompt = typeof frame.imagePrompt === "string" ? frame.imagePrompt : "";
+    const safety = analyzeVerticalDramaStorySafety(prompt);
+    if (safety.findings.length === 0) return frame;
+    warnings.push(
+      ...safety.findings.map(
+        finding =>
+          `Start-frame safety advisory [${finding.code}]: ${finding.message}`,
+      ),
+    );
+    const rewritten = rewriteVerticalDramaStoryForSafeMedia({ imagePrompt: prompt });
+    const rewrittenPrompt = (rewritten.value as { imagePrompt?: unknown }).imagePrompt;
+    return {
+      ...frame,
+      imagePrompt:
+        typeof rewrittenPrompt === "string" ? rewrittenPrompt : prompt,
+    };
+  });
+  return { frames: rewrittenFrames, warnings };
+}
 
 /**
  * Map a `generateEpisodeScript` failure to a `RunResult` error — mirrors
@@ -7300,6 +7332,22 @@ export class VerticalDramaEpisodePipeline {
           opts.retentionHooksEnabled ?? false
         );
         payload = { stage, ...generated.script };
+        const policySafetyWarnings = (
+          generated.script as ScriptBuilderOutputWithPolicyWarnings
+        ).policy_safety_warnings;
+        if (Array.isArray(policySafetyWarnings)) {
+          stageQcWarnings.push(
+            ...policySafetyWarnings
+              .filter((warning): warning is string => typeof warning === "string")
+              .map(message => ({
+                code: "VD_SCRIPT_POLICY_WARNING",
+                severity: "warning" as const,
+                message,
+                targetStage: stage,
+                repairable: true,
+              })),
+          );
+        }
         // Persist to the episode's own `script` jsonb column.
         await db
           .update(verticalDramaEpisodes)
@@ -7704,17 +7752,23 @@ export class VerticalDramaEpisodePipeline {
             })
           ),
         };
-        const finalImageSafety = generated.plan.frames
-          .map(frame => analyzeVerticalDramaStorySafety(frame.imagePrompt))
-          .find(result => result.level === "high");
-        if (finalImageSafety) {
-          const error = new Error("VD_STORY_POLICY_RISK") as Error & {
-            code?: string;
-            safety?: unknown;
+        const policySafeFrames = rewriteVerticalDramaStartFramePolicyRisk(
+          generated.plan.frames,
+        );
+        if (policySafeFrames.warnings.length > 0) {
+          generated.plan = {
+            ...generated.plan,
+            frames: policySafeFrames.frames,
           };
-          error.code = "VD_STORY_POLICY_RISK";
-          error.safety = finalImageSafety;
-          throw error;
+          stageQcWarnings.push(
+            ...policySafeFrames.warnings.map(message => ({
+              code: "VD_START_FRAME_POLICY_WARNING",
+              severity: "warning" as const,
+              message,
+              targetStage: stage,
+              repairable: true,
+            })),
+          );
         }
 
         // Light, non-blocking QC (2026-07-07 non-human-character-vanishing

@@ -244,7 +244,7 @@ describe("generateEpisodeScript — end-to-end tolerance for a drifted repair_qu
     expect(mockExecuteWithFallback).toHaveBeenCalledTimes(1);
   });
 
-  it("still blocks an authored unsafe scene after metadata projection", async () => {
+  it("rewrites an authored unsafe scene and returns a warning after metadata projection", async () => {
     mockLlmResponse({
       ...BASE_SCRIPT,
       scene_dialogue_summary: [
@@ -257,9 +257,16 @@ describe("generateEpisodeScript — end-to-end tolerance for a drifted repair_qu
       repair_queue: [],
     });
 
-    await expect(generateEpisodeScript(baseParams())).rejects.toMatchObject({
-      code: "VD_STORY_POLICY_RISK",
-    });
+    const result = await generateEpisodeScript(baseParams());
+
+    expect(result.script.policy_safety_warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("minor_threat_or_surveillance"),
+      ])
+    );
+    expect(result.script.scene_dialogue_summary[0]?.summary).not.toContain(
+      "secretly photographs"
+    );
   });
 });
 

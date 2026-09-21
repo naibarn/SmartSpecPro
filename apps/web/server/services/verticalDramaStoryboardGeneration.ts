@@ -70,6 +70,7 @@ import { resolveStoryboardModel } from "./verticalDramaImproveScript";
 import {
   analyzeVerticalDramaStorySafety,
   isBlockingVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
   type VerticalDramaStorySafetyResult,
 } from "./verticalDramaStorySafety";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
@@ -1190,11 +1191,16 @@ export async function generateStoryboardShotgrid(
     storyboardSafety = analyzeStoryboardSafety(storyboardData);
   }
 
-  if (isBlockingVerticalDramaStorySafety(storyboardSafety)) {
-    throw new VerticalDramaStoryboardPolicyRecoveryError(
-      storyboardSafety,
-      storyboardData,
-      policyRepairAttempts
+  const detectedPolicySafety = storyboardSafety;
+  if (detectedPolicySafety.findings.length > 0) {
+    const safeRewrite = rewriteVerticalDramaStoryForSafeMedia(storyboardData);
+    storyboardData = safeRewrite.value as StoryboardShotgridOutput;
+    storyboardSafety = analyzeStoryboardSafety(storyboardData);
+    (storyboardData as StoryboardShotgridOutput & {
+      policy_safety_warnings?: string[];
+    }).policy_safety_warnings = detectedPolicySafety.findings.map(
+      finding =>
+        `Storyboard safety advisory [${finding.code}]: ${finding.message}`,
     );
   }
 

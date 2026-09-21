@@ -110,9 +110,12 @@ import type {
 } from "@shared/verticalDramaSeries/seriesMemoryState";
 import {
   analyzeVerticalDramaStorySafety,
+  buildVerticalDramaStorySafetyDiagnostic,
+  buildVerticalDramaStorySafetyRewriteInstruction,
   buildVerticalDramaScriptSafetyInput,
-  isBlockingVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
 } from "./verticalDramaStorySafety";
+import { writeVerticalDramaSafetyDebugEvent } from "./verticalDramaSafetyDebugLog";
 
 export { InsufficientCreditsError, VdSchemaValidationError };
 
@@ -1185,7 +1188,17 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
       profile: params.dialogueLanguageProfile,
     });
 
-  const { storySource } = params;
+  const sourceSafety = analyzeVerticalDramaStorySafety(params.storySource);
+  const rewrittenStorySource = rewriteVerticalDramaStoryForSafeMedia(
+    params.storySource,
+  );
+  const storySource = rewrittenStorySource.value as GenerateEpisodeScriptParams["storySource"];
+  const safetyRewriteInstruction = buildVerticalDramaStorySafetyRewriteInstruction(
+    params.storySource,
+    sourceSafety,
+  );
+  const safePromptValue = (value: unknown): unknown =>
+    rewriteVerticalDramaStoryForSafeMedia(value).value;
   const characterLines = params.characters.length
     ? params.characters
         .map(
@@ -1275,7 +1288,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   // (episode 1 of a brand-new series, or a caller/test that predates this
   // field) so the prompt shape is unchanged for those cases.
   const memorySection = params.memoryBundle
-    ? `memory_state (series long-memory retrieval bundle — canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue; respect it for continuity and do not repeat resolved hooks or fatigued tie-ins):\n${JSON.stringify(params.memoryBundle)}`
+    ? `memory_state (series long-memory retrieval bundle — canonical facts, recent episode summaries, open/resolved hooks, continuity warnings, product tie-in fatigue; respect it for continuity and do not repeat resolved hooks or fatigued tie-ins):\n${JSON.stringify(safePromptValue(params.memoryBundle))}`
     : null;
 
   const storyControlSection = storySource.storyControlSeed
@@ -1405,7 +1418,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
     episodeDraftEnabled && params.episodeDraft
       ? [
           "A vetted per-shot draft exists — REFINE it into the full script schema: keep the shot-to-story structure and dialogue intent, improve flow/spoken register, preserve speakability rules; do NOT invent a divergent plot.",
-          `episode_draft: ${JSON.stringify(params.episodeDraft)}`,
+          `episode_draft: ${JSON.stringify(safePromptValue(params.episodeDraft))}`,
         ].join("\n")
       : null;
 
@@ -1437,7 +1450,7 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
         "FULL EPISODE REBUILD MODE: use the existing episode only as continuity reference. Return a complete replacement script for this same episode, rewriting the synopsis, every spoken line, scene progression, and cliffhanger as one coherent safer version.",
         "Preserve canonical character identities, established facts, setting, relationship state, prior-episode consequences, and the bounded setup toward the next episode. Do not turn this into a new unrelated story.",
         "Do not copy unsafe wording or unsafe scene framing from the current script. Replace the risky dramatic mechanism with a neutral adult-centered alternative that serves the same narrative purpose. Continue until the complete schema is valid and policy-safe.",
-        `current_script_reference: ${JSON.stringify(params.episodeRebuildContext.currentScript)}`,
+        `current_script_reference: ${JSON.stringify(safePromptValue(params.episodeRebuildContext.currentScript))}`,
         `previous_episode_context: ${JSON.stringify(params.episodeRebuildContext.previousEpisodeContext)}`,
         `future_episode_constraint: ${JSON.stringify(params.episodeRebuildContext.futureEpisodeConstraint)}`,
         `rebuild_instruction: ${params.episodeRebuildContext.instruction}`,
@@ -1446,15 +1459,20 @@ function buildUserPrompt(params: GenerateEpisodeScriptParams): string {
   const repairSection =
     !params.episodeRebuildContext && params.repairContext
       ? [
-          `current_script: ${JSON.stringify(params.repairContext.currentScript)}`,
+          `current_script: ${JSON.stringify(safePromptValue(params.repairContext.currentScript))}`,
           `repair_instruction: ${params.repairContext.instruction}`,
         ].join("\n")
       : null;
 
-  const automaticSafety = analyzeVerticalDramaStorySafety(storySource);
+  const automaticSafety = sourceSafety;
   const policySafetySection =
     params.policySafetyContext || automaticSafety.level !== "low"
-      ? `policy_safety_contract:\n${params.policySafetyContext ?? automaticSafety.instruction}`
+      ? [
+          `policy_safety_contract:\n${params.policySafetyContext ?? automaticSafety.instruction}`,
+          safetyRewriteInstruction,
+        ]
+          .filter(Boolean)
+          .join("\n")
       : null;
 
   return [
@@ -1860,7 +1878,8 @@ export class VdEpisodeUnderfilledError extends Error {
   }
 }
 
-/** High-risk story output must stop before credits are deducted. */
+/** Legacy error shape retained for repair/recovery callers; normal episode
+ * generation now records policy findings as warnings instead of throwing it. */
 export class VdStorySafetyError extends Error {
   code = "VD_STORY_POLICY_RISK" as const;
   candidate?: ScriptBuilderOutput;
@@ -1954,6 +1973,8 @@ export async function generateEpisodeScript(
         episodeNumber: params.episodeNumber,
       })
     : rawValidatedData;
+  const sourceSafety = analyzeVerticalDramaStorySafety(params.storySource);
+  const sourceRewrite = rewriteVerticalDramaStoryForSafeMedia(params.storySource);
 
   // The script contract contains generated diagnostics (`warnings`,
   // `repair_queue`, evidence refs, and provider metadata) alongside the
@@ -1963,20 +1984,46 @@ export async function generateEpisodeScript(
   const storySafety = analyzeVerticalDramaStorySafety(
     buildVerticalDramaScriptSafetyInput(validatedData),
   );
-  if (isBlockingVerticalDramaStorySafety(storySafety)) {
-    const error = new VdStorySafetyError(
-      "Episode story contains a high-risk policy context; rewrite before media generation.",
-      storySafety
-    );
-    // Keep the structured skill result available to the episode repair loop.
-    // The candidate is never made live here; it is only eligible for an
-    // explicit review decision after the full episode attempt completes.
-    error.candidate = validatedData;
-    throw error;
+  const safetyRewrite = rewriteVerticalDramaStoryForSafeMedia(
+    validatedData,
+  );
+  const policySafetyWarnings = storySafety.findings.map(
+    finding =>
+      `Episode story safety advisory [${finding.code}]${
+        finding.evidence?.fieldPath ? ` at ${finding.evidence.fieldPath}` : ""
+      }: ${finding.message}`,
+  );
+  const policySafeScript =
+    storySafety.level === "low"
+      ? validatedData
+      : (safetyRewrite.value as ScriptBuilderOutput);
+  const outputData = policySafetyWarnings.length
+    ? ({
+        ...policySafeScript,
+        policy_safety_warnings: policySafetyWarnings,
+      } as ScriptBuilderOutput)
+    : policySafeScript;
+
+  if (sourceSafety.level !== "low" || storySafety.level !== "low") {
+    void writeVerticalDramaSafetyDebugEvent({
+      event: "vertical_drama_safety",
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      stage: "plan_episode_script",
+      sourceSafety: buildVerticalDramaStorySafetyDiagnostic(
+        params.storySource,
+        sourceSafety,
+      ),
+      outputSafety: buildVerticalDramaStorySafetyDiagnostic(
+        buildVerticalDramaScriptSafetyInput(validatedData),
+        storySafety,
+      ),
+      rewriteChanged: sourceRewrite.changed || safetyRewrite.changed,
+    });
   }
 
   const episodeMemoryIssues = validateEpisodeMemoryAuthoringContract(
-    validatedData,
+    outputData,
     params.episodeNumber,
     params.seasonContext
   );
@@ -1992,7 +2039,7 @@ export async function generateEpisodeScript(
   // dramatically good; code only rejects invented IDs and unproven closure.
   if (params.storySource.storyControlSeed) {
     const storyControlIssues = validateVerticalDramaStoryControlEpisodeOutput(
-      validatedData,
+      outputData,
       {
         seed: params.storySource.storyControlSeed,
         episodeNumber: params.episodeNumber,
@@ -2017,7 +2064,7 @@ export async function generateEpisodeScript(
   // no coverage check at all.
   if (params.opts?.speechBudgetEnabled) {
     const coverage = evaluateScriptSpeechCoverage(
-      validatedData,
+      outputData,
       params.durationSeconds,
       params.locale
     );
@@ -2074,7 +2121,7 @@ export async function generateEpisodeScript(
   }
 
   return {
-    script: validatedData,
+    script: outputData,
     creditsUsed,
     model,
     ...(params.deferCreditDeduction ? { creditCharge } : {}),

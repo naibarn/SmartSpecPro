@@ -62,6 +62,10 @@ vi.mock("../llmRouter", () => ({
   executeWithFallback: mockExecuteWithFallback,
 }));
 
+vi.mock("../verticalDramaSafetyDebugLog", () => ({
+  writeVerticalDramaSafetyDebugEvent: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryBible", async () => {
   const actual = await vi.importActual<typeof import("../verticalDramaStoryBible")>(
     "../verticalDramaStoryBible",
@@ -244,5 +248,39 @@ describe("generateEpisodeScript — repairContext (real-repair wiring for repair
       amount: 3,
       skillSlug: "vertical-drama-script-builder",
     });
+  });
+
+  it("rewrites high-risk source wording before sending the LLM prompt", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        storySource: {
+          logline: "A child is unaware while someone threatens the room.",
+        },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain("PROVIDER-SAFE STORY REWRITE");
+    expect(content).toContain("Preserve the plot purpose");
+    expect(content).toContain("unresolved tension");
+    expect(content).not.toContain("A child is unaware while someone threatens the room.");
+  });
+
+  it("returns a generated script with policy warnings instead of blocking high-risk output", async () => {
+    mockLlmResponse({
+      ...VALID_SCRIPT,
+      hook: "A child is unaware while someone threatens the room.",
+    });
+
+    const result = await generateEpisodeScript(baseParams());
+    const script = result.script as typeof result.script & {
+      policy_safety_warnings?: string[];
+    };
+
+    expect(script.policy_safety_warnings).toEqual(
+      expect.arrayContaining([expect.stringContaining("minor_threat_or_surveillance")]),
+    );
+    expect(script.hook).not.toContain("threatens");
+    expect(result.creditsUsed).toBe(3);
   });
 });

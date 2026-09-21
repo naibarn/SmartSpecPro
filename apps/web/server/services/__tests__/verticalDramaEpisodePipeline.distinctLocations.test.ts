@@ -134,7 +134,11 @@ vi.mock("../verticalDramaStoryBible", () => ({
   readItemCliffhangerLine: mockReadItemCliffhangerLine,
 }));
 
-import { VerticalDramaEpisodePipeline, validateStagePayload } from "../verticalDramaEpisodePipeline";
+import {
+  VerticalDramaEpisodePipeline,
+  rewriteVerticalDramaStartFramePolicyRisk,
+  validateStagePayload,
+} from "../verticalDramaEpisodePipeline";
 
 const pipeline = new VerticalDramaEpisodePipeline() as any;
 
@@ -276,6 +280,24 @@ describe("validateStagePayload — storyboard_shotgrid distinct_locations covera
     const result = validateStagePayload("storyboard_shotgrid", payload);
     expect(result.valid).toBe(false);
     expect(result.errors.some(e => e.message.includes("shot(s) 9"))).toBe(true);
+  });
+});
+
+describe("start-frame policy warnings", () => {
+  it("rewrites a risky finalized image prompt instead of returning a blocking error", () => {
+    const result = rewriteVerticalDramaStartFramePolicyRisk([
+      {
+        shotNumber: 1,
+        imagePrompt: "A child is unaware while someone threatens the room.",
+      },
+    ]);
+
+    expect(result.frames[0]!.imagePrompt).not.toContain("threatens");
+    expect(result.warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("minor_threat_or_surveillance"),
+      ])
+    );
   });
 });
 

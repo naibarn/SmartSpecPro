@@ -8,6 +8,8 @@
  * advisory after an approved start-frame image exists.
  */
 
+import { createHash } from "node:crypto";
+
 export type VerticalDramaStorySafetyLevel = "low" | "medium" | "high";
 
 export const VERTICAL_DRAMA_STORY_SAFETY_DETECTOR_VERSION = "2026-09-12.2";
@@ -290,6 +292,121 @@ export function buildVerticalDramaScriptSafetyInput(
     story_units: SCRIPT_STORY_SAFETY_KEYS.filter(key => key in source).map(
       key => ({ [key]: source[key] }),
     ),
+  };
+}
+
+const SAFETY_REWRITE_RULES: Array<[RegExp, string]> = [
+  [/\b(?:secretly\s+photographed|secretly\s+photographs)\b/gi, "observed from a distance"],
+  [/\b(?:surveillance|threatening|threatens|threat|danger|unaware)\b/gi, "unresolved tension"],
+  [/\b(?:porn|explicit\s+sex|sexual\s+intercourse|genitals|nude|naked)\b/gi, "fully clothed emotional tension"],
+  [/\b(?:gore|graphic\s+injury|blood\s+pooling|dismember)\b/gi, "non-graphic aftermath"],
+  [/\b(?:abuse|assault|hostage|kidnap|forced)\b/gi, "conflict and pressure"],
+  [/(?:แอบถ่าย|ภัยคุกคาม|อันตราย|ข่มขู่|ไม่รู้ว่ามีภัย)/g, "ความตึงเครียดที่ยังไม่คลี่คลาย"],
+  [/(?:ภาพโป๊|เปลือย|อวัยวะเพศ)/g, "ความใกล้ชิดแบบสุภาพ"],
+  [/(?:เลือดสาด|แผลฉกรรจ์|ศพ)/g, "ผลกระทบหลังเหตุการณ์แบบไม่รุนแรง"],
+  [/(?:ทำร้ายเด็ก|ทารุณ|จับตัว|บังคับ)/g, "ความขัดแย้งและแรงกดดัน"],
+];
+
+function rewriteVerticalDramaSafetyText(text: string): string {
+  return SAFETY_REWRITE_RULES.reduce(
+    (value, [pattern, replacement]) => value.replace(pattern, replacement),
+    text,
+  );
+}
+
+function rewriteVerticalDramaSafetyValue(
+  value: unknown,
+  depth = 0,
+): { value: unknown; changed: boolean } {
+  if (depth > 8 || value === null || value === undefined) {
+    return { value, changed: false };
+  }
+  if (typeof value === "string") {
+    const rewritten = rewriteVerticalDramaSafetyText(value);
+    return { value: rewritten, changed: rewritten !== value };
+  }
+  if (Array.isArray(value)) {
+    let changed = false;
+    const rewritten = value.map(item => {
+      const result = rewriteVerticalDramaSafetyValue(item, depth + 1);
+      changed ||= result.changed;
+      return result.value;
+    });
+    return { value: rewritten, changed };
+  }
+  if (typeof value !== "object") {
+    return { value, changed: false };
+  }
+
+  let changed = false;
+  const rewritten = Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, child]) => {
+      if (SAFETY_METADATA_KEYS.has(key)) return [key, child];
+      const result = rewriteVerticalDramaSafetyValue(child, depth + 1);
+      changed ||= result.changed;
+      return [key, result.value];
+    }),
+  );
+  return { value: rewritten, changed };
+}
+
+export function buildVerticalDramaStorySafetyRewriteInstruction(
+  input: unknown,
+  result = analyzeVerticalDramaStorySafety(input),
+): string | null {
+  if (result.level === "low") return null;
+  const codes = [...new Set(result.findings.map(finding => finding.code))].join(", ");
+  return [
+    "PROVIDER-SAFE STORY REWRITE:",
+    `Detected story signals: ${codes || "policy-sensitive wording"}.`,
+    "Preserve the plot purpose, character relationships, and cliffhanger.",
+    "Rewrite only risky wording into neutral, cinematic, non-graphic language.",
+    "Keep all characters fully clothed and avoid explicit sexual content, coercion, threats involving minors, or graphic injury detail.",
+    "Do not copy this instruction into the episode story or dialogue.",
+  ].join(" ");
+}
+
+export function rewriteVerticalDramaStoryForSafeMedia(input: unknown): {
+  value: unknown;
+  changed: boolean;
+  findings: VerticalDramaStorySafetyResult;
+} {
+  const findings = analyzeVerticalDramaStorySafety(input);
+  const rewritten = rewriteVerticalDramaSafetyValue(input);
+  return { ...rewritten, findings };
+}
+
+export type VerticalDramaStorySafetyDiagnostic = {
+  level: VerticalDramaStorySafetyLevel;
+  textLength: number;
+  textHash: string;
+  findings: Array<{
+    code: VerticalDramaStorySafetyFinding["code"];
+    level: VerticalDramaStorySafetyFinding["level"];
+    fieldPath?: string;
+    shotNumber?: number;
+    matchedRule?: string;
+    confidence?: "medium" | "high";
+  }>;
+};
+
+export function buildVerticalDramaStorySafetyDiagnostic(
+  input: unknown,
+  result = analyzeVerticalDramaStorySafety(input),
+): VerticalDramaStorySafetyDiagnostic {
+  const storyText = flattenStoryText(input);
+  return {
+    level: result.level,
+    textLength: storyText.length,
+    textHash: createHash("sha256").update(storyText).digest("hex"),
+    findings: result.findings.map(finding => ({
+      code: finding.code,
+      level: finding.level,
+      fieldPath: finding.evidence?.fieldPath,
+      shotNumber: finding.evidence?.shotNumber,
+      matchedRule: finding.evidence?.matchedRule,
+      confidence: finding.evidence?.confidence,
+    })),
   };
 }
 
