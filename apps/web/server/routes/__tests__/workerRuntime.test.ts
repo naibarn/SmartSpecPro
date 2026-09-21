@@ -6,6 +6,7 @@ import os from "os";
 import path from "path";
 import request from "supertest";
 import AdmZip from "adm-zip";
+import { Readable } from "stream";
 
 process.env.JWT_SECRET ??= "worker-runtime-route-test-secret-0123456789";
 process.env.REDIS_URL ??= "redis://localhost:6379";
@@ -40,9 +41,20 @@ const { mockCreateLibraryItem, mockStoragePut, mockStoragePresignPut } = vi.hois
   mockStoragePresignPut: vi.fn(),
 }));
 
+const { mockStorageStreamFile, mockGetPublishedWorkerRuntimeReleaseByFileName } = vi.hoisted(() => ({
+  mockStorageStreamFile: vi.fn(),
+  mockGetPublishedWorkerRuntimeReleaseByFileName: vi.fn(),
+}));
+
 vi.mock("../../storage", () => ({
   storagePut: mockStoragePut,
   storagePresignPut: mockStoragePresignPut,
+  storageStreamFile: mockStorageStreamFile,
+}));
+
+vi.mock("../../services/workerRuntimeReleaseService", () => ({
+  getLatestPublishedWorkerRuntimeRelease: vi.fn().mockResolvedValue(null),
+  getPublishedWorkerRuntimeReleaseByFileName: mockGetPublishedWorkerRuntimeReleaseByFileName,
 }));
 
 vi.mock("../../services/libraryService", () => ({
@@ -102,6 +114,10 @@ describe("workerRuntime routes", () => {
     mockAuthorizeRequest.mockResolvedValue({ ok: false, error: "Unauthorized" });
     mockGetUserById.mockResolvedValue(undefined);
     mockGetDb.mockReset();
+    mockStorageStreamFile.mockReset();
+    mockStorageStreamFile.mockResolvedValue(null);
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockReset();
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockResolvedValue(null);
     mockConnectedDeviceRevoked.mockResolvedValue(false);
     mockUpsertConnectedDevice.mockResolvedValue(null);
     mockUpdateConnectedDeviceTokenMetadata.mockResolvedValue(true);
@@ -1164,6 +1180,31 @@ describe("workerRuntime routes", () => {
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers["content-type"]).toContain("application/zip");
     expect(Number(downloadRes.headers["content-length"])).toBe(fs.statSync(filePath).size);
+  });
+
+  it("serves the published Content Protection archive using its release filename", async () => {
+    const fileName = "smart-ai-hub-content-protection-runtime-windows-x64-0.1.414.zip";
+    const archive = Buffer.from("content-protection-zip-fixture");
+    mockGetPublishedWorkerRuntimeReleaseByFileName.mockResolvedValue({
+      runtimeId: "content-protection-windows-x64",
+      fileName,
+      storageKey: "worker-runtime-releases/content-protection.zip",
+      contentType: "application/zip",
+    });
+    mockStorageStreamFile.mockResolvedValue({
+      stream: Readable.from([archive]),
+      contentLength: archive.length,
+    });
+
+    const app = await makeApp();
+    const downloadRes = await request(app).get(`/api/workers/runtime-pack/download/${fileName}`);
+
+    expect(downloadRes.status).toBe(200);
+    expect(downloadRes.headers["content-type"]).toContain("application/zip");
+    expect(Number(downloadRes.headers["content-length"])).toBe(archive.length);
+    expect(mockStorageStreamFile).toHaveBeenCalledWith(
+      "worker-runtime-releases/content-protection.zip",
+    );
   });
 
   it("does not admit a runtime pack whose signature is still a release placeholder", async () => {

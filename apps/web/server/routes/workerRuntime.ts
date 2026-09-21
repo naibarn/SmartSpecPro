@@ -167,7 +167,7 @@ const SUPPORTED_WORKER_RUNTIME_PACK_IDS = new Set([
 const WORKER_RUNTIME_PACK_FILE_PATTERN =
   /^smart-ai-hub-worker-runtime-(hyperframes-(?:wsl2|windows-x64|macos-arm64))-(.+)\.zip$/i;
 const CONTENT_PROTECTION_RUNTIME_PACK_FILE_PATTERN =
-  /^smart-ai-hub-content-protection-runtime-(content-protection-windows-x64)-(.+)\.zip$/i;
+  /^smart-ai-hub-content-protection-runtime-(windows-x64)-(.+)\.zip$/i;
 // Feature 135 §11 — Hermes runtime pack ids, additive and independent of the
 // HyperFrames pack family above (own file-name pattern, own manifest shape,
 // own allow-gate). Windows and macOS Apple Silicon are separate runtime packs;
@@ -1692,7 +1692,7 @@ export function registerWorkerRuntimeRoutes(
           CONTENT_PROTECTION_RUNTIME_PACK_FILE_PATTERN,
         );
         if (
-          contentProtectionMatch?.[1] === "content-protection-windows-x64"
+          contentProtectionMatch?.[1] === "windows-x64"
         ) {
           const durableRelease = await getPublishedWorkerRuntimeReleaseByFileName(
             fileName,
