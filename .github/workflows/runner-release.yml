@@ -143,12 +143,21 @@ jobs:
           RUNNER_REF: ${{ inputs.ref }}
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force dist | Out-Null
-          Copy-Item "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.exe"
-          Compress-Archive -Path "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" -DestinationPath "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.zip"
-          $sourceCommit = git rev-parse HEAD
-          "{\"artifact\":\"smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION\",\"target\":\"${{ matrix.target }}\",\"profile\":\"$env:RUNNER_PROFILE\",\"sourceRef\":\"$env:RUNNER_REF\",\"sourceCommit\":\"$sourceCommit\",\"version\":\"$env:RUNNER_VERSION\",\"contractVersion\":\"sah-runner-v1\"}" | Out-File -Encoding utf8 "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.manifest.json"
-          Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } | Set-Content "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.SHA256SUMS"
+           New-Item -ItemType Directory -Force dist | Out-Null
+           Copy-Item "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.exe"
+           Compress-Archive -Path "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" -DestinationPath "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.zip"
+           $sourceCommit = git rev-parse HEAD
+           $manifest = [ordered]@{
+             artifact = "smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION"
+             target = "${{ matrix.target }}"
+             profile = $env:RUNNER_PROFILE
+             sourceRef = $env:RUNNER_REF
+             sourceCommit = $sourceCommit
+             version = $env:RUNNER_VERSION
+             contractVersion = "sah-runner-v1"
+           } | ConvertTo-Json -Compress
+           $manifest | Set-Content -Encoding utf8 "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.manifest.json"
+           Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } | Set-Content "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.SHA256SUMS"
 
       - name: Sign package and update binary
         if: inputs.signing_mode == 'required-secret'
