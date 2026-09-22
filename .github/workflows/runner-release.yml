@@ -47,35 +47,50 @@ permissions:
   contents: write
 
 jobs:
+  plan:
+    name: select-runner-targets
+    runs-on: ubuntu-latest
+    outputs:
+      native_matrix: ${{ steps.matrix.outputs.native_matrix }}
+    steps:
+      - name: Select native build matrix
+        id: matrix
+        env:
+          TARGET_PLATFORM: ${{ inputs.platform }}
+        shell: bash
+        run: |
+          case "$TARGET_PLATFORM" in
+            all)
+              matrix='{"include":[{"name":"windows-x86_64","platform":"windows","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary":"smartaihub-runner.exe"},{"name":"macos-x86_64","platform":"macos-intel","os":"macos-15-intel","target":"x86_64-apple-darwin","binary":"smartaihub-runner"},{"name":"macos-arm64","platform":"macos-arm64","os":"macos-14","target":"aarch64-apple-darwin","binary":"smartaihub-runner"},{"name":"linux-x86_64","platform":"linux","os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu","binary":"smartaihub-runner"}]}'
+              ;;
+            windows)
+              matrix='{"include":[{"name":"windows-x86_64","platform":"windows","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary":"smartaihub-runner.exe"}]}'
+              ;;
+            macos-intel)
+              matrix='{"include":[{"name":"macos-x86_64","platform":"macos-intel","os":"macos-15-intel","target":"x86_64-apple-darwin","binary":"smartaihub-runner"}]}'
+              ;;
+            macos-arm64)
+              matrix='{"include":[{"name":"macos-arm64","platform":"macos-arm64","os":"macos-14","target":"aarch64-apple-darwin","binary":"smartaihub-runner"}]}'
+              ;;
+            linux)
+              matrix='{"include":[{"name":"linux-x86_64","platform":"linux","os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu","binary":"smartaihub-runner"}]}'
+              ;;
+            *)
+              echo "Unsupported target platform: $TARGET_PLATFORM" >&2
+              exit 1
+              ;;
+          esac
+          echo "native_matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: plan
     name: ${{ matrix.name }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: windows-x86_64
-            platform: windows
-            os: windows-latest
-            target: x86_64-pc-windows-msvc
-            binary: smartaihub-runner.exe
-          - name: macos-x86_64
-            platform: macos-intel
-            os: macos-15-intel
-            target: x86_64-apple-darwin
-            binary: smartaihub-runner
-          - name: macos-arm64
-            platform: macos-arm64
-            os: macos-14
-            target: aarch64-apple-darwin
-            binary: smartaihub-runner
-          - name: linux-x86_64
-            platform: linux
-            os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            binary: smartaihub-runner
+      matrix: ${{ fromJSON(needs.plan.outputs.native_matrix) }}
 
     runs-on: ${{ matrix.os }}
-    if: (inputs.profile == 'all' || inputs.profile == 'local_device') && (inputs.platform == 'all' || inputs.platform == matrix.platform)
+    if: inputs.profile == 'all' || inputs.profile == 'local_device'
     steps:
       - uses: actions/checkout@v4
         with:

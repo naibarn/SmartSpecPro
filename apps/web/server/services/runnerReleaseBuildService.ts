@@ -67,22 +67,43 @@ export async function startRunnerReleaseBuild(input: RunnerReleaseBuildRequest, 
     eq(runnerReleaseBuilds.releaseId, request.releaseId),
   )).limit(1);
   if (existing && ["queued", "in_progress"].includes(existing.status)) return mapBuild(existing);
-  const id = crypto.randomUUID();
-  const [build] = await db.insert(runnerReleaseBuilds).values({
-    id,
-    repository: config.githubRepository,
-    workflow,
-    ref: request.ref,
-    version: request.version,
-    platform: request.platform,
-    profile: request.profile,
-    releaseId: request.releaseId,
-    releaseNotes: request.releaseNotes,
-    publish: request.publish,
-    requestedBy,
-    status: "queued",
-    syncStatus: "idle",
-  }).returning();
+  if (existing && existing.status !== "failed") {
+    throw new RunnerReleaseBuildError("runner_release_build_exists", 409);
+  }
+
+  const buildId = existing?.id ?? crypto.randomUUID();
+  const [build] = existing
+    ? await db.update(runnerReleaseBuilds).set({
+      workflow,
+      ref: request.ref,
+      version: request.version,
+      platform: request.platform,
+      profile: request.profile,
+      releaseNotes: request.releaseNotes,
+      publish: request.publish,
+      requestedBy,
+      status: "queued",
+      syncStatus: "idle",
+      syncError: null,
+      workflowRunId: null,
+      workflowRunUrl: null,
+      updatedAt: new Date(),
+    }).where(eq(runnerReleaseBuilds.id, existing.id)).returning()
+    : await db.insert(runnerReleaseBuilds).values({
+      id: buildId,
+      repository: config.githubRepository,
+      workflow,
+      ref: request.ref,
+      version: request.version,
+      platform: request.platform,
+      profile: request.profile,
+      releaseId: request.releaseId,
+      releaseNotes: request.releaseNotes,
+      publish: request.publish,
+      requestedBy,
+      status: "queued",
+      syncStatus: "idle",
+    }).returning();
   try {
     await githubFetch(githubApiUrl(config.githubRepository, `actions/workflows/${encodeURIComponent(workflow)}/dispatches`), config.githubToken, {
       method: "POST",
@@ -100,7 +121,7 @@ export async function startRunnerReleaseBuild(input: RunnerReleaseBuildRequest, 
     });
     return mapBuild(build);
   } catch (error) {
-    await db.update(runnerReleaseBuilds).set({ status: "failed", syncError: "github_dispatch_failed", updatedAt: new Date() }).where(eq(runnerReleaseBuilds.id, id));
+    await db.update(runnerReleaseBuilds).set({ status: "failed", syncError: "github_dispatch_failed", updatedAt: new Date() }).where(eq(runnerReleaseBuilds.id, buildId));
     throw error;
   }
 }
