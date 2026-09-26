@@ -9,10 +9,63 @@ const PYTHON_TOP_LEVEL = new Set(["os", "sys", "typing", "pathlib", "json", "re"
 const NODE_BUILTINS = new Set(["assert", "buffer", "child_process", "crypto", "events", "fs", "http", "https", "module", "os", "path", "process", "stream", "url", "util", "zlib"]);
 
 export type SourceInputKind = "entry" | "dependency-artifact" | "runtime-config" | "test-fixture" | "generated-artifact" | "executable" | "hook" | "workspace-manifest" | "source-import";
-export type SourceDependencyEdge = { from: string; specifier: string; to: string | null; kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input"; status: "resolved-local" | "external-package" | "unresolved" };
-export type SourceBundleFile = { path: string; sha256: string; sizeBytes: number; mode: number; provenance: SourceInputKind[] };
-export type SourcePackageIdentity = { name: string; version: string | null; manifestPath: string; origin: "workspace" };
-export type SourceExternalPackageIdentity = { name: string; version: string; packageManager: "npm" | "pnpm" | "uv"; lockfilePath: string; integrity: string[]; source: string | null; dependencies: string[] };
+export type SourceDependencyEdge = {
+  from: string;
+  specifier: string;
+  to: string | null;
+  kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input";
+  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "external-package" | "unresolved";
+};
+export type SourceBundleFile = {
+  path: string;
+  sha256: string;
+  sizeBytes: number;
+  mode: number;
+  provenance: SourceInputKind[];
+};
+export type SourcePackageIdentity = {
+  name: string;
+  version: string | null;
+  manifestPath: string;
+  origin: "workspace";
+};
+export type SourceLockedArtifact = {
+  source: string | null;
+  integrity: string[];
+  kind: "npm-tarball" | "python-wheel" | "python-sdist";
+  sizeBytes: number | null;
+};
+export type SourceExternalPackageIdentity = {
+  name: string;
+  version: string;
+  packageManager: "npm" | "pnpm" | "uv";
+  lockfilePath: string;
+  integrity: string[];
+  source: string | null;
+  dependencies: string[];
+  optionalDependencies: string[];
+  lockedArtifacts: SourceLockedArtifact[];
+  artifactStatus: "NOT_REQUIRED" | "UNVERIFIED_ARTIFACT" | "VERIFIED_ARTIFACT";
+  artifactPath: string | null;
+  artifactSha256: string | null;
+  artifactSizeBytes: number | null;
+  artifactPlatform: string | null;
+  artifactSource: string | null;
+  artifactKind: SourceLockedArtifact["kind"] | null;
+  artifactIntegrity: string[];
+  os: string[];
+  cpu: string[];
+};
+export type SourceExternalArtifactBinding = {
+  name: string;
+  version: string;
+  packageManager: "npm" | "pnpm" | "uv";
+  lockfilePath: string;
+  path: string;
+  source: string;
+  kind: SourceLockedArtifact["kind"];
+  platform: string;
+};
 export type SourceBundleManifest = {
   schemaVersion: "spec224.source-bundle.v2";
   discoveryMode: "static-plus-explicit-profile-v1";
@@ -20,7 +73,14 @@ export type SourceBundleManifest = {
   sourceRevision: string;
   specDigest: string;
   profileId: string;
-  runtimeIdentity: { node?: string; python?: string; packageManager?: string };
+  runtimeIdentity: {
+    node?: string;
+    python?: string;
+    packageManager?: string;
+    platform?: string;
+  };
+  selectedOptionalDependencies: string[];
+  requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
   dependencyArtifacts: string[];
@@ -37,13 +97,29 @@ export type SourceClosureInput = {
   entryPaths: string[];
   dependencyArtifacts: string[];
   /** Explicit runtime, generated, executable and test inputs for the selected profile. */
-  profileInputs?: Array<{ path: string; kind: Exclude<SourceInputKind, "entry" | "dependency-artifact" | "source-import"> }>;
+  profileInputs?: Array<{
+    path: string;
+    kind: Exclude<SourceInputKind, "entry" | "dependency-artifact" | "source-import">;
+  }>;
   /** Workspace package manifests whose exports and local dependencies are in scope. */
   workspaceManifestPaths?: string[];
   profileId?: string;
-  runtimeIdentity?: { node?: string; python?: string; packageManager?: string };
+  runtimeIdentity?: {
+    node?: string;
+    python?: string;
+    packageManager?: string;
+    platform?: string;
+  };
+  /** Optional dependency names admitted by this exact execution profile. */
+  selectedOptionalDependencies?: string[];
+  /** Original artifacts staged in sourceRoot; each binding must exactly match its lock entry. */
+  externalArtifacts?: SourceExternalArtifactBinding[];
   /** Optional roots for absolute in-repository imports such as Python `app.*`. */
-  moduleRoots?: Array<{ prefix: string; root: string; language: "python" | "javascript" }>;
+  moduleRoots?: Array<{
+    prefix: string;
+    root: string;
+    language: "python" | "javascript";
+  }>;
 };
 
 export type SourceClosureResult = {
@@ -52,7 +128,14 @@ export type SourceClosureResult = {
   files: string[];
   provenance: Record<string, SourceInputKind[]>;
   profileId: string;
-  runtimeIdentity: { node?: string; python?: string; packageManager?: string };
+  runtimeIdentity: {
+    node?: string;
+    python?: string;
+    packageManager?: string;
+    platform?: string;
+  };
+  selectedOptionalDependencies: string[];
+  requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
   dependencyEdges: SourceDependencyEdge[];
@@ -63,6 +146,78 @@ export type SourceClosureResult = {
 
 function sha256(bytes: Buffer | string): string {
   return createHash("sha256").update(bytes).digest("hex");
+}
+
+function integrityMatches(bytes: Buffer, integrity: string[]): boolean {
+  return integrity.some(value => {
+    const item = value.trim();
+    const colonHash = item.match(/^sha256:([a-f0-9]{64})$/i);
+    if (colonHash) return sha256(bytes) === colonHash[1].toLowerCase();
+    const sri = item.match(/^(sha256|sha384|sha512)-([A-Za-z0-9+/=]+)$/);
+    if (!sri) return false;
+    const digest = createHash(sri[1]).update(bytes).digest("base64");
+    return digest === sri[2];
+  });
+}
+
+function artifactBindingsFor(identity: SourceExternalPackageIdentity, bindings: SourceExternalArtifactBinding[]): SourceExternalArtifactBinding[] {
+  return bindings.filter(binding => binding.name === identity.name && binding.version === identity.version && binding.packageManager === identity.packageManager && binding.lockfilePath === identity.lockfilePath);
+}
+
+function platformMatches(runtimePlatform: string | undefined, artifactPlatform: string, source: string | null): boolean {
+  if (!runtimePlatform || runtimePlatform !== artifactPlatform) return false;
+  // Wheel tags encode ABI/architecture/OS; require the profile tokens to be
+  // represented in the pinned artifact filename rather than guessing support.
+  if (/\.whl(?:$|[?#])/i.test(source ?? "")) {
+    const normalized = (source ?? "").toLowerCase().replaceAll("-", "_");
+    const tokens = runtimePlatform.toLowerCase().replaceAll("-", "_").split("_").filter(Boolean);
+    return tokens.every(token => normalized.includes(token));
+  }
+  return true;
+}
+
+function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runtimePlatform: string | undefined): boolean {
+  if (!runtimePlatform) return false;
+  const [runtimeOs, runtimeCpu] = runtimePlatform.toLowerCase().split(/[-_]/, 2);
+  const matches = (constraints: string[], actual: string | undefined) => {
+    const positive = constraints.filter(item => !item.startsWith("!")).map(item => item.toLowerCase());
+    const negative = constraints.filter(item => item.startsWith("!")).map(item => item.slice(1).toLowerCase());
+    return (!positive.length || positive.includes(actual ?? "")) && !negative.includes(actual ?? "");
+  };
+  return matches(identity.os, runtimeOs) && matches(identity.cpu, runtimeCpu);
+}
+
+function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: Set<string>, selectedOptionals: Set<string>): { required: Set<string>; unresolved: string[] } {
+  const required = new Set<string>();
+  const unresolved: string[] = [];
+  const byName = new Map<string, SourceExternalPackageIdentity[]>();
+  for (const identity of identities) {
+    const key = `${identity.lockfilePath}\0${identity.packageManager}\0${identity.name}`;
+    const items = byName.get(key) ?? [];
+    items.push(identity);
+    byName.set(key, items);
+  }
+  const queue = [...roots];
+  while (queue.length) {
+    const name = normalizePackageName(queue.shift()!);
+    if (required.has(name)) continue;
+    required.add(name);
+    const candidates = identities.filter(item => item.name === name);
+    if (!candidates.length) {
+      unresolved.push(`external-package-lock-entry-missing:${name}`);
+      continue;
+    }
+    if (candidates.length !== 1) {
+      unresolved.push(`external-package-resolution-ambiguous:${name}`);
+      continue;
+    }
+    const item = candidates[0];
+    for (const dependency of item.dependencies) queue.push(dependency);
+    for (const dependency of item.optionalDependencies) {
+      if (selectedOptionals.has(dependency)) queue.push(dependency);
+    }
+  }
+  return { required, unresolved };
 }
 
 function compareText(a: string, b: string): number {
@@ -150,7 +305,15 @@ async function resolveLocalImport(sourceRoot: string, from: string, specifier: s
   return null;
 }
 
-function importsIn(source: string, filePath: string): { local: string[]; external: string[]; dynamic: string[]; unresolved: string[] } {
+function importsIn(
+  source: string,
+  filePath: string
+): {
+  local: string[];
+  external: string[];
+  dynamic: string[];
+  unresolved: string[];
+} {
   const local = new Set<string>();
   const external = new Set<string>();
   const dynamic = new Set<string>();
@@ -182,10 +345,19 @@ function importsIn(source: string, filePath: string): { local: string[]; externa
     }
     if (/\bimport\s*\(\s*(?!["']|`[^$`]*`)/.test(source) || /\brequire\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-javascript-import>");
   }
-  return { local: [...local], external: [...external], dynamic: [...dynamic], unresolved: [...unresolved] };
+  return {
+    local: [...local],
+    external: [...external],
+    dynamic: [...dynamic],
+    unresolved: [...unresolved],
+  };
 }
 
-type WorkspacePackage = { manifestPath: string; name: string; manifest: Record<string, unknown> };
+type WorkspacePackage = {
+  manifestPath: string;
+  name: string;
+  manifest: Record<string, unknown>;
+};
 
 function normalizePackageName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, "-");
@@ -193,7 +365,16 @@ function normalizePackageName(name: string): string {
 
 function unresolvedCommandDependencies(command: string, declaredDependencies: Set<string>): string[] {
   const runtimeCommands = new Set(["node", "npm", "pnpm", "yarn", "bun", "git", "sh", "bash", "python", "python3", "uv", "echo", "cd", "export", "env", "mkdir", "rm", "cp", "mv", "grep", "sed", "cat", "find", "chmod", "sleep"]);
-  const binaryAliases: Record<string, string> = { tsc: "typescript", eslint: "eslint", prettier: "prettier", vitest: "vitest", vite: "vite", tsx: "tsx", "lint-staged": "lint-staged", husky: "husky" };
+  const binaryAliases: Record<string, string> = {
+    tsc: "typescript",
+    eslint: "eslint",
+    prettier: "prettier",
+    vitest: "vitest",
+    vite: "vite",
+    tsx: "tsx",
+    "lint-staged": "lint-staged",
+    husky: "husky",
+  };
   const unresolved = new Set<string>();
   for (const clause of command.split(/(?:&&|\|\||;|\n)/)) {
     const tokens = clause.trim().split(/\s+/).filter(Boolean);
@@ -258,17 +439,80 @@ function parseUvLockPackages(source: string, lockfilePath: string): SourceExtern
     if (!name || !version || /source\s*=\s*\{\s*editable\s*=/.test(block)) continue;
     const sourceValue = block.match(/^source\s*=\s*\{([^}]*)\}/m)?.[1] ?? "";
     const source = sourceValue.match(/(?:registry|git|url)\s*=\s*["']([^"']+)["']/)?.[1] ?? null;
-    const integrity = [...new Set([...block.matchAll(/hash\s*=\s*["'](sha256:[a-f0-9]{64})["']/gi)].map(match => match[1].toLowerCase()))].sort();
+    const lockedArtifacts: SourceLockedArtifact[] = [];
+    const sdist = block.match(/^sdist\s*=\s*\{([^}]*)\}/m)?.[1];
+    if (sdist) {
+      const artifactUrl = sdist.match(/url\s*=\s*["']([^"']+)["']/)?.[1] ?? null;
+      const hash = sdist.match(/hash\s*=\s*["']([^"']+)["']/)?.[1] ?? "";
+      const size = Number(sdist.match(/size\s*=\s*(\d+)/)?.[1]);
+      lockedArtifacts.push({
+        source: artifactUrl,
+        integrity: hash ? [hash] : [],
+        kind: "python-sdist",
+        sizeBytes: Number.isSafeInteger(size) ? size : null,
+      });
+    }
+    const wheels = block.match(/^wheels\s*=\s*\[([\s\S]*?)^\]/m)?.[1] ?? "";
+    for (const match of wheels.matchAll(/\{\s*url\s*=\s*["']([^"']+)["']\s*,\s*hash\s*=\s*["']([^"']+)["'](?:\s*,\s*size\s*=\s*(\d+))?/g)) {
+      const size = Number(match[3]);
+      lockedArtifacts.push({
+        source: match[1],
+        integrity: [match[2]],
+        kind: "python-wheel",
+        sizeBytes: Number.isSafeInteger(size) ? size : null,
+      });
+    }
+    const integrity = [...new Set(lockedArtifacts.flatMap(item => item.integrity))].sort();
     const dependencySection = block.match(/^dependencies\s*=\s*\[([\s\S]*?)^\s*\]/m)?.[1] ?? "";
-    const dependencies = [...new Set([...dependencySection.matchAll(/name\s*=\s*["']([^"']+)["']/g)].map(match => normalizePackageName(match[1])))].sort();
-    identities.push({ name: normalizePackageName(name), version, packageManager: "uv", lockfilePath, integrity, source, dependencies });
+    const dependencyEntries = [...dependencySection.matchAll(/\{([^}]*)\}/g)].map(match => match[1]);
+    const dependencies = [
+      ...new Set(
+        dependencyEntries
+          .filter(item => !/\bextra\s*=/.test(item))
+          .map(item => item.match(/name\s*=\s*["']([^"']+)["']/)?.[1])
+          .filter((item): item is string => Boolean(item))
+          .map(normalizePackageName)
+      ),
+    ].sort();
+    const optionalDependencies = [
+      ...new Set(
+        dependencyEntries
+          .filter(item => /\bextra\s*=/.test(item))
+          .map(item => item.match(/name\s*=\s*["']([^"']+)["']/)?.[1])
+          .filter((item): item is string => Boolean(item))
+          .map(normalizePackageName)
+      ),
+    ].sort();
+    identities.push({
+      name: normalizePackageName(name),
+      version,
+      packageManager: "uv",
+      lockfilePath,
+      integrity,
+      source,
+      dependencies,
+      optionalDependencies,
+      lockedArtifacts,
+      artifactStatus: "NOT_REQUIRED",
+      artifactPath: null,
+      artifactSha256: null,
+      artifactSizeBytes: null,
+      artifactPlatform: null,
+      artifactSource: null,
+      artifactKind: null,
+      artifactIntegrity: [],
+      os: [],
+      cpu: [],
+    });
   }
   return identities;
 }
 
 function parseNodeLockPackages(source: string, lockfilePath: string): SourceExternalPackageIdentity[] {
   if (lockfilePath.endsWith("package-lock.json") || lockfilePath.endsWith("npm-shrinkwrap.json")) {
-    const lock = JSON.parse(source) as { packages?: Record<string, Record<string, unknown>> };
+    const lock = JSON.parse(source) as {
+      packages?: Record<string, Record<string, unknown>>;
+    };
     const result: SourceExternalPackageIdentity[] = [];
     for (const [path, value] of Object.entries(lock.packages ?? {})) {
       const marker = "node_modules/";
@@ -283,8 +527,30 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
               .filter(hash => /^sha(?:256|384|512)-[A-Za-z0-9+/=]+$/.test(hash))
               .sort()
           : [];
-      const dependencies = ["dependencies", "optionalDependencies"].flatMap(key => Object.keys((value[key] && typeof value[key] === "object" ? value[key] : {}) as Record<string, unknown>)).map(normalizePackageName);
-      result.push({ name: normalizePackageName(name), version: value.version, packageManager: "npm", lockfilePath, integrity, source: typeof value.resolved === "string" ? value.resolved : null, dependencies: [...new Set(dependencies)].sort() });
+      const dependencies = Object.keys((value.dependencies && typeof value.dependencies === "object" ? value.dependencies : {}) as Record<string, unknown>).map(normalizePackageName);
+      const optionalDependencies = Object.keys((value.optionalDependencies && typeof value.optionalDependencies === "object" ? value.optionalDependencies : {}) as Record<string, unknown>).map(normalizePackageName);
+      const source = typeof value.resolved === "string" ? value.resolved : null;
+      result.push({
+        name: normalizePackageName(name),
+        version: value.version,
+        packageManager: "npm",
+        lockfilePath,
+        integrity,
+        source,
+        dependencies: [...new Set(dependencies)].sort(),
+        optionalDependencies: [...new Set(optionalDependencies)].sort(),
+        lockedArtifacts: [{ source, integrity, kind: "npm-tarball", sizeBytes: null }],
+        artifactStatus: "NOT_REQUIRED",
+        artifactPath: null,
+        artifactSha256: null,
+        artifactSizeBytes: null,
+        artifactPlatform: null,
+        artifactSource: null,
+        artifactKind: null,
+        artifactIntegrity: [],
+        os: Array.isArray(value.os) ? value.os.filter((item): item is string => typeof item === "string") : [],
+        cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
+      });
     }
     return result;
   }
@@ -308,8 +574,30 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
     const resolution = (value.resolution && typeof value.resolution === "object" ? value.resolution : {}) as Record<string, unknown>;
     const integrityValue = resolution.integrity ?? value.integrity;
     const integrity = typeof integrityValue === "string" ? [integrityValue] : [];
-    const dependencies = ["dependencies", "optionalDependencies"].flatMap(dependencyKey => Object.keys((value[dependencyKey] && typeof value[dependencyKey] === "object" ? value[dependencyKey] : {}) as Record<string, unknown>)).map(normalizePackageName);
-    result.push({ name: normalizePackageName(name), version, packageManager: "pnpm", lockfilePath, integrity, source: typeof resolution.tarball === "string" ? resolution.tarball : null, dependencies: [...new Set(dependencies)].sort() });
+    const dependencies = Object.keys((value.dependencies && typeof value.dependencies === "object" ? value.dependencies : {}) as Record<string, unknown>).map(normalizePackageName);
+    const optionalDependencies = Object.keys((value.optionalDependencies && typeof value.optionalDependencies === "object" ? value.optionalDependencies : {}) as Record<string, unknown>).map(normalizePackageName);
+    const source = typeof resolution.tarball === "string" ? resolution.tarball : null;
+    result.push({
+      name: normalizePackageName(name),
+      version,
+      packageManager: "pnpm",
+      lockfilePath,
+      integrity,
+      source,
+      dependencies: [...new Set(dependencies)].sort(),
+      optionalDependencies: [...new Set(optionalDependencies)].sort(),
+      lockedArtifacts: [{ source, integrity, kind: "npm-tarball", sizeBytes: null }],
+      artifactStatus: "NOT_REQUIRED",
+      artifactPath: null,
+      artifactSha256: null,
+      artifactSizeBytes: null,
+      artifactPlatform: null,
+      artifactSource: null,
+      artifactKind: null,
+      artifactIntegrity: [],
+      os: Array.isArray(value.os) ? value.os.filter((item): item is string => typeof item === "string") : [],
+      cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
+    });
   }
   return result;
 }
@@ -326,7 +614,14 @@ function workspaceExportTargets(manifest: Record<string, unknown>, subpath: stri
           .filter(key => key.includes("*") && key.split("*").length === 2)
           .map(key => {
             const [prefix, suffix] = key.split("*");
-            return subpath.startsWith(prefix) && subpath.endsWith(suffix) && subpath.length >= prefix.length + suffix.length ? { key, prefix, suffix, capture: subpath.slice(prefix.length, subpath.length - suffix.length || undefined) } : null;
+            return subpath.startsWith(prefix) && subpath.endsWith(suffix) && subpath.length >= prefix.length + suffix.length
+              ? {
+                  key,
+                  prefix,
+                  suffix,
+                  capture: subpath.slice(prefix.length, subpath.length - suffix.length || undefined),
+                }
+              : null;
           })
           .filter((item): item is NonNullable<typeof item> => item !== null)
           .sort((a, b) => b.prefix.length + b.suffix.length - (a.prefix.length + a.suffix.length));
@@ -398,26 +693,60 @@ async function resolveWorkspacePackageFiles(root: string, item: WorkspacePackage
  */
 export async function discoverSourceClosure(input: SourceClosureInput): Promise<SourceClosureResult> {
   const sourceRoot = resolve(input.sourceRoot);
-  const queue: Array<{ path: string; kind: SourceInputKind }> = [...input.entryPaths.map(path => ({ path, kind: "entry" as const })), ...input.dependencyArtifacts.map(path => ({ path, kind: "dependency-artifact" as const })), ...(input.profileInputs ?? []).map(item => ({ path: item.path, kind: item.kind })), ...(input.workspaceManifestPaths ?? []).map(path => ({ path, kind: "workspace-manifest" as const }))].map(item => ({ ...item, path: safeRelative(sourceRoot, item.path) }));
+  const queue: Array<{ path: string; kind: SourceInputKind }> = [
+    ...input.entryPaths.map(path => ({ path, kind: "entry" as const })),
+    ...input.dependencyArtifacts.map(path => ({
+      path,
+      kind: "dependency-artifact" as const,
+    })),
+    ...(input.profileInputs ?? []).map(item => ({
+      path: item.path,
+      kind: item.kind,
+    })),
+    ...(input.workspaceManifestPaths ?? []).map(path => ({
+      path,
+      kind: "workspace-manifest" as const,
+    })),
+  ].map(item => ({ ...item, path: safeRelative(sourceRoot, item.path) }));
   const seen = new Set<string>();
   const provenance = new Map<string, Set<SourceInputKind>>();
   const dependencyEdges: SourceDependencyEdge[] = [];
   const external = new Set<string>();
   const declaredExternal = new Set<string>();
+  const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
+  const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
   const workspacePackages: WorkspacePackage[] = [];
   for (const manifestPath of input.workspaceManifestPaths ?? []) {
     const safePath = safeRelative(sourceRoot, manifestPath);
     try {
       const manifest = JSON.parse(await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, safePath), "utf8")) as Record<string, unknown>;
-      if (typeof manifest.name !== "string" || workspacePackages.some(item => item.name === manifest.name)) unresolved.push({ from: safePath, specifier: "<invalid-or-duplicate-workspace-package-name>" });
-      else workspacePackages.push({ manifestPath: safePath, name: manifest.name, manifest });
+      if (typeof manifest.name !== "string" || workspacePackages.some(item => item.name === manifest.name))
+        unresolved.push({
+          from: safePath,
+          specifier: "<invalid-or-duplicate-workspace-package-name>",
+        });
+      else
+        workspacePackages.push({
+          manifestPath: safePath,
+          name: manifest.name,
+          manifest,
+        });
     } catch {
-      unresolved.push({ from: safePath, specifier: "<invalid-workspace-package-manifest>" });
+      unresolved.push({
+        from: safePath,
+        specifier: "<invalid-workspace-package-manifest>",
+      });
     }
   }
   for (const item of input.profileInputs ?? []) {
-    dependencyEdges.push({ from: `<profile:${input.profileId ?? "unspecified"}>`, specifier: item.path, to: safeRelative(sourceRoot, item.path), kind: "profile-input", status: "resolved-local" });
+    dependencyEdges.push({
+      from: `<profile:${input.profileId ?? "unspecified"}>`,
+      specifier: item.path,
+      to: safeRelative(sourceRoot, item.path),
+      kind: "profile-input",
+      status: "resolved-local",
+    });
   }
   while (queue.length) {
     const queued = queue.shift()!;
@@ -430,7 +759,10 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     try {
       file = await assertRegularFileWithoutSymlinkParents(sourceRoot, filePath);
     } catch {
-      unresolved.push({ from: filePath, specifier: "<missing-or-symlink-file>" });
+      unresolved.push({
+        from: filePath,
+        specifier: "<missing-or-symlink-file>",
+      });
       continue;
     }
     seen.add(filePath);
@@ -447,24 +779,52 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           try {
             const safePath = safeRelative(sourceRoot, target);
             await assertRegularFileWithoutSymlinkParents(sourceRoot, safePath);
-            dependencyEdges.push({ from: filePath, specifier: `requirement-include:${include[1]}`, to: safePath, kind: "profile-input", status: "resolved-local" });
+            dependencyEdges.push({
+              from: filePath,
+              specifier: `requirement-include:${include[1]}`,
+              to: safePath,
+              kind: "profile-input",
+              status: "resolved-local",
+            });
             queue.push({ path: safePath, kind: "dependency-artifact" });
           } catch {
-            unresolved.push({ from: filePath, specifier: `requirement-include:${include[1]}` });
-            dependencyEdges.push({ from: filePath, specifier: `requirement-include:${include[1]}`, to: null, kind: "profile-input", status: "unresolved" });
+            unresolved.push({
+              from: filePath,
+              specifier: `requirement-include:${include[1]}`,
+            });
+            dependencyEdges.push({
+              from: filePath,
+              specifier: `requirement-include:${include[1]}`,
+              to: null,
+              kind: "profile-input",
+              status: "unresolved",
+            });
           }
           continue;
         }
         const requirement = line.match(/^([A-Za-z0-9_.-]+)(?:\[[^\]]+\])?(.*)$/);
         if (!requirement) {
-          unresolved.push({ from: filePath, specifier: `requirement-line:${lineIndex + 1}` });
+          unresolved.push({
+            from: filePath,
+            specifier: `requirement-line:${lineIndex + 1}`,
+          });
           continue;
         }
         const packageName = requirement[1].toLowerCase().replace(/[-_.]+/g, "-");
         external.add(packageName);
         declaredExternal.add(packageName);
-        dependencyEdges.push({ from: filePath, specifier: `${packageName}${requirement[2]}`, to: null, kind: "declared-package-dependency", status: "external-package" });
-        if (!/^\s*===?\s*[^;\s]+(?:\s*;.*)?$/.test(requirement[2])) unresolved.push({ from: filePath, specifier: `unpinned-python-dependency:${packageName}` });
+        dependencyEdges.push({
+          from: filePath,
+          specifier: `${packageName}${requirement[2]}`,
+          to: null,
+          kind: "declared-package-dependency",
+          status: "external-package",
+        });
+        if (!/^\s*===?\s*[^;\s]+(?:\s*;.*)?$/.test(requirement[2]))
+          unresolved.push({
+            from: filePath,
+            specifier: `unpinned-python-dependency:${packageName}`,
+          });
       }
     }
     if (filePath.endsWith("pyproject.toml")) {
@@ -474,7 +834,13 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const packageName = normalizePackageName(name);
         external.add(packageName);
         declaredExternal.add(packageName);
-        dependencyEdges.push({ from: filePath, specifier: requirement, to: null, kind: "declared-package-dependency", status: "external-package" });
+        dependencyEdges.push({
+          from: filePath,
+          specifier: requirement,
+          to: null,
+          kind: "declared-package-dependency",
+          status: "external-package",
+        });
       }
     }
     if (filePath.endsWith("package.json")) {
@@ -482,24 +848,62 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const manifest = JSON.parse(source) as Record<string, unknown>;
         const hasHookConfiguration = ["simple-git-hooks", "husky", "lint-staged", "pre-commit"].some(key => manifest[key] !== undefined);
         if (hasHookConfiguration) {
-          if (!(input.profileInputs ?? []).some(item => item.kind === "hook")) unresolved.push({ from: filePath, specifier: "<hook-inputs-not-declared-in-profile>" });
+          if (!(input.profileInputs ?? []).some(item => item.kind === "hook"))
+            unresolved.push({
+              from: filePath,
+              specifier: "<hook-inputs-not-declared-in-profile>",
+            });
         }
-        const dependencies = ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"].flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>));
-        const manifestDependencyNames = new Set(dependencies.map(([name]) => normalizePackageName(name)));
-        for (const [name, range] of dependencies) {
+        const dependencies = ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"].flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
+        const manifestDependencyNames = new Set(dependencies.map(({ entry: [name] }) => normalizePackageName(name)));
+        for (const {
+          entry: [name, range],
+          optional,
+        } of dependencies) {
+          if (optional) declaredOptionalNames.add(normalizePackageName(name));
+          if (optional && !selectedOptionalNames.has(normalizePackageName(name))) {
+            dependencyEdges.push({
+              from: filePath,
+              specifier: `${name}@${String(range)}`,
+              to: null,
+              kind: "declared-package-dependency",
+              status: "optional-dependency-excluded",
+            });
+            continue;
+          }
           const local = workspacePackages.find(item => item.name === name);
           if (!local) {
             external.add(name);
             declaredExternal.add(normalizePackageName(name));
-            dependencyEdges.push({ from: filePath, specifier: `${name}@${String(range)}`, to: null, kind: "declared-package-dependency", status: "external-package" });
+            dependencyEdges.push({
+              from: filePath,
+              specifier: `${name}@${String(range)}`,
+              to: null,
+              kind: "declared-package-dependency",
+              status: "external-package",
+            });
             continue;
           }
           const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, ".");
-          dependencyEdges.push({ from: filePath, specifier: `${name}@${String(range)}`, to: resolution.files[0] ?? local.manifestPath, kind: "workspace-dependency", status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved" });
+          dependencyEdges.push({
+            from: filePath,
+            specifier: `${name}@${String(range)}`,
+            to: resolution.files[0] ?? local.manifestPath,
+            kind: "workspace-dependency",
+            status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
+          });
           queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
           for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
-          for (const target of resolution.unresolved) unresolved.push({ from: filePath, specifier: `${name}<unresolved-export:${target}>` });
-          if (!resolution.files.length) unresolved.push({ from: filePath, specifier: `${name}<workspace-export-unresolved>` });
+          for (const target of resolution.unresolved)
+            unresolved.push({
+              from: filePath,
+              specifier: `${name}<unresolved-export:${target}>`,
+            });
+          if (!resolution.files.length)
+            unresolved.push({
+              from: filePath,
+              specifier: `${name}<workspace-export-unresolved>`,
+            });
         }
         if (hasHookConfiguration) {
           const hookConfig = manifest["simple-git-hooks"] ?? (manifest.husky && typeof manifest.husky === "object" ? (manifest.husky as Record<string, unknown>).hooks : undefined) ?? manifest["lint-staged"] ?? manifest["pre-commit"];
@@ -515,19 +919,43 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
               const hookPath = safeRelative(sourceRoot, profileHook.path);
               const hookSource = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, hookPath), "utf8");
               collectCommands(hookSource.split(/\r?\n/).filter(line => !line.trim().startsWith("#")));
-              dependencyEdges.push({ from: filePath, specifier: `hook-input:${profileHook.path}`, to: hookPath, kind: "profile-input", status: "resolved-local" });
+              dependencyEdges.push({
+                from: filePath,
+                specifier: `hook-input:${profileHook.path}`,
+                to: hookPath,
+                kind: "profile-input",
+                status: "resolved-local",
+              });
             } catch {
-              unresolved.push({ from: filePath, specifier: `<missing-hook-input:${profileHook.path}>` });
+              unresolved.push({
+                from: filePath,
+                specifier: `<missing-hook-input:${profileHook.path}>`,
+              });
             }
           }
           for (const hookCommand of hookCommands) {
-            for (const executable of unresolvedCommandDependencies(hookCommand, manifestDependencyNames)) unresolved.push({ from: filePath, specifier: `<hook-command-dependency:${executable}>` });
+            for (const executable of unresolvedCommandDependencies(hookCommand, manifestDependencyNames))
+              unresolved.push({
+                from: filePath,
+                specifier: `<hook-command-dependency:${executable}>`,
+              });
           }
         }
         const scripts = (manifest.scripts && typeof manifest.scripts === "object" ? manifest.scripts : {}) as Record<string, unknown>;
+        for (const lifecycle of ["preinstall", "install", "postinstall", "prepare", "prepublish", "prepublishOnly", "preshrink", "publish", "postpublish"]) {
+          if (typeof scripts[lifecycle] === "string")
+            unresolved.push({
+              from: filePath,
+              specifier: `<lifecycle-script-not-authorized:${lifecycle}>`,
+            });
+        }
         for (const [scriptName, command] of Object.entries(scripts)) {
           if (typeof command !== "string") continue;
-          for (const executable of unresolvedCommandDependencies(command, manifestDependencyNames)) unresolved.push({ from: filePath, specifier: `<script-command-dependency:${scriptName}:${executable}>` });
+          for (const executable of unresolvedCommandDependencies(command, manifestDependencyNames))
+            unresolved.push({
+              from: filePath,
+              specifier: `<script-command-dependency:${scriptName}:${executable}>`,
+            });
           const refs = [...command.matchAll(/(?:^|\s)(?:node|tsx|vitest|vite|python(?:3)?|bash|sh)\s+([\w./@-]+\.(?:ts|tsx|js|mjs|cjs|py|sh))(?:\s|$)/g)].map(match => match[1]);
           for (const ref of refs) {
             const candidate = relative(sourceRoot, resolve(sourceRoot, dirname(filePath), ref))
@@ -536,88 +964,195 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             try {
               const safePath = safeRelative(sourceRoot, candidate);
               await assertRegularFileWithoutSymlinkParents(sourceRoot, safePath);
-              dependencyEdges.push({ from: filePath, specifier: `script:${scriptName}:${ref}`, to: safePath, kind: "profile-input", status: "resolved-local" });
+              dependencyEdges.push({
+                from: filePath,
+                specifier: `script:${scriptName}:${ref}`,
+                to: safePath,
+                kind: "profile-input",
+                status: "resolved-local",
+              });
               queue.push({ path: safePath, kind: "executable" });
             } catch {
-              dependencyEdges.push({ from: filePath, specifier: `script:${scriptName}:${ref}`, to: null, kind: "profile-input", status: "unresolved" });
-              unresolved.push({ from: filePath, specifier: `script:${scriptName}:${ref}` });
+              dependencyEdges.push({
+                from: filePath,
+                specifier: `script:${scriptName}:${ref}`,
+                to: null,
+                kind: "profile-input",
+                status: "unresolved",
+              });
+              unresolved.push({
+                from: filePath,
+                specifier: `script:${scriptName}:${ref}`,
+              });
             }
           }
         }
       } catch {
-        unresolved.push({ from: filePath, specifier: "<invalid-package-json>" });
+        unresolved.push({
+          from: filePath,
+          specifier: "<invalid-package-json>",
+        });
       }
     }
     const declaredProfileInput = (input.profileInputs ?? []).find(item => item.path === filePath);
-    if (declaredProfileInput?.kind === "hook" && !SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext))) unresolved.push({ from: filePath, specifier: "<hook-executable-closure-unverified>" });
-    const imports = SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext)) ? importsIn(source, filePath) : { local: [] as string[], external: [] as string[], dynamic: [] as string[], unresolved: [] as string[] };
+    if (declaredProfileInput?.kind === "hook" && !SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext)))
+      unresolved.push({
+        from: filePath,
+        specifier: "<hook-executable-closure-unverified>",
+      });
+    const imports = SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext))
+      ? importsIn(source, filePath)
+      : {
+          local: [] as string[],
+          external: [] as string[],
+          dynamic: [] as string[],
+          unresolved: [] as string[],
+        };
     for (const name of imports.external) {
       const local = workspacePackages.find(item => name === item.name || name.startsWith(`${item.name}/`));
       if (local) {
         const subpath = name === local.name ? "." : `./${name.slice(local.name.length + 1)}`;
         const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath);
-        dependencyEdges.push({ from: filePath, specifier: name, to: resolution.files[0] ?? null, kind: "static-import", status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved" });
+        dependencyEdges.push({
+          from: filePath,
+          specifier: name,
+          to: resolution.files[0] ?? null,
+          kind: "static-import",
+          status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
+        });
         queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
         for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
-        for (const target of resolution.unresolved) unresolved.push({ from: filePath, specifier: `${name}<unresolved-export:${target}>` });
+        for (const target of resolution.unresolved)
+          unresolved.push({
+            from: filePath,
+            specifier: `${name}<unresolved-export:${target}>`,
+          });
         if (!resolution.files.length) unresolved.push({ from: filePath, specifier: name });
       } else {
         external.add(name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0]);
-        dependencyEdges.push({ from: filePath, specifier: name, to: null, kind: "static-import", status: "external-package" });
+        dependencyEdges.push({
+          from: filePath,
+          specifier: name,
+          to: null,
+          kind: "static-import",
+          status: "external-package",
+        });
       }
     }
     for (const specifier of imports.unresolved) {
       unresolved.push({ from: filePath, specifier });
-      dependencyEdges.push({ from: filePath, specifier, to: null, kind: "dynamic-import", status: "unresolved" });
+      dependencyEdges.push({
+        from: filePath,
+        specifier,
+        to: null,
+        kind: "dynamic-import",
+        status: "unresolved",
+      });
     }
     for (const specifier of imports.dynamic) {
       if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
         const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
         if (resolved) {
-          dependencyEdges.push({ from: filePath, specifier, to: resolved, kind: "dynamic-import", status: "resolved-local" });
+          dependencyEdges.push({
+            from: filePath,
+            specifier,
+            to: resolved,
+            kind: "dynamic-import",
+            status: "resolved-local",
+          });
           queue.push({ path: resolved, kind: "source-import" });
         } else {
           unresolved.push({ from: filePath, specifier });
-          dependencyEdges.push({ from: filePath, specifier, to: null, kind: "dynamic-import", status: "unresolved" });
+          dependencyEdges.push({
+            from: filePath,
+            specifier,
+            to: null,
+            kind: "dynamic-import",
+            status: "unresolved",
+          });
         }
       } else {
         const local = workspacePackages.find(item => specifier === item.name || specifier.startsWith(`${item.name}/`));
         if (local) {
           const subpath = specifier === local.name ? "." : `./${specifier.slice(local.name.length + 1)}`;
           const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath);
-          dependencyEdges.push({ from: filePath, specifier, to: resolution.files[0] ?? null, kind: "dynamic-import", status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved" });
+          dependencyEdges.push({
+            from: filePath,
+            specifier,
+            to: resolution.files[0] ?? null,
+            kind: "dynamic-import",
+            status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
+          });
           queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
           for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
-          for (const target of resolution.unresolved) unresolved.push({ from: filePath, specifier: `${specifier}<unresolved-export:${target}>` });
+          for (const target of resolution.unresolved)
+            unresolved.push({
+              from: filePath,
+              specifier: `${specifier}<unresolved-export:${target}>`,
+            });
           if (!resolution.files.length) unresolved.push({ from: filePath, specifier });
         } else {
           const packageName = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
           external.add(packageName);
-          dependencyEdges.push({ from: filePath, specifier, to: null, kind: "dynamic-import", status: "external-package" });
+          dependencyEdges.push({
+            from: filePath,
+            specifier,
+            to: null,
+            kind: "dynamic-import",
+            status: "external-package",
+          });
         }
       }
     }
     for (const specifier of imports.local) {
       const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
       if (resolved) {
-        dependencyEdges.push({ from: filePath, specifier, to: resolved, kind: "static-import", status: "resolved-local" });
+        dependencyEdges.push({
+          from: filePath,
+          specifier,
+          to: resolved,
+          kind: "static-import",
+          status: "resolved-local",
+        });
         queue.push({ path: resolved, kind: "source-import" });
       } else {
         unresolved.push({ from: filePath, specifier });
-        dependencyEdges.push({ from: filePath, specifier, to: null, kind: "static-import", status: "unresolved" });
+        dependencyEdges.push({
+          from: filePath,
+          specifier,
+          to: null,
+          kind: "static-import",
+          status: "unresolved",
+        });
       }
     }
   }
   const hasJavaScript = filesHaveExtension(seen, [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
   const hasPython = filesHaveExtension(seen, [".py"]);
   if (hasJavaScript) {
-    if (![...seen].some(path => path.endsWith("package.json"))) unresolved.push({ from: "<profile>", specifier: "<node-package-manifest-not-in-profile>" });
-    if (![...seen].some(path => ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"].some(name => path.endsWith(name)))) unresolved.push({ from: "<profile>", specifier: "<node-lockfile-not-in-profile>" });
+    if (![...seen].some(path => path.endsWith("package.json")))
+      unresolved.push({
+        from: "<profile>",
+        specifier: "<node-package-manifest-not-in-profile>",
+      });
+    if (![...seen].some(path => ["package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock"].some(name => path.endsWith(name))))
+      unresolved.push({
+        from: "<profile>",
+        specifier: "<node-lockfile-not-in-profile>",
+      });
   }
-  if (hasPython && ![...seen].some(path => path === "pyproject.toml" || path === "Pipfile.lock" || path === "poetry.lock" || path === "uv.lock" || /(^|\/)requirements[^/]*\.txt$/i.test(path))) unresolved.push({ from: "<profile>", specifier: "<python-dependency-manifest-not-in-profile>" });
+  if (hasPython && ![...seen].some(path => path === "pyproject.toml" || path === "Pipfile.lock" || path === "poetry.lock" || path === "uv.lock" || /(^|\/)requirements[^/]*\.txt$/i.test(path)))
+    unresolved.push({
+      from: "<profile>",
+      specifier: "<python-dependency-manifest-not-in-profile>",
+    });
   if (hasPython)
     for (const path of seen) {
-      if (["poetry.lock", "Pipfile.lock"].includes(path)) unresolved.push({ from: path, specifier: "<python-lockfile-package-edges-unresolved>" });
+      if (["poetry.lock", "Pipfile.lock"].includes(path))
+        unresolved.push({
+          from: path,
+          specifier: "<python-lockfile-package-edges-unresolved>",
+        });
     }
   const lockfilePaths = [...seen].filter(path => path.endsWith("package-lock.json") || path.endsWith("npm-shrinkwrap.json") || path.endsWith("pnpm-lock.yaml") || path.endsWith("yarn.lock") || path.endsWith("uv.lock"));
   const lockedPackages: SourceExternalPackageIdentity[] = [];
@@ -627,34 +1162,136 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       if (lockfilePath.endsWith("uv.lock")) lockedPackages.push(...parseUvLockPackages(lockSource, lockfilePath));
       else lockedPackages.push(...parseNodeLockPackages(lockSource, lockfilePath));
     } catch {
-      unresolved.push({ from: lockfilePath, specifier: "<dependency-lockfile-parse-failed>" });
+      unresolved.push({
+        from: lockfilePath,
+        specifier: "<dependency-lockfile-parse-failed>",
+      });
     }
   }
-  for (const name of [...external].sort()) {
-    const normalized = normalizePackageName(name);
-    const matches = lockedPackages.filter(item => item.name === normalized);
-    if (!matches.length) {
-      if (declaredExternal.has(normalized) || lockfilePaths.length) unresolved.push({ from: "<dependency-lockfile>", specifier: `external-package-lock-entry-missing:${normalized}` });
-    } else if (matches.every(item => item.integrity.length === 0)) {
-      unresolved.push({ from: matches[0].lockfilePath, specifier: `external-package-integrity-missing:${normalized}` });
+  const selectedOptionalDependencies = [...new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName))].sort();
+  const selectedOptionalSet = new Set(selectedOptionalDependencies);
+  for (const name of selectedOptionalSet) {
+    if (!declaredOptionalNames.has(name) && !lockedPackages.some(item => item.optionalDependencies.includes(name)))
+      unresolved.push({
+        from: "<profile>",
+        specifier: `optional-dependency-not-declared:${name}`,
+      });
+  }
+  const { required: requiredExternalSet, unresolved: dependencyClosureIssues } = selectExternalClosure(lockedPackages, external, selectedOptionalSet);
+  for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
+  const externalArtifacts = input.externalArtifacts ?? [];
+  const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
+  for (const identity of lockedPackages) {
+    if (!requiredExternalSet.has(identity.name)) {
+      externalPackageIdentities.push(identity);
+      continue;
+    }
+    const bindingMatches = artifactBindingsFor(identity, externalArtifacts);
+    if (bindingMatches.length !== 1) {
+      unresolved.push({
+        from: identity.lockfilePath,
+        specifier: `UNVERIFIED_ARTIFACT:${identity.name}@${identity.version}`,
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "UNVERIFIED_ARTIFACT",
+      });
+      continue;
+    }
+    const binding = bindingMatches[0];
+    if (!packagePlatformCompatible(identity, input.runtimeIdentity?.platform)) {
+      unresolved.push({
+        from: identity.lockfilePath,
+        specifier: `PLATFORM_INCOMPATIBLE:${identity.name}@${identity.version}`,
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "UNVERIFIED_ARTIFACT",
+      });
+      continue;
+    }
+    const locked = identity.lockedArtifacts.find(item => item.kind === binding.kind && item.source === binding.source);
+    if (!locked || !locked.integrity.length) {
+      unresolved.push({
+        from: identity.lockfilePath,
+        specifier: `UNVERIFIED_ARTIFACT:${identity.name}@${identity.version}`,
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "UNVERIFIED_ARTIFACT",
+      });
+      continue;
+    }
+    let artifactPath: string;
+    try {
+      artifactPath = safeRelative(sourceRoot, binding.path);
+    } catch {
+      unresolved.push({
+        from: identity.lockfilePath,
+        specifier: `UNVERIFIED_ARTIFACT:${identity.name}@${identity.version}`,
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "UNVERIFIED_ARTIFACT",
+      });
+      continue;
+    }
+    try {
+      const fullPath = await assertRegularFileWithoutSymlinkParents(sourceRoot, artifactPath);
+      const bytes = await readFile(fullPath);
+      const digest = sha256(bytes);
+      if ((locked.sizeBytes !== null && locked.sizeBytes !== bytes.byteLength) || !integrityMatches(bytes, locked.integrity) || !platformMatches(input.runtimeIdentity?.platform, binding.platform, binding.source)) throw new Error("artifact mismatch");
+      seen.add(artifactPath);
+      const artifactProvenance = provenance.get(artifactPath) ?? new Set<SourceInputKind>();
+      artifactProvenance.add("dependency-artifact");
+      provenance.set(artifactPath, artifactProvenance);
+      dependencyEdges.push({
+        from: identity.lockfilePath,
+        specifier: `${identity.name}@${identity.version}`,
+        to: artifactPath,
+        kind: "declared-package-dependency",
+        status: "verified-external-artifact",
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "VERIFIED_ARTIFACT",
+        artifactPath,
+        artifactSha256: digest,
+        artifactSizeBytes: bytes.byteLength,
+        artifactPlatform: binding.platform,
+        artifactSource: binding.source,
+        artifactKind: binding.kind,
+        artifactIntegrity: [...locked.integrity],
+      });
+    } catch {
+      unresolved.push({
+        from: identity.lockfilePath,
+        specifier: `UNVERIFIED_ARTIFACT:${identity.name}@${identity.version}`,
+      });
+      externalPackageIdentities.push({
+        ...identity,
+        artifactStatus: "UNVERIFIED_ARTIFACT",
+        artifactPath,
+        artifactPlatform: binding.platform,
+      });
     }
   }
-  for (const lockfilePath of lockfilePaths) {
-    const packages = lockedPackages.filter(item => item.lockfilePath === lockfilePath);
-    const packageNameCounts = new Map<string, number>();
-    for (const item of packages) packageNameCounts.set(item.name, (packageNameCounts.get(item.name) ?? 0) + 1);
-    for (const item of packages) {
-      if (!item.integrity.length) unresolved.push({ from: lockfilePath, specifier: `external-package-integrity-missing:${item.name}@${item.version}` });
-      for (const dependency of item.dependencies) {
-        const matches = packageNameCounts.get(dependency) ?? 0;
-        if (!matches) unresolved.push({ from: lockfilePath, specifier: `transitive-package-lock-entry-missing:${item.name}->${dependency}` });
-        else if (matches > 1) unresolved.push({ from: lockfilePath, specifier: `transitive-package-resolution-ambiguous:${item.name}->${dependency}` });
+  externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
+  for (const identity of externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT")) {
+    for (const edge of dependencyEdges) {
+      const suffix = edge.specifier.slice(identity.name.length, identity.name.length + 1);
+      if (edge.status === "external-package" && edge.specifier.startsWith(identity.name) && (suffix === "" || "@/<>!=~;[".includes(suffix))) {
+        edge.status = "verified-external-artifact";
+        edge.to = identity.artifactPath;
       }
     }
   }
-  const externalPackageIdentities = [...lockedPackages].sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
   if (!input.profileId?.trim()) unresolved.push({ from: "<profile>", specifier: "<profile-id-missing>" });
-  if (!input.runtimeIdentity?.packageManager?.trim() || (!input.runtimeIdentity.node?.trim() && !input.runtimeIdentity.python?.trim())) unresolved.push({ from: "<profile>", specifier: "<runtime-identity-incomplete>" });
+  if (!input.runtimeIdentity?.packageManager?.trim() || (!input.runtimeIdentity.node?.trim() && !input.runtimeIdentity.python?.trim()))
+    unresolved.push({
+      from: "<profile>",
+      specifier: "<runtime-identity-incomplete>",
+    });
   const externalImports = [...external].sort();
   const files = [...seen].sort();
   return {
@@ -664,12 +1301,21 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     provenance: Object.fromEntries([...provenance].sort(([a], [b]) => compareText(a, b)).map(([path, kinds]) => [path, [...kinds].sort()])),
     profileId: input.profileId ?? "",
     runtimeIdentity: input.runtimeIdentity ?? {},
-    packageIdentities: workspacePackages.map(item => ({ name: item.name, version: typeof item.manifest.version === "string" ? item.manifest.version : null, manifestPath: item.manifestPath, origin: "workspace" as const })).sort((a, b) => compareText(a.name, b.name)),
+    packageIdentities: workspacePackages
+      .map(item => ({
+        name: item.name,
+        version: typeof item.manifest.version === "string" ? item.manifest.version : null,
+        manifestPath: item.manifestPath,
+        origin: "workspace" as const,
+      }))
+      .sort((a, b) => compareText(a.name, b.name)),
     externalPackageIdentities,
     dependencyEdges: dependencyEdges.sort((a, b) => compareText(a.from, b.from) || compareText(a.specifier, b.specifier) || compareText(a.to ?? "", b.to ?? "")),
     externalImports,
     unresolvedImports: unresolved.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0)),
-    closureComplete: unresolved.length === 0 && externalImports.length === 0,
+    selectedOptionalDependencies,
+    requiredExternalPackages: [...requiredExternalSet].sort(),
+    closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(name => externalPackageIdentities.filter(item => item.name === name).length === 1 && externalPackageIdentities.find(item => item.name === name)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
 }
 
@@ -678,7 +1324,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const destination = resolve(input.destination);
   const closure = input.closure;
   if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
-  if (!closure.closureComplete || closure.externalImports.length || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`))) throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
   const files = [...new Set(closure.files.map(file => safeRelative(sourceRoot, file)))].sort();
@@ -702,6 +1348,14 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const packageIdentities = [...closure.packageIdentities];
   if (new Set(packageIdentities.map(item => item.name)).size !== packageIdentities.length || packageIdentities.some(item => !item.name.trim() || !fileSet.has(safeRelative(sourceRoot, item.manifestPath)) || !item.manifestPath.endsWith("package.json"))) throw new Error("SPEC224_BUNDLE_PACKAGE_IDENTITY_INVALID");
   if (closure.externalPackageIdentities.some(item => !item.name.trim() || !item.version.trim() || !fileSet.has(safeRelative(sourceRoot, item.lockfilePath)) || item.integrity.some(hash => !/^(?:sha256:[a-f0-9]{64}|sha(?:256|384|512)-[A-Za-z0-9+/=]+)$/i.test(hash)))) throw new Error("SPEC224_BUNDLE_EXTERNAL_PACKAGE_IDENTITY_INVALID");
+  for (const name of closure.requiredExternalPackages) {
+    const matches = closure.externalPackageIdentities.filter(item => item.name === name);
+    if (matches.length !== 1 || matches[0].artifactStatus !== "VERIFIED_ARTIFACT" || !matches[0].artifactPath || !matches[0].artifactSha256 || !fileSet.has(safeRelative(sourceRoot, matches[0].artifactPath))) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_UNVERIFIED");
+    const identity = matches[0];
+    const entry = content.find(item => item.path === identity.artifactPath);
+    const lockedArtifact = identity.lockedArtifacts.find(artifact => artifact.kind === identity.artifactKind && artifact.source === identity.artifactSource && canonicalJson([...artifact.integrity].sort()) === canonicalJson([...identity.artifactIntegrity].sort()));
+    if (!entry || sha256(entry.bytes) !== identity.artifactSha256 || !lockedArtifact || !integrityMatches(entry.bytes, lockedArtifact.integrity) || !packagePlatformCompatible(identity, closure.runtimeIdentity.platform) || !platformMatches(closure.runtimeIdentity.platform, identity.artifactPlatform ?? "", identity.artifactSource)) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_DIGEST_MISMATCH");
+  }
   if (dependencyEdges.some(edge => edge.status === "resolved-local" && (!edge.to || !fileSet.has(safeRelative(sourceRoot, edge.to))))) throw new Error("SPEC224_BUNDLE_EDGE_TARGET_MISSING");
   if (dependencyEdges.some(edge => (edge.from.startsWith("<profile:") ? false : !fileSet.has(safeRelative(sourceRoot, edge.from))))) throw new Error("SPEC224_BUNDLE_EDGE_SOURCE_MISSING");
   await mkdir(destination, { recursive: false, mode: 0o700 });
@@ -721,18 +1375,32 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     specDigest: input.specDigest,
     profileId: closure.profileId,
     runtimeIdentity: closure.runtimeIdentity,
+    selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
+    requiredExternalPackages: [...closure.requiredExternalPackages].sort(),
     packageIdentities: packageIdentities.sort((a, b) => compareText(a.name, b.name)),
     externalPackageIdentities: [...closure.externalPackageIdentities].sort((a, b) => compareText(a.name, b.name) || compareText(a.version, b.version) || compareText(a.lockfilePath, b.lockfilePath)),
     dependencyArtifacts,
-    files: content.map(({ path, bytes, mode }) => ({ path, sha256: sha256(bytes), sizeBytes: bytes.byteLength, mode, provenance: [...new Set(closure.provenance[path] ?? [])].sort() as SourceInputKind[] })),
+    files: content.map(({ path, bytes, mode }) => ({
+      path,
+      sha256: sha256(bytes),
+      sizeBytes: bytes.byteLength,
+      mode,
+      provenance: [...new Set(closure.provenance[path] ?? [])].sort() as SourceInputKind[],
+    })),
     dependencyEdges: dependencyEdges.sort((a, b) => compareText(a.from, b.from) || compareText(a.specifier, b.specifier) || compareText(a.to ?? "", b.to ?? "")),
     externalImports: [...closure.externalImports].sort(),
     unresolvedImports: [...closure.unresolvedImports].sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0)),
     closureComplete: true,
   };
-  const manifest: SourceBundleManifest = { ...manifestBase, bundleDigest: sha256(canonicalJson(manifestBase)) };
+  const manifest: SourceBundleManifest = {
+    ...manifestBase,
+    bundleDigest: sha256(canonicalJson(manifestBase)),
+  };
   const manifestPath = join(destination, BUNDLE_MANIFEST);
-  await writeFile(manifestPath, `${canonicalJson(manifest)}\n`, { flag: "wx", mode: 0o444 });
+  await writeFile(manifestPath, `${canonicalJson(manifest)}\n`, {
+    flag: "wx",
+    mode: 0o444,
+  });
   await chmod(manifestPath, 0o444);
   const directories = new Set<string>([destination]);
   for (const filePath of files) {
@@ -751,11 +1419,21 @@ export async function verifyReadOnlySourceBundle(bundlePath: string): Promise<{ 
   const root = resolve(bundlePath);
   try {
     const rootStat = await lstat(root);
-    if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) return { valid: false, integrityOnly: true, reason: "bundle_root_invalid" };
+    if (!rootStat.isDirectory() || rootStat.isSymbolicLink())
+      return {
+        valid: false,
+        integrityOnly: true,
+        reason: "bundle_root_invalid",
+      };
     const manifestFile = await assertRegularFileWithoutSymlinkParents(root, BUNDLE_MANIFEST);
     const manifest = JSON.parse(await readFile(manifestFile, "utf8")) as SourceBundleManifest;
     const { bundleDigest, ...base } = manifest;
-    if (((manifest.schemaVersion as string) !== "spec224.source-bundle.v1" && (manifest.schemaVersion as string) !== "spec224.source-bundle.v2") || sha256(canonicalJson(base)) !== bundleDigest) return { valid: false, integrityOnly: true, reason: "manifest_digest_mismatch" };
+    if (((manifest.schemaVersion as string) !== "spec224.source-bundle.v1" && (manifest.schemaVersion as string) !== "spec224.source-bundle.v2") || sha256(canonicalJson(base)) !== bundleDigest)
+      return {
+        valid: false,
+        integrityOnly: true,
+        reason: "manifest_digest_mismatch",
+      };
     const expected = new Set([...manifest.files.map(file => file.path), BUNDLE_MANIFEST]);
     const expectedDirectories = new Set<string>([""]);
     for (const file of manifest.files) {
@@ -783,17 +1461,31 @@ export async function verifyReadOnlySourceBundle(bundlePath: string): Promise<{ 
     };
     await walk(root);
     if (actual.length !== expected.size || actual.some(path => !expected.has(path)) || actualDirectories.size !== expectedDirectories.size || [...actualDirectories].some(path => !expectedDirectories.has(path))) return { valid: false, integrityOnly: true, reason: "file_set_mismatch" };
-    if ((await lstat(root)).mode & 0o222) return { valid: false, integrityOnly: true, reason: "writable_bundle_root" };
+    if ((await lstat(root)).mode & 0o222)
+      return {
+        valid: false,
+        integrityOnly: true,
+        reason: "writable_bundle_root",
+      };
     if ((await lstat(join(root, BUNDLE_MANIFEST))).mode & 0o222) return { valid: false, integrityOnly: true, reason: "writable_manifest" };
     for (const file of manifest.files) {
       const safePath = safeRelative(root, file.path);
       const absolute = await assertRegularFileWithoutSymlinkParents(root, safePath);
       const stat = await lstat(absolute);
       const bytes = await readFile(absolute);
-      if (sha256(bytes) !== file.sha256 || bytes.byteLength !== file.sizeBytes || (stat.mode & 0o222) !== 0 || (manifest.schemaVersion === "spec224.source-bundle.v2" && (!Number.isInteger(file.mode) || !Array.isArray(file.provenance) || file.provenance.length === 0))) return { valid: false, integrityOnly: true, reason: "file_content_or_mode_mismatch" };
+      if (sha256(bytes) !== file.sha256 || bytes.byteLength !== file.sizeBytes || (stat.mode & 0o222) !== 0 || (manifest.schemaVersion === "spec224.source-bundle.v2" && (!Number.isInteger(file.mode) || !Array.isArray(file.provenance) || file.provenance.length === 0)))
+        return {
+          valid: false,
+          integrityOnly: true,
+          reason: "file_content_or_mode_mismatch",
+        };
     }
     return { valid: true, integrityOnly: true, reason: null };
   } catch (error) {
-    return { valid: false, integrityOnly: true, reason: error instanceof Error ? error.message : "bundle_read_failed" };
+    return {
+      valid: false,
+      integrityOnly: true,
+      reason: error instanceof Error ? error.message : "bundle_read_failed",
+    };
   }
 }
