@@ -9,6 +9,10 @@ import { assembleReadOnlySourceBundle, discoverSourceClosure, verifyReadOnlySour
 const temporaryRoots: string[] = [];
 const specDigest = "a".repeat(64);
 
+function uvPackageLocator(name: string, version: string, sourceIdentity: string, block: string): string {
+  return `uv.lock#uv:${name}@${version}|source=${sourceIdentity}|node=${createHash("sha256").update(block.trim()).digest("hex")}`;
+}
+
 async function unlockTree(path: string): Promise<void> {
   const stat = await lstat(path).catch(() => null);
   if (!stat) return;
@@ -543,7 +547,10 @@ describe("Spec 224 source bundle tooling", () => {
     await mkdir(join(root, "artifacts"), { recursive: true });
     await writeFile(join(root, "python/main.py"), "import sample_lib\n");
     await writeFile(join(root, "pyproject.toml"), '[project]\nname = "fixture"\ndependencies = ["sample-lib==1.2.3"]\n');
-    await writeFile(join(root, "uv.lock"), `version = 1\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`);
+    const lockSource = `version = 1\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "sha256:${digest}" },\n]\n`;
+    const packageBlock = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
+    const locator = `uv.lock#uv:sample-lib@1.2.3|source=registry = "https://pypi.org/simple"|node=${createHash("sha256").update(packageBlock).digest("hex")}`;
+    await writeFile(join(root, "uv.lock"), lockSource);
     await writeFile(join(root, "artifacts/sample_lib-1.2.3-cp312-cp312-manylinux_x86_64.whl"), wheel);
 
     const closure = await discoverSourceClosure({
@@ -555,12 +562,13 @@ describe("Spec 224 source bundle tooling", () => {
         python: "3.12",
         packageManager: "uv@0.8.0",
         platform: "linux-x86_64-cp312",
+        pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_version: "3.12", python_full_version: "3.12.8", sys_platform: "linux", platform_machine: "x86_64", os_name: "posix" } },
       },
       externalArtifacts: [
         {
           name: "sample-lib",
           version: "1.2.3",
-          locator: "uv.lock#uv:sample-lib@1.2.3|https://pypi.org/simple",
+          locator,
           packageManager: "uv",
           lockfilePath: "uv.lock",
           path: "artifacts/sample_lib-1.2.3-cp312-cp312-manylinux_x86_64.whl",
@@ -745,5 +753,102 @@ describe("Spec 224 source bundle tooling", () => {
     const bundlePath = join(root, "..", "pnpm-peer-variant-bundle");
     await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pnpm-lock.yaml"] });
     expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("selects the uv resolution fork by version and environment marker, then seals only the compatible wheel", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import forked_lib\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-fork-fixture"\nrequires-python = ">=3.12,<3.14"\ndependencies = ["forked-lib==2.0.0"]\n');
+    const artifactV1 = Buffer.from("fork v1 cp312 wheel");
+    const artifactV2 = Buffer.from("fork v2 cp313 wheel");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const lockSource = `version = 1\nrevision = 3\nrequires-python = ">=3.12,<3.14"\nresolution-markers = ["python_full_version < '3.13'", "python_full_version >= '3.13'"]\n\n[[package]]\nname = "forked-lib"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "https://files.pythonhosted.org/packages/forked_lib-1.0.0-cp312-cp312-manylinux_x86_64.whl", hash = "${sri(artifactV1)}" },\n]\n\n[[package]]\nname = "forked-lib"\nversion = "2.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "https://files.pythonhosted.org/packages/forked_lib-2.0.0-cp313-cp313-manylinux_x86_64.whl", hash = "${sri(artifactV2)}" },\n]\n`;
+    const [blockV1, blockV2] = lockSource.split(/^\[\[package\]\]\s*$/m).slice(1).map(block => block.trim());
+    const sourceIdentity = 'registry = "https://pypi.org/simple"';
+    const locatorV1 = uvPackageLocator("forked-lib", "1.0.0", sourceIdentity, blockV1);
+    const locatorV2 = uvPackageLocator("forked-lib", "2.0.0", sourceIdentity, blockV2);
+    await writeFile(join(root, "uv.lock"), lockSource);
+    await writeFile(join(root, "artifacts/forked-lib-1.0.0.whl"), artifactV1);
+    await writeFile(join(root, "artifacts/forked-lib-2.0.0.whl"), artifactV2);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python/main.py"],
+      dependencyArtifacts: ["pyproject.toml", "uv.lock"],
+      profileId: "python-cp313-marker-fork",
+      runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28", platform: "linux-x86_64-cp313", pythonCompatibility: { compatibleWheelTags: ["cp313-cp313-manylinux_x86_64", "py3-none-any"], markerEnvironment: { python_version: "3.13", python_full_version: "3.13.5", sys_platform: "linux", platform_machine: "x86_64", os_name: "posix" } } },
+      externalArtifacts: [
+        { name: "forked-lib", version: "1.0.0", locator: locatorV1, packageManager: "uv", lockfilePath: "uv.lock", path: "artifacts/forked-lib-1.0.0.whl", source: "https://files.pythonhosted.org/packages/forked_lib-1.0.0-cp312-cp312-manylinux_x86_64.whl", kind: "python-wheel", platform: "linux-x86_64-cp313" },
+        { name: "forked-lib", version: "2.0.0", locator: locatorV2, packageManager: "uv", lockfilePath: "uv.lock", path: "artifacts/forked-lib-2.0.0.whl", source: "https://files.pythonhosted.org/packages/forked_lib-2.0.0-cp313-cp313-manylinux_x86_64.whl", kind: "python-wheel", platform: "linux-x86_64-cp313" },
+      ],
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual([locatorV2]);
+    expect(closure.externalPackageIdentities.find(item => item.locator === locatorV2)).toMatchObject({ artifactStatus: "VERIFIED_ARTIFACT", artifactSha256: createHash("sha256").update(artifactV2).digest("hex") });
+    expect(closure.externalPackageIdentities.find(item => item.locator === locatorV1)?.artifactStatus).toBe("NOT_REQUIRED");
+    const bundlePath = join(root, "..", "python-cp313-marker-fork-bundle");
+    const manifest = await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pyproject.toml", "uv.lock"] });
+    expect(manifest.selectedPythonExtras).toEqual([]);
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("fails closed when Python marker environment is incomplete or a transitive uv edge is missing", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import parent_lib\nmodule_name = input()\n__import__(module_name)\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-missing-edge"\ndependencies = ["parent-lib==1.0.0"]\n');
+    await writeFile(join(root, "uv.lock"), `version = 1\n[[package]]\nname = "parent-lib"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\ndependencies = [\n  { name = "child-lib", version = "2.0.0", marker = "python_full_version >= '3.12'" },\n]\nwheels = [\n  { url = "https://files.pythonhosted.org/parent_lib-1.0.0-py3-none-any.whl", hash = "sha256:${"a".repeat(64)}" },\n]\n`);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "python-missing-transitive", runtimeIdentity: { python: "3.12", packageManager: "uv@0.9.28" } };
+    const unknownMarker = await discoverSourceClosure(common);
+    expect(unknownMarker.closureComplete).toBe(false);
+    expect(unknownMarker.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("python-marker-environment-unresolved") }));
+    const missingTransitive = await discoverSourceClosure({ ...common, runtimeIdentity: { ...common.runtimeIdentity, pythonCompatibility: { compatibleWheelTags: ["py3-none-any"], markerEnvironment: { python_full_version: "3.12.1", python_version: "3.12" } } } });
+    expect(missingTransitive.closureComplete).toBe(false);
+    expect(missingTransitive.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("transitive-package-resolution-missing") }));
+    expect(missingTransitive.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<dynamic-python-import>" }));
+  });
+
+  it("includes only the selected uv extras and dependency groups", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import base_lib\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-groups-fixture"\ndependencies = ["base-lib==1.0.0"]\n\n[project.optional-dependencies]\ntests = ["extra-lib==2.0.0"]\n\n[dependency-groups]\ndev = ["dev-lib==3.0.0"]\n');
+    await writeFile(join(root, "uv.lock"), `version = 1\n${[
+      ["base-lib", "1.0.0"], ["extra-lib", "2.0.0"], ["dev-lib", "3.0.0"],
+    ].map(([name, version]) => `[[package]]\nname = "${name}"\nversion = "${version}"\nsource = { registry = "https://pypi.org/simple" }\n`).join("\n")}`);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "uv-selected-groups", runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28" } };
+    const baseOnly = await discoverSourceClosure(common);
+    expect(baseOnly.externalPackageIdentities.filter(item => baseOnly.requiredExternalPackages.includes(item.locator)).map(item => item.name)).toEqual(["base-lib"]);
+    const selected = await discoverSourceClosure({ ...common, selectedPythonExtras: ["tests"], selectedPythonDependencyGroups: ["dev"] });
+    expect(selected.externalPackageIdentities.filter(item => selected.requiredExternalPackages.includes(item.locator)).map(item => item.name).sort()).toEqual(["base-lib", "dev-lib", "extra-lib"]);
+    expect(selected.selectedPythonExtras).toEqual(["tests"]);
+    expect(selected.selectedPythonDependencyGroups).toEqual(["dev"]);
+  });
+
+  it("rejects a uv wheel with wrong bytes or incompatible interpreter tags", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "import wheel_fixture\n");
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "uv-wheel-mismatch"\ndependencies = ["wheel-fixture==1.0.0"]\n');
+    const lockedBytes = Buffer.from("expected wheel bytes");
+    const wrongBytes = Buffer.from("different artifact bytes");
+    const integrity = `sha256:${createHash("sha256").update(lockedBytes).digest("hex")}`;
+    const url = "https://files.pythonhosted.org/packages/wheel_fixture-1.0.0-cp313-cp313-manylinux_x86_64.whl";
+    const lockSource = `version = 1\n[[package]]\nname = "wheel-fixture"\nversion = "1.0.0"\nsource = { registry = "https://pypi.org/simple" }\nwheels = [\n  { url = "${url}", hash = "${integrity}" },\n]\n`;
+    const block = lockSource.split(/^\[\[package\]\]\s*$/m)[1].trim();
+    const locator = uvPackageLocator("wheel-fixture", "1.0.0", 'registry = "https://pypi.org/simple"', block);
+    await writeFile(join(root, "uv.lock"), lockSource);
+    await writeFile(join(root, "artifacts/wrong.whl"), wrongBytes);
+    await writeFile(join(root, "artifacts/locked.whl"), lockedBytes);
+    const common = { sourceRoot: root, entryPaths: ["python/main.py"], dependencyArtifacts: ["pyproject.toml", "uv.lock"], profileId: "uv-wheel-mismatch", runtimeIdentity: { python: "3.13.5", packageManager: "uv@0.9.28", platform: "linux-x86_64-cp313", pythonCompatibility: { compatibleWheelTags: ["cp313-cp313-manylinux_x86_64"], markerEnvironment: { python_full_version: "3.13.5", python_version: "3.13" } } } };
+    const binding = { name: "wheel-fixture", version: "1.0.0", locator, packageManager: "uv" as const, lockfilePath: "uv.lock", source: url, kind: "python-wheel" as const, platform: "linux-x86_64-cp313" };
+    const wrongHash = await discoverSourceClosure({ ...common, externalArtifacts: [{ ...binding, path: "artifacts/wrong.whl" }] });
+    expect(wrongHash.closureComplete).toBe(false);
+    expect(wrongHash.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:wheel-fixture@1.0.0" }));
+    const incompatible = await discoverSourceClosure({ ...common, runtimeIdentity: { ...common.runtimeIdentity, pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_full_version: "3.12.8", python_version: "3.12" } } }, externalArtifacts: [{ ...binding, path: "artifacts/locked.whl" }] });
+    expect(incompatible.closureComplete).toBe(false);
+    expect(incompatible.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:wheel-fixture@1.0.0" }));
   });
 });

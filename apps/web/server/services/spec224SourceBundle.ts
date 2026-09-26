@@ -45,6 +45,9 @@ export type SourceExternalPackageIdentity = {
   source: string | null;
   dependencies: string[];
   optionalDependencies: string[];
+  /** uv lock edges retain their resolution context for profile-specific verification. */
+  uvDependencyRelations?: Array<{ name: string; marker?: string; extra?: string; version?: string; source?: string }>;
+  resolutionContext?: string[];
   dependencyLocators: Record<string, string | null>;
   optionalDependencyLocators: Record<string, string | null>;
   lockedArtifacts: SourceLockedArtifact[];
@@ -70,6 +73,11 @@ export type SourceExternalArtifactBinding = {
   kind: SourceLockedArtifact["kind"];
   platform: string;
 };
+export type SourcePythonCompatibility = {
+  /** Exact compressed-tag expansion emitted by the selected interpreter's packaging.tags.sys_tags(). */
+  compatibleWheelTags: string[];
+  markerEnvironment: Record<string, string>;
+};
 export type SourceBundleManifest = {
   schemaVersion: "spec224.source-bundle.v2";
   discoveryMode: "static-plus-explicit-profile-v1";
@@ -84,6 +92,8 @@ export type SourceBundleManifest = {
     platform?: string;
   };
   selectedOptionalDependencies: string[];
+  selectedPythonDependencyGroups: string[];
+  selectedPythonExtras: string[];
   requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
@@ -113,9 +123,14 @@ export type SourceClosureInput = {
     python?: string;
     packageManager?: string;
     platform?: string;
+    /** Explicit interpreter tags and PEP 508 values; missing values fail closed when required. */
+    pythonCompatibility?: SourcePythonCompatibility;
   };
   /** Optional dependency names admitted by this exact execution profile. */
   selectedOptionalDependencies?: string[];
+  /** Selected uv dependency groups and project/package extras for this exact Python profile. */
+  selectedPythonDependencyGroups?: string[];
+  selectedPythonExtras?: string[];
   /** Original artifacts staged in sourceRoot; each binding must exactly match its lock entry. */
   externalArtifacts?: SourceExternalArtifactBinding[];
   /** Optional roots for absolute in-repository imports such as Python `app.*`. */
@@ -137,8 +152,11 @@ export type SourceClosureResult = {
     python?: string;
     packageManager?: string;
     platform?: string;
+    pythonCompatibility?: SourcePythonCompatibility;
   };
   selectedOptionalDependencies: string[];
+  selectedPythonDependencyGroups: string[];
+  selectedPythonExtras: string[];
   requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
@@ -180,6 +198,19 @@ function platformMatches(runtimePlatform: string | undefined, artifactPlatform: 
   return true;
 }
 
+function pythonWheelMatchesProfile(source: string | null, profile: SourcePythonCompatibility | undefined): boolean {
+  if (!source || !profile || !profile.compatibleWheelTags.length) return false;
+  const filename = source.split(/[?#]/, 1)[0].split("/").at(-1) ?? "";
+  if (!filename.endsWith(".whl")) return false;
+  const parts = filename.slice(0, -4).split("-");
+  if (parts.length < 5) return false;
+  const pythonTags = parts.at(-3)!.split(".");
+  const abiTags = parts.at(-2)!.split(".");
+  const platformTags = parts.at(-1)!.split(".");
+  const compatible = new Set(profile.compatibleWheelTags);
+  return pythonTags.some(python => abiTags.some(abi => platformTags.some(platform => compatible.has(`${python}-${abi}-${platform}`))));
+}
+
 function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runtimePlatform: string | undefined): boolean {
   if (!runtimePlatform) return false;
   const [runtimeOs, runtimeCpu] = runtimePlatform.toLowerCase().split(/[-_]/, 2);
@@ -191,7 +222,7 @@ function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runt
   return matches(identity.os, runtimeOs) && matches(identity.cpu, runtimeCpu);
 }
 
-type ExternalRoot = { name: string; requesterPath: string };
+type ExternalRoot = { name: string; requesterPath: string; specifier?: string; source?: string; extras?: string[]; marker?: string };
 type ParsedDependencyLock = { packages: SourceExternalPackageIdentity[]; importers: Record<string, Record<string, string | null>> };
 
 function importerPathFor(requesterPath: string, importers: Record<string, Record<string, string | null>>): string | null {
@@ -211,32 +242,145 @@ function resolveNpmLocator(name: string, requesterPath: string, locators: Set<st
   return null;
 }
 
-function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: ExternalRoot[], importersByLockfile: Map<string, Record<string, Record<string, string | null>>>, selectedOptionals: Set<string>): { required: Set<string>; unresolved: string[]; rootLocators: Map<string, string> } {
+type PythonMarkerResult = "true" | "false" | "unknown";
+
+function markerTokens(expression: string): string[] | null {
+  const tokens: string[] = [];
+  const pattern = /\s*(and\b|or\b|not\s+in\b|in\b|not\s+|==|!=|<=|>=|~=|===|<|>|\(|\)|[A-Za-z_][A-Za-z0-9_]*|'(?:\\.|[^'])*'|"(?:\\.|[^"])*")/gy;
+  let offset = 0;
+  while (offset < expression.length) {
+    pattern.lastIndex = offset;
+    const match = pattern.exec(expression);
+    if (!match) return null;
+    tokens.push(match[1].replace(/\s+/g, " ").trim());
+    offset = pattern.lastIndex;
+  }
+  return tokens;
+}
+
+function evaluatePythonMarker(expression: string, environment: Record<string, string>): PythonMarkerResult {
+  const tokens = markerTokens(expression);
+  if (!tokens?.length) return "unknown";
+  let index = 0;
+  const readValue = (): string | null => {
+    const token = tokens[index++];
+    if (!token) return null;
+    if ((token.startsWith("'") && token.endsWith("'")) || (token.startsWith('"') && token.endsWith('"'))) return token.slice(1, -1);
+    return Object.hasOwn(environment, token) ? environment[token] : null;
+  };
+  const compare = (): boolean | null => {
+    const left = readValue();
+    const operator = tokens[index++];
+    if (operator === "not" && tokens[index] === "in") index++;
+    const right = readValue();
+    if (left === null || right === null || !operator) return null;
+    const versionLike = /(?:python|implementation)_version/.test(expression) || /^(?:\d+\.)+\d+$/.test(left + right);
+    const cmp = versionLike ? compareNumericVersion(left, right) : left.localeCompare(right);
+    switch (operator) {
+      case "==":
+      case "===": return left === right;
+      case "!=": return left !== right;
+      case "<": return cmp < 0;
+      case "<=": return cmp <= 0;
+      case ">": return cmp > 0;
+      case ">=": return cmp >= 0;
+      case "in": return right.includes(left);
+      case "not in":
+      case "not": return !right.includes(left);
+      case "~=": return left === right || left.startsWith(`${right.split(".").slice(0, -1).join(".")}.`);
+      default: return null;
+    }
+  };
+  const atom = (): boolean | null => tokens[index] === "(" ? (index++, (() => { const value = orExpr(); if (tokens[index++] !== ")") return null; return value; })()) : compare();
+  const andExpr = (): boolean | null => {
+    let value = atom();
+    while (tokens[index] === "and") {
+      index++;
+      const next = atom();
+      value = value === false || next === false ? false : value === true && next === true ? true : null;
+    }
+    return value;
+  };
+  const orExpr = (): boolean | null => {
+    let value = andExpr();
+    while (tokens[index] === "or") {
+      index++;
+      const next = andExpr();
+      value = value === true || next === true ? true : value === false && next === false ? false : null;
+    }
+    return value;
+  };
+  const result = orExpr();
+  if (index !== tokens.length || result === null) return "unknown";
+  return result ? "true" : "false";
+}
+
+function compareNumericVersion(left: string, right: string): number {
+  const a = left.split(".").map(part => Number.parseInt(part, 10));
+  const b = right.split(".").map(part => Number.parseInt(part, 10));
+  for (let index = 0; index < Math.max(a.length, b.length); index++) {
+    const delta = (a[index] ?? 0) - (b[index] ?? 0);
+    if (delta) return delta < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
+function pythonVersionSatisfies(version: string, specifier: string | undefined): boolean | null {
+  if (!specifier?.trim()) return true;
+  for (const clause of specifier.split(",").map(item => item.trim()).filter(Boolean)) {
+    const match = clause.match(/^(===|==|!=|~=|<=|>=|<|>)\s*([0-9]+(?:\.[0-9]+)*)$/);
+    if (!match) return null;
+    const [, operator, target] = match;
+    const comparison = compareNumericVersion(version, target);
+    const valid = operator === "==" || operator === "===" ? comparison === 0 : operator === "!=" ? comparison !== 0 : operator === "<" ? comparison < 0 : operator === "<=" ? comparison <= 0 : operator === ">" ? comparison > 0 : operator === ">=" ? comparison >= 0 : comparison >= 0 && version.split(".")[0] === target.split(".")[0];
+    if (!valid) return false;
+  }
+  return true;
+}
+
+function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: ExternalRoot[], importersByLockfile: Map<string, Record<string, Record<string, string | null>>>, selectedOptionals: Set<string>, pythonExtras: Set<string>, markerEnvironment: Record<string, string>): { required: Set<string>; unresolved: string[]; rootLocators: Map<string, string> } {
   const required = new Set<string>();
   const unresolved: string[] = [];
   const rootLocators = new Map<string, string>();
   const byLocator = new Map(identities.map(identity => [identity.locator, identity]));
   const queue: Array<{ locator: string; label: string }> = [];
   for (const root of roots) {
-    const candidates = identities.filter(item => item.name === normalizePackageName(root.name));
+    const declaredPythonRoot = root.specifier ? undefined : roots.find(candidate => normalizePackageName(candidate.name) === normalizePackageName(root.name) && candidate.specifier !== undefined && candidate.requesterPath.endsWith("pyproject.toml"));
+    const effectiveRoot = declaredPythonRoot ? { ...root, specifier: declaredPythonRoot.specifier, marker: declaredPythonRoot.marker, extras: declaredPythonRoot.extras, source: declaredPythonRoot.source } : root;
+    if (effectiveRoot.marker) {
+      const markerResult = evaluatePythonMarker(effectiveRoot.marker, markerEnvironment);
+      if (markerResult === "false") continue;
+      if (markerResult === "unknown") {
+        unresolved.push(`python-marker-environment-unresolved:${effectiveRoot.name}:${effectiveRoot.marker}`);
+        continue;
+      }
+    }
+    const candidates = identities.filter(item => item.name === normalizePackageName(effectiveRoot.name));
     const matches: string[] = [];
     for (const item of candidates) {
+      const versionMatches = pythonVersionSatisfies(item.version, effectiveRoot.specifier);
+      if (versionMatches === null) {
+        unresolved.push(`python-version-specifier-unresolved:${effectiveRoot.name}:${effectiveRoot.specifier}`);
+        continue;
+      }
+      if (!versionMatches) continue;
+      if (effectiveRoot.source && item.source !== effectiveRoot.source) continue;
       const importers = importersByLockfile.get(item.lockfilePath) ?? {};
-      const importerPath = importerPathFor(root.requesterPath, importers);
+      const importerPath = importerPathFor(effectiveRoot.requesterPath, importers);
       const importedLocator = importerPath === null ? undefined : importers[importerPath]?.[item.name];
       if (importerPath !== null && Object.hasOwn(importers[importerPath] ?? {}, item.name)) {
         if (importedLocator === item.locator) matches.push(item.locator);
         continue;
       }
-      if (item.packageManager === "npm" && resolveNpmLocator(item.name, root.requesterPath, new Set(identities.filter(candidate => candidate.lockfilePath === item.lockfilePath).map(candidate => candidate.locator))) === item.locator) matches.push(item.locator);
-      else if (candidates.length === 1 && item.packageManager === "uv") matches.push(item.locator);
+      if (item.packageManager === "npm" && resolveNpmLocator(item.name, effectiveRoot.requesterPath, new Set(identities.filter(candidate => candidate.lockfilePath === item.lockfilePath).map(candidate => candidate.locator))) === item.locator) matches.push(item.locator);
+      else if (item.packageManager === "uv") matches.push(item.locator);
     }
     if (matches.length !== 1) {
-      unresolved.push(`${matches.length ? "external-package-resolution-ambiguous" : "external-package-lock-entry-missing"}:${normalizePackageName(root.name)}:${root.requesterPath}`);
+      unresolved.push(`${matches.length ? "external-package-resolution-ambiguous" : "external-package-lock-entry-missing"}:${normalizePackageName(effectiveRoot.name)}:${effectiveRoot.requesterPath}`);
       continue;
     }
-    rootLocators.set(`${root.requesterPath}\0${normalizePackageName(root.name)}`, matches[0]);
-    queue.push({ locator: matches[0], label: root.name });
+    rootLocators.set(`${effectiveRoot.requesterPath}\0${normalizePackageName(effectiveRoot.name)}`, matches[0]);
+    queue.push({ locator: matches[0], label: effectiveRoot.name });
   }
   while (queue.length) {
     const { locator, label } = queue.shift()!;
@@ -247,7 +391,26 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       unresolved.push(`transitive-package-locator-missing:${label}:${locator}`);
       continue;
     }
-    for (const dependency of item.dependencies) {
+    if (item.packageManager === "uv" && item.uvDependencyRelations) {
+      for (const relation of item.uvDependencyRelations) {
+        if (relation.extra && !pythonExtras.has(relation.extra)) continue;
+        if (relation.marker) {
+          const markerResult = evaluatePythonMarker(relation.marker, markerEnvironment);
+          if (markerResult === "false") continue;
+          if (markerResult === "unknown") {
+            unresolved.push(`python-marker-environment-unresolved:${item.locator}->${relation.name}:${relation.marker}`);
+            continue;
+          }
+        }
+        const candidates = identities.filter(candidate => candidate.packageManager === "uv" && candidate.name === normalizePackageName(relation.name) && (!relation.version || candidate.version === relation.version.replace(/^(?:==|=)\s*/, "")) && (!relation.source || candidate.source === relation.source));
+        if (candidates.length !== 1) {
+          unresolved.push(`transitive-package-resolution-${candidates.length ? "ambiguous" : "missing"}:${item.name}->${relation.name}`);
+          continue;
+        }
+        item.dependencyLocators[relation.name] = candidates[0].locator;
+        queue.push({ locator: candidates[0].locator, label: `${item.name}->${relation.name}` });
+      }
+    } else for (const dependency of item.dependencies) {
       const dependencyLocator = item.dependencyLocators[dependency];
       if (!dependencyLocator) unresolved.push(`transitive-package-resolution-ambiguous:${item.name}->${dependency}`);
       else queue.push({ locator: dependencyLocator, label: `${item.name}->${dependency}` });
@@ -449,12 +612,16 @@ function unresolvedCommandDependencies(command: string, declaredDependencies: Se
   return [...unresolved].sort();
 }
 
-function pythonProjectRequirements(source: string): string[] {
+type PythonProjectRequirement = { value: string; selection: "required" | "extra" | "group" | "build"; group: string | null };
+
+function pythonProjectRequirements(source: string): PythonProjectRequirement[] {
   const lines = source.split(/\r?\n/);
-  const requirements: string[] = [];
+  const requirements: PythonProjectRequirement[] = [];
   let section = "";
   let collectingDependencies = false;
   let bracketDepth = 0;
+  let selectedGroup: string | null = null;
+  let selection: PythonProjectRequirement["selection"] = "required";
   for (const line of lines) {
     const header = line.match(/^\s*\[([^\]]+)\]\s*$/);
     if (header) {
@@ -468,16 +635,52 @@ function pythonProjectRequirements(source: string): string[] {
     if (dependencyArray && start) {
       collectingDependencies = true;
       bracketDepth = 0;
+      selectedGroup = section === "project.optional-dependencies" || section === "dependency-groups" ? key! : section === "tool.uv" ? "dev" : null;
+      selection = section === "project.optional-dependencies" ? "extra" : section === "dependency-groups" || section === "tool.uv" ? "group" : section === "build-system" ? "build" : "required";
     }
     if (!collectingDependencies) continue;
     bracketDepth += (line.match(/\[/g) ?? []).length - (line.match(/\]/g) ?? []).length;
     for (const match of line.matchAll(/(?:"([^"]+)"|'([^']+)')/g)) {
       const requirement = match[1] ?? match[2];
-      if (/^[A-Za-z0-9_.-]+(?:\[[^\]]+\])?\s*(?:[<>=!~;@]|$)/.test(requirement)) requirements.push(requirement);
+      if (/^[A-Za-z0-9_.-]+(?:\[[^\]]+\])?\s*(?:[<>=!~;@]|$)/.test(requirement)) requirements.push({ value: requirement, selection, group: selectedGroup });
     }
     if (bracketDepth <= 0 && line.includes("]")) collectingDependencies = false;
   }
   return requirements;
+}
+
+function tomlStringField(source: string, key: string): string | undefined {
+  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = source.match(new RegExp(`(?:^|[,\\s])${escapedKey}\\s*=\\s*(?:"((?:\\\\.|[^"\\\\])*)"|'([^']*)')`));
+  return match?.[1]?.replace(/\\(["\\])/g, "$1") ?? match?.[2];
+}
+
+function tomlInlineTables(source: string): string[] {
+  const tables: string[] = [];
+  let depth = 0;
+  let quote: string | null = null;
+  let escaped = false;
+  let start = -1;
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === quote) quote = null;
+      continue;
+    }
+    if (character === "'" || character === '"') {
+      quote = character;
+      continue;
+    }
+    if (character === "{") {
+      if (depth++ === 0) start = index + 1;
+    } else if (character === "}" && depth && --depth === 0 && start >= 0) {
+      tables.push(source.slice(start, index));
+      start = -1;
+    }
+  }
+  return tables;
 }
 
 function parseUvLockPackages(source: string, lockfilePath: string): ParsedDependencyLock {
@@ -514,7 +717,16 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
     }
     const integrity = [...new Set(lockedArtifacts.flatMap(item => item.integrity))].sort();
     const dependencySection = block.match(/^dependencies\s*=\s*\[([\s\S]*?)^\s*\]/m)?.[1] ?? "";
-    const dependencyEntries = [...dependencySection.matchAll(/\{([^}]*)\}/g)].map(match => match[1]);
+    const dependencyEntries = tomlInlineTables(dependencySection);
+    const uvDependencyRelations = dependencyEntries.flatMap(entry => {
+      const dependencyName = tomlStringField(entry, "name");
+      if (!dependencyName) return [];
+      const marker = tomlStringField(entry, "marker");
+      const extra = tomlStringField(entry, "extra");
+      const dependencyVersion = tomlStringField(entry, "version");
+      const dependencySource = tomlStringField(entry, "registry") ?? tomlStringField(entry, "url");
+      return [{ name: normalizePackageName(dependencyName), ...(marker ? { marker } : {}), ...(extra ? { extra } : {}), ...(dependencyVersion ? { version: dependencyVersion } : {}), ...(dependencySource ? { source: dependencySource } : {}) }];
+    });
     const dependencies = [
       ...new Set(
         dependencyEntries
@@ -533,16 +745,21 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
           .map(normalizePackageName)
       ),
     ].sort();
+    const contextMarkers = [...(block.match(/^resolution-markers\s*=\s*\[([\s\S]*?)^\]/m)?.[1] ?? "").matchAll(/["']([^"']+)["']/g)].map(match => match[1]);
+    const sourceIdentity = sourceValue.split(",").map(value => value.trim()).filter(Boolean).sort().join(",");
+    const packageBlockDigest = sha256(block.trim());
     identities.push({
       name: normalizePackageName(name),
       version,
-      locator: packageLocatorId(lockfilePath, `uv:${normalizePackageName(name)}@${version}|${source ?? ""}`),
+      locator: packageLocatorId(lockfilePath, `uv:${normalizePackageName(name)}@${version}|source=${sourceIdentity}|node=${packageBlockDigest}`),
       packageManager: "uv",
       lockfilePath,
       integrity,
       source,
       dependencies,
       optionalDependencies,
+      uvDependencyRelations,
+      resolutionContext: contextMarkers,
       dependencyLocators: {},
       optionalDependencyLocators: {},
       lockedArtifacts,
@@ -557,12 +774,6 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
       os: [],
       cpu: [],
     });
-  }
-  const byName = new Map<string, SourceExternalPackageIdentity[]>();
-  for (const identity of identities) byName.set(identity.name, [...(byName.get(identity.name) ?? []), identity]);
-  for (const identity of identities) {
-    for (const name of identity.dependencies) identity.dependencyLocators[name] = byName.get(name)?.length === 1 ? byName.get(name)![0].locator : null;
-    for (const name of identity.optionalDependencies) identity.optionalDependencyLocators[name] = byName.get(name)?.length === 1 ? byName.get(name)![0].locator : null;
   }
   return { packages: identities, importers: {} };
 }
@@ -947,16 +1158,28 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       }
     }
     if (filePath.endsWith("pyproject.toml")) {
+      const selectedGroups = new Set((input.selectedPythonDependencyGroups ?? []).map(value => value.toLowerCase()));
+      const selectedExtras = new Set((input.selectedPythonExtras ?? []).map(value => value.toLowerCase()));
       for (const requirement of pythonProjectRequirements(source)) {
-        const name = requirement.match(/^([A-Za-z0-9_.-]+)/)?.[1];
+        const selected = requirement.selection === "required" || requirement.selection === "build" && selectedGroups.has("build") || requirement.selection === "group" && Boolean(requirement.group && selectedGroups.has(requirement.group.toLowerCase())) || requirement.selection === "extra" && Boolean(requirement.group && selectedExtras.has(requirement.group.toLowerCase()));
+        if (!selected) {
+          dependencyEdges.push({ from: filePath, specifier: `${requirement.group ?? "optional"}:${requirement.value}`, to: null, kind: "declared-package-dependency", status: "optional-dependency-excluded" });
+          continue;
+        }
+        const [requirementPart, markerPart] = requirement.value.split(";", 2).map(item => item.trim());
+        const requirementMatch = requirementPart.match(/^([A-Za-z0-9_.-]+)(?:\[([^\]]+)\])?\s*(.*)$/);
+        const name = requirementMatch?.[1];
         if (!name) continue;
         const packageName = normalizePackageName(name);
+        const extras = requirementMatch?.[2]?.split(",").map(item => item.trim().toLowerCase()).filter(Boolean) ?? [];
+        const rawSpecifier = requirementMatch?.[3]?.trim() ?? "";
+        const root: ExternalRoot = { name: packageName, requesterPath: filePath, ...(rawSpecifier ? { specifier: rawSpecifier } : {}), ...(extras.length ? { extras } : {}), ...(markerPart ? { marker: markerPart } : {}) };
         external.add(packageName);
         declaredExternal.add(packageName);
-        externalRoots.push({ name: packageName, requesterPath: filePath });
+        externalRoots.push(root);
         dependencyEdges.push({
           from: filePath,
-          specifier: requirement,
+          specifier: requirement.value,
           to: null,
           kind: "declared-package-dependency",
           status: "external-package",
@@ -1295,6 +1518,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   const selectedOptionalDependencies = [...new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName))].sort();
+  const selectedPythonDependencyGroups = [...new Set((input.selectedPythonDependencyGroups ?? []).map(value => value.toLowerCase()))].sort();
+  const selectedPythonExtras = [...new Set((input.selectedPythonExtras ?? []).map(value => value.toLowerCase()))].sort();
   const selectedOptionalSet = new Set(selectedOptionalDependencies);
   for (const name of selectedOptionalSet) {
     if (!declaredOptionalNames.has(name) && !lockedPackages.some(item => item.optionalDependencies.includes(name)))
@@ -1303,7 +1528,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         specifier: `optional-dependency-not-declared:${name}`,
       });
   }
-  const { required: requiredExternalSet, unresolved: dependencyClosureIssues, rootLocators } = selectExternalClosure(lockedPackages, externalRoots, importersByLockfile, selectedOptionalSet);
+  const markerEnvironment = input.runtimeIdentity?.pythonCompatibility?.markerEnvironment ?? {};
+  const { required: requiredExternalSet, unresolved: dependencyClosureIssues, rootLocators } = selectExternalClosure(lockedPackages, externalRoots, importersByLockfile, selectedOptionalSet, new Set(selectedPythonExtras), markerEnvironment);
   for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   const externalArtifacts = input.externalArtifacts ?? [];
   const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
@@ -1348,6 +1574,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       });
       continue;
     }
+    if (binding.kind === "python-sdist") {
+      unresolved.push({ from: identity.lockfilePath, specifier: `SDIST_BUILD_NOT_AUTHORIZED:${identity.name}@${identity.version}` });
+      externalPackageIdentities.push({ ...identity, artifactStatus: "UNVERIFIED_ARTIFACT" });
+      continue;
+    }
     let artifactPath: string;
     try {
       artifactPath = safeRelative(sourceRoot, binding.path);
@@ -1366,7 +1597,10 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       const fullPath = await assertRegularFileWithoutSymlinkParents(sourceRoot, artifactPath);
       const bytes = await readFile(fullPath);
       const digest = sha256(bytes);
-      if ((locked.sizeBytes !== null && locked.sizeBytes !== bytes.byteLength) || !integrityMatches(bytes, locked.integrity) || !platformMatches(input.runtimeIdentity?.platform, binding.platform, binding.source)) throw new Error("artifact mismatch");
+      const artifactProfileMatches = binding.kind === "python-wheel"
+        ? input.runtimeIdentity?.platform === binding.platform && pythonWheelMatchesProfile(binding.source, input.runtimeIdentity.pythonCompatibility)
+        : platformMatches(input.runtimeIdentity?.platform, binding.platform, binding.source);
+      if ((locked.sizeBytes !== null && locked.sizeBytes !== bytes.byteLength) || !integrityMatches(bytes, locked.integrity) || !artifactProfileMatches) throw new Error("artifact mismatch");
       seen.add(artifactPath);
       const artifactProvenance = provenance.get(artifactPath) ?? new Set<SourceInputKind>();
       artifactProvenance.add("dependency-artifact");
@@ -1405,7 +1639,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
   for (const edge of dependencyEdges) {
     if (edge.status !== "external-package") continue;
-    const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}/`)));
+    const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)));
     const packageName = normalizePackageName(declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier));
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
     const identity = externalPackageIdentities.find(item => item.locator === locator);
@@ -1442,6 +1676,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     externalImports,
     unresolvedImports: unresolved.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0)),
     selectedOptionalDependencies,
+    selectedPythonDependencyGroups,
+    selectedPythonExtras,
     requiredExternalPackages: [...requiredExternalSet].sort(),
     closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
@@ -1482,7 +1718,10 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     const identity = matches[0];
     const entry = content.find(item => item.path === identity.artifactPath);
     const lockedArtifact = identity.lockedArtifacts.find(artifact => artifact.kind === identity.artifactKind && artifact.source === identity.artifactSource && canonicalJson([...artifact.integrity].sort()) === canonicalJson([...identity.artifactIntegrity].sort()));
-    if (!entry || sha256(entry.bytes) !== identity.artifactSha256 || !lockedArtifact || !integrityMatches(entry.bytes, lockedArtifact.integrity) || !packagePlatformCompatible(identity, closure.runtimeIdentity.platform) || !platformMatches(closure.runtimeIdentity.platform, identity.artifactPlatform ?? "", identity.artifactSource)) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_DIGEST_MISMATCH");
+    const artifactProfileMatches = identity.artifactKind === "python-wheel"
+      ? closure.runtimeIdentity.platform === identity.artifactPlatform && pythonWheelMatchesProfile(identity.artifactSource, closure.runtimeIdentity.pythonCompatibility)
+      : platformMatches(closure.runtimeIdentity.platform, identity.artifactPlatform ?? "", identity.artifactSource);
+    if (!entry || sha256(entry.bytes) !== identity.artifactSha256 || !lockedArtifact || !integrityMatches(entry.bytes, lockedArtifact.integrity) || !packagePlatformCompatible(identity, closure.runtimeIdentity.platform) || !artifactProfileMatches) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_DIGEST_MISMATCH");
   }
   if (dependencyEdges.some(edge => edge.status === "resolved-local" && (!edge.to || !fileSet.has(safeRelative(sourceRoot, edge.to))))) throw new Error("SPEC224_BUNDLE_EDGE_TARGET_MISSING");
   if (dependencyEdges.some(edge => (edge.from.startsWith("<profile:") ? false : !fileSet.has(safeRelative(sourceRoot, edge.from))))) throw new Error("SPEC224_BUNDLE_EDGE_SOURCE_MISSING");
@@ -1504,6 +1743,8 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     profileId: closure.profileId,
     runtimeIdentity: closure.runtimeIdentity,
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
+    selectedPythonDependencyGroups: [...closure.selectedPythonDependencyGroups].sort(),
+    selectedPythonExtras: [...closure.selectedPythonExtras].sort(),
     requiredExternalPackages: [...closure.requiredExternalPackages].sort(),
     packageIdentities: packageIdentities.sort((a, b) => compareText(a.name, b.name)),
     externalPackageIdentities: [...closure.externalPackageIdentities].sort((a, b) => compareText(a.name, b.name) || compareText(a.version, b.version) || compareText(a.lockfilePath, b.lockfilePath)),
