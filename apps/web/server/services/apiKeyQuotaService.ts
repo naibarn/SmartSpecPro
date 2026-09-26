@@ -218,6 +218,9 @@ export async function checkAndIncrementQuota(
 
   const db = await getDb();
   const reservation = await db.transaction(async tx => {
+    // Bound lock waits so one hot key cannot hold pool connections indefinitely.
+    await tx.execute(sql`SET LOCAL lock_timeout = '2s'`);
+    await tx.execute(sql`SET LOCAL statement_timeout = '10s'`);
     // Hash collision only serializes unrelated keys; it cannot merge their data.
     await tx.execute(sql`
       SELECT pg_advisory_xact_lock(hashtextextended(${apiKeyId}, 0))

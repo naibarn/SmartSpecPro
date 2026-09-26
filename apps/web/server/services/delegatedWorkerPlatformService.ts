@@ -7,8 +7,7 @@ import {
   workers,
 } from "../../drizzle/schema";
 import { getTraceId } from "./traceContext";
-import { getRedisClient, isRedisAvailable } from "./redis";
-import { acquireSemaphore, type SemaphoreHandle } from "./redisSemaphore";
+import { acquirePostgresSemaphore } from "./postgresDelegatedWorkerSemaphore";
 import {
   getDelegatedScopeProfilePolicy,
   type DelegatedWorkerAuthContext,
@@ -100,8 +99,6 @@ const NOOP_CONCURRENCY_HANDLE: ConcurrencyHandle = {
   async release() {},
 };
 
-const localConcurrencyCounters = new Map<string, number>();
-
 export class DelegatedWorkerPlatformError extends Error {
   code: string;
   statusCode: number;
@@ -167,34 +164,6 @@ function buildConcurrencyKey(
     auth.workerJobId,
     actionClass,
   ].join(":");
-}
-
-function acquireLocalSemaphore(
-  key: string,
-  maxSlots: number,
-): ConcurrencyHandle | null {
-  const current = localConcurrencyCounters.get(key) ?? 0;
-  if (current >= maxSlots) {
-    return null;
-  }
-
-  localConcurrencyCounters.set(key, current + 1);
-
-  let released = false;
-  return {
-    async release(): Promise<void> {
-      if (released) {
-        return;
-      }
-      released = true;
-      const next = (localConcurrencyCounters.get(key) ?? 1) - 1;
-      if (next <= 0) {
-        localConcurrencyCounters.delete(key);
-        return;
-      }
-      localConcurrencyCounters.set(key, next);
-    },
-  };
 }
 
 function readWorkerSpendBudgetPolicy(worker: WorkerRecord | null): WorkerSpendBudgetPolicy {
@@ -540,17 +509,15 @@ export async function acquireDelegatedWorkerConcurrencySlot(
   const policy = CONCURRENCY_POLICIES[input.actionClass];
   const key = buildConcurrencyKey(input.auth, input.actionClass);
 
-  let handle: SemaphoreHandle | ConcurrencyHandle | null = null;
-  if (isRedisAvailable()) {
-    handle = await acquireSemaphore(
-      getRedisClient(),
-      key,
-      policy.maxConcurrent,
-      policy.ttlSeconds,
-    );
-  } else {
-    handle = acquireLocalSemaphore(key, policy.maxConcurrent);
-  }
+  const handle = await acquirePostgresSemaphore({
+    scopeKey: key,
+    tenantId: input.auth.tenantId!,
+    workerId: input.auth.workerId!,
+    workerJobId: input.auth.workerJobId!,
+    actionClass: input.actionClass,
+    maxSlots: policy.maxConcurrent,
+    ttlSeconds: policy.ttlSeconds,
+  });
 
   if (!handle) {
     throw new DelegatedWorkerPlatformError(
@@ -697,8 +664,4 @@ export function readDelegatedWorkerSpendBudgetPolicy(
   worker: WorkerRecord | null | undefined,
 ): WorkerSpendBudgetPolicy {
   return readWorkerSpendBudgetPolicy(worker ?? null);
-}
-
-export function resetDelegatedWorkerConcurrencyForTests(): void {
-  localConcurrencyCounters.clear();
 }

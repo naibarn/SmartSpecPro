@@ -14773,6 +14773,25 @@ export const apiKeyQuotaCounters = pgTable(
 
 export type ApiKeyQuotaCounter = typeof apiKeyQuotaCounters.$inferSelect;
 
+/** Short-lived delegated-worker concurrency leases; job state stays in worker_jobs. */
+export const delegatedWorkerConcurrencyLeases = pgTable(
+  "delegated_worker_concurrency_leases",
+  {
+    leaseId: varchar("leaseId", { length: 36 }).primaryKey(),
+    scopeKey: varchar("scopeKey", { length: 256 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    workerId: varchar("workerId", { length: 36 }).notNull(),
+    workerJobId: varchar("workerJobId", { length: 36 }).notNull(),
+    actionClass: varchar("actionClass", { length: 16 }).notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("delegated_worker_concurrency_leases_scope_expiry_idx").on(t.scopeKey, t.expiresAt),
+    check("delegated_worker_concurrency_leases_action_class_check", sql`${t.actionClass} IN ('read', 'compute', 'media', 'mcp_write')`),
+  ],
+);
+
 /**
  * API Webhook Endpoints — outbound webhook registrations.
  */
