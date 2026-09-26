@@ -83,8 +83,8 @@ When the detected platform is `standard` and the available sub-agent tool's own 
 require explicit user authorization before spawning agents, Orchestra runs in **light
 mode** by default.
 
-Light mode keeps the SocratiCode preflight, planning notes, impact checks, progress files,
-targeted implementation, and relevant verification, but it does not spawn sub-agents just
+Light mode keeps the targeted discovery preflight, planning notes, impact checks, progress
+files, targeted implementation, and relevant verification, but it does not spawn sub-agents just
 because a tool exists. Use sub-agents in standard mode only when one of these is true:
 - the user explicitly asks for sub-agents, delegation, parallel agents, reviewers, or
   agent waves
@@ -98,15 +98,13 @@ or accepted security risk blocks progress.
 
 ### Token-Efficient Reading Discipline
 
-When SocratiCode is active, use it to narrow files, symbols, and line ranges before
-opening source files or producing large diffs. Prefer this sequence:
+Use targeted shell discovery to narrow files, symbols, and line ranges before opening
+source files or producing large diffs. Prefer this sequence:
 
-1. `codebase_status` or `codebase_health` once near Step 0/Step 1.
-2. `codebase_search`, `codebase_symbols`, `codebase_symbol`, `codebase_graph_query`,
-   `codebase_flow`, or `codebase_impact` as appropriate for the question.
-3. Targeted `rg` only within SocratiCode-narrowed files/directories.
-4. Targeted file reads using small line ranges around the matched section.
-5. `git diff --stat` before full diffs; inspect only relevant hunks unless a full
+1. Targeted `rg` searches for the feature, symbol, route, service, schema, or test.
+2. Targeted file reads using small line ranges around matched sections.
+3. Follow imports and callers only within the narrowed paths when impact requires it.
+4. `git diff --stat` before full diffs; inspect only relevant hunks unless a full
    diff is needed for a quality gate or conflict resolution.
 
 Avoid broad `rg`, whole-file `sed`, `cat` of large files, or full `git diff` as
@@ -177,64 +175,15 @@ This applies to ALL user-facing output from Orchestra: questions, confirmations,
 
 ---
 
-## SocratiCode Discovery — MANDATORY When Active
+## Repository Discovery
 
-When Orchestra is running inside a code repository, treat SocratiCode as the
-preferred codebase discovery layer if it is active.
+When Orchestra runs inside a code repository, use targeted shell discovery:
 
-### Active Detection
-
-SocratiCode is considered active when any of these are true:
-- MCP tools named `codebase_*` / `mcp__socraticode__.*` are available and
-  `codebase_status` or `codebase_health` succeeds.
-- The Codex config includes an MCP server named `socraticode` and a manual MCP
-  smoke test succeeds.
-- A project-local SocratiCode watcher/index service is running and logs show a
-  healthy index, even if the current MCP transport must be restarted.
-
-### Required Use
-
-If SocratiCode is active:
-- Run `codebase_status` near Step 0/Step 1 before any repository shell
-  exploration, broad repository analysis, or dispatch planning. This preflight
-  is allowed before shell commands even when the banner/platform check would
-  otherwise be first.
-- Use `codebase_search` before reading many files, asking explorers to inspect
-  the codebase, or running broad `rg` searches for architecture, feature,
-  service, router, UI, data model, or domain questions.
-- Use `codebase_impact` before planning or executing refactors, renames,
-  deletions, schema changes, route changes, shared service changes, or exported
-  symbol changes.
-- Use `codebase_graph_query`, `codebase_graph_stats`, or `codebase_flow` when
-  planning dependency direction, blast radius, call flow, or integration waves.
-- Use `codebase_symbols` / `codebase_symbol` when routing work around specific
-  functions, classes, route handlers, exported constants, or shared types.
-
-After SocratiCode narrows the relevant area, use `rg`, file reads, and normal
-shell tools for exact verification and implementation details.
-
-### Token Budget Guardrails
-
-When SocratiCode is active, Orchestra must minimize context spent on discovery:
-- Prefer SocratiCode result snippets over opening whole files.
-- Prefer `sed -n 'start,endp'` or equivalent narrow reads over `cat`/whole-file
-  output for files larger than a few hundred lines.
-- Prefer `rg pattern narrowed/path` over repository-wide `rg` once candidate
-  paths are known.
-- Prefer `git diff --stat` and targeted hunk inspection before printing a full
-  diff.
-- Ask sub-agents for specific answers or bounded patches, not broad exploratory
-  dumps, unless the task explicitly requires a wide audit.
-- Record in `orchestra/progress.md` when SocratiCode was active, what it
-  narrowed, and any fallback to shell discovery.
-
-### Fallback
-
-If SocratiCode is configured but the current MCP transport fails, do not block
-the task. Fall back to shell search, record the transport failure in
-`orchestra/progress.md`, and mention the fallback in the final summary. If a
-manual wrapper or project watcher log can provide status safely, use it to
-confirm the index/watch health before proceeding.
+- Start with narrow `rg` searches and bounded file reads.
+- Follow imports, callers, and related tests only within the narrowed paths.
+- Record the reason in `orchestra/progress.md` before any broad repository scan.
+- Ask explorers and sub-agents for bounded answers or patches, not raw exploratory dumps.
+- Use `git diff --stat` and targeted hunk inspection before printing a full diff.
 
 ---
 
@@ -390,10 +339,9 @@ Print the classification summary to the user before proceeding.
 
 For implementation, feature, refactor, and bug-fix tasks, perform impact preflight before final routing or dispatch planning:
 
-1. If SocratiCode is active, use `codebase_search` to identify candidate files, symbols, routes, services, schemas, and tests.
-2. Use `codebase_impact` before changing shared modules, routers, schemas, services, exported symbols/types, public API shapes, auth/RBAC code, DB models/migrations, or config consumed by other systems.
-3. Use `codebase_graph_query`, `codebase_flow`, or `codebase_symbols` when dependency direction or call flow determines the order of work.
-4. Record the blast-radius summary in `orchestra/plan.md`:
+1. Use targeted shell search and bounded reads to identify candidate files, symbols, routes, services, schemas, and tests.
+2. Follow imports and callers before changing shared modules, routers, schemas, services, exported symbols/types, public API shapes, auth/RBAC code, DB models/migrations, or config consumed by other systems.
+3. Record the blast-radius summary in `orchestra/plan.md`:
    - directly changed files
    - dependent files/tests that may need updates
    - risk-sensitive surfaces (auth, tenant isolation, DB, security, public API, UI workflow)
@@ -401,8 +349,6 @@ For implementation, feature, refactor, and bug-fix tasks, perform impact preflig
    - workstreams that must stay sequential and why
    - confidence level and unknowns
 5. Choose the least-impact option that satisfies the user's goal and preserves existing contracts. If multiple valid options have materially different product, security, data, performance, or API tradeoffs, ask the user the smallest direct decision question before implementation.
-
-If SocratiCode is unavailable, do the same preflight with targeted shell search and record the fallback.
 
 ### Test Design Preflight
 
@@ -593,7 +539,7 @@ Read `references/result-integration.md`.
    - Contradictory implementations of the same section → pick the contract-compliant result; re-dispatch the other agent with the conflict as CONTEXT
 3. Verify contract compliance — each agent's output must match the interface written in `orchestra/contracts.md`.
 4. Run impact closure for the wave:
-   - If SocratiCode is active, re-run `codebase_impact` or graph/symbol checks for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
+   - Re-run targeted shell impact searches for any changed shared module, route, schema, service, exported symbol/type, auth/RBAC surface, DB model/migration, or public API shape.
    - Verify every newly affected file/test is either already handled, added to a later wave, covered by a quality gate, or recorded as an explicit backlog item with rationale.
    - If the wave introduced an unplanned required change, add it to the current flow and continue; do not silently finish with a broken dependent path.
    - Write an impact hypothesis: what could this wave have broken next, which gates/reviewers

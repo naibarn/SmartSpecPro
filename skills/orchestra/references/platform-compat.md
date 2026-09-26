@@ -104,7 +104,7 @@ whether the tool policy permits spawning for the current user request. If the us
 explicitly ask for sub-agents/delegation/parallel agent work and the tool requires that
 authorization, use **Standard Light Mode**:
 
-- keep SocratiCode preflight, impact notes, and progress artifacts
+- keep targeted discovery preflight, impact notes, and progress artifacts
 - implement directly/inline for `small` and implementation-ready `medium` work
 - replace reviewer-agent waves with targeted conductor review
 - run only the smallest relevant verification commands

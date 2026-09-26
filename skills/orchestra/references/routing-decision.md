@@ -71,7 +71,7 @@ Use this route adjustment when `orchestra/platform.md` is `standard` and the act
 sub-agent/spawn-agent tool says delegation requires an explicit user request.
 
 Behavior:
-1. Keep SocratiCode preflight, impact notes, and `orchestra/` progress artifacts.
+1. Keep targeted discovery preflight, impact notes, and `orchestra/` progress artifacts.
 2. Prefer direct conductor implementation for `small`, fast-lane, and implementation-ready
    `medium` work.
 3. Still apply `agent-loop-policy.md`; direct/inline execution must update the same
@@ -143,11 +143,8 @@ Use this route when:
 - the user wants visual explanation, premium imagery, or a video companion
 
 Execution:
-1. Use SocratiCode first when active:
-   - `codebase_search` to locate the page/feature/route/API
-   - `codebase_flow` or `codebase_graph_query` when runtime flow matters
-   - `codebase_symbols` / `codebase_symbol` for named handlers/components
-2. Verify the discovered behavior with targeted file reads and `rg`.
+1. Use targeted `rg` and bounded file reads to locate the page/feature/route/API.
+2. Follow the runtime flow through narrowed imports, callers, and named handlers.
 3. Produce a source-grounded Help Brief:
    - target user and goal
    - discovered route/page/API/component files

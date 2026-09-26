@@ -93,7 +93,7 @@ Count one iteration for each full conductor decision cycle that changes state:
 - review/repair round
 - recovery from blocker, timeout, or failed gate
 
-Read-only SocratiCode narrowing and small targeted file reads during the same
+Read-only targeted shell narrowing and small targeted file reads during the same
 cycle do not each count as separate iterations.
 
 ## Stop Conditions
@@ -186,7 +186,7 @@ classify the finding as `VERIFY_ONLY` or `BLOCKED`, not `MUST_FIX`.
 
 When exact cost is unavailable, estimate conservatively:
 
-- lightweight local shell/SocratiCode/read-only checks: negligible
+- lightweight local shell/read-only checks: negligible
 - one targeted test/typecheck command: low
 - full test suite, browser/e2e, visual diff, or web search: medium
 - image/video/audio generation, external API calls, or multiple sub-agents:

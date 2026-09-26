@@ -206,7 +206,7 @@ dispatch mechanics only.
    section (point to the relevant entry in `orchestra/contracts.md`)
 4. Use absolute file paths only — never relative paths
 5. Include the shared operational discipline in CONTEXT/CONSTRAINTS:
-   - SocratiCode-first or targeted-shell fallback for local discovery
+   - targeted-shell discovery for local codebase inspection
    - stay within FILES and CONTRACT
    - report blockers/options for unapproved shared contract or out-of-scope file changes
    - choose the least-impact contract-compliant implementation when options are equivalent
@@ -247,7 +247,7 @@ Do not inject the full file — it inflates prompt size beyond what Standard mod
 **Include:**
 - Identity paragraph (who the agent is, what stack it specializes in)
 - Constraints section (what it must NOT do)
-- Shared operational discipline summary (SocratiCode/impact/scope/least-impact rules)
+- Shared operational discipline summary (impact/scope/least-impact rules)
 - Context discipline summary (bounded reads, compact Result Report, no raw dumps)
 
 **Skip:**

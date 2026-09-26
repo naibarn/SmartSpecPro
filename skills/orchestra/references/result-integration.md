@@ -98,8 +98,8 @@ Before marking a wave complete, close the blast radius:
 1. Build the changed shared-surface list from Result Reports:
    - routers, route handlers, services, schemas, migrations, shared types, exported symbols,
      auth/RBAC code, public API shapes, dependency/config files, and user-facing workflows
-2. If SocratiCode is active, run `codebase_impact` or graph/symbol checks for each shared
-   surface. If it is unavailable, use targeted shell search and record the fallback.
+2. Run targeted shell impact searches for each shared surface and record any newly
+   discovered dependent paths.
 3. For every newly affected file/test/symbol:
    - add it to a later wave if code changes are needed
    - verify it through an existing quality gate if no code change is needed
