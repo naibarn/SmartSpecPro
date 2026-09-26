@@ -534,3 +534,24 @@ g2_recovery_credential_recheck_2026_09_26:
     - prove_the_separate_r2_bucket_is_private_and_set_approved_lifecycle_retention
     - install_scoped_infrastructure_credential_with_affected_zone_dns_read_and_account_load_balancing_read
     - verify_provider_firewall_limits_5432_and_6379_to_trusted_callers_without_stopping_redis
+
+latest_host_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:24:11Z"
+  starting_commit: "54ead0eb2f05471534a538935667ac6b25ccd6b7"
+  evidence_scope: local_host_read_only
+  systemd:
+    web: {enabled: masked, active: inactive}
+    backend: {enabled: masked, active: inactive}
+    web_watchdog: {enabled: masked, active: inactive}
+  direct_web_api_listeners_3000_8000: false
+  published_listeners:
+    nginx_80_443: ["0.0.0.0", "::"]
+    postgres_5432: ["0.0.0.0", "::"]
+    redis_6379: ["0.0.0.0", "::"]
+  provider_firewall_acl: unverified
+  production_mutations: none
+  gate_status:
+    g1: BLOCKED_authorized_browser_sessions_and_production_traces_missing
+    g2: BLOCKED_durable_backup_complete_writer_fence_and_reconciliation_missing
+    g3_g6: CODE_AND_RUNTIME_INVENTORY_INCOMPLETE
+  decision: keep_web_backend_maintenance_and_keep_shared_redis_postgres_running

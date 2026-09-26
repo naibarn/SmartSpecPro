@@ -66,6 +66,37 @@ execution_host_observation:
       metadata, not production ownership proof or exact in-flight job counts. Do not stop
       containers or delete keys until the host identity and canonical job reconciliation are verified.
 
+latest_host_network_recheck:
+  observed_at_utc: "2026-09-26T16:24:11Z"
+  method: read_only_systemd_and_socket_inventory
+  maintenance:
+    masked_inactive: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    direct_web_api_ports_3000_8000_listening: false
+  listeners:
+    nginx_80_443: ["0.0.0.0", "::"]
+    postgres_5432: ["0.0.0.0", "::"]
+    redis_6379: ["0.0.0.0", "::"]
+  provider_firewall_or_network_acl_verified: false
+  auth_and_g3_g6_writer_fence_complete: false
+  production_changes_made: false
+  interpretation: >-
+    Host listener binding is confirmed, but trusted source ranges and provider-level ACLs are unknown.
+    Do not install guessed firewall rules or stop shared PostgreSQL/Redis until container/worker
+    dependencies and approved source ranges are mapped.
+
+latest_static_caller_scan:
+  observed_at_utc: "2026-09-26T16:26:00Z"
+  method: targeted_rg_client_and_queue_api_patterns
+  scope:
+    node_matches: 93 # apps/web/server, includes test and compiled JS matches
+    python_matches: 28 # python-backend/app, source files
+  completeness: partial_file_match_counts_not_callsite_or_runtime_counts
+  interpretation: >-
+    The scan confirms Redis client, cache/realtime client and BullMQ API references span many
+    application services and workers. It is not a closed inventory: tests/generated JS are
+    included, and deployment processes, cron, package-level consumers and runtime command
+    attribution still require reconciliation before any Redis shutdown.
+
 responsibility_groups:
   G1_cache:
     status: partial_static_discovery
