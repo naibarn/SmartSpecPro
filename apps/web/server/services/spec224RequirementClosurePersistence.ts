@@ -2,9 +2,10 @@ import { createHash } from "node:crypto";
 
 import {
   assertFinalVerifyReady as assertClosureFinalVerifyReady,
+  assertRequirementClosureEvidenceBoundToRun,
   buildBlockerLedgerEntry,
   closeBlocker,
-  compileRequirementClosureGraph,
+  validateRequirementClosureGraph,
   type BlockerLedgerEntry,
   type BlockerStatus,
   type RequirementClosureGraph,
@@ -22,7 +23,7 @@ import type {
 } from "./spec224DevelopmentRunPersistence";
 
 const CLOSURE_METADATA_KEY = "spec224RequirementClosure";
-const CLOSURE_PROJECTION_VERSION = "spec-224-closure-projection-v1" as const;
+const CLOSURE_PROJECTION_VERSION = "spec-224-closure-projection-v2" as const;
 const MAX_GRAPH_BYTES = 512_000;
 const MAX_EVENT_IDS = 50;
 
@@ -106,25 +107,16 @@ function boundedIds(ids: readonly string[]): string[] {
 }
 
 function validateGraph(
-  graph: RequirementClosureGraph
+  graph: RequirementClosureGraph,
+  expectedRunId?: string
 ): RequirementClosureGraph {
-  if (graph.contractVersion !== "spec-224-closure-v1") {
-    throw new Error("CLOSURE_GRAPH_INVALID");
+  const cloned = validateRequirementClosureGraph(graph);
+  if (
+    expectedRunId &&
+    cloned.blockers.some(blocker => blocker.runId !== expectedRunId)
+  ) {
+    throw new Error("BLOCKER_RUN_MISMATCH");
   }
-  const normalized = compileRequirementClosureGraph({
-    baseline: graph.baseline,
-    requirements: graph.requirements.map(requirement => ({
-      id: requirement.id,
-      sourceRef: requirement.sourceRef,
-      text: requirement.text,
-    })),
-    planSections: graph.planSections,
-    workPackages: graph.workPackages,
-  });
-  if (JSON.stringify(normalized.reverse) !== JSON.stringify(graph.reverse)) {
-    throw new Error("CLOSURE_GRAPH_INVALID");
-  }
-  const cloned = structuredClone(graph);
   if (Buffer.byteLength(JSON.stringify(cloned), "utf8") > MAX_GRAPH_BYTES) {
     throw new Error("CLOSURE_GRAPH_OVERSIZED");
   }
@@ -146,7 +138,10 @@ function projectionFrom(run: DevelopmentRun): ClosureProjection {
   ) {
     throw new Error("CLOSURE_GRAPH_INVALID");
   }
-  const graph = validateGraph(projection.graph as RequirementClosureGraph);
+  const graph = validateGraph(
+    projection.graph as RequirementClosureGraph,
+    run.runId
+  );
   if (digest(graph) !== projection.graphDigest) {
     throw new Error("CLOSURE_GRAPH_DIGEST_MISMATCH");
   }
@@ -188,8 +183,116 @@ function eventOperationDigest(input: {
   blockerId?: string;
   requirementIds?: string[];
   verificationRefs?: string[];
+  invalidatedEvidenceRefs?: string[];
 }): string {
-  return digest(input);
+  return digest({
+    ...input,
+    invalidatedEvidenceRefs: input.invalidatedEvidenceRefs
+      ? boundedIds(input.invalidatedEvidenceRefs)
+      : undefined,
+  });
+}
+
+function assertEvidenceBoundToRun(
+  graph: RequirementClosureGraph,
+  run: DevelopmentRun
+): void {
+  assertRequirementClosureEvidenceBoundToRun(graph, run);
+}
+
+function invalidateStaleEvidence(
+  graph: RequirementClosureGraph,
+  invalidatedAt: string
+): RequirementClosureGraph {
+  return {
+    ...graph,
+    workPackages: graph.workPackages.map(workPackage => {
+      const evidence = workPackage.evidence.map(binding => {
+        if (binding.invalidatedAt !== null) return binding;
+        const baselineStale =
+          binding.baselineId !== graph.baseline.baselineId ||
+          binding.sourceArtifactDigest !== graph.baseline.sourceArtifactDigest;
+        const sourceStale =
+          !graph.sourceInventory ||
+          binding.implementationDigest !==
+            graph.sourceInventory.candidateManifestDigest;
+        if (!baselineStale && !sourceStale) return binding;
+        return {
+          ...binding,
+          invalidatedAt,
+          invalidationReason: baselineStale
+            ? "SPEC_BASELINE_CHANGED"
+            : "IMPLEMENTATION_SOURCE_CHANGED",
+        };
+      });
+      const invalidated = evidence.some(binding =>
+        workPackage.evidence.some(
+          original =>
+            original.evidenceRef === binding.evidenceRef &&
+            original.invalidatedAt === null &&
+            binding.invalidatedAt !== null
+        )
+      );
+      return {
+        ...workPackage,
+        status:
+          invalidated && ["VERIFIED", "COMPLETE"].includes(workPackage.status)
+            ? "IMPLEMENTED_UNVERIFIED"
+            : workPackage.status,
+        evidence,
+        evidenceRefs: evidence
+          .filter(binding => binding.invalidatedAt === null)
+          .map(binding => binding.evidenceRef)
+          .sort(),
+      };
+    }),
+    requirements: graph.requirements.map(requirement => {
+      const evidence = requirement.evidence.map(binding => {
+        if (binding.invalidatedAt !== null) return binding;
+        const baselineStale =
+          binding.baselineId !== graph.baseline.baselineId ||
+          binding.sourceArtifactDigest !== graph.baseline.sourceArtifactDigest;
+        const sourceStale =
+          !graph.sourceInventory ||
+          binding.implementationDigest !==
+            graph.sourceInventory.candidateManifestDigest;
+        if (!baselineStale && !sourceStale) return binding;
+        return {
+          ...binding,
+          invalidatedAt,
+          invalidationReason: baselineStale
+            ? "SPEC_BASELINE_CHANGED"
+            : "IMPLEMENTATION_SOURCE_CHANGED",
+        };
+      });
+      const evidenceWasInvalidated = evidence.some(
+        binding =>
+          binding.invalidatedAt !== null &&
+          requirement.evidence.some(
+            original =>
+              original.evidenceRef === binding.evidenceRef &&
+              original.invalidatedAt === null
+          )
+      );
+      return {
+        ...requirement,
+        state:
+          evidenceWasInvalidated &&
+          [
+            "VERIFIED_PASS",
+            "WAIVED_BY_AUTHORIZED_DECISION",
+            "NOT_APPLICABLE_WITH_EVIDENCE",
+          ].includes(requirement.state)
+            ? "IMPLEMENTED_UNVERIFIED"
+            : requirement.state,
+        evidence,
+        evidenceRefs: evidence
+          .filter(item => item.invalidatedAt === null)
+          .map(item => item.evidenceRef)
+          .sort(),
+      };
+    }),
+  };
 }
 
 function duplicateResult(
@@ -224,6 +327,7 @@ async function persistEvidence(input: {
   requirementIds: string[];
   verificationRefs?: string[];
   requestedStatus?: BlockerStatus;
+  invalidatedEvidenceRefs?: string[];
 }): Promise<RequirementClosureProjectionResult> {
   const { tx, record, scope } = input;
   if (record.revision !== input.expectedRevision) {
@@ -239,6 +343,9 @@ async function persistEvidence(input: {
       graphDigest: input.projection.graphDigest,
       ...(input.blockerId ? { blockerId: input.blockerId } : {}),
       requirementIds: boundedIds(input.requirementIds),
+      ...(input.invalidatedEvidenceRefs?.length
+        ? { invalidatedEvidenceRefs: boundedIds(input.invalidatedEvidenceRefs) }
+        : {}),
       ...(input.verificationRefs
         ? { verificationDigest: digest(boundedIds(input.verificationRefs)) }
         : {}),
@@ -297,6 +404,9 @@ function nextBlocker(
     requirementRefs: input.blocker.requirementRefs,
     classification: input.blocker.classification,
     severity: input.blocker.severity,
+    openedBy: `user:${input.actorId}`,
+    currentOwner: input.blocker.currentOwner,
+    subrunRef: input.blocker.subrunRef,
   });
   const index = graph.blockers.findIndex(
     blocker => blocker.blockerId === base.blockerId
@@ -306,15 +416,27 @@ function nextBlocker(
   let action: string;
   if (requestedStatus === "CLOSED") {
     blocker = closeBlocker(
-      { ...base, status: "OPEN", reopenCount: existing?.reopenCount ?? 0 },
+      {
+        ...base,
+        openedBy: existing?.openedBy ?? base.openedBy,
+        openedAt: existing?.openedAt ?? base.openedAt,
+        status: "OPEN",
+        reopenCount: existing?.reopenCount ?? 0,
+      },
       input.verificationRefs ?? []
     );
+    blocker.resolution =
+      input.blocker.resolution ?? "Verified closure evidence recorded";
     action =
       existing?.status === "CLOSED" ? "blocker_reverified" : "blocker_closed";
   } else if (existing?.status === "CLOSED") {
     blocker = {
       ...base,
+      openedBy: existing.openedBy,
+      openedAt: existing.openedAt,
       status: requestedStatus,
+      resolution: null,
+      closedAt: null,
       verificationRefs: [],
       reopenCount: existing.reopenCount + 1,
     };
@@ -322,7 +444,11 @@ function nextBlocker(
   } else {
     blocker = {
       ...base,
+      openedBy: existing?.openedBy ?? base.openedBy,
+      openedAt: existing?.openedAt ?? base.openedAt,
       status: requestedStatus,
+      resolution: null,
+      closedAt: null,
       verificationRefs: [],
       reopenCount: existing?.reopenCount ?? 0,
     };
@@ -368,7 +494,29 @@ export function createRequirementClosurePersistenceService(
         if (record.run.fencingVersion !== input.expectedFencingVersion) {
           throw new Error("RUN_FENCE_STALE");
         }
-        const graph = validateGraph(input.graph);
+        const invalidationTimestamp = new Date().toISOString();
+        const invalidated = invalidateStaleEvidence(
+          input.graph,
+          invalidationTimestamp
+        );
+        const graph = validateGraph(invalidated, input.runId);
+        assertEvidenceBoundToRun(graph, record.run);
+        const invalidatedEvidenceRefs = [
+          ...graph.requirements.flatMap(requirement =>
+            requirement.evidence
+              .filter(
+                evidence => evidence.invalidatedAt === invalidationTimestamp
+              )
+              .map(evidence => evidence.evidenceRef)
+          ),
+          ...graph.workPackages.flatMap(workPackage =>
+            workPackage.evidence
+              .filter(
+                evidence => evidence.invalidatedAt === invalidationTimestamp
+              )
+              .map(evidence => evidence.evidenceRef)
+          ),
+        ].sort();
         const projection: ClosureProjection = {
           projectionVersion: CLOSURE_PROJECTION_VERSION,
           graph,
@@ -378,6 +526,7 @@ export function createRequirementClosurePersistenceService(
           action: "closure_graph_attached",
           graphDigest: projection.graphDigest,
           requirementIds: graph.requirements.map(requirement => requirement.id),
+          invalidatedEvidenceRefs,
         });
         const duplicate = await tx.findEvent(
           input.runId,
@@ -396,6 +545,7 @@ export function createRequirementClosurePersistenceService(
           projection,
           action: "closure_graph_attached",
           requirementIds: graph.requirements.map(requirement => requirement.id),
+          invalidatedEvidenceRefs,
         });
       });
     },
@@ -437,6 +587,7 @@ export function createRequirementClosurePersistenceService(
           };
         }
         const next = nextBlocker(current.graph, input);
+        assertEvidenceBoundToRun(next.graph, record.run);
         const projection: ClosureProjection = {
           projectionVersion: CLOSURE_PROJECTION_VERSION,
           graph: next.graph,
@@ -478,8 +629,15 @@ export function createRequirementClosurePersistenceService(
       tenantId: string;
       actorId: number;
     }): Promise<true> {
-      const persisted = await this.get(input);
-      return assertClosureFinalVerifyReady(persisted.graph);
+      const scope = scopeFor(input);
+      return adapter.transaction(async tx => {
+        const record = await tx.load(input.runId, scope);
+        if (!record) throw new Error("RUN_NOT_FOUND");
+        assertScope(record, scope);
+        const graph = projectionFrom(record.run).graph;
+        assertEvidenceBoundToRun(graph, record.run);
+        return assertClosureFinalVerifyReady(graph);
+      });
     },
   };
 }
