@@ -9,14 +9,16 @@ import {
   type DevelopmentRun,
   type DevelopmentRunState,
 } from "./spec224DevelopmentRunContracts";
+import type { RequirementClosureGraph } from "./spec224RequirementClosureContracts";
 import {
   createDevelopmentRunService,
   defaultDevelopmentRunPersistenceAdapter,
   type DevelopmentRunPersistenceAdapter,
 } from "./spec224DevelopmentRunPersistence";
+import { createRequirementClosurePersistenceService } from "./spec224RequirementClosurePersistence";
 
 export const SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION =
-  "spec-226-development-control-v1" as const;
+  "spec-226-development-control-v2" as const;
 
 export type Spec226DevelopmentRunScope = {
   tenantId: string;
@@ -34,7 +36,10 @@ export type Spec226DevelopmentRunView = {
   workerJobId: string | null;
   fencingVersion: number;
   revision: number;
+  decisionEpoch: number;
   eventSequence: number;
+  evidenceRefs: string[];
+  closure: RequirementClosureGraph | null;
   nextSafeAction: ReturnType<typeof decideNextSafeAction>;
   actions: {
     pause: boolean;
@@ -74,6 +79,7 @@ function supportsCancel(state: DevelopmentRunState): boolean {
 function toView(input: {
   run: DevelopmentRun;
   revision: number;
+  closure?: Spec226DevelopmentRunView["closure"];
 }): Spec226DevelopmentRunView {
   return {
     bridgeVersion: SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION,
@@ -84,7 +90,10 @@ function toView(input: {
     workerJobId: input.run.workerJobId,
     fencingVersion: input.run.fencingVersion,
     revision: input.revision,
+    decisionEpoch: input.run.decisionEpoch,
     eventSequence: input.run.eventSequence,
+    evidenceRefs: [...input.run.evidenceRefs],
+    closure: input.closure ?? null,
     nextSafeAction: decideNextSafeAction(input.run),
     actions: {
       pause: supportsPause(input.run.state),
@@ -192,6 +201,9 @@ export function createSpec226DevelopmentControlBridge(input: {
   listRuns: Spec226DevelopmentRunList["list"];
 }) {
   const runs = createDevelopmentRunService(input.persistence);
+  const closures = createRequirementClosurePersistenceService(
+    input.persistence
+  );
 
   return {
     async list(params: {
@@ -202,12 +214,34 @@ export function createSpec226DevelopmentControlBridge(input: {
       const scope = { tenantId: params.tenantId, actorId: params.actorId };
       assertScope(scope);
       const listed = await input.listRuns({ scope, limit: params.limit });
-      return listed
-        .filter(
-          run =>
-            run.tenantId === scope.tenantId && run.actorId === scope.actorId
-        )
-        .map(run => toView({ run, revision: projectionRevision(run) }));
+      const ownedRuns = listed.filter(
+        run => run.tenantId === scope.tenantId && run.actorId === scope.actorId
+      );
+      return Promise.all(
+        ownedRuns.map(async run => {
+          let closure: RequirementClosureGraph | null = null;
+          try {
+            closure = (
+              await closures.get({
+                runId: run.runId,
+                ...scope,
+              })
+            ).graph;
+          } catch (error) {
+            if (
+              !(error instanceof Error) ||
+              error.message !== "CLOSURE_GRAPH_NOT_FOUND"
+            ) {
+              throw error;
+            }
+          }
+          return toView({
+            run,
+            revision: projectionRevision(run),
+            closure,
+          });
+        })
+      );
     },
 
     async get(params: {
@@ -216,7 +250,18 @@ export function createSpec226DevelopmentControlBridge(input: {
       actorId: number;
     }): Promise<Spec226DevelopmentRunView> {
       const record = await runs.get(params);
-      return toView(record);
+      let closure: Spec226DevelopmentRunView["closure"] = null;
+      try {
+        closure = (await closures.get(params)).graph;
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          error.message !== "CLOSURE_GRAPH_NOT_FOUND"
+        ) {
+          throw error;
+        }
+      }
+      return toView({ ...record, closure });
     },
 
     async events(params: {
@@ -255,10 +300,14 @@ export function createSpec226DevelopmentControlBridge(input: {
       actorId: number;
       expectedRevision: number;
       expectedFencingVersion: number;
+      expectedDecisionEpoch: number;
       idempotencyKey: string;
       action: Spec226DevelopmentRunAction;
     }) {
       const record = await runs.get(params);
+      if (record.run.decisionEpoch !== params.expectedDecisionEpoch) {
+        throw new Error("RUN_DECISION_EPOCH_STALE");
+      }
       const duplicate = record.events.find(
         event => event.idempotencyKey === params.idempotencyKey
       );
