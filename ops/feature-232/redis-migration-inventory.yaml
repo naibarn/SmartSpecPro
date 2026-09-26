@@ -635,3 +635,104 @@ production_execution_recheck:
     web_replicas_behind_load_balancer_verified: false
     redis_global_shutdown_authorized: false
     cloudflare_job_activation: disabled
+
+g3_g4_local_code_inventory_2026_09_27:
+  branch: codex/spec245-g3-replacements
+  commit: 7c783ce97695358d8232772043665abb66552361
+  production_deployed: false
+  G3_public_api_request_quota:
+    source_functions:
+      - "apps/web/server/services/apiKeyQuotaService.ts#checkAndIncrementQuota"
+      - "apps/web/server/middleware/quotaMiddleware.ts#quotaMiddleware"
+    legacy_redis_keyspaces: ["quota:apikey:{apiKeyId}:{h|d|w|m}:{period}", "quota:warn:{apiKeyId}:{h|d|w|m}:{period}"]
+    target: PostgreSQL api_key_quota_counters under per-api-key transaction advisory lock
+    migration: apps/web/drizzle/0350_spec245_postgres_api_key_quota_counters.sql
+    active_state_transfer: apps/web/scripts/migrate-api-key-quota-counters.ts
+    recovery: guarded_max_preserving_postgresql_to_redis_restore
+    tests: {quota_and_migration: 11_passed, isolated_postgresql: 15, isolated_redis: 7}
+    status: CODE_AND_LOCAL_CUTOVER_TOOLS_VERIFIED_PRODUCTION_NOT_READY
+    production_gates: [backup_restore, writer_fence, active_counter_snapshot, guarded_import, migration_0350, deploy_and_smoke]
+    remaining_redis_groups: [abuse_rate_limiting, financial_credit_accounting, idempotency]
+    remaining_redis_callers_confirmed:
+      abuse_rate_limiting:
+        - "apps/web/server/services/apiKeyRateLimiter.ts#checkRateLimit"
+        - "apps/web/server/middleware/distributedRateLimit.ts#checkRateLimit"
+        - "apps/web/server/middleware/distributedRateLimit.ts#distributedRateLimitMiddleware"
+        - "apps/web/server/services/llmRateLimiter.ts#getProviderLimiter"
+        - "apps/web/server/services/llmRateLimiter.ts#scheduleWithLimiter"
+        - "apps/web/server/services/llmRateLimiter.ts#getMediaProviderLimiter"
+        - "apps/web/server/services/contentAutomationRateLimit.ts#checkHourlyRate"
+        - "apps/web/server/services/contentAutomationRateLimit.ts#acquireConcurrentSlot"
+        - "apps/web/server/services/contentAutomationRateLimit.ts#checkDailyBatchLimit"
+        - "python-backend/app/services/typhoon_ocr_rate_limiter.py#TyphoonOcrRateLimiter.acquire"
+        - "apps/web/server/services/abuseGuard.ts#checkAbuseGuard"
+      financial_credit_accounting:
+        - "apps/web/server/services/apiKeyRateLimiter.ts#checkCreditQuotas"
+        - "apps/web/server/services/creditService.ts#credit_reservation_and_usage_counters"
+        - "python-backend/app/services/agentic_cost_controls.py#credit_and_concurrency_controls"
+      idempotency_and_deduplication:
+        - "apps/web/server/middleware/idempotencyMiddleware.ts#idempotencyMiddleware"
+        - "apps/web/server/services/webhookTriggerService.ts#checkDedup"
+        - "python-backend/app/services/social/webhook_dedup.py#SocialWebhookDedupService"
+  G4_delegated_worker_concurrency:
+    source_function: "apps/web/server/services/delegatedWorkerPlatformService.ts#acquireDelegatedWorkerConcurrencySlot"
+    previous_helper: "apps/web/server/services/redisSemaphore.ts#acquireSemaphore"
+    runtime_scope: [tenantId, workerId, workerJobId, actionClass]
+    limits_and_ttl_seconds: {read: [4, 90], compute: [2, 180], media: [1, 300], mcp_write: [1, 120]}
+    target: PostgreSQL delegated_worker_concurrency_leases with transaction advisory lock and expiry
+    migration: apps/web/drizzle/0351_spec245_postgres_delegated_worker_leases.sql
+    job_authority: worker_jobs_unchanged
+    active_redis_state_transfer: not_losslessly_mappable_aggregate_counter_requires_drain_and_empty_key_proof
+    tests: {lease_integration: 3_passed, service_unit: 4_passed, isolated_postgresql: 15}
+    production_deployed: false
+    status: LOCAL_IMPLEMENTATION_VERIFIED_PRODUCTION_CUTOVER_BLOCKED
+  G4_remaining_source_callers:
+    - {entrypoint: "apps/web/server/routes/browserTool.ts#checkAndAcquireConcurrency", target: scoped_browser_admission_lease_or_Durable_Object}
+    - {entrypoint: "python-backend/app/services/browser_pool.py#BrowserPool", target: shared_browser_admission_lease_or_Durable_Object}
+    - {entrypoint: "python-backend/app/services/tools/browser_tool.py#BrowserTool", target: same_browser_admission_contract}
+    - {entrypoint: "apps/web/server/routers/presentation.ts#presentation_draft_lock_and_progress", target: operation_owner_and_worker_jobs_fencing}
+    - {entrypoint: "apps/web/server/routers/autoDraftTool.ts#auto_draft_task_lock", target: canonical_job_lease_and_idempotency}
+    - {entrypoint: "apps/web/server/services/scaleTier.ts#acquireApplyLock", target: operation_lifecycle_and_lock_ownership}
+    - {entrypoint: "apps/web/server/middleware/idempotencyMiddleware.ts#idempotency_lock_and_response_cache", target: PostgreSQL_business_idempotency_contract_G3}
+    - {entrypoint: "apps/web/server/routers/presentation.ts#draft_task_lock_and_progress_state", target: existing_worker_jobs_and_outbox_contract_G6}
+    - {entrypoint: "apps/web/server/routers/autoDraftTool.ts#active_draft_task_pointer", target: existing_worker_jobs_and_outbox_contract_G6}
+  G5_pubsub_source_entrypoints_confirmed:
+    - "apps/web/server/routes/voiceGateway.ts#voice_session_and_consent_pubsub"
+    - "apps/web/server/routes/publicEventsApi.ts#public_event_subscription"
+    - "apps/web/server/routes/orchestratorStream.ts#orchestrator_subscription"
+    - "apps/web/server/routes/notificationStream.ts#notification_subscription"
+    - "apps/web/server/routes/guardianSSE.ts#guardian_event_subscription"
+    - "apps/web/server/services/orchestratorEventBus.ts#publish_run_team_user_events"
+    - "apps/web/server/services/notificationService.ts#publish_user_notifications"
+    - "apps/web/server/services/webhookDeliveryService.ts#publish_tenant_events"
+    - "apps/web/server/services/virtualAdmin/notifier.ts#publish_virtual_admin_notifications"
+    - "apps/web/server/services/notificationHealthChecks.ts#checkRedisPubSubHealth"
+    - "apps/web/server/routers/mediaJobs.ts#publish_and_subscribe_job_progress"
+    - "python-backend/app/tasks/media_job_worker.py#publish_media_job_progress"
+    - "python-backend/app/video/progress.py#publish_media_job_progress"
+    - "python-backend/app/tasks/social_webhook_task.py#append_delivery_stream"
+    - "python-backend/app/orchestrator/node_executors/flow_executors/dlq_executor.py#append_dead_letter_stream"
+    - "python-backend/app/background_tasks.py#dramatiq_redis_broker"
+    - "apps/web/server/services/virtualAdmin/actuatorRegistry.ts#publish_virtual_admin_events"
+  G6_job_state_and_runtime_entrypoints_confirmed:
+    - "apps/web/server/services/videoIntelligenceJobs.ts#queue_worker_sweep_and_active_job_pointers"
+    - "apps/web/server/services/verticalDramaStoryJobs.ts#queue_worker_and_active_job_state"
+    - "apps/web/server/services/verticalDramaEpisodeStageJobs.ts#queue_worker_and_retry_sweep"
+    - "apps/web/server/services/verticalDramaInteractiveJobs.ts#queue_worker_and_idempotency_state"
+    - "apps/web/server/services/verticalDramaCharacterPromptJobs.ts#queue_worker_and_active_job_state"
+    - "apps/web/server/services/verticalDramaShotPromptJobs.ts#queue_worker_and_active_job_state"
+    - "apps/web/server/services/verticalDramaShotVideoPromptJobs.ts#queue_worker_and_active_job_state"
+    - "apps/web/server/services/verticalDramaDraftQualityQcJobs.ts#queue_worker_and_reconciliation_sweep"
+    - "apps/web/server/jobs/notificationDigestJob.ts#notification_digest_queue"
+    - "apps/web/server/services/workerSchedulerService.ts#scheduler_lease_and_dispatch"
+    - "apps/web/server/routers/scheduledMessages.ts#scheduled_message_enqueue_and_cancel"
+    - "python-backend/app/orchestrator/node_executors/flow_executors/dlq_executor.py#redis_stream_dlq"
+    - "python-backend/app/background_tasks.py#dramatiq_broker"
+    - "python-backend/app/tasks/social_webhook_task.py#redis_stream_delivery_queue"
+    - "python-backend/app/tasks/media_job_worker.py#media_progress_pubsub_side_channel"
+  G5_G6_inventory_limits:
+    static_method: targeted_rg_source_scan_excluding_tests_generated_and_compiled_js
+    source_function_review: partial_candidate_inventory
+    runtime_entrypoint_and_ownership_proven: false
+    unknown_callers: true
+    closure_rule: preserve_postgresql_worker_jobs_and_outbox_as_the_only_job_authority

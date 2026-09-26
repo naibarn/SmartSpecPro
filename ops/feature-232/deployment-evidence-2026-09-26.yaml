@@ -555,3 +555,29 @@ latest_host_recheck_2026_09_26:
     g2: BLOCKED_durable_backup_complete_writer_fence_and_reconciliation_missing
     g3_g6: CODE_AND_RUNTIME_INVENTORY_INCOMPLETE
   decision: keep_web_backend_maintenance_and_keep_shared_redis_postgres_running
+
+g3_g4_local_verification_2026_09_27:
+  branch: codex/spec245-g3-replacements
+  commit: 7c783ce97695358d8232772043665abb66552361
+  database: isolated_loopback_postgresql_15
+  redis: isolated_loopback_redis_7
+  test_results:
+    quota_unit_integration_and_middleware: {passed: 11, failed: 0}
+    delegated_worker_lease_integration_and_service: {passed: 7, failed: 0}
+    quota_import_dry_run_apply_and_idempotent_repeat: passed
+    quota_pg_to_redis_max_preserving_recovery_and_warning_flag: passed
+    importer_apply_without_writer_fence: rejected_before_connections
+    formatter_for_new_files: passed
+    diff_check: passed
+    drizzle_kit_check: failed_preexisting_0146_0147_parent_snapshot_collision
+    typescript_full_typecheck: not_run_per_AGENTS_RAM_policy
+  migrations:
+    "0350": manually_exercised_in_disposable_pg15_and_test_table_removed
+    "0351": applied_by_integration_fixture_and_removed_after_test
+    production_applied: false
+  g3_production_ddl_import_deploy: false
+  g4_production_ddl_deploy: false
+  production_mutations: none
+  status:
+    G3: LOCAL_CUTOVER_TOOLS_VERIFIED_PRODUCTION_NOT_READY
+    G4: LOCAL_IMPLEMENTATION_VERIFIED_PRODUCTION_DRAIN_AND_CUTOVER_PENDING
