@@ -23,20 +23,28 @@ suite("PostgreSQL delegated worker concurrency leases", () => {
       );
     }
     db = getDb();
-    const migration = await readFile(
-      resolve(
-        process.cwd(),
-        "drizzle/0351_spec245_postgres_delegated_worker_leases.sql"
-      ),
-      "utf8"
+    const migrations = await Promise.all(
+      [
+        "0351_spec245_postgres_delegated_worker_leases.sql",
+        "0352_spec245_delegated_worker_fencing_tokens.sql",
+      ].map(name => readFile(resolve(process.cwd(), "drizzle", name), "utf8"))
     );
-    const statements = migration
-      .replaceAll("--> statement-breakpoint", "")
-      .split(";")
-      .map(statement => statement.trim())
-      .filter(statement => statement && !statement.startsWith("SET LOCAL"));
+    const statements = migrations.flatMap(migration =>
+      migration
+        .replaceAll("--> statement-breakpoint", "")
+        .split(";")
+        .map(statement => statement.trim())
+        .filter(statement => statement && !statement.startsWith("SET LOCAL"))
+    );
     await db.transaction(async tx => {
       for (const statement of statements) await tx.execute(sql.raw(statement));
+      await tx.execute(sql`
+        CREATE TABLE IF NOT EXISTS spec245_g4_fenced_test_commits (
+          "leaseId" varchar(36) NOT NULL,
+          "fencingToken" bigint NOT NULL,
+          "writerPid" integer NOT NULL
+        )
+      `);
     });
   });
 
@@ -45,6 +53,10 @@ suite("PostgreSQL delegated worker concurrency leases", () => {
   });
 
   afterAll(async () => {
+    if (db)
+      await db.execute(
+        sql`DROP TABLE IF EXISTS spec245_g4_fenced_test_commits`
+      );
     if (db)
       await db.execute(
         sql`DROP TABLE IF EXISTS delegated_worker_concurrency_leases`
@@ -89,6 +101,55 @@ suite("PostgreSQL delegated worker concurrency leases", () => {
     await replacement!.release();
   });
 
+  it("renews only a live lease and prevents an expired owner from committing after reacquisition", async () => {
+    const input = {
+      scopeKey: "tenant-fence:worker-fence:job-fence:mcp_write",
+      tenantId: "tenant-fence",
+      workerId: "worker-fence",
+      workerJobId: "job-fence",
+      actionClass: "mcp_write" as const,
+      maxSlots: 1,
+      ttlSeconds: 2,
+    };
+    const oldOwner = await acquirePostgresSemaphore(input);
+    expect(oldOwner).not.toBeNull();
+    expect(oldOwner!.fencingToken).toBeGreaterThan(0);
+    await new Promise(resolve => setTimeout(resolve, 1_200));
+    expect(await oldOwner!.renew()).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 1_100));
+    expect(await oldOwner!.isCurrent()).toBe(true);
+    await new Promise(resolve => setTimeout(resolve, 1_100));
+
+    const newOwner = await acquirePostgresSemaphore(input);
+    expect(newOwner).not.toBeNull();
+    expect(newOwner!.fencingToken).toBeGreaterThan(oldOwner!.fencingToken);
+    expect(await oldOwner!.isCurrent()).toBe(false);
+    await expect(
+      oldOwner!.commitIfCurrent(tx =>
+        tx.execute(sql`
+        INSERT INTO spec245_g4_fenced_test_commits ("leaseId", "fencingToken", "writerPid")
+        VALUES (${oldOwner!.leaseId}, ${oldOwner!.fencingToken}, 1)
+      `)
+      )
+    ).rejects.toThrow(/no longer current/);
+
+    await newOwner!.commitIfCurrent(tx =>
+      tx.execute(sql`
+      INSERT INTO spec245_g4_fenced_test_commits ("leaseId", "fencingToken", "writerPid")
+      VALUES (${newOwner!.leaseId}, ${newOwner!.fencingToken}, 2)
+    `)
+    );
+    const commits = await db.execute(sql`
+      SELECT "fencingToken" FROM spec245_g4_fenced_test_commits
+    `);
+    expect(commits).toHaveLength(1);
+    expect(Number((commits as any[])[0]?.fencingToken)).toBe(
+      newOwner!.fencingToken
+    );
+    expect(await oldOwner!.renew()).toBe(false);
+    await oldOwner!.release();
+    await newOwner!.release();
+  }, 15_000);
   it("removes expired leases before counting and fails closed on database errors", async () => {
     await db.execute(sql`
       INSERT INTO delegated_worker_concurrency_leases

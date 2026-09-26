@@ -14778,6 +14778,7 @@ export const delegatedWorkerConcurrencyLeases = pgTable(
   "delegated_worker_concurrency_leases",
   {
     leaseId: varchar("leaseId", { length: 36 }).primaryKey(),
+    fencingToken: bigserial("fencingToken", { mode: "number" }).notNull(),
     scopeKey: varchar("scopeKey", { length: 256 }).notNull(),
     tenantId: varchar("tenantId", { length: 36 }).notNull(),
     workerId: varchar("workerId", { length: 36 }).notNull(),
@@ -14788,6 +14789,7 @@ export const delegatedWorkerConcurrencyLeases = pgTable(
   },
   (t) => [
     index("delegated_worker_concurrency_leases_scope_expiry_idx").on(t.scopeKey, t.expiresAt),
+    uniqueIndex("delegated_worker_concurrency_leases_fencing_token_idx").on(t.fencingToken),
     check("delegated_worker_concurrency_leases_action_class_check", sql`${t.actionClass} IN ('read', 'compute', 'media', 'mcp_write')`),
   ],
 );

@@ -693,6 +693,16 @@ g3_g4_local_code_inventory_2026_09_27:
     tests: {lease_integration: 3_passed, service_unit: 4_passed, isolated_postgresql: 15}
     production_deployed: false
     status: LOCAL_IMPLEMENTATION_VERIFIED_PRODUCTION_CUTOVER_BLOCKED
+    fencing_followup_2026_09_27:
+      migration: apps/web/drizzle/0352_spec245_delegated_worker_fencing_tokens.sql
+      contract: monotonically_increasing_database_token_per_insert; commit_if_current_checks_active_lease_and_runs_resource_mutation_in_same_postgresql_transaction
+      renewal: service_renews_every_one_third_ttl_and_fails_closed_after_renewal_loss
+      multi_process_tests: {separate_node_processes: 3, lease_tests: 4_passed, postgres15: true}
+      other_focused_tests: {postgres_lease_integration: 4_passed, delegated_service_unit: 4_passed}
+      tested: [renewal_extends_lease, contender_blocked_until_renewed_expiry, old_token_rejected_after_replacement, postgres_resource_write_fenced, expired_lease_rejected_after_scope_lock_wait, process_crash_then_expiry_recovery]
+      limitation: fencing_guarantees_apply_only_to_postgresql_mutations_using_commit_if_current; arbitrary_external_side_effects_require_downstream_fencing_or_idempotency
+      production_deployed: false
+      migration_applied_outside_disposable_test_db: false
   G4_remaining_source_callers:
     - {entrypoint: "apps/web/server/routes/browserTool.ts#checkAndAcquireConcurrency", target: scoped_browser_admission_lease_or_Durable_Object}
     - {entrypoint: "python-backend/app/services/browser_pool.py#BrowserPool", target: shared_browser_admission_lease_or_Durable_Object}
@@ -743,3 +753,47 @@ g3_g4_local_code_inventory_2026_09_27:
     runtime_entrypoint_and_ownership_proven: false
     unknown_callers: true
     closure_rule: preserve_postgresql_worker_jobs_and_outbox_as_the_only_job_authority
+
+  G3_G4_G5_G6_runtime_owner_verification_2026_09_27:
+    basis: repository_source_and_docker_compose_configuration_only
+    production_process_inventory_verified: false
+    G3_multiprocess_test:
+      processes: 2
+      requests: 100
+      result: {passed: 4, failed: 0, postgresql: 15, redis: 7}
+      latency_and_contention: {p50_ms: 227.5, p95_ms: 339.2, max_active_connections: 10, max_advisory_waiters: 7, configured_pool_per_process: 4}
+      coverage: [shared_api_key_and_tenant_limit, wrong_tenant_fail_closed, concurrent_idempotency_retry, hourly_window_transition, transaction_rollback, database_failure, active_redis_counter_import_and_reconciliation, max_count_warning_flag_and_postgres_only_preservation]
+      migration_0350_disposable_postgresql_15_only: true
+      production_cutover: false
+    G4_verification:
+      result: {multiprocess: "4/4 passed across 3 Node processes", postgres_integration: "4/4 passed", service_unit: "4/4 passed"}
+      caveat: repository_declared_behavior_not_deployed_replica_evidence
+    repository_declared_runtime_owners:
+      web_and_sse_subscribers: "smartspec-web Node/Express process; docker-compose.full.yml"
+      canonical_node_job_executor: "smartspec-node-worker; npm run start:feature-186-node-worker; worker_jobs claim only"
+      canonical_python_job_executor: "smartspec-python-job-worker; python -m app.workers.postgres_job_worker; worker_jobs claim only"
+      python_api_and_social_stream_listener: "smartspec-python-backend FastAPI lifespan starts SocialTriggerListener"
+      feature186_schedule_producers: "Web process startup initializes per-family timer entrypoints; timer submits deterministic PostgreSQL worker_jobs/outbox occurrences"
+      production_owner_status: unverified_without_host_or_provider_deployment_records
+    G5_source_to_runtime:
+      - {channel: "voice:consent:revoked:{userId}", publisher: "voiceGateway.ts#createVoiceSessionRouter", subscriber: "voiceGateway.ts#setupConsentRevocationListener", owner: smartspec-web_each_replica, class: realtime_connection_coordination, payload: "revoked", ordering: none, replay: none, target: spec_237_242_voice_runtime_owner, status: dependency_deferred}
+      - {channel: "orchestrator:run/team/user:{id}", publisher: "orchestratorEventBus.ts#publishEvent", subscriber: "orchestratorStream.ts#setupSSE", owner: smartspec-web_each_replica, class: realtime_projection, payload: RunEvent_with_eventId_and_scope, ordering: best_effort_pubsub, replay: "run stream has tenant-scoped database replay capped at 200; team/user replay not established", target: durable_event_cursor_plus_live_fanout, status: contract_incomplete}
+      - {channel: "events:{tenantId}", publisher: "webhookDeliveryService.ts#emitPublicApiEvent", subscriber: "publicEventsApi.ts#createPublicEventsRouter", owner: smartspec-web_each_replica, class: public_tenant_SSE, payload: sanitized_type_and_payload_without_channel_event_id, ordering: none, replay: none, target: durable_tenant_event_contract, status: contract_incomplete}
+      - {channel: "notifications:user:{userId}", publisher: "notificationService.ts#createNotification", subscriber: "notificationStream.ts", owner: smartspec-web_each_replica, class: realtime_hint_for_persisted_notification, payload: persisted_notification_record, ordering: none, replay: database_list_endpoint_not_stream_cursor, target: PG_backed_cursor_plus_live_fanout, status: candidate_after_cursor_contract}
+      - {channel: guardian:events, publisher: ["virtualAdmin/notifier.ts#publishSSEEvent", "virtualAdmin/actuatorRegistry.ts#executeAction(approval_created)", "virtualAdmin/actuatorRegistry.ts#decideApproval(approval_decided)"], subscriber: "guardianSSE.ts#createGuardianSSERouter", owner: smartspec-web_each_replica, class: admin_incident_and_actuator_SSE, payload: multiple_nonidentical_shapes, ordering: none, replay: not_proven, target: normalize_event_schema_then_durable_cursor, status: contract_incomplete}
+      - {channel: "media-job-progress:{jobId}", publisher: ["routers/mediaJobs.ts#publishProgress", "python-backend/app/tasks/media_job_worker.py", "python-backend/app/video/progress.py"], subscriber: "routers/mediaJobs.ts#SSE", owner: [smartspec-web, smartspec-python-job-worker], class: G6_job_progress_side_channel, payload: queued_running_done_error_progress, ordering: best_effort, replay: job_state_partly_also_in_redis_and_worker_jobs, target: worker_jobs_status_plus_progress_event_outbox, status: G6_dependency_not_standalone_G5}
+      - {channel: health_probe, publisher_subscriber: "notificationHealthChecks.ts#checkRedisPubSubHealth", owner: smartspec-web, class: diagnostic_only, payload: random_probe_token, ordering: none, replay: none, target: replace_with_transport_health_probe_or_remove_at_final_retirement, status: nonbusiness}
+      - {stream: "social:stream:{pageId}", publisher: "social_webhook_task.py#_publish_stream_event", subscriber: "workflow_trigger_listener.py#_consume_page_stream", owner: [smartspec-python-backend, canonical worker_jobs dispatch], class: durable_async_trigger_G6, payload: database_event_fields, ordering: Redis_stream_id_per_page, replay: consumer_group_pending_entries_need_recovery_proof, target: worker_jobs_outbox_after_durable_event_ingest, status: not_pubsub_and_replay_gap_open}
+      - {stream: "DLQ:*", publisher_subscriber: "flow_executors/dlq_executor.py", owner: orchestrator_node_execution_context_unverified, class: durable_dead_letter_G6, payload: flow_execution_error_envelope, ordering: Redis_stream_id, replay: XREAD-range_operator_path_present, target: worker_jobs_attempt_and_DLQ_contract, status: runtime_owner_unverified}
+      - {channel: "guardian:events", publisher: ["actuatorRegistry.ts#executeAction", "actuatorRegistry.ts#decideApproval"], subscriber: "guardianSSE.ts", owner: smartspec-web, class: admin_actuator_SSE, payload: approvals_and_action_updates, ordering: none, replay: not_proven, target: normalized durable events, status: overlapping_publisher_shape}
+    G5_ready_to_implement: []
+    G5_blockers: [voice_requires_spec_237_242_owner_contract, orchestrator_team_user_replay_contract, public_events_need_event_id_cursor, guardian_payload_normalization_and_replay, media_progress_owned_by_G6]
+    G6_repository_runtime_owners:
+      authority: "PostgreSQL worker_jobs plus outbox only; Cloudflare Queues is a transport, not another job authority"
+      executors: ["smartspec-node-worker", "smartspec-python-job-worker"]
+      producers: ["Node Web routes/services via createControlPlaneJob/dispatch entrypoints", "Python tasks via job_control_plane.py#dispatch_python_task", "Feature 186 timers via PostgreSQL schedule-occurrence records"]
+      legacy_or_unverified: ["social:stream page consumer runs from FastAPI lifespan and dispatches worker_jobs", "Dramatiq RedisBroker/send_email_actor has no matching worker command in checked compose", "Celery/Beat containers are present in current_maintenance_observation but their ownership/active job families are not proven by repository compose", "_core/index.ts still invokes many queue init functions despite comments saying canonical worker_jobs owns execution; several legacy enqueue paths explicitly throw LEGACY_QUEUE_RETIRED"]
+      schedule_occurrence_conflicts: [memory-archive-cleanup, library-trash-purge, notification-retention, notification-escalation, notification-digest, memory-chunk-cleanup, memory-embedding-reconciliation, memory-eviction, worker-heartbeat-retention]
+      conflict_scope: local_admin_browser_test_only_production_unverified_root_cause_open_do_not_migrate_scheduler
+      cloudflare_activation: disabled
+      production_job_family_mapping: blocked_until_deployment_inventory_and_per_family_executor_allowlist_are_verified

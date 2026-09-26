@@ -210,9 +210,10 @@ async function cleanupExpiredCounters(): Promise<void> {
 export async function checkAndIncrementQuota(
   apiKeyId: string,
   tenantId: string,
-  quota: QuotaConfig
+  quota: QuotaConfig,
+  // Test seam for deterministic window-boundary integration probes.
+  now = new Date()
 ): Promise<QuotaCheckResult> {
-  const now = new Date();
   const windows = getConfiguredWindows(quota, now);
   if (windows.length === 0) return { allowed: true, headers: {} };
 
@@ -241,6 +242,7 @@ export async function checkAndIncrementQuota(
           "requestCount" = api_key_quota_counters."requestCount" + 1,
           "expiresAt" = EXCLUDED."expiresAt",
           "updatedAt" = now()
+        WHERE api_key_quota_counters."tenantId" = EXCLUDED."tenantId"
         RETURNING "requestCount"
       `);
       const count = Number(

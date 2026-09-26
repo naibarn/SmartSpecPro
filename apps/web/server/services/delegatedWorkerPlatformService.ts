@@ -7,7 +7,11 @@ import {
   workers,
 } from "../../drizzle/schema";
 import { getTraceId } from "./traceContext";
-import { acquirePostgresSemaphore } from "./postgresDelegatedWorkerSemaphore";
+import {
+  acquirePostgresSemaphore,
+  type PostgresSemaphoreHandle,
+} from "./postgresDelegatedWorkerSemaphore";
+import type { DrizzleDB } from "../db";
 import {
   getDelegatedScopeProfilePolicy,
   type DelegatedWorkerAuthContext,
@@ -70,9 +74,7 @@ type ConcurrencyPolicy = {
   ttlSeconds: number;
 };
 
-type ConcurrencyHandle = {
-  release(): Promise<void>;
-};
+type ConcurrencyHandle = PostgresSemaphoreHandle;
 
 type WindowDefinition = {
   label: "hourly" | "five_hour" | "daily" | "weekly" | "monthly";
@@ -96,6 +98,13 @@ const CONCURRENCY_POLICIES: Record<DelegatedWorkerActionClass, ConcurrencyPolicy
 };
 
 const NOOP_CONCURRENCY_HANDLE: ConcurrencyHandle = {
+  leaseId: "unscoped",
+  fencingToken: 0,
+  async renew() { return true; },
+  async isCurrent() { return true; },
+  async commitIfCurrent<T>(_mutate: (tx: DrizzleDB) => Promise<T>): Promise<T> {
+    throw new Error("An unscoped delegated-worker call has no lease to fence");
+  },
   async release() {},
 };
 
@@ -528,8 +537,39 @@ export async function acquireDelegatedWorkerConcurrencySlot(
     );
   }
 
+  let leaseLost = false;
+  let renewing = false;
+  const renewalTimer = setInterval(() => {
+    if (renewing || leaseLost) return;
+    renewing = true;
+    void handle.renew().then(renewed => {
+      if (!renewed) leaseLost = true;
+    }).catch(() => {
+      leaseLost = true;
+    }).finally(() => {
+      renewing = false;
+    });
+  }, Math.max(1_000, Math.floor(policy.ttlSeconds * 1_000 / 3)));
+  renewalTimer.unref();
+
   return {
+    leaseId: handle.leaseId,
+    fencingToken: handle.fencingToken,
+    async renew(): Promise<boolean> {
+      if (leaseLost) return false;
+      const renewed = await handle.renew();
+      if (!renewed) leaseLost = true;
+      return renewed;
+    },
+    async isCurrent(): Promise<boolean> {
+      return !leaseLost && handle.isCurrent();
+    },
+    async commitIfCurrent<T>(mutate: (tx: DrizzleDB) => Promise<T>): Promise<T> {
+      if (leaseLost) throw new Error("Delegated-worker lease is no longer current");
+      return handle.commitIfCurrent(mutate);
+    },
     async release(): Promise<void> {
+      clearInterval(renewalTimer);
       await handle.release();
     },
   };
@@ -556,7 +596,16 @@ export async function runWithDelegatedWorkerExecution<T>(
   });
 
   try {
-    return await fn();
+    const result = await fn();
+    if (!(await handle.isCurrent())) {
+      throw new DelegatedWorkerPlatformError(
+        "worker_concurrency_lease_lost",
+        409,
+        "The delegated worker lease expired before the result could be accepted",
+        "conflict_error",
+      );
+    }
+    return result;
   } finally {
     await handle.release();
   }
