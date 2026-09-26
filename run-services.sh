@@ -10,7 +10,6 @@
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MEDIA_COMPOSE="docker-compose.media.yml"
 
 # Load NVM if available
 export NVM_DIR="$HOME/.nvm"
@@ -301,30 +300,13 @@ stop_screen_service() {
 # Docker media workers management
 # ============================================================
 start_media_workers() {
-    log_step "Starting Docker media workers (celery-media, celery-video, celery-import, celery-presentation, celery-beat, flower)..."
-
-    if ! docker network ls --format '{{.Name}}' | grep -q '^smartspec-network$'; then
-        log_warn "Network smartspec-network not found — creating it"
-        docker network create smartspec-network || true
-    fi
-
-    cd "$PROJECT_ROOT"
-    docker compose -p smartspecpro -f "$MEDIA_COMPOSE" up -d > /dev/null 2>&1
-
-    local running
-    running=$(docker compose -p smartspecpro -f "$MEDIA_COMPOSE" ps --status running -q 2>/dev/null | wc -l)
-    if [ "$running" -ge 3 ]; then
-        log_info "Docker media workers started ($running containers running)"
-    else
-        log_warn "Only $running media containers running — check: docker compose -p smartspecpro -f $MEDIA_COMPOSE ps"
-    fi
+    log_step "Restarting canonical PostgreSQL-pull worker..."
+    sudo systemctl restart smartspec-node-worker.service
 }
 
 stop_media_workers() {
-    log_step "Stopping Docker media workers..."
-    cd "$PROJECT_ROOT"
-    docker compose -p smartspecpro -f "$MEDIA_COMPOSE" down > /dev/null 2>&1 || true
-    log_info "Docker media workers stopped"
+    log_step "Stopping canonical PostgreSQL-pull worker..."
+    sudo systemctl stop smartspec-node-worker.service
 }
 
 # ============================================================
@@ -463,226 +445,14 @@ cmd_start() {
         exit 1
     fi
 
-    # Step 6: Media workers (Docker)
+    # Step 6: Canonical PostgreSQL-pull worker
     echo ""
-    if ! start_media_workers; then
-        log_error "Failed to start media workers"
+    if ! sudo systemctl restart smartspec-node-worker.service; then
+        log_error "Failed to start canonical worker_jobs runtime"
         exit 1
     fi
 
-    # Brief validation check
-    sleep 3
-    local failed_workers=0
-    for worker in smartspec-celery-media smartspec-celery-import smartspec-celery-presentation smartspec-celery-beat; do
-        if ! docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
-            log_warn "${worker} is not running"
-            ((failed_workers++))
-        fi
-    done
-
-    if [ $failed_workers -gt 0 ]; then
-        log_warn "${failed_workers} media worker(s) failed to start - check logs with: docker logs <container>"
-    else
-        log_info "All media workers validated"
-    fi
-
-    echo ""
-    log_info "All services started successfully!"
-
-    # Show summary
-    cmd_status
-
-    echo -e "${GREEN}Services URLs:${NC}"
-    echo "  ┌─────────────────────────────────────────────────────────────┐"
-    echo "  │ SmartSpec Web      │ http://localhost:3000                  │"
-    echo "  │ Python Backend     │ http://localhost:8000                  │"
-    echo "  │ Docker Status UI   │ http://localhost:3001                  │"
-    echo "  │ Flower Dashboard   │ http://localhost:5555                  │"
-    echo "  │ Public Domain      │ https://smartaihub.app                 │"
-    echo "  │ Docker Status URL  │ https://docker.smartaihub.app          │"
-    echo "  │ Public API         │ https://api.smartaihub.app             │"
-    echo "  └─────────────────────────────────────────────────────────────┘"
-    echo ""
-    echo -e "${CYAN}Useful commands:${NC}"
-    echo "  ./run-services.sh status          - Show service status"
-    echo "  ./run-services.sh logs web        - View web logs (journalctl)"
-    echo "  ./run-services.sh logs backend    - View backend logs (journalctl)"
-    echo "  ./run-services.sh logs media      - View media worker logs"
-    echo "  ./run-services.sh restart web     - Restart web (systemd auto-restart)"
-    echo "  ./run-services.sh restart backend - Restart backend"
-    echo "  ./run-services.sh restart media   - Restart media workers"
-    echo "  ./run-services.sh stop            - Stop all services"
-    echo ""
-}
-
-cmd_stop() {
-    log_step "Stopping all services..."
-
-    # Stop systemd services
-    log_step "Stopping Web Application (systemd)..."
-    sudo systemctl stop smartspec-web.service 2>/dev/null || true
-    log_info "Web stopped"
-
-    log_step "Stopping Python Backend (systemd)..."
-    sudo systemctl stop smartspec-backend.service 2>/dev/null || true
-    log_info "Backend stopped"
-
-    # Feature 135 (Hermes Grok media worker) — optional, admin-installed
-    # unit (docs/HERMES_MEDIA_WORKER_OPS.md). Stop is idempotent/harmless
-    # when the unit was never installed (systemctl stop on an unknown unit
-    # just no-ops via the `|| true`).
-    log_step "Stopping Hermes Grok media worker (systemd, if installed)..."
-    sudo systemctl stop smartspec-hermes-worker.service 2>/dev/null || true
-    log_info "Hermes worker stopped"
-
-    # Stop Docker Status UI
-    stop_docker_status
-
-    # Clean up any orphan screen sessions
-    cleanup_screen_conflicts
-
-    # Stop Docker media workers
-    stop_media_workers
-
-
-    # Stop Nginx
-    stop_nginx
-
-    log_step "Stopping infrastructure (PostgreSQL, Redis)..."
-    docker compose -p smartspecpro -f docker-compose.infra.yml down || true
-
-    log_info "All services stopped"
-}
-
-cmd_status() {
-    echo ""
-    echo -e "${CYAN}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║                    SERVICE STATUS                             ║${NC}"
-    echo -e "${CYAN}╚═══════════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-
-    # 1. Infrastructure Layer
-    echo -e "${BLUE}--- Infrastructure Services ---${NC}"
-
-    # PostgreSQL
-    if docker ps --format '{{.Names}}' | grep -q '^smartspec-postgres$'; then
-        if docker exec smartspec-postgres pg_isready -U smartspec -d smartspec > /dev/null 2>&1; then
-            echo -e "  ${GREEN}✓${NC} PostgreSQL       Running (port 5432)"
-        else
-            echo -e "  ${YELLOW}!${NC} PostgreSQL       Running but not ready"
-        fi
-    else
-        echo -e "  ${RED}x${NC} PostgreSQL       Not running"
-    fi
-
-    # Redis
-    if docker ps --format '{{.Names}}' | grep -q '^smartspec-redis$'; then
-        local redis_status=$(docker exec smartspec-redis redis-cli ping 2>/dev/null || echo "FAILED")
-        if [ "$redis_status" = "PONG" ]; then
-            echo -e "  ${GREEN}✓${NC} Redis            Running (port 6379)"
-        else
-            echo -e "  ${YELLOW}!${NC} Redis            Running but not responding"
-        fi
-    else
-        echo -e "  ${RED}x${NC} Redis            Not running"
-    fi
-
-    # Nginx
-    if docker ps --format '{{.Names}}' | grep -q '^smartspec-nginx-dev$'; then
-        local nginx_test=$(docker exec smartspec-nginx-dev nginx -t 2>&1 | grep -q "successful" && echo "ok" || echo "error")
-        if [ "$nginx_test" = "ok" ]; then
-            echo -e "  ${GREEN}✓${NC} Nginx            Running (ports 80, 443) -> https://smartaihub.app"
-        else
-            echo -e "  ${YELLOW}!${NC} Nginx            Running but config has errors"
-        fi
-    else
-        echo -e "  ${RED}x${NC} Nginx            Not running (https://smartaihub.app unavailable!)"
-    fi
-
-    echo ""
-    echo ""
-    # 2. Application Layer (systemd managed)
-    echo -e "${BLUE}--- Application Services ---${NC}"
-
-    # Backend (systemd)
-    local backend_active=$(systemd_is_active smartspec-backend.service)
-    local backend_restarts=$(systemd_restart_count smartspec-backend.service)
-    if [ "$backend_active" = "active" ]; then
-        local backend_health=$(localhost_json_status "http://127.0.0.1:8000/health")
-        echo -e "  ${GREEN}✓${NC} Python Backend   Running ($backend_health) [systemd, restarts: $backend_restarts]"
-    elif [[ "$(localhost_json_status "http://127.0.0.1:8000/health")" =~ ^(healthy|degraded)$ ]]; then
-        local backend_health=$(localhost_json_status "http://127.0.0.1:8000/health")
-        echo -e "  ${GREEN}✓${NC} Python Backend   Running ($backend_health) [health endpoint]"
-    else
-        echo -e "  ${RED}x${NC} Python Backend   $backend_active [systemd, restarts: $backend_restarts]"
-    fi
-
-    # Web (systemd)
-    local web_active=$(systemd_is_active smartspec-web.service)
-    local web_restarts=$(systemd_restart_count smartspec-web.service)
-    if [ "$web_active" = "active" ]; then
-        local web_responding=$(localhost_http_code "http://127.0.0.1:3000")
-        echo -e "  ${GREEN}✓${NC} Web Application  Running (HTTP $web_responding) [systemd, restarts: $web_restarts]"
-    elif [ "$(localhost_http_code "http://127.0.0.1:3000")" = "200" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "304" ]; then
-        local web_responding=$(localhost_http_code "http://127.0.0.1:3000")
-        echo -e "  ${GREEN}✓${NC} Web Application  Running (HTTP $web_responding) [health endpoint]"
-    else
-        echo -e "  ${RED}x${NC} Web Application  $web_active [systemd, restarts: $web_restarts]"
-    fi
-
-    # Feature 135 (Hermes Grok media worker) — optional, admin-installed
-    # unit; see docs/HERMES_MEDIA_WORKER_OPS.md for install/pairing steps.
-    # NEVER auto-started by this script (install/enable is a deliberate
-    # admin step, spec §8).
-    local hermes_worker_active=$(systemd_is_active smartspec-hermes-worker.service)
-    if [ "$hermes_worker_active" = "active" ]; then
-        local hermes_worker_restarts=$(systemd_restart_count smartspec-hermes-worker.service)
-        echo -e "  ${GREEN}✓${NC} Hermes Worker    Running [systemd, restarts: $hermes_worker_restarts]"
-    else
-        echo -e "  ${YELLOW}-${NC} Hermes Worker    Not running ($hermes_worker_active) [optional — install per docs/HERMES_MEDIA_WORKER_OPS.md]"
-    fi
-
-    # Docker Status (systemd or screen)
-    local docker_status_active=$(systemd_is_active smartspec-docker-status.service)
-    if [ "$docker_status_active" = "active" ]; then
-        local ds_responding=$(docker_status_health_code)
-        if [ "$ds_responding" = "200" ]; then
-            echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP $ds_responding) [systemd]"
-        else
-            echo -e "  ${YELLOW}!${NC} Docker Status    Running but not healthy [systemd]"
-        fi
-    elif docker_status_screen_running; then
-        local ds_responding=$(docker_status_health_code)
-        if [ "$ds_responding" = "200" ]; then
-            echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP $ds_responding) [screen]"
-        else
-            echo -e "  ${YELLOW}!${NC} Docker Status    Running but not healthy [screen]"
-        fi
-    elif [ "$(docker_status_health_code)" = "200" ]; then
-        echo -e "  ${GREEN}✓${NC} Docker Status    Running (HTTP 200) [health endpoint]"
-    else
-        echo -e "  ${RED}x${NC} Docker Status    Not running"
-    fi
-
-    echo ""
-    # 3. Background Workers
-    echo -e "${BLUE}--- Celery Workers (Background Tasks) ---${NC}"
-
-    for worker in smartspec-celery-media smartspec-celery-video smartspec-celery-import smartspec-celery-presentation smartspec-celery-beat smartspec-flower; do
-        local worker_name=$(echo $worker | sed 's/smartspec-celery-//' | sed 's/smartspec-//')
-        if docker ps --format '{{.Names}}' | grep -q "^${worker}$"; then
-            local worker_health=$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}ok{{end}}' "$worker" 2>/dev/null || echo "")
-            echo -e "  ${GREEN}✓${NC} ${worker_name}$(printf '%*s' $((15 - ${#worker_name})) '')Running ($worker_health)"
-        else
-            echo -e "  ${RED}x${NC} ${worker_name}$(printf '%*s' $((15 - ${#worker_name})) '')Not running"
-        fi
-    done
-
-    echo ""
-    # 4. Summary
-    echo -e "${BLUE}--- Service Summary ---${NC}"
-
-    local total_services=12
+    local total_services=7
     local running_count=0
 
     docker ps --format '{{.Names}}' | grep -q '^smartspec-postgres$' && ((running_count++)) || true
@@ -691,16 +461,6 @@ cmd_status() {
     [ "$(systemd_is_active smartspec-backend.service)" = "active" ] || [[ "$(localhost_json_status "http://127.0.0.1:8000/health")" =~ ^(healthy|degraded)$ ]] && ((running_count++)) || true
     [ "$(systemd_is_active smartspec-web.service)" = "active" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "200" ] || [ "$(localhost_http_code "http://127.0.0.1:3000")" = "304" ] && ((running_count++)) || true
     [ "$(systemd_is_active smartspec-docker-status.service)" = "active" ] || docker_status_screen_running || [ "$(docker_status_health_code)" = "200" ] && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-media$' && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-import$' && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-presentation$' && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-beat$' && ((running_count++)) || true
-    docker ps --format '{{.Names}}' | grep -q '^smartspec-flower$' && ((running_count++)) || true
-
-    if docker ps --format '{{.Names}}' | grep -q '^smartspec-celery-video$'; then
-        ((total_services++))
-        ((running_count++))
-    fi
 
     if [ $running_count -eq $total_services ]; then
         echo -e "  ${GREEN}All services running${NC} ($running_count/$total_services)"
@@ -715,10 +475,10 @@ cmd_status() {
     echo "  ./run-services.sh start            - Start all services"
     echo "  ./run-services.sh logs web         - View web logs (live)"
     echo "  ./run-services.sh logs backend     - View backend logs (live)"
-    echo "  ./run-services.sh logs media       - View media worker logs"
+    echo "  ./run-services.sh logs worker      - View worker_jobs logs"
     echo "  ./run-services.sh restart web      - Restart web"
     echo "  ./run-services.sh restart backend  - Restart backend"
-    echo "  ./run-services.sh restart media    - Restart media workers"
+    echo "  ./run-services.sh restart worker   - Restart worker_jobs worker"
     echo ""
 }
 
@@ -746,15 +506,8 @@ cmd_attach() {
                 log_error "smartspec-docker-status is not running"
             fi
             ;;
-        media)
-            log_info "Media workers run in Docker. Use these commands instead:"
-            echo "  docker logs -f smartspec-celery-media   # Media worker logs"
-            echo "  docker logs -f smartspec-celery-video   # Video worker logs"
-            echo "  docker logs -f smartspec-celery-import  # Import worker logs"
-            echo "  docker logs -f smartspec-celery-presentation # Presentation export worker logs"
-            echo "  docker logs -f smartspec-celery-beat    # Beat scheduler logs"
-            echo "  docker logs -f smartspec-flower         # Flower dashboard logs"
-            echo "  http://localhost:5555                    # Flower web dashboard"
+        media|worker)
+            sudo journalctl -u smartspec-node-worker.service -f --no-pager
             ;;
         *)
             log_error "Unknown service: $service"
@@ -795,30 +548,12 @@ cmd_logs() {
                 log_error "smartspec-docker-status is not running"
             fi
             ;;
-        media)
-            log_info "Showing recent logs for Docker media workers..."
-            echo ""
-            echo -e "${CYAN}=== celery-media (last 30 lines) ===${NC}"
-            docker logs --tail 30 smartspec-celery-media 2>&1 || echo "  Container not running"
-            echo ""
-            echo -e "${CYAN}=== celery-video (last 30 lines) ===${NC}"
-            docker logs --tail 30 smartspec-celery-video 2>&1 || echo "  Container not running"
-            echo ""
-            echo -e "${CYAN}=== celery-import (last 30 lines) ===${NC}"
-            docker logs --tail 30 smartspec-celery-import 2>&1 || echo "  Container not running"
-            echo ""
-            echo -e "${CYAN}=== celery-presentation (last 30 lines) ===${NC}"
-            docker logs --tail 30 smartspec-celery-presentation 2>&1 || echo "  Container not running"
-            echo ""
-            echo -e "${CYAN}=== celery-beat (last 10 lines) ===${NC}"
-            docker logs --tail 10 smartspec-celery-beat 2>&1 || echo "  Container not running"
-            echo ""
-            log_info "For live logs: docker logs -f smartspec-celery-media"
-            log_info "Flower dashboard: http://localhost:5555"
+        media|worker)
+            sudo journalctl -u smartspec-node-worker.service -n 100 --no-pager
             ;;
         *)
             log_error "Unknown service: $service"
-            echo "Usage: ./run-services.sh logs [web|backend|docker|media]"
+            echo "Usage: ./run-services.sh logs [web|backend|docker|worker]"
             exit 1
             ;;
     esac
@@ -850,15 +585,12 @@ cmd_restart() {
                 start_docker_status
                 wait_for_docker_status
                 ;;
-            media)
-                log_step "Recreating Docker media workers (apply latest compose config)..."
-                cd "$PROJECT_ROOT"
-                docker compose -p smartspecpro -f "$MEDIA_COMPOSE" up -d --force-recreate celery-media celery-video celery-import celery-presentation celery-beat flower
-                log_info "Docker media workers recreated"
+            media|worker)
+                sudo systemctl restart smartspec-node-worker.service
                 ;;
             *)
                 log_error "Unknown service: $service"
-                echo "Usage: ./run-services.sh restart [web|backend|docker|media]"
+                echo "Usage: ./run-services.sh restart [web|backend|docker|worker]"
                 exit 1
                 ;;
         esac
@@ -883,7 +615,7 @@ cmd_help() {
     echo "  web       SmartSpec Web (systemd, auto-restart on crash)"
     echo "  backend   Python Backend (systemd, auto-restart on crash)"
     echo "  docker    Docker Status UI (screen session)"
-    echo "  media     Media Workers (Docker: celery-media, celery-video, celery-import, celery-presentation, celery-beat, flower)"
+    echo "  worker    Canonical PostgreSQL-pull worker for worker_jobs"
     echo ""
     echo -e "${CYAN}Service Management:${NC}"
     echo "  Web and Backend are managed by systemd with Restart=always."

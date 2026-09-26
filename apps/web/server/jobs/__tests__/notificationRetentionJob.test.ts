@@ -15,17 +15,7 @@ vi.mock("../../db", () => ({
 }));
 
 // Mock BullMQ
-vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
-    add: vi.fn(),
-    upsertJobScheduler: vi.fn(),
-    close: vi.fn(),
-  })),
-  Worker: vi.fn().mockImplementation(() => ({
-    close: vi.fn(),
-    on: vi.fn(),
-  })),
-}));
+
 
 // Mock redisClients
 vi.mock("../../services/redisClients", () => ({

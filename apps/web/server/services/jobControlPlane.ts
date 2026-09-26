@@ -213,8 +213,6 @@ function validateActionId(actionId: string): void {
 const KNOWN_JOB_ADAPTERS = new Set([
   "postgres-pull",
   "postgres-direct",
-  "bullmq",
-  "celery",
   "cloudflare",
   "cloudflare-queues",
   "cloudflare-workflows",
@@ -257,7 +255,6 @@ function assertClaimAdapterCompatible(
         ? new Set([
             "postgres-pull",
             "postgres-direct",
-            "bullmq",
             "cloudflare",
             "cloudflare-queues",
             "cloudflare-workflows",
@@ -1085,6 +1082,7 @@ export async function createCanonicalJobInTransaction(input: {
       progressJson: {},
       fencingVersion: 0,
       operatorReviewRequired: false,
+      scheduledAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : null,
       createdAt: now,
     })
     .returning({ id: workerJobs.id });
@@ -1122,7 +1120,7 @@ export async function createCanonicalJobInTransaction(input: {
       dedupeKey: `job:${row.id}:attempt:1`,
     },
     dedupeKey: `job:${row.id}:attempt:1`,
-    nextAttemptAt: now,
+    nextAttemptAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : now,
   });
   return { jobId: row.id, created: true };
 }
@@ -2209,6 +2207,7 @@ export function createJobControlPlane(
             progressJson: {},
             fencingVersion: 0,
             operatorReviewRequired: false,
+            scheduledAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : null,
           });
           if (!row) {
             if (normalizedDefinition.idempotencyKey) {
@@ -2251,7 +2250,7 @@ export function createJobControlPlane(
               dedupeKey: `job:${row.id}:attempt:1`,
             },
             dedupeKey: `job:${row.id}:attempt:1`,
-            nextAttemptAt: new Date(),
+            nextAttemptAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : new Date(),
           });
           if (normalizedDefinition.schedule) {
             if (

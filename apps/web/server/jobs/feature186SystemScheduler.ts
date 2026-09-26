@@ -57,7 +57,6 @@ export function utcDailyDue(
 export function startFeature186SystemSchedule(
   definition: SystemScheduleDefinition
 ): void {
-  if (process.env.FEATURE_186_HARD_CUTOVER !== "true") return;
   if (startedSchedules.has(definition.scheduleId)) return;
 
   const tenantId = systemTenantId();

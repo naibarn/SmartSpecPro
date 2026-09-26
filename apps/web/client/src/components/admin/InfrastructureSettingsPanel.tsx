@@ -2876,18 +2876,6 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       </span>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      <span className="text-xs text-gray-500 block">Celery Media</span>
-                      <span className="text-sm font-mono font-medium">
-                        {config.celeryMediaConcurrency ?? "—"}
-                      </span>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      <span className="text-xs text-gray-500 block">Celery Video</span>
-                      <span className="text-sm font-mono font-medium">
-                        {config.celeryVideoConcurrency ?? "—"}
-                      </span>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
                       <span className="text-xs text-gray-500 block">API Rate Limit</span>
                       <span className="text-sm font-mono font-medium">
                         {config.nginxApiLimitRate ?? "—"}

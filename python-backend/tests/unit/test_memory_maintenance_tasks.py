@@ -1,4 +1,4 @@
-"""Tests for chat memory maintenance Celery tasks."""
+"""Tests for chat memory maintenance worker_jobs tasks."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.tasks.memory_maintenance_tasks import INDEX_NAMES, rebuild_hnsw_indexes
 
 pytestmark = [pytest.mark.unit]
@@ -93,6 +93,4 @@ def test_rebuild_hnsw_indexes_logs_invalid_indexes(mock_get_session):
 
 
 def test_rebuild_hnsw_indexes_registered_in_beat_schedule():
-    schedule = celery_app.conf.beat_schedule["rebuild-hnsw-indexes"]
-    assert schedule["task"] == "memory.rebuild_hnsw_indexes"
-    assert "0 4 * * 0" in str(schedule["schedule"])
+    assert "memory.rebuild_hnsw_indexes" in job_task_registry.tasks

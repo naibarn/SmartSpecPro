@@ -10,7 +10,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 export const VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE =
   "vertical_drama_character_prompt_jobs";
@@ -487,17 +486,7 @@ let queue: any = null;
 let worker: any = null;
 
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(
-      `${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE} queue is not initialized`
-    );
-  }
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    { jobId, attempts: 1, removeOnComplete: true, removeOnFail: { age: 86400 } }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
 async function defaultScheduleRetry(
@@ -505,67 +494,13 @@ async function defaultScheduleRetry(
   delayMs: number,
   retryCount: number,
 ): Promise<void> {
-  if (!queue) {
-    throw new Error(
-      `${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE} queue is not initialized`,
-    );
-  }
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    {
-      jobId: `retry-${jobId}-${retryCount}`,
-      delay: delayMs,
-      attempts: 1,
-      removeOnComplete: true,
-      removeOnFail: { age: 86400 },
-    },
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
-export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE, {
-      connection,
-    });
-    worker = new Worker(
-      VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE,
-      async (job: { data: { jobId: string } }) => {
-        const { runVerticalDramaCharacterPromptJobExecutor } =
-          await import("../routers/verticalDramaCharacters");
-        await runVerticalDramaCharacterPromptJob(
-          job.data.jobId,
-          runVerticalDramaCharacterPromptJobExecutor,
-          { scheduleRetry: defaultScheduleRetry },
-        );
-      },
-      { connection, concurrency: WORKER_CONCURRENCY }
-    );
-    worker.on("failed", (job: { id?: string } | undefined, error: Error) =>
-      console.error(
-        `[${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE}] job ${job?.id} failed`,
-        error.message
-      )
-    );
-  } catch (error) {
-    console.warn(
-      `[${VERTICAL_DRAMA_CHARACTER_PROMPT_JOBS_QUEUE}] initialization skipped`,
-      boundedError(error)
-    );
-  }
+export async function initVerticalDramaCharacterPromptJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaCharacterPromptJobsQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaCharacterPromptJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

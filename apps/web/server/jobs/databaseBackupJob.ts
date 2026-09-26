@@ -1,8 +1,5 @@
 import { promises as fs } from "node:fs";
-import { Queue, Worker } from "bullmq";
-import { getRealtimeClient } from "../services/redisClients";
 import {
-  DATABASE_BACKUP_QUEUE_NAME,
   type DatabaseBackupMode,
 } from "../services/databaseBackupContracts";
 import {
@@ -17,7 +14,6 @@ import {
 } from "../services/databaseBackupService";
 import { createDatabaseBackupArtifacts } from "../services/databaseBackupExportService";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
-import { upsertLegacyBullMqScheduler, publishLegacyBullMqJob } from "../services/jobLegacyTransportAdapters";
 import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcMinuteOccurrence } from "./feature186SystemScheduler";
 
 type DatabaseBackupJobData = {
@@ -27,29 +23,11 @@ type DatabaseBackupJobData = {
   requestedByUserId?: number;
 };
 
-let queue: Queue<DatabaseBackupJobData> | null = null;
-let worker: Worker<DatabaseBackupJobData> | null = null;
-let workerFailure: string | null = null;
-
-function ensureQueue(): Queue<DatabaseBackupJobData> {
-  if (queue) return queue;
-  const redis = getRealtimeClient();
-  queue = new Queue<DatabaseBackupJobData>(DATABASE_BACKUP_QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 100 },
-    },
-  });
-  return queue;
-}
-
 export async function enqueueDatabaseBackup(
   input: DatabaseBackupJobData
 ): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    if (!input.tenantId) throw new Error("Backup control-plane tenant is required");
-    await createControlPlaneJob({
+  if (!input.tenantId) throw new Error("Backup control-plane tenant is required");
+  await createControlPlaneJob({
       context: {
         tenantId: input.tenantId,
         actorType: "admin",
@@ -66,25 +44,7 @@ export async function enqueueDatabaseBackup(
         retryPolicy: { maxAttempts: 2, baseDelayMs: 5000, maxDelayMs: 120000, jitter: "bounded", deadlineMs: 8 * 60 * 60 * 1000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
         timeoutPolicy: { softTimeoutMs: 30 * 60_000, hardTimeoutMs: 2 * 60 * 60_000 },
       },
-    });
-    return;
-  }
-  if (!worker) {
-    throw new Error("Backup worker is unavailable");
-  }
-  if (workerFailure) {
-    throw new Error(`Backup worker is unavailable: ${workerFailure}`);
-  }
-  try {
-    await worker.waitUntilReady();
-  } catch (error) {
-    throw new Error(
-      `Backup worker is unavailable: ${
-        error instanceof Error ? error.message : "Redis connection failed"
-      }`
-    );
-  }
-  await publishLegacyBullMqJob(ensureQueue(), "create-database-backup", input);
+  });
 }
 
 export async function runDatabaseBackupJob(
@@ -128,9 +88,7 @@ export async function runDatabaseBackupJob(
 }
 
 export async function initializeDatabaseBackupJob(): Promise<void> {
-  if (worker) return;
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    startFeature186SystemSchedule({
+  startFeature186SystemSchedule({
       scheduleId: "database-backup-maintenance",
       jobType: "database.backup.maintenance",
       executionClass: "short",
@@ -140,62 +98,10 @@ export async function initializeDatabaseBackupJob(): Promise<void> {
       isDue: now => now.getUTCMinutes() % 15 === 0,
       occurrenceKey: now => utcMinuteOccurrence(now, 15),
       intervalMs: 60_000,
-    });
-    console.info("[DatabaseBackup] BullMQ skipped; control-plane maintenance schedule active");
-    return;
-  }
-  workerFailure = null;
-  await reconcileStaleDatabaseBackupJobs();
-  await cleanupExpiredDatabaseBackups();
-  const redis = getRealtimeClient();
-  const backupQueue = ensureQueue();
-  await upsertLegacyBullMqScheduler(backupQueue,
-    "database-backup-retention",
-    { pattern: "*/15 * * * *" },
-    {
-      name: "database-backup-retention",
-      data: { backupJobId: "retention", mode: "safe" },
-    }
-  );
-  worker = new Worker<DatabaseBackupJobData>(
-    DATABASE_BACKUP_QUEUE_NAME,
-    async job => {
-      if (job.name === "database-backup-retention") {
-        await cleanupExpiredDatabaseBackups();
-        return;
-      }
-      await runDatabaseBackupJob(job.data);
-    },
-    { connection: redis.duplicate(), concurrency: 1 }
-  );
-  worker.on("ready", () => {
-    workerFailure = null;
-    console.info("[DatabaseBackup] worker ready");
   });
-  worker.on("error", error => {
-    workerFailure = error instanceof Error ? error.message : "Worker error";
-    console.error("[DatabaseBackup] worker error:", error);
-  });
-  try {
-    await worker.waitUntilReady();
-  } catch (error) {
-    workerFailure =
-      error instanceof Error ? error.message : "Redis connection failed";
-    await worker.close().catch(() => undefined);
-    worker = null;
-    throw error;
-  }
+  console.info("[DatabaseBackup] canonical maintenance schedule active");
 }
 
 export async function shutdownDatabaseBackupJob(): Promise<void> {
   stopFeature186SystemSchedule("database-backup-maintenance");
-  if (worker) {
-    await worker.close();
-    worker = null;
-  }
-  workerFailure = null;
-  if (queue) {
-    await queue.close();
-    queue = null;
-  }
 }

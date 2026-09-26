@@ -244,7 +244,7 @@ def init_browser_pool_sync() -> None:
 
     import redis.asyncio as aioredis
 
-    redis_url = os.getenv("REDIS_URL", os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0"))
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     redis_client = aioredis.from_url(redis_url)
 
     loop = get_worker_loop()

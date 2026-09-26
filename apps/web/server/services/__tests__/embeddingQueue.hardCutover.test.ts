@@ -6,7 +6,7 @@ const mockGetDb = vi.hoisted(() => vi.fn());
 vi.mock("../../db", () => ({ getDb: mockGetDb }));
 vi.mock("../jobControlPlaneGateway", () => ({ createControlPlaneJob: mockCreateControlPlaneJob }));
 vi.mock("../queryEmbeddingService", () => ({ generateQueryEmbedding: vi.fn() }));
-vi.mock("bullmq", () => ({ Queue: vi.fn(), Worker: vi.fn() }));
+
 vi.mock("../redisClients", () => ({ getRealtimeClient: vi.fn() }));
 
 import { enqueueEmbedding } from "../embeddingQueue";

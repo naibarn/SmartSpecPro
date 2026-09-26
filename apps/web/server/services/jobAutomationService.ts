@@ -7,7 +7,6 @@ import { addCredits, addCreditsWithinTransaction, deductCredits } from "./credit
 import { getRedisClient } from "./redis";
 import { emitPublicApiEvent } from "./webhookDeliveryService";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -187,42 +186,16 @@ function detectCycles(steps: Array<{ id: string; params: Record<string, unknown>
 let automationQueue: any = null;
 let automationWorker: any = null;
 
-export async function initAutomationJobsQueue(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    console.info("[automation-jobs] skipped; Feature 186 control-plane adapter is active");
-    return;
-  }
-  try {
-    // Lazy import to avoid crashing if BullMQ is not available in test env
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    automationQueue = new Queue(AUTOMATION_JOBS_QUEUE, { connection });
-    automationWorker = new Worker(
-      AUTOMATION_JOBS_QUEUE,
-      async (bullJob: any) => {
-        await executeJob(bullJob.data.jobId);
-      },
-      { connection, concurrency: 3 },
-    );
-    automationWorker.on("failed", (job: any, err: Error) => {
-      console.error(`[automation-jobs] Job ${job?.id} failed:`, err.message);
-    });
-  } catch (err) {
-    console.warn("[automation-jobs] BullMQ initialization skipped:", (err as Error).message);
-  }
+export async function initAutomationJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeAutomationJobsQueue(): Promise<void> {
-  try {
-    await automationWorker?.close();
-    await automationQueue?.close();
-  } catch {
-    // ignore
-  }
+export async function closeAutomationJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
 async function enqueueJob(jobId: string, type: string, params: unknown, auth: any): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+  if (true) {
     await createControlPlaneJob({
       context: {
         tenantId: auth.tenantId,
@@ -244,7 +217,7 @@ async function enqueueJob(jobId: string, type: string, params: unknown, auth: an
     return;
   }
   if (automationQueue) {
-    await publishLegacyBullMqJob(automationQueue, "execute", { jobId, type, params, auth });
+    throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
   }
   // If queue not initialized, job stays in "pending" state until manually triggered
 }
@@ -347,7 +320,7 @@ export async function createJob(
       // If the original request committed the domain row but lost the
       // control-plane response, replay the canonical enqueue idempotently.
       // This closes the domain-row-without-outbox gap on client retries.
-      if (process.env.FEATURE_186_HARD_CUTOVER === "true" && existing[0].status === "pending") {
+      if (true && existing[0].status === "pending") {
         await enqueueJob(existing[0].id, existing[0].type, existing[0].params, auth);
       }
       return existing[0];
@@ -407,7 +380,7 @@ export async function createJob(
       conflict.code = "idempotency_conflict";
       throw conflict;
     }
-    if (process.env.FEATURE_186_HARD_CUTOVER === "true" && winner[0].status === "pending") {
+    if (true && winner[0].status === "pending") {
       await enqueueJob(winner[0].id, winner[0].type, winner[0].params, auth);
     }
     return winner[0];

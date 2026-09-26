@@ -37,35 +37,10 @@ class ClipQcFramesRequest(BaseModel):
     wait_seconds: int = Field(default=145, ge=1, le=150)
 
 
-def _feature_186_python_worker_enabled() -> bool:
-    # Canonical status is authoritative as soon as hard cutover is enabled.
-    # The PostgreSQL-pull flag selects the executor, not the status source;
-    # hard-cutover jobs may still be consumed by the Celery compatibility
-    # adapter during a rolling deployment.
-    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
-
-
 async def _read_clip_qc_status(task_id: str) -> dict:
-    if _feature_186_python_worker_enabled():
-        from app.services.job_control_plane import JobControlPlaneClient
+    from app.services.job_control_plane import JobControlPlaneClient
 
-        return await asyncio.to_thread(JobControlPlaneClient().status, task_id)
-
-    from app.core.celery_app import celery_app
-    from app.services.legacy_task_status import read_legacy_task_status
-
-    result = read_legacy_task_status(task_id, app=celery_app)
-    state = result.state
-    if state in ("PENDING", "STARTED", "RETRY"):
-        return {"status": "running" if state != "PENDING" else "queued", "task_id": task_id}
-    if state == "FAILURE":
-        return {"status": "failed", "task_id": task_id, "error": str(result.result)[:500]}
-    if state == "REVOKED":
-        return {"status": "cancelled", "task_id": task_id}
-    if state == "SUCCESS":
-        payload = result.result if isinstance(result.result, dict) else {}
-        return {"status": "succeeded", "task_id": task_id, "output": payload, **payload}
-    return {"status": state.lower() or "queued", "task_id": task_id}
+    return await asyncio.to_thread(JobControlPlaneClient().status, task_id)
 
 
 def _clip_qc_control_plane_payload(task_id: str, snapshot: dict) -> dict:

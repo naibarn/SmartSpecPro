@@ -17,7 +17,7 @@ from typing import Any
 
 import structlog
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 
 logger = structlog.get_logger(__name__)
 
@@ -36,7 +36,7 @@ async def _close_redis_client(redis_client: Any) -> None:
             await maybe_result
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.approval_timeout_tasks.check_expired_approvals",
     bind=True,
     max_retries=3,

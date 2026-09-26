@@ -3,7 +3,7 @@ Celery Tasks for Media Generation
 Handles async image, video, and audio generation
 """
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
 from app.core.media_job_validators import (
     MEDIA_PIPELINE_PERMANENT_MARKER,
@@ -53,16 +53,13 @@ logger = structlog.get_logger()
 
 
 def _feature_186_postgres_pull_enabled() -> bool:
-    """Whether canonical recovery, rather than Celery/Redis, owns media jobs."""
-    return (
-        os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
-        and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") == "true"
-    )
+    """Whether canonical worker_jobs owns media job recovery."""
+    return True
 
 
 def _feature_186_hard_cutover_enabled() -> bool:
     """Whether canonical control-plane recovery owns media jobs."""
-    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    return True
 
 
 def _feature_186_external_context() -> dict[str, str]:
@@ -465,7 +462,7 @@ async def _extract_clip_qc_frames_async(
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-@celery_app.task(bind=True, max_retries=1, queue="media")
+@job_task_registry.task(bind=True, max_retries=1, queue="media")
 def extract_clip_qc_frames(
     self,
     source_url: str,
@@ -1028,9 +1025,6 @@ def _get_wavespeed_requested_duration(
 
 
 def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="wavespeed_ai")
-        return
     dispatch_python_task(
         poll_wavespeed_video_task.name,
         args=[task_id],
@@ -1043,9 +1037,6 @@ def _enqueue_wavespeed_poll(task_id: str, delay_seconds: int) -> None:
 
 
 def _enqueue_magnific_poll(task_id: str, delay_seconds: int) -> None:
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="magnific")
-        return
     dispatch_python_task(
         poll_magnific_media_task.name,
         args=[task_id],
@@ -1098,9 +1089,6 @@ _kie_image_poll_rate_limiter = KieSubmissionRateLimiter(
 
 
 def _enqueue_kie_image_poll(task_id: str, delay_seconds: int) -> None:
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        logger.info("feature_186_poll_schedule_deferred", task_id=task_id, provider="kie_ai")
-        return
     dispatch_python_task(
         poll_kie_image_task.name,
         args=[task_id],
@@ -1153,7 +1141,7 @@ async def _release_kie_image_retry_claim_and_dispatch_async(
     return await _dispatch_pending_image_tasks_async(user_id)
 
 
-@celery_app.task
+@job_task_registry.task
 def dispatch_kie_image_retry(task_id: str, user_id: int | str, retry_claim: str):
     """Wake one delayed Kie image retry and pass it through the fair dispatcher."""
     return _run_async(
@@ -1171,9 +1159,6 @@ def _enqueue_kie_image_retry(
     retry_claim: str,
     delay_seconds: int,
 ) -> None:
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        logger.info("feature_186_retry_schedule_deferred", task_id=task_id, provider="kie_ai")
-        return
     dispatch_python_task(
         dispatch_kie_image_retry.name,
         args=[task_id, user_id, retry_claim],
@@ -1250,7 +1235,7 @@ async def _dispatch_pending_image_tasks_async(user_id: int | str) -> dict[str, A
     dispatched: list[str] = []
     for task_id, owner_id, tenant_id, request_data, celery_task_id in claimed:
         try:
-            if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+            if True:
                 tenant_id = str(tenant_id or "").strip()
                 if not tenant_id:
                     raise RuntimeError("MEDIA_IMAGE_TENANT_REQUIRED")
@@ -1454,7 +1439,7 @@ async def _poll_kie_image_task_async(
                 hard_timeout_seconds=KIE_IMAGE_POLL_HARD_TIMEOUT_SECONDS,
             )
 
-        if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+        if True:
             # Hard cutover must not make canonical execution depend on Redis.
             # The durable provider reservation/poll schedule is the admission
             # guard for this compatibility path; this task performs one
@@ -2956,7 +2941,7 @@ async def _generate_image_async(task_id: str, user_id: str, request_data: dict):
 KIE_IMAGE_ADMISSION_MAX_WAIT_SECONDS = 600
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
     """
     Celery task for async image generation
@@ -3040,7 +3025,7 @@ def generate_image_task(self, task_id: str, user_id: str, request_data: dict):
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def poll_kie_image_task(self, task_id: str):
     """Perform a single Kie image status check without occupying a worker."""
     logger.info("poll_kie_image_task_started", task_id=task_id)
@@ -3244,7 +3229,7 @@ async def _generate_video_async(task_id: str, user_id: str, request_data: dict):
             raise
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
     """
     Celery task for async video generation
@@ -3282,7 +3267,7 @@ def generate_video_task(self, task_id: str, user_id: str, request_data: dict):
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def poll_wavespeed_video_task(self, task_id: str):
     """Poll a submitted WaveSpeed task and reschedule until terminal or timed out."""
     logger.info("poll_wavespeed_video_task_started", task_id=task_id)
@@ -3306,7 +3291,7 @@ def poll_wavespeed_video_task(self, task_id: str):
         return {"status": "failed", "task_id": task_id, "error": str(e)}
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def poll_magnific_media_task(self, task_id: str):
     """Poll a submitted Magnific task and reschedule until terminal or timed out."""
     logger.info("poll_magnific_media_task_started", task_id=task_id)
@@ -3489,7 +3474,7 @@ async def _generate_audio_async(task_id: str, user_id: str, request_data: dict):
             raise
 
 
-@celery_app.task(bind=True, max_retries=3)
+@job_task_registry.task(bind=True, max_retries=3)
 def generate_audio_task(self, task_id: str, user_id: str, request_data: dict):
     """
     Celery task for async audio generation
@@ -3560,7 +3545,7 @@ async def _cleanup_expired_tasks_async():
                 import redis.asyncio as aioredis
 
                 redis_client = aioredis.from_url(
-                    settings.CELERY_BROKER_URL or "redis://localhost:6379/0"
+                    settings.REDIS_URL
                 )
                 cursor = 0
                 while True:
@@ -3594,7 +3579,7 @@ async def _cleanup_expired_tasks_async():
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def cleanup_expired_tasks():
     """
     Periodic task to cleanup old completed/failed tasks.
@@ -3693,7 +3678,7 @@ async def _retry_failed_tasks_async():
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def retry_failed_tasks():
     """
     Periodic task to retry failed tasks with transient errors
@@ -3722,7 +3707,7 @@ async def _retry_media_callback_events_async():
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def retry_media_callback_events():
     """Periodic retry for callback events in retry_pending status."""
     logger.info("retry_media_callback_events_started")
@@ -3746,7 +3731,7 @@ async def _process_library_index_job_async(job_id: int):
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def process_library_index_job_task(job_id: int):
     """Queue worker task for extract/chunk/embed/upsert pipeline."""
     logger.info("process_library_index_job_started", job_id=job_id)
@@ -3769,7 +3754,7 @@ async def _retry_library_index_jobs_async():
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def retry_library_index_jobs():
     """Periodic retry for library index jobs due for execution."""
     logger.info("retry_library_index_jobs_started")
@@ -3815,7 +3800,7 @@ async def _run_library_backfill_batch_async(
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def run_library_backfill_batch_task(
     tenant_id: int | None = None,
     cursor: int = 0,
@@ -3868,7 +3853,7 @@ async def _reindex_all_library_async(tenant_id: int | None):
             raise
 
 
-@celery_app.task
+@job_task_registry.task
 def reindex_all_library_task(tenant_id: int | None = None):
     """Admin-triggered full reindex of all library items."""
     logger.info("reindex_all_library_task_started", tenant_id=tenant_id)
@@ -4476,246 +4461,9 @@ async def _recover_stuck_tasks_async():
 
 
 async def _recover_stuck_pending_tasks_async():
-    """
-    Recover tasks stuck in 'pending' status.
-
-    This catches tasks where the Celery worker failed (e.g. asyncpg connection error)
-    but never updated the DB status. These tasks have a celery_task_id but never
-    transitioned to 'processing' — they were silently dropped.
-
-    Strategy: check the Celery result backend for the task's state.
-    - If Celery says the task completed (SUCCESS/FAILURE/REVOKED) but DB is still
-      pending, mark the DB task as failed. Do NOT re-submit: the original Celery
-      task already ran and either silently failed or returned a failure dict.
-    - If Celery state is PENDING for an image beyond 3 minutes, re-publish the
-      same id only when the owner has no other processing image task. Unknown
-      inspection states are never mutated.
-    """
-    if _feature_186_hard_cutover_enabled():
-        # Do not consult AsyncResult in hard PostgreSQL-pull mode. The
-        # canonical outbox/lease/reconciler owns pending recovery and a
-        # compatibility janitor must not race or mutate the same MediaTask.
-        logger.info("feature_186_media_pending_recovery_deferred_to_control_plane")
-        return {"status": "skipped", "reason": "feature_186_hard_cutover"}
-    from datetime import timezone
-    from app.services.legacy_task_status import read_legacy_task_status
-
-    async with AsyncSessionLocal() as db:
-        try:
-            cutoff = datetime.now(timezone.utc) - timedelta(minutes=3)
-
-            result = await db.execute(
-                select(MediaTask).filter(
-                    MediaTask.status == TaskStatus.PENDING,
-                    MediaTask.created_at < cutoff,
-                    MediaTask.celery_task_id.isnot(None),  # Was submitted to Celery
-                ).limit(10)
-            )
-            stuck_pending = result.scalars().all()
-
-            if not stuck_pending:
-                return {"status": "success", "recovered": 0}
-
-            recovered = 0
-            now = datetime.now(timezone.utc)
-
-            processing_users_result = await db.execute(
-                select(MediaTask.user_id).filter(
-                    MediaTask.media_type == MediaType.IMAGE.value,
-                    MediaTask.status == TaskStatus.PROCESSING,
-                ).distinct()
-            )
-            processing_user_ids = set(processing_users_result.scalars().all())
-
-            for task in stuck_pending:
-                if _is_kie_image_retry_claim(task):
-                    retry_polling = _coerce_json_dict(task.result_data).get("polling")
-                    next_retry_at = (
-                        retry_polling.get("next_retry_at")
-                        if isinstance(retry_polling, dict)
-                        else None
-                    )
-                    try:
-                        retry_due = isinstance(next_retry_at, str) and datetime.fromisoformat(
-                            next_retry_at.replace("Z", "+00:00")
-                        ) <= now
-                    except ValueError:
-                        retry_due = True
-                    if not retry_due:
-                        logger.info(
-                            "recover_stuck_pending_waiting_for_kie_retry",
-                            task_id=task.id,
-                            next_retry_at=next_retry_at,
-                        )
-                        continue
-                    # The scheduled wake-up may have been lost. Clear the
-                    # placeholder and let the unclaimed-image recovery phase
-                    # dispatch it through the per-user cap below.
-                    task.celery_task_id = None
-                    task.error_message = None
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_kie_retry_rearmed",
-                        task_id=task.id,
-                    )
-                    continue
-
-                # Ensure created_at is timezone-aware for comparison
-                task_created = task.created_at
-                if task_created.tzinfo is None:
-                    task_created = task_created.replace(tzinfo=timezone.utc)
-                age_minutes = int((now - task_created).total_seconds() / 60)
-
-                if task.task_id:
-                    task.status = TaskStatus.PROCESSING
-                    task.started_at = task.started_at or now
-                    task.error_message = None
-                    task.result_data = _merge_task_result_data(
-                        task.result_data,
-                        {
-                            "recovery": {
-                                "reason": "pending_task_has_provider_task_id",
-                                "provider_task_id": task.task_id,
-                                "recovered_at": now.isoformat(),
-                            },
-                        },
-                        remove_keys=("failure",),
-                    )
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_provider_task_requeued_for_polling",
-                        task_id=task.id,
-                        external_task_id=task.task_id,
-                        age_minutes=age_minutes,
-                    )
-                    if task.media_type == MediaType.IMAGE.value:
-                        submission = task_result_data.get("submission")
-                        if isinstance(submission, dict) and submission.get("provider") == "wavespeed_ai":
-                            _enqueue_wavespeed_poll(task.id, 3)
-                        else:
-                            _enqueue_kie_image_poll(task.id, KIE_IMAGE_POLL_INITIAL_SECONDS)
-                    continue
-
-                # Check Celery task state to avoid duplicate execution
-                celery_state = "UNKNOWN"
-                celery_result_info = None
-                try:
-                    ar = read_legacy_task_status(task.celery_task_id, app=celery_app)
-                    celery_state = ar.state  # PENDING, STARTED, RETRY, SUCCESS, FAILURE, REVOKED
-                    if celery_state in ("SUCCESS", "FAILURE", "RETRY"):
-                        celery_result_info = ar.result
-                except Exception:
-                    pass  # Redis unavailable — fall back to age-based logic
-
-                # Terminal Celery states: task already ran but DB wasn't updated
-                if celery_state in ("SUCCESS", "FAILURE", "REVOKED"):
-                    error_detail = ""
-                    if isinstance(celery_result_info, dict):
-                        error_detail = celery_result_info.get("error", "")[:200]
-                    elif isinstance(celery_result_info, Exception):
-                        error_detail = str(celery_result_info)[:200]
-
-                    task.status = TaskStatus.FAILED
-                    task.error_message = (
-                        f"Celery task finished ({celery_state}) but DB status was never updated. "
-                        f"{error_detail}"
-                    ).strip()
-                    task.completed_at = now
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_celery_terminal",
-                        task_id=task.id,
-                        celery_state=celery_state,
-                        age_minutes=age_minutes,
-                    )
-
-                elif celery_state == "RETRY" and celery_result_info and _is_non_retryable_media_error(Exception(str(celery_result_info))):
-                    task.status = TaskStatus.FAILED
-                    task.error_message = str(celery_result_info)
-                    task.completed_at = now
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_non_retryable_retry",
-                        task_id=task.id,
-                        celery_state=celery_state,
-                        age_minutes=age_minutes,
-                    )
-
-                elif (
-                    celery_state == "PENDING"
-                    and task.media_type == MediaType.IMAGE.value
-                    and age_minutes >= 3
-                    and task.user_id not in processing_user_ids
-                ):
-                    # Redis cannot distinguish a queued task from a publish that
-                    # was lost after the DB claim. Re-publish the same Celery ID;
-                    # the row/advisory guard in _generate_image_async makes the
-                    # delivery idempotent if the original message still exists.
-                    dispatch_python_task(
-                        generate_image_task.name,
-                        args=[task.id, task.user_id, _image_request_from_task(task)],
-                        tenant_id=str(task.tenant_id or "").strip() or None,
-                        user_id=task.user_id,
-                        idempotency_key=f"media:recover:image:{task.celery_task_id}",
-                        correlation_id=f"media:recover:image:{task.id}",
-                        legacy_task=generate_image_task,
-                    )
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_image_republished",
-                        task_id=task.id,
-                        celery_task_id=task.celery_task_id,
-                        age_minutes=age_minutes,
-                    )
-
-                    from app.services.system_auto_report import report_system_failure
-                    await report_system_failure(
-                        source="celery_media_pending_recovery",
-                        title="Urgent: stale Celery media task recovered",
-                        error_message="An image media task remained pending for more than 3 minutes without a provider task id; the same Celery task id was safely re-published.",
-                        user_id=task.user_id,
-                        tenant_id=task.tenant_id,
-                        job_id=task.id,
-                        priority="critical",
-                        extra={"age_minutes": age_minutes, "celery_state": celery_state, "media_type": task.media_type},
-                    )
-
-                elif age_minutes >= 10 and celery_state != "UNKNOWN":
-                    # Very old pending task with non-terminal Celery state — give up
-                    task.status = TaskStatus.FAILED
-                    task.error_message = (
-                        f"Task stuck in pending state for {age_minutes} minutes "
-                        f"(celery_state={celery_state}). Likely lost."
-                    )
-                    task.completed_at = now
-                    recovered += 1
-                    logger.warning(
-                        "recover_stuck_pending_timeout",
-                        task_id=task.id,
-                        celery_state=celery_state,
-                        age_minutes=age_minutes,
-                    )
-                else:
-                    # Non-terminal Celery state, < 30 min old — leave it alone
-                    logger.info(
-                        "recover_stuck_pending_waiting",
-                        task_id=task.id,
-                        celery_state=celery_state,
-                        age_minutes=age_minutes,
-                    )
-
-            await db.commit()
-
-            logger.info(
-                "recover_stuck_pending_completed",
-                recovered=recovered,
-                total_checked=len(stuck_pending),
-            )
-            return {"status": "success", "recovered": recovered}
-
-        except Exception as e:
-            logger.error("recover_stuck_pending_failed_error", error=str(e))
-            raise
+    """Canonical worker_jobs lease recovery owns stale execution state."""
+    logger.info("media_pending_recovery_owned_by_worker_jobs")
+    return {"status": "delegated", "owner": "worker_jobs"}
 
 
 async def _recover_unclaimed_pending_image_tasks_async() -> dict[str, Any]:
@@ -4747,7 +4495,7 @@ async def _recover_unclaimed_pending_image_tasks_async() -> dict[str, Any]:
     return {"users_checked": len(user_ids), "dispatched": dispatched}
 
 
-@celery_app.task
+@job_task_registry.task
 def recover_stuck_tasks():
     """
     Periodic task to recover tasks stuck in 'processing' or 'pending' status.
@@ -4806,7 +4554,7 @@ async def _backfill_missing_media_thumbnails_async(
         )
 
 
-@celery_app.task
+@job_task_registry.task
 def backfill_missing_media_thumbnails(limit: int = 10, media_type: str | None = None):
     """Create lightweight thumbnails for historical completed image/video tasks."""
     logger.info("backfill_missing_media_thumbnails_started", limit=limit, media_type=media_type)

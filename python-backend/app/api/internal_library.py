@@ -2765,7 +2765,7 @@ async def trigger_library_reindex_internal(
     session: AsyncSession = Depends(get_db),
 ):
     """Trigger a full reindex of all library items via Celery (internal)."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_control_plane import JobControlPlaneClient, dispatch_python_task
 
         baseline_job_id = int(await session.scalar(select(func.max(LibraryIndexJob.id))) or 0)
@@ -2788,7 +2788,7 @@ async def trigger_library_reindex_internal(
 
     import redis
     from app.tasks.media_tasks import reindex_all_library_task
-    from app.services.legacy_task_status import read_legacy_task_status
+    from app.services.worker_job_status import read_worker_job_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -2801,7 +2801,7 @@ async def trigger_library_reindex_internal(
             else existing_task_id
         )
         existing_batch = _match_reindex_batch_metadata(existing_batch, task_id=str(existing_task_id))
-        result = read_legacy_task_status(existing_task_id)
+        result = read_worker_job_status(existing_task_id)
         if result.state in ("PENDING", "STARTED", "RETRY"):
             return ReindexResponse(
                 task_id=existing_task_id,
@@ -2860,7 +2860,7 @@ async def get_library_reindex_status_internal(
     session: AsyncSession = Depends(get_db),
 ):
     """Check the status of the current reindex job (internal)."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_control_plane import JobControlPlaneClient
 
         task_id = await asyncio.to_thread(
@@ -2890,7 +2890,7 @@ async def get_library_reindex_status_internal(
         )
 
     import redis
-    from app.services.legacy_task_status import read_legacy_task_status
+    from app.services.worker_job_status import read_worker_job_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -2902,7 +2902,7 @@ async def get_library_reindex_status_internal(
 
     task_id_str = task_id.decode() if isinstance(task_id, bytes) else str(task_id)
     batch_metadata = _match_reindex_batch_metadata(batch_metadata, task_id=task_id_str)
-    result = read_legacy_task_status(task_id_str)
+    result = read_worker_job_status(task_id_str)
     batch_summary = await _build_reindex_batch_summary(session, batch_metadata)
     task_result = result.result if isinstance(result.result, dict) else None
     merged_batch_metadata = _merge_reindex_batch_outcome(batch_metadata, task_result)

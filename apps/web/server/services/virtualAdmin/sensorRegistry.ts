@@ -87,7 +87,7 @@ export async function loadSensorConfig(
 export async function registerAllSensors(): Promise<void> {
   const sensorModules = await Promise.all([
     import("./sensors/queueHealth"),
-    import("./sensors/celeryHealth"),
+    import("./sensors/workerJobsHealth"),
     import("./sensors/errorSpike"),
     import("./sensors/llmProvider"),
     import("./sensors/creditBalance"),

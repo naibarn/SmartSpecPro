@@ -1,9 +1,6 @@
 """
 Celery task for importing presentations from PPTX files or Google Slides.
 
-Worker startup (import queue):
-  celery -A app.core.celery_app worker -Q presentation_import -c 4 --hostname=import@%h
-
 Environment variables required:
   NODE_INTERNAL_URL           — http://localhost:3000 (default)
   SMARTSPEC_WEB_GATEWAY_TOKEN — shared secret for internal callback auth
@@ -17,7 +14,7 @@ import httpx
 import structlog
 from sqlalchemy import text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
 from app.services.google_token_service import GoogleTokenService
 from app.services.gslides_importer import GSlidesImporter
@@ -39,7 +36,7 @@ _SLIDES_JSON_MAX_BYTES = 8 * 1024 * 1024
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="tasks.import_presentation",
     bind=True,
     max_retries=2,

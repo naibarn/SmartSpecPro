@@ -11,7 +11,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { createSpecialTieInForensicRecorder } from "./verticalDramaSpecialTieInForensics";
 import { purgeExpiredSpecialTieInForensicEvents } from "./verticalDramaSpecialTieInForensics";
 import {
@@ -558,84 +557,13 @@ let worker: any = null;
 let specialDebugCleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(
-      `${VERTICAL_DRAMA_INTERACTIVE_JOBS_QUEUE} queue is not initialized`
-    );
-  }
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    {
-      jobId,
-      attempts: 1,
-      removeOnComplete: true,
-      removeOnFail: { age: 24 * 60 * 60 },
-    }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
-export async function initVerticalDramaInteractiveJobsQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  if (!specialDebugCleanupTimer) {
-    specialDebugCleanupTimer = setInterval(
-      () => {
-        purgeExpiredSpecialTieInForensicEvents().catch(error => {
-          debugError(
-            "verticalDramaInteractiveJobs",
-            "Special tie-in debug retention cleanup failed",
-            error
-          );
-        });
-      },
-      6 * 60 * 60 * 1000
-    );
-    specialDebugCleanupTimer.unref?.();
-  }
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_INTERACTIVE_JOBS_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_INTERACTIVE_JOBS_QUEUE,
-      async (bullJob: { data: { jobId: string } }) => {
-        const { runVerticalDramaInteractiveJobExecutor } =
-          await import("../services/verticalDramaInteractiveJobExecutor");
-        await runVerticalDramaInteractiveJob(
-          bullJob.data.jobId,
-          runVerticalDramaInteractiveJobExecutor
-        );
-      },
-      { connection, concurrency: WORKER_CONCURRENCY }
-    );
-    worker.on("failed", (bullJob: { id?: string }, error: Error) => {
-      debugError(
-        "verticalDramaInteractiveJobs",
-        `BullMQ job ${bullJob?.id ?? "unknown"} failed`,
-        error
-      );
-    });
-  } catch (error) {
-    debugError(
-      "verticalDramaInteractiveJobs",
-      "BullMQ initialization skipped",
-      error
-    );
-  }
+export async function initVerticalDramaInteractiveJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaInteractiveJobsQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // Best effort during process shutdown.
-  } finally {
-    worker = null;
-    queue = null;
-    if (specialDebugCleanupTimer) clearInterval(specialDebugCleanupTimer);
-    specialDebugCleanupTimer = null;
-  }
+export async function closeVerticalDramaInteractiveJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

@@ -17,8 +17,6 @@ export async function executeWorkerHeartbeatRetention() {
 }
 
 export async function initializeWorkerHeartbeatRetentionJob(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER !== "true") return;
-
   startFeature186SystemSchedule({
     scheduleId: SCHEDULE_ID,
     jobType: JOB_TYPE,

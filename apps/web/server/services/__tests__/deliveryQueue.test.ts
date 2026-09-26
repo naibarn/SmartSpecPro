@@ -31,28 +31,6 @@ const {
     .mockResolvedValue({ ok: true, externalMessageId: "456" }),
 }));
 
-let capturedProcessor: any = null;
-
-vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
-    add: mockQueueAdd,
-    close: mockQueueClose,
-  })),
-  Worker: vi.fn().mockImplementation((_name: any, processor: any) => {
-    capturedProcessor = processor;
-    return {
-      on: mockWorkerOn,
-      close: mockWorkerClose,
-    };
-  }),
-  UnrecoverableError: class UnrecoverableError extends Error {
-    constructor(msg: string) {
-      super(msg);
-      this.name = "UnrecoverableError";
-    }
-  },
-}));
-
 vi.mock("../redisClients", () => ({
   getRealtimeClient: vi.fn(() => ({
     duplicate: vi.fn(() => ({})),
@@ -88,7 +66,7 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 import type { DeliveryJob } from "@shared/channelTypes";
-import { UnrecoverableError } from "bullmq";
+import { processDeliveryJob } from "../deliveryQueue";
 
 function makeJob(overrides: Partial<DeliveryJob> = {}): DeliveryJob {
   return {
@@ -103,7 +81,7 @@ function makeJob(overrides: Partial<DeliveryJob> = {}): DeliveryJob {
   };
 }
 
-function makeBullMQJob(data: DeliveryJob, attemptsMade = 0) {
+function makeWorkerJob(data: DeliveryJob, attemptsMade = 0) {
   return {
     data,
     attemptsMade,
@@ -154,77 +132,17 @@ function setupMockDb() {
 describe("deliveryQueue", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    capturedProcessor = null;
     // Default adapter mock: Telegram adapter with sendMessage
     mockAdapterGet.mockReturnValue({
       sendMessage: mockAdapterSendMessage,
     });
   });
 
-  describe("initDeliveryQueue", () => {
-    it("creates Queue and Worker with correct config", async () => {
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-      const { Queue, Worker } = await import("bullmq");
-
-      await initDeliveryQueue();
-
-      expect(Queue).toHaveBeenCalledTimes(2); // main queue + DLQ
-      expect(Worker).toHaveBeenCalledTimes(1);
-
-      // Worker should have concurrency and limiter
-      const workerCall = (Worker as any).mock.calls[0];
-      expect(workerCall[0]).toBe("channel-delivery");
-      expect(workerCall[2]).toMatchObject({
-        concurrency: 10,
-        limiter: { max: 25, duration: 1000 },
-      });
-
-      await closeDeliveryQueue();
-    });
-  });
-
-  describe("enqueueDelivery", () => {
-    it("adds job to queue with deterministic jobId", async () => {
-      const { initDeliveryQueue, enqueueDelivery, closeDeliveryQueue } =
-        await import("../deliveryQueue");
-
-      await initDeliveryQueue();
-
-      const job = makeJob();
-      await enqueueDelivery(job);
-
-      expect(mockQueueAdd).toHaveBeenCalledWith("deliver", job, {
-        jobId: "ch-deliver-cm-1",
-      });
-
-      await closeDeliveryQueue();
-    });
-
-    it("skips when queue not initialized", async () => {
-      // Fresh import to get un-initialized state
-      vi.resetModules();
-      const { enqueueDelivery } = await import("../deliveryQueue");
-
-      await enqueueDelivery(makeJob());
-
-      expect(mockQueueAdd).not.toHaveBeenCalled();
-    });
-  });
-
   describe("processDeliveryJob (worker processor)", () => {
     it("sends message and updates status to sent", async () => {
       setupMockDb();
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-
-      await initDeliveryQueue();
-      expect(capturedProcessor).toBeTruthy();
-
-      const job = makeBullMQJob(makeJob());
-      await capturedProcessor(job);
+      const job = makeWorkerJob(makeJob());
+      await processDeliveryJob(job);
 
       expect(mockAdapterSendMessage).toHaveBeenCalledWith(
         { botToken: "dec_token" },
@@ -235,10 +153,9 @@ describe("deliveryQueue", () => {
 
       expect(mockDbUpdate).toHaveBeenCalled();
 
-      await closeDeliveryQueue();
     });
 
-    it("throws UnrecoverableError for 403 (bot blocked)", async () => {
+    it("classifies 403 (bot blocked) as permanent", async () => {
       setupMockDb();
       mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Forbidden: bot was blocked by the user"), {
@@ -247,20 +164,14 @@ describe("deliveryQueue", () => {
         }),
       );
 
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-      await initDeliveryQueue();
-
-      const job = makeBullMQJob(makeJob());
-      await expect(capturedProcessor(job)).rejects.toThrow(
+      const job = makeWorkerJob(makeJob());
+      await expect(processDeliveryJob(job)).rejects.toThrow(
         "bot was blocked by the user",
       );
 
-      await closeDeliveryQueue();
     });
 
-    it("throws UnrecoverableError for chat not found", async () => {
+    it("classifies chat not found as permanent", async () => {
       setupMockDb();
       mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Bad Request: chat not found"), {
@@ -268,18 +179,12 @@ describe("deliveryQueue", () => {
         }),
       );
 
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-      await initDeliveryQueue();
+      const job = makeWorkerJob(makeJob());
+      await expect(processDeliveryJob(job)).rejects.toThrow("chat not found");
 
-      const job = makeBullMQJob(makeJob());
-      await expect(capturedProcessor(job)).rejects.toThrow("chat not found");
-
-      await closeDeliveryQueue();
     });
 
-    it("re-throws transient errors for BullMQ retry", async () => {
+    it("re-throws transient errors for worker_jobs retry", async () => {
       setupMockDb();
       mockAdapterSendMessage.mockRejectedValueOnce(
         Object.assign(new Error("Internal Server Error"), {
@@ -287,36 +192,24 @@ describe("deliveryQueue", () => {
         }),
       );
 
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-      await initDeliveryQueue();
-
-      const job = makeBullMQJob(makeJob());
-      await expect(capturedProcessor(job)).rejects.toThrow(
+      const job = makeWorkerJob(makeJob());
+      await expect(processDeliveryJob(job)).rejects.toThrow(
         "Internal Server Error",
       );
 
-      await closeDeliveryQueue();
     });
   });
 
   describe("processDeliveryJob (no adapter)", () => {
-    it("throws UnrecoverableError when adapter not found for channel type", async () => {
+    it("reports an unavailable adapter for channel type", async () => {
       setupMockDb();
       mockAdapterGet.mockReturnValue(undefined); // No adapter registered
 
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-      await initDeliveryQueue();
-
-      const job = makeBullMQJob(makeJob({ channelType: "whatsapp" }));
-      await expect(capturedProcessor(job)).rejects.toThrow(
+      const job = makeWorkerJob(makeJob({ channelType: "whatsapp" }));
+      await expect(processDeliveryJob(job)).rejects.toThrow(
         "No adapter for channel type: whatsapp",
       );
 
-      await closeDeliveryQueue();
     });
   });
 
@@ -348,12 +241,6 @@ describe("deliveryQueue", () => {
 
   describe("closeDeliveryQueue", () => {
     it("closes worker and queue", async () => {
-      const { initDeliveryQueue, closeDeliveryQueue } = await import(
-        "../deliveryQueue"
-      );
-
-      await initDeliveryQueue();
-      await closeDeliveryQueue();
 
       expect(mockWorkerClose).toHaveBeenCalled();
       expect(mockQueueClose).toHaveBeenCalledTimes(2); // main + DLQ

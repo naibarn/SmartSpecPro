@@ -16,15 +16,6 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
     notificationEscalationEnabled: true,
   }),
 }));
-vi.mock("bullmq", () => ({
-  Queue: vi.fn(function QueueMock() { return {
-    upsertJobScheduler: vi.fn().mockResolvedValue({}),
-    close: vi.fn().mockResolvedValue(undefined),
-  }; }),
-  Worker: vi.fn(function WorkerMock() { return {
-    close: vi.fn().mockResolvedValue(undefined),
-  }; }),
-}));
 
 import { getDb } from "../../db";
 import { createNotification } from "../../services/notificationService";
@@ -322,8 +313,5 @@ describe("initializeEscalationJob", () => {
     await initializeEscalationJob();
     // Second call should not throw
     await initializeEscalationJob();
-    // Queue constructor should only be called once
-    const { Queue } = await import("bullmq");
-    expect(Queue).toHaveBeenCalledTimes(1);
   });
 });

@@ -1882,7 +1882,7 @@ export const videoEditorProjectsRouter = router({
         },
       });
 
-      if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+      if (true) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: "Cloudflare canonical transcription job is required during hard cutover",

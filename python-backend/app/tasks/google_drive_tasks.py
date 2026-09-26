@@ -17,7 +17,7 @@ from typing import Any, Optional
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
@@ -87,7 +87,7 @@ def get_sync_session():
         session.close()
 
 
-@celery_app.task(name="cleanup_expired_edit_sessions", bind=True, max_retries=2)
+@job_task_registry.task(name="cleanup_expired_edit_sessions", bind=True, max_retries=2)
 def cleanup_expired_edit_sessions(self):
     """
     Periodic task to clean up expired Google Drive edit sessions.
@@ -688,7 +688,7 @@ async def _process_gdrive_index_async(job_id: int):
         return await process_google_drive_index_job(db, job_id)
 
 
-@celery_app.task(name="process_google_drive_index_job", bind=True, max_retries=3)
+@job_task_registry.task(name="process_google_drive_index_job", bind=True, max_retries=3)
 def process_google_drive_index_job_task(self, job_id: int):
     """Celery task for Google Drive file indexing pipeline."""
     logger.info("process_gdrive_index_started", extra={"job_id": job_id})
@@ -702,7 +702,7 @@ def process_google_drive_index_job_task(self, job_id: int):
 # ── Incremental Sync Tasks ────────────────────────────────────────────────
 
 
-@celery_app.task(name="initial_drive_sync", bind=True, max_retries=3, default_retry_delay=60)
+@job_task_registry.task(name="initial_drive_sync", bind=True, max_retries=3, default_retry_delay=60)
 def initial_drive_sync(self, user_id: int, tenant_id: str):
     """Perform initial sync of a user's Google Drive.
 
@@ -717,7 +717,7 @@ def initial_drive_sync(self, user_id: int, tenant_id: str):
         raise self.retry(exc=e, countdown=60)
 
 
-@celery_app.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
+@job_task_registry.task(name="process_drive_changes", bind=True, max_retries=3, default_retry_delay=30)
 def process_drive_changes(self, user_id: int, tenant_id: str):
     """Fetch and process changes from Google Drive Changes API.
 
@@ -731,7 +731,7 @@ def process_drive_changes(self, user_id: int, tenant_id: str):
         raise self.retry(exc=e, countdown=30)
 
 
-@celery_app.task(name="renew_drive_watch_channels")
+@job_task_registry.task(name="renew_drive_watch_channels")
 def renew_drive_watch_channels():
     """Periodic task to renew expiring Drive webhook channels.
 
@@ -1349,7 +1349,7 @@ async def _estimate_sync_cost_impl(user_id: int, tenant_id: str) -> dict:
 # ── Webhook Fallback: Periodic Polling ─────────────────────────────────────
 
 
-@celery_app.task(name="poll_drive_changes")
+@job_task_registry.task(name="poll_drive_changes")
 def poll_drive_changes():
     """Periodic fallback task for users whose webhook channel is down.
 
@@ -1447,7 +1447,7 @@ async def _try_reestablish_webhook(user_id: int, tenant_id: str):
 # ── Disconnect & Cleanup ────────────────────────────────────────────────────
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     max_retries=2,
     default_retry_delay=30,

@@ -45,7 +45,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { getRedisClient } from "./redis";
 import type {
   EpisodeRunOwner,
@@ -98,25 +97,7 @@ let worker: any = null;
 async function defaultEnqueueBullmqJob(
   data: VerticalDramaEpisodeStageJobData
 ): Promise<void> {
-  if (!queue) {
-    throw new Error(
-      `${VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE} queue is not initialized`
-    );
-  }
-  await publishLegacyBullMqJob(queue, "run", data, {
-    removeOnComplete: true,
-    // No BullMQ-level retry: `runStoryboardShotgridStageJob`'s own outer
-    // try/catch already guarantees the run row always resolves to
-    // `succeeded`/`failed` (never left throwing out of the processor for a
-    // LOGICAL failure), so a BullMQ redelivery would only ever fire for a
-    // genuine worker crash mid-run — which would double-charge credits if
-    // retried blindly (unlike `verticalDramaStoryJobs.ts`'s chunked story
-    // jobs, this stage has no per-chunk checkpoint to resume from safely).
-    // `removeOnFail` is bounded (24h) so a job whose one attempt errors
-    // stays inspectable for a day instead of vanishing immediately.
-    attempts: 1,
-    removeOnFail: { age: 24 * 60 * 60 },
-  });
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
 /**
@@ -237,86 +218,10 @@ function startStaleRunSweep(): void {
  * uses for its own worker body, so this file and the pipeline service never
  * form a static circular import surprise at module-load time.
  */
-export async function initVerticalDramaEpisodeStageJobsQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  // Orphan sweep first, outside the BullMQ try/catch — it must arm even
-  // when BullMQ init below fails (see `startStaleRunSweep`'s doc comment).
-  startStaleRunSweep();
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (bullJob: any) => {
-        const data = bullJob.data as VerticalDramaEpisodeStageJobData;
-        const { VerticalDramaEpisodePipeline } = await import(
-          "./verticalDramaEpisodePipeline"
-        );
-        const { createVerticalDramaProviderRoutingPort } = await import(
-          "./verticalDramaProviderRouting"
-        );
-        // Always the real (non-stub) provider-routing port — this queue is
-        // only ever enqueued for a REAL (non dry_run/plan_only) generation,
-        // same as `pipelineForMode`'s own non-dry-run branch in the router.
-        const pipeline = new VerticalDramaEpisodePipeline(
-          createVerticalDramaProviderRoutingPort()
-        );
-        // `storyboard_shotgrid` keeps its own purpose-built job body — it
-        // carries the `clearDownstreamOnSuccess` regenerate hook and a tail
-        // specialized to that stage. Every other async stage goes through the
-        // generic runner, which delegates to `runStage` itself.
-        const stage = data.stage ?? "storyboard_shotgrid";
-        if (stage === "storyboard_shotgrid") {
-          await pipeline.runStoryboardShotgridStageJob(
-            data.owner,
-            data.runId,
-            data.opts,
-            data.clearDownstreamOnSuccess
-          );
-        } else {
-          await pipeline.runEpisodeStageJob(
-            data.owner,
-            data.runId,
-            stage,
-            data.opts
-          );
-        }
-      },
-      {
-        connection,
-        concurrency: VERTICAL_DRAMA_EPISODE_STAGE_JOBS_WORKER_CONCURRENCY,
-      }
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    worker.on("failed", (bullJob: any, err: Error) => {
-      console.error(
-        `[${VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE}] Job ${bullJob?.id} failed:`,
-        err.message
-      );
-    });
-  } catch (err) {
-    console.warn(
-      `[${VERTICAL_DRAMA_EPISODE_STAGE_JOBS_QUEUE}] BullMQ initialization skipped:`,
-      (err as Error).message
-    );
-  }
+export async function initVerticalDramaEpisodeStageJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaEpisodeStageJobsQueue(): Promise<void> {
-  if (sweepTimer) {
-    clearInterval(sweepTimer);
-    sweepTimer = null;
-  }
-  try {
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // ignore
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaEpisodeStageJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

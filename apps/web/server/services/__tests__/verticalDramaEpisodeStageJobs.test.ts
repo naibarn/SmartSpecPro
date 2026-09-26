@@ -35,16 +35,7 @@ vi.mock("../feature186VerticalDramaJobAdapter", async importOriginal => ({
   createFeature186VerticalDramaJob: mockCreateFeature,
 }));
 vi.mock("../redis", () => ({ getRedisClient: vi.fn(() => ({})) }));
-vi.mock("bullmq", () => ({
-  Queue: class {
-    async add() {}
-    async close() {}
-  },
-  Worker: class {
-    on() {}
-    async close() {}
-  },
-}));
+
 
 import {
   closeVerticalDramaEpisodeStageJobsQueue,

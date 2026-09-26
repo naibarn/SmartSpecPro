@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import structlog
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 
 logger = structlog.get_logger(__name__)
 
@@ -207,7 +207,7 @@ class IsolatedAudioWorkspace:
             logger.warning("workspace_cleanup_warning", path=str(self.workspace_dir), error=str(err))
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.workers.vertical_drama_audio_worker.execute_audio_separation_and_qc",
     bind=True,
     max_retries=1,
@@ -234,7 +234,7 @@ def execute_audio_separation_and_qc_task(
     )
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.workers.vertical_drama_audio_worker.execute_surgical_audio_repair",
     bind=True,
     max_retries=1,

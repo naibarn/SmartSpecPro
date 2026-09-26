@@ -6,7 +6,7 @@ import os
 
 import structlog
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
 from app.services.job_control_plane import dispatch_python_task
 from app.services.library_backfill_service import run_backfill_campaign_batch
@@ -20,7 +20,7 @@ BACKFILL_MAX_ENQUEUE = 25
 RESCHEDULE_SECONDS = 10
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     name="app.tasks.vector_db_backfill_tasks.run_vector_db_backfill_campaign",
     queue="media",

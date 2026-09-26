@@ -3,7 +3,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { getRedisClient } from "./redis";
 import {
   draftQualityQcProgressSchema,
@@ -600,39 +599,8 @@ export interface DraftQualityQcReconciliation {
   historicalResult?: VerticalDramaDraftQualityQcPublicResult;
 }
 
-async function removeQueuedBullmqJob(runId: string): Promise<void> {
-  let inspectionQueue = queue;
-  let ownsInspectionQueue = false;
-  try {
-    if (!inspectionQueue) {
-      const { Queue } = await import("bullmq");
-      inspectionQueue = new Queue(VERTICAL_DRAMA_DRAFT_QC_QUEUE, {
-        connection: getRedisClient(),
-      });
-      ownsInspectionQueue = true;
-    }
-    const direct = await inspectionQueue.getJob(runId);
-    if (direct) {
-      await direct.remove().catch(() => undefined);
-      return;
-    }
-    // Older jobs used an auto-generated BullMQ id. Remove only waiting-like
-    // jobs whose payload points at this run; active workers are stopped by the
-    // Redis state transition below and will not commit a late success.
-    for (const state of ["waiting", "delayed", "prioritized"]) {
-      const jobs = await inspectionQueue.getJobs([state], 0, -1);
-      for (const job of jobs) {
-        if (job?.data?.runId === runId)
-          await job.remove().catch(() => undefined);
-      }
-    }
-  } catch {
-    // Reconciliation must still close the durable state if BullMQ inspection
-    // is unavailable during a Redis/worker incident.
-  } finally {
-    if (ownsInspectionQueue)
-      await inspectionQueue?.close().catch(() => undefined);
-  }
+async function removeQueuedBullmqJob(runId: string): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
 async function markStaleQcRecord(
@@ -1013,58 +981,13 @@ let queue: any = null;
 let worker: any = null;
 
 async function defaultEnqueueBullmqJob(runId: string): Promise<void> {
-  if (!queue) throw new Error("Draft QC queue is not initialized");
-  // The QC loop performs its own bounded provider retries. Do not let BullMQ
-  // replay a paid run after a partially charged failure; the terminal record
-  // is retryable from the wizard, which starts a fresh idempotent run.
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { runId },
-    {
-      jobId: runId,
-      attempts: 1,
-      removeOnComplete: true,
-      removeOnFail: { age: 24 * 60 * 60 },
-    }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
-export async function initVerticalDramaDraftQualityQcQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_DRAFT_QC_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_DRAFT_QC_QUEUE,
-      async (job: any) =>
-        runVerticalDramaDraftQualityQcJob(job.data.runId, {
-          persistJobStatus: updateVerticalDramaDraftJob,
-        }),
-      { connection, concurrency: 2 }
-    );
-    worker.on("failed", (job: any, error: Error) =>
-      console.error(
-        `[${VERTICAL_DRAMA_DRAFT_QC_QUEUE}] job ${job?.id} failed`,
-        error.message
-      )
-    );
-  } catch (error) {
-    console.warn(
-      `[${VERTICAL_DRAMA_DRAFT_QC_QUEUE}] initialization skipped`,
-      error instanceof Error ? error.message : error
-    );
-  }
+export async function initVerticalDramaDraftQualityQcQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaDraftQualityQcQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaDraftQualityQcQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

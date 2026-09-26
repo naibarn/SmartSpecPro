@@ -1,33 +1,26 @@
 /**
  * Memory Maintenance Jobs
  *
- * Recurring BullMQ jobs for chat-memory housekeeping:
+ * Recurring worker_jobs schedules for chat-memory housekeeping:
  * - archive cleanup
  * - chunk cleanup
  * - orphaned embedding reconciliation
  * - memory eviction
  */
 
-import { Queue, Worker } from "bullmq";
 import { sql } from "drizzle-orm";
 
 import { getDb } from "../db";
-import { getRealtimeClient } from "../services/redisClients";
 import { cleanupExpiredArchives } from "../services/memoryArchiveService";
 import { enqueueEmbedding } from "../services/embeddingQueue";
 import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcDailyDue } from "./feature186SystemScheduler";
-import { upsertLegacyBullMqScheduler } from "../services/jobLegacyTransportAdapters";
 
-const QUEUE_NAME = "memory-maintenance";
 const RETENTION_CATEGORY = "chat_memory_retention";
 const MIN_ARCHIVE_RETENTION_DAYS = 7;
 const DEFAULT_RETENTION_DAYS = 90;
 const EMBEDDING_ORPHAN_LIMIT = 200;
 const MEMORY_EVICTION_THRESHOLD = 500;
 const MEMORY_EVICTION_SIMILARITY_THRESHOLD = 0.95;
-
-let maintenanceQueue: Queue | null = null;
-let maintenanceWorker: Worker | null = null;
 
 type QueryRow = Record<string, unknown>;
 
@@ -565,93 +558,26 @@ export async function executeMemoryEviction(): Promise<{
   return { usersProcessed, expiredDeleted, decayedDeleted, compacted, durationMs, warnings, errors };
 }
 
-async function runMaintenanceJob(jobName: string): Promise<void> {
-  switch (jobName) {
-    case "archive-cleanup":
-      await executeArchiveCleanup();
-      return;
-    case "chunk-cleanup":
-      await executeChunkCleanup();
-      return;
-    case "embedding-reconciliation":
-      await executeEmbeddingReconciliation();
-      return;
-    case "eviction":
-      await executeMemoryEviction();
-      return;
-    default:
-      console.warn("[memoryMaintenance] unknown_job", { jobName });
-  }
-}
-
 export async function initializeMemoryMaintenanceJobs(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    const schedules = [
+  const schedules = [
       ["memory-archive-cleanup", "memory.archive_cleanup", utcDailyDue(3, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:archive`] as const,
       ["memory-chunk-cleanup", "memory.chunk_cleanup", utcDailyDue(3, 30), (now: Date) => `${now.toISOString().slice(0, 10)}:chunk`] as const,
       ["memory-embedding-reconciliation", "memory.embedding_reconciliation", utcDailyDue(4, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:embedding`] as const,
       ["memory-eviction", "memory.eviction", utcDailyDue(5, 0), (now: Date) => `${now.toISOString().slice(0, 10)}:eviction`] as const,
-    ];
-    for (const [scheduleId, jobType, isDue, occurrenceKey] of schedules) {
-      startFeature186SystemSchedule({
-        scheduleId,
-        jobType,
-        executionClass: jobType === "memory.archive_cleanup" || jobType === "memory.chunk_cleanup" ? "short" : "long",
-        scheduleVersion: "1",
-        timezone: "UTC",
-        missedOccurrencePolicy: "coalesce",
-        isDue,
-        occurrenceKey,
-        intervalMs: 60_000,
-      });
-    }
-    return;
+  ];
+  for (const [scheduleId, jobType, isDue, occurrenceKey] of schedules) {
+    startFeature186SystemSchedule({
+      scheduleId,
+      jobType,
+      executionClass: jobType === "memory.archive_cleanup" || jobType === "memory.chunk_cleanup" ? "short" : "long",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue,
+      occurrenceKey,
+      intervalMs: 60_000,
+    });
   }
-  if (maintenanceQueue) return;
-
-  const redis = getRealtimeClient();
-
-  maintenanceQueue = new Queue(QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 50 },
-    },
-  });
-
-  await upsertLegacyBullMqScheduler(maintenanceQueue,
-    "memory-archive-cleanup",
-    { pattern: "0 3 * * *" },
-    { name: "archive-cleanup" },
-  );
-  await upsertLegacyBullMqScheduler(maintenanceQueue,
-    "memory-chunk-cleanup",
-    { pattern: "30 3 * * *" },
-    { name: "chunk-cleanup" },
-  );
-  await upsertLegacyBullMqScheduler(maintenanceQueue,
-    "memory-embedding-reconciliation",
-    { pattern: "0 4 * * *" },
-    { name: "embedding-reconciliation" },
-  );
-  await upsertLegacyBullMqScheduler(maintenanceQueue,
-    "memory-eviction",
-    { pattern: "0 5 * * *" },
-    { name: "eviction" },
-  );
-
-  maintenanceWorker = new Worker(
-    QUEUE_NAME,
-    async (job) => {
-      await runMaintenanceJob(job.name);
-    },
-    {
-      connection: redis.duplicate(),
-      concurrency: 1,
-    },
-  );
-
-  console.log("[memoryMaintenance] memory maintenance jobs initialized");
 }
 
 export async function shutdownMemoryMaintenanceJobs(): Promise<void> {
@@ -661,12 +587,4 @@ export async function shutdownMemoryMaintenanceJobs(): Promise<void> {
     "memory-embedding-reconciliation",
     "memory-eviction",
   ]) stopFeature186SystemSchedule(scheduleId);
-  if (maintenanceWorker) {
-    await maintenanceWorker.close();
-    maintenanceWorker = null;
-  }
-  if (maintenanceQueue) {
-    await maintenanceQueue.close();
-    maintenanceQueue = null;
-  }
 }

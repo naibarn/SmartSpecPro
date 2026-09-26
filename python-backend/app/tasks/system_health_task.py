@@ -12,7 +12,7 @@ from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ _MONITORED_SERVICES = {
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.system_health_task.monitor_system_health",
     bind=True,
     max_retries=0,

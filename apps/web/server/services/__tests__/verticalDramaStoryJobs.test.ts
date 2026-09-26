@@ -47,21 +47,7 @@ const mockQueueAdd = vi.fn().mockResolvedValue(undefined);
 const mockQueueGetJobs = vi.fn().mockResolvedValue([]);
 const mockQueueClose = vi.fn().mockResolvedValue(undefined);
 const mockWorkerClose = vi.fn().mockResolvedValue(undefined);
-vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(function MockQueue() {
-    return {
-      add: mockQueueAdd,
-      getJobs: mockQueueGetJobs,
-      close: mockQueueClose,
-    };
-  }),
-  Worker: vi.fn().mockImplementation(function MockWorker() {
-    return {
-      on: vi.fn(),
-      close: mockWorkerClose,
-    };
-  }),
-}));
+
 const bullmqRedisStore = new Map<string, string>();
 vi.mock("../redis", () => ({
   getRedisClient: () => ({

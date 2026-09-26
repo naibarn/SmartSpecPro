@@ -98,6 +98,7 @@ const createSchema = z.object({
     executionClass: z.enum(["short", "long", "external", "cpu", "gpu", "scheduled"]),
     priority: z.number().int().min(-1000).max(1000).optional(),
     input: z.record(z.unknown()),
+    scheduledAt: z.string().datetime({ offset: true }).optional(),
     retryPolicy: z.object({
       maxAttempts: z.number().int().min(1).max(20),
       baseDelayMs: z.number().int().min(0).max(900000),
@@ -151,9 +152,6 @@ export function registerJobControlPlaneRoutes(app: Express): void {
 
   app.post("/api/internal/job-control-plane/ready", async (req, res) => {
     if (!internalAuth(req, res)) return;
-    if (process.env.FEATURE_186_HARD_CUTOVER !== "true" || process.env.FEATURE_186_POSTGRES_PYTHON_WORKER !== "true") {
-      return res.status(503).json({ error: "POSTGRES_PULL_DISABLED" });
-    }
     const parsed = z.object({
       runtimeType: z.literal("python_job_worker"),
       limit: z.number().int().min(1).max(100).default(1),
@@ -269,7 +267,7 @@ export function registerJobControlPlaneRoutes(app: Express): void {
       requestedByUserId: z.number().int().positive().optional(),
     }).safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid latest-job request" });
-    if (process.env.FEATURE_186_HARD_CUTOVER === "true" && !parsed.data.tenantId) {
+    if (true && !parsed.data.tenantId) {
       return res.status(400).json({ error: "JOB_TENANT_REQUIRED" });
     }
     try {

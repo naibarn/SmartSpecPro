@@ -1,13 +1,10 @@
 """
-Celery task for rendering presentation decks to video, PDF, or image archives.
+worker_jobs task for rendering presentation decks to video, PDF, or image archives.
 
 Stages:
   1. Playwright screenshots of each slide              (0–75%)
   2. Format-specific post-processing (MP4/PDF/PNG/JPG) (75–90%)
   3. S3/R2 upload + presigned URL                     (90–100%)
-
-Worker startup (limited concurrency to prevent OOM from Playwright):
-  celery -A app.core.celery_app worker -Q presentation_export -c 2 --hostname=presentation@%h
 
 Worker configuration:
   JWT secret is resolved from `JWT_SECRET` env var, then `settings.JWT_SECRET`.
@@ -28,13 +25,12 @@ from typing import Any
 import jwt
 import pypdf
 import structlog
-from celery.exceptions import SoftTimeLimitExceeded
 from PIL import Image as PillowImage
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.services.generation.r2_storage import get_r2_storage
 from app.tasks.media_tasks import _run_async  # H-3: import canonical implementation
@@ -129,7 +125,7 @@ def _safe_delay_ms(v: object, default: int = 0) -> int:
 # ---------------------------------------------------------------------------
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     soft_time_limit=660,         # 11 min: raises SoftTimeLimitExceeded
     time_limit=720,              # 12 min: SIGKILL
@@ -207,7 +203,7 @@ def render_presentation(
         )
         return result
 
-    except SoftTimeLimitExceeded:
+    except TimeoutError:
         logger.warning("render_presentation_soft_time_limit_exceeded", deck_id=deck_id)
         raise
     except Exception as exc:
@@ -909,7 +905,7 @@ def _encode_mp4_with_optional_audio(
             "-movflags", "+faststart",
             output_path,
         ]
-        # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded
+        # M-2: timeout prevents subprocess blocking past worker_jobs execution timeout
         if runner:
             runner.run_command_sync(cmd, check=True, timeout=540)
         else:
@@ -988,7 +984,7 @@ def _encode_mp4_with_optional_audio(
         "-shortest",
         output_path,
     ]
-    # M-2: timeout prevents subprocess blocking past Celery SoftTimeLimitExceeded
+    # M-2: timeout prevents subprocess blocking past worker_jobs execution timeout
     if runner:
         runner.run_command_sync(cmd, check=True, timeout=540)
     else:

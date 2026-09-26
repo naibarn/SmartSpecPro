@@ -64,7 +64,7 @@ export async function runUnifiedJobControlPlaneReconcilerOnce(now = new Date()) 
   return result;
 }
 export async function initializeUnifiedJobControlPlaneReconcilerJob() {
-  const enabled = process.env.FEATURE_186_HARD_CUTOVER === "true"
+  const enabled = true
     || process.env.FEATURE_186_RECONCILER === "true";
   if (!enabled || intervalId) return;
   await runUnifiedJobControlPlaneReconcilerOnce().catch(error => {

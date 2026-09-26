@@ -69,8 +69,6 @@ class PostgresJobWorker:
 
 
 def main() -> None:
-    if os.getenv("FEATURE_186_HARD_CUTOVER") != "true" or os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") != "true":
-        raise RuntimeError("FEATURE_186_HARD_CUTOVER and FEATURE_186_POSTGRES_PYTHON_WORKER must both be true for the PostgreSQL worker")
     PostgresJobWorker(
         batch_size=int(os.getenv("FEATURE_186_PYTHON_WORKER_BATCH_SIZE", "10")),
         poll_interval_seconds=float(os.getenv("FEATURE_186_PYTHON_WORKER_POLL_SECONDS", "1")),

@@ -17,7 +17,6 @@ from unittest.mock import MagicMock, patch
 
 import pypdf
 import pytest
-from celery.exceptions import SoftTimeLimitExceeded
 from PIL import Image, ImageChops, ImageStat
 
 # ---------------------------------------------------------------------------
@@ -1332,7 +1331,7 @@ class TestTempDirCleanup:
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)
 
     def test_cleanup_on_soft_time_limit(self, monkeypatch, tmp_path):
-        """shutil.rmtree is called when SoftTimeLimitExceeded is raised."""
+        """shutil.rmtree is called when a render timeout is raised."""
         monkeypatch.setenv("JWT_SECRET", "test-secret-key-for-unit-tests")
         monkeypatch.setenv("INTERNAL_RENDER_BASE_URL", "http://localhost:3000")
 
@@ -1344,10 +1343,10 @@ class TestTempDirCleanup:
             patch("shutil.rmtree") as mock_rmtree,
             patch("tempfile.mkdtemp", return_value=str(tmp_path)),
         ):
-            mock_stage1.side_effect = SoftTimeLimitExceeded("timeout")
+            mock_stage1.side_effect = TimeoutError("timeout")
             from app.tasks.presentation_render import render_presentation
 
-            with pytest.raises(SoftTimeLimitExceeded):
+            with pytest.raises(TimeoutError):
                 render_presentation.run.__wrapped__.__func__(task_self, render_spec, "standard", "png")
 
         mock_rmtree.assert_called_once_with(str(tmp_path), ignore_errors=True)

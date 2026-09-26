@@ -9,7 +9,7 @@ from typing import Any
 import structlog
 from sqlalchemy import text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import AsyncSessionLocal
 from app.core.redis_client import get_cache_redis, get_realtime_redis
 from app.services.social.webhook_dedup import SocialWebhookDedupService
@@ -349,7 +349,7 @@ def _handle_social_webhook_failure(task_self, raw_event_id: int, exc: Exception)
     raise task_self.retry(exc=exc, countdown=countdown)
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.social_webhook_task.process_social_webhook_event",
     bind=True,
     max_retries=3,
@@ -366,7 +366,7 @@ def process_social_webhook_event(self, raw_event_id: int):
         return _handle_social_webhook_failure(self, raw_event_id, exc)
 
 
-@celery_app.task(name="app.tasks.social_webhook_task.cleanup_social_webhook_events", bind=True)
+@job_task_registry.task(name="app.tasks.social_webhook_task.cleanup_social_webhook_events", bind=True)
 def cleanup_social_webhook_events(self):
     return _run_async(_cleanup_social_webhook_events_async())
 

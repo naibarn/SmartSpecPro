@@ -235,7 +235,7 @@ async function dispatchPreviewMatchCaptureJob(input: {
   captureJobId: string;
   tenantId: string;
 }): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+  if (true) {
     throw new Error("CLOUDFLARE_CANONICAL_JOB_REQUIRED");
   }
   const { startDetachedStoryboardPreviewMatchCaptureWorker } = await import("./backgroundWorkerProcess");

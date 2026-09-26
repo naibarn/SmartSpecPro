@@ -1,11 +1,10 @@
 /**
- * Tests for webhookDispatchQueue (BullMQ-based dispatch)
+ * Tests for webhookDispatchQueue's worker_jobs executor.
  *
  * Covers: queue init/shutdown, worker processor for agency/chat/workflow,
  * credit idempotency, failure logging, UnrecoverableError on missing target.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { UnrecoverableError } from "bullmq";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -39,28 +38,6 @@ const {
 
 let capturedProcessor: any = null;
 let capturedOnFailed: ((job: any, err: Error) => void) | null = null;
-
-vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
-    add: mockQueueAdd,
-    close: mockQueueClose,
-  })),
-  Worker: vi.fn().mockImplementation((_name: any, processor: any) => {
-    capturedProcessor = processor;
-    return {
-      on: vi.fn().mockImplementation((event: string, cb: any) => {
-        if (event === "failed") capturedOnFailed = cb;
-      }),
-      close: mockWorkerClose,
-    };
-  }),
-  UnrecoverableError: class UnrecoverableError extends Error {
-    constructor(msg: string) {
-      super(msg);
-      this.name = "UnrecoverableError";
-    }
-  },
-}));
 
 vi.mock("../redisClients", () => ({
   getRealtimeClient: vi.fn(() => ({ duplicate: vi.fn(() => ({})) })),
@@ -130,8 +107,8 @@ function makeJob(overrides: Partial<WebhookDispatchJob> = {}): WebhookDispatchJo
   };
 }
 
-function makeBullMQJob(data: WebhookDispatchJob, overrides: Record<string, any> = {}) {
-  return { id: "job-1", data, attemptsMade: 1, opts: { attempts: 4 }, ...overrides };
+function makeExecution(data: WebhookDispatchJob, overrides: Record<string, any> = {}) {
+  return { id: "job-1", data, ...overrides };
 }
 
 function setupDb() {
@@ -152,48 +129,13 @@ describe("webhookDispatchQueue", () => {
     capturedOnFailed = null;
   });
 
-  describe("initWebhookDispatchQueue / closeWebhookDispatchQueue", () => {
-    it("creates Queue and Worker with correct name", async () => {
-      const { Queue, Worker } = await import("bullmq");
-      const { initWebhookDispatchQueue, closeWebhookDispatchQueue } =
-        await import("../webhookDispatchQueue");
-
-      await initWebhookDispatchQueue();
-      expect(Queue).toHaveBeenCalledWith("webhook-dispatch", expect.any(Object));
-      expect(Worker).toHaveBeenCalledWith("webhook-dispatch", expect.any(Function), expect.any(Object));
-
-      await closeWebhookDispatchQueue();
-      expect(mockWorkerClose).toHaveBeenCalled();
-      expect(mockQueueClose).toHaveBeenCalled();
-    });
-  });
-
-  describe("enqueueWebhookDispatch", () => {
-    it("adds job to queue with deterministic jobId", async () => {
-      const { initWebhookDispatchQueue, enqueueWebhookDispatch, closeWebhookDispatchQueue } =
-        await import("../webhookDispatchQueue");
-
-      await initWebhookDispatchQueue();
-      const job = makeJob();
-      await enqueueWebhookDispatch(job);
-
-      expect(mockQueueAdd).toHaveBeenCalledWith(
-        "dispatch",
-        job,
-        expect.objectContaining({ jobId: expect.stringContaining("wh-trig-uuid-1") }),
-      );
-
-      await closeWebhookDispatchQueue();
-    });
-  });
-
   describe("processWebhookDispatch — chat", () => {
     it("calls channelGateway.processMessageServerSide and logs success", async () => {
       setupDb();
       mockProcessMessageServerSide.mockResolvedValue(undefined);
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(makeJob({ targetType: "chat", targetConversationId: 99 }));
+      const job = makeExecution(makeJob({ targetType: "chat", targetConversationId: 99 }));
 
       await processWebhookDispatch(job as any);
 
@@ -213,7 +155,7 @@ describe("webhookDispatchQueue", () => {
       mockExecuteRun.mockResolvedValue({ runId: "run-abc-123", status: "completed", response: "OK" });
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(
+      const job = makeExecution(
         makeJob({ targetType: "agency", targetAgencyId: "agency-uuid", targetConversationId: undefined }),
       );
 
@@ -237,7 +179,7 @@ describe("webhookDispatchQueue", () => {
       });
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(
+      const job = makeExecution(
         makeJob({ targetType: "workflow", targetWorkflowId: 7, targetConversationId: undefined }),
       );
 
@@ -262,7 +204,7 @@ describe("webhookDispatchQueue", () => {
       });
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(
+      const job = makeExecution(
         makeJob({ targetType: "workflow", targetWorkflowId: 7, targetConversationId: undefined }),
       );
 
@@ -271,18 +213,18 @@ describe("webhookDispatchQueue", () => {
   });
 
   describe("processWebhookDispatch — no valid target", () => {
-    it("throws UnrecoverableError so BullMQ does not retry", async () => {
+    it("reports an invalid dispatch target as a permanent error", async () => {
       setupDb();
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(
+      const job = makeExecution(
         makeJob({
           targetType: "chat",
           targetConversationId: undefined, // missing required field
         }),
       );
 
-      await expect(processWebhookDispatch(job as any)).rejects.toThrow(UnrecoverableError);
+      await expect(processWebhookDispatch(job as any)).rejects.toThrow("No valid dispatch target");
     });
   });
 
@@ -292,7 +234,7 @@ describe("webhookDispatchQueue", () => {
       mockProcessMessageServerSide.mockResolvedValue(undefined);
 
       const { processWebhookDispatch } = await import("../webhookDispatchQueue");
-      const job = makeBullMQJob(makeJob(), { id: "unique-job-id-42" });
+      const job = makeExecution(makeJob(), { id: "unique-job-id-42" });
 
       await processWebhookDispatch(job as any);
 

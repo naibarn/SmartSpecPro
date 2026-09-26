@@ -70,10 +70,7 @@ class MockWorker {
   on = vi.fn();
 }
 
-vi.mock("bullmq", () => ({
-  Queue: MockQueue,
-  Worker: MockWorker,
-}));
+
 
 // Mock fetch
 const mockFetch = vi.fn();

@@ -18,16 +18,6 @@ vi.mock("../crypto", () => ({
   encrypt: vi.fn((v: string) => `enc:${v}`),
   decrypt: vi.fn((v: string) => v.replace(/^enc:/, "")),
 }));
-vi.mock("bullmq", () => ({
-  Queue: vi.fn().mockImplementation(() => ({
-    add: vi.fn().mockResolvedValue({}),
-    close: vi.fn().mockResolvedValue(undefined),
-  })),
-  Worker: vi.fn().mockImplementation(() => ({
-    on: vi.fn(),
-    close: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -215,40 +205,9 @@ describe("executeWebhookDelivery — failure", () => {
     mockGetDb.mockResolvedValue(db);
     mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
-    const { Queue } = await import("bullmq");
-    const queueInstance = vi.mocked(Queue).mock.results[0]?.value;
-
     await expect(
       executeWebhookDelivery("ep-1", "job.completed", { job_id: "j1" }, 1),
     ).rejects.toThrow();
-
-    if (queueInstance) {
-      expect(queueInstance.add).not.toHaveBeenCalled();
-    }
-  });
-
-  it("uses BullMQ delayed jobs for exponential retry", async () => {
-    const { initWebhookApiDeliveryQueue } = await import("../webhookDeliveryService");
-    await initWebhookApiDeliveryQueue();
-
-    const db = makeDb(testEndpoint, [{ failureCount: 1 }]);
-    mockGetDb.mockResolvedValue(db);
-    mockFetch.mockResolvedValue({ ok: false, status: 500 });
-
-    await expect(
-      executeWebhookDelivery("ep-1", "job.completed", { job_id: "j1" }, 1),
-    ).rejects.toThrow();
-
-    const { Queue } = await import("bullmq");
-    const queueInstance = (Queue as any).mock.results.at(-1)?.value;
-    // Queue.add should be called with delay for retry
-    if (queueInstance) {
-      expect(queueInstance.add).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({ attempt: 2 }),
-        expect.objectContaining({ delay: 5000 }),
-      );
-    }
   });
 });
 

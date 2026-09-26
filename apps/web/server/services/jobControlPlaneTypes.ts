@@ -171,6 +171,8 @@ export type JobDefinition = {
   input: Record<string, unknown>;
   idempotencyKey?: string;
   schedule?: ScheduleDefinition;
+  /** Earliest time the canonical outbox may publish this job. */
+  scheduledAt?: string;
   retryPolicy: RetryPolicy;
   timeoutPolicy: TimeoutPolicy;
   requiredCapabilities?: Record<string, unknown>;

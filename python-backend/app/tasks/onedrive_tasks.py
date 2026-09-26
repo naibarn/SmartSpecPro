@@ -14,9 +14,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import httpx
-from celery import shared_task
+from app.core.job_task_registry import job_task_registry
 
-from app.core.celery_app import celery_app
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
 logger = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ def _run_async(coro):
 
 # ── Initial Sync ─────────────────────────────────────────────────────────────
 
-@shared_task(name="onedrive.initial_sync", bind=True, max_retries=3)
+@job_task_registry.task(name="onedrive.initial_sync", bind=True, max_retries=3)
 def initial_onedrive_sync(self, user_id: int, tenant_id: str = ""):
     """Full initial scan of OneDrive via delta query."""
     _run_async(_initial_sync_async(self, user_id, tenant_id))
@@ -178,7 +177,7 @@ async def _initial_sync_async(task, user_id: int, tenant_id: str):
 
 # ── Incremental Change Processing ────────────────────────────────────────────
 
-@shared_task(name="onedrive.process_changes", bind=True, max_retries=3)
+@job_task_registry.task(name="onedrive.process_changes", bind=True, max_retries=3)
 def process_onedrive_changes(self, user_id: int, tenant_id: str = ""):
     """Process incremental changes via delta token."""
     _run_async(_process_changes_async(self, user_id, tenant_id))
@@ -688,7 +687,7 @@ async def _process_onedrive_index_async(job_id: int):
         return await process_onedrive_index_job(db, job_id)
 
 
-@celery_app.task(name="process_onedrive_index_job", bind=True, max_retries=3)
+@job_task_registry.task(name="process_onedrive_index_job", bind=True, max_retries=3)
 def process_onedrive_index_job_task(self, job_id: int):
     """Celery task for OneDrive file indexing pipeline."""
     logger.info("process_onedrive_index_started", extra={"job_id": job_id})
@@ -753,7 +752,7 @@ async def _download_onedrive_file(access_token: str, drive_item_id: str) -> tupl
 
 # ── Subscription Renewal ─────────────────────────────────────────────────────
 
-@shared_task(name="onedrive.renew_subscriptions")
+@job_task_registry.task(name="onedrive.renew_subscriptions")
 def renew_onedrive_subscriptions():
     """Renew expiring OneDrive webhook subscriptions."""
     _run_async(_renew_subscriptions_async())
@@ -799,7 +798,7 @@ async def _renew_subscriptions_async():
 
 # ── Edit Session Cleanup ─────────────────────────────────────────────────────
 
-@shared_task(name="onedrive.cleanup_edit_sessions")
+@job_task_registry.task(name="onedrive.cleanup_edit_sessions")
 def cleanup_expired_onedrive_edit_sessions():
     """Clean up expired OneDrive edit sessions."""
     _run_async(_cleanup_sessions_async())
@@ -828,7 +827,7 @@ async def _cleanup_sessions_async():
 
 # ── Disconnect Cleanup ───────────────────────────────────────────────────────
 
-@shared_task(name="onedrive.disconnect_cleanup")
+@job_task_registry.task(name="onedrive.disconnect_cleanup")
 def disconnect_onedrive_cleanup(user_id: int, tenant_id: str = ""):
     """Clean up after OneDrive disconnect."""
     _run_async(_disconnect_cleanup_async(user_id, tenant_id))
@@ -1300,7 +1299,7 @@ async def _remove_library_item(db, user_id: int, tenant_id: str, drive_item_id: 
 
 # ── Periodic Polling Fallback ─────────────────────────────────────────────────
 
-@celery_app.task(name="poll_onedrive_changes")
+@job_task_registry.task(name="poll_onedrive_changes")
 def poll_onedrive_changes_task():
     """Periodic fallback: process changes for all users with auto-sync enabled."""
     from sqlalchemy import text as sa_text

@@ -3,7 +3,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from celery.exceptions import Retry
+
+class Retry(Exception):
+    """Local stand-in for the former broker task retry signal."""
 
 from app.core import redis_client
 from app.services import kie_submission_rate_limiter as admission

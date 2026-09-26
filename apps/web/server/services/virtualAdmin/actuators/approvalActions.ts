@@ -7,38 +7,12 @@ import type { ActuatorFn } from "../types";
 const pauseQueue: ActuatorFn = async (params) => {
   const queueName = params.queueName as string;
   if (!queueName) return { success: false, message: "No queueName provided" };
-
-  try {
-    const { Queue } = await import("bullmq");
-    const { getRedisClient } = await import("../../redis");
-    const redis = getRedisClient();
-    if (!redis) return { success: false, message: "Redis not available" };
-
-    const queue = new Queue(queueName, { connection: redis as any });
-    await queue.pause();
-    await queue.close();
-    return { success: true, message: `Queue ${queueName} paused` };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Pause failed" };
-  }
+  return { success: false, message: "BullMQ queues are retired; manage canonical worker_jobs through its control plane" };
 };
 
 const restartCeleryWorker: ActuatorFn = async (params) => {
   const workerName = params.workerName as string | undefined;
-  try {
-    const res = await fetch("http://localhost:8000/api/internal/virtual-admin/restart-worker", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ worker_name: workerName }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (res.ok) {
-      return { success: true, message: `Worker restart initiated${workerName ? ` for ${workerName}` : ""}` };
-    }
-    return { success: false, message: `Restart failed: ${res.status}` };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Restart failed" };
-  }
+  return { success: false, message: `Celery workers are retired${workerName ? ` (${workerName})` : ""}` };
 };
 
 const disableProvider: ActuatorFn = async (params) => {
@@ -63,21 +37,7 @@ const disableProvider: ActuatorFn = async (params) => {
 const killStuckTask: ActuatorFn = async (params) => {
   const taskId = params.taskId as string;
   if (!taskId) return { success: false, message: "No taskId provided" };
-
-  try {
-    const res = await fetch("http://localhost:8000/api/internal/virtual-admin/revoke-task", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task_id: taskId, terminate: true }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      return { success: true, message: `Task ${taskId} revoked` };
-    }
-    return { success: false, message: `Revoke failed: ${res.status}` };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : "Revoke failed" };
-  }
+  return { success: false, message: "Legacy task revocation is retired; cancel the canonical worker_jobs record" };
 };
 
 const emergencyMaintenance: ActuatorFn = async (params) => {

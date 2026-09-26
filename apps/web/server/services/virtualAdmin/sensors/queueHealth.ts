@@ -29,8 +29,8 @@ const queueHealthSensor: Sensor = {
 
       const metrics: Record<string, number | string> = {};
       if (status.queues) {
-        for (const [name, info] of Object.entries(status.queues as Record<string, any>)) {
-          metrics[`queue_${name}_depth`] = info?.waiting ?? 0;
+        for (const queue of status.queues) {
+          metrics[`queue_${queue.name}_depth`] = queue.length;
         }
       }
       metrics.alertCount = alerts.length;

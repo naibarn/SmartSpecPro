@@ -6,6 +6,7 @@ not expose broker retry or result-backend state as business state.
 
 import os
 import re
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass
 from typing import Any
 
@@ -437,30 +438,7 @@ def dispatch_python_task(
     legacy_task: Any | None = None,
     legacy_task_id: str | None = None,
 ) -> TaskDispatchRef:
-    """Single Python producer boundary with an explicit compatibility mode."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") != "true":
-        if legacy_task is not None:
-            if not queue and countdown is None:
-                if legacy_task_id:
-                    result = legacy_task.apply_async(args=list(args), kwargs=kwargs or {}, task_id=legacy_task_id)
-                else:
-                    result = legacy_task.delay(*args, **(kwargs or {}))
-                return TaskDispatchRef(id=str(result.id), created=True)
-            options: dict[str, Any] = {}
-            if queue:
-                options["queue"] = queue
-            if countdown is not None:
-                options["countdown"] = max(0, int(countdown))
-            if legacy_task_id:
-                options["task_id"] = legacy_task_id
-            result = legacy_task.apply_async(args=list(args), kwargs=kwargs or {}, **options)
-            return TaskDispatchRef(id=str(result.id), created=True)
-        from app.core.celery_app import celery_app
-        options = {"queue": queue} if queue else {}
-        if countdown is not None:
-            options["countdown"] = max(0, int(countdown))
-        result = celery_app.send_task(task_name, args=list(args), kwargs=kwargs or {}, **options)
-        return TaskDispatchRef(id=str(result.id), created=True)
+    """Persist every Python task to the canonical worker_jobs control plane."""
 
     effective_tenant_id = str(tenant_id or os.getenv("FEATURE_186_SYSTEM_TENANT_ID", "")).strip()
     if not effective_tenant_id:
@@ -506,6 +484,10 @@ def dispatch_python_task(
         },
         "requiredCapabilities": {"queue": queue} if queue else {},
     }
+    if countdown is not None:
+        definition["scheduledAt"] = (
+            datetime.now(timezone.utc) + timedelta(seconds=max(0, int(countdown)))
+        ).isoformat()
     ref = JobControlPlaneClient().create(
         definition,
         tenant_id=effective_tenant_id,

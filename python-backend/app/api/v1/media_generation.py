@@ -1830,7 +1830,7 @@ async def generate_image_async(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
-    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    hard_cutover = True
     if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1961,7 +1961,7 @@ async def generate_video_async(
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    hard_cutover = True
     if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -2057,7 +2057,7 @@ async def generate_audio_async(
     Returns immediately with task_id for status polling.
     """
     _require_media_tenant_scope(request, current_user)
-    hard_cutover = os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
+    hard_cutover = True
     if not hard_cutover and not CELERY_ENABLED and not _is_inline_media_fallback_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

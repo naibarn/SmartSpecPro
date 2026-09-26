@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(tags=["Automation Copilot"])
 
-_REDIS_URL = getattr(settings, "CELERY_BROKER_URL", None) or "redis://localhost:6379/0"
+_REDIS_URL = settings.REDIS_URL
 _RESULT_TTL = 3600
 
 
@@ -43,7 +43,7 @@ def _assert_automation_enabled(tenant_id: str) -> None:
     hard mode would make PostgreSQL-pull execution depend on Redis again.
     Legacy Celery mode retains the historical Redis flag check.
     """
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         return
     r = _get_redis()
     flag = r.get(f"feature_flag:automationCopilot:{tenant_id}")
@@ -116,13 +116,6 @@ async def analyze(
     _assert_automation_enabled(body.tenant_id)
 
     task_id = f"auto-{uuid.uuid4().hex[:12]}"
-    if os.getenv("FEATURE_186_HARD_CUTOVER") != "true":
-        r.set(
-            f"automation:{task_id}",
-            json.dumps({"status": "queued", "tenant_id": body.tenant_id, "user_id": body.user_id}),
-            ex=_RESULT_TTL,
-        )
-
     dispatch_python_task(
         automation_analyze_task.name,
         args=(task_id, body.user_id, body.tenant_id, body.prompt),
@@ -142,7 +135,7 @@ async def get_status(
     _: None = Depends(_verify_internal_token),
 ):
     """Get automation task status."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.tasks.automation_copilot_task import get_status as get_canonical_status
 
         data = get_canonical_status(task_id, tenant_id=tenant_id)
@@ -262,7 +255,7 @@ async def cancel(
     _: None = Depends(_verify_internal_token),
 ):
     """Cancel a running automation task."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_control_plane import JobControlPlaneClient
         from app.tasks.automation_copilot_task import get_status as get_canonical_status
 

@@ -18,14 +18,14 @@ from urllib.parse import urlparse
 
 import redis
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.media_job_validators import validate_job_spec_security, validate_uri_no_ssrf
 
 # ========================================
 # Redis client for progress reporting
 # ========================================
 
-_redis_url = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 redis_client = redis.from_url(_redis_url)
 
 JOB_TTL = 86400  # 24h
@@ -838,7 +838,7 @@ def report_progress(
         "message": message,
         "metrics": metrics or {},
     }
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_execution_context import report_legacy_status
 
         report_legacy_status(job_id, status_data)
@@ -849,7 +849,7 @@ def report_progress(
 
 def report_done(job_id: str, result: dict):
     """Report job completion. Skips writing if the job was already canceled."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_execution_context import report_legacy_status
 
         report_legacy_status(job_id, {"jobId": job_id, "status": "done", "progress": 1.0, "result": result})
@@ -871,7 +871,7 @@ def report_done(job_id: str, result: dict):
 
 def report_error(job_id: str, code: str, message: str, details: dict | None = None):
     """Report job failure."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_execution_context import report_legacy_status
 
         report_legacy_status(job_id, {
@@ -2737,21 +2737,9 @@ async def _persist_render_to_db(
         await db.commit()
 
 
-@celery_app.task(bind=True, max_retries=2, time_limit=1800, soft_time_limit=1740)
+@job_task_registry.task(bind=True, max_retries=2, time_limit=1800, soft_time_limit=1740)
 def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
     """Execute a media job based on the Media Job Spec v0.1 contract."""
-
-    # The canonical claim/fence owns duplicate and cancellation decisions in
-    # hard cutover. Redis remains only a compatibility guard for legacy work.
-    if os.getenv("FEATURE_186_HARD_CUTOVER") != "true":
-        try:
-            current_raw = redis_client.get(f"media-job:{job_id}:status")
-            if current_raw:
-                current = json.loads(current_raw)
-                if current.get("status") in ("canceled", "error", "done"):
-                    return {"skipped": True, "reason": f"Job already {current['status']}"}
-        except Exception:
-            pass  # If Redis check fails, proceed with the job
 
     tmp_dir = tempfile.mkdtemp(prefix=f"mediajob_{job_id}_")
 

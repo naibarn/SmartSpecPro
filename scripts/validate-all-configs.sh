@@ -173,7 +173,6 @@ check_docker_compose() {
     log_step "Checking Docker Compose configurations..."
 
     local base_compose="${PROJECT_ROOT}/docker-compose.yml"
-    local media_compose="${PROJECT_ROOT}/docker-compose.media.yml"
 
     # Check base compose
     if [ -f "$base_compose" ]; then
@@ -195,26 +194,6 @@ check_docker_compose() {
         fi
     else
         log_error "Base docker-compose.yml not found"
-        ((VALIDATION_ERRORS++))
-    fi
-
-    # Check media compose
-    if [ -f "$media_compose" ]; then
-        # Check worker names
-        for worker in smartspec-celery-media smartspec-celery-beat smartspec-flower; do
-            if ! grep -q "container_name: $worker" "$media_compose"; then
-                log_error "Media worker $worker not found in docker-compose.media.yml"
-                ((VALIDATION_ERRORS++))
-            fi
-        done
-
-        # Check network
-        if ! grep -q "smartspecpro_default" "$media_compose"; then
-            log_error "docker-compose.media.yml not using correct network (smartspecpro_default)"
-            ((VALIDATION_ERRORS++))
-        fi
-    else
-        log_error "docker-compose.media.yml not found"
         ((VALIDATION_ERRORS++))
     fi
 

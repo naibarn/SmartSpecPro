@@ -1,33 +1,23 @@
 /**
- * Delivery Queue — BullMQ-based reliable outbound Telegram message delivery.
+ * Reliable outbound channel message delivery through worker_jobs.
  *
  * Provides retry logic, rate limiting, dead-letter handling, and delivery
  * status tracking via channel_messages table.
  */
 
-import { Queue, Worker, UnrecoverableError } from "bullmq";
-import type { Job } from "bullmq";
 import { eq, and } from "drizzle-orm";
 import type { DeliveryJob } from "@shared/channelTypes";
-import { getRealtimeClient } from "./redisClients";
 import { decrypt } from "./crypto";
 import { getDb } from "../db";
 import { channelMessages, conversationChannels, systemSettings } from "../../drizzle/schema";
 import { adapterRegistry } from "./channelAdapters/registry";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
-const QUEUE_NAME = "channel-delivery";
-const DLQ_NAME = "channel-delivery-dlq";
 const MAX_ATTEMPTS = 5;
 
 // ── Module state ─────────────────────────────────────────────────────────
-
-let deliveryQueue: Queue<DeliveryJob> | null = null;
-let dlq: Queue<DeliveryJob> | null = null;
-let deliveryWorker: Worker<DeliveryJob> | null = null;
 
 // Cache bot token to avoid re-reading settings on every job (Telegram backward compat)
 let cachedBotToken: string | null = null;
@@ -129,20 +119,20 @@ function isPermanentError(err: any): boolean {
 
 // ── Worker processor ─────────────────────────────────────────────────────
 
-async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
+export async function processDeliveryJob(job: { data: DeliveryJob; attemptsMade?: number }): Promise<void> {
   const { channelMessageId, chatId, text, parseMode, tenantId } = job.data;
   const channelType = job.data.channelType ?? "telegram"; // backward compat
 
   // Resolve adapter
   const adapter = adapterRegistry.get(channelType);
   if (!adapter) {
-    throw new UnrecoverableError(`No adapter for channel type: ${channelType}`);
+    throw new Error(`CHANNEL_DELIVERY_PERMANENT:NO_ADAPTER:${channelType}`);
   }
 
   // Resolve channel credentials
   const config = await resolveChannelConfig(channelType, tenantId);
   if (!config) {
-    throw new UnrecoverableError(`Channel credentials not available for: ${channelType}`);
+    throw new Error(`CHANNEL_DELIVERY_PERMANENT:CREDENTIALS_UNAVAILABLE:${channelType}`);
   }
 
   const db = await getDb();
@@ -160,7 +150,7 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
       .limit(1);
 
     if (!msgRecord) {
-      throw new UnrecoverableError("Channel message record not found (deleted)");
+      throw new Error("CHANNEL_DELIVERY_PERMANENT:MESSAGE_RECORD_NOT_FOUND");
     }
     if (msgRecord.deliveryStatus === "sent") {
       return; // Already delivered — idempotent skip
@@ -178,7 +168,7 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
           .update(channelMessages)
           .set({ deliveryStatus: "failed", failureCode: "connection_revoked" })
           .where(eq(channelMessages.id, channelMessageId));
-        throw new UnrecoverableError("Connection revoked — delivery cancelled");
+        throw new Error("CHANNEL_DELIVERY_PERMANENT:CONNECTION_REVOKED");
       }
     }
   }
@@ -194,7 +184,7 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
         .set({
           deliveryStatus: "sent",
           deliveredAt: new Date(),
-          attemptCount: job.attemptsMade + 1,
+          attemptCount: (job.attemptsMade ?? 0) + 1,
           lastAttemptAt: new Date(),
           ...(externalMessageId ? { externalMessageId } : {}),
         })
@@ -207,7 +197,7 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
         await db
           .update(channelMessages)
           .set({
-            attemptCount: job.attemptsMade + 1,
+            attemptCount: (job.attemptsMade ?? 0) + 1,
             lastAttemptAt: new Date(),
           })
           .where(eq(channelMessages.id, channelMessageId));
@@ -233,10 +223,10 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
           // Non-critical
         }
       }
-      throw new UnrecoverableError(err.message);
+      throw new Error(`CHANNEL_DELIVERY_PERMANENT:${err.message}`);
     }
 
-    // Transient error — re-throw for BullMQ retry
+    // Transient errors are classified and retried by worker_jobs.
     throw err;
   }
 }
@@ -244,83 +234,13 @@ async function processDeliveryJob(job: Job<DeliveryJob>): Promise<void> {
 // ── Initialization ───────────────────────────────────────────────────────
 
 export async function initDeliveryQueue(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    console.info("[DeliveryQueue] skipped; Feature 186 control-plane adapter is active");
-    return;
-  }
-  const redis = getRealtimeClient();
-
-  deliveryQueue = new Queue<DeliveryJob>(QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      attempts: MAX_ATTEMPTS,
-      backoff: { type: "exponential", delay: 1000 },
-      removeOnComplete: 1000,
-      removeOnFail: 5000,
-    },
-  });
-
-  dlq = new Queue<DeliveryJob>(DLQ_NAME, {
-    connection: redis.duplicate(),
-  });
-
-  deliveryWorker = new Worker<DeliveryJob>(
-    QUEUE_NAME,
-    processDeliveryJob,
-    {
-      connection: redis.duplicate(),
-      concurrency: 10,
-      limiter: { max: 25, duration: 1000 },
-    },
-  );
-
-  // DLQ handler: when all retries exhausted
-  deliveryWorker.on("failed", async (job, err) => {
-    if (!job) return;
-
-    const maxAttempts = job.opts?.attempts ?? MAX_ATTEMPTS;
-    const isExhausted = job.attemptsMade >= maxAttempts;
-    const isUnrecoverable = err instanceof UnrecoverableError;
-
-    if (!isExhausted && !isUnrecoverable) return;
-
-    // Move to DLQ
-    try {
-      await dlq?.add("dead-letter", job.data, {
-        removeOnComplete: 5000,
-      });
-    } catch {
-      console.error("[DeliveryQueue] Failed to add to DLQ:", job.id);
-    }
-
-    // Update status if not already marked failed
-    if (isExhausted && !isUnrecoverable) {
-      const db = await getDb();
-      if (db) {
-        try {
-          await db
-            .update(channelMessages)
-            .set({
-              deliveryStatus: "failed",
-              failureCode: "max_retries_exhausted",
-              failureReason: err.message,
-            })
-            .where(eq(channelMessages.id, job.data.channelMessageId));
-        } catch {
-          // Non-critical
-        }
-      }
-    }
-  });
-
-  console.log("[DeliveryQueue] Initialized with concurrency=10, rate=25/s");
+  console.info("[DeliveryQueue] execution is owned by worker_jobs");
 }
 
 // ── Enqueue ──────────────────────────────────────────────────────────────
 
 export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    await createControlPlaneJob({
+  await createControlPlaneJob({
       context: {
         tenantId: job.tenantId,
         actorType: "system",
@@ -336,51 +256,12 @@ export async function enqueueDelivery(job: DeliveryJob): Promise<void> {
         retryPolicy: { maxAttempts: MAX_ATTEMPTS, baseDelayMs: 1000, maxDelayMs: 60000, jitter: "bounded", deadlineMs: 3600000, allowedErrorClasses: ["retryable", "timeout", "unavailable"] },
         timeoutPolicy: { softTimeoutMs: 30000, hardTimeoutMs: 120000 },
       },
-    });
-    return;
-  }
-  if (!deliveryQueue) {
-    console.warn("[DeliveryQueue] Queue not initialized, skipping delivery");
-    return;
-  }
-
-  // Idempotency: skip if message already sent
-  try {
-    const dbConn = await getDb();
-    if (dbConn) {
-      const [existing] = await dbConn
-        .select({ deliveryStatus: channelMessages.deliveryStatus })
-        .from(channelMessages)
-        .where(eq(channelMessages.id, job.channelMessageId))
-        .limit(1);
-      if (existing?.deliveryStatus === "sent") {
-        return; // Already delivered
-      }
-    }
-  } catch {
-    // Non-critical — proceed with enqueue
-  }
-
-  await publishLegacyBullMqJob(deliveryQueue, "deliver", job, {
-    jobId: `ch-deliver-${job.channelMessageId}`,
   });
 }
 
 // ── Shutdown ─────────────────────────────────────────────────────────────
 
 export async function closeDeliveryQueue(): Promise<void> {
-  if (deliveryWorker) {
-    await deliveryWorker.close();
-    deliveryWorker = null;
-  }
-  if (deliveryQueue) {
-    await deliveryQueue.close();
-    deliveryQueue = null;
-  }
-  if (dlq) {
-    await dlq.close();
-    dlq = null;
-  }
   cachedBotToken = null;
   console.log("[DeliveryQueue] Shut down");
 }

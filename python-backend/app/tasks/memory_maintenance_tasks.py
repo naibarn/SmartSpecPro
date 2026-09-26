@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import create_engine, text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
@@ -110,6 +110,6 @@ def rebuild_hnsw_indexes() -> dict[str, object]:
         }
 
 
-@celery_app.task(name="memory.rebuild_hnsw_indexes")
+@job_task_registry.task(name="memory.rebuild_hnsw_indexes")
 def rebuild_hnsw_indexes_task() -> dict[str, object]:
     return rebuild_hnsw_indexes()

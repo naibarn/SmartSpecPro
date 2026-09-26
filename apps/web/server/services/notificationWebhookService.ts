@@ -2,18 +2,16 @@
  * Notification Webhook Delivery Service
  *
  * Handles SSRF-safe webhook delivery with HMAC-SHA256 signing,
- * BullMQ-based retry logic, and automatic disable after consecutive failures.
+ * worker_jobs-based retry logic, and automatic disable after consecutive failures.
  */
 
 import crypto from "node:crypto";
 import dns from "node:dns/promises";
-import { Queue, Worker } from "bullmq";
 import { eq, and, or, isNull, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { notificationWebhooks } from "../../drizzle/schema";
 import { encrypt, decrypt } from "./crypto";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 
 // ─── Types ───
 
@@ -157,22 +155,6 @@ export function computeSignature(
   return crypto.createHmac("sha256", secret).update(material).digest("hex");
 }
 
-// ─── BullMQ Queue ───
-
-let webhookQueue: Queue | null = null;
-let webhookWorker: Worker | null = null;
-
-async function getWebhookQueue(): Promise<Queue> {
-  if (!webhookQueue) {
-    const { getRealtimeClient } = await import("./redisClients");
-    const redis = getRealtimeClient();
-    webhookQueue = new Queue("webhook-delivery", {
-      connection: redis.duplicate(),
-    });
-  }
-  return webhookQueue;
-}
-
 /**
  * Enqueue a webhook delivery job. Fire-and-forget: errors are logged but not thrown.
  */
@@ -181,8 +163,7 @@ export async function enqueueWebhookDelivery(
   payload: WebhookPayload
 ): Promise<void> {
   try {
-    if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-      const db = getDb();
+    const db = getDb();
       const [webhook] = await db
         .select({ tenantId: notificationWebhooks.tenantId })
         .from(notificationWebhooks)
@@ -208,21 +189,6 @@ export async function enqueueWebhookDelivery(
         },
       });
       return;
-    }
-    const queue = await getWebhookQueue();
-    await publishLegacyBullMqJob(queue,
-      "webhook-deliver",
-      { webhookId, payload },
-      {
-        attempts: 3,
-        backoff: {
-          type: "exponential",
-          delay: 5000,
-        },
-        removeOnComplete: { age: 86400 },
-        removeOnFail: { age: 604800 },
-      }
-    );
   } catch (err) {
     console.error("[WebhookService] enqueue_failed", {
       webhookId,
@@ -489,41 +455,9 @@ export async function findMatchingWebhooks(
 // ─── Worker Initialization ───
 
 export async function initWebhookDeliveryWorker(): Promise<void> {
-  if (webhookWorker) return;
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") return;
-
-  const { getRealtimeClient } = await import("../services/redisClients");
-  const redis = getRealtimeClient();
-
-  webhookWorker = new Worker(
-    "webhook-delivery",
-    async (job) => {
-      const { webhookId, payload } = job.data;
-      await deliverWebhook(webhookId, payload);
-    },
-    {
-      connection: redis.duplicate(),
-      concurrency: 5,
-    }
-  );
-
-  webhookWorker.on("failed", (job, err) => {
-    console.warn("[WebhookService] worker_job_failed", {
-      jobId: job?.id,
-      webhookId: job?.data?.webhookId,
-      error: err.message,
-      attemptsMade: job?.attemptsMade,
-    });
-  });
+  // Execution is registered as notification.webhook_delivery in worker_jobs.
 }
 
 export async function shutdownWebhookDeliveryWorker(): Promise<void> {
-  if (webhookWorker) {
-    await webhookWorker.close();
-    webhookWorker = null;
-  }
-  if (webhookQueue) {
-    await webhookQueue.close();
-    webhookQueue = null;
-  }
+  // The canonical worker lifecycle is managed independently.
 }

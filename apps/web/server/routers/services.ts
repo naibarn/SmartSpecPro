@@ -85,28 +85,6 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
     description: 'Reverse proxy with HTTPS (optional)'
   },
 
-  // Media Processing (Docker containers via docker-compose.media.yml)
-  {
-    id: 'smartspec-celery-media', name: 'celery-media', displayName: 'Celery Media Worker',
-    ports: [], type: 'docker',
-    description: 'API-bound media generation tasks (2 CPUs, 3GB)'
-  },
-  {
-    id: 'smartspec-celery-video', name: 'celery-video', displayName: 'Celery Video Worker',
-    ports: [], type: 'docker',
-    description: 'FFmpeg video rendering tasks (4 CPUs, 8GB)'
-  },
-  {
-    id: 'smartspec-celery-beat', name: 'celery-beat', displayName: 'Celery Beat',
-    ports: [], type: 'docker',
-    description: 'Periodic task scheduler (cleanup, retry)'
-  },
-  {
-    id: 'smartspec-flower', name: 'flower', displayName: 'Flower Dashboard',
-    ports: ['5555'], type: 'docker',
-    description: 'Celery monitoring UI → http://localhost:5555'
-  },
-
 ];
 
 export interface ServiceStatus {

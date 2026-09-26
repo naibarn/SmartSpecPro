@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({ getDb: mockGetDb }));
 vi.mock("../jobControlPlaneGateway", () => ({ createControlPlaneJob: mockCreateControlPlaneJob }));
 vi.mock("../redisClients", () => ({ getRealtimeClient: vi.fn(() => ({ publish: vi.fn() })) }));
 vi.mock("../crypto", () => ({ encrypt: vi.fn(), decrypt: vi.fn((value: string) => value) }));
-vi.mock("bullmq", () => ({ Queue: vi.fn(), Worker: vi.fn() }));
+
 
 import { dispatchWebhookEvent } from "../webhookDeliveryService";
 

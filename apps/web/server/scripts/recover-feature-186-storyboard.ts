@@ -14,7 +14,6 @@ function argument(name: string): string {
 }
 
 function assertHarnessMode(): void {
-  if (process.env.FEATURE_186_HARD_CUTOVER !== "true") throw new Error("FEATURE_186_HARD_CUTOVER must be true");
   if (process.env.FEATURE_186_POSTGRES_PULL_HARNESS !== "true" || process.env.NODE_ENV === "production") {
     throw new Error("FEATURE_186_POSTGRES_PULL_HARNESS must be explicitly enabled outside production");
   }

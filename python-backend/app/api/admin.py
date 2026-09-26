@@ -1419,7 +1419,7 @@ async def trigger_vectordb_reindex(
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger a full reindex of all library items via Celery."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_control_plane import JobControlPlaneClient, dispatch_python_task
 
         baseline_job_id = int(await db.scalar(select(func.max(LibraryIndexJob.id))) or 0)
@@ -1442,7 +1442,7 @@ async def trigger_vectordb_reindex(
 
     import redis
     from app.tasks.media_tasks import reindex_all_library_task
-    from app.services.legacy_task_status import read_legacy_task_status
+    from app.services.worker_job_status import read_worker_job_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -1451,7 +1451,7 @@ async def trigger_vectordb_reindex(
     if existing_task_id:
         existing_task_id = existing_task_id.decode() if isinstance(existing_task_id, bytes) else existing_task_id
         existing_batch = _match_reindex_batch_metadata(existing_batch, task_id=str(existing_task_id))
-        result = read_legacy_task_status(existing_task_id)
+        result = read_worker_job_status(existing_task_id)
         existing_summary = await _build_reindex_batch_summary(db, existing_batch)
         existing_task_result = result.result if isinstance(result.result, dict) else None
         if _determine_reindex_status(
@@ -1503,7 +1503,7 @@ async def get_vectordb_reindex_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Check the status of the current reindex job."""
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         from app.services.job_control_plane import JobControlPlaneClient
 
         task_id = await asyncio.to_thread(
@@ -1533,7 +1533,7 @@ async def get_vectordb_reindex_status(
         }
 
     import redis
-    from app.services.legacy_task_status import read_legacy_task_status
+    from app.services.worker_job_status import read_worker_job_status
 
     redis_url = settings.REDIS_URL or "redis://localhost:6379/0"
     r = redis.from_url(redis_url)
@@ -1545,7 +1545,7 @@ async def get_vectordb_reindex_status(
 
     task_id = task_id.decode() if isinstance(task_id, bytes) else task_id
     batch_metadata = _match_reindex_batch_metadata(batch_metadata, task_id=str(task_id))
-    result = read_legacy_task_status(task_id)
+    result = read_worker_job_status(task_id)
     batch_summary = await _build_reindex_batch_summary(db, batch_metadata)
     task_result = result.result if isinstance(result.result, dict) else None
     merged_batch_metadata = _merge_reindex_batch_outcome(batch_metadata, task_result)

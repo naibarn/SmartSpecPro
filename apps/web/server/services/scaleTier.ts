@@ -64,9 +64,6 @@ export interface ScaleTierConfig {
   // Redis
   redisMaxmemoryMb: number;
 
-  // Celery (localhost only)
-  celeryMediaConcurrency: number;
-  celeryVideoConcurrency: number;
 
   // Cloudflare deployment budget hints
   cloudflareNodeMinInstances: number;
@@ -108,8 +105,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxApiLimitRate: "15r/s",
     nginxWebLimitRate: "30r/s",
     redisMaxmemoryMb: 128,
-    celeryMediaConcurrency: 2,
-    celeryVideoConcurrency: 1,
     cloudflareNodeMinInstances: 0,
     cloudflareNodeMaxInstances: 2,
     cloudflareNodeCpu: "1",
@@ -147,8 +142,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxApiLimitRate: "30r/s",
     nginxWebLimitRate: "60r/s",
     redisMaxmemoryMb: 256,
-    celeryMediaConcurrency: 4,
-    celeryVideoConcurrency: 2,
     cloudflareNodeMinInstances: 1,
     cloudflareNodeMaxInstances: 3,
     cloudflareNodeCpu: "1",
@@ -186,8 +179,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxApiLimitRate: "60r/s",
     nginxWebLimitRate: "120r/s",
     redisMaxmemoryMb: 512,
-    celeryMediaConcurrency: 6,
-    celeryVideoConcurrency: 3,
     cloudflareNodeMinInstances: 1,
     cloudflareNodeMaxInstances: 5,
     cloudflareNodeCpu: "2",
@@ -225,8 +216,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxApiLimitRate: "100r/s",
     nginxWebLimitRate: "200r/s",
     redisMaxmemoryMb: 1024,
-    celeryMediaConcurrency: 8,
-    celeryVideoConcurrency: 4,
     cloudflareNodeMinInstances: 2,
     cloudflareNodeMaxInstances: 8,
     cloudflareNodeCpu: "2",
@@ -264,8 +253,6 @@ export const SCALE_TIERS: Record<ScaleTierId, ScaleTierConfig> = {
     nginxApiLimitRate: "200r/s",
     nginxWebLimitRate: "400r/s",
     redisMaxmemoryMb: 2048,
-    celeryMediaConcurrency: 12,
-    celeryVideoConcurrency: 6,
     cloudflareNodeMinInstances: 3,
     cloudflareNodeMaxInstances: 15,
     cloudflareNodeCpu: "4",
@@ -311,8 +298,6 @@ function validateTierConfig(tier: ScaleTierConfig): void {
     { value: tier.nodeLlmRpm, min: 1, max: 10000, name: "nodeLlmRpm" },
     { value: tier.nodeMcpRpm, min: 1, max: 10000, name: "nodeMcpRpm" },
     { value: tier.pythonRateLimitPerMin, min: 1, max: 10000, name: "pythonRateLimitPerMin" },
-    { value: tier.celeryMediaConcurrency, min: 1, max: 32, name: "celeryMediaConcurrency" },
-    { value: tier.celeryVideoConcurrency, min: 1, max: 16, name: "celeryVideoConcurrency" },
     { value: tier.cloudflareNodeMaxInstances, min: 1, max: 100, name: "cloudflareNodeMaxInstances" },
     { value: tier.cloudflareNodeMinInstances, min: 0, max: 50, name: "cloudflareNodeMinInstances" },
     { value: tier.cloudflareNodeConcurrency, min: 1, max: 1000, name: "cloudflareNodeConcurrency" },

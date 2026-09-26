@@ -84,6 +84,7 @@ function hashInput(definition: JobDefinition): Record<string, unknown> {
     priority: definition.priority ?? 0,
     input: definition.input,
     schedule: definition.schedule ?? null,
+    scheduledAt: definition.scheduledAt ?? null,
     retryPolicy: definition.retryPolicy,
     timeoutPolicy: definition.timeoutPolicy,
     requiredCapabilities: definition.requiredCapabilities ?? {},
@@ -108,6 +109,9 @@ export function validateJobDefinition(definition: JobDefinition): void {
   }
   if (definition.requestedByUserId !== undefined && (!Number.isSafeInteger(definition.requestedByUserId) || definition.requestedByUserId <= 0)) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "requestedByUserId must be a positive integer");
+  }
+  if (definition.scheduledAt !== undefined && (typeof definition.scheduledAt !== "string" || !Number.isFinite(Date.parse(definition.scheduledAt)))) {
+    throw new JobControlPlaneError("JOB_SCHEDULED_AT_INVALID", "scheduledAt must be a valid ISO timestamp");
   }
   if (!Number.isInteger(definition.priority ?? 0)) {
     throw new JobControlPlaneError("JOB_DEFINITION_INVALID", "priority must be an integer");

@@ -9,7 +9,7 @@ from typing import Any
 import structlog
 from sqlalchemy import text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import get_db_context
 from app.core.smartspecweb_crypto import decrypt_smartspecweb
 from app.services.social.exceptions import MetaApiError, PermissionDeniedError, RateLimitExceededError, TikTokApiError, TokenExpiredError, YouTubeApiError
@@ -259,7 +259,7 @@ async def publish_scheduled_posts_async() -> dict[str, int]:
     }
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.social_publish_task.publish_scheduled_posts",
     bind=True,
     max_retries=3,

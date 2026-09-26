@@ -50,7 +50,7 @@ export async function runGDriveSessionCleanup(): Promise<void> {
 }
 
 export async function initializeGDriveCleanupJob(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+  if (true) {
     startFeature186SystemSchedule({
       scheduleId: "gdrive-edit-session-cleanup",
       jobType: "gdrive.edit_session_cleanup",

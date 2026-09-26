@@ -12,8 +12,6 @@ export const CLOUDFLARE_HARD_CUTOVER_FLAG =
   "FEATURE_186_CLOUDFLARE_HARD_CUTOVER" as const;
 export const POSTGRES_PULL_HARNESS_FLAG =
   "FEATURE_186_POSTGRES_PULL_HARNESS" as const;
-export const FEATURE_186_HARD_CUTOVER_FLAG =
-  "FEATURE_186_HARD_CUTOVER" as const;
 
 export type Feature186RuntimeReadiness = {
   target: typeof CLOUDFLARE_RUNTIME_TARGET;
@@ -38,7 +36,7 @@ export type Feature186RuntimeReadiness = {
  * run the same canonical envelope while Cloudflare migration is in progress.
  */
 export function isFeature186HardCutoverEnabled(): boolean {
-  return process.env[FEATURE_186_HARD_CUTOVER_FLAG] === "true";
+  return true;
 }
 
 /**

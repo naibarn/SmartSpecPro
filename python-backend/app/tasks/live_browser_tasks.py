@@ -9,7 +9,7 @@ from typing import Any
 
 from redis import Redis
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.services.live_browser_maintenance import (
     assess_live_browser_provider_readiness,
@@ -333,7 +333,7 @@ def inspect_live_browser_readiness_snapshot(
     }
 
 
-@celery_app.task(name="app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot")
+@job_task_registry.task(name="app.tasks.live_browser_tasks.publish_live_browser_readiness_snapshot")
 def publish_live_browser_readiness_snapshot() -> dict[str, Any]:
     redis_client = _get_sync_redis()
     telemetry = RedisBackedLiveBrowserTelemetry(redis_client)
@@ -375,14 +375,14 @@ def publish_live_browser_readiness_snapshot() -> dict[str, Any]:
     return snapshot
 
 
-@celery_app.task(name="app.tasks.live_browser_tasks.run_live_browser_maintenance")
+@job_task_registry.task(name="app.tasks.live_browser_tasks.run_live_browser_maintenance")
 def run_live_browser_maintenance_task() -> dict[str, int]:
     result = run_live_browser_maintenance_job()
     logger.info("live_browser_maintenance_completed", extra=result)
     return result
 
 
-@celery_app.task(name="app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot")
+@job_task_registry.task(name="app.tasks.live_browser_tasks.watch_live_browser_readiness_snapshot")
 def watch_live_browser_readiness_snapshot() -> dict[str, Any]:
     result = inspect_live_browser_readiness_snapshot()
     if result["healthy"]:

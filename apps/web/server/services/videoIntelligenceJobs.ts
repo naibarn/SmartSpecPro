@@ -45,7 +45,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { debugError } from "../_core/logger";
 import {
   armVideoIntelligenceRegistrationCheck,
@@ -542,22 +541,7 @@ let queue: any = null;
 let worker: any = null;
 
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(`${VIDEO_INTELLIGENCE_JOBS_QUEUE} queue is not initialized`);
-  }
-  // Custom job id (`jobId`, a `randomUUID()` value with no `:`, so it is
-  // always a valid BullMQ custom id) — a prerequisite for a safe sweep
-  // re-enqueue: BullMQ ignores an `add` for an existing custom id, so a
-  // sweep re-enqueue of a merely-backlogged job can never execute the same
-  // job twice. `attempts: 1`: the worker body never rethrows, so a retry
-  // could only fire on a genuine crash, and blind redelivery of an LLM
-  // stage costs real credits.
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    { jobId, attempts: 1, removeOnComplete: true, removeOnFail: true },
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -765,74 +749,12 @@ export interface VideoIntelligenceJobsQueueInitDependencies {
  */
 export async function initVideoIntelligenceJobsQueue(
   dependencies?: VideoIntelligenceJobsQueueInitDependencies,
-): Promise<void> {
-  const sweep = dependencies?.sweep ?? (() => sweepOrphanedVideoIntelligenceJobs());
-  // Once the canonical video.intelligence job is enabled, lease expiry and
-  // retry recovery belong to PostgreSQL. The old Redis scan/re-enqueue path
-  // would otherwise race the outbox and could execute the same provider work
-  // twice. Lane-A render recovery below is a separate worker-runtime path and
-  // remains armed independently.
-  if (!isFeature186HardCutoverEnabled()) startOrphanSweep(sweep);
-
-  // Lane-A render orphan sweep — armed alongside (never gated by) the
-  // BullMQ/Redis init below, same reasoning as the VI-job sweep: a web
-  // process restart mid-render is exactly the failure this heals, and it
-  // must never depend on BullMQ/Redis having initialized successfully.
-  const laneARenderSweep = dependencies?.laneARenderSweep ?? (() => sweepOrphanedLaneARenderJobs());
-  startLaneARenderOrphanSweep(laneARenderSweep);
-
-  // Armed BEFORE (and regardless of) BullMQ init succeeding, same reasoning
-  // as the sweep above — the boot self-check matters most when BullMQ is
-  // broken, since that is exactly when registration never happens
-  // (section-08 §6.4).
-  armVideoIntelligenceRegistrationCheck();
-
-  if (isFeature186HardCutoverEnabled()) return;
-
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VIDEO_INTELLIGENCE_JOBS_QUEUE, { connection });
-    worker = new Worker(
-      VIDEO_INTELLIGENCE_JOBS_QUEUE,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (bullJob: any) => {
-        const { runVideoIntelligenceJobExecutor } = await import("../routers/videoProjects");
-        await runVideoIntelligenceJob(bullJob.data.jobId, runVideoIntelligenceJobExecutor);
-      },
-      { connection, concurrency: VIDEO_INTELLIGENCE_JOBS_WORKER_CONCURRENCY },
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    worker.on("failed", (bullJob: any, err: Error) => {
-      console.error(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] Job ${bullJob?.id} failed:`, err.message);
-    });
-    console.log(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] queue + worker registered`);
-    markVideoIntelligenceQueueRegistered({ workerConcurrency: VIDEO_INTELLIGENCE_JOBS_WORKER_CONCURRENCY });
-  } catch (err) {
-    console.warn(`[${VIDEO_INTELLIGENCE_JOBS_QUEUE}] BullMQ initialization skipped:`, (err as Error).message);
-  }
+): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVideoIntelligenceJobsQueue(): Promise<void> {
-  if (sweepTimer) {
-    clearInterval(sweepTimer);
-    sweepTimer = null;
-  }
-  if (laneARenderSweepTimer) {
-    clearInterval(laneARenderSweepTimer);
-    laneARenderSweepTimer = null;
-  }
-  clearVideoIntelligenceRegistrationCheck();
-  try {
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // ignore
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVideoIntelligenceJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
 /* -------------------------------------------------------------------------- */

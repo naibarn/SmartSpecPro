@@ -1,6 +1,7 @@
 """Virtual Admin (System Guardian) internal endpoints."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import secrets
@@ -32,98 +33,56 @@ def _require_internal_access(request: Request) -> None:
             raise HTTPException(status_code=401, detail="Invalid virtual admin key")
 
 
-@router.get("/celery-health")
-async def celery_health(request: Request) -> dict[str, Any]:
-    """Return legacy health only before hard cutover; Cloudflare is production-only after it."""
+@router.get("/worker-jobs-health")
+async def worker_jobs_health(request: Request) -> dict[str, Any]:
+    """Report canonical worker_jobs backlog; no broker inspection is used."""
     _require_internal_access(request)
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        return {
-            "runtime": "cloudflare",
-            "retired": "celery",
-            "workers": 0,
-            "activeTasks": 0,
-            "queueLengths": {},
-            "healthy": True,
-        }
-    try:
-        from app.core.celery_app import celery_app
-        import redis as redis_lib
+    from sqlalchemy import text
+    from app.core.database import AsyncSessionLocal
 
-        # Get active workers
-        inspect = celery_app.control.inspect(timeout=3)
-        active = inspect.active() or {}
-        stats = inspect.stats() or {}
-        worker_count = len(stats)
-        active_tasks = sum(len(tasks) for tasks in active.values())
-
-        # Get queue lengths from Redis
-        queue_lengths: dict[str, int] = {}
-        broker_url = celery_app.conf.broker_url
-        if broker_url:
-            try:
-                r = redis_lib.from_url(str(broker_url))
-                for queue_name in ["celery", "media", "video", "audio", "presentation"]:
-                    length = r.llen(queue_name)
-                    if length > 0:
-                        queue_lengths[queue_name] = length
-                r.close()
-            except Exception as e:
-                logger.warning(f"Failed to read queue lengths: {e}")
-
-        return {
-            "workers": worker_count,
-            "activeTasks": active_tasks,
-            "queueLengths": queue_lengths,
-            "healthy": worker_count > 0,
-        }
-    except Exception as e:
-        logger.error(f"Celery health check failed: {e}")
-        return {
-            "workers": 0,
-            "activeTasks": 0,
-            "queueLengths": {},
-            "healthy": False,
-            "error": "health check unavailable",
-        }
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(text('SELECT status, count(*) FROM worker_jobs GROUP BY status'))
+        heartbeat_result = await session.execute(text('''
+            SELECT count(*) FROM (
+              SELECT "workerId" FROM worker_heartbeats
+              WHERE "runtimeType" IN ('node_job_worker', 'python_job_worker')
+                AND "createdAt" > NOW() - INTERVAL '2 minutes'
+              GROUP BY "workerId"
+            ) live_workers
+        '''))
+        counts = {str(row[0]): int(row[1]) for row in result.fetchall()}
+        live_workers = int(heartbeat_result.scalar() or 0)
+    queued = counts.get("queued", 0) + counts.get("retry_scheduled", 0)
+    active = counts.get("leased", 0) + counts.get("running", 0) + counts.get("waiting_external", 0)
+    return {
+        "runtime": "worker_jobs",
+        "workers": live_workers,
+        "activeTasks": active,
+        "queueLengths": {"queued": queued},
+        "healthy": live_workers > 0,
+    }
 
 
 @router.post("/restart-worker")
 async def restart_worker(request: Request) -> dict[str, Any]:
-    """Send shutdown signal to a Celery worker (supervisor/systemd auto-restarts)."""
+    """Legacy process restart command is retired; workers are externally supervised."""
     _require_internal_access(request)
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        raise HTTPException(status_code=410, detail="CELERY_RUNTIME_RETIRED_USE_CLOUDFLARE_OPERATIONS")
-    try:
-        body = await request.json()
-        worker_name = body.get("worker_name")
-        from app.core.celery_app import celery_app
-
-        if worker_name:
-            celery_app.control.broadcast("shutdown", destination=[worker_name])
-        else:
-            celery_app.control.broadcast("shutdown")
-        return {"success": True, "message": f"Shutdown signal sent to {worker_name or 'all workers'}"}
-    except Exception as e:
-        logger.error(f"Worker restart failed: {e}")
-        return {"success": False, "error": "restart failed"}
+    raise HTTPException(status_code=410, detail="LEGACY_WORKER_CONTROL_RETIRED")
 
 
 @router.post("/revoke-task")
 async def revoke_task(request: Request) -> dict[str, Any]:
-    """Revoke/terminate a stuck Celery task."""
+    """Cancel a canonical worker_jobs record by its job ID."""
     _require_internal_access(request)
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
-        raise HTTPException(status_code=410, detail="CELERY_RUNTIME_RETIRED_USE_CANONICAL_JOB_CANCEL")
-    try:
-        body = await request.json()
-        task_id = body.get("task_id")
-        terminate = body.get("terminate", False)
-        if not task_id:
-            return {"success": False, "error": "task_id required"}
-        from app.core.celery_app import celery_app
-
-        celery_app.control.revoke(task_id, terminate=terminate)
-        return {"success": True, "message": f"Task {task_id} revoked (terminate={terminate})"}
-    except Exception as e:
-        logger.error(f"Task revoke failed: {e}")
-        return {"success": False, "error": "revoke failed"}
+    body = await request.json()
+    job_id = str(body.get("task_id") or "").strip()
+    if not job_id:
+        raise HTTPException(status_code=400, detail="job_id required")
+    from app.services.job_control_plane import JobControlPlaneClient
+    await asyncio.to_thread(
+        JobControlPlaneClient().cancel,
+        job_id,
+        action_id=f"worker-jobs-cancel:{job_id}",
+        reason="cancelled_by_virtual_admin",
+    )
+    return {"success": True, "job_id": job_id, "message": "Canonical cancellation requested"}

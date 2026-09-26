@@ -22,15 +22,7 @@ from app.services.job_control_plane import dispatch_python_task
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
-# Import Celery task with graceful fallback (worker may not be installed yet).
-try:
-    from app.tasks.presentation_import_tasks import import_presentation_task
-
-    CELERY_ENABLED = True
-except ImportError:
-    import_presentation_task = None  # type: ignore[assignment]
-    CELERY_ENABLED = False
-    logger.warning("presentation_import_task_not_available")
+from app.tasks.presentation_import_tasks import import_presentation_task
 
 
 # ---------------------------------------------------------------------------
@@ -105,12 +97,6 @@ async def start_import(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="user_id and tenant_id must match the authenticated session",
-        )
-
-    if not CELERY_ENABLED and os.getenv("FEATURE_186_HARD_CUTOVER") != "true":
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Import service unavailable",
         )
 
     try:

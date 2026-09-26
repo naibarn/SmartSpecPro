@@ -33,7 +33,7 @@ const NODE_WORKER_HEARTBEAT_INTERVAL_MS = 10_000;
 const DEFAULT_HEARTBEAT_FILE = "/home/dev/projects/SmartSpecPro/logs/smartspec-node-worker.heartbeat";
 
 export function isPostgresNodeJobWorkerEnabled(): boolean {
-  return process.env.FEATURE_186_HARD_CUTOVER === "true";
+  return true;
 }
 
 export type PostgresNodeJobWorkerOptions = {

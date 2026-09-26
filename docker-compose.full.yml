@@ -126,8 +126,6 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set to the same signing secret used by the web service}
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
-      - FEATURE_186_HARD_CUTOVER=${FEATURE_186_HARD_CUTOVER:-false}
-      - FEATURE_186_POSTGRES_PYTHON_WORKER=${FEATURE_186_POSTGRES_PYTHON_WORKER:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - GROQ_API_KEY=${GROQ_API_KEY:-}
@@ -159,15 +157,12 @@ services:
       - backend
       - data
 
-  # Feature 186 PostgreSQL-pull Python executor. This is an opt-in profile so
-  # legacy Celery deployments do not start an idle worker accidentally.
+  # Canonical Python executor for worker_jobs long-running jobs.
   smartspec-python-job-worker:
     build:
       context: ./python-backend
       dockerfile: Dockerfile
     container_name: smartspec-python-job-worker
-    profiles:
-      - feature186
     command: ["python", "-m", "app.workers.postgres_job_worker"]
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-smartspec}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-smartspec}
@@ -175,8 +170,6 @@ services:
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
       - SMARTSPEC_PROXY_TOKEN=${SMARTSPEC_PROXY_TOKEN:-}
-      - FEATURE_186_HARD_CUTOVER=${FEATURE_186_HARD_CUTOVER:-false}
-      - FEATURE_186_POSTGRES_PYTHON_WORKER=${FEATURE_186_POSTGRES_PYTHON_WORKER:-false}
       - FEATURE_186_PYTHON_WORKER_BATCH_SIZE=${FEATURE_186_PYTHON_WORKER_BATCH_SIZE:-10}
       - FEATURE_186_PYTHON_WORKER_POLL_SECONDS=${FEATURE_186_PYTHON_WORKER_POLL_SECONDS:-1}
     depends_on:
@@ -215,9 +208,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set to the same signing secret used by the Python backend}
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
-      - FEATURE_186_HARD_CUTOVER=${FEATURE_186_HARD_CUTOVER:-false}
       - FEATURE_186_CLOUDFLARE_HARD_CUTOVER=${FEATURE_186_CLOUDFLARE_HARD_CUTOVER:-false}
-      - FEATURE_186_POSTGRES_PYTHON_WORKER=${FEATURE_186_POSTGRES_PYTHON_WORKER:-false}
       - CLOUDFLARE_RUNTIME_URL=${CLOUDFLARE_RUNTIME_URL:-}
       - CLOUDFLARE_RUNTIME_TOKEN=${CLOUDFLARE_RUNTIME_TOKEN:-}
       # CRITICAL: Override SESSION_SECRET in production with a strong random value
@@ -267,7 +258,7 @@ services:
 
   # Feature 186 PostgreSQL-pull Node executor. Keep this separate from the
   # HTTP server so long-running jobs cannot stall request handling or web
-  # transport locks. The worker is gated by FEATURE_186_HARD_CUTOVER.
+  # transport locks. It claims only canonical worker_jobs.
   smartspec-node-worker:
     build:
       context: .
@@ -284,8 +275,6 @@ services:
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set to the same signing secret used by the web service}
       - SMARTSPEC_WEB_GATEWAY_TOKEN=${SMARTSPEC_WEB_GATEWAY_TOKEN:-}
       - FEATURE_186_SYSTEM_TENANT_ID=${FEATURE_186_SYSTEM_TENANT_ID:-}
-      - FEATURE_186_HARD_CUTOVER=${FEATURE_186_HARD_CUTOVER:-false}
-      - FEATURE_186_POSTGRES_PYTHON_WORKER=${FEATURE_186_POSTGRES_PYTHON_WORKER:-false}
       - FEATURE_186_NODE_WORKER_BATCH_SIZE=${FEATURE_186_NODE_WORKER_BATCH_SIZE:-10}
       - FEATURE_186_NODE_WORKER_POLL_MS=${FEATURE_186_NODE_WORKER_POLL_MS:-1000}
     depends_on:

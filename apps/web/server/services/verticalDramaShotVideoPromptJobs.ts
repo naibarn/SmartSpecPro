@@ -9,7 +9,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import {
   findCanonicalPromptJobByIdempotencyKey,
   listCanonicalPromptJobs,
@@ -1234,82 +1233,13 @@ let queue: any = null;
 let worker: any = null;
 
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(
-      `${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE} queue is not initialized`
-    );
-  }
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    {
-      jobId,
-      attempts: 1,
-      removeOnComplete: true,
-      removeOnFail: { age: 24 * 60 * 60 },
-    }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
-export async function initVerticalDramaShotVideoPromptJobsQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE, {
-      connection,
-    });
-    worker = new Worker(
-      VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE,
-      async (bullJob: any) => {
-        const { runVerticalDramaShotVideoPromptJobExecutor } =
-          await import("../routers/verticalDramaEpisodes");
-        await runVerticalDramaShotVideoPromptJob(
-          bullJob.data.jobId,
-          runVerticalDramaShotVideoPromptJobExecutor
-        );
-      },
-      {
-        connection,
-        concurrency: WORKER_CONCURRENCY,
-        lockDuration: BULLMQ_LOCK_DURATION_MS,
-      }
-    );
-    worker.on("failed", async (bullJob: any, error: Error) => {
-      console.error(
-        `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] Job ${bullJob?.id} failed:`,
-        error.message
-      );
-      const jobId = bullJob?.data?.jobId;
-      if (!jobId) return;
-      await recoverVerticalDramaShotVideoPromptJob(
-        jobId,
-        `BullMQ job failed: ${boundedError(error)}`
-      ).catch(recoveryError =>
-        console.error(
-          `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] Failed to reconcile job ${jobId}:`,
-          recoveryError
-        )
-      );
-    });
-  } catch (error) {
-    console.warn(
-      `[${VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE}] BullMQ initialization skipped:`,
-      boundedError(error)
-    );
-  }
+export async function initVerticalDramaShotVideoPromptJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaShotVideoPromptJobsQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // Best-effort shutdown.
-  } finally {
-    worker = null;
-    queue = null;
-  }
+export async function closeVerticalDramaShotVideoPromptJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

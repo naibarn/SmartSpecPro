@@ -72,7 +72,6 @@ import {
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
 import { createJobControlPlane } from "./jobControlPlane";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { debugError } from "../_core/logger";
 import { classifyCreditFailure } from "./creditFailurePolicy";
 import {
@@ -819,27 +818,56 @@ export async function getVerticalDramaStoryJobStatus(
 ): Promise<VerticalDramaStoryJobRecord | null> {
   const deps = resolveDeps(dependencies);
   let record = await readRecord(jobId, deps);
-  if (!record) return null;
+  if (!record) {
+    const [canonical] = await getDb()
+      .select({ tenantId: workerJobs.tenantId, inputJson: workerJobs.inputJson })
+      .from(workerJobs)
+      .where(and(
+        eq(workerJobs.id, jobId),
+        eq(workerJobs.jobType, "vertical_drama.story"),
+      ))
+      .limit(1);
+    const input = canonical?.inputJson as Partial<VerticalDramaStoryJobRecord> | undefined;
+    if (
+      !canonical ||
+      canonical.tenantId !== owner.tenantId ||
+      !input ||
+      input.tenantId !== canonical.tenantId ||
+      input.seriesId !== owner.seriesId ||
+      typeof input.kind !== "string"
+    ) return null;
+    record = {
+      ...input,
+      jobId,
+      tenantId: canonical.tenantId,
+      status: "queued",
+      progress: input.progress ?? null,
+      result: input.result ?? null,
+      error: input.error ?? null,
+      createdAt: input.createdAt ?? new Date(deps.now()).toISOString(),
+      updatedAt: input.updatedAt ?? new Date(deps.now()).toISOString(),
+    } as VerticalDramaStoryJobRecord;
+    await writeRecord(record, deps);
+  }
   if (record.tenantId !== owner.tenantId || record.seriesId !== owner.seriesId) return null;
   record = await refreshStoryJobFromCanonicalControlPlane(record, deps);
   return record;
 }
 
-/** Redis is the story-domain projection; worker_jobs owns execution truth after
- * Feature 186 cutover. Refresh terminal state on reads so a lost worker event
- * cannot leave the UI showing a job as active forever. */
+/** Redis is a story-domain projection; worker_jobs owns execution truth.
+ * Refresh every status read from PostgreSQL so stale cached status cannot
+ * keep a dead job active or hide a current worker state. */
 async function refreshStoryJobFromCanonicalControlPlane(
   record: VerticalDramaStoryJobRecord,
   deps: VerticalDramaStoryJobStoreDependencies,
 ): Promise<VerticalDramaStoryJobRecord> {
-  if (record.status === "succeeded" || record.status === "failed") {
-    return record;
-  }
   const [canonical] = await getDb()
     .select({
       status: workerJobs.status,
       failureReason: workerJobs.failureReason,
       errorMessage: workerJobs.errorMessage,
+      progressJson: workerJobs.progressJson,
+      outputJson: workerJobs.outputJson,
     })
     .from(workerJobs)
     .where(and(
@@ -848,40 +876,41 @@ async function refreshStoryJobFromCanonicalControlPlane(
       eq(workerJobs.jobType, "vertical_drama.story"),
     ))
     .limit(1);
-  if (!canonical) return record;
-  const terminalStatus = canonical.status === "completed" || canonical.status === "succeeded"
+  const canonicalStatus = canonical?.status ?? "failed";
+  const terminalStatus = canonicalStatus === "completed" || canonicalStatus === "succeeded"
     ? "succeeded"
-    : ["failed", "canceled", "cancelled", "expired"].includes(canonical.status)
+    : ["failed", "canceled", "cancelled", "expired"].includes(canonicalStatus)
       ? "failed"
       : null;
-  if (!terminalStatus) return record;
+  const currentStatus = terminalStatus ?? (["running", "claimed", "leased"].includes(canonicalStatus) ? "running" : "queued");
   let synced = record;
   await enqueueWrite(record.jobId, async () => {
     const latest = await readRecord(record.jobId, deps);
-    if (!latest || latest.status === "succeeded" || latest.status === "failed") {
+    if (!latest) {
       synced = latest ?? record;
       return;
     }
     synced = {
       ...latest,
-      status: terminalStatus,
-      ...(terminalStatus === "failed"
-        ? {
-            error: (
-              canonical.failureReason ||
-              canonical.errorMessage ||
-              `Canonical worker job ${canonical.status}`
-            ).slice(0, 2000),
-          }
-        : {}),
+      status: currentStatus,
+      progress: (canonical?.progressJson as unknown as VerticalDramaStoryJobProgress | null) ?? latest.progress,
+      result: terminalStatus === "succeeded" ? (canonical?.outputJson ?? latest.result) : null,
+      error: terminalStatus === "failed"
+        ? (
+            canonical?.failureReason ||
+            canonical?.errorMessage ||
+            (canonical ? `Canonical worker job ${canonical.status}` : "Canonical worker job not found")
+          ).slice(0, 2000)
+        : null,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await writeRecord(synced, deps);
   });
-  if (synced.status !== terminalStatus) return synced;
-  await clearActivePointerIfOwned(synced, deps);
-  if (terminalStatus === "failed") await publishRecoverablePointer(synced, deps);
-  await notifyStoryJobTerminal(synced);
+  if (terminalStatus) {
+    await clearActivePointerIfOwned(synced, deps);
+    if (terminalStatus === "failed") await publishRecoverablePointer(synced, deps);
+    await notifyStoryJobTerminal(synced);
+  }
   return synced;
 }
 
@@ -1876,40 +1905,7 @@ export function isVerticalDramaStoryJobsDraining(): boolean {
 }
 
 async function defaultEnqueueBullmqJob(jobId: string, dispatchId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(`${VERTICAL_DRAMA_STORY_JOBS_QUEUE} queue is not initialized`);
-  }
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId, dispatchId },
-    {
-      removeOnComplete: true,
-      // Auto-retry (added 2026-07-14, resilient resume) — `attempts: 3`
-      // bounds how many times BullMQ will redeliver this job (including its
-      // OWN stalled-job recovery: a worker process that dies mid-run —
-      // `systemctl restart`, OOM, crash — without ever completing the job
-      // leaves it "stalled"; BullMQ detects this and redelivers it to the
-      // next available worker, independent of whether the processor ever
-      // threw). THAT redelivery path is what this feature primarily targets
-      // (this module's own header doc comment's motivating scenario) and is
-      // now safe to retry cheaply: `runVerticalDramaStoryJob` resumes from
-      // the job's own `checkpoint` on every (re)start, so a redelivery
-      // re-drafts only what the PRIOR attempt hadn't already checkpointed,
-      // never re-charging already-drafted episodes.
-      //
-      // Logical partial results and transient provider errors are retried by
-      // `runVerticalDramaStoryJob` itself, while the active pointer remains
-      // held. This BullMQ retry remains the separate crash/stall safety net
-      // for a worker that dies before the runner can write its terminal state.
-      // `removeOnFail` is bounded (24h) rather than `true` so a job that
-      // exhausts every attempt stays inspectable for a day instead of
-      // vanishing immediately, but still doesn't accumulate forever.
-      attempts: 3,
-      backoff: { type: "exponential", delay: 10_000 },
-      removeOnFail: { age: 24 * 60 * 60 },
-    }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
 /** Reconcile failed deliveries that happened before a worker event handler
@@ -1953,72 +1949,10 @@ export async function reconcileVerticalDramaStoryJobsQueueOnce(): Promise<{
  * `enqueueVerticalDramaStoryJob`/`getVerticalDramaStoryJobStatus`/
  * `getActiveVerticalDramaStoryJob` from this file).
  */
-export async function initVerticalDramaStoryJobsQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  storyJobsDraining = false;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_STORY_JOBS_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_STORY_JOBS_QUEUE,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (bullJob: any) => {
-        const { runVerticalDramaStoryJobExecutor } = await import("../routers/verticalDramaSeries");
-        await runVerticalDramaStoryJob(bullJob.data.jobId, runVerticalDramaStoryJobExecutor);
-      },
-      { connection, concurrency: VERTICAL_DRAMA_STORY_JOBS_WORKER_CONCURRENCY },
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    worker.on("failed", (bullJob: any, err: Error) => {
-      const failureMessage = err instanceof Error ? err.message : String(err ?? "Unknown BullMQ failure");
-      console.error(`[${VERTICAL_DRAMA_STORY_JOBS_QUEUE}] Job ${bullJob?.id} failed:`, failureMessage);
-      const jobId = typeof bullJob?.data?.jobId === "string" ? bullJob.data.jobId : null;
-      if (!jobId) return;
-      const dispatchId = typeof bullJob?.data?.dispatchId === "string" ? bullJob.data.dispatchId : undefined;
-      void reconcileVerticalDramaStoryJobFailure(jobId, err, undefined, dispatchId).catch((reconcileError) => {
-        debugError(
-          "verticalDramaStoryJobs",
-          `Failed to reconcile BullMQ failure for story job ${jobId}`,
-          reconcileError,
-        );
-      });
-    });
-    await reconcileVerticalDramaStoryJobsQueueOnce().catch(error => {
-      debugError(
-        "verticalDramaStoryJobs",
-        "Failed to reconcile failed story deliveries during startup",
-        error,
-      );
-    });
-    reconciliationInterval = setInterval(() => {
-      void reconcileVerticalDramaStoryJobsQueueOnce().catch(error => {
-        debugError(
-          "verticalDramaStoryJobs",
-          "Failed to reconcile failed story deliveries",
-          error,
-        );
-      });
-    }, 5 * 60 * 1000);
-    reconciliationInterval.unref?.();
-  } catch (err) {
-    console.warn(`[${VERTICAL_DRAMA_STORY_JOBS_QUEUE}] BullMQ initialization skipped:`, (err as Error).message);
-  }
+export async function initVerticalDramaStoryJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaStoryJobsQueue(): Promise<void> {
-  try {
-    if (reconciliationInterval) {
-      clearInterval(reconciliationInterval);
-      reconciliationInterval = null;
-    }
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // ignore
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaStoryJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

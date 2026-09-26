@@ -32,18 +32,6 @@ class HardTaskRetryRequested(RuntimeError):
         super().__init__(message)
 
 
-def _postgres_pull_enabled() -> bool:
-    """Require the hard-cutover and worker flags as one atomic mode switch."""
-    return (
-        os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
-        and os.getenv("FEATURE_186_POSTGRES_PYTHON_WORKER") == "true"
-    )
-
-
-def _hard_cutover_enabled() -> bool:
-    return os.getenv("FEATURE_186_HARD_CUTOVER") == "true"
-
-
 async def _execute_hard_media_task(task_name: str, args: list[Any]) -> dict[str, Any]:
     from app.tasks import media_tasks
 
@@ -85,8 +73,6 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
     ``self.request.id`` remains deterministic during migration.
     """
     input_data = context.get("input") if isinstance(context.get("input"), dict) else {}
-    if _hard_cutover_enabled() and not _postgres_pull_enabled():
-        raise RuntimeError("HARD_CUTOVER_PYTHON_WORKER_REQUIRED")
     task_name = input_data.get("taskName")
     if not isinstance(task_name, str) or not task_name:
         raise ValueError("LEGACY_TASK_NAME_MISSING")
@@ -98,7 +84,7 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
         raise ValueError("LEGACY_TASK_IMPORT_PATH_INVALID")
     args = input_data.get("args") if isinstance(input_data.get("args"), list) else []
     kwargs = input_data.get("kwargs") if isinstance(input_data.get("kwargs"), dict) else {}
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true":
+    if True:
         # Never replay a bearer credential that may have existed in an older
         # producer payload. Hard workers use the server-side gateway token and
         # the canonical requested user context instead.
@@ -107,7 +93,7 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
             for key, value in kwargs.items()
             if key.lower() not in {"user_token", "usertoken", "authorization", "access_token", "accesstoken"}
         }
-    if os.getenv("FEATURE_186_HARD_CUTOVER") == "true" and task_name.endswith(
+    if True and task_name.endswith(
         ("generate_image_task", "generate_video_task", "generate_audio_task")
     ):
         from app.services.job_execution_context import bind_job_execution, reset_job_execution
@@ -132,26 +118,14 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
         finally:
             reset_job_execution(execution_context_token)
 
-    postgres_pull_enabled = _postgres_pull_enabled()
-    if postgres_pull_enabled:
-        # PostgreSQL-pull execution must not consult the Celery registry. The
-        # import path is the server-owned executor identity; the task object is
-        # used only as a compatibility callable for business code that has not
-        # yet been extracted into a plain function.
-        import_name = task_import_path or task_name
-        if not isinstance(import_name, str) or not _SAFE_TASK_IMPORT_PATH.fullmatch(import_name):
-            raise ValueError("HARD_TASK_IMPORT_PATH_REQUIRED")
-        module_name, attribute_name = import_name.rsplit(".", 1)
-        module = import_module(module_name)
-        task = getattr(module, attribute_name, None)
-    else:
-        from app.core.celery_app import celery_app
-
-        task = celery_app.tasks.get(task_name)
-        if task is None and "." in task_name:
-            module_name = task_name.rsplit(".", 1)[0]
-            import_module(module_name)
-            task = celery_app.tasks.get(task_name)
+    # The import path is the server-owned executor identity. Task metadata is
+    # registered locally; it has no broker or dispatch behavior.
+    import_name = task_import_path or task_name
+    if not isinstance(import_name, str) or not _SAFE_TASK_IMPORT_PATH.fullmatch(import_name):
+        raise ValueError("HARD_TASK_IMPORT_PATH_REQUIRED")
+    module_name, attribute_name = import_name.rsplit(".", 1)
+    module = import_module(module_name)
+    task = getattr(module, attribute_name, None)
     if task is None or not (callable(task) or callable(getattr(task, "run", None))):
         raise ValueError(f"LEGACY_TASK_NOT_REGISTERED:{task_name[:160]}")
 
@@ -185,31 +159,21 @@ def _execute_legacy_task(context: dict[str, Any], client: JobControlPlaneClient,
     if callable(push_request):
         push_request(id=lease.job_id, headers={"canonical_job_id": lease.job_id})
     try:
-        if postgres_pull_enabled:
-            # Celery's bound Task.run would route self.retry() back to the
-            # broker. Invoke the wrapped business function with a tiny
-            # request context whose retry signal is translated to the
-            # canonical control-plane failure path.
-            wrapped_task = getattr(task, "__wrapped__", None)
+        class _HardTaskContext:
+            request = SimpleNamespace(
+                id=lease.job_id,
+                headers={"canonical_job_id": lease.job_id},
+                retries=0,
+            )
+            max_retries = int(getattr(task, "max_retries", 0) or 0)
 
-            class _HardTaskContext:
-                request = SimpleNamespace(
-                    id=lease.job_id,
-                    headers={"canonical_job_id": lease.job_id},
-                    retries=0,
-                )
-                max_retries = int(getattr(task, "max_retries", 0) or 0)
+            def retry(self, *retry_args: Any, **retry_kwargs: Any) -> None:
+                raise HardTaskRetryRequested()
 
-                def retry(self, *retry_args: Any, **retry_kwargs: Any) -> None:
-                    raise HardTaskRetryRequested()
-
-            if callable(wrapped_task):
-                result = wrapped_task(_HardTaskContext(), *args, **kwargs)
-            else:
-                result = getattr(task, "run", task)(*args, **kwargs)
+        if getattr(task, "_job_task_bind", False):
+            result = task(_HardTaskContext(), *args, **kwargs)
         else:
-            callable_task = getattr(task, "run", task)
-            result = callable_task(*args, **kwargs)
+            result = task(*args, **kwargs)
     finally:
         if callable(pop_request):
             pop_request()
@@ -344,19 +308,4 @@ def execute_unified_job(
     attempt_id: str | None = None,
 ) -> dict[str, Any]:
     """Shared execution entry point, optionally decorated for legacy Celery."""
-    if _hard_cutover_enabled() and not _postgres_pull_enabled():
-        raise RuntimeError("HARD_CUTOVER_PYTHON_WORKER_REQUIRED")
-    postgres_pull_enabled = _postgres_pull_enabled()
-    adapter = "postgres-pull" if postgres_pull_enabled else "celery"
-    return run_unified_job(job_id, runner_id, adapter, attempt_id)
-
-
-if not _hard_cutover_enabled():
-    from app.core.celery_app import celery_app
-
-    execute_unified_job = celery_app.task(
-        name="feature_186.execute_unified_job",
-        bind=False,
-        max_retries=0,
-        acks_late=True,
-    )(execute_unified_job)
+    return run_unified_job(job_id, runner_id, "postgres-pull", attempt_id)

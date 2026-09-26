@@ -4,7 +4,6 @@ import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
-import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
 import { createHash } from "node:crypto";
 import {
   synthesizeVerticalDramaPreset,
@@ -860,50 +859,13 @@ export async function runVerticalDramaDraftCompositionJob(
 let queue: any = null;
 let worker: any = null;
 async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) throw new Error("Draft composition queue is not initialized");
-  await publishLegacyBullMqJob(
-    queue,
-    "run",
-    { jobId },
-    { attempts: 1, removeOnComplete: true, removeOnFail: { age: 24 * 60 * 60 } }
-  );
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
 }
 
-export async function initVerticalDramaDraftCompositionQueue(): Promise<void> {
-  if (isFeature186HardCutoverEnabled()) return;
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_DRAFT_COMPOSITION_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_DRAFT_COMPOSITION_QUEUE,
-      async (job: any) =>
-        runVerticalDramaDraftCompositionJob(job.data.jobId, {
-          persistJobStatus: updateVerticalDramaDraftJob,
-        }),
-      { connection, concurrency: 2 }
-    );
-    worker.on("failed", (job: any, error: Error) =>
-      console.error(
-        `[${VERTICAL_DRAMA_DRAFT_COMPOSITION_QUEUE}] job ${job?.id} failed`,
-        error.message
-      )
-    );
-  } catch (error) {
-    console.warn(
-      `[${VERTICAL_DRAMA_DRAFT_COMPOSITION_QUEUE}] initialization skipped`,
-      error instanceof Error ? error.message : error
-    );
-  }
+export async function initVerticalDramaDraftCompositionQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaDraftCompositionQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaDraftCompositionQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

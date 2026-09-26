@@ -287,8 +287,6 @@ cmd_backend() {
     # Use async driver for Python backend
     export DATABASE_URL="${DATABASE_URL_ASYNC:-postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec}"
     export REDIS_URL="${REDIS_URL:-redis://localhost:6379}"
-    export CELERY_BROKER_URL="${CELERY_BROKER_URL:-redis://localhost:6379/0}"
-    export CELERY_RESULT_BACKEND="${CELERY_RESULT_BACKEND:-redis://localhost:6379/0}"
     export DEBUG="${DEBUG:-true}"
     export LOG_LEVEL="${LOG_LEVEL:-DEBUG}"
     export CORS_ORIGINS="${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}"
@@ -297,30 +295,6 @@ cmd_backend() {
     kill_port "${BACKEND_PORT:-8000}"
     log_info "Starting uvicorn with hot reload on port ${BACKEND_PORT:-8000}..."
     uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-8000} --reload --reload-exclude '.venv' --reload-exclude 'node_modules'
-}
-
-cmd_celery() {
-    check_python
-
-    log_step "Starting Celery Worker (Host)..."
-    cd "$BACKEND_DIR"
-
-    # Activate virtual environment
-    if [ -f ".venv/Scripts/activate" ]; then
-        source .venv/Scripts/activate
-    elif [ -f ".venv/bin/activate" ]; then
-        source .venv/bin/activate
-    elif [ -f "venv/Scripts/activate" ]; then
-        source venv/Scripts/activate
-    elif [ -f "venv/bin/activate" ]; then
-        source venv/bin/activate
-    fi
-
-    export DATABASE_URL="postgresql+asyncpg://smartspec:smartspec123@localhost:5432/smartspec"
-    export CELERY_BROKER_URL="redis://localhost:6379/0"
-    export CELERY_RESULT_BACKEND="redis://localhost:6379/0"
-
-    celery -A app.core.celery_app worker --loglevel=info --concurrency=2 -Q celery,video,media
 }
 
 cmd_start() {
@@ -341,8 +315,8 @@ cmd_start() {
     echo -e "  ${CYAN}Terminal 2 (Backend):${NC}"
     echo "    ./dev-local.sh backend"
     echo ""
-    echo -e "  ${CYAN}Terminal 3 (Celery - optional):${NC}"
-    echo "    ./dev-local.sh celery"
+    echo -e "  ${CYAN}Worker jobs:${NC}"
+    echo "    npm run start:feature-186-node-worker --workspace=@smartspec/web"
     echo ""
 
     print_urls
@@ -469,7 +443,6 @@ cmd_help() {
     echo -e "${CYAN}Applications (Host):${NC}"
     echo "  web                Start SmartSpec Web (Vite dev server)"
     echo "  backend            Start Python Backend (uvicorn)"
-    echo "  celery             Start Celery worker"
     echo ""
     echo -e "${CYAN}Database:${NC}"
     echo "  db shell           Open PostgreSQL shell"
@@ -509,9 +482,6 @@ case "${1:-help}" in
         ;;
     backend)
         cmd_backend
-        ;;
-    celery)
-        cmd_celery
         ;;
     db)
         cmd_db "$2"

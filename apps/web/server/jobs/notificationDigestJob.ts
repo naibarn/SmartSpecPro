@@ -1,12 +1,10 @@
 /**
  * Notification Digest Job
  *
- * BullMQ recurring job that runs every hour, collecting unread notifications
+ * Canonical worker_jobs recurring job that runs every hour, collecting unread notifications
  * for users with email digest preferences and sending digest emails.
  */
 
-import { Queue, Worker } from "bullmq";
-import type { Job } from "bullmq";
 import { getDb } from "../db";
 import {
   notificationPreferences,
@@ -17,14 +15,9 @@ import { and, eq, gt, desc, isNotNull } from "drizzle-orm";
 import { getRedisClient } from "../services/redis";
 import { sendNotificationDigest } from "../services/notificationEmailService";
 import { startFeature186SystemSchedule, stopFeature186SystemSchedule } from "./feature186SystemScheduler";
-import { publishLegacyBullMqJob } from "../services/jobLegacyTransportAdapters";
-
-const QUEUE_NAME = "notification-digest";
 const DIGEST_LIMIT = 20;
 const REDIS_TTL = 604800; // 7 days in seconds
 
-let queue: Queue | null = null;
-let worker: Worker | null = null;
 
 // ─── Core Logic (exported for testing) ────────────────────────────────────────
 
@@ -185,11 +178,10 @@ export async function executeDigestRun(): Promise<void> {
   });
 }
 
-// ─── BullMQ Initialization ───────────────────────────────────────────────────
+// ─── Canonical worker_jobs schedule ──────────────────────────────────────────
 
 export async function initializeDigestJob(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
-    startFeature186SystemSchedule({
+  startFeature186SystemSchedule({
       scheduleId: "notification-digest",
       jobType: "notification.digest",
       executionClass: "short",
@@ -199,59 +191,9 @@ export async function initializeDigestJob(): Promise<void> {
       isDue: () => true,
       occurrenceKey: now => now.toISOString().slice(0, 13),
       intervalMs: 60_000,
-    });
-    return;
-  }
-  if (queue) return; // Already initialized
-
-  const redis = getRedisClient();
-  if (!redis) {
-    console.warn("[DigestJob] Redis not available, skipping digest job init");
-    return;
-  }
-
-  // Pass IORedis instance directly as connection — avoids issues with URL-based configs
-  const connection = redis.duplicate();
-
-  queue = new Queue(QUEUE_NAME, { connection: connection as any });
-
-  // Add repeatable job: every hour (3600000ms)
-  await publishLegacyBullMqJob(queue,
-    "digest-run",
-    {},
-    {
-      repeat: { every: 3_600_000 },
-      removeOnComplete: { age: 86400 },
-      removeOnFail: { age: 604800 },
-    },
-  );
-
-  worker = new Worker(
-    QUEUE_NAME,
-    async (_job: Job) => {
-      await executeDigestRun();
-    },
-    { connection, concurrency: 1 },
-  );
-
-  worker.on("failed", (job, err) => {
-    console.error("[DigestJob] Job failed", {
-      jobId: job?.id,
-      error: err.message,
-    });
   });
-
-  console.log("[DigestJob] Initialized with hourly schedule");
 }
 
 export async function shutdownDigestJob(): Promise<void> {
   stopFeature186SystemSchedule("notification-digest");
-  if (worker) {
-    await worker.close();
-    worker = null;
-  }
-  if (queue) {
-    await queue.close();
-    queue = null;
-  }
 }

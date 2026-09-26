@@ -136,7 +136,7 @@ export async function executeTrashPurge(): Promise<{ purgedCount: number; totalF
 export async function initializeTrashPurgeJob(): Promise<void> {
   if (intervalId) return;
 
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+  if (true) {
     startFeature186SystemSchedule({
       scheduleId: "library-trash-purge",
       jobType: "library.trash_purge",
@@ -202,7 +202,7 @@ async function runPurge() {
  * Gracefully shut down.
  */
 export async function shutdownTrashPurgeWorker(): Promise<void> {
-  if (process.env.FEATURE_186_HARD_CUTOVER === "true") {
+  if (true) {
     stopFeature186SystemSchedule("library-trash-purge");
   }
   if (initialTimeoutId) {

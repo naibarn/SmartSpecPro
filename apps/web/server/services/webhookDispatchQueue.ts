@@ -1,5 +1,5 @@
 /**
- * Webhook Dispatch Queue — BullMQ-based reliable webhook-to-target dispatch.
+ * Webhook dispatch executor for the canonical worker_jobs control plane.
  *
  * Replaces the fire-and-forget setImmediate in webhookTrigger.ts with a proper
  * queue that supports retries (4 attempts, exponential backoff), credit
@@ -8,8 +8,6 @@
  * Supports dispatch to the chat channel only.
  */
 
-import { UnrecoverableError } from "bullmq";
-import type { Job } from "bullmq";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../db";
 import { webhookTriggers, webhookTriggerLogs } from "../../drizzle/schema";
@@ -46,6 +44,11 @@ export interface WebhookDispatchJob {
   idempotencyKey?: string;
 }
 
+interface WebhookDispatchExecution {
+  id: string;
+  data: WebhookDispatchJob;
+}
+
 // ── Module state ─────────────────────────────────────────────────────────
 
 const FEATURE_186_WEBHOOK_JOB_TYPE = "webhook.dispatch";
@@ -58,7 +61,7 @@ if (!defaultJobExecutorRegistry.has(FEATURE_186_WEBHOOK_JOB_TYPE, FEATURE_186_CO
     contractVersions: new Set([FEATURE_186_CONTRACT_VERSION]),
     executor: async ({ context }) => {
       const job = context.input as unknown as WebhookDispatchJob;
-      await processWebhookDispatch({ id: context.jobId, data: job, attemptsMade: 0 } as Job<WebhookDispatchJob>);
+      await processWebhookDispatch({ id: context.jobId, data: job });
       return { output: { triggerId: job.triggerId } };
     },
   });
@@ -66,7 +69,7 @@ if (!defaultJobExecutorRegistry.has(FEATURE_186_WEBHOOK_JOB_TYPE, FEATURE_186_CO
 
 // ── Worker processor ─────────────────────────────────────────────────────
 
-export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Promise<void> {
+export async function processWebhookDispatch(job: WebhookDispatchExecution): Promise<void> {
   const {
     triggerId, userId, tenantId, targetType,
     targetConversationId,
@@ -91,10 +94,10 @@ export async function processWebhookDispatch(job: Job<WebhookDispatchJob>): Prom
 
   } else {
     // No valid target configured — permanent failure, don't retry
-    throw new UnrecoverableError(
+    throw Object.assign(new Error(
       `No valid dispatch target: type=${targetType}, ` +
       `conversationId=${targetConversationId ?? "none"}`,
-    );
+    ), { errorClass: "permanent" });
   }
 
   // ── Credit deduction with idempotency key ─────────────────────────────

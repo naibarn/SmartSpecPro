@@ -1192,7 +1192,7 @@ export async function createCreditReservation(
 ): Promise<CreditReservation> {
   const allowWithoutRedis =
     options?.allowWithoutRedis === true &&
-    process.env.FEATURE_186_HARD_CUTOVER === "true";
+    true;
   if (!isRedisAvailable() && !allowWithoutRedis) {
     throw new Error("Redis unavailable — cannot create credit reservation");
   }

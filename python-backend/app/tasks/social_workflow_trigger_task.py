@@ -10,7 +10,7 @@ from typing import Any
 import structlog
 from sqlalchemy import select, text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.database import get_db_context
 from app.core.redis_client import get_cache_redis, get_realtime_redis
 from app.models.workflow import Workflow
@@ -311,7 +311,7 @@ async def _process_social_workflow_message_task(message_id: int | None = None, *
     )
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.social_workflow_trigger_task.process_social_workflow_message",
     bind=True,
     max_retries=3,
@@ -373,6 +373,6 @@ async def _poll_social_workflow_triggers_async() -> dict[str, Any]:
     return {"processed": processed, "enqueued": enqueued}
 
 
-@celery_app.task(name="app.tasks.social_workflow_trigger_task.poll_social_workflow_triggers")
+@job_task_registry.task(name="app.tasks.social_workflow_trigger_task.poll_social_workflow_triggers")
 def poll_social_workflow_triggers():
     return asyncio.run(_poll_social_workflow_triggers_async())
