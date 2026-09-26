@@ -100,6 +100,11 @@ responsibility_groups:
         semantics: short-lived cross-instance ephemeral state; callers must be classified individually
         target: PostgreSQL or DO for correctness-sensitive state; KV only for proven non-authoritative hints
         migration_status: unverified
+      - file: apps/web/server/routes/voiceGateway.ts
+        symbol: voice session token and active session keys
+        semantics: single-use websocket ticket, one active voice session per user, consent revoke cleanup
+        target: PostgreSQL one-time ticket/fresh consent plus per-user Durable Object WebSocket owner candidate under Spec 237/242 contract
+        migration_status: do_candidate_confirmed_by_local_call_path_contract_review_required
     unknown_callers: true
 
   G3_rate_limit_quota_idempotency:
@@ -140,6 +145,11 @@ responsibility_groups:
         semantics: user/tenant concurrency limits
         target: DO or canonical live-session lease design; not KV
         migration_status: blocked_on_live_session_contract
+      - file: apps/web/server/routes/browserTool.ts
+        symbol: checkAndAcquireConcurrency/releaseConcurrency
+        semantics: atomic per-user lock plus per-tenant browser concurrency count
+        target: approved Cloudflare Container browser runtime plus per-tenant DO or PostgreSQL lease after shared ownership design
+        migration_status: requires_container_and_admission_contract
     unknown_callers: true
 
   G5_pubsub_realtime:
@@ -155,6 +165,7 @@ responsibility_groups:
         semantics: live cross-process event fan-out
         target: DO WebSocket Hibernation with durable event sequence/replay where required
         migration_status: blocked_on_channel_replay_and_session_tests
+        do_decision: candidate_confirmed_for_per_user_websocket_and_consent_revocation_coordination
     unknown_callers: true
 
   G6_jobs_schedulers_and_job_state:

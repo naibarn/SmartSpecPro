@@ -11,7 +11,7 @@ Move the noncritical Responses API web-search cache off Redis and make its Cloud
 - Gate the cache route independently from queue/job `CLOUDFLARE_ACTIVATION`; enabling cache must not activate job processing.
 - Use a dedicated `CLOUDFLARE_SEARCH_CACHE_TOKEN` secret, not a browser setting and not a token reused for unrelated APIs.
 - Node adapter uses `CLOUDFLARE_RUNTIME_URL` plus the dedicated token. In active Cloudflare mode, failure means cache miss/no-op; it never falls back to Redis.
-- Enforce allowed key tiers, tenant/user scoping, bounded key/identifier length, maximum body size, JSON shape, TTL between 1 and 3600 seconds, no-store responses and token comparison.
+- Enforce allowed key tiers, tenant/user scoping, bounded key/identifier length, maximum body size, JSON shape, TTL between 60 and 3600 seconds (Cloudflare KV minimum), no-store responses and token comparison.
 - Admin control selects `Disabled` or `Cloudflare KV` only after a backend-side authenticated probe succeeds. Persist only the provider enum through an admin-only setting; runtime processes refresh it with a bounded cache delay. The API returns sanitized readiness; secret stays in environment/deploy pipeline.
 - Setup guide describes namespace creation, binding, secret, deploy, health/probe, enablement, disablement, troubleshooting, and which Redis functions remain separate.
 

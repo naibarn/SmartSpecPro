@@ -196,6 +196,7 @@ describe("Cloudflare local runtime contracts", () => {
     expect((await (await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) })).json()).entry).toEqual(entry);
     expect(kv.put).toHaveBeenCalledWith(expect.stringContaining(":tenant:tenant-1:"), JSON.stringify(entry), { expirationTtl: 900 });
     expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "bad", entry, ttlSeconds: 900 })).status).toBe(400);
+    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 59 })).status).toBe(400);
     expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 3601 })).status).toBe(400);
     const unavailable = await worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
       method: "POST", headers: { authorization: "Bearer cache-secret" }, body: JSON.stringify({ operation: "probe" }),

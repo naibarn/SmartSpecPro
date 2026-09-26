@@ -113,7 +113,7 @@ export function createCloudflareWorker(
             catch { return json({ entry: null }); }
           }
           if (!isCachedSearchResult(input.entry) ||
-              typeof input.ttlSeconds !== "number" || !Number.isInteger(input.ttlSeconds) || input.ttlSeconds < 1 || input.ttlSeconds > 3600) {
+              typeof input.ttlSeconds !== "number" || !Number.isInteger(input.ttlSeconds) || input.ttlSeconds < 60 || input.ttlSeconds > 3600) {
             return json({ error: "SEARCH_CACHE_REQUEST_INVALID" }, 400);
           }
           await env.SEARCH_RESULT_CACHE.put(key, JSON.stringify(input.entry), { expirationTtl: input.ttlSeconds });
