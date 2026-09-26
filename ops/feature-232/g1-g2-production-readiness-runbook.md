@@ -122,6 +122,8 @@ Use a newly provisioned empty restore target. Verify it is not the Production da
 
 Until an approved durable backup is restored into an isolated database and validated, G2 is not `PRODUCTION_READY`.
 
+**Unblock attempt (2026-09-26 15:31 UTC):** the retained artifact still resides on tmpfs. Checked `.env` files contain no Cloudflare API token/account ID, backup destination, backup encryption key, or configured Restic repository. Python Backend has Cloudflare R2/S3 credentials for its configured application-storage path, but no evidence establishes a separate private backup bucket, public-access state, or retention policy. Do not upload database dumps to the media bucket. A Cloudflare Dashboard/API operator and an approved private durable backup destination/key-retention owner are required. The old dump is not a substitute for a fresh backup after confirming the Production target and operator identity.
+
 ### 2.3 Secrets/keyring readiness
 
 - Confirm `AUTH_SESSION_ENCRYPTION_KEYS_JSON` and `AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID` are provisioned in the Production secret manager, independently from `JWT_SECRET`.

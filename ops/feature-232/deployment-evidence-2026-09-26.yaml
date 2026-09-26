@@ -401,3 +401,33 @@ recovery_round2_production_execution:
     g1: BLOCKED
     g2: BLOCKED_REVOCATIONS_UNRECONCILED_AND_EXTERNAL_RECOVERY_GATES_OPEN
     production_cutover_verified: false
+
+unblock_production_recovery_attempt:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  starting_commit: "be8c1a8290f0a78d95297ca65f4b12d2accc3ea8"
+  local_host:
+    maintenance_masks_reconfirmed: true
+    web_backend_watchdog_inactive: true
+  owner_control_plane_access:
+    cloudflare_api_token_and_account_id_available: false
+    authorized_dashboard_session_available: false
+    external_deployment_inventory_completed: false
+  backup_access:
+    prior_tmpfs_archive_present: true
+    fresh_backup_created: false
+    backend_r2_s3_credentials_present: true
+    private_backup_only_bucket_and_retention_proven: false
+    production_dump_uploaded_to_r2: false
+  g2_actions:
+    writer_fence_proven: false
+    jti_snapshot_refreshed: false
+    import_attempted: false
+    production_security_tests: not_run
+    deploy_or_reopen: false
+  g1_actions:
+    browser_evidence_collected: false
+    fault_injection_enabled: false
+  final_status:
+    g1: BLOCKED
+    g2: OWNER_ACTION_REQUIRED
+    recovery_unblocked: false

@@ -405,6 +405,32 @@ recovery_round2_production_execution:
     reopen: not_run
     redis_shutdown: not_run
 
+unblock_production_recovery_attempt:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  starting_commit: "be8c1a8290f0a78d95297ca65f4b12d2accc3ea8"
+  maintenance_reconfirmed:
+    web_backend_watchdog_system_masked: true
+    all_inactive: true
+  cloudflare_control_plane:
+    api_token_in_checked_environment: false
+    account_id_in_checked_environment: false
+    dns_routes_custom_domains_load_balancer_origins_versions_verified: false
+    owner_dashboard_session_available: false
+  backup_destination:
+    cloudflare_r2_s3_credentials_in_backend_environment: true
+    credentials_proven_for_private_backup_only_bucket: false
+    application_media_bucket_public_access_and_retention_verified: false
+    approved_durable_encrypted_destination_available: false
+    old_tmpfs_archive_still_present: true
+    fresh_backup_created: false
+    upload_performed: false
+  migration_actions:
+    auth_writers_fenced: false
+    revocation_snapshot_refreshed: false
+    jti_importer_apply: false
+    production_release_or_reopen: false
+  status: OWNER_ACTION_REQUIRED_cloudflare_control_plane_and_backup_destination_missing
+
 
 production_execution_recheck:
   observed_at_utc: "2026-09-26T13:47:19Z"
