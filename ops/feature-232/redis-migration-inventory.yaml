@@ -21,7 +21,7 @@ execution_host_observation:
   environment_identity: production_web_service_host_verified_target_deploy_observed
   method: read_only_systemd_docker_and_redis_metadata
   wrangler_cli_available: false # no repo/global binary; npx wrangler@4.141.0 was available
-  wrangler_auth_available: true # reused the existing Vectorize credential; never printed
+  wrangler_auth_available: false # current execution environment has no CLOUDFLARE_API_TOKEN
   cloudflare_target_evidence_file_available: true # sanitized deployment/probe evidence recorded below
   cloudflare_activation: disabled
   services:
@@ -88,23 +88,23 @@ responsibility_groups:
     unknown_callers: true
 
   G2_auth_session_revocation:
-    status: g2a_to_g2d_local_implementation_tested_preflight_incomplete_cutover_not_started
+    status: production_partial_state_mismatch_critical_reconciliation_required
     examples:
       - file: apps/web/server/_core/revocation.ts
         symbol: JTI revocation service
         semantics: shared token revocation decision; current Redis key TTL controls revocation lifetime
         target: PostgreSQL revoked_token_jtis; SHA-256 digest only; fail closed on database errors
-        migration_status: local_tests_passed_late_snapshot_rescan_test_passed_latest_pre_maintenance_dry_run_273_cutover_pending
+        migration_status: local_tests_passed_production_readonly_scan_272_active_redis_jtis_vs_1_postgres_row_reconciliation_required
       - file: apps/web/server/_core/deviceAuthRoutes.ts
         symbol: device code store and account login failure counters
         semantics: one-time device authorization state and 15-minute threshold-five lockout counter; current memory fallback is per process
         target: PostgreSQL atomic state transitions and transactional counter/window updates
-        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_pending_zero_keys_in_latest_redis_audit
+        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_applied_zero_current_state_keys_latest_readonly_scan
       - file: apps/web/server/services/redisEphemeralKeyRegistry.ts
         symbol: setEphemeralJson/getEphemeralJson/setEphemeralText/getEphemeralText
         semantics: strict cross-instance state used by runner connect and worker connect pairing flows
         target: PostgreSQL single-row paired session with hashed code indexes, AES-256-GCM encrypted payload, and expiry; no KV authority
-        migration_status: callers_runnerControl_and_workerRuntime_moved_in_worktree_migration_0348_and_key_rotation_integration_passed_prod_keyring_missing_and_cutover_pending
+        migration_status: callers_runnerControl_and_workerRuntime_use_postgres_migration_0348_applied_keyring_missing_in_inspected_process_cutover_unverified
       - file: apps/web/server/routes/voiceGateway.ts
         symbol: voice session token and active session keys
         semantics: single-use websocket ticket, one active voice session per user, consent revoke cleanup
@@ -116,7 +116,7 @@ responsibility_groups:
       file: apps/web/server/services/loginFailureCounterStore.ts
       semantics: atomic threshold-five counter with sliding 15-minute expiry and clear-on-success
       target: PostgreSQL auth_login_failure_counters; normalized email digest only
-      migration_status: local_two-client_concurrency_and_active_lockout_import_tested_production_dry_run_zero_migration_0347_and_0349_pending
+      migration_status: local_two-client_concurrency_and_lockout_import_tested_production_migrations_0347_0349_applied_current_active_counters_zero
       old_caller: deviceAuthRoutes.ts Redis counter path remains active only in currently deployed Production version
       importer: apps/web/scripts/migrate-auth-login-failure-counters.ts
       latest_redis_dry_run: zero_active_counters_zero_lockouts
@@ -127,13 +127,13 @@ responsibility_groups:
     production_preflight:
       target_database: smartspec
       postgres_version: 15.17
-      latest_migration: 0344_runner_session_fencing_local_journal_index_328_hash_match
-      latest_migration_hash: fffcfe43cd290d408e2dcc77a89d9c586f902c4c26952a265a8ac5c3bcd46ac4
-      readonly_preflight_repeated_at_utc: "2026-09-26T12:10:04Z"
+      latest_migration: 0349_feature_245_preserve_persistent_login_lockouts_local_journal_index_333_hash_match
+      latest_migration_hash: e3bb173b4c9a147788384679de6fd1d43a31e1b0782f475b4c26847593657a89
+      readonly_preflight_repeated_at_utc: "2026-09-26T13:26:57Z"
       transaction_read_only_verified: true
-      pending_migrations: [0345, 0346, 0347, 0348, 0349]
+      pending_migrations: []
       users_id_type_matches_new_fk: true
-      g2_tables_absent: true
+      g2_tables_present: true
       current_lock_waiters: 0
       server_lock_timeout: "0"
       server_statement_timeout: "0"
@@ -143,12 +143,12 @@ responsibility_groups:
       pairing_keyring_present_in_active_web_config: false
       maintenance_attested: false
     latest_read_only_redis_audit:
-      jti_active_revocations: 273
+      jti_active_revocations: 272
       login_failure_counters: 0
       device_authorization_keys: 0
       runner_pairing_keys: 0
       worker_pairing_keys: 0
-      timestamp_utc: "2026-09-26T12:12:04Z"
+      timestamp_utc: "2026-09-26T13:47:19Z"
       pre_maintenance_only: true
       persistent_jti_revocations: 0
       active_login_lockouts: 0
@@ -314,13 +314,53 @@ next_actions:
     status: production_target_and_synthetic_isolation_passed_beta_account_trace_admin_and_command_attribution_pending
   - id: P232.G2A-jti-revocation
     action: apply migration 0345, pause token issue/revoke paths, import current Redis revocations using the guarded importer, deploy all Web instances, prove multi-instance and recovery behavior, then resume auth
-    status: code_and_tests_passed_273_active_revocations_in_latest_pre_maintenance_dry_run_fresh_paused_scan_and_production_migration_required
+    status: blocked_272_redis_active_jtis_missing_from_postgres_1_postgres_only_jti_migration_applied_fresh_paused_reconcile_required
   - id: P232.G2B-G2D-auth-state
     action: "Production cutover remains pending: verify restorable backup, pause all auth writers, apply 0345-0349, import active JTIs and lockouts, drain device and pairing grants, configure separate keyring, deploy and verify all instances; defer voice session/Redis PubSub to Spec 237/242"
-    status: local_implementation_tests_passed_late_jti_rescan_test_passed_production_backup_restore_keyring_maintenance_and_smokes_blocked
+    status: production_migrations_applied_but_jti_reconciliation_backup_restore_keyring_maintenance_and_smokes_blocked
   - id: P232.G2-G6-direct-cutover
     action: complete caller/runtime inventory and execute direct cutover by dependency using ops/feature-232/direct-cutover-plan.md
     status: plan_recorded_inventory_partial_no_group_cutover_closed
   - id: P232.G6-schedule-occurrence-conflicts
     action: inspect local canonical worker_jobs schedule occurrence conflicts and reconcile definition/version ownership before scheduler cutover
     status: local_runtime_conflicts_observed_cause_and_production_scope_unverified
+
+
+production_execution_recheck:
+  observed_at_utc: "2026-09-26T13:47:19Z"
+  current_head: d7214f968e411e13bb9620fa9e7cffe58a449358
+  production_writes_made: false
+  g1:
+    web_healthz: 200
+    worker_healthz: 200
+    web_release_sha: unavailable
+    web_started_at: "2026-09-26T20:06:32+07:00"
+    worker_release_version: unavailable_wrangle_auth_missing
+    authorized_beta_admin_sessions: unavailable
+    trace_and_hit_miss_proof: missing
+    status: blocked
+    mixed_release_guard: web_only_deploy_not_safe_because_g2_callers_use_postgresql_unconditionally
+  g2:
+    database: smartspec_postgresql_15_17
+    applied_migrations: [0345, 0346, 0347, 0348, 0349]
+    latest_migration_index: 333
+    latest_migration_hash_matches_local_0349: true
+    g2_tables_present: true
+    redis_active_jti_revocations: 272
+    postgres_active_jti_rows: 1
+    redis_jti_digests_missing_from_postgres: 272
+    postgres_jti_digests_missing_from_redis: 1
+    login_device_pairing_active_state: 0
+    rollback_mirror_in_inspected_web_process: absent
+    auth_encryption_keyring_in_inspected_web_process: absent
+    backup_restore_tested: false
+    maintenance_approved: false
+    caller_revision_fully_verified: false
+    recovery_gate: do_not_rollback_redis_only; reconcile_both_sets_before_reopen
+    status: blocked_partial_state_mismatch
+  current_maintenance_observation:
+    active_systemd_services: [smartspec-web, smartspec-backend, smartspec-node-worker, smartspec-node-worker-watchdog, smartspec-web-watchdog, smartspec-hermes-worker]
+    active_containers_requiring_owner_review: [smartspec-celery-beat, smartspec-celery-media, smartspec-celery-presentation]
+    web_replicas_behind_load_balancer_verified: false
+    redis_global_shutdown_authorized: false
+    cloudflare_job_activation: disabled

@@ -25,8 +25,8 @@ g1_search_result_cache:
     previous_app_adapter_roundtrip: passed
     legacy_redis_search_cache_keys: 0
     legacy_redis_keys_are_not_active_operation_evidence: true
-    trace_propagation_and_worker_outcome_logging: implemented_locally_not_deployed
-    admin_scoped_request_fault_injection: implemented_locally_not_deployed
+    trace_propagation_and_worker_outcome_logging: web_source_may_be_loaded_exact_release_sha_and_worker_deployment_version_unverified
+    admin_scoped_request_fault_injection: web_flag_absent_worker_flag_unknown_release_unverified
   not_verified:
     beta_account_1_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
     beta_account_2_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
@@ -61,22 +61,27 @@ g1_search_result_cache:
     production_configuration_changed_by_this_run: false
 
 g2_a_jti_revocation:
-  status: local_implementation_tested_production_cutover_pending
+  status: production_state_mismatch_critical_reconciliation_required
   source_of_truth: postgresql
   persistence: SHA-256 digest of JTI and expiration only
   database_migration: apps/web/drizzle/0345_feature_245_postgres_jti_revocations.sql
   importer: apps/web/scripts/migrate-jti-revocations.ts
   redis_dry_run:
     mode: dry-run
-    scanned_active_revocations: 273
+    scanned_active_revocations: 272
     persistent_revocations: 0
     imported: 0
     identifiers_logged: false
-    observed_at_utc: "2026-09-26T12:12:04Z"
+    observed_at_utc: "2026-09-26T13:47:19Z"
     pre_maintenance_snapshot_only: true
-  production_database_table_present: false
-  production_code_restarted_to_new_jti_authority: false
-  runtime_cutover: not_performed
+  production_database_table_present: true
+  production_code_revision_verified: false
+  inspected_web_process_started_after_HEAD: true
+  inspected_process_rollback_mirror_flag: absent
+  runtime_cutover: partial_state_mismatch_not_verified_complete
+  redis_active_digests_missing_from_postgres: 272
+  postgres_active_digests_missing_from_redis: 1
+  redis_only_rollback_safe: false
   test_results:
     unit_contract: 7_passed
     postgres_integration: 2_passed_on_smartspec_test
@@ -88,7 +93,7 @@ g2_a_jti_revocation:
     focused_migration_tests_total: 72_passed_including_worker_routes
     runner_route_suite: 16_passed_when_run_independently
     rollback_mirror_order_and_fail_closed_contract: 2_passed
-    migrations_0345_to_0349: applied_in_order_in_disposable_test_schema_transaction_then_rolled_back
+    migrations_0345_to_0349: production_journal_and_hash_verified_applied_read_only;_separate_local_transaction_rehearsal_also_passed
     combined_runner_and_database_run: one_2_second_wss_test_timeout;_runner_suite_passed_16_when_rerun_independently
     focused_typescript: not_repeated_after_current_changes
     full_web_typecheck: failed_with_633_repository_diagnostics
@@ -97,49 +102,53 @@ g2_a_jti_revocation:
     baseline_commit: 7e9d8beb0
     baseline_vs_head_tree: identical_at_commit_7e9d8beb0
     baseline_vs_head_diagnostics: 633_vs_633
-    baseline_matching_file_line_column_locations: 633
-    diagnostic_location_delta: 0
-    diagnostic_code_only_variation: AdminMonitoring_tsx_959_17_TS2552_vs_TS2304_ClipboardList
+    baseline_matching_file_line_column_locations: 621_unique_locations
+    baseline_only_locations: 7
+    clean_head_only_locations: 7
+    changed_locations_outside_g1_g2: jobControlPlane_spec224_spec226
+    diagnostic_code_only_variation: AdminMonitoring_tsx_959_17_TS2552_vs_TS2304_ClipboardList_same_unresolved_symbol_cause_unproven
+    current_dirty_workspace_diagnostics: 634_uncommitted_workflow_changes
+    release_exception_approved: false
     migration_regressions: 0
     baseline_comparison_logs: [/tmp/spec245-web-typecheck.log, /tmp/spec245-web-head-typecheck.log]
   production_preflight:
     target_database: smartspec
     postgres_version: 15.17
     users_id_type_matches_new_fk: true
-    applied_migration_count: 305
+    applied_migration_count: 310
     latest_applied_matches_local_journal: true
-    latest_applied_migration_index: 328
-    latest_applied_migration_tag: 0344_runner_session_fencing
-    pending_migrations: [0345, 0346, 0347, 0348, 0349]
-    g2_tables_present: false
+    latest_applied_migration_index: 333
+    latest_applied_migration_tag: 0349_feature_245_preserve_persistent_login_lockouts
+    pending_migrations: []
+    g2_tables_present: true
     current_lock_waiters: 0
     server_lock_timeout: "0"
     server_statement_timeout: "0"
     migrations_set_transaction_local_lock_timeout: 5_seconds
     migrations_set_transaction_local_statement_timeout: 60_seconds
     production_backup_restore_verified: false
-    migrations_applied: false
-    readonly_preflight_repeated_at_utc: "2026-09-26T12:10:04Z"
+    migrations_applied: true
+    latest_readonly_preflight_at_utc: "2026-09-26T13:26:57Z"
     readonly_transaction_verified: true
   redis_state_dry_runs:
-    jti_active_revocations: 273
+    jti_active_revocations: 272
     persistent_jti_revocations: 0
     active_login_failure_counters: 0
     active_login_lockouts: 0
     pending_or_authorized_device_codes: 0
     runner_device_and_user_pairing_keys: 0
     worker_device_and_user_pairing_keys: 0
-    observed_at_utc: "2026-09-26T12:12:04Z"
+    observed_at_utc: "2026-09-26T13:47:19Z"
     snapshot_is_not_a_maintenance_fence: true
   recovery:
     temporary_redis_rollback_mirror: implemented_redis_first_then_postgresql;_uses_TOKEN_REVOKE_REDIS_URL_when_configured;_fail_closed_on_mirror_read_write_errors
     late_jti_after_preflight_snapshot_test: passed_local_synthetic_rescan
-    redis_only_rollback: allowed_only_if_bridge_was_continuously_enabled_and_reconciliation_passes
+    redis_only_rollback: unsafe_for_current_state_postgresql_only_jti_cannot_be_reconstructed_from_digest
     tested: unit_contract_order_and_fail_closed;_no_production_reconciliation_performed
     action_on_failure: keep_auth_paused_reimport_from_redis_and_keep_pg_backed_revocation_code_if_bridge_was_not_continuous
   maintenance_requirements:
     - verify a restorable Production backup and current migration head before the pause
-    - apply migrations 0345-0349 under the approved migration transaction
+    - migrations 0345-0349 are already applied; verify 0349 hash and do not rerun DDL
     - pause every token issue and revoke path across all Web instances
     - rerun both JTI and login counter dry-runs; apply with AUTH_WRITERS_PAUSED=1 and their migration-specific confirmation
     - verify no device authorization or pairing state remains before switching callers
@@ -157,7 +166,7 @@ g2_b_device_authorization:
   test_results:
     postgres_integration: 2_passed_on_smartspec_test_across_separate_clients
     coverage: atomic_authorize_consume_expiry_replay_and_hashed_at_rest
-  production_database_migration_applied: false
+  production_database_migration_applied: true
   old_caller_closed_in_production: false
   maintenance: pause issuance and drain old grants for up to 10 minutes; confirm legacy grant prefix empty before deploy
 
@@ -169,7 +178,7 @@ g2_c_login_failure_counters:
   test_results:
     postgres_integration: 1_passed_on_smartspec_test
     concurrent_increments: 12_requests_across_two_database_clients
-  production_database_migration_applied: false
+  production_database_migration_applied: true
   old_caller_closed_in_production: false
 
 g2_d_ephemeral_authorization:
@@ -181,23 +190,107 @@ g2_d_ephemeral_authorization:
   test_results:
     postgres_integration: 1_passed_on_smartspec_test_across_separate_clients
     coverage: both_lookup_indexes_shared_state_expiry_cleanup_ciphertext_and_key_rotation
-  production_database_migration_applied: false
+  production_database_migration_applied: true
   old_callers_closed_in_production: false
   deferred: voice_websocket_tickets_active_session_owner_and_pubsub_to_spec_237_242
   separate_keyring_configured_in_inspected_environment: false
   production_secret_manager_verified: false
 
 g2_overall:
-  status: BLOCKED_NOT_PRODUCTION_READY
+  status: BLOCKED_PARTIAL_STATE_MISMATCH
   production_cutover_performed: false
+  partial_state_mismatch_detected: true
   redis_must_remain_enabled: true
-  required_migrations: [0345, 0346, 0347, 0348, 0349]
+  applied_migrations: [0345, 0346, 0347, 0348, 0349]
   production_preflight_complete: false
-  blockers: [restorable_backup_restore_drill_not_verified, pairing_keyring_missing_from_active_web_config_and_all_instance_parity_unknown, maintenance_not_attested, fresh_paused_writer_state_scan_not_run, Production_deploy_and_smoke_not_run]
-  recovery: keep_auth_maintenance_paused_reconcile_from_redis_with_continuous_mirror_and_never_drop_postgresql_revocations
+  blockers: [272_active_redis_revocations_missing_from_postgres, one_postgres_only_revocation_not_mirrorable_from_digest, restorable_backup_restore_drill_not_verified, pairing_keyring_missing_from_active_web_process, maintenance_not_attested, all_web_instances_and_release_sha_unverified, g2_caller_telemetry_missing]
+  recovery: keep_postgres_backed_auth_reconcile_redis_into_postgres_keep_postgres_only_digest_and_never_use_redis_only_rollback
 
 global:
   redis_retired: false
   cloudflare_job_runtime_activation: disabled
   g2_b_to_d: local_implementation_and_focused_postgres_tests_passed_production_cutover_pending
   g3_to_g6: not_cut_over
+
+production_execution_recheck:
+  observed_at_utc: "2026-09-26T13:47:19Z"
+  inspected_commit: d7214f968e411e13bb9620fa9e7cffe58a449358
+  production_changes_made_by_this_recheck: false
+  g1:
+    web_healthz_http: 200
+    web_service_state: active
+    web_service_started_at: "2026-09-26T20:06:32+07:00"
+    web_process_revision_sha_exposed: false
+    web_started_after_head_commit_time: true
+    worker_healthz_http: 200
+    worker_deployment_version_verified: false
+    worker_deployment_api_blocker: cloudflare_api_token_unset
+    web_fault_injection_flag: absent_from_inspected_process_and_environment_file
+    worker_fault_injection_flag: unknown
+    beta_a_storage_state_available: false
+    beta_b_storage_state_available: false
+    admin_storage_state_available: false
+    normal_search_miss_hit_test: not_run
+    production_trace_and_redis_caller_telemetry: not_observed
+    fault_injection_test: not_run
+    status: BLOCKED
+    web_only_g1_release_safe_from_current_checkout: false
+    reason: g2_postgresql_callers_are_unconditionally_wired_in_same_web_source
+  g2:
+    database: smartspec
+    postgres_version: "15.17"
+    migration_rows: 310
+    latest_migration_index: 333
+    latest_migration_tag: "0349_feature_245_preserve_persistent_login_lockouts"
+    latest_migration_hash: e3bb173b4c9a147788384679de6fd1d43a31e1b0782f475b4c26847593657a89
+    latest_hash_matches_local_0349: true
+    migrations_0345_to_0349_applied: true
+    g2_tables_present: 4
+    current_lock_waiters: 0
+    readonly_transaction_verified: true
+    backup_artifact_found_in_inspected_paths: false
+    backup_restore_drill_verified: false
+    maintenance_window_confirmed: false
+    web_instances_fully_enumerated: false
+    inspected_systemd_web_unit: smartspec-web.service
+    inspected_web_started_at: "2026-09-26T20:06:32+07:00"
+    inspected_process_has_jti_redis_rollback_mirror: false
+    inspected_process_has_auth_session_encryption_keyring: false
+    active_state_counts:
+      postgres_jti_rows: 1
+      postgres_login_counters: 0
+      postgres_active_login_lockouts: 0
+      postgres_active_device_authorizations: 0
+      postgres_active_pairing_sessions: 0
+      redis_active_jti_revocations: 272
+      redis_active_login_counters: 0
+      redis_active_device_authorizations: 0
+      redis_active_runner_pairings: 0
+      redis_active_worker_pairings: 0
+    jti_digest_set_reconciliation:
+      redis_active_digests_absent_from_postgres: 272
+      postgres_active_digests_absent_from_redis: 1
+      raw_identifiers_logged: false
+    rollback_to_redis_only_safe: false
+    partial_state_mismatch: true
+    status: BLOCKED_PARTIAL_STATE_MISMATCH
+  typecheck:
+    command: "apps/web npm run typecheck"
+    baseline_commit: "7e9d8beb0"
+    baseline_diagnostics: 633
+    clean_head_commit: d7214f968e411e13bb9620fa9e7cffe58a449358
+    clean_head_diagnostics: 633
+    baseline_vs_clean_head_location_changes: 7_old_locations_resolved_and_7_new_locations_in_job_control_plane_spec224_spec226
+    migration_files_with_diagnostics: none
+    admin_monitoring_clipboardlist: unresolved_at_same_location_baseline_TS2552_clean_head_TS2304
+    full_typecheck_passed: false
+    dirty_worktree_diagnostics: 634
+    dirty_worktree_diagnostic_changes: unrelated_uncommitted_workflow_files
+    release_exception_approved: false
+  overall:
+    g1_status: BLOCKED
+    g2_status: BLOCKED_PARTIAL_STATE_MISMATCH
+    production_cutover_complete: false
+    redis_must_remain_enabled_for_voice_pubsub_g3_g6: true
+    cloudflare_activation: disabled
+    immediate_action: reconcile_union_of_jti_revocations_under_approved_maintenance_after_backup_restore_and_writer_fence
