@@ -103,8 +103,20 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
       expectedRevision: 0,
       expectedFencingVersion: 0,
+      expectedDecisionEpoch: 0,
       idempotencyKey: "control:pause:1",
       action: "pause",
+    });
+
+    const listed = await bridge.list({
+      tenantId: "tenant-acme",
+      actorId: 42,
+      limit: 10,
+    });
+    expect(listed[0]).toMatchObject({
+      bridgeVersion: "spec-226-development-control-v2",
+      decisionEpoch: 0,
+      closure: null,
     });
 
     await expect(
@@ -155,6 +167,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
       expectedRevision: 0,
       expectedFencingVersion: 0,
+      expectedDecisionEpoch: 0,
       idempotencyKey: "control:pause:1",
       action: "pause" as const,
     };
@@ -183,6 +196,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         ...command,
         expectedRevision: 1,
         expectedFencingVersion: 9,
+        expectedDecisionEpoch: 0,
         idempotencyKey: "control:cancel:fence",
         action: "cancel",
       })
@@ -206,6 +220,8 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
     });
     expect(view.actions).toEqual({ pause: true, cancel: true });
+    expect(view.decisionEpoch).toBe(0);
+    expect(view.closure).toBeNull();
     await expect(
       bridge.command({
         runId: "run-226-control",
@@ -213,6 +229,19 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         actorId: 42,
         expectedRevision: 0,
         expectedFencingVersion: 0,
+        expectedDecisionEpoch: 1,
+        idempotencyKey: "control:pause:stale-epoch",
+        action: "pause",
+      })
+    ).rejects.toThrow("RUN_DECISION_EPOCH_STALE");
+    await expect(
+      bridge.command({
+        runId: "run-226-control",
+        tenantId: "tenant-acme",
+        actorId: 42,
+        expectedRevision: 0,
+        expectedFencingVersion: 0,
+        expectedDecisionEpoch: 0,
         idempotencyKey: "control:resume:forbidden",
         action: "resume" as never,
       })

@@ -12,10 +12,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 
 function requireScope(ctx: {
   tenantId: string | null;
-  user?: {
-    id?: number | null;
-    currentTenantId?: string | number | null;
-  } | null;
+  user?: { id?: number | null; currentTenantId?: string | number | null } | null;
 }) {
   const tenantId = resolveTenantIdVarchar(
     ctx.tenantId,
@@ -48,7 +45,11 @@ function asTrpcError(error: unknown): never {
       message: "Development run not found",
     });
   }
-  if (code === "RUN_PROJECTION_STALE" || code === "RUN_FENCE_STALE") {
+  if (
+    code === "RUN_PROJECTION_STALE" ||
+    code === "RUN_FENCE_STALE" ||
+    code === "RUN_DECISION_EPOCH_STALE"
+  ) {
     throw new TRPCError({
       code: "CONFLICT",
       message: "Development run changed; refresh and retry",
@@ -87,13 +88,17 @@ const actionInput = z.object({
   action: z.enum(["pause", "cancel"]),
   expectedRevision: z.number().int().min(0),
   expectedFencingVersion: z.number().int().min(0),
+  expectedDecisionEpoch: z.number().int().min(0),
   idempotencyKey: z.string().trim().min(1).max(200),
 });
 
 const authorizationContext = (ctx: {
   tenantId: string | null;
   userToken?: string | null;
-  user?: { id?: number | null; currentTenantId?: string | number | null } | null;
+  user?: {
+    id?: number | null;
+    currentTenantId?: string | number | null;
+  } | null;
 }): Spec224AuthorizationContext => ({
   ...requireScope(ctx),
   userToken: ctx.userToken,

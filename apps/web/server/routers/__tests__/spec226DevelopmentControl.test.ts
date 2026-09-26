@@ -95,6 +95,7 @@ describe("spec226DevelopmentControlRouter", () => {
           action: "pause",
           expectedRevision: 2,
           expectedFencingVersion: 1,
+          expectedDecisionEpoch: 3,
           idempotencyKey: "control:pause:1",
         },
       })
@@ -107,6 +108,7 @@ describe("spec226DevelopmentControlRouter", () => {
       action: "pause",
       expectedRevision: 2,
       expectedFencingVersion: 1,
+      expectedDecisionEpoch: 3,
       idempotencyKey: "control:pause:1",
     });
     expect(mocks.auditLog).toHaveBeenCalledWith(
