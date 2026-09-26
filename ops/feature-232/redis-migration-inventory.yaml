@@ -488,8 +488,68 @@ cloudflare_permission_recheck_2026_09_26:
     production_restart_or_unmask: false
     redis_for_g3_g6_untouched: true
   owner_action_required:
-    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account, cloudflare_tunnel_read_for_account, r2_bucket_management_or_dedicated_bucket_s3_key]
-    backup_policy: provide_private_backup_only_bucket_encryption_key_management_and_retention
+    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account, cloudflare_tunnel_read_for_configured_tunnel]
+    backup_policy: repair_r2_endpoint_dns_tls_egress_and_prove_private_bucket_retention_or_provide_reachable_backup_target
+
+g2_recovery_credential_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:15:47Z"
+  starting_commit: "ea9883f74ce4d1de7b9ab9b3dea128f489d723a2"
+  credentials:
+    infrastructure_audit_secret_manager_entry_exposed_to_runtime: false
+    vectorize_system_setting_credential_still_usable: true
+    vectorize_credential_secret_printed: false
+    backup_r2_credential_found_in_control_plane_container: true
+    backup_bucket_differs_from_media_bucket: true
+    backup_bucket_name_or_secret_logged: false
+    app_web_python_environment_contains_infra_backup_credentials: false
+  cloudflare_api:
+    kv_workers_zone_metadata_reads: 200
+    dns_records: 403
+    zone_load_balancers: 403
+    account_load_balancer_pools: 403
+    r2_bucket_management: 403
+    account_tunnel_list: 200_empty
+    local_tunnel_id_detail: 401
+  cloudflared_cli_tunnel_inventory:
+    account_tunnels: 2
+    local_smartspec_tunnel_active_connectors: 1
+    other_tunnel_active_connectors: 0
+    secret_values_logged: false
+  cloudflared_cli_tunnel_inventory:
+    tunnel_count: 2
+    local_smartspec_tunnel_active_connectors: 1
+    other_tunnel_active_connectors: 0
+    credential_values_logged: false
+    worker_routes: 200_empty
+  backup_connectivity:
+    host_dns_resolution: passed
+    host_r2_tls_s3_head_bucket: failed_tls_connect
+    control_plane_r2_endpoint_dns: failed
+    durable_backup_created: false
+    upload_performed: false
+  writer_fence:
+    web_backend_watchdog_masked_and_inactive: true
+    cloudflared_and_docker_nginx_remain_active: true
+    known_app_and_api_upstreams_point_to_masked_ports: true
+    public_app_api_probes: 502
+    other_origin_or_replica_auth_writers_verified: false
+    background_g2_writer_fence_complete: false
+    direct_origin_firewall_verified: false
+    host_published_ports_all_interfaces: [80, 443, 5432, 6379]
+    host_firewall_cli_available: false
+  g2_actions:
+    new_jti_snapshot: false
+    dry_run_after_complete_writer_fence: false
+    importer_apply: false
+    ddl_0345_0349_rerun: false
+    keyring_parity_all_instances: false
+    production_security_tests: false
+    service_unmask_or_restart: false
+  status: BLOCKED_OWNER_ACTION_REQUIRED_INFRA_SCOPES_AND_REACHABLE_VERIFIABLE_BACKUP
+  owner_action_required:
+    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account]
+    backup_policy: repair_r2_endpoint_dns_tls_egress_and_prove_private_bucket_retention_or_provide_reachable_backup_target
+    origin_network_policy: restrict_postgres_5432_and_redis_6379_to_trusted_sources_without_stopping_services
 
 
 production_execution_recheck:

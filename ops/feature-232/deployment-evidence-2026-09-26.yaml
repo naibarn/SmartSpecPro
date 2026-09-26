@@ -480,3 +480,57 @@ cloudflare_permission_recheck_2026_09_26:
   owner_action:
     grant_scoped_zone_dns_read_load_balancing_read_cloudflare_tunnel_read_and_r2_backup_access
     define_backup_only_bucket_encryption_key_management_and_retention
+
+g2_recovery_credential_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T16:15:47Z"
+  starting_commit: "ea9883f74ce4d1de7b9ab9b3dea128f489d723a2"
+  secret_disclosure: none
+  infrastructure_credential:
+    separate_secret_manager_entry_available_to_execution: false
+    vectorize_setting_credential_used_in_memory: true
+    kv_worker_zone_metadata_http: 200
+    dns_lb_r2_management_http: 403
+    tunnel_list: {http: 200, count: 0}
+    local_configured_tunnel_detail: 401
+  cloudflared_cli_tunnel_inventory:
+    count: 2
+    local_smartspec_tunnel_connectors: 1
+    other_tunnel_connectors: 0
+  backup_credential:
+    found_in_control_plane_container: true
+    configured_bucket_differs_from_media: true
+    bucket_identity_logged: false
+    host_r2_tls_s3_probe: failed
+    control_plane_r2_dns_probe: failed
+    private_access_and_retention_verified: false
+    fresh_backup_or_upload: false
+    cloudflare_r2_platform_encryption_at_rest: automatic_aes256_documented
+  containment:
+    web_backend_watchdog_system_masked_inactive: true
+    tunnel_ingress_web_upstream: localhost_3000
+    tunnel_ingress_api_upstream: localhost_8000
+    docker_nginx_web_upstream: host.docker.internal_3000
+    docker_nginx_api_upstream: host.docker.internal_8000
+    public_auth_probes_http: 502
+    external_lb_origins_replicas_and_direct_firewall: unverified
+    published_all_interface_ports: [80, 443, 5432, 6379]
+    host_firewall_tools_available: false
+    active_non_auth_workers_stopped: false
+  reconciliation_and_recovery:
+    writer_fence_complete: false
+    fresh_jti_snapshot: false
+    guarded_import_dry_run: false
+    importer_apply: false
+    ddl_0345_0349: not_run
+    keyring_all_instance_parity: unverified
+    production_security_tests: not_run
+    restart_unmask_or_reopen: false
+  final_status:
+    g1: BLOCKED
+    g2: BLOCKED_OWNER_ACTION_REQUIRED
+    production_recovery: not_verified
+  owner_action_required:
+    - allow_the_backup_executor_dns_and_tls_egress_to_its_configured_r2_endpoint
+    - prove_the_separate_r2_bucket_is_private_and_set_approved_lifecycle_retention
+    - install_scoped_infrastructure_credential_with_affected_zone_dns_read_and_account_load_balancing_read
+    - verify_provider_firewall_limits_5432_and_6379_to_trusted_callers_without_stopping_redis
