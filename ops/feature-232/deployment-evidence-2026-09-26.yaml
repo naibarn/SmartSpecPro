@@ -343,3 +343,61 @@ emergency_g2_reconciliation_2026_09_26:
     g1: BLOCKED_no_authorized_sessions_or_production_worker_trace
     g2: BLOCKED_auth_http_paused_revocations_unreconciled_backup_restore_and_full_writer_fence_missing
     production_cutover_verified: false
+
+recovery_round2_production_execution:
+  observed_at_utc: "2026-09-26T15:16:28Z"
+  starting_commit: "32081c9b302413a1c0d9682676f3381029aadf09"
+  local_evidence:
+    system_level_masks_effective: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    services_inactive: true
+    direct_ports_3000_8000_listening: false
+    public_api_probe_http: 502
+    runtime_worker_health_http: 200
+    runtime_worker_health_proves_auth: false
+    original_unit_files_backup: /root/spec245-g2-maintenance-unit-backup-20260926
+  production_scope:
+    cloudflare_api_inventory: blocked_credentials_unavailable
+    external_load_balancer_and_origin_routes: not_verified
+    beta_admin_browser_sessions: unavailable
+    worker_and_web_revisions: not_verified
+  backup_restore_drill:
+    artifact: /tmp/smartspecpro-database-backups/e1ba9ce0-2536-4bc8-9c54-23a746d277c4/database-dump-e1ba9ce0-2536-4bc8-9c54-23a746d277c4.zip
+    bytes: 271480923
+    sha256: c09361e66105165f1864b2dd4ea3921f61b0ca0ccee1b1a1a9e88e1653405485
+    storage: ephemeral_tmpfs_not_encrypted
+    canonical_job_record: absent
+    isolated_restore: passed_relational_checks
+    matched: {tables: 559, columns: 8375, constraints: 1978, indexes: 2134, migration_rows: 310, application_table_row_counts: 558}
+    caveat: production_vector_0_8_0_clone_vector_0_8_2; matching_pg15_17_restore_client_required
+    durable_approved_backup_gate: BLOCKED
+  revocation_reconciliation:
+    redis_active: 269
+    postgres_active: 1
+    redis_only: 269
+    postgres_only: 1
+    overlap: 0
+    importer_dry_run_imported: 0
+    import_attempted: false
+    auth_writers_fully_fenced: false
+    raw_identifiers_logged: false
+  g2_configuration:
+    migrations_0345_0349_applied_and_hash_matched: true
+    deployment_actor_logs_verified: false
+    local_web_python_jwt_secrets_match: true
+    pairing_keyring_in_checked_env: absent
+    secret_manager_all_instance_parity: unverified
+    cloudflare_job_activation_remote_state: unverified
+  security_tests:
+    cross_instance_revocation: not_run
+    replay_expiration_concurrency_database_failure: not_run
+    all_auth_consumers: not_run
+  changes_performed:
+    ddl: false
+    production_import: false
+    deploy: false
+    reopen: false
+    redis_shutdown: false
+  final_status:
+    g1: BLOCKED
+    g2: BLOCKED_REVOCATIONS_UNRECONCILED_AND_EXTERNAL_RECOVERY_GATES_OPEN
+    production_cutover_verified: false

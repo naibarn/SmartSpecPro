@@ -325,6 +325,86 @@ next_actions:
     action: inspect local canonical worker_jobs schedule occurrence conflicts and reconcile definition/version ownership before scheduler cutover
     status: local_runtime_conflicts_observed_cause_and_production_scope_unverified
 
+recovery_round2_production_execution:
+  observed_at_utc: "2026-09-26T15:16:28Z"
+  inspected_commit: "32081c9b302413a1c0d9682676f3381029aadf09"
+  evidence_scope: inspected_host_and_connected_postgresql_redis_only; cloudflare_load_balancer_external_origins_not_enumerated
+  g1_status: BLOCKED
+  g2_status: BLOCKED_REVOCATIONS_UNRECONCILED_AND_RECOVERY_GATES_OPEN
+  local_host_containment:
+    system_level_masked_services: [smartspec-web.service, smartspec-backend.service, smartspec-web-watchdog.service]
+    all_three_inactive: true
+    original_units_preserved_root_only: true
+    direct_ports_3000_8000_listening: false
+    public_web_api_probe_http: 502
+    runtime_worker_health_probe_http: 200
+    runtime_worker_probe_is_auth_evidence: false
+    prior_runtime_only_mask_failed_and_services_restarted: true
+  external_containment:
+    cloudflare_api_access: unavailable
+    cloudflare_routes_and_origins_enumerated: false
+    load_balancer_replicas_enumerated: false
+    direct_origin_firewall_verified: false
+    beta_and_admin_authorized_sessions_available: false
+  revocation_snapshot:
+    observed_at_utc: "2026-09-26T15:16:28Z"
+    redis_active: 269
+    postgres_active: 1
+    redis_only: 269
+    postgres_only: 1
+    overlap: 0
+    raw_identifiers_logged: false
+    importer_dry_run_imported: 0
+    guarded_import_attempted: false
+    writer_fence_complete: false
+  other_g2_state:
+    redis_login_counters_lockouts_device_pairings: 0
+    postgres_login_counters_devices_pairings: 0
+    writer_fenced: false
+    source: redis_g2_audit_and_postgres_aggregate
+  migration_history:
+    migrations_0345_0349_applied: true
+    local_sql_hashes_match_database_journal: 5
+    deployment_actor_and_pipeline_logs_available: false
+    ddl_rerun: false
+  backup_restore:
+    exporter: existing_database_backup_artifact_exporter_safe_mode
+    path: /tmp/smartspecpro-database-backups/e1ba9ce0-2536-4bc8-9c54-23a746d277c4/database-dump-e1ba9ce0-2536-4bc8-9c54-23a746d277c4.zip
+    bytes: 271480923
+    sha256: c09361e66105165f1864b2dd4ea3921f61b0ca0ccee1b1a1a9e88e1653405485
+    storage: tmpfs_mode_0600_parent_0700
+    encrypted: false
+    canonical_backup_job_record: false
+    isolated_restore: passed_relational_validation
+    restore_target: loopback_clone_postgresql_15_17_from_production_image
+    tables_columns_constraints_indexes: [559, 8375, 1978, 2134]
+    migration_rows_matched: 310
+    application_table_row_counts_matched: 558
+    production_vector_extension: "0.8.0"
+    clone_vector_extension: "0.8.2"
+    restore_caveat: extension_version_drift_and_non_durable_unencrypted_backup
+    clone_removed_after_validation: true
+    approved_durable_backup_gate: BLOCKED
+  runtime_configuration:
+    local_web_and_python_jwt_secret_consistent: true
+    raw_secrets_recorded: false
+    pairing_encryption_keyring_present_in_checked_env: false
+    secret_manager_and_all_instance_parity: unverified
+    serving_revisions_all_instances: unverified
+    cloudflare_job_activation_remote_state: unverified
+  production_security_tests:
+    cross_instance_revocation: not_run
+    token_replay_and_expiration: not_run
+    concurrent_revocation: not_run
+    database_failure: not_run
+    all_auth_consumers: not_run
+  actions:
+    production_ddl: not_run
+    production_import: not_run
+    release_deploy: not_run
+    reopen: not_run
+    redis_shutdown: not_run
+
 
 production_execution_recheck:
   observed_at_utc: "2026-09-26T13:47:19Z"
