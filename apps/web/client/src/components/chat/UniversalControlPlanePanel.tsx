@@ -1076,11 +1076,109 @@ export function UniversalControlPlanePanel({
                                 </p>
                               )}
                             </section>
-                            <p className="mt-3 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">
-                              Deferred test obligations are not exposed by the
-                              canonical Spec 226 bridge; no local test status is
-                              inferred.
-                            </p>
+                            <section
+                              className="mt-3"
+                              aria-label="Deferred test obligations"
+                            >
+                              <h4 className="text-xs font-semibold text-slate-800">
+                                Deferred test obligations
+                              </h4>
+                              <p className="mt-1 text-xs text-slate-500">
+                                Tracked deferrals are not passing test evidence.
+                              </p>
+                              {(
+                                detail.closure?.deferredTestObligations ?? []
+                              ).filter(item => item.invalidatedAt === null)
+                                .length ? (
+                                <ul className="mt-2 space-y-2">
+                                  {(
+                                    detail.closure?.deferredTestObligations ??
+                                    []
+                                  )
+                                    .filter(item => item.invalidatedAt === null)
+                                    .map(item => (
+                                      <li
+                                        key={`${item.obligationId}:${item.version}`}
+                                        className="rounded-lg border border-border bg-card p-2"
+                                      >
+                                        <p className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-foreground">
+                                          <span>
+                                            {item.obligationId} · v
+                                            {item.version}
+                                          </span>
+                                          <Badge variant="outline">
+                                            DEFERRED
+                                          </Badge>
+                                        </p>
+                                        <p className="mt-1 break-all text-xs text-muted-foreground">
+                                          {item.category} · {item.testTarget}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                          Requirement {item.requirementId} ·
+                                          WorkPackage {item.workPackageId}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                          Reason: {item.reason}
+                                        </p>
+                                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                                          Required environment:{" "}
+                                          {item.requiredEnvironment}
+                                        </p>
+                                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                                          Spec {item.specId}@{item.specRevision}{" "}
+                                          · source SHA-256{" "}
+                                          {item.sourceArtifactDigest}
+                                        </p>
+                                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                                          Spec SHA-256 {item.specDigest}
+                                        </p>
+                                      </li>
+                                    ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  No current deferred test obligations are
+                                  recorded.
+                                </p>
+                              )}
+                              {(
+                                detail.closure?.deferredTestObligations ?? []
+                              ).some(item => item.invalidatedAt !== null) ? (
+                                <details className="mt-2 rounded-lg border border-border p-2">
+                                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                                    Invalidated history
+                                  </summary>
+                                  <ul className="mt-2 space-y-2">
+                                    {(
+                                      detail.closure?.deferredTestObligations ??
+                                      []
+                                    )
+                                      .filter(
+                                        item => item.invalidatedAt !== null
+                                      )
+                                      .map(item => (
+                                        <li
+                                          key={`${item.obligationId}:${item.version}`}
+                                          className="rounded-lg bg-muted/60 p-2 text-xs text-muted-foreground"
+                                        >
+                                          <p className="font-medium">
+                                            {item.obligationId} · v
+                                            {item.version} · INVALIDATED
+                                          </p>
+                                          <p>{item.invalidationReason}</p>
+                                          <time
+                                            dateTime={
+                                              item.invalidatedAt ?? undefined
+                                            }
+                                          >
+                                            {item.invalidatedAt}
+                                          </time>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </details>
+                              ) : null}
+                            </section>
                           </section>
                         ) : null}
                         {developmentEventsQuery.error ? (
