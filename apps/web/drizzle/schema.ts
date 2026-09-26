@@ -17,6 +17,7 @@ import {
   bigint,
   bigserial,
   check,
+  primaryKey,
   doublePrecision,
   real,
   type AnyPgColumn,
@@ -14745,6 +14746,32 @@ export const publicApiAuditLog = pgTable(
 export type PublicApiAuditLogEntry = typeof publicApiAuditLog.$inferSelect;
 export type InsertPublicApiAuditLogEntry =
   typeof publicApiAuditLog.$inferInsert;
+
+/** PostgreSQL hard request-quota counters; abuse throttles and billing stay separate. */
+export const apiKeyQuotaCounters = pgTable(
+  "api_key_quota_counters",
+  {
+    tenantId: varchar("tenantId", { length: 36 }).notNull(),
+    apiKeyId: varchar("apiKeyId", { length: 36 }).notNull(),
+    window: varchar("window", { length: 16 }).notNull(),
+    periodKey: varchar("periodKey", { length: 16 }).notNull(),
+    requestCount: integer("requestCount").default(0).notNull(),
+    warnedAt: timestamp("warnedAt", { withTimezone: true }),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    primaryKey({
+      name: "api_key_quota_counters_pk",
+      columns: [t.apiKeyId, t.window, t.periodKey],
+    }),
+    index("api_key_quota_counters_expires_idx").on(t.expiresAt),
+    check("api_key_quota_counters_window_check", sql`${t.window} IN ('hourly', 'daily', 'weekly', 'monthly')`),
+    check("api_key_quota_counters_count_check", sql`${t.requestCount} >= 0`),
+  ],
+);
+
+export type ApiKeyQuotaCounter = typeof apiKeyQuotaCounters.$inferSelect;
 
 /**
  * API Webhook Endpoints — outbound webhook registrations.

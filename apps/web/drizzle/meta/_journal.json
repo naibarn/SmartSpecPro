@@ -2339,6 +2339,13 @@
       "when": 1789824020753,
       "tag": "0349_feature_245_preserve_persistent_login_lockouts",
       "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1790440469579,
+      "tag": "0350_spec245_postgres_api_key_quota_counters",
+      "breakpoints": true
     }
   ]
 }

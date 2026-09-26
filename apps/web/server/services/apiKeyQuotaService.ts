@@ -1,12 +1,14 @@
 /**
- * Per-API-key request quota enforcement.
+ * PostgreSQL-backed per-API-key request quotas.
  *
- * Supports four independent time windows: hourly, daily, weekly, monthly.
- * Each window is tracked as a Redis counter with an appropriate TTL.
- * A quota.warning event is emitted (once per window period) when usage reaches 80%.
+ * These are exact hard request quotas, not edge abuse throttles and not credit
+ * accounting. A transaction-scoped advisory lock serializes admission for one
+ * API key across all Web instances. Redis remains in use by separate soft
+ * abuse throttles until their own G3 cutover.
  */
 
-import { getRedisClient } from "./redis";
+import { sql } from "drizzle-orm";
+import { getDb } from "../db";
 import { emitPublicApiEvent } from "./webhookDeliveryService";
 
 // ---------------------------------------------------------------------------
@@ -27,264 +29,276 @@ export interface QuotaCheckResult {
   retryAfterSeconds?: number;
 }
 
-// ---------------------------------------------------------------------------
-// Time window helpers
-// ---------------------------------------------------------------------------
+type QuotaWindow = "hourly" | "daily" | "weekly" | "monthly";
+type QuotaEvent = { window: QuotaWindow; count: number; limit: number };
 
-function currentHourBucket(): string {
-  return String(Math.floor(Date.now() / 3_600_000));
+function getRows<T>(result: unknown): T[] {
+  if (Array.isArray(result)) return result as T[];
+  const rows = (result as { rows?: unknown } | null)?.rows;
+  return Array.isArray(rows) ? (rows as T[]) : [];
 }
 
-function currentDayBucket(): string {
-  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+interface WindowConfig {
+  window: QuotaWindow;
+  limit: number;
+  periodKey: string;
+  ttlSeconds: number;
+  retryAfterSeconds: number;
 }
 
-function currentWeekBucket(): string {
-  const now = new Date();
+// ---------------------------------------------------------------------------
+// Time window helpers (keep existing UTC bucket contracts)
+// ---------------------------------------------------------------------------
+
+function currentHourBucket(now: Date): string {
+  return String(Math.floor(now.getTime() / 3_600_000));
+}
+
+function currentDayBucket(now: Date): string {
+  return now.toISOString().slice(0, 10);
+}
+
+function currentWeekBucket(now: Date): string {
   const jan1 = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
   const dayOfYear = Math.floor((now.getTime() - jan1.getTime()) / 86_400_000);
   const week = Math.ceil((dayOfYear + jan1.getUTCDay() + 1) / 7);
   return `${now.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
-function currentMonthBucket(): string {
-  return new Date().toISOString().slice(0, 7); // YYYY-MM
+function currentMonthBucket(now: Date): string {
+  return now.toISOString().slice(0, 7);
 }
 
-function secondsUntilNextHour(): number {
-  return 3600 - (Math.floor(Date.now() / 1000) % 3600);
+function secondsUntilNextHour(now: Date): number {
+  return 3600 - (Math.floor(now.getTime() / 1000) % 3600);
 }
 
-function secondsUntilMidnightUTC(): number {
-  const now = new Date();
+function secondsUntilMidnightUTC(now: Date): number {
   const midnight = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)
   );
   return Math.ceil((midnight.getTime() - now.getTime()) / 1000);
 }
 
-function secondsUntilNextWeek(): number {
-  const now = new Date();
-  const day = now.getUTCDay() || 7; // Mon=1 … Sun=7
+function secondsUntilNextWeek(now: Date): number {
+  const day = now.getUTCDay() || 7;
   const daysToMonday = 8 - day;
   const nextMonday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + daysToMonday),
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + daysToMonday
+    )
   );
   return Math.ceil((nextMonday.getTime() - now.getTime()) / 1000);
 }
 
-function secondsUntilNextMonth(): number {
-  const now = new Date();
-  const firstOfNext = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+function secondsUntilNextMonth(now: Date): number {
+  const firstOfNext = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)
+  );
   return Math.ceil((firstOfNext.getTime() - now.getTime()) / 1000);
 }
 
+function getConfiguredWindows(quota: QuotaConfig, now: Date): WindowConfig[] {
+  const windows: WindowConfig[] = [];
+  if (quota.quotaHourly != null) {
+    windows.push({
+      window: "hourly",
+      limit: quota.quotaHourly,
+      periodKey: currentHourBucket(now),
+      ttlSeconds: 7200,
+      retryAfterSeconds: secondsUntilNextHour(now),
+    });
+  }
+  if (quota.quotaDaily != null) {
+    windows.push({
+      window: "daily",
+      limit: quota.quotaDaily,
+      periodKey: currentDayBucket(now),
+      ttlSeconds: 172800,
+      retryAfterSeconds: secondsUntilMidnightUTC(now),
+    });
+  }
+  if (quota.quotaWeekly != null) {
+    windows.push({
+      window: "weekly",
+      limit: quota.quotaWeekly,
+      periodKey: currentWeekBucket(now),
+      ttlSeconds: 691200,
+      retryAfterSeconds: secondsUntilNextWeek(now),
+    });
+  }
+  if (quota.quotaMonthly != null) {
+    windows.push({
+      window: "monthly",
+      limit: quota.quotaMonthly,
+      periodKey: currentMonthBucket(now),
+      ttlSeconds: 2764800,
+      retryAfterSeconds: secondsUntilNextMonth(now),
+    });
+  }
+  return windows;
+}
+
+function buildHeaders(
+  windows: WindowConfig[],
+  counts: Map<QuotaWindow, number>,
+  now: Date
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const entry of windows) {
+    const count = counts.get(entry.window) ?? 0;
+    const label = entry.window[0].toUpperCase() + entry.window.slice(1);
+    headers[`X-Quota-${label}-Limit`] = String(entry.limit);
+    headers[`X-Quota-${label}-Remaining`] = String(
+      Math.max(0, entry.limit - count)
+    );
+    if (entry.window === "hourly") {
+      headers["X-Quota-Hourly-Reset"] = String(
+        (Math.floor(now.getTime() / 3_600_000) + 1) * 3600
+      );
+    }
+  }
+  return headers;
+}
+
 // ---------------------------------------------------------------------------
-// Core: check + increment
+// Expired counter cleanup
+// ---------------------------------------------------------------------------
+
+let cleanupAfter = 0;
+let cleanupInFlight: Promise<void> | null = null;
+let quotaChecksSinceCleanup = 0;
+
+async function cleanupExpiredCounters(): Promise<void> {
+  if (cleanupInFlight) return cleanupInFlight;
+  if (Date.now() < cleanupAfter) return;
+  cleanupAfter = Date.now() + 60 * 60 * 1000;
+
+  cleanupInFlight = (async () => {
+    const db = await getDb();
+    await db.execute(sql`
+      WITH expired AS (
+        SELECT ctid
+        FROM api_key_quota_counters
+        WHERE "expiresAt" < now()
+        ORDER BY "expiresAt"
+        LIMIT 500
+        FOR UPDATE SKIP LOCKED
+      )
+      DELETE FROM api_key_quota_counters AS counters
+      USING expired
+      WHERE counters.ctid = expired.ctid
+    `);
+  })().finally(() => {
+    cleanupInFlight = null;
+  });
+
+  return cleanupInFlight;
+}
+
+// ---------------------------------------------------------------------------
+// Core: atomically increment configured quotas and enforce all windows
 // ---------------------------------------------------------------------------
 
 /**
- * Atomically increment all configured quota counters and enforce limits.
- *
- * Uses INCR-then-check (same pattern as the RPM rate limiter). Counter is
- * incremented before checking, so the request that crosses the limit is the
- * first to be rejected — no under-counting.
+ * Atomically increments every configured request quota and applies the same
+ * INCR-then-check rule as the Redis implementation: the first request beyond
+ * any limit is rejected, and all configured window counts still advance.
  */
 export async function checkAndIncrementQuota(
   apiKeyId: string,
   tenantId: string,
-  quota: QuotaConfig,
+  quota: QuotaConfig
 ): Promise<QuotaCheckResult> {
-  const hasAny =
-    quota.quotaHourly != null ||
-    quota.quotaDaily != null ||
-    quota.quotaWeekly != null ||
-    quota.quotaMonthly != null;
+  const now = new Date();
+  const windows = getConfiguredWindows(quota, now);
+  if (windows.length === 0) return { allowed: true, headers: {} };
 
-  if (!hasAny) {
-    return { allowed: true, headers: {} };
-  }
+  const db = await getDb();
+  const reservation = await db.transaction(async tx => {
+    // Hash collision only serializes unrelated keys; it cannot merge their data.
+    await tx.execute(sql`
+      SELECT pg_advisory_xact_lock(hashtextextended(${apiKeyId}, 0))
+    `);
 
-  const redis = getRedisClient();
-  const prefix = `quota:apikey:${apiKeyId}`;
-  const hKey = `${prefix}:h:${currentHourBucket()}`;
-  const dKey = `${prefix}:d:${currentDayBucket()}`;
-  const wKey = `${prefix}:w:${currentWeekBucket()}`;
-  const mKey = `${prefix}:m:${currentMonthBucket()}`;
+    const counts = new Map<QuotaWindow, number>();
+    const warnings: QuotaEvent[] = [];
+    for (const entry of windows) {
+      const result = await tx.execute(sql`
+        INSERT INTO api_key_quota_counters
+          ("tenantId", "apiKeyId", "window", "periodKey", "requestCount", "expiresAt", "updatedAt")
+        VALUES (
+          ${tenantId}, ${apiKeyId}, ${entry.window}, ${entry.periodKey}, 1,
+          now() + (${entry.ttlSeconds} * interval '1 second'), now()
+        )
+        ON CONFLICT ("apiKeyId", "window", "periodKey")
+        DO UPDATE SET
+          "requestCount" = api_key_quota_counters."requestCount" + 1,
+          "expiresAt" = EXCLUDED."expiresAt",
+          "updatedAt" = now()
+        RETURNING "requestCount"
+      `);
+      const count = Number(
+        getRows<{ requestCount: number | string }>(result)[0]?.requestCount
+      );
+      if (!Number.isInteger(count) || count < 1) {
+        throw new Error(
+          "PostgreSQL quota counter did not return a valid count"
+        );
+      }
+      counts.set(entry.window, count);
 
-  // INCR all relevant counters in a pipeline
-  const incrPipeline = redis.pipeline();
-  if (quota.quotaHourly != null) incrPipeline.incr(hKey);
-  if (quota.quotaDaily != null) incrPipeline.incr(dKey);
-  if (quota.quotaWeekly != null) incrPipeline.incr(wKey);
-  if (quota.quotaMonthly != null) incrPipeline.incr(mKey);
-  const results = await incrPipeline.exec();
+      if (count * 100 >= entry.limit * 80 && count < entry.limit) {
+        const warningResult = await tx.execute(sql`
+          UPDATE api_key_quota_counters
+          SET "warnedAt" = now()
+          WHERE "apiKeyId" = ${apiKeyId}
+            AND "window" = ${entry.window}
+            AND "periodKey" = ${entry.periodKey}
+            AND "warnedAt" IS NULL
+          RETURNING "requestCount"
+        `);
+        if (getRows(warningResult).length > 0) {
+          warnings.push({ window: entry.window, count, limit: entry.limit });
+        }
+      }
+    }
 
-  // Set TTLs on first request of each window
-  const ttlPipeline = redis.pipeline();
-  let idx = 0;
-  if (quota.quotaHourly != null) {
-    if ((results?.[idx]?.[1] as number) === 1) ttlPipeline.expire(hKey, 7_200); // 2h
-    idx++;
-  }
-  if (quota.quotaDaily != null) {
-    if ((results?.[idx]?.[1] as number) === 1) ttlPipeline.expire(dKey, 172_800); // 2d
-    idx++;
-  }
-  if (quota.quotaWeekly != null) {
-    if ((results?.[idx]?.[1] as number) === 1) ttlPipeline.expire(wKey, 691_200); // 8d
-    idx++;
-  }
-  if (quota.quotaMonthly != null) {
-    if ((results?.[idx]?.[1] as number) === 1) ttlPipeline.expire(mKey, 2_764_800); // 32d
-  }
-  ttlPipeline.exec().catch(() => {});
+    return { counts, warnings };
+  });
 
-  // Extract counts
-  idx = 0;
-  const hCount = quota.quotaHourly != null ? ((results?.[idx++]?.[1] as number) ?? 1) : 0;
-  const dCount = quota.quotaDaily != null ? ((results?.[idx++]?.[1] as number) ?? 1) : 0;
-  const wCount = quota.quotaWeekly != null ? ((results?.[idx++]?.[1] as number) ?? 1) : 0;
-  const mCount = quota.quotaMonthly != null ? ((results?.[idx++]?.[1] as number) ?? 1) : 0;
-
-  // Build response headers
-  const headers: Record<string, string> = {};
-  if (quota.quotaHourly != null) {
-    headers["X-Quota-Hourly-Limit"] = String(quota.quotaHourly);
-    headers["X-Quota-Hourly-Remaining"] = String(Math.max(0, quota.quotaHourly - hCount));
-    headers["X-Quota-Hourly-Reset"] = String(
-      (Math.floor(Date.now() / 3_600_000) + 1) * 3600,
-    );
-  }
-  if (quota.quotaDaily != null) {
-    headers["X-Quota-Daily-Limit"] = String(quota.quotaDaily);
-    headers["X-Quota-Daily-Remaining"] = String(Math.max(0, quota.quotaDaily - dCount));
-  }
-  if (quota.quotaWeekly != null) {
-    headers["X-Quota-Weekly-Limit"] = String(quota.quotaWeekly);
-    headers["X-Quota-Weekly-Remaining"] = String(Math.max(0, quota.quotaWeekly - wCount));
-  }
-  if (quota.quotaMonthly != null) {
-    headers["X-Quota-Monthly-Limit"] = String(quota.quotaMonthly);
-    headers["X-Quota-Monthly-Remaining"] = String(Math.max(0, quota.quotaMonthly - mCount));
+  // Cleanup is bounded, best-effort maintenance; quota admission remains
+  // fail-closed if the counter transaction itself fails.
+  quotaChecksSinceCleanup += 1;
+  if (quotaChecksSinceCleanup >= 1000) {
+    quotaChecksSinceCleanup = 0;
+    void cleanupExpiredCounters().catch(() => {});
   }
 
-  // Check blocks (first violated window wins)
-  if (quota.quotaHourly != null && hCount > quota.quotaHourly) {
-    return {
-      allowed: false,
-      blockedWindow: "hourly",
-      headers,
-      retryAfterSeconds: secondsUntilNextHour(),
-    };
-  }
-  if (quota.quotaDaily != null && dCount > quota.quotaDaily) {
-    return {
-      allowed: false,
-      blockedWindow: "daily",
-      headers,
-      retryAfterSeconds: secondsUntilMidnightUTC(),
-    };
-  }
-  if (quota.quotaWeekly != null && wCount > quota.quotaWeekly) {
-    return {
-      allowed: false,
-      blockedWindow: "weekly",
-      headers,
-      retryAfterSeconds: secondsUntilNextWeek(),
-    };
-  }
-  if (quota.quotaMonthly != null && mCount > quota.quotaMonthly) {
-    return {
-      allowed: false,
-      blockedWindow: "monthly",
-      headers,
-      retryAfterSeconds: secondsUntilNextMonth(),
-    };
-  }
-
-  // Emit 80% warning events (fire-and-forget, deduplicated per window)
-  maybeEmitQuotaWarning(apiKeyId, tenantId, quota, hCount, dCount, wCount, mCount).catch(
-    () => {},
-  );
-
-  return { allowed: true, headers };
-}
-
-// ---------------------------------------------------------------------------
-// 80% warning emission (deduplicated via Redis NX flag)
-// ---------------------------------------------------------------------------
-
-async function maybeEmitQuotaWarning(
-  apiKeyId: string,
-  tenantId: string,
-  quota: QuotaConfig,
-  hCount: number,
-  dCount: number,
-  wCount: number,
-  mCount: number,
-): Promise<void> {
-  const redis = getRedisClient();
-
-  const windows: Array<{
-    key: string;
-    ttlSeconds: number;
-    window: string;
-    count: number;
-    limit: number;
-  }> = [];
-
-  if (quota.quotaHourly != null) {
-    windows.push({
-      key: `quota:warn:${apiKeyId}:h:${currentHourBucket()}`,
-      ttlSeconds: 7_200,
-      window: "hourly",
-      count: hCount,
-      limit: quota.quotaHourly,
-    });
-  }
-  if (quota.quotaDaily != null) {
-    windows.push({
-      key: `quota:warn:${apiKeyId}:d:${currentDayBucket()}`,
-      ttlSeconds: 172_800,
-      window: "daily",
-      count: dCount,
-      limit: quota.quotaDaily,
-    });
-  }
-  if (quota.quotaWeekly != null) {
-    windows.push({
-      key: `quota:warn:${apiKeyId}:w:${currentWeekBucket()}`,
-      ttlSeconds: 691_200,
-      window: "weekly",
-      count: wCount,
-      limit: quota.quotaWeekly,
-    });
-  }
-  if (quota.quotaMonthly != null) {
-    windows.push({
-      key: `quota:warn:${apiKeyId}:m:${currentMonthBucket()}`,
-      ttlSeconds: 2_764_800,
-      window: "monthly",
-      count: mCount,
-      limit: quota.quotaMonthly,
-    });
-  }
-
-  for (const w of windows) {
-    const usagePct = w.count / w.limit;
-    if (usagePct < 0.8 || usagePct >= 1.0) continue; // Only 80–99%
-
-    // NX ensures we emit at most once per window period
-    const set = await redis.set(w.key, "1", "EX", w.ttlSeconds, "NX");
-    if (!set) continue; // Already warned this period
-
-    emitPublicApiEvent(tenantId, "quota.warning", {
+  for (const warning of reservation.warnings) {
+    void emitPublicApiEvent(tenantId, "quota.warning", {
       api_key_id: apiKeyId,
-      window: w.window,
-      usage_pct: Math.round(usagePct * 100),
-      remaining: w.limit - w.count,
-      limit: w.limit,
+      window: warning.window,
+      usage_pct: Math.round((warning.count / warning.limit) * 100),
+      remaining: warning.limit - warning.count,
+      limit: warning.limit,
     }).catch(() => {});
   }
+
+  const headers = buildHeaders(windows, reservation.counts, now);
+  for (const entry of windows) {
+    const count = reservation.counts.get(entry.window) ?? 0;
+    if (count > entry.limit) {
+      return {
+        allowed: false,
+        blockedWindow: entry.window,
+        headers,
+        retryAfterSeconds: entry.retryAfterSeconds,
+      };
+    }
+  }
+
+  return { allowed: true, headers };
 }
