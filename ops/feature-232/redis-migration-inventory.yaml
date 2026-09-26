@@ -188,7 +188,7 @@ responsibility_groups:
       worker_pairing_keys: 0
 
   G3_rate_limit_quota_idempotency:
-    status: partial_static_discovery
+    status: code_verified_postgres_request_quota_only
     examples:
       - file: apps/web/server/middleware/distributedRateLimit.ts
         symbol: distributed rate limiter
@@ -205,6 +205,20 @@ responsibility_groups:
         semantics: temporary request lock plus cached response
         target: PostgreSQL canonical idempotency for business effects; KV is not an atomic lock substitute
         migration_status: blocked_on_effect_and_idempotency_audit
+    latest_implementation:
+      commit: be63efbdfcb7b5b4cdd3520344c426406fe730ad
+      branch: codex/spec245-g3-replacements
+      scope: public_api_request_count_quotas_hourly_daily_weekly_monthly
+      authority: PostgreSQL_transaction_with_per_api_key_advisory_lock
+      production_deployed: false
+      migration_0350_applied_to_production: false
+      not_in_scope_yet: [abuse_rate_limiting, financial_credit_accounting, idempotency]
+      verification:
+        focused_and_integration_tests: 112_passed
+        isolated_postgres: "15-alpine, loopback-only, smartspec_spec245_g3_test"
+        concurrent_admission: "40 requests with limit 12; 12 allowed and 28 denied"
+        failure_behavior: "PostgreSQL failure rejects quota request; middleware returns 503"
+      cutover: blocked_until_migration_preflight_active_counter_import_and_release_tests
     unknown_callers: true
 
   G4_locks_leases_semaphores:
