@@ -53,8 +53,14 @@ Execution policy: full Vitest, browser, integration, restart/concurrency and reg
 
 ## Status
 
+- Isolated worktree: `/home/dev/projects/SmartSpecPro-spec224-obligations-integration`; branch `codex/spec224-deferred-obligations-integration-20260926`.
+- Push evidence: GitHub `refs/heads/main` was verified at `585c2424414b74a8ec782d21f55b9bacfae62e58` after a non-force fast-forward push.
+- Shared checkout `/home/dev/projects/SmartSpecPro` was not modified or staged; it remains behind remote and contains unrelated uncommitted work from concurrent sessions.
 - WP-TEST-OBL-01: `IMPLEMENTED_UNVERIFIED` after typed contract, versioned persistence, audit events, baseline invalidation, and Spec 226 canonical projection.
-- WP-UI-02: implemented after the canonical backend projection; its UI remains a separate commit and `IMPLEMENTED_UNVERIFIED`.
-- Bounded evidence: focused Vitest selection `-t deferred` passed (5 passed, 8 skipped across two files); TypeScript `transpileModule` syntax checks passed; Prettier and `git diff --check` passed.
+- WP-UI-02: `IMPLEMENTED_UNVERIFIED`, committed separately after the canonical backend projection.
+- Integration commits on `main`: WP-TEST-OBL-01 `a341bdfb0`; WP-UI-02 `585c2424414b74a8ec782d21f55b9bacfae62e58`. Promoted WP-REQ-01 and WP-UI-01 commits are `7bcee4f60` and `4af1689e7`; their implementation was not reopened.
+- Bounded evidence on candidate `585c2424`: focused Vitest selection `-t deferred` passed (5 passed, 8 skipped across two files), including post-rebase rerun; TypeScript `transpileModule` syntax checks passed; `git diff --check` passed. Prettier check passed on backend/tests/docs; the UI file's pre-existing unrelated formatting was restored afterward to keep the UI commit scoped.
 - Deferred: complete unit/integration/regression suites, restart/concurrency/DB-backed cases, browser/responsive/accessibility tests, production migration/provider/Runner certification. Typecheck remains `SKIPPED_POLICY`.
-- Integration candidate is non-production and not a release certification.
+- Exact Spec 224 SHA-256 remains `83c47d91871965d48f6d67f7ec3876fe37e0727061ca3b982f2ad5d0991e3793`; closure v2 is preserved and v1 remains fail-closed.
+- DAG has no next independent `READY` package: WP-RECOVERY-04 is `P_RECOVERY_BLOCKED`, WP-SOURCE-03 is `P_SOURCE_BLOCKED`, WP-DB-05 is migration/validation-deferred and depends on recovery, WP-RUNNER-06 depends on source/recovery/DB, and WP-FINAL-07 depends on all implementation packages. Next executable package is WP-RECOVERY-04 only after its separate recovery authorization; otherwise WP-SOURCE-03 requires its own source admission.
+- No migration, database mutation, Runner/provider execution, Cloudflare implementation, or production operation occurred. Integration candidate is not release certification.
