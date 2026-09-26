@@ -431,6 +431,66 @@ unblock_production_recovery_attempt:
     production_release_or_reopen: false
   status: OWNER_ACTION_REQUIRED_cloudflare_control_plane_and_backup_destination_missing
 
+cloudflare_permission_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  credential_source: encrypted_vectordb_system_setting_loaded_in_memory_only
+  secret_value_logged: false
+  api_checks:
+    account_kv_namespace_list: 200
+    account_worker_scripts: 200
+    account_worker_custom_domains: 200
+    account_zones_list: 200
+    zone_worker_routes: 200
+    worker_settings_versions_deployments: 200
+    zone_dns_records: 403
+    zone_load_balancers: 403
+    account_load_balancer_pools: 403
+    account_r2_buckets: 403
+  production_worker:
+    name: smartspec-cloudflare-runtime
+    active_version: 81e64be8-af01-4efb-ad82-94e78da2510b
+    active_version_percentage: 100
+    deployed_at_utc: "2026-09-26T08:19:05Z"
+    source_commit_annotation: absent
+    custom_domains: [runtime.smartaihub.app]
+    worker_routes: []
+    activation: disabled
+    fault_injection_binding: absent
+    kv_binding: SEARCH_RESULT_CACHE
+    kv_namespace_title: SEARCH_RESULT_CACHE
+    kv_namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+  inspected_host_ingress:
+    cloudflared_routes:
+      - hostname: smartaihub.app
+        upstream: http://localhost:3000
+      - hostname: www.smartaihub.app
+        upstream: http://localhost:3000
+      - hostname: api.smartaihub.app
+        upstream: http://localhost:8000
+    docker_nginx_upstreams:
+      web_host: host.docker.internal:3000
+      backend_host: host.docker.internal:8000
+    web_backend_systemd_masked: true
+    external_probes:
+      smartaihub_app_api_users_me: 502
+      api_smartaihub_app_api_users_me: 502
+      www_smartaihub_app: dns_resolution_failed
+    scope: inspected_host_and_probed_public_hostnames_only; other_origins_lb_and_direct_firewall_unverified
+  backup_destination_recheck:
+    vectorize_credential_r2_bucket_api: 403
+    backend_env_r2_endpoint_contains_placeholder: true
+    usable_dedicated_private_backup_bucket: false
+    durable_encrypted_backup_created: false
+  g1_g2_status:
+    g1: BLOCKED_browser_trace_hit_miss_admin_and_caller_telemetry_missing
+    g2: BLOCKED_external_origin_writer_fence_durable_backup_reconciliation_and_security_tests_missing
+    import_run: false
+    production_restart_or_unmask: false
+    redis_for_g3_g6_untouched: true
+  owner_action_required:
+    cloudflare_permissions: [zone_dns_read_for_affected_zones, load_balancing_read_for_account, cloudflare_tunnel_read_for_account, r2_bucket_management_or_dedicated_bucket_s3_key]
+    backup_policy: provide_private_backup_only_bucket_encryption_key_management_and_retention
+
 
 production_execution_recheck:
   observed_at_utc: "2026-09-26T13:47:19Z"

@@ -431,3 +431,52 @@ unblock_production_recovery_attempt:
     g1: BLOCKED
     g2: OWNER_ACTION_REQUIRED
     recovery_unblocked: false
+
+cloudflare_permission_recheck_2026_09_26:
+  observed_at_utc: "2026-09-26T15:31:11Z"
+  credential_source: encrypted_vectorize_system_setting
+  credential_printed: false
+  api_http_results:
+    kv_namespace_list: 200
+    worker_scripts_domains_zones: 200
+    worker_settings_versions_deployments: 200
+    worker_routes: 200
+    dns_records: 403
+    load_balancers_and_pools: 403
+    r2_bucket_management: 403
+  worker:
+    script: smartspec-cloudflare-runtime
+    deployed_version: 81e64be8-af01-4efb-ad82-94e78da2510b
+    deployed_at_utc: "2026-09-26T08:19:05Z"
+    traffic_percentage: 100
+    source_commit_annotation: absent
+    domain: runtime.smartaihub.app
+    routes: []
+    kv_namespace: {binding: SEARCH_RESULT_CACHE, title: SEARCH_RESULT_CACHE, id: df6d9bead8644d0f8f334f59b6bdfbeb}
+    activation: disabled
+    fault_injection_binding: absent
+  host_containment:
+    cloudflared_app_origin: localhost_3000
+    cloudflared_api_origin: localhost_8000
+    docker_nginx_app_origin: host.docker.internal_3000
+    docker_nginx_api_origin: host.docker.internal_8000
+    web_and_backend_systemd_masks: effective
+    external_api_auth_probes: 502
+    www_hostname_dns: unresolved
+    other_origin_lb_direct_firewall_scope: unverified
+  backup:
+    r2_bucket_api_access: denied_403
+    configured_backend_r2_endpoint_valid: false_placeholder_marker_detected
+    fresh_durable_encrypted_backup: not_created
+  actions:
+    production_import: false
+    production_release: false
+    unmask_or_restart: false
+    redis_shutdown: false
+  gates:
+    g1: BLOCKED
+    g2: BLOCKED_EXTERNAL_CONTAINMENT_BACKUP_WRITER_FENCE_RECONCILIATION_AND_SECURITY_TESTS
+    reopen: prohibited_until_all_gates_pass
+  owner_action:
+    grant_scoped_zone_dns_read_load_balancing_read_cloudflare_tunnel_read_and_r2_backup_access
+    define_backup_only_bucket_encryption_key_management_and_retention
