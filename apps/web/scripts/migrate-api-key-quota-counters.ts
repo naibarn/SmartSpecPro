@@ -6,9 +6,10 @@ import {
   currentQuotaPeriod,
   legacyCounterKey,
   legacyWarningKey,
+  reconcileLegacyQuotaSnapshot,
   type LegacyQuotaWindow,
 } from "../server/services/apiKeyQuotaMigration";
-import { apiKeys } from "../drizzle/schema";
+import { apiKeyQuotaCounters, apiKeys } from "../drizzle/schema";
 
 const APPLY = process.argv.includes("--apply");
 const ROLLBACK_TO_REDIS = process.argv.includes("--rollback-to-redis");
@@ -302,8 +303,48 @@ async function main(): Promise<void> {
       }
     }
   });
+  const importedApiKeyIds = Array.from(
+    new Set(plan.rows.map(row => row.apiKeyId))
+  );
+  const postgresRows = importedApiKeyIds.length
+    ? await db
+        .select({
+          apiKeyId: apiKeyQuotaCounters.apiKeyId,
+          tenantId: apiKeyQuotaCounters.tenantId,
+          window: apiKeyQuotaCounters.window,
+          periodKey: apiKeyQuotaCounters.periodKey,
+          requestCount: apiKeyQuotaCounters.requestCount,
+          warnedAt: apiKeyQuotaCounters.warnedAt,
+        })
+        .from(apiKeyQuotaCounters)
+        .where(inArray(apiKeyQuotaCounters.apiKeyId, importedApiKeyIds))
+    : [];
+  const reconciliation = reconcileLegacyQuotaSnapshot({
+    expectedRows: plan.rows,
+    postgresRows: postgresRows.map(row => ({
+      ...row,
+      requestCount: Number(row.requestCount),
+      warned: row.warnedAt !== null,
+    })),
+  });
   console.log(
-    JSON.stringify({ imported_rows: plan.rows.length, idempotent: true })
+    JSON.stringify({
+      mode: "post-apply-reconciliation",
+      ...reconciliation,
+      identifiers_logged: false,
+    })
+  );
+  if (Object.values(reconciliation).some(count => count !== 0)) {
+    throw new Error(
+      "PostgreSQL quota state does not reconcile with the active Redis snapshot"
+    );
+  }
+  console.log(
+    JSON.stringify({
+      imported_rows: plan.rows.length,
+      idempotent: true,
+      reconciliation: "passed",
+    })
   );
   await redis.quit();
   await db.$client.end({ timeout: 5 });

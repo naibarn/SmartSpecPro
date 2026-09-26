@@ -638,7 +638,7 @@ production_execution_recheck:
 
 g3_g4_local_code_inventory_2026_09_27:
   branch: codex/spec245-g3-replacements
-  commit: 7c783ce97695358d8232772043665abb66552361
+  commit: d6c68de5f9b5813695ab189fee55c23b8a80fc9d
   production_deployed: false
   G3_public_api_request_quota:
     source_functions:
@@ -649,8 +649,15 @@ g3_g4_local_code_inventory_2026_09_27:
     migration: apps/web/drizzle/0350_spec245_postgres_api_key_quota_counters.sql
     active_state_transfer: apps/web/scripts/migrate-api-key-quota-counters.ts
     recovery: guarded_max_preserving_postgresql_to_redis_restore
-    tests: {quota_and_migration: 11_passed, isolated_postgresql: 15, isolated_redis: 7}
-    status: CODE_AND_LOCAL_CUTOVER_TOOLS_VERIFIED_PRODUCTION_NOT_READY
+    tests: {quota_and_migration: 12_passed, isolated_postgresql: 15, isolated_redis: 7}
+    post_apply_reconciliation:
+      verifies: [missing_active_rows, lower_postgresql_counts, missing_warning_flags, tenant_mismatch]
+      preserves: [higher_postgresql_counts, postgres_only_rows]
+      unit_cases: 2
+      importer_apply_is_still_writer_fence_guarded: true
+      production_apply: false
+    focused_suite_latest: {passed: 19, failed: 0, postgres15: true, redis7: true}
+    status: CODE_VERIFIED_PRODUCTION_CUTOVER_BLOCKED
     production_gates: [backup_restore, writer_fence, active_counter_snapshot, guarded_import, migration_0350, deploy_and_smoke]
     remaining_redis_groups: [abuse_rate_limiting, financial_credit_accounting, idempotency]
     remaining_redis_callers_confirmed:

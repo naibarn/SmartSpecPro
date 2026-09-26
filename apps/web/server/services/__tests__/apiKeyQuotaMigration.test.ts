@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildLegacyQuotaImportPlan } from "../apiKeyQuotaMigration";
+import {
+  buildLegacyQuotaImportPlan,
+  reconcileLegacyQuotaSnapshot,
+} from "../apiKeyQuotaMigration";
 
 describe("legacy API-key quota import plan", () => {
   const now = new Date("2026-09-27T12:34:00.000Z");
@@ -55,5 +58,76 @@ describe("legacy API-key quota import plan", () => {
     expect(plan.unknownApiKeys).toBe(1);
     expect(plan.malformedKeys).toBe(1);
     expect(plan.orphanWarnings).toBe(1);
+  });
+
+  it("requires Redis snapshot parity while preserving higher and PG-only counters", () => {
+    const plan = buildLegacyQuotaImportPlan({
+      counterKeys: [
+        { key: `quota:apikey:key-1:h:${hour}`, value: "19", ttlSeconds: 4200 },
+      ],
+      warningKeys: [{ key: `quota:warn:key-1:h:${hour}`, value: "1" }],
+      tenantByApiKeyId: new Map([["key-1", "tenant-1"]]),
+      now,
+    });
+    const result = reconcileLegacyQuotaSnapshot({
+      expectedRows: plan.rows,
+      postgresRows: [
+        {
+          apiKeyId: "key-1",
+          tenantId: "tenant-1",
+          window: "hourly",
+          periodKey: hour,
+          requestCount: 24,
+          warned: true,
+        },
+        {
+          apiKeyId: "pg-only-key",
+          tenantId: "tenant-2",
+          window: "daily",
+          periodKey: "2026-09-27",
+          requestCount: 4,
+          warned: false,
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      missingRows: 0,
+      lowerCounters: 0,
+      missingWarnings: 0,
+      tenantMismatches: 0,
+    });
+  });
+
+  it("reports missing, lower, warning, and tenant mismatch states", () => {
+    const plan = buildLegacyQuotaImportPlan({
+      counterKeys: [
+        { key: `quota:apikey:key-1:h:${hour}`, value: "19", ttlSeconds: 4200 },
+      ],
+      warningKeys: [{ key: `quota:warn:key-1:h:${hour}`, value: "1" }],
+      tenantByApiKeyId: new Map([["key-1", "tenant-1"]]),
+      now,
+    });
+
+    expect(
+      reconcileLegacyQuotaSnapshot({
+        expectedRows: plan.rows,
+        postgresRows: [
+          {
+            apiKeyId: "key-1",
+            tenantId: "wrong-tenant",
+            window: "hourly",
+            periodKey: hour,
+            requestCount: 3,
+            warned: false,
+          },
+        ],
+      })
+    ).toEqual({
+      missingRows: 0,
+      lowerCounters: 1,
+      missingWarnings: 1,
+      tenantMismatches: 1,
+    });
   });
 });

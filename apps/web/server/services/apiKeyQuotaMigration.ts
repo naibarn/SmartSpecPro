@@ -17,6 +17,52 @@ export type QuotaImportRow = LegacyQuotaCounter & {
   expiresAt: Date;
 };
 
+export type QuotaReconciliationResult = {
+  missingRows: number;
+  lowerCounters: number;
+  missingWarnings: number;
+  tenantMismatches: number;
+};
+
+/**
+ * Verify that PostgreSQL contains at least the Redis snapshot state after an
+ * import. Higher PostgreSQL counters and PostgreSQL-only rows are preserved.
+ */
+export function reconcileLegacyQuotaSnapshot(input: {
+  expectedRows: QuotaImportRow[];
+  postgresRows: Array<{
+    apiKeyId: string;
+    tenantId: string;
+    window: LegacyQuotaWindow;
+    periodKey: string;
+    requestCount: number;
+    warned: boolean;
+  }>;
+}): QuotaReconciliationResult {
+  const actualByIdentity = new Map(
+    input.postgresRows.map(row => [
+      `${row.apiKeyId}:${row.window}:${row.periodKey}`,
+      row,
+    ])
+  );
+  let missingRows = 0;
+  let lowerCounters = 0;
+  let missingWarnings = 0;
+  let tenantMismatches = 0;
+  for (const expected of input.expectedRows) {
+    const identity = `${expected.apiKeyId}:${expected.window}:${expected.periodKey}`;
+    const actual = actualByIdentity.get(identity);
+    if (!actual) {
+      missingRows++;
+      continue;
+    }
+    if (actual.tenantId !== expected.tenantId) tenantMismatches++;
+    if (actual.requestCount < expected.requestCount) lowerCounters++;
+    if (expected.warned && !actual.warned) missingWarnings++;
+  }
+  return { missingRows, lowerCounters, missingWarnings, tenantMismatches };
+}
+
 const windowCode: Record<string, LegacyQuotaWindow> = {
   h: "hourly",
   d: "daily",
