@@ -1,5 +1,6 @@
 import type { JobControlPlane } from "./jobControlPlane";
 import { getAppRuntimeConfig, getCachedPreferredInternalToken } from "./appRuntimeConfig";
+import { createHash } from "node:crypto";
 
 const SECRET_KEY = /(?:access[_-]?token|api[_-]?key|authorization|credential|password|private[_-]?key|refresh[_-]?token|secret|token)/i;
 
@@ -27,7 +28,10 @@ type ApprovalRecord = {
   requesterId?: number | null;
   approverId?: number | null;
   payload: Record<string, unknown>;
+  decisionDelivery?: { event: Record<string, unknown>; canonicalPayload: string; payloadDigest: string };
 };
+
+type ApprovalLookupScope = { tenantId: string; jobId: string; operationId: string };
 
 type ApprovalAuthority = {
   create(input: {
@@ -41,12 +45,13 @@ type ApprovalAuthority = {
     payload: Record<string, unknown>;
     timeoutMinutes: number;
   }): Promise<{ id: string; status: "pending"; tenantId?: string | null; executionId?: string | null }>;
-  get(approvalRef: string): Promise<ApprovalRecord | null>;
+  get(approvalRef: string, scope: ApprovalLookupScope): Promise<ApprovalRecord | null>;
+  acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; receipt: Record<string, unknown> }): Promise<void>;
 };
 
 type ControlPlane = Pick<
   JobControlPlane,
-  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait"
+  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "recordSpec224ApprovalDelivery"
 >;
 
 export type Spec224ApprovalContinuationDeps = {
@@ -166,8 +171,82 @@ export function createSpec224ExternalApprovalAuthority() {
         executionId: input.executionId,
       };
     },
-    async get(): Promise<ApprovalRecord | null> {
-      throw new Error("SPEC224_APPROVAL_LOOKUP_REQUIRES_AUTHORITY_CONTEXT");
+    async get(approvalRef: string, scope: ApprovalLookupScope): Promise<ApprovalRecord | null> {
+      const runtime = await getAppRuntimeConfig();
+      const token = getCachedPreferredInternalToken();
+      if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
+      const query = new URLSearchParams({ tenantId: scope.tenantId, jobId: scope.jobId, operationId: scope.operationId });
+      const response = await fetch(
+        `${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-external/requests/${encodeURIComponent(approvalRef)}/decision?${query}`,
+        { headers: { "x-internal-token": token } },
+      );
+      if (!response.ok) throw new Error("SPEC224_APPROVAL_LOOKUP_REJECTED");
+      const body = await response.json().catch(() => ({})) as {
+        status?: string;
+        correlation?: Record<string, unknown>;
+        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string } | null;
+      };
+      const delivery = body.delivery;
+      if (!delivery?.event || typeof delivery.canonicalPayload !== "string" || typeof delivery.payloadDigest !== "string") {
+        if (body.status === "pending") {
+          return {
+            id: approvalRef,
+            status: "pending",
+            tenantId: scope.tenantId,
+            executionId: scope.jobId,
+            payload: {
+              kind: "spec224_external_agent_approval",
+              spec224ExternalAgentResume: body.correlation,
+            },
+          };
+        }
+        return null;
+      }
+      let canonicalEvent: unknown;
+      try { canonicalEvent = JSON.parse(delivery.canonicalPayload); }
+      catch { throw new Error("SPEC224_APPROVAL_DELIVERY_CANONICAL_INVALID"); }
+      if (!canonicalEvent || typeof canonicalEvent !== "object" || Array.isArray(canonicalEvent))
+        throw new Error("SPEC224_APPROVAL_DELIVERY_CANONICAL_INVALID");
+      const event = canonicalEvent as Record<string, unknown>;
+      if (createHash("sha256").update(delivery.canonicalPayload, "utf8").digest("hex") !== delivery.payloadDigest)
+        throw new Error("SPEC224_APPROVAL_DELIVERY_DIGEST_MISMATCH");
+      if (
+        event.schemaVersion !== "spec224.approval-decision.v1"
+        || event.decisionEpoch !== 1
+        || event.approvalRequestId !== approvalRef
+        || event.tenantId !== scope.tenantId
+        || event.jobId !== scope.jobId
+        || event.operationId !== scope.operationId
+      ) throw new Error("SPEC224_APPROVAL_DELIVERY_SCOPE_MISMATCH");
+      const correlation = event.correlation;
+      if (!correlation || typeof correlation !== "object" || Array.isArray(correlation))
+        throw new Error("SPEC224_APPROVAL_DELIVERY_CORRELATION_INVALID");
+      const decision = event.decision;
+      const status = decision === "approved" ? "approved" : decision === "rejected" ? "rejected" : decision === "expired" ? "expired" : decision === "cancelled" ? "cancelled" : null;
+      if (!status) throw new Error("SPEC224_APPROVAL_DELIVERY_DECISION_INVALID");
+      return {
+        id: approvalRef,
+        status,
+        tenantId: scope.tenantId,
+        executionId: scope.jobId,
+        approverId: typeof event.actorId === "number" ? event.actorId : null,
+        payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+        decisionDelivery: { event, canonicalPayload: delivery.canonicalPayload, payloadDigest: delivery.payloadDigest },
+      };
+    },
+    async acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; receipt: Record<string, unknown> }) {
+      const runtime = await getAppRuntimeConfig();
+      const token = getCachedPreferredInternalToken();
+      if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
+      const response = await fetch(
+        `${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-external/requests/${encodeURIComponent(input.approvalRef)}/decision/ack`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-internal-token": token },
+          body: JSON.stringify({ ...input, tenantId: input.tenantId, jobId: input.jobId, operationId: input.operationId }),
+        },
+      );
+      if (!response.ok) throw new Error("SPEC224_APPROVAL_ACK_REJECTED");
     },
   } satisfies ApprovalAuthority;
 }
@@ -227,47 +306,138 @@ export function createSpec224ApprovalContinuation(
         currentCommandId: input.providerRequestId,
         actionId: input.actionId,
         semanticState: input.semanticState,
+        provider: input.provider,
       });
       if (projected === "ignored") throw new Error("SPEC224_APPROVAL_PROJECTION_REJECTED");
       return { approvalRef: created.id, status: "pending" };
     },
 
-    async resolve(input: { approvalRef: string; tenantId: string }): Promise<Spec224ApprovalContinuationResult> {
+    async resolve(input: { approvalRef: string; tenantId: string; jobId: string; operationId: string }): Promise<Spec224ApprovalContinuationResult> {
       assertText(input.approvalRef, "approval_ref");
       assertText(input.tenantId, "tenant_id");
-      const record = await deps.authority.get(input.approvalRef);
+      assertText(input.jobId, "job_id");
+      assertText(input.operationId, "operation_id");
+      const record = await deps.authority.get(input.approvalRef, {
+        tenantId: input.tenantId,
+        jobId: input.jobId,
+        operationId: input.operationId,
+      });
       if (!record || record.id !== input.approvalRef || record.tenantId !== input.tenantId)
-        return "ignored";
+        return await deps.controlPlane.failExternalWait(
+          input.jobId,
+          "SPEC224_APPROVAL_AUTHORITY_RECORD_MISSING_OR_MISMATCHED",
+          true,
+          now(),
+          input.operationId,
+        ) === "failed" ? "operator_review" : "ignored";
       const correlation = correlationFromPayload(record.payload);
       if (!correlation || correlation.tenantId !== input.tenantId || record.executionId !== correlation.jobId)
-        return "ignored";
+        return await deps.controlPlane.failExternalWait(
+          input.jobId,
+          "SPEC224_APPROVAL_CORRELATION_INVALID",
+          true,
+          now(),
+          input.operationId,
+        ) === "failed" ? "operator_review" : "ignored";
       if (record.status === "pending") return "pending";
+      const delivery = record.decisionDelivery;
+      const event = delivery?.event;
+      if (!delivery || !event || typeof event.deliveryId !== "string" || typeof event.decisionEpoch !== "number")
+        return "operator_review";
+      const deliveryId = event.deliveryId;
+      const payloadDigest = delivery.payloadDigest;
+      let result: Spec224ApprovalContinuationResult;
       if (record.status === "expired" || record.status === "cancelled") {
-        await deps.controlPlane.failExternalWait(
+        const terminalDelivery = {
+          jobId: correlation.jobId,
+          tenantId: correlation.tenantId,
+          approvalRequestId: record.id,
+          operationId: correlation.operationKey,
+          decision: record.status,
+          deliveryId,
+          decisionEpoch: event.decisionEpoch,
+          payloadDigest,
+          result: "operator_review" as const,
+        };
+        const failed = await deps.controlPlane.failExternalWait(
           correlation.jobId,
           record.status === "expired" ? "SPEC224_APPROVAL_EXPIRED" : "SPEC224_APPROVAL_CANCELLED",
           true,
           now(),
           correlation.operationKey,
+          undefined,
+          terminalDelivery,
         );
-        return "operator_review";
+        if (failed !== "failed") throw new Error("SPEC224_APPROVAL_TERMINAL_OUTCOME_AMBIGUOUS");
+        result = "operator_review";
+      } else {
+        if (record.status !== "approved" && record.status !== "rejected") return "operator_review";
+        if (!Number.isSafeInteger(record.approverId) || (record.approverId ?? 0) <= 0)
+          return "operator_review";
+        const resolved = await deps.controlPlane.resolveComputerUseApproval({
+          jobId: correlation.jobId,
+          tenantId: correlation.tenantId,
+          operationKey: correlation.operationKey,
+          approvalRequestId: record.id,
+          decision: record.status,
+          runnerId: correlation.runnerId,
+          adapter: correlation.provider === "codex" ? "codex.v1" : "claude.v1",
+          actionId: correlation.actionId,
+          runnerSessionId: correlation.runnerSessionId,
+          fencingVersion: correlation.fencingVersion,
+          approverId: record.approverId,
+          schemaVersion: "spec224.approval-decision.v1",
+          deliveryId,
+          decisionEpoch: event.decisionEpoch,
+          payloadDigest,
+          capabilitySnapshotId: correlation.capabilitySnapshotId,
+          capabilitySnapshotRevision: correlation.capabilitySnapshotRevision,
+          providerRequestId: correlation.providerRequestId,
+          provider: correlation.provider,
+        });
+        if (resolved === "ignored") {
+          const failed = await deps.controlPlane.failExternalWait(
+            correlation.jobId,
+            "SPEC224_APPROVAL_RESUME_FENCED",
+            true,
+            now(),
+            correlation.operationKey,
+            undefined,
+            {
+              jobId: correlation.jobId,
+              tenantId: correlation.tenantId,
+              approvalRequestId: record.id,
+              operationId: correlation.operationKey,
+              decision: record.status,
+              deliveryId,
+              decisionEpoch: event.decisionEpoch,
+              payloadDigest,
+              result: "operator_review",
+            },
+          );
+          if (failed !== "failed") throw new Error("SPEC224_APPROVAL_RESUME_OUTCOME_AMBIGUOUS");
+          result = "operator_review";
+        } else {
+          result = resolved;
+        }
       }
-      if (record.status !== "approved" && record.status !== "rejected") return "operator_review";
-      if (!Number.isSafeInteger(record.approverId) || (record.approverId ?? 0) <= 0)
-        return "operator_review";
-      const result = await deps.controlPlane.resolveComputerUseApproval({
+      const receiptInput = {
         jobId: correlation.jobId,
         tenantId: correlation.tenantId,
-        operationKey: correlation.operationKey,
         approvalRequestId: record.id,
+        operationId: correlation.operationKey,
         decision: record.status,
-        runnerId: correlation.runnerId,
-        adapter: correlation.provider === "codex" ? "codex.v1" : "claude.v1",
-        actionId: correlation.actionId,
-        runnerSessionId: correlation.runnerSessionId,
-        fencingVersion: correlation.fencingVersion,
-        approverId: record.approverId,
-      });
+        deliveryId,
+        decisionEpoch: event.decisionEpoch,
+        payloadDigest,
+        result,
+      } as const;
+      if (!await deps.controlPlane.recordSpec224ApprovalDelivery(receiptInput))
+        throw new Error("SPEC224_APPROVAL_DELIVERY_RECEIPT_CONFLICT");
+      const receipt = { deliveryId, payloadDigest, result, acknowledgedAt: now().toISOString() };
+      await deps.authority.acknowledge({ ...input, deliveryId, payloadDigest, receipt });
+      if (!await deps.controlPlane.recordSpec224ApprovalDelivery({ ...receiptInput, acknowledged: true }))
+        throw new Error("SPEC224_APPROVAL_ACK_RECEIPT_CONFLICT");
       return result;
     },
   };
