@@ -44,6 +44,21 @@ g1_search_result_cache:
     - capture sanitized Worker/application trace proving those Search calls used KV
     - inspect the production Admin Cloudflare tab while authenticated
     - attribute zero active Redis commands to the SearchResultCache call path
+  readiness_check_2026_09_26:
+    worker_healthz_http: 200
+    worker_deployment_version_verified: false
+    worker_deployment_api: blocked_wrangler_token_unset
+    last_known_worker_version: f6f0ba85-3d23-476e-b8af-55840609442d
+    last_known_trace_fault_state: local_only_not_deployed
+    web_healthz_http: 200
+    web_service: smartspec-web_active
+    web_process_started_at: "2026-09-26T16:58:34+07:00"
+    web_search_cache_route_modified_at: "2026-09-26T17:20:45+07:00"
+    migration_commit_time: "2026-09-26T17:27:34+07:00"
+    web_loaded_migration_commit: false
+    web_fault_flag_in_service_and_env_file: unset
+    beta_and_admin_storage_states: unavailable
+    production_configuration_changed_by_this_run: false
 
 g2_a_jti_revocation:
   status: local_implementation_tested_production_cutover_pending
@@ -53,10 +68,12 @@ g2_a_jti_revocation:
   importer: apps/web/scripts/migrate-jti-revocations.ts
   redis_dry_run:
     mode: dry-run
-    scanned_active_revocations: 275
+    scanned_active_revocations: 273
     persistent_revocations: 0
     imported: 0
     identifiers_logged: false
+    observed_at_utc: "2026-09-26T12:12:04Z"
+    pre_maintenance_snapshot_only: true
   production_database_table_present: false
   production_code_restarted_to_new_jti_authority: false
   runtime_cutover: not_performed
@@ -67,7 +84,7 @@ g2_a_jti_revocation:
     cloudflare_worker_typecheck: passed
     cloudflare_worker_tests: 24_passed
     g1_browser_production_specs: 4_listed_not_executed
-    g2_local_postgres_redis_client_and_runner_tests: 37_passed_on_smartspec_test
+    g2_local_postgres_redis_client_and_runner_tests: 41_passed_on_smartspec_test
     focused_migration_tests_total: 72_passed_including_worker_routes
     runner_route_suite: 16_passed_when_run_independently
     rollback_mirror_order_and_fail_closed_contract: 2_passed
@@ -76,7 +93,15 @@ g2_a_jti_revocation:
     focused_typescript: not_repeated_after_current_changes
     full_web_typecheck: failed_with_633_repository_diagnostics
     g1_g2_edited_runtime_and_script_files: no_diagnostics_reported
-    schema_diagnostics: existing_cyclic_relation_errors_at_unrelated_declarations; baseline_head_comparison_not_run
+    schema_diagnostics: cyclic_relation_errors_at_unrelated_declarations
+    baseline_commit: 7e9d8beb0
+    baseline_vs_head_tree: identical_at_commit_7e9d8beb0
+    baseline_vs_head_diagnostics: 633_vs_633
+    baseline_matching_file_line_column_locations: 633
+    diagnostic_location_delta: 0
+    diagnostic_code_only_variation: AdminMonitoring_tsx_959_17_TS2552_vs_TS2304_ClipboardList
+    migration_regressions: 0
+    baseline_comparison_logs: [/tmp/spec245-web-typecheck.log, /tmp/spec245-web-head-typecheck.log]
   production_preflight:
     target_database: smartspec
     postgres_version: 15.17
@@ -94,17 +119,21 @@ g2_a_jti_revocation:
     migrations_set_transaction_local_statement_timeout: 60_seconds
     production_backup_restore_verified: false
     migrations_applied: false
+    readonly_preflight_repeated_at_utc: "2026-09-26T12:10:04Z"
+    readonly_transaction_verified: true
   redis_state_dry_runs:
-    jti_active_revocations: 275
+    jti_active_revocations: 273
     persistent_jti_revocations: 0
     active_login_failure_counters: 0
     active_login_lockouts: 0
     pending_or_authorized_device_codes: 0
     runner_device_and_user_pairing_keys: 0
     worker_device_and_user_pairing_keys: 0
+    observed_at_utc: "2026-09-26T12:12:04Z"
     snapshot_is_not_a_maintenance_fence: true
   recovery:
     temporary_redis_rollback_mirror: implemented_redis_first_then_postgresql;_uses_TOKEN_REVOKE_REDIS_URL_when_configured;_fail_closed_on_mirror_read_write_errors
+    late_jti_after_preflight_snapshot_test: passed_local_synthetic_rescan
     redis_only_rollback: allowed_only_if_bridge_was_continuously_enabled_and_reconciliation_passes
     tested: unit_contract_order_and_fail_closed;_no_production_reconciliation_performed
     action_on_failure: keep_auth_paused_reimport_from_redis_and_keep_pg_backed_revocation_code_if_bridge_was_not_continuous
@@ -159,12 +188,12 @@ g2_d_ephemeral_authorization:
   production_secret_manager_verified: false
 
 g2_overall:
-  status: LOCAL_IMPLEMENTATION_COMPLETE_PRODUCTION_CUTOVER_PENDING
+  status: BLOCKED_NOT_PRODUCTION_READY
   production_cutover_performed: false
   redis_must_remain_enabled: true
   required_migrations: [0345, 0346, 0347, 0348, 0349]
   production_preflight_complete: false
-  blockers: [restorable_backup_not_verified, separate_pairing_keyring_not_verified, maintenance_not_attested, Production_deploy_and_smoke_not_run]
+  blockers: [restorable_backup_restore_drill_not_verified, pairing_keyring_missing_from_active_web_config_and_all_instance_parity_unknown, maintenance_not_attested, fresh_paused_writer_state_scan_not_run, Production_deploy_and_smoke_not_run]
   recovery: keep_auth_maintenance_paused_reconcile_from_redis_with_continuous_mirror_and_never_drop_postgresql_revocations
 
 global:

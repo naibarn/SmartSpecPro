@@ -114,4 +114,20 @@ describe("PostgreSQL JTI revocation contract", () => {
     });
     await expect(failedBridge.isJtiRevoked("unknown")).resolves.toBe(true);
   });
+
+  it("keeps a revocation created after PostgreSQL cutover visible to Redis-only rollback code", async () => {
+    const legacyRedis = new Map<string, number>();
+    const postgresStore = createSharedTestStore();
+    const bridge = createJtiRevocationService(postgresStore, Date.now, {
+      async put(jti, expiresAtMs) { legacyRedis.set(jti, expiresAtMs); },
+      async has(jti) { return legacyRedis.has(jti); },
+    });
+    const jti = "revoked-after-pg-cutover";
+
+    await bridge.revokeJti(jti, Date.now() + 60_000);
+
+    // Simulate a rollback to the previous Redis-only authorization check.
+    expect(legacyRedis.get(jti)).toBeGreaterThan(Date.now());
+    await expect(bridge.isJtiRevoked(jti)).resolves.toBe(true);
+  });
 });

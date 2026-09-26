@@ -1,6 +1,7 @@
 import { createClient } from "redis";
 import { getDb } from "../server/db";
-import { importLoginFailureCounters, LOGIN_FAILURE_THRESHOLD, type LoginFailureCounterImport } from "../server/services/loginFailureCounterStore";
+import { importLoginFailureCounters } from "../server/services/loginFailureCounterStore";
+import { collectActiveLoginFailureCounters } from "../server/services/loginFailureCounterImporter";
 
 const APPLY = process.argv.includes("--apply");
 const PREFIX = "auth:login:fail:";
@@ -15,41 +16,22 @@ redis.on("error", () => {});
 
 async function main() {
   await redis.connect();
-  const records: LoginFailureCounterImport[] = [];
-  let scanned = 0;
-  let expiredOrMissing = 0;
-  let invalid = 0;
-  let persistent = 0;
-  let activeLockouts = 0;
-  for await (const key of redis.scanIterator({ MATCH: `${PREFIX}*`, COUNT: 500 })) {
-    if (!key.startsWith(PREFIX)) continue;
-    scanned += 1;
-    const email = key.slice(PREFIX.length);
-    const [value, ttlMs] = await Promise.all([redis.get(key), redis.pTTL(key)]);
-    if (ttlMs === -2 || value === null) { expiredOrMissing += 1; continue; }
-    const failureCount = Number(value);
-    if (!email || !Number.isSafeInteger(failureCount) || failureCount < 1) { invalid += 1; continue; }
-    const expiresAt = ttlMs === -1 ? null : new Date(Date.now() + ttlMs);
-    if (expiresAt && expiresAt <= new Date()) { expiredOrMissing += 1; continue; }
-    if (ttlMs === -1) persistent += 1;
-    if (failureCount >= LOGIN_FAILURE_THRESHOLD) activeLockouts += 1;
-    records.push({ email, failureCount, expiresAt });
-  }
-  if (APPLY && invalid === 0) await importLoginFailureCounters(records);
+  const snapshot = await collectActiveLoginFailureCounters(redis, PREFIX);
+  if (APPLY && snapshot.invalidEntries === 0) await importLoginFailureCounters(snapshot.records);
   console.log(JSON.stringify({
     mode: APPLY ? "apply" : "dry-run",
-    scannedKeys: scanned,
-    activeCounters: records.length,
-    activeLockouts,
-    persistentCounters: persistent,
-    expiredOrMissing,
-    invalidEntries: invalid,
-    imported: APPLY && invalid === 0 ? records.length : 0,
+    scannedKeys: snapshot.scannedKeys,
+    activeCounters: snapshot.records.length,
+    activeLockouts: snapshot.activeLockouts,
+    persistentCounters: snapshot.persistentCounters,
+    expiredOrMissing: snapshot.expiredOrMissing,
+    invalidEntries: snapshot.invalidEntries,
+    imported: APPLY && snapshot.invalidEntries === 0 ? snapshot.records.length : 0,
     rawEmailsOrValuesLogged: false,
   }));
   await redis.quit();
   await getDb().$client.end({ timeout: 5 });
-  if (APPLY && invalid > 0) process.exitCode = 2;
+  if (APPLY && snapshot.invalidEntries > 0) process.exitCode = 2;
 }
 
 main().catch(async () => {
