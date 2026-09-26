@@ -305,6 +305,9 @@ emergency_g2_reconciliation_2026_09_26:
     web_service_disabled_from_boot: true
     python_backend_service_disabled_from_boot: true
     web_watchdog_disabled_from_boot: true
+    web_service_runtime_masked: true
+    python_backend_service_runtime_masked: true
+    web_watchdog_runtime_masked: true
     direct_port_3000_listener: false
     direct_port_8000_listener: false
     direct_web_probe_http: 000_connection_refused
