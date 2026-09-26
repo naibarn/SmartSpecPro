@@ -38,7 +38,7 @@ async function makeBundle(sourceRoot: string, destination: string) {
     sourceRoot,
     destination,
     files: closure.files,
-    sourceRevision: "candidate-sha",
+    sourceRevision: "c".repeat(40),
     specDigest,
     dependencyArtifacts: ["pnpm-lock.yaml"],
     externalImports: closure.externalImports,

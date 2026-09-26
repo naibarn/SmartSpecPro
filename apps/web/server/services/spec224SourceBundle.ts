@@ -174,14 +174,18 @@ export async function assembleReadOnlySourceBundle(input: {
 }): Promise<SourceBundleManifest> {
   const sourceRoot = resolve(input.sourceRoot);
   const destination = resolve(input.destination);
-  if (!input.sourceRevision.trim() || !/^[a-f0-9]{64}$/i.test(input.specDigest))
+  if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision)
+    || !/^[a-f0-9]{64}$/i.test(input.specDigest))
     throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`)))
     throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
   const files = [...new Set(input.files.map(file => safeRelative(sourceRoot, file)))].sort();
   if (!files.length || files.length !== input.files.length) throw new Error("SPEC224_BUNDLE_FILE_SET_INVALID");
-  if (input.dependencyArtifacts.some(file => !files.includes(safeRelative(sourceRoot, file))))
+  const dependencyArtifacts = input.dependencyArtifacts.map(file => safeRelative(sourceRoot, file)).sort();
+  if (new Set(dependencyArtifacts).size !== dependencyArtifacts.length)
+    throw new Error("SPEC224_BUNDLE_DEPENDENCY_ARTIFACT_DUPLICATE");
+  if (dependencyArtifacts.some(file => !files.includes(file)))
     throw new Error("SPEC224_BUNDLE_DEPENDENCY_ARTIFACT_MISSING");
   const content: Array<{ path: string; bytes: Buffer }> = [];
   for (const filePath of files) {
@@ -201,7 +205,7 @@ export async function assembleReadOnlySourceBundle(input: {
     schemaVersion: "spec224.source-bundle.v1" as const,
     sourceRevision: input.sourceRevision,
     specDigest: input.specDigest,
-    dependencyArtifacts: [...input.dependencyArtifacts].sort(),
+    dependencyArtifacts,
     files: content.map(({ path, bytes }) => ({ path, sha256: sha256(bytes), sizeBytes: bytes.byteLength })),
     externalImports: [...input.externalImports].sort(),
     unresolvedImports: [...input.unresolvedImports].sort((a, b) => a.from < b.from ? -1 : a.from > b.from ? 1 : a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0),
