@@ -638,7 +638,7 @@ production_execution_recheck:
 
 g3_g4_local_code_inventory_2026_09_27:
   branch: codex/spec245-g3-replacements
-  commit: d6c68de5f9b5813695ab189fee55c23b8a80fc9d
+  commit: df7703d6299b80a658aa2e648769d4a0169a6dfe
   production_deployed: false
   G3_public_api_request_quota:
     source_functions:
