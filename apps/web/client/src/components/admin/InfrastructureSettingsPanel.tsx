@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardCard } from "@/components/dashboard";
+import { HStack } from "@astryxdesign/core/HStack";
+import { VStack } from "@astryxdesign/core/VStack";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -813,22 +815,53 @@ export default function InfrastructureSettingsPanel() {
             <Gauge className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.scaleTier}</span>
           </TabsTrigger>
+          <TabsTrigger value="cloudflare-runtime" className="flex items-center gap-1">
+            <Cloud className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cloudflare</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="cloudflare-runtime">
           <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-            <div className="border-b bg-gradient-to-r from-orange-50/50 to-cyan-50/30 pb-5">
+            <VStack as="header" gap={2}>
               <h3 className="flex items-center gap-2 text-lg">
                 <Cloud className="w-5 h-5 text-orange-500" />
                 Cloudflare production runtime
               </h3>
               <p>Google Cloud runtime configuration has been retired. OAuth and Google Drive remain product integrations only.</p>
-            </div>
-            <div className="space-y-3 pt-6 text-sm text-slate-600">
+            </VStack>
+            <VStack as="section" gap={3}>
               <p><strong>Target:</strong> Cloudflare Workers, Queues, Workflows, Containers, Cron, Hyperdrive, R2 and Vectorize.</p>
               <p><strong>Dispatch:</strong> canonical worker_jobs outbox to the deployment-owned <code>/internal/jobs/publish</code> boundary.</p>
               <p><strong>Activation:</strong> target-account bindings, recovery rehearsal and rollback evidence are required before production enablement.</p>
-            </div>
+              <VStack as="section" gap={2}>
+                <h4>รายการ Worker bindings และ endpoints</h4>
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  <li><code>HYPERDRIVE</code> — PostgreSQL connection</li>
+                  <li><code>JOB_QUEUE</code> — canonical queue transport</li>
+                  <li><code>JOB_WORKFLOW</code> — durable workflow execution</li>
+                  <li><code>JOB_CONTAINERS</code> — approved long-running container work</li>
+                  <li><code>WORKER_APP</code> — managed Worker App dispatch</li>
+                  <li><code>MEDIA_BUCKET</code> — R2 media artifacts</li>
+                  <li><code>VECTOR_INDEX</code> — Vectorize index</li>
+                  <li><code>SEARCH_RESULT_CACHE</code> — optional KV for disposable search cache only</li>
+                </ul>
+                <p>Endpoints: <code>/healthz</code> (liveness), <code>/readyz</code> (job runtime readiness), <code>/internal/jobs/publish</code> (requires job activation/token), <code>/internal/cache/search</code> (requires cache token/KV only).</p>
+                <p>Durable Objects ยังไม่มี binding ใน Worker release ปัจจุบัน; เตรียม handoff สำหรับ voice WebSocket/revocation ตาม Spec 237/242 ก่อนประกาศ class/namespace และเพิ่ม binding</p>
+              </VStack>
+              <VStack as="section" gap={2}>
+                <h4>ทำตามลำดับนี้ใน deployment pipeline</h4>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>สร้าง resources ในบัญชี Cloudflare เป้าหมาย แล้วบันทึก ID ของ Account, Zone, Hyperdrive, Queue, Workflow, Container, R2, Vectorize และ KV ใน secret manager/deployment config ห้าม hard-code ID ใน source</li>
+                  <li>เพิ่ม binding ตามชื่อด้านบนให้ Worker <code>smartspec-cloudflare-runtime</code>; <code>SEARCH_RESULT_CACHE</code> เป็น optional จนกว่าจะเปิด Search Cache</li>
+                  <li>กำหนด Custom Domain หรือ Worker Route ของ runtime hostname ให้ตรงกับ <code>CLOUDFLARE_RUNTIME_URL</code>; config นี้ปิด <code>workers.dev</code> โดยตั้งใจ</li>
+                  <li>ตั้ง Worker secrets <code>CLOUDFLARE_RUNTIME_TOKEN</code> และ <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> แยกกัน แล้วตั้งค่าที่ตรงกันใน Web app secret manager พร้อม <code>CLOUDFLARE_RUNTIME_URL</code></li>
+                  <li>Deploy โดยคง <code>CLOUDFLARE_ACTIVATION=disabled</code>; ตรวจ <code>/healthz</code>, target readiness และ recovery evidence ก่อนเปิด job runtime ตาม gate ของมัน</li>
+                  <li>Search Cache เปิดได้แยกผ่านสวิตช์ในแท็บ Cache / Redis หลัง probe สำเร็จ โดยไม่ต้องเปิด job runtime</li>
+                </ol>
+              </VStack>
+              <p className="text-xs">หน้า Admin แสดงคู่มือและสถานะจากฝั่ง Web เท่านั้น ไม่สร้าง resource, ไม่แสดง secret และไม่อ้างว่า target พร้อมจาก local tests; เก็บหลักฐาน target แยกจาก readiness ในเครื่อง</p>
+            </VStack>
           </DashboardCard>
         </TabsContent>
 
@@ -1397,17 +1430,17 @@ export default function InfrastructureSettingsPanel() {
 
         <TabsContent value="redis">
       <DashboardCard className="mb-5 border-0 shadow-sm rounded-2xl overflow-hidden">
-        <div className="border-b bg-sky-50/70 p-5">
+        <VStack as="header" gap={2}>
           <h3 className="flex items-center gap-2 text-lg"><Cloud className="h-5 w-5 text-sky-600" />ย้าย Search Result Cache ไป Cloudflare KV</h3>
           <p className="mt-1 text-sm text-muted-foreground">สวิตช์นี้กระทบเฉพาะ cache ผลค้นหาของ Responses API เท่านั้น ไม่ได้เปิด Queue และไม่ย้าย session, lock หรือ rate limit</p>
-        </div>
-        <div className="space-y-4 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
-            <div>
+        </VStack>
+        <VStack as="section" gap={4} padding={5}>
+          <HStack as="section" justify="between" wrap="wrap" gap={4}>
+            <VStack gap={1}>
               <p className="font-medium">สถานะ: {searchCacheConfig?.provider === "cloudflare_kv" ? "Cloudflare KV" : "ปิด cache ชั่วคราว"}</p>
               <p className="text-sm text-muted-foreground">Worker URL: {searchCacheConfig?.endpointConfigured ? "ตั้งค่าแล้ว" : "ยังไม่ตั้งค่า"} · Token: {searchCacheConfig?.tokenConfigured ? "ตั้งค่าแล้ว (ซ่อนไว้)" : "ยังไม่ตั้งค่า"}</p>
-            </div>
-            <div className="flex items-center gap-3">
+            </VStack>
+            <HStack gap={3} wrap="wrap" align="center">
               <Button variant="outline" onClick={() => probeSearchCache.mutate()} disabled={probeSearchCache.isPending}>
                 {probeSearchCache.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}ทดสอบ Worker/KV
               </Button>
@@ -1415,14 +1448,15 @@ export default function InfrastructureSettingsPanel() {
               <Switch id="search-cache-provider" checked={searchCacheConfig?.provider === "cloudflare_kv"}
                 disabled={!searchCacheConfig || updateSearchCacheProvider.isPending || (!searchCacheConfig.endpointConfigured || !searchCacheConfig.tokenConfigured) && searchCacheConfig.provider !== "cloudflare_kv"}
                 onCheckedChange={(checked) => updateSearchCacheProvider.mutate({ provider: checked ? "cloudflare_kv" : "disabled" })} />
-            </div>
-          </div>
-          <div className="rounded-lg bg-muted/40 p-4 text-sm">
-            <h4 className="mb-2 font-semibold">คู่มือตั้งค่า Cloudflare (ต้องทำในบัญชี/ระบบ deploy)</h4>
+            </HStack>
+          </HStack>
+          <VStack as="section" gap={2}>
+            <h4>คู่มือตั้งค่า Cloudflare (ต้องทำในบัญชี/ระบบ deploy)</h4>
             <ol className="list-decimal space-y-1 pl-5">
               <li>สร้าง Workers KV namespace ชื่อที่ต้องการ เช่น <code>SEARCH_RESULT_CACHE</code></li>
               <li>นำ namespace ID ไปผูกกับ Worker <code>smartspec-cloudflare-runtime</code> ด้วย binding name <code>SEARCH_RESULT_CACHE</code> ใน environment เป้าหมายทุกชุด ค่า ID ต้องมาจาก namespace จริง</li>
-              <li>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้ง secret ค่าเดียวกันให้ Web application พร้อม <code>CLOUDFLARE_RUNTIME_URL</code> เป็น URL หลักของ Worker (ไม่ต้องเติม path)</li>
+              <li>กำหนด hostname ให้ Worker ก่อน เพราะ config ปัจจุบันปิด <code>workers.dev</code>: เพิ่ม Custom Domain แยก เช่น <code>runtime.example.com</code> (อย่าใช้ hostname ของหน้าเว็บหลัก) หรือ Route ผ่าน deployment pipeline แล้วตั้ง <code>CLOUDFLARE_RUNTIME_URL</code> เป็น origin ของ hostname นี้ (ไม่ต้องเติม path)</li>
+              <li>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้ง secret ค่าเดียวกันให้ Web application</li>
               <li>Deploy Worker และ Web application แล้วกด “ทดสอบ Worker/KV”; probe จะเขียน/อ่าน canary ที่หมดอายุใน 60 วินาที ต้องผ่านก่อนจึงเปิดสวิตช์ได้</li>
               <li>เปิดสวิตช์เพื่อ cutover ได้ทันที ข้อมูล cache เดิมไม่ย้าย เริ่มเก็บใหม่ใน KV; ปิดสวิตช์เพื่อหยุดใช้ cache ระหว่างแก้ปัญหา</li>
             </ol>
@@ -1432,6 +1466,10 @@ npx wrangler kv namespace create SEARCH_RESULT_CACHE
 # เพิ่ม binding ใน config ของ Worker environment (ใส่ ID จริงผ่านระบบ deploy)
 { "binding": "SEARCH_RESULT_CACHE", "id": "<KV_NAMESPACE_ID>" }
 
+# เพิ่ม hostname ให้ Worker (เลือก Custom Domain หรือ zone route อย่างใดอย่างหนึ่ง)
+{ "pattern": "runtime.<your-domain>", "custom_domain": true }
+# กรณีใช้ zone route ให้ใช้ pattern "runtime.<your-domain>/*" และ zone_name จริง
+
 # ตั้ง token ใน environment ของ Worker; ตั้ง secret ชื่อเดียวกันใน Web app secret manager
 npx wrangler secret put CLOUDFLARE_SEARCH_CACHE_TOKEN
 # Web app environment:
@@ -1439,8 +1477,8 @@ CLOUDFLARE_RUNTIME_URL=https://<worker-host>
 CLOUDFLARE_SEARCH_CACHE_TOKEN=<same-secret-value>`}</pre>
             <p className="mt-2 text-muted-foreground">ทำซ้ำทั้ง namespace binding และ secret แยกตาม staging/production; อย่าใช้ namespace/token ข้าม environment การเปลี่ยนนี้ไม่ provision namespace ให้อัตโนมัติ ค่า token ไม่แสดงใน UI และหาก KV ใช้ไม่ได้ คำขอจะทำงานต่อโดยถือว่า cache miss</p>
             <p className="text-muted-foreground">401 = token ไม่ตรง · 503 = Worker ยังไม่มี binding หรือ KV อ่าน/เขียนไม่ได้ · สวิตช์ปิด = ปิด Search Result Cache เท่านั้น</p>
-          </div>
-        </div>
+          </VStack>
+        </VStack>
       </DashboardCard>
       {/* ============================================ */}
       {/* CARD 4: Cache / Redis Configuration          */}

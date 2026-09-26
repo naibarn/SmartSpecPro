@@ -78,7 +78,8 @@ Check mobile/tablet/desktop plus unconfigured/off/on/error/loading; keyboard int
 
 - Implemented local Worker KV binding contract and authenticated `POST /internal/cache/search` probe/get/put endpoint. Probe performs an expiring KV write/read; endpoint responses use `Cache-Control: no-store`.
 - Search cache now uses a dedicated Node adapter controlled by the admin setting `search_result_cache_provider`; default is disabled. KV failures are misses/no-ops, and the Responses API no longer imports Redis for this cache.
-- Admin UI now exposes the cache-only switch and Thai setup steps for namespace, binding, Worker secret, Web endpoint/token, probe, cutover, and troubleshooting. It does not provision resources or expose secrets.
+- Admin UI now exposes the cache-only switch plus an accessible Cloudflare tab listing all seven required Worker bindings, optional `SEARCH_RESULT_CACHE`, endpoints, secrets, and hostname/route setup. Thai setup steps cover namespace, binding, Worker secret, Web endpoint/token, probe, cutover, and troubleshooting. It does not provision resources or expose secrets.
 - A review caught a cross-tenant cache key issue before enablement; the authenticated tenant is now passed to the JSON handler and a regression test checks independent tenant keys. Scope IDs are base64url encoded in Worker KV keys.
 - Focused proof: Cloudflare Worker tests passed (24 tests); web Responses/cache tests passed (71 tests). `git diff --check` passed. Browser proof, TypeScript check, deployed Worker probe, and target-account proof remain outstanding.
+- Admin panel TSX syntax transpilation passed with esbuild after adding the accessible Cloudflare tab. No browser visual/responsive run was performed.
 - SocratiCode was unavailable; targeted shell discovery and focused tests were used. This is local implementation evidence only, not a Cloudflare target deployment claim.
