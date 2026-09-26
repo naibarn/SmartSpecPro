@@ -555,3 +555,48 @@ latest_host_recheck_2026_09_26:
     g2: BLOCKED_durable_backup_complete_writer_fence_and_reconciliation_missing
     g3_g6: CODE_AND_RUNTIME_INVENTORY_INCOMPLETE
   decision: keep_web_backend_maintenance_and_keep_shared_redis_postgres_running
+
+workstream_a_probe_2026_09_26:
+  observed_at_utc: "2026-09-26T16:43:18Z"
+  evidence_scope: local_host_and_control_plane_container_read_only
+  tunnel:
+    smartspec_active: true
+    active_connector_count: 1
+    web_ingress_target: localhost_3000
+    api_ingress_target: localhost_8000
+    public_other_origins_enumerated: false
+  network:
+    postgres_redis_bind_ipv4_ipv6: true
+    trusted_external_connectivity_test: not_run_no_authorized_external_test_host
+    host_firewall_cli: unavailable
+    provider_firewall_acl: unverified
+    firewall_change: none
+  r2:
+    endpoint_secret_logged: false
+    host_dns: pass
+    host_tls: fail_ssl_error
+    control_plane_container_dns: fail
+    control_plane_https: fail_http_code_000
+    backup_uploaded: false
+  backup:
+    durable_encrypted_artifact_created: false
+    approved_off_host_destination: unavailable
+    local_var_backups_accepted: false
+  g2:
+    writer_fence_complete: false
+    fresh_jti_snapshot_after_fence: false
+    import_dry_run_or_apply: false
+    migrations_0345_0349_rerun: false
+    reopen_or_restart: false
+  result: BLOCKED_owner_access_and_durable_backup_destination_required
+
+g3_request_quota_isolated_branch_2026_09_26:
+  branch: codex/spec245-g3-replacements
+  commit: be63efbdfcb7b5b4cdd3520344c426406fe730ad
+  implementation: postgresql_hard_public_api_request_quotas
+  test_results: {passed: 112, failed: 0}
+  test_environment: isolated_loopback_postgresql_15_test_container
+  production_ddl_or_deploy: false
+  production_counter_import: false
+  remaining_g3_redis_usage: [abuse_rate_limiting, financial_credit_accounting, idempotency]
+  status: CODE_VERIFIED_ISOLATED_BRANCH_NOT_PRODUCTION_READY

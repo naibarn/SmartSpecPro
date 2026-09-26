@@ -84,6 +84,33 @@ latest_host_network_recheck:
     Do not install guessed firewall rules or stop shared PostgreSQL/Redis until container/worker
     dependencies and approved source ranges are mapped.
 
+latest_r2_and_tunnel_recheck:
+  observed_at_utc: "2026-09-26T16:43:18Z"
+  tunnel:
+    smartspec_active: true
+    active_connector_count: 1
+    host_ingress_web_api_targets: [localhost_3000, localhost_8000]
+    web_api_units_masked: true
+    dns_lb_alternate_origins_verified: false
+  r2_endpoint_probe:
+    host_dns: pass
+    host_verified_tls: fail_ssl_error
+    host_unverified_tls_handshake: fail_ssl_error
+    control_plane_container_dns: fail
+    control_plane_container_https: fail_http_code_000
+    backup_write_attempted: false
+  backup_destination:
+    var_backups_is_on_production_host: true
+    approved_off_host_target_available: false
+    encryption_key_and_retention_approved: false
+  external_port_test:
+    authorized_trusted_test_host_available: false
+    postgres_redis_public_reachability: not_tested
+  firewall:
+    host_tools: [nft_missing, iptables_missing, ufw_missing, firewall_cmd_missing]
+    provider_acl: unverified
+  production_changes_made: false
+
 latest_static_caller_scan:
   observed_at_utc: "2026-09-26T16:26:00Z"
   method: targeted_rg_client_and_queue_api_patterns
@@ -188,7 +215,7 @@ responsibility_groups:
       worker_pairing_keys: 0
 
   G3_rate_limit_quota_idempotency:
-    status: partial_static_discovery
+    status: code_verified_isolated_branch_partial
     examples:
       - file: apps/web/server/middleware/distributedRateLimit.ts
         symbol: distributed rate limiter
@@ -205,6 +232,15 @@ responsibility_groups:
         semantics: temporary request lock plus cached response
         target: PostgreSQL canonical idempotency for business effects; KV is not an atomic lock substitute
         migration_status: blocked_on_effect_and_idempotency_audit
+    isolated_implementation:
+      branch: codex/spec245-g3-replacements
+      commit: be63efbdfcb7b5b4cdd3520344c426406fe730ad
+      scope: public_api_request_count_quotas_only
+      authority: postgresql_transaction_and_per_api_key_advisory_lock
+      production_deployed: false
+      migration_0350_applied_to_production: false
+      remaining_redis_callers: [abuse_rate_limits, financial_credit_accounting, idempotency]
+      tests: {focused_and_integration: 112_passed, database: isolated_loopback_postgresql_15}
     unknown_callers: true
 
   G4_locks_leases_semaphores:
