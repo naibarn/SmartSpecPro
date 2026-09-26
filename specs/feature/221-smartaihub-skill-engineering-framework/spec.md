@@ -1,16 +1,25 @@
 # Spec 221 — SmartAIHub Skill Engineering Framework
 
-**Status:** Architecture Freeze Candidate / Implementation-ready subject to conformance tests
-**Revision:** 3 — Final integrated product/skill alignment; preserves prior 72-pass audit  
+**Status:** Proposed / Partial governance contract slice present; end-to-end Skill release integration pending
+**Spec ID:** 221
+**Revision:** 6 — canonical Skill discovery projection, indexing lifecycle and retrieval conformance
+**Date:** 2026-09-22
+**Target repository path:** `specs/feature/221-smartaihub-skill-engineering-framework/spec.md`
 **Product:** SmartAIHub / oneaihub.app  
 **Primary Surface:** SmartAIHub Web — Skill Studio  
 **Primary Domain:** Skill creation, evaluation, review, publishing, governance  
-**Related Systems:** Specs 217–220, Spec 222 Agentic Development Fabric, Skill Marketplace, External Agent Gateway, A2A, MCP, Unified Job Control Plane, SmartAIHub Runner, LangGraph orchestration, Credits/Billing  
+**Related Systems:** Specs 217–220, Spec 222 Self-Improving Exploration Layer, Spec 224 Autonomous Development Orchestrator, Spec 229 Unified Retrieval/RAG, Spec 230 Agentic Development Fabric, Skill Marketplace, External Agent Gateway, A2A, MCP, Unified Job Control Plane, SmartAIHub Runner, LangGraph orchestration, Credits/Billing
 **Inspired by:** `obra/superpowers` software-development methodology concepts, especially disciplined planning, test-driven development, systematic debugging, review, and verification.  
 **Important:** SmartAIHub MUST NOT depend on Superpowers as a mandatory runtime. Superpowers is an optional methodology source/adapter; SmartAIHub owns the product workflow, state, policy, security, audit, billing, and execution control.
 **Revision note:** This revision incorporates 72 cumulative production-readiness audit passes. Passes 29–48 added enforceable tenant isolation, cryptography/key management, disaster recovery, provider resilience, Runner trust, policy precedence/explainability, side-effect safety, DLP/redaction, eval lineage/contamination controls, model/provider drift handling, Marketplace abuse/IP governance, creator offboarding/ownership transfer, fair scheduling, API/schema evolution, cache-consistency requirements, incident response, review appeals, locale/timezone determinism, advanced testing, and emergency kill-switch controls. Passes 49–68 further harden lifecycle state transitions, authorization-at-use/TOCTOU, lease fencing, atomic credit reservation, reproducibility envelopes, event ordering/inbox idempotency, approval liveness, update pinning, dependency-source integrity, MCP/A2A/tool trust, Web UI application security, telemetry hygiene, operational runbooks, artifact reconciliation, provider/model EOL handling, eval-cost efficiency, multi-region ordering, cancellation finality, rollback/data-migration safety, and versioned Agent Skills/Superpowers interoperability. Passes 69–72 add evidence-dependency invalidation, bounded composite execution, safe external-reference ingestion, and realtime event-channel authorization/isolation.
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+`apps/web/server/services/skillGovernanceContracts.ts` and focused tests cover Skill identity, version/dependency closure, evaluation, review and revocation semantics. The repository also has pre-existing `skillRegistry.ts`, Skill Studio, execution and maintenance services; those are existing infrastructure and must not be relabelled as the complete Spec 221 governance/release control plane.
+
+No end-to-end Spec 221 admission path tying source revision, context-pack hash, evaluation, review, billing/job execution and published release was proven in this audit. The canonical job and capability authorities remain external to this contract slice.
 
 ## 1. Executive Summary
 
@@ -686,11 +695,11 @@ Support three modes:
 
 #### Mode A — Native SmartAIHub Equivalent
 
-SmartAIHub implements equivalent methodology concepts using its own agents and orchestration profiles.
+SmartAIHub implements equivalent methodology concepts using its own agents/workflows.
 
 #### Mode B — External Harness with Superpowers Installed
 
-If a selected harness supports Superpowers natively and the Runner environment has it installed, SmartAIHub MAY invoke the appropriate orchestration profile.
+If a selected harness supports Superpowers natively and the Runner environment has it installed, SmartAIHub MAY invoke the appropriate workflow/profile.
 
 #### Mode C — No Superpowers
 
@@ -1354,7 +1363,7 @@ Sandbox/Runner execution policy MUST be able to constrain:
 - tool/API call count and concurrency;
 - child process creation and executable allowlists where applicable.
 
-Untrusted code SHOULD execute in an ephemeral approved isolation runtime that is destroyed after the run unless explicitly configured otherwise. Container control sockets, platform metadata services, privileged devices, and unrelated tenant mounts MUST NOT be reachable.
+Untrusted code SHOULD execute in an ephemeral environment that is destroyed after the run unless explicitly configured otherwise. Host Docker socket, platform metadata services, privileged devices, and unrelated tenant mounts MUST NOT be reachable.
 
 ### 27.2 Network Egress and SSRF Controls
 
@@ -3592,9 +3601,9 @@ rather than trusting a single model response or manually uploaded ZIP package.
 
 
 
-# Revision 2 Addendum — Alignment with AI Product Platform and Spec 222
+# Revision 2 Addendum — Alignment with AI Product Platform and Spec 230
 
-**Normative precedence:** This Revision 2 addendum supersedes earlier Spec 221 ownership statements only where needed to centralize cross-harness bootstrap/context in Spec 222. Existing Skill lifecycle, security and eval requirements remain in force.
+**Normative precedence:** This Revision 2 addendum supersedes earlier Spec 221 ownership statements only where needed to centralize cross-harness bootstrap/context in Spec 230. Existing Skill lifecycle, security and eval requirements remain in force.
 
 ## 82. Canonical Skill vs Mini App Boundary
 
@@ -3606,7 +3615,7 @@ Mini App = user-facing experience that MAY call Skills
 Product = branded shell that MAY compose Mini Apps
 ```
 
-Spec 221 SHALL NOT grow into the Mini App/Product UI system. UI/productization is owned by Specs 217/216, while development harness context/bootstrap is owned by Spec 222.
+Spec 221 SHALL NOT grow into the Mini App/Product UI system. UI/productization is owned by Specs 217/216, while development harness context/bootstrap is owned by Spec 230.
 
 ## 83. Product-Driven Skill Creation
 
@@ -3645,7 +3654,7 @@ Spec 221 retains **Skill-specific engineering semantics**:
 - cross-model compatibility;
 - Skill security/review/publication readiness.
 
-Spec 222 owns **cross-artifact harness integration**:
+Spec 230 owns **cross-artifact harness integration**:
 
 - installing/detecting Superpowers per harness;
 - version pinning/compatibility profile shared across Product and Skill development;
@@ -3659,7 +3668,7 @@ Spec 221 MUST consume these services instead of implementing a second Runner/har
 
 ## 86. SmartAIHub Skill Authoring Pack
 
-Spec 222 SHALL provide a SmartAIHub Skill Engineering adapter/skill pack that teaches supported coding harnesses how to work on a Spec 221 Skill source workspace, including:
+Spec 230 SHALL provide a SmartAIHub Skill Engineering adapter/skill pack that teaches supported coding harnesses how to work on a Spec 221 Skill source workspace, including:
 
 ```text
 where the Skill Contract lives
@@ -3684,7 +3693,7 @@ A Git push alone MUST NOT publish or promote a Skill.
 - [ ] Product Builder can trigger a governed Skill creation request for a real capability gap.
 - [ ] Mini Apps call Skills through governed capability contracts.
 - [ ] Spec 221 does not duplicate Product UI/tenant/runtime ownership.
-- [ ] Superpowers/harness installation and project instruction adapters are centralized in Spec 222.
+- [ ] Superpowers/harness installation and project instruction adapters are centralized in Spec 230.
 - [ ] Skill release remains governed by Spec 221 regardless of the harness used to build it.
 
 
@@ -3701,7 +3710,7 @@ SmartAIHub Runtime Skill
 Harness Engineering Skill
 = instruction/methodology package loaded into Claude/Codex/Antigravity/Hermes
 = used only to help an engineering agent work correctly
-= owned/governed by Spec 222 for first-party SmartAIHub development
+= owned/governed by Spec 230 for first-party SmartAIHub development
 ```
 
 A user-created SmartAIHub Runtime Skill MUST NOT automatically be installed into the user's coding harness as a Harness Engineering Skill.
@@ -3718,7 +3727,7 @@ Managed cloud harness execution uses separately governed platform/tenant credent
 
 # Revision 3 — Final Integrated Product/Skill Stress-Audit Addendum
 
-**Normative precedence:** This addendum preserves the prior 72-pass audit and supersedes conflicting cross-spec alignment text. Spec 221 owns `RUNTIME_SKILL` engineering/release; Spec 222 owns `HARNESS_ENGINEERING_SKILL` distribution/bootstrap.
+**Normative precedence:** This addendum preserves the prior 72-pass audit and supersedes conflicting cross-spec alignment text. Spec 221 owns `RUNTIME_SKILL` engineering/release; Spec 230 owns `HARNESS_ENGINEERING_SKILL` distribution/bootstrap.
 
 
 ## R3.1 Shared Contract Family and Version Negotiation
@@ -3893,3 +3902,373 @@ If Product and Skill source live in one mono-repository for an approved internal
 - [ ] Skill fees integrate with Spec 207 without double charging through Product/Mini App layers.
 - [ ] All local/managed/human engineering paths share the same Skill publication gates.
 - [ ] Superpowers upgrades are version-pinned and regression-gated.
+
+## R4.1 Revision 4 Amendment — Repository Engineering Skills and Hardening Methodology
+
+Revision 4 is additive and normative. It aligns the Skill Engineering Framework with Specs 222/224 so the engineering quality already obtained from repository-local methodology Skills can be preserved inside the durable Autonomous Development Orchestrator rather than replaced by generic phase prompts.
+
+The central distinction is:
+
+```text
+Spec 221
+  owns how an engineering Skill is contracted, evaluated, versioned and trusted
+
+Spec 230
+  owns repository/project context, Skill selection and provider/harness packaging
+
+Spec 224
+  owns durable lifecycle, closure, recovery, hardening campaigns and finality
+```
+
+A Skill MAY improve reasoning and execution quality. A Skill SHALL NOT become the durable lifecycle authority, mint Final Verify, widen authorization or silently redefine an approved Spec.
+
+## R4.2 Repository Engineering Skill Class
+
+Spec 221 SHALL formally support a governed engineering Skill class usable from repository-local sources such as an approved `<repo-root>/skills/**` tree.
+
+Logical classification:
+
+```text
+HARNESS_ENGINEERING_SKILL
+  ├─ METHODOLOGY
+  ├─ DOMAIN_ENGINEERING
+  ├─ REVIEW_METHOD
+  ├─ DEBUG_METHOD
+  ├─ AUDIT_LENS
+  └─ PROJECT_ENGINEERING_GUIDE
+```
+
+This class is distinct from a runtime/business `RUNTIME_SKILL`. Repository engineering Skills guide software-development work; they do not become customer runtime capabilities merely because they are present in a product repository.
+
+Minimum engineering-Skill metadata SHOULD support:
+
+```text
+skill_id
+name
+purpose
+skill_class
+applicable_phases[]
+applicable_artifact_types[]
+domain_tags[]
+risk_tags[]
+required_context[]
+required_tools[]
+expected_outputs[]
+forbidden_authority[]
+provider_compatibility[]
+resource_manifest[]
+version / source revision / digest
+```
+
+## R4.3 Methodology Skill Contract
+
+Methodology Skills used for planning, TDD, systematic debugging, root-cause analysis, review, migration engineering, UI/UX verification or production hardening SHALL declare the behavior they are intended to improve and the evidence by which their usefulness is evaluated.
+
+Example logical contract:
+
+```text
+MethodologySkillContract
+  phase_fit
+  task_fit
+  entry_conditions
+  procedure_or_reasoning_guidance
+  expected_intermediate_artifacts
+  expected_final_artifacts
+  anti_patterns
+  escalation_conditions
+  evaluation_fixtures
+  quality_metrics
+```
+
+A methodology Skill SHALL NOT declare a run successful merely because its local procedure completed.
+
+## R4.4 Skill-First but Selective Execution
+
+`skill-first` means that the system SHALL consult relevant governed engineering Skills before inventing an ad-hoc methodology when a suitable Skill is available. It does **not** mean loading all Skills into every model context.
+
+The preferred sequence is:
+
+```text
+metadata discovery
+→ task/phase/domain filtering
+→ shortlist
+→ load selected SKILL.md / primary instructions
+→ lazy-load supporting references/scripts only when needed
+→ execute
+```
+
+Repository Skill catalogs MAY contain many Skills. Only the selected Skills needed for the current PlanSection, WorkPackage, repair, review or audit lens SHOULD be materialized into the executor context.
+
+## R4.5 Audit-Lens Skill Contract
+
+Production-hardening campaigns in Spec 224 MAY use `AUDIT_LENS` Skills to generate focused review hypotheses rather than repeatedly asking a generic "find more gaps" prompt.
+
+An Audit-Lens Skill SHOULD define:
+
+```text
+focus domain
+failure hypotheses
+invariants to challenge
+code/config/evidence to inspect
+counterexamples
+expected test/fault-injection ideas
+finding classification hints
+follow-up lens rules
+```
+
+Examples include concurrency, authorization, tenant isolation, migration, browser routing, UI state logic, accessibility, operational recovery, billing correctness and supply-chain integrity.
+
+Audit-Lens Skills provide analysis discipline, not finding truth. Findings still require Spec 224 classification, deduplication and evidence.
+
+## R4.6 Skill Effectiveness Evidence
+
+Spec 221 SHALL allow methodology/engineering Skills to accumulate bounded effectiveness evidence without turning historical success into authority.
+
+Recommended evidence dimensions:
+
+```text
+skill_id + version/digest
+phase
+task/domain class
+harness/provider/model family where relevant
+completion outcome
+repair iterations
+test/eval result
+review findings
+human intervention
+latency
+token/cost telemetry where available
+false-positive/false-negative audit outcomes where measurable
+```
+
+Spec 222 MAY use this evidence for ranking. Spec 224 MAY use it for strategy selection. Neither may infer authorization or Final Verify from historical score.
+
+## R4.7 Immutable In-Run Skill Binding
+
+An engineering Skill selected for an active consequential WorkPackage or audit pass SHALL be bound by source revision/digest for that action generation.
+
+If its content changes while a run is active:
+
+```text
+existing action → keeps immutable binding
+new action      → re-resolves according to policy
+material rebinding → records new binding and invalidates affected evidence when required
+```
+
+An executing agent SHALL NOT rewrite the Skill governing its own current certification in order to obtain a passing result.
+
+Suggested improvements SHALL become a separate `SkillImprovementProposal` and follow the Spec 221 review/eval path.
+
+## R4.8 Engineering-Skill Behavioral Evals
+
+Engineering Skills SHOULD be evaluated on representative pressure scenarios, not only lint/schema validity.
+
+At minimum, high-value Skills SHOULD be tested for:
+
+```text
+requirement/scope discipline
+premature completion resistance
+test-tampering resistance
+correct escalation
+useful decomposition
+false-positive rate in review/audit tasks
+finding quality
+handoff quality
+provider/harness compatibility
+context-efficiency
+```
+
+Changes to high-impact engineering Skills SHOULD be regression-gated before becoming the default repository/project profile.
+
+## R4.9 Cross-Spec Ownership
+
+The following ownership is normative:
+
+| Concern | Owner |
+|---|---|
+| Engineering Skill contract/eval/version/publication | Spec 221 |
+| RepositoryEngineeringProfile and skill/context resolution | Spec 230 |
+| WorkPackage/audit-lens lifecycle and completion | Spec 224 |
+| Provider transport/session semantics | Spec 200/provider adapter |
+| Server authorization | shared policy/capability infrastructure |
+
+No repository Skill may override this ownership matrix.
+
+## R4.10 Revision 4 Required Tests
+
+Add at least these tests:
+
+1. repository engineering Skill is classified separately from a runtime business Skill;
+2. relevant Skill is selected without loading an unrelated large catalog into context;
+3. Skill supporting references are loaded lazily;
+4. active Skill digest changes mid-action and the running binding remains reproducible;
+5. agent attempts to modify the governing Skill and current certification refuses the mutation as authority-changing;
+6. Audit-Lens Skill generates focused hypotheses but cannot close its own finding;
+7. effectiveness history improves ranking without widening capability permissions;
+8. methodology Skill conflicts with Spec 224 PhaseProtocol and PhaseProtocol wins;
+9. provider lacks native Skill support and the selected engineering guidance is rendered through an approved fallback adapter;
+10. Skill version regression is caught by behavioral eval before default promotion.
+
+## R4.11 Revision 4 Acceptance Criteria
+
+Revision 4 is complete when:
+
+- [ ] repository engineering Skills are explicit governed artifacts rather than accidental prompt files;
+- [ ] skill-first selection is selective/progressive rather than full-catalog injection;
+- [ ] methodology and audit Skills have measurable behavioral contracts;
+- [ ] in-run Skill bindings are reproducible and cannot silently self-modify;
+- [ ] effectiveness evidence can inform routing without becoming authority;
+- [ ] Specs 221/222/224 have non-overlapping ownership for Skill engineering, Skill resolution and lifecycle finality.
+
+## R4.12 Revision 4 Final Principle
+
+> **SmartAIHub SHALL preserve the engineering value of mature Skills while moving lifecycle authority out of Skills. Skills should make the engineer smarter; Spec 224 should make the process durable, traceable and complete.**
+
+---
+
+# Revision 5 Canonical Spec 222/230 Split and Kimi Skill Compatibility
+
+This revision corrects the historical number collision:
+
+```text
+Spec 221 = Skill engineering, evaluation, governance and publication
+Spec 222 = Self-Improving Exploration Layer (learning/advisory)
+Spec 230 = Agentic Development Fabric (Project Context, RepositoryEngineeringProfile, harness bootstrap/methodology)
+Spec 224 = durable development lifecycle/closure/finality
+```
+
+Any earlier clause in this document that uses Spec 230 for historical learning/strategy ranking is superseded: **cross-run learning and policy evaluation belong to Spec 222**. Repository engineering profile, context and harness preparation belong to Spec 230.
+
+## Kimi Code Skill Mapping
+
+Kimi Code SHALL be a supported consumer of governed engineering Skills when its adapter is certified. Spec 230 may materialize selected Skills through Kimi project/extra Skill directories or an isolated run-scoped configuration. Spec 221 remains the owner of Skill quality/version/evals; Kimi's local Skill loader is only a transport/execution mechanism.
+
+For a SmartSpecPro repository with a root `skills/` directory, the Kimi adapter MAY bind the **selected** project Skills into the run by a certified `extra_skill_dirs` / run-scoped skills configuration. It SHALL NOT make every repository Skill mandatory for every phase and SHALL preserve digest/version provenance.
+---
+
+# Revision 5C — Spec 229 Skill Retrieval Boundary
+
+Spec 221 owns Skill contracts, engineering, tests/evals, trust, versioning and publication. **Spec 229 owns production semantic/vector/search retrieval for Skill discovery.**
+
+Skill metadata/content MAY be projected to Spec 229 indexes (including the canonical `sah-skills-v2` direct-vector lane or document RAG projection where appropriate), but the index is derived data and never the Skill source of truth.
+
+Spec 230 RepositoryEngineeringProfile / Methodology Resolver MAY request candidate Skills from Spec 229, then select only the relevant phase/WorkPackage/AuditLens Skills. Spec 229 does not decide whether a Skill is authorized, trustworthy or methodologically appropriate; those decisions remain with Spec 221/230/policy.
+
+No new pgvector/vector-search implementation may be introduced inside Spec 221 after Spec 229 cutover.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 6 — Canonical Skill Discovery Projection and Retrieval Lifecycle
+
+Spec 221 remains the authoritative owner of Skill identity, source, version, trust, eval/certification, lifecycle and publication. Spec 229 owns the production search/vector/RAG data plane used to discover Skills.
+
+## Skill Discovery Projection
+
+Every searchable Skill version SHOULD expose a safe machine-readable `SkillDiscoveryProjection` containing only index-appropriate data, for example:
+
+```text
+skill_id / version / source_kind
+source repository + revision + path when repository-local
+digest
+publisher/tenant/project/visibility
+lifecycle status
+trust tier / certification refs
+summary / domains / capability tags
+applicable phases / artifact classes
+positive triggers / negative triggers
+required tools/capabilities
+risk/effect class
+compatibility constraints
+language metadata
+updated_at
+```
+
+Secrets, private credentials and unrestricted package internals MUST NOT be included merely to improve embedding quality.
+
+## Publication / Invalidation
+
+Canonical lifecycle changes SHALL emit idempotent projection events such as:
+
+```text
+SKILL_PUBLISHED
+SKILL_VERSION_UPDATED
+SKILL_REVOKED
+SKILL_DEPRECATED
+SKILL_VISIBILITY_CHANGED
+SKILL_DELETED
+REPOSITORY_SKILL_REVISION_CHANGED
+```
+
+Spec 229 consumes these events to upsert/tombstone search projections. Search freshness is observable.
+
+## Discovery Is Candidate Generation
+
+Skill retrieval SHALL follow:
+
+```text
+purpose + phase + domain + exact identifiers
+→ Spec 220 scope/eligibility prefilter
+→ Spec 229 exact/keyword/vector/hybrid retrieval
+→ rerank / evidence-quality gate
+→ Spec 221 authoritative version/trust/lifecycle revalidation
+→ Spec 230 methodology/context selection where development-related
+→ lazy load selected canonical Skill source
+```
+
+A vector hit is never proof that a Skill is enabled, trusted, compatible or callable.
+
+## Skill Retrieval Evaluation
+
+Spec 221 certification SHALL include Skill-discovery evals covering:
+
+- exact Skill ID/version lookup;
+- Thai/English/mixed-language intent;
+- positive trigger recall;
+- negative-trigger/hard-negative rejection;
+- near-duplicate Skills;
+- revoked/deprecated Skill exclusion;
+- wrong-tenant/private Skill leakage = zero;
+- phase/methodology fit;
+- ambiguous query where multiple valid Skills are returned with explainable evidence;
+- index-lag revalidation preventing stale execution.
+
+The discovery system SHALL measure retrieval quality independently from execution success so a powerful Skill does not mask a poor resolver.

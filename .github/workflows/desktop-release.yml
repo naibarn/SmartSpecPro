@@ -187,6 +187,9 @@ jobs:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "SmartAIHub Desktop ${{ github.event.inputs.tag || github.ref_name }}"
           releaseBody: ${{ env.DESKTOP_RELEASE_BODY }}
-          releaseDraft: true
+          # SmartAIHub syncs the published release through GitHub's public
+          # release API. A draft is invisible to tokens that only have
+          # workflow-dispatch access, which leaves the portal catalog empty.
+          releaseDraft: false
           prerelease: false
           args: --target ${{ matrix.target }}

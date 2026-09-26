@@ -1,11 +1,13 @@
 pub mod adapters;
 pub mod config;
+pub mod connection;
 pub mod container;
 pub mod control_channel;
 pub mod device_proof;
 pub mod diagnostics;
 pub mod discovery;
 pub mod execution;
+pub mod external_agent;
 pub mod identity;
 pub mod journal;
 pub mod leasing;
@@ -22,6 +24,10 @@ pub const RUNNER_VERSION: &str = match option_env!("SAH_RUNNER_BUILD_VERSION") {
     Some(version) => version,
     None => env!("CARGO_PKG_VERSION"),
 };
+
+pub const RUNNER_CONTROL_CONTRACT_VERSION: &str = "sah-runner-v1";
+pub const RUNNER_CONNECT_SCHEMA_REVISION: &str = "sah-runner-connect-v2";
+pub const MIN_COMPATIBLE_RUNNER_VERSION: &str = "0.1.0";
 
 #[cfg(test)]
 mod tests {

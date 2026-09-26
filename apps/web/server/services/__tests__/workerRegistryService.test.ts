@@ -12,11 +12,12 @@ import {
 } from "../../../shared/workerRuntime";
 import { auditLogger } from "../auditLogger";
 
-const { mockGetDb } = vi.hoisted(() => {
+const { mockGetDb, mockCreateControlPlaneJob } = vi.hoisted(() => {
   process.env.JWT_SECRET = "test-jwt-secret-for-worker-registry-service";
 
   return {
     mockGetDb: vi.fn(),
+    mockCreateControlPlaneJob: vi.fn(),
   };
 });
 
@@ -24,9 +25,170 @@ vi.mock("../../db", () => ({
   getDb: mockGetDb,
 }));
 
+vi.mock("../jobControlPlaneGateway", () => ({
+  createControlPlaneJob: mockCreateControlPlaneJob,
+}));
+
 describe("workerRegistryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateControlPlaneJob.mockResolvedValue({ jobId: "protection-job-1" });
+  });
+
+  it("publishes the raw artifact before starting downstream protection", async () => {
+    const { getCompletedWorkerJobPostProcessingPlan } = await import("../workerRegistryService");
+
+    expect(getCompletedWorkerJobPostProcessingPlan({
+      inputJson: {
+        protectionIntent: {
+          choice: "on",
+          choiceSource: "per_export",
+          requireBeforePublish: true,
+        },
+      },
+      instructionsJson: null,
+    } as any)).toEqual({
+      publishRawArtifact: true,
+      enqueueProtection: true,
+      markUnprotected: false,
+    });
+  });
+
+  it("preserves published raw artifacts when writing the protection gate", async () => {
+    const { mergeCompletedWorkerJobOutput } = await import("../workerRegistryService");
+
+    expect(mergeCompletedWorkerJobOutput({
+      outputJson: { lastEventType: "job.completed" },
+      publishedArtifacts: [{
+        artifactId: "artifact-1",
+        publishedItemId: 101,
+        indexStatus: "queued",
+        safeServing: "inline",
+        sourceUrl: "/api/storage/files/raw.mp4",
+      }],
+      contentProtection: {
+        status: "PROTECTION_REQUESTED",
+        protectionJobId: "protection-job-1",
+      },
+    })).toEqual({
+      lastEventType: "job.completed",
+      publishedArtifacts: [{
+        artifactId: "artifact-1",
+        publishedItemId: 101,
+        indexStatus: "queued",
+        safeServing: "inline",
+        sourceUrl: "/api/storage/files/raw.mp4",
+      }],
+      contentProtection: {
+        status: "PROTECTION_REQUESTED",
+        protectionJobId: "protection-job-1",
+      },
+    });
+  });
+
+  it("keeps compound content-protection idempotency keys within the control-plane limit", async () => {
+    const { buildContentProtectionCompoundIdempotencyKey } = await import("../workerRegistryService");
+    const jobId = "9e90c31e-743a-4607-a123-123456789abc";
+    const compoundPlanDigest = "a".repeat(64);
+
+    const key = buildContentProtectionCompoundIdempotencyKey(jobId, compoundPlanDigest);
+    const legacyKey = `content-protection:compound:${jobId}:${compoundPlanDigest}`;
+
+    expect(legacyKey.length).toBe(129);
+    expect(key.length).toBe(92);
+    expect(key.length).toBeLessThanOrEqual(128);
+    expect(key).toBe(buildContentProtectionCompoundIdempotencyKey(jobId, compoundPlanDigest));
+  });
+
+  it("omits an unavailable revision from the compound protection job payload", async () => {
+    const [{ buildCompoundArtifactEnvelopeDigestSeed }, { validateJobDefinition }] = await Promise.all([
+      import("../workerRegistryService"),
+      import("../jobCanonicalization"),
+    ]);
+    const compoundEnvelope = buildCompoundArtifactEnvelopeDigestSeed({
+      compoundArtifactId: "remotion-render:job-1:artifact-1",
+      causalJobId: "job-1",
+      sourceAssetIds: ["remotion:job-1:source:0"],
+      sourceAssetHashes: ["a".repeat(64)],
+      sourceSegments: [{
+        sourceAssetId: "remotion:job-1:source:0",
+        timelineIndex: 0,
+        trimStartMs: 0,
+        trimEndMs: 1,
+      }],
+      revisionId: undefined,
+      preProtectionSha256: "b".repeat(64),
+    });
+
+    expect(compoundEnvelope).not.toHaveProperty("revisionId");
+    expect(() => validateJobDefinition({
+      contractVersion: "content-protection.v1",
+      tenantId: "tenant-a",
+      requestedByUserId: 42,
+      jobType: "content_protection.protect",
+      executionClass: "cpu",
+      input: { compoundEnvelope },
+      idempotencyKey: "content-protection:test",
+      retryPolicy: {
+        maxAttempts: 2,
+        baseDelayMs: 1000,
+        maxDelayMs: 60_000,
+        jitter: "bounded",
+        deadlineMs: 15 * 60_000,
+        allowedErrorClasses: ["retryable"],
+      },
+      timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
+    })).not.toThrow();
+  });
+
+  it("enqueues final protection when a Remotion job has no revision id", async () => {
+    const { finalizeInlineRenderProtection } = await import("../workerRegistryService");
+    const insertedValues = vi.fn().mockResolvedValue(undefined);
+    const updatedWhere = vi.fn().mockResolvedValue(undefined);
+    const job = {
+      id: "job-remotion-1",
+      tenantId: "tenant-1",
+      requestedByUserId: 42,
+      jobType: "remotion_render_video",
+      status: "completed",
+      inputJson: {
+        protectionIntent: {
+          choice: "on",
+          choiceSource: "per_export",
+          requireBeforePublish: true,
+        },
+        assetManifest: [{ sha256: "a".repeat(64) }],
+      },
+      outputJson: {},
+    };
+    const database = {
+      select: vi.fn()
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([job]) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ orderBy: () => ({ limit: vi.fn().mockResolvedValue([{
+            id: "artifact-1",
+            storageRef: "tenant-1/render.mp4",
+            metadataJson: { contentType: "video/mp4", checksumSha256: "b".repeat(64) },
+          }]) }) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([]) }) }),
+        })
+        .mockReturnValueOnce({
+          from: () => ({ where: () => ({ limit: vi.fn().mockResolvedValue([]) }) }),
+        }),
+      insert: vi.fn().mockReturnValue({ values: insertedValues }),
+      update: vi.fn().mockReturnValue({ set: () => ({ where: updatedWhere }) }),
+    };
+    mockGetDb.mockReturnValue(database);
+
+    await expect(finalizeInlineRenderProtection(job.id)).resolves.toBeUndefined();
+
+    expect(insertedValues).toHaveBeenCalledWith(expect.objectContaining({
+      sourceVersionId: null,
+    }));
   });
 
   it("keeps registration idempotent for the same runtime identity", async () => {

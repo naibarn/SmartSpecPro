@@ -1612,6 +1612,19 @@ h2 {
   flex: 0 0 auto;
 }
 
+/* Batch Full Scan needs a live video surface for decoded frames, but the
+   background analyzer must never replace or cover the visible editor. */
+.media-batch-scan-surface {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 640px;
+  height: 360px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Windows Explorer File Browser */
 .media-explorer-view,
 .explorer-container {

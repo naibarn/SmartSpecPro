@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
-import { SMARTAIHUB_CLOUD_LIBRARY_PRESETS } from "../../src/screens/media-workspace/AssetDrawerPanel";
+import {
+  getWorkerJobReference,
+  SMARTAIHUB_CLOUD_LIBRARY_PRESETS,
+} from "../../src/screens/media-workspace/AssetDrawerPanel";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -74,6 +77,13 @@ describe("SmartAIHub Server Data Fetching & Cloud Media", () => {
     const summary = await invoke<{ items: Array<{ id: string; status: string }> }>("worker_app_get_worker_job_summary");
     expect(summary.items).toHaveLength(1);
     expect(summary.items[0].status).toBe("completed");
+  });
+
+  it("creates a safe history reference when a completed job has no id", () => {
+    expect(getWorkerJobReference({ id: "job_777" }, 0)).toBe("job_777");
+    expect(getWorkerJobReference({ jobId: "job_778" }, 1)).toBe("job_778");
+    expect(getWorkerJobReference({}, 2)).toBe("summary-row-2");
+    expect(getWorkerJobReference({ id: "   " }, 3)).toBe("summary-row-3");
   });
 
   it("ensures SmartAIHub cloud library presets are available for all media tabs", () => {

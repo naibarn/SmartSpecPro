@@ -1,0 +1,52 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/196-universal-goal-orchestration/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/196-universal-goal-orchestration/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contracts-and-command",
+    "section-02-goal-plan-persistence",
+    "section-03-capability-resolution",
+    "section-04-planner-policy-and-approval",
+    "section-05-gateway-and-ui",
+    "section-06-cross-spec-release"
+  ],
+  "sections_state": {
+    "section-01-contracts-and-command": {
+      "status": "complete",
+      "commit_hash": "a34b7385a"
+    },
+    "section-03-capability-resolution": {
+      "status": "complete",
+      "commit_hash": "a34b7385a"
+    },
+    "section-04-planner-policy-and-approval": {
+      "status": "complete",
+      "commit_hash": "a34b7385a"
+    },
+    "section-05-gateway-and-ui": {
+      "status": "complete",
+      "commit_hash": "a34b7385a"
+    },
+    "section-02-goal-plan-persistence": {
+      "status": "complete",
+      "commit_hash": "978f8c9b1"
+    },
+    "section-06-cross-spec-release": {
+      "status": "complete",
+      "commit_hash": "566ff7808"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-17T15:15:50.682993+00:00"
+}

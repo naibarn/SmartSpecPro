@@ -1,5 +1,8 @@
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+import time
+
+from jose import jwt
 
 from app.services.live_browser_adapter import (
     InMemoryManagedBrowserBackend,
@@ -15,6 +18,28 @@ from app.services.live_browser_session_manager import (
     InMemorySingleWriterCoordinator,
     LiveBrowserSessionManager,
 )
+from app.core.config import settings
+
+
+def _step_up_proof(session_id: str, session_version: int, now: datetime) -> str:
+    issued_at = int(time.time())
+    return jwt.encode(
+        {
+            "sub": "42",
+            "type": "live_browser_takeover_step_up",
+            "liveBrowserSessionId": session_id,
+            "liveBrowserSessionVersion": session_version,
+            "liveBrowserActorId": "42",
+            "liveBrowserUserId": "42",
+            "liveBrowserTenantId": "tenant-123",
+            "liveBrowserAssurance": "mfa",
+            "liveBrowserReauthenticatedAt": now.isoformat(),
+            "iat": issued_at,
+            "exp": issued_at + 300,
+        },
+        settings.JWT_SECRET,
+        algorithm=settings.ALGORITHM,
+    )
 
 
 def _create_manager() -> LiveBrowserSessionManager:
@@ -136,6 +161,7 @@ def test_maintenance_expires_controller_leases_and_records_incidents():
         idempotency_key="takeover-1",
         actor_id="42",
         reason="manual_review",
+        takeover_proof=_step_up_proof("lbs_takeover", 1, seeded_at),
         now=seeded_at,
     )
 

@@ -68,6 +68,8 @@ import {
 import {
   CONTENT_PROTECTION_FAILURE_CODES,
   CONTENT_PROTECTION_PROGRESS_STAGES,
+  CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
+  CONTENT_PROTECTION_RUNTIME_TYPE,
   contentProtectionIntentSchema,
   contentProtectionJobInputSchema,
 } from "../../shared/contentProtectionWorker";
@@ -299,6 +301,11 @@ async function reconcileContentProtectionWorkerResult(
       or(
         eq(contentProtectionAssets.status, "QUEUED"),
         eq(contentProtectionAssets.status, "PROCESSING"),
+        // A user retry intentionally reuses the same protection job after a
+        // provider-capability failure. Its asset is already FAILED from the
+        // first terminal attempt, but the new attempt is still authoritative
+        // for this same causal job and may transition it to PROTECTED.
+        eq(contentProtectionAssets.status, "FAILED"),
       ),
     ))
     .returning({ id: contentProtectionAssets.id });
@@ -423,6 +430,67 @@ type FinalCompoundProtectionHandoff = {
   compoundPlanDigest: string;
 };
 
+const CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX = "content-protection:compound:";
+
+/**
+ * Control-plane idempotency keys are capped at 128 characters. The previous
+ * compound key included a 36-character job UUID plus a full SHA-256 digest
+ * and was therefore 129 characters long, causing a successfully rendered job
+ * to be marked failed during post-processing when protection was enabled.
+ * Hash the complete identity while keeping the namespace visible and stable.
+ */
+export function buildContentProtectionCompoundIdempotencyKey(
+  jobId: string,
+  compoundPlanDigest: string,
+): string {
+  const raw = `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${jobId}:${compoundPlanDigest}`;
+  return `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${crypto
+    .createHash("sha256")
+    .update(raw, "utf8")
+    .digest("hex")}`;
+}
+
+function buildLegacyContentProtectionCompoundIdempotencyKey(
+  jobId: string,
+  compoundPlanDigest: string,
+): string {
+  return `${CONTENT_PROTECTION_COMPOUND_IDEMPOTENCY_PREFIX}${jobId}:${compoundPlanDigest}`;
+}
+
+/**
+ * Build the hash seed used by the final compound protection handoff. Optional
+ * envelope fields must be omitted when they are unavailable: the durable job
+ * contract accepts JSON values only and deliberately rejects `undefined`.
+ */
+export function buildCompoundArtifactEnvelopeDigestSeed(input: {
+  compoundArtifactId: string;
+  causalJobId: string;
+  sourceAssetIds: string[];
+  sourceAssetHashes: string[];
+  sourceSegments: CompoundArtifactEnvelope["sourceSegments"];
+  revisionId?: unknown;
+  preProtectionSha256: string;
+  options?: unknown;
+  plan?: unknown;
+}): CompoundArtifactEnvelope {
+  const revisionId = typeof input.revisionId === "string" ? input.revisionId : undefined;
+  return {
+    compoundArtifactId: input.compoundArtifactId,
+    causalJobId: input.causalJobId,
+    sourceAssetIds: input.sourceAssetIds,
+    sourceAssetHashes: input.sourceAssetHashes,
+    sourceSegments: input.sourceSegments,
+    ...(revisionId === undefined ? {} : { revisionId }),
+    compoundPlanDigest: "pending",
+    preProtectionSha256: input.preProtectionSha256,
+    renderSettingsDigest: crypto.createHash("sha256").update(canonicalizeForHash({
+      options: input.options ?? null,
+      plan: input.plan ?? null,
+      revisionId: revisionId ?? null,
+    }), "utf8").digest("hex"),
+  };
+}
+
 function finalProtectionIntent(job: WorkerJobRecord): {
   choice: "on" | "off";
   choiceSource: "per_export" | "user_default" | "disabled_by_user";
@@ -447,6 +515,50 @@ function finalProtectionIntent(job: WorkerJobRecord): {
     choice: parsed.data.choice,
     choiceSource,
     requireBeforePublish: parsed.data.requireBeforePublish,
+  };
+}
+
+export function getCompletedWorkerJobPostProcessingPlan(job: Pick<WorkerJobRecord, "inputJson" | "instructionsJson">): {
+  publishRawArtifact: true;
+  enqueueProtection: boolean;
+  markUnprotected: boolean;
+} {
+  const intent = finalProtectionIntent(job as WorkerJobRecord);
+  return {
+    // The raw render is an independently usable artifact. Content
+    // protection is a downstream sibling job and must never gate publication
+    // of the render that already completed successfully.
+    publishRawArtifact: true,
+    enqueueProtection: intent?.choice === "on",
+    markUnprotected: intent?.choice === "off",
+  };
+}
+
+type PublishedWorkerArtifactOutput = {
+  artifactId: string;
+  publishedItemId: number;
+  indexStatus: string;
+  safeServing: "inline" | "download_only";
+  sourceUrl?: string | null;
+};
+
+export function mergeCompletedWorkerJobOutput(input: {
+  outputJson: unknown;
+  publishedArtifacts: PublishedWorkerArtifactOutput[];
+  contentProtection?: Record<string, unknown>;
+}): Record<string, unknown> {
+  return {
+    ...(isPlainObject(input.outputJson) ? input.outputJson : {}),
+    publishedArtifacts: input.publishedArtifacts.map(artifact => ({
+      artifactId: artifact.artifactId,
+      publishedItemId: artifact.publishedItemId,
+      indexStatus: artifact.indexStatus,
+      safeServing: artifact.safeServing,
+      sourceUrl: artifact.sourceUrl ?? null,
+    })),
+    ...(input.contentProtection
+      ? { contentProtection: input.contentProtection }
+      : {}),
   };
 }
 
@@ -682,21 +794,17 @@ async function enqueueFinalCompoundProtection(
       ? "remotion-render"
       : "editor-render";
   const compoundArtifactId = `${compoundPrefix}:${job.id}:${artifact.id}`;
-  const digestSeed = {
+  const digestSeed = buildCompoundArtifactEnvelopeDigestSeed({
     compoundArtifactId,
     causalJobId: job.id,
     sourceAssetIds,
     sourceAssetHashes,
     sourceSegments,
     revisionId,
-    compoundPlanDigest: "pending",
     preProtectionSha256: sourceSha256,
-    renderSettingsDigest: crypto.createHash("sha256").update(canonicalizeForHash({
-      options: input.options ?? null,
-      plan: input.plan ?? null,
-      revisionId: revisionId ?? null,
-    }), "utf8").digest("hex"),
-  } satisfies CompoundArtifactEnvelope;
+    options: input.options,
+    plan: input.plan,
+  });
   const compoundPlanDigest = crypto.createHash("sha256")
     .update(canonicalizeForHash(digestSeed), "utf8")
     .digest("hex");
@@ -705,15 +813,35 @@ async function enqueueFinalCompoundProtection(
     compoundPlanDigest,
   };
   validateCompoundArtifactEnvelope(compoundEnvelope);
-  const idempotencyKey = `content-protection:compound:${job.id}:${compoundPlanDigest}`;
-  const [existing] = await database
-    .select({ id: contentProtectionAssets.id, causalJobId: contentProtectionAssets.causalJobId })
+  const idempotencyKey = buildContentProtectionCompoundIdempotencyKey(job.id, compoundPlanDigest);
+  const legacyIdempotencyKey = buildLegacyContentProtectionCompoundIdempotencyKey(job.id, compoundPlanDigest);
+  const [currentKeyAsset] = await database
+    .select({
+      id: contentProtectionAssets.id,
+      causalJobId: contentProtectionAssets.causalJobId,
+      idempotencyKey: contentProtectionAssets.idempotencyKey,
+    })
     .from(contentProtectionAssets)
     .where(and(
       eq(contentProtectionAssets.tenantId, job.tenantId),
       eq(contentProtectionAssets.idempotencyKey, idempotencyKey),
     ))
     .limit(1);
+  const [legacyKeyAsset] = currentKeyAsset
+    ? []
+    : await database
+      .select({
+        id: contentProtectionAssets.id,
+        causalJobId: contentProtectionAssets.causalJobId,
+        idempotencyKey: contentProtectionAssets.idempotencyKey,
+      })
+      .from(contentProtectionAssets)
+      .where(and(
+        eq(contentProtectionAssets.tenantId, job.tenantId),
+        eq(contentProtectionAssets.idempotencyKey, legacyIdempotencyKey),
+      ))
+      .limit(1);
+  const existing = currentKeyAsset ?? legacyKeyAsset;
   if (existing?.causalJobId) {
     return {
       protectionAssetId: existing.id,
@@ -729,6 +857,14 @@ async function enqueueFinalCompoundProtection(
       ? "audio"
       : "video";
   const protectionExtension = protectionModality === "image" ? "png" : protectionModality === "audio" ? "mp3" : "mp4";
+  if (existing && existing.idempotencyKey !== idempotencyKey) {
+    await database.update(contentProtectionAssets).set({
+      idempotencyKey,
+    }).where(and(
+      eq(contentProtectionAssets.id, existing.id),
+      eq(contentProtectionAssets.tenantId, job.tenantId),
+    ));
+  }
   if (!existing) {
     await database.insert(contentProtectionAssets).values({
       id: protectionAssetId,
@@ -790,13 +926,14 @@ async function enqueueFinalCompoundProtection(
       idempotencyKey,
       requiredCapabilities: {
         capabilityFamilies: ["content_protection"],
-        requiredClaimCapability: "content-protection-v1",
+        requiredClaimCapability: CONTENT_PROTECTION_REQUIRED_CLAIM_CAPABILITY,
         providerId,
         modalities: [protectionModality],
       },
       retryPolicy: { maxAttempts: 2, baseDelayMs: 1000, maxDelayMs: 60_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
       timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 15 * 60_000 },
     },
+    createOptions: { runtimeType: CONTENT_PROTECTION_RUNTIME_TYPE },
   });
   await database.update(contentProtectionAssets).set({
     causalJobId: protectionJob.jobId,
@@ -822,21 +959,38 @@ export async function finalizeInlineRenderProtection(jobId: string): Promise<voi
   const intent = finalProtectionIntent(job as WorkerJobRecord);
   if (!intent) return;
   if (intent.choice === "on") {
-    const handoff = await enqueueFinalCompoundProtection(job as WorkerJobRecord);
-    if (!handoff) return;
-    await database.update(workerJobs).set({
-      outputJson: {
-        ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
-        contentProtection: {
-          status: "PROTECTION_REQUESTED",
-          protectionAssetId: handoff.protectionAssetId,
-          protectionJobId: handoff.protectionJobId,
-          compoundArtifactId: handoff.compoundArtifactId,
-          compoundPlanDigest: handoff.compoundPlanDigest,
-          requireBeforePublish: true,
+    try {
+      const handoff = await enqueueFinalCompoundProtection(job as WorkerJobRecord);
+      if (!handoff) return;
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+          contentProtection: {
+            status: "PROTECTION_REQUESTED",
+            protectionAssetId: handoff.protectionAssetId,
+            protectionJobId: handoff.protectionJobId,
+            compoundArtifactId: handoff.compoundArtifactId,
+            compoundPlanDigest: handoff.compoundPlanDigest,
+            requireBeforePublish: true,
+          },
         },
-      },
-    }).where(eq(workerJobs.id, job.id));
+      }).where(eq(workerJobs.id, job.id));
+    } catch (error) {
+      // The render is already a valid raw artifact. A handoff/setup failure
+      // must become an explicit protection warning instead of leaving the
+      // episode in an endless "protection processing" state.
+      const errorMessage = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
+      await database.update(workerJobs).set({
+        outputJson: {
+          ...(isPlainObject(job.outputJson) ? job.outputJson : {}),
+          contentProtection: {
+            status: "FAILED",
+            requireBeforePublish: true,
+            errorMessage,
+          },
+        },
+      }).where(eq(workerJobs.id, job.id));
+    }
   } else {
     await database.update(workerJobs).set({
       outputJson: {
@@ -1110,6 +1264,26 @@ async function notifyWorkerJobTerminal(input: {
       outputJson: input.job.outputJson,
       workflowRunId: input.job.workflowRunId,
     });
+    const traceId = isPlainObject(input.job.instructionsJson) && typeof input.job.instructionsJson.traceId === "string"
+      ? input.job.instructionsJson.traceId
+      : null;
+    let feedbackTicketId: number | null = null;
+    if (input.status === "failed") {
+      const { reportSystemFailure } = await import("./systemAutoReportService");
+      feedbackTicketId = await reportSystemFailure({
+        source: "worker_registry",
+        userId: Number(input.job.requestedByUserId),
+        tenantId: input.job.tenantId ? String(input.job.tenantId) : null,
+        jobId: String(input.job.id),
+        title: `Worker job failed (${String(input.job.jobType)})`,
+        errorMessage: input.errorMessage || "Unknown worker job failure",
+        traceId,
+        extra: {
+          workerId: String(input.job.workerId ?? ""),
+          runtimeType: String(input.job.runtimeType ?? ""),
+        },
+      });
+    }
     await notifyJobCompletion({
       db,
       userId: Number(input.job.requestedByUserId),
@@ -1122,9 +1296,7 @@ async function notifyWorkerJobTerminal(input: {
       failureMessage: `งาน ${String(input.job.jobType)} ${input.status === "canceled" ? "ถูกยกเลิก" : "ไม่สำเร็จ"}${input.errorMessage ? `: ${String(input.errorMessage).slice(0, 500)}` : ""}`,
       actionUrl,
       actionLabel: actionUrl ? "เปิดผลลัพธ์" : undefined,
-      traceId: isPlainObject(input.job.instructionsJson) && typeof input.job.instructionsJson.traceId === "string"
-        ? input.job.instructionsJson.traceId
-        : null,
+      traceId,
       startedAt: input.job.startedAt,
       finishedAt: input.finishedAt,
       errorMessage: input.errorMessage,
@@ -1132,6 +1304,9 @@ async function notifyWorkerJobTerminal(input: {
       relatedItems: {
         workerId: String(input.job.workerId ?? ""),
         runtimeType: String(input.job.runtimeType ?? ""),
+        ...(feedbackTicketId != null
+          ? { feedbackTicketId: String(feedbackTicketId) }
+          : {}),
       },
     });
   } catch (error) {
@@ -2744,10 +2919,25 @@ export async function recordWorkerJobEvent(
             actorUserId: job.requestedByUserId ?? null,
           });
         } else {
-          const finalProtection = await enqueueFinalCompoundProtection(job);
+          const postProcessingPlan = getCompletedWorkerJobPostProcessingPlan(job);
+          let publishedArtifacts: PublishedWorkerArtifactOutput[] = [];
+          if (postProcessingPlan.publishRawArtifact) {
+            // Publish the completed raw render first. A protection provider
+            // may be unavailable or delayed; that must not turn a usable
+            // render into an artifact/QC failure in the Worker queue.
+            publishedArtifacts = await publishWorkerArtifacts({
+              tenantId: job.tenantId,
+              jobId: job.id,
+              actorUserId: job.requestedByUserId ?? null,
+            });
+          }
+          const finalProtection = postProcessingPlan.enqueueProtection
+            ? await enqueueFinalCompoundProtection(job)
+            : null;
           if (finalProtection) {
-            const gatedOutput = {
-              ...(isPlainObject(nextJob.outputJson) ? nextJob.outputJson : {}),
+            const gatedOutput = mergeCompletedWorkerJobOutput({
+              outputJson: nextJob.outputJson,
+              publishedArtifacts,
               contentProtection: {
                 status: "PROTECTION_REQUESTED",
                 protectionAssetId: finalProtection.protectionAssetId,
@@ -2756,25 +2946,19 @@ export async function recordWorkerJobEvent(
                 compoundPlanDigest: finalProtection.compoundPlanDigest,
                 requireBeforePublish: true,
               },
-            };
-            nextJob = await repo.updateJob(job.id, { outputJson: gatedOutput });
-          } else {
-            await publishWorkerArtifacts({
-              tenantId: job.tenantId,
-              jobId: job.id,
-              actorUserId: job.requestedByUserId ?? null,
             });
-            if (finalProtectionIntent(job)?.choice === "off") {
-              nextJob = await repo.updateJob(job.id, {
-                outputJson: {
-                  ...(isPlainObject(nextJob.outputJson) ? nextJob.outputJson : {}),
-                  contentProtection: {
-                    status: "UNPROTECTED_BY_USER_CHOICE",
-                    requireBeforePublish: false,
-                  },
+            nextJob = await repo.updateJob(job.id, { outputJson: gatedOutput });
+          } else if (postProcessingPlan.markUnprotected) {
+            nextJob = await repo.updateJob(job.id, {
+              outputJson: mergeCompletedWorkerJobOutput({
+                outputJson: nextJob.outputJson,
+                publishedArtifacts,
+                contentProtection: {
+                  status: "UNPROTECTED_BY_USER_CHOICE",
+                  requireBeforePublish: false,
                 },
-              });
-            }
+              }),
+            });
           }
           await reconcileContentProtectionWorkerResult(job);
         }

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
+import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { WebAssetResolver } from "@/services/webAssetResolver";
 import { createBrowserVideoEditorPlatformAdapter } from "@/services/videoEditorPlatformAdapter";
 import {
@@ -218,7 +219,7 @@ export default function WorkerWebEditor() {
         const tenantPayload = await tenantResponse.json() as { tenant?: { featureFlags?: Record<string, unknown> } };
         if (!active || tenantPayload.tenant?.featureFlags?.contentProtectionEnabled !== true) return;
         setContentProtectionEnabled(true);
-        const settingsResponse = await fetch("/api/trpc/contentProtection.getSettings", { credentials: "include" });
+        const settingsResponse = await fetch(getSmartSpecWebEndpoint("/trpc/contentProtection.getSettings"), { credentials: "include" });
         if (!settingsResponse.ok) return;
         const settingsPayload = await settingsResponse.json() as { result?: { data?: unknown } };
         const resultData = settingsPayload.result?.data;

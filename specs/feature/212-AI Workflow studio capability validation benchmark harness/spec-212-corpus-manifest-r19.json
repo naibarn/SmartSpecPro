@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.8",
+  "corpus_version": "spec-212-r19-2830-bilingual",
+  "spec_revision": 19,
+  "contract_profile_revision": 19,
+  "use_case_identity_revision": 19,
+  "use_case_count": 2830,
+  "canonical_prompt_executions": 5660,
+  "required_locales": [
+    "th",
+    "en"
+  ],
+  "first_id": "UC-0001",
+  "last_id": "UC-2830",
+  "parent_spec_revision": 18,
+  "revision_19": {
+    "adds_use_cases": true,
+    "count": 20,
+    "first_id": "UC-2811",
+    "last_id": "UC-2830",
+    "family": "MINI_APP_PRODUCTIZATION_MONETIZATION",
+    "purpose": "Flow-to-Mini-App generation, public publication approval, per-run credit fee and Platform/Owner monetization",
+    "workflow_studio_spec": {
+      "spec_id": 209,
+      "revision": 6
+    },
+    "node_contract_spec": {
+      "spec_id": 214,
+      "revision": 5,
+      "canonical_core_types": 16
+    },
+    "runtime_spec": {
+      "spec_id": 215,
+      "revision": 3
+    },
+    "economic_owner": "Spec 207"
+  },
+  "files": {
+    "spec-212-use-cases-2830-bilingual.json": {
+      "sha256": "a9469077d0efc68130906f6bfb5e33c51621cd2acc7a8458804c6a57b078fc39",
+      "records": 2830
+    },
+    "spec-212-marketplace-catalog-2830-bilingual.json": {
+      "sha256": "2b25a72e9f708bc078d430386309ab2b3506bd2fd60ff5625c36119e195ccf89",
+      "records": 2830
+    },
+    "spec-212-r19-canonical.md": {
+      "sha256": "687b46310f17354a1fa0d7073fab1aeac648b5d1e45bf777d4012e202f093354"
+    },
+    "spec-212-current-contract-profile-r19.json": {
+      "sha256": "ba1eeb4897e4049be4e20040f08860d2e364043bcc333d993636341f21e21479"
+    },
+    "spec-209-ai-workflow-studio-miniapp-marketplace-r6.md": {
+      "sha256": "3adff1bfda0046ae21ddd69a578224f3b6b6310cf5432c7d55b4d6bac9e5731c"
+    },
+    "spec-214-node-type-contract-architecture-v5.md": {
+      "sha256": "91538fcb54fd37f2918521068317d11669dbcc9afefb11284ebb151ced050ef8"
+    },
+    "spec-215-workflow-compiler-runtime-execution-architecture-v3.md": {
+      "sha256": "8076d2d02ac9ce22844993d775f42687b1fb7957a4fb263aa1117602b8a95e23"
+    },
+    "spec-214-spec212-coverage-manifest-r19.json": {
+      "sha256": "37735e79288857f5f992bf8c65a7f9a203bbe0237f7388b364e799ec19648ee8"
+    }
+  }
+}

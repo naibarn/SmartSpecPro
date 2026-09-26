@@ -117,8 +117,8 @@ is a FAILED clip. Concretely:
   frame shows it** ("ภาคิน on viewer-left says…", "ไอริณ on viewer-right
   listens, mouth closed") — screen position is the one identity signal a video
   model reads reliably from the start frame and is how it decides whose mouth
-  moves. Use only viewer-left/viewer-center-left/viewer-center/
-  viewer-center-right/viewer-right. Never use the character's anatomical
+  moves. Use only viewer-far-left/viewer-left/viewer-center-left/viewer-center/
+  viewer-center-right/viewer-right/viewer-far-right. Never use the character's anatomical
   left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
   as a screen-position label.
    **When the caller attaches this pack's start-frame images (each labeled

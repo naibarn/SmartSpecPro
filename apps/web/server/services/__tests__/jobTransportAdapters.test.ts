@@ -62,6 +62,25 @@ describe("job transport adapters", () => {
     })).toThrow("JOB_ADAPTER_UNSUPPORTED");
   });
 
+  it("accepts content-protection contracts on canonical transports", () => {
+    const adapters = [
+      new PostgresPullJobTransportAdapter(),
+      new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token"),
+    ];
+    for (const adapter of adapters) {
+      expect(adapter.supports({
+        jobType: "content_protection.protect",
+        executionClass: "cpu",
+        contractVersion: "content-protection.v1",
+      })).toBe(true);
+      expect(adapter.supports({
+        jobType: "content_protection.verify",
+        executionClass: "cpu",
+        contractVersion: "content-protection.verify.v1",
+      })).toBe(true);
+    }
+  });
+
   it("publishes a PostgreSQL-pull reference without touching a broker", async () => {
     const adapter = new PostgresPullJobTransportAdapter();
     const reference = await adapter.publish({

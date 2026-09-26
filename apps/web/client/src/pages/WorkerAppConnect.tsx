@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help/HelpButton";
-import { RunnerConnectPanel } from "@/components/settings/RunnerConnectPanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
 
@@ -169,17 +168,13 @@ export default function WorkerAppConnect() {
 
   async function approveConnect() {
     if (!connectCode) return;
-    if (!workspaceId) {
-      toast.error("ไม่พบ workspace จาก URL นี้ กรุณาเปิดลิงก์จาก workspace ที่ต้องการเชื่อมต่ออีกครั้ง");
-      return;
-    }
     setApproving(true);
     try {
       const payload = await fetch("/api/workers/connect/approve", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ user_code: connectCode, tenantId: workspaceId }),
+        body: JSON.stringify({ user_code: connectCode }),
       }).then((response) => readJsonResponse<{ session: WorkerConnectSession }>(response));
       setSession(payload.session);
       toast.success("อนุญาต Worker App แล้ว กลับไปที่แอปได้เลย");
@@ -221,7 +216,7 @@ export default function WorkerAppConnect() {
               </h1>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 เปิดหน้านี้จาก Worker App แล้วกดอนุญาต ระบบจะเชื่อมต่อกลับไปที่แอปให้อัตโนมัติ
-                โดยไม่ต้อง copy key, token, username, password หรือ cookie ใด ๆ
+                โดยไม่ต้องกรอกข้อมูลหรือคัดลอกข้อมูลลับใด ๆ
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
@@ -230,8 +225,6 @@ export default function WorkerAppConnect() {
             </div>
           </div>
         </section>
-
-        <RunnerConnectPanel />
 
         <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -328,7 +321,7 @@ export default function WorkerAppConnect() {
                     <p className="mt-2">กลับไปที่ Worker App ได้เลย แอปจะรับ token และเปลี่ยนเป็นสถานะ connected อัตโนมัติ</p>
                   </div>
                 ) : (
-                  <Button onClick={approveConnect} disabled={approving || tenantLoading || !workspaceId || session.status !== "pending"} className="bg-emerald-700 text-white hover:bg-emerald-800">
+                  <Button onClick={approveConnect} disabled={approving || tenantLoading || session.status !== "pending"} className="bg-emerald-700 text-white hover:bg-emerald-800">
                     {approving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                     Allow this Worker App
                   </Button>

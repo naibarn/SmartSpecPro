@@ -18,8 +18,10 @@ vi.mock("../verticalDramaEpisodePreview", () => ({
 import {
   cancelQueuedUserWorkerJob,
   getUserWorkerJobDetail,
+  getUserWorkerJobRetryPolicy,
   listUserWorkerTaskGroups,
   listUserWorkerJobs,
+  retryUserWorkerJob,
   type WorkerJobMonitorRepository,
 } from "../workerJobMonitorService";
 
@@ -154,6 +156,326 @@ function createRepo(overrides: Partial<WorkerJobMonitorRepository> = {}): Worker
 }
 
 describe("workerJobMonitorService", () => {
+  it("requeues a safe retry-scheduled job through the canonical control plane", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-retry",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "retry_scheduled",
+        statusReason: "TEMPORARY_UNAVAILABLE",
+        resourceProfile: "cpu_heavy",
+        outputJson: {},
+        failureReason: "Temporary worker failure",
+        errorCode: "TEMPORARY_UNAVAILABLE",
+        errorMessage: "Temporary worker failure",
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: null,
+        worker: null,
+      }),
+    });
+    const makeRetryDue = vi.fn().mockResolvedValue(true);
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-retry",
+        actionId: "retry-action-1",
+      },
+      { repo, controlPlane: { makeRetryDue, recoverReviewGatedJob: vi.fn() } },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "job-retry",
+      mode: "retry_scheduled",
+    });
+
+    expect(makeRetryDue).toHaveBeenCalledWith(
+      "job-retry",
+      "retry-action-1",
+      7,
+      "user_requested_retry",
+      { tenantId: "tenant-1", requestedByUserId: 7, authorizationScope: "worker_jobs.user_retry" },
+    );
+  });
+
+  it("recovers the known fixed Remotion runtime failure without creating a replacement job", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-remotion-failure",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "failed",
+        statusReason: "ReferenceError",
+        resourceProfile: "cpu_heavy",
+        outputJson: {},
+        failureReason: "revisionId is not defined",
+        errorCode: "render_failed",
+        errorMessage: "revisionId is not defined",
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+    });
+    const recoverReviewGatedJob = vi.fn().mockResolvedValue(true);
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-remotion-failure",
+        actionId: "retry-action-2",
+      },
+      { repo, controlPlane: { makeRetryDue: vi.fn(), recoverReviewGatedJob } },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "job-remotion-failure",
+      mode: "review_recovery",
+    });
+
+    expect(recoverReviewGatedJob).toHaveBeenCalledWith(
+      "job-remotion-failure",
+      "retry-action-2",
+      "user_requested_retry",
+      {
+        disposition: "pre_submission_failure",
+        knownRuntime: "remotion_revision_id",
+      },
+      7,
+      { tenantId: "tenant-1", requestedByUserId: 7, authorizationScope: "worker_jobs.user_retry" },
+    );
+  });
+
+  it("creates a replacement for a completed Remotion job with no verified artifact", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-remotion-completed-no-artifact",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "completed",
+        statusReason: null,
+        resourceProfile: "cpu_heavy",
+        outputJson: {},
+        failureReason: null,
+        errorCode: null,
+        errorMessage: null,
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+      listArtifacts: vi.fn().mockResolvedValue([]),
+    });
+    const retryCompletedRemotionJob = vi.fn().mockResolvedValue({
+      jobId: "job-remotion-replacement",
+    });
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-remotion-completed-no-artifact",
+        actionId: "retry-action-qc-1",
+      },
+      { repo, retryCompletedRemotionJob },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "job-remotion-replacement",
+      mode: "replacement_job",
+    });
+
+    expect(retryCompletedRemotionJob).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-1",
+      userId: 7,
+      actionId: "retry-action-qc-1",
+      job: expect.objectContaining({ id: "job-remotion-completed-no-artifact" }),
+    }));
+  });
+
+  it("publishes an existing raw Remotion artifact instead of rerendering", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-remotion-completed-unpublished",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "desktop_zeroclaw_managed",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "remotion_render_video",
+        status: "completed",
+        statusReason: null,
+        resourceProfile: "cpu_heavy",
+        outputJson: { contentProtection: { status: "PROTECTION_REQUESTED" } },
+        failureReason: null,
+        errorCode: null,
+        errorMessage: null,
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+      listArtifacts: vi.fn().mockResolvedValue([{
+        id: "raw-artifact-1",
+        workerJobId: "job-remotion-completed-unpublished",
+        artifactType: "remotion_render_mp4",
+        storageRef: "worker-artifacts/tenant-1/job-remotion-completed-unpublished/render.mp4",
+        metadataJson: {
+          contentType: "video/mp4",
+          checksumSha256: "a".repeat(64),
+          sizeBytes: 1024,
+        },
+        publishedItemId: null,
+        createdAt: laterAt,
+      }]),
+    });
+    const publishRawArtifacts = vi.fn().mockResolvedValue(undefined);
+    const retryCompletedRemotionJob = vi.fn();
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-remotion-completed-unpublished",
+        actionId: "retry-action-publish-1",
+      },
+      { repo, publishRawArtifacts, retryCompletedRemotionJob },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "job-remotion-completed-unpublished",
+      mode: "artifact_publication_recovery",
+    });
+
+    expect(publishRawArtifacts).toHaveBeenCalledWith({
+      tenantId: "tenant-1",
+      userId: 7,
+      jobId: "job-remotion-completed-unpublished",
+    });
+    expect(retryCompletedRemotionJob).not.toHaveBeenCalled();
+  });
+
+  it("retries only the failed content-protection job without rerunning the render", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "protection-job-failed",
+        tenantId: "tenant-1",
+        workerId: null,
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "content_protection.protect",
+        status: "failed",
+        statusReason: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+        resourceProfile: "external",
+        outputJson: {},
+        failureReason: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+        errorCode: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+        errorMessage: "provider capability unavailable",
+        operatorReviewRequired: false,
+        operatorReviewReason: null,
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+    });
+    const recoverReviewGatedJob = vi.fn().mockResolvedValue(true);
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "protection-job-failed",
+        actionId: "retry-action-protection-1",
+      },
+      { repo, controlPlane: { makeRetryDue: vi.fn(), recoverReviewGatedJob } },
+    )).resolves.toEqual({
+      retried: true,
+      jobId: "protection-job-failed",
+      mode: "review_recovery",
+    });
+
+    expect(recoverReviewGatedJob).toHaveBeenCalledWith(
+      "protection-job-failed",
+      "retry-action-protection-1",
+      "user_requested_retry",
+      {
+        disposition: "provider_operation_resolved",
+        knownRuntime: "content_protection_provider",
+      },
+      7,
+      { tenantId: "tenant-1", requestedByUserId: 7, authorizationScope: "worker_jobs.user_retry" },
+    );
+  });
+
+  it("allows an expired content-protection job to retry after the runtime is installed", () => {
+    expect(getUserWorkerJobRetryPolicy({
+      status: "expired",
+      jobType: "content_protection.protect",
+      statusReason: "job_deadline",
+      errorCode: "JOB_DEADLINE_EXPIRED",
+      errorMessage: "Job deadline has elapsed",
+      failureReason: null,
+      operatorReviewRequired: false,
+      operatorReviewReason: null,
+    })).toEqual({
+      mode: "review_recovery",
+      reason: "protection_provider_unavailable",
+    });
+  });
+
+  it("rejects an ambiguous provider failure instead of blindly retrying it", async () => {
+    const repo = createRepo({
+      getUserJob: vi.fn().mockResolvedValue({
+        id: "job-ambiguous",
+        tenantId: "tenant-1",
+        workerId: "worker-1",
+        runtimeType: "node_job_worker",
+        workflowRunId: null,
+        requestedByUserId: 7,
+        jobType: "storyboard.image",
+        status: "failed",
+        statusReason: "IMAGE_OPERATION_AMBIGUOUS",
+        resourceProfile: "external",
+        outputJson: {},
+        failureReason: "Provider operation may still be running",
+        errorCode: "IMAGE_OPERATION_AMBIGUOUS",
+        errorMessage: "Provider operation may still be running",
+        operatorReviewRequired: true,
+        operatorReviewReason: "Provider operation may still be running",
+        createdAt,
+        startedAt: createdAt,
+        finishedAt: laterAt,
+        worker: null,
+      }),
+    });
+
+    await expect(retryUserWorkerJob(
+      {
+        auth: { tenantId: "tenant-1", userId: 7 },
+        jobId: "job-ambiguous",
+        actionId: "retry-action-3",
+      },
+      { repo, controlPlane: { makeRetryDue: vi.fn(), recoverReviewGatedJob: vi.fn() } },
+    )).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
   it("lists only jobs scoped by tenant and requester and applies status filters", async () => {
     const repo = createRepo();
 

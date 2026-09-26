@@ -1,16 +1,21 @@
 # Spec 220 — SmartAIHub Tenant Data, Capability & Security Gateway
 ## Governed Data APIs, Asset/R2 Access, Vector/RAG, Capability Invocation, Secrets, Tenant Isolation & Runtime Authorization
 
-**Status:** Architecture Freeze Candidate / Implementation-ready subject to conformance tests
+**Status:** Proposed / Partial capability-gateway contract slice present; governed data-plane integration pending
 **Spec ID:** 220  
-**Revision:** 3 — Final integrated stress-audit / architecture freeze candidate
-**Date:** 2026-09-20  
+**Revision:** 5 — retrieval authorization, scope fencing and provider-credential boundary for Spec 229
+**Date:** 2026-09-22
 **Target repository path:** `specs/feature/220-tenant-data-capability-security-gateway/spec.md`  
-**Core depends on:** Existing SmartAIHub Identity/Tenant services, Spec 199, Spec 207, Spec 215 and Library/Asset/RAG infrastructure.  
-**Integration dependencies:** Specs 217–219, Spec 221 and Spec 222 consume the core gateway contracts; their full product/runtime integrations are not prerequisites for implementing the gateway core.  
+**Depends on:** Existing SmartAIHub Identity/Tenant services, Spec 199, Spec 207, Spec 215, Spec 217, Spec 218, Spec 219, Spec 221, Spec 222, Spec 229, Spec 230, Library/Asset/RAG infrastructure
 **Companion specs:** Spec 217, Spec 218, Spec 219
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+The current source contains `tenantCapabilityGatewayContracts.ts`, `tenantCapabilityGatewayPolicy.ts` and focused tests for request envelopes, capability policy and fail-closed decisions. Existing tenant context, storage, Library/RAG, MCP and vector services are independent surfaces; they are not evidence that one Spec 220 Product SDK/data/asset/retrieval gateway or persistent capability-decision path is already active.
+
+The gateway remains a target integration boundary. Direct provider/vector credentials, tenant authorization and migration behavior must be verified against the actual owning services before claiming Spec 220 runtime completion.
 
 # 0. Executive Decision
 
@@ -918,31 +923,30 @@ Reuse existing canonical tables where they already exist rather than duplicating
 
 # 52. API Surface
 
-Illustrative external Product API:
+Illustrative external Product SDK operations (logical contract, not current REST
+routes):
 
 ```text
-GET    /product-context
-GET    /data/{collection}
-POST   /data/{collection}
-GET    /data/{collection}/{id}
-PATCH  /data/{collection}/{id}
-DELETE /data/{collection}/{id}
-POST   /assets
-GET    /assets/{assetId}
-POST   /knowledge:search
-POST   /capabilities/{capabilityId}:invoke
-POST   /workflow-runs/{workflowId}:run
-GET    /usage
+productContext.get
+data.list / create / get / update / delete
+assets.create / get
+knowledge.search
+capabilities.invoke
+workflowStudio.run (or the owning runtime gateway)
+usage.get
 ```
 
-Admin/control APIs:
+Admin/control operations:
 
 ```text
-POST /products/{productId}/schemas
-POST /products/{productId}/schema-migrations
-POST /products/{productId}/capability-grants
-POST /products/{productId}/connections
-GET  /products/{productId}/audit
+products.schemas.create
+products.schemaMigrations.propose
+products.capabilityGrants.create
+products.connections.create
+products.audit.list
+
+These names are future Product SDK projections. No legacy workflow endpoint is
+introduced or treated as a current implementation.
 ```
 
 ---
@@ -1161,7 +1165,7 @@ Spec 220 is production-ready only when all Product data/capability access paths�
 
 ## 58. Developer-Facing Discovery Surface
 
-Spec 220 SHALL expose governed discovery suitable for Spec 222 development sessions without granting direct Core access.
+Spec 220 SHALL expose governed discovery suitable for Spec 230 development sessions without granting direct Core access.
 
 Conceptual operations:
 
@@ -1427,3 +1431,102 @@ State required to restore customer business records after runtime replacement MU
 - [ ] Schema changes use governed migration plans coordinated with releases.
 - [ ] Cached context cannot grant stale authorization.
 - [ ] Egress/SSRF protections apply to custom Products and Skill execution.
+
+---
+
+# Revision 4 Development-Fabric and Kimi Security Amendment
+
+Canonical ownership:
+
+```text
+Spec 230 = development harness context/bootstrap/methodology
+Spec 222 = historical learning/replay/advisory intelligence
+Spec 220 = runtime/development authorization, data, asset, capability and secret boundary
+```
+
+Kimi Code sessions, plugins, MCP servers, Skills, Goal/Swarm execution and Desktop UI do not widen SmartAIHub permissions. Every SmartAIHub data/capability invocation from a Kimi harness SHALL pass through the same Spec 220 authorization/tenant/entitlement/audit contracts as Codex/Claude/Hermes/ZCode.
+
+A local Kimi bearer/session token SHALL NOT be copied into SmartAIHub application records. If SmartAIHub Runner launches a local Kimi programmatic server, the token is treated as an ephemeral local adapter secret and MUST be redacted from logs/evidence.
+---
+
+# Revision 4C — Spec 229 Retrieval Security Boundary
+
+Spec 229 is the canonical retrieval/search provider and Retrieval Broker owner. Spec 220 remains the canonical authorization, entitlement, tenant-isolation, secret and governed-capability authority.
+
+Any Spec 229 retrieval path that touches tenant/private/project-scoped data SHALL consume an authorized identity/scope decision from Spec 220 (or the canonical shared policy service behind it) before evidence is exposed to an LLM, external harness or user. Cloudflare AI Search/Vectorize credentials MUST remain server-side and MUST NOT be delegated to Kimi, Claude, Codex, ZCode or tenant code.
+
+```text
+caller / harness / workflow
+        ↓
+Spec 220 identity + authorization + scope
+        ↓
+Spec 229 Retrieval Broker
+        ↓
+AI Search / Vectorize V2 / exact metadata lane
+        ↓
+normalized authorized evidence
+```
+
+Spec 220 SHALL NOT implement a competing search/ranking/vector pipeline. Spec 229 SHALL NOT become an authorization authority merely because it applies provider-side filters.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 5 — Retrieval Authorization and Scope Fencing
+
+Spec 220 is the authorization/security authority for all Spec 229 retrieval involving non-public data.
+
+The Retrieval Broker SHALL receive an authorized scope envelope before provider search. Provider metadata filters are defense-in-depth and performance controls; they do **not** replace canonical authorization.
+
+For sensitive/private searches, the system SHALL enforce both:
+
+```text
+pre-retrieval scope restriction
++ post-retrieval authoritative ownership/ACL revalidation before evidence exposure
+```
+
+where the provider's filtering semantics cannot alone prove the complete policy decision.
+
+Retrieval results cannot grant capabilities, secrets, Skill execution rights or admin authority. Content returned from RAG/vector search is untrusted data and may contain prompt injection.
+
+Provider credentials remain server-side. External harnesses receive only bounded authorized evidence/context or governed MCP/API calls.
+
+Revocation, group removal, tenant transfer, visibility change and deletion MUST invalidate or fence stale searchable projections according to Spec 229's lifecycle contract.

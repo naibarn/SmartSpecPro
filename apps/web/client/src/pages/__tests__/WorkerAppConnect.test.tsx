@@ -127,13 +127,14 @@ describe("WorkerAppConnect", () => {
     render(<WorkerAppConnect />);
 
     expect(await screen.findByText("My render worker")).toBeInTheDocument();
-    expect(screen.getByText("เชื่อมต่อ SmartAIHub Runner")).toBeInTheDocument();
+    expect(screen.queryByText("เชื่อมต่อ SmartAIHub Runner")).not.toBeInTheDocument();
     expect(screen.getByText("DESKTOP-1")).toBeInTheDocument();
     expect(screen.queryByText(/worker-registration-token/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/copy worker key/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/SAH_RUNNER_/i)).not.toBeInTheDocument();
   });
 
-  it("approves the worker session with the URL code and URL-resolved workspace", async () => {
+  it("approves the worker session with the URL code and authenticated workspace", async () => {
     render(<WorkerAppConnect />);
 
     await screen.findByText("My render worker");
@@ -144,7 +145,7 @@ describe("WorkerAppConnect", () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith("/api/workers/connect/approve", expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ user_code: "ABCD1234", tenantId: "101" }),
+        body: JSON.stringify({ user_code: "ABCD1234" }),
       }));
     });
     expect(await screen.findByText("เชื่อมต่อสำเร็จ")).toBeInTheDocument();

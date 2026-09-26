@@ -21,8 +21,6 @@ MEM_AVAILABLE_CRIT_MB="${CRASH_MONITOR_MEM_AVAILABLE_CRIT_MB:-2048}"
 MEM_PSI_CRIT_AVG10="${CRASH_MONITOR_MEM_PSI_CRIT_AVG10:-5}"
 SSH_SESSION_WARN="${CRASH_MONITOR_SSH_SESSION_WARN:-12}"
 SSH_SESSION_CRIT="${CRASH_MONITOR_SSH_SESSION_CRIT:-24}"
-MCP_CONTAINER_WARN="${CRASH_MONITOR_MCP_CONTAINER_WARN:-6}"
-MCP_CONTAINER_CRIT="${CRASH_MONITOR_MCP_CONTAINER_CRIT:-10}"
 # Last-resort responder for user-1000.slice reclaim purgatory (2026-07-22
 # incident): sustained memory PSI + exploding memory.high throttle events
 # with nothing killable means the slice never recovers on its own. This
@@ -311,36 +309,19 @@ main() {
     fi
 
     # ------------------------------------------------------------------
-    # 3. SSH/Codex and SocratiCode lifecycle pressure
+    # 3. SSH/Codex lifecycle pressure
     # Reconnect fan-out can exhaust user/agent cgroups before host RAM looks
-    # full. Keep Docker probing bounded so the monitor cannot amplify stalls.
+    # full.
     # ------------------------------------------------------------------
-    local ssh_session_count ssh_preauth_count managed_mcp_count legacy_mcp_count
-    local mcp_probe_state mcp_snapshot
+    local ssh_session_count ssh_preauth_count
     ssh_session_count="$(loginctl list-sessions --no-legend 2>/dev/null | awk '$3 == "dev" {count++} END {print count + 0}')"
     ssh_preauth_count="$(ps -eo args= 2>/dev/null | awk '/^sshd-session: dev \[priv\]/ {count++} END {print count + 0}')"
-    managed_mcp_count="?"
-    legacy_mcp_count="?"
-    mcp_probe_state="unavailable"
-    if mcp_snapshot="$(timeout 5s docker ps --filter name=socraticode-mcp --format '{{.Names}}|{{.Label "com.smartspec.socraticode.managed"}}' 2>/dev/null)"; then
-        mcp_probe_state="ok"
-        managed_mcp_count="$(printf '%s\n' "${mcp_snapshot}" | awk -F '|' '$2 == "true" {count++} END {print count + 0}')"
-        legacy_mcp_count="$(printf '%s\n' "${mcp_snapshot}" | awk -F '|' '$1 != "" && $2 != "true" {count++} END {print count + 0}')"
-    fi
 
     if [ "${ssh_session_count}" -ge "${SSH_SESSION_CRIT}" ]; then
         alerts+=("CRITICAL ssh_session_fanout sessions=${ssh_session_count} preauth=${ssh_preauth_count} threshold=${SSH_SESSION_CRIT}")
     elif [ "${ssh_session_count}" -ge "${SSH_SESSION_WARN}" ]; then
         alerts+=("WARNING ssh_session_fanout sessions=${ssh_session_count} preauth=${ssh_preauth_count} threshold=${SSH_SESSION_WARN}")
     fi
-    if [ "${mcp_probe_state}" = "ok" ]; then
-        if [ "${managed_mcp_count}" -ge "${MCP_CONTAINER_CRIT}" ]; then
-            alerts+=("CRITICAL mcp_container_fanout managed=${managed_mcp_count} legacy=${legacy_mcp_count} threshold=${MCP_CONTAINER_CRIT}")
-        elif [ "${managed_mcp_count}" -ge "${MCP_CONTAINER_WARN}" ]; then
-            alerts+=("WARNING mcp_container_fanout managed=${managed_mcp_count} legacy=${legacy_mcp_count} threshold=${MCP_CONTAINER_WARN}")
-        fi
-    fi
-
     # ------------------------------------------------------------------
     # 4. Write to daily log
     # ------------------------------------------------------------------
@@ -348,7 +329,7 @@ main() {
         echo "===== ${timestamp} ====="
         echo "ram_pct=${mem_pct:-?} used_mb=${mem_used:-?} total_mb=${mem_total:-?}"
         echo "available_mb=${mem_available:-?} swap_pct=${swap_pct:-?} swap_used_mb=${swap_used:-?} memory_psi_some_avg10=${mem_psi_avg10:-?} user_slice_mem_mb=${user_slice_mem_mb} user_slice_swap_mb=${user_slice_swap_mb}"
-        echo "ssh_sessions=${ssh_session_count:-?} ssh_preauth=${ssh_preauth_count:-?} mcp_managed=${managed_mcp_count:-?} mcp_legacy=${legacy_mcp_count:-?} mcp_probe=${mcp_probe_state:-?}"
+        echo "ssh_sessions=${ssh_session_count:-?} ssh_preauth=${ssh_preauth_count:-?}"
         if [ "${#alerts[@]}" -eq 0 ]; then
             echo "alerts=none"
         else

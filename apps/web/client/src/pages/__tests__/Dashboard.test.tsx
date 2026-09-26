@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
 const authState = {
@@ -8,6 +9,7 @@ const authState = {
 };
 const tenantFeatureFlagsState = {
   desktopHostEnabled: false,
+  contentProtectionEnabled: false,
 };
 const {
   chatListConversationsUseQuery,
@@ -445,6 +447,11 @@ vi.mock("@tanstack/react-query", () => ({
       };
     }
 
+    if (key === "content-protection-overview") {
+      if (options.enabled) void options.queryFn();
+      return { data: undefined, isLoading: false, isError: false };
+    }
+
     if (key === "dashboard-analytics-time-series") {
       return {
         data: {
@@ -537,6 +544,13 @@ vi.mock("@/hooks/useMenuItems", () => ({
         path: "/dashboard",
         external: false,
         IconComponent: () => React.createElement("span", null, "D"),
+      },
+      {
+        id: "workflow-studio",
+        label: "Workflow Studio",
+        path: "/studio/workflow",
+        external: false,
+        IconComponent: () => React.createElement("span", null, "W"),
       },
       {
         id: "document-management",
@@ -856,6 +870,7 @@ describe("Dashboard", () => {
     getMenuVisibilityUseQuery.mockReturnValue({ data: [], isLoading: false });
     authState.role = "user";
     tenantFeatureFlagsState.desktopHostEnabled = false;
+    tenantFeatureFlagsState.contentProtectionEnabled = false;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query.includes("1280px"),
       media: query,
@@ -880,6 +895,23 @@ describe("Dashboard", () => {
     expect(setLocationMock).toHaveBeenCalledWith("/document-management?scope=private_vault&sort=updated_desc");
   });
 
+  it("requests content protection overview through the canonical tRPC path", async () => {
+    tenantFeatureFlagsState.contentProtectionEnabled = true;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: { data: {} } }),
+    } as Response);
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/trpc/contentProtection.overview", {
+        credentials: "include",
+      });
+    });
+    fetchMock.mockRestore();
+  });
+
   it("shows Social Automation in the sidebar when the menu item is unavailable", () => {
     render(<Dashboard />);
 
@@ -897,6 +929,17 @@ describe("Dashboard", () => {
 
     fireEvent.click(videoStudioButton);
     expect(setLocationMock).toHaveBeenCalledWith("/video-studio");
+  });
+
+  it("surfaces Workflow Studio as a dashboard quick action", () => {
+    render(<Dashboard />);
+
+    const quickLinks = screen.getByTestId("dashboard-quick-links");
+    fireEvent.click(
+      within(quickLinks).getByRole("button", { name: /workflow studio/i })
+    );
+
+    expect(setLocationMock).toHaveBeenCalledWith("/studio/workflow");
   });
 
   it("does not show hidden social menu items in the fallback social section", () => {

@@ -747,6 +747,7 @@ interface Attachment {
 
 interface ChatViewProps {
   conversationId: number | null;
+  density?: "default" | "compact";
   composerPrompt?: { id: number; text: string } | null;
   onTitleUpdate?: (title: string) => void;
   browserSessionSuggestion?: BrowserSessionLaunchSuggestion | null;
@@ -765,6 +766,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 export function ChatView({
   conversationId,
+  density = "default",
   composerPrompt,
   onTitleUpdate,
   browserSessionSuggestion,
@@ -776,6 +778,7 @@ export function ChatView({
   onDismissBrowserSessionSuggestion,
   onOpenFinancePanel,
 }: ChatViewProps) {
+  const isCompact = density === "compact";
   const [, navigate] = useLocation();
   const { t } = useScopedTranslation("chat");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -5626,11 +5629,24 @@ export function ChatView({
   }
 
   return (
-    <div className="flex h-full max-w-full flex-col overflow-hidden bg-[var(--color-background-surface)]">
+    <div
+      data-chat-density={density}
+      className="flex h-full max-w-full flex-col overflow-hidden bg-[var(--color-background-surface)]"
+    >
       {/* Header */}
-      <div className="flex min-h-12 shrink-0 flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 py-2 sm:flex-nowrap sm:px-3">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-hidden sm:flex-nowrap">
-          <h2 className="font-semibold truncate text-sm shrink min-w-0">
+      <div
+        className={cn(
+          "flex min-h-12 shrink-0 flex-wrap items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-background-surface)] sm:flex-nowrap",
+          isCompact ? "gap-1 px-2 py-1.5 sm:gap-2 sm:px-3 sm:py-2" : "gap-2 px-2 py-2 sm:px-3",
+        )}
+      >
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 flex-wrap items-center overflow-hidden sm:flex-nowrap",
+            isCompact ? "gap-1 sm:gap-2" : "gap-2",
+          )}
+        >
+          <h2 className={cn("font-semibold truncate shrink min-w-0", isCompact ? "text-xs sm:text-sm" : "text-sm")}>
             {conversation?.title || "Chat"}
           </h2>
           <ConversationScopeBadge
@@ -5645,7 +5661,12 @@ export function ChatView({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 max-w-[min(17rem,calc(100vw-7rem))] justify-start gap-1.5 text-xs font-normal shrink-0 sm:max-w-[340px]"
+            className={cn(
+              "h-8 justify-start font-normal shrink-0",
+              isCompact
+                ? "max-w-[min(13rem,calc(100vw-6rem))] gap-1 text-[11px] sm:max-w-[280px] sm:gap-1.5 sm:text-xs"
+                : "max-w-[min(17rem,calc(100vw-7rem))] gap-1.5 text-xs sm:max-w-[340px]",
+            )}
             onClick={() => setModelDialogOpen(true)}
             disabled={
               isStreaming ||
@@ -6495,16 +6516,31 @@ export function ChatView({
       </div>
 
       {/* Input Area */}
-      <div className="shrink-0 border-t border-[var(--color-border)] bg-[var(--color-background-surface)] px-3 py-3 shadow-[var(--shadow-low)] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
+      <div
+        className={cn(
+          "shrink-0 border-t border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-low)] pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          isCompact ? "px-2 py-2 sm:px-3" : "px-3 py-3 sm:px-4",
+        )}
+      >
         <VoiceAgentPanel conversationId={conversation?.id ?? null} />
 
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <div
+            className={cn(
+              "mb-3 flex gap-2",
+              isCompact
+                ? "grid grid-cols-3 gap-1.5 sm:flex sm:flex-wrap"
+                : "flex-col sm:flex-row sm:flex-wrap",
+            )}
+          >
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300"
+              className={cn(
+                "text-purple-600 border-purple-200 hover:bg-purple-50 hover:border-purple-300",
+                isCompact ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs" : "gap-2",
+              )}
               onClick={() => setInput("create image: ")}
             >
               <Wand2 className="h-4 w-4" />
@@ -6513,7 +6549,10 @@ export function ChatView({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+              className={cn(
+                "text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300",
+                isCompact ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs" : "gap-2",
+              )}
               onClick={() => setInput("create video: ")}
             >
               <Video className="h-4 w-4" />
@@ -6522,7 +6561,10 @@ export function ChatView({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
+              className={cn(
+                "text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300",
+                isCompact ? "min-w-0 gap-1 px-2 text-[11px] sm:gap-2 sm:text-xs" : "gap-2",
+              )}
               onClick={() => setInput("generate audio: ")}
             >
               <Music className="h-4 w-4" />
@@ -6751,7 +6793,12 @@ export function ChatView({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
+        <div
+          className={cn(
+            "flex flex-wrap items-end sm:flex-nowrap",
+            isCompact ? "gap-1.5" : "gap-2",
+          )}
+        >
           <TooltipProvider>
             <DropdownMenu>
               <Tooltip>
@@ -6760,9 +6807,14 @@ export function ChatView({
                     <Button
                       variant={ocrOnlyMode ? "default" : "outline"}
                       size="icon"
+                      aria-label={
+                        ocrOnlyMode
+                          ? "Attach files with OCR only"
+                          : "Attach image or file"
+                      }
                       disabled={uploadMutation.isPending || isStreaming}
                       className={cn(
-                        "h-11 w-11 shrink-0",
+                        isCompact ? "h-10 w-10" : "h-11 w-11",
                         ocrOnlyMode
                           ? "bg-amber-500 text-white hover:bg-amber-600"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -6802,9 +6854,13 @@ export function ChatView({
                     <Button
                       variant="outline"
                       size="icon"
+                      aria-label="Search Library Source"
                       onClick={() => setLibraryPickerOpen(true)}
                       disabled={isStreaming}
-                      className="h-11 w-11 shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700"
+                      className={cn(
+                        "shrink-0 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700",
+                        isCompact ? "h-10 w-10" : "h-11 w-11",
+                      )}
                     >
                       <Search className="h-4 w-4" />
                     </Button>
@@ -6924,13 +6980,17 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Generate Image"
                   onClick={() =>
                     setInput(
                       input ? input + "\n\ncreate image: " : "create image: "
                     )
                   }
                   disabled={isStreaming}
-                  className="hidden h-11 w-11 shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-purple-600 hover:bg-purple-50 hover:text-purple-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11",
+                  )}
                 >
                   <Palette className="h-5 w-5" />
                 </Button>
@@ -6946,13 +7006,17 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Generate Video"
                   onClick={() =>
                     setInput(
                       input ? input + "\n\ncreate video: " : "create video: "
                     )
                   }
                   disabled={isStreaming}
-                  className="hidden h-11 w-11 shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11",
+                  )}
                 >
                   <Video className="h-5 w-5" />
                 </Button>
@@ -6968,9 +7032,13 @@ export function ChatView({
                 <Button
                   variant="outline"
                   size="icon"
+                  aria-label="Enhance Image Prompt (AI)"
                   onClick={handleAutoPrompt}
                   disabled={isStreaming || isEnhancingPrompt || !input.trim()}
-                  className="hidden h-11 w-11 shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 sm:inline-flex"
+                  className={cn(
+                    "hidden shrink-0 text-amber-600 hover:bg-amber-50 hover:text-amber-700 sm:inline-flex",
+                    isCompact ? "h-10 w-10" : "h-11 w-11",
+                  )}
                 >
                   {isEnhancingPrompt ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -6999,7 +7067,14 @@ export function ChatView({
             className="hidden"
             onChange={e => onFiles(e.target.files)}
           />
-          <div className="relative min-w-[min(100%,14rem)] flex-[1_1_14rem]">
+          <div
+            className={cn(
+              "relative",
+              isCompact
+                ? "min-w-[min(100%,15rem)] flex-[1_1_18rem]"
+                : "min-w-[min(100%,14rem)] flex-[1_1_14rem]",
+            )}
+          >
             <SlashCommandMenu
               filter={slashFilter}
               visible={showSlashMenu}
@@ -7031,7 +7106,10 @@ export function ChatView({
                 }
               }}
               placeholder="Type a message or / for skills..."
-              className="!min-h-11 max-h-[240px] resize-none !py-2 text-sm overflow-y-auto"
+              className={cn(
+                "max-h-[240px] resize-none overflow-y-auto",
+                isCompact ? "!min-h-12 !py-2.5 text-sm" : "!min-h-11 !py-2 text-sm",
+              )}
               onKeyDown={e => {
                 if (showSlashMenu) return; // Let SlashCommandMenu handle keys
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -7045,11 +7123,12 @@ export function ChatView({
           <Button
             variant={isRecording ? "destructive" : "outline"}
             size="icon"
+            aria-label="Hold to record"
             onPointerDown={handleMicPointerDown}
             onPointerUp={handleMicPointerUp}
             onPointerLeave={isRecording ? handleMicPointerUp : undefined}
             disabled={isTranscribing || isStreaming || !!fallbackRequest}
-            className="h-11 w-11 shrink-0"
+            className={cn("shrink-0", isCompact ? "h-10 w-10" : "h-11 w-11")}
             title={
               chatMicProvider.effectiveMode === "legacy_stt"
                 ? chatMicProvider.fallbackApplied
@@ -7080,6 +7159,11 @@ export function ChatView({
             <Button
               variant={handsFreeListening ? "default" : "outline"}
               size="icon"
+              aria-label={
+                handsFreeListening
+                  ? "Stop hands-free wake phrase listening"
+                  : "Start hands-free listening"
+              }
               onClick={() => {
                 setHandsFreeListening(current => {
                   const next = !current;
@@ -7093,7 +7177,7 @@ export function ChatView({
                 });
               }}
               disabled={isTranscribing || isStreaming || !!fallbackRequest}
-              className="h-11 w-11 shrink-0"
+              className={cn("shrink-0", isCompact ? "h-10 w-10" : "h-11 w-11")}
               title={
                 handsFreeListening
                   ? "Stop hands-free wake phrase listening"
@@ -7120,12 +7204,22 @@ export function ChatView({
                 selectedLibrarySources.length === 0) ||
               !!fallbackRequest
             }
+            aria-label={
+              isStreaming && activeLocalReplyKind
+                ? "Cancel local reply"
+                : "Send message"
+            }
             title={
               isStreaming && activeLocalReplyKind
                 ? "Cancel local reply"
                 : undefined
             }
-            className="h-11 shrink-0 px-4"
+            className={cn(
+              "shrink-0",
+              isCompact
+                ? "h-11 min-w-11 rounded-xl bg-primary px-0 text-primary-foreground shadow-sm hover:bg-primary/90"
+                : "h-11 px-4",
+            )}
           >
             {isStreaming && activeLocalReplyKind ? (
               <X className="h-4 w-4" />

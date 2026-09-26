@@ -241,9 +241,11 @@ async function notifyCreditFailureUser(params: {
 /**
  * File (or update) a system-generated feedback ticket for a detected
  * failure. Best-effort — NEVER throws; every failure path is logged via
- * `debugError`/`debugLog` and swallowed.
+ * `debugError`/`debugLog` and swallowed. Returns the existing or newly-created
+ * ticket id when a feedback ticket was persisted, so callers can deep-link
+ * operational notifications to the exact investigation item.
  */
-export async function reportSystemFailure(params: ReportSystemFailureParams): Promise<void> {
+export async function reportSystemFailure(params: ReportSystemFailureParams): Promise<number | null> {
   try {
     const errorMessage = params.errorMessage || "Unknown error";
     // Disk exhaustion is an operator-remediation condition, not an
@@ -255,7 +257,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         path: params.path,
         traceId: params.traceId,
       });
-      return;
+      return null;
     }
     // A sensitive prompt must fail closed when the safety-review dependency is
     // unavailable, but that dependency outage is not evidence of an
@@ -267,7 +269,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         path: params.path,
         traceId: params.traceId,
       });
-      return;
+      return null;
     }
     const { fingerprint, fp8 } = computeFingerprint(params.source, errorMessage);
     const numericUserId = resolveNumericUserId(params.userId);
@@ -289,7 +291,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
     const db = await getDb();
     if (!db) {
       debugLog("SystemAutoReport", "DB unavailable — dropping auto-report", { source: params.source, fp8 });
-      return;
+      return null;
     }
 
     let tenantId = params.tenantId ?? null;
@@ -329,7 +331,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         path: params.path,
         traceId: params.traceId,
       });
-      if (creditClassification.route === "user_purchase") return;
+      if (creditClassification.route === "user_purchase") return null;
     }
 
     // If a user cannot be resolved, do not silently drop a credit anomaly.
@@ -420,7 +422,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         source: params.source,
         occurrences,
       });
-      return;
+      return existing.id;
     }
 
     // ── No existing ticket for this fingerprint — flood-guard, then create. ──
@@ -429,7 +431,7 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         source: params.source,
         fp8,
       });
-      return;
+      return null;
     }
 
     const title = buildTicketTitle(fp8, params.title);
@@ -507,7 +509,9 @@ export async function reportSystemFailure(params: ReportSystemFailureParams): Pr
         debugError("SystemAutoReport", `processTicket failed for auto ticket ${ticket.id}`, err),
       );
     }
+    return ticket?.id ?? null;
   } catch (err) {
     debugError("SystemAutoReport", "reportSystemFailure failed (best-effort, swallowed)", err);
+    return null;
   }
 }

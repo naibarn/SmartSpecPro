@@ -13,9 +13,9 @@ END_MANIFEST -->
 
 | Split | Source spec | Ownership |
 |---|---|---|
-| 01 | `specs/feature/195/spec.md` | Durable `worker_jobs`, outbox, attempts, leases, fencing and lifecycle truth |
-| 02 | `specs/feature/196/spec.md` | Goal/Plan, capability resolution, command semantics and orchestration |
-| 03 | `specs/feature/197/spec.md` | Runner/device identity, local resolution and execution control |
+| 01 | `specs/feature/195-unified-async-job-control-plane/spec.md` | Durable `worker_jobs`, outbox, attempts, leases, fencing and lifecycle truth |
+| 02 | `specs/feature/196-universal-goal-orchestration/spec.md` | Goal/Plan, capability resolution, command semantics and orchestration |
+| 03 | `specs/feature/197-runner-adaptive-execution-fabric/spec.md` | Runner/device identity, local resolution and execution control |
 | 04 | `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md` | Chat/Assistant UI, request lifecycle, evolution and evaluation |
 | 05 | `specs/feature/199-external-mcp-gateway-upstream-management/spec.md` | External MCP upstream lifecycle, policy, quarantine and invocation |
 | 06 | `specs/feature/200-universal-coding-agent-control-plane/spec.md` | External Agent providers, sessions, events, results and Agent Runtime Core |
@@ -39,4 +39,3 @@ Each split is implemented in this order: contract/types, persistence/migration, 
 - Migration rollback and no-destructive-change review.
 - Focused tests only; never whole-repository typecheck.
 - Final minimum ten-round cross-spec consistency audit with immediate high-confidence fixes.
-

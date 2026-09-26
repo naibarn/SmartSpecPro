@@ -17,6 +17,11 @@ describe("canonical Job lifecycle contracts", () => {
     ).toThrowError(expect.objectContaining({ code: "JOB_TRANSITION_INVALID" }));
   });
 
+  it("allows an authenticated external receipt to settle a waiting job", () => {
+    expect(canTransitionJobStatus("waiting_external", "succeeded")).toBe(true);
+    expect(canTransitionJobStatus("waiting_external", "failed")).toBe(true);
+  });
+
   it("rejects stale attempt identity or fencing version", () => {
     expect(() =>
       assertCanonicalLeaseFence({

@@ -182,6 +182,19 @@ export function getCachedPublicAppUrl(): string {
   return runtimeConfigCache.publicUrl || runtimeConfigCache.appPublicUrl || runtimeConfigCache.appUrl;
 }
 
+/**
+ * Identity of the control plane that a remote Runner authenticated against.
+ * This is intentionally separate from the internal gateway URL: a worker may
+ * reach the Web process through a private hostname while the Runner must bind
+ * its session and capability snapshot to the public HTTPS origin.
+ */
+export function getCachedRunnerControlPlaneOrigin(): string {
+  return (
+    process.env.RUNNER_CONTROL_PLANE_ORIGIN
+    || getCachedPublicAppUrl()
+  ).replace(/\/+$/, "");
+}
+
 export function getCachedInternalNodeUrl(): string {
   return runtimeConfigCache.internalNodeUrl || runtimeConfigCache.smartspecInternalUrl || DEFAULT_RUNTIME_CONFIG.internalNodeUrl;
 }

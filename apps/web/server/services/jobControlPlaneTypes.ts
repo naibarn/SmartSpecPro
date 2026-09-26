@@ -64,7 +64,14 @@ export const CANONICAL_JOB_TRANSITIONS: Readonly<
     "cancelled",
     "expired",
   ],
-  waiting_external: ["queued", "running", "failed", "cancelled", "expired"],
+  waiting_external: [
+    "queued",
+    "running",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "expired",
+  ],
   retry_scheduled: [
     "queued",
     "waiting_external",
@@ -205,6 +212,7 @@ export type ExternalWait = {
   operationKey: string;
   providerReference?: string;
   resumeAfter: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type JobResult = {
@@ -219,6 +227,7 @@ export type ClassifiedJobError = {
   message: string;
   class: "retryable" | "permanent" | "unknown";
   operatorReviewRequired?: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 export type DispatchRequest = {
@@ -257,6 +266,9 @@ export type JobEventType =
   | "HEARTBEAT"
   | "PROGRESS"
   | "WAITING_EXTERNAL"
+  | "WAITING_VERIFICATION"
+  | "VERIFICATION_STARTED"
+  | "VERIFICATION_COMPLETED"
   | "TIMEOUT"
   | "OPERATOR_ACTION"
   | "RETRY_SCHEDULED"

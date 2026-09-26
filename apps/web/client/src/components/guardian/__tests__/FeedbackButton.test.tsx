@@ -40,8 +40,14 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/components/chat/ChatView", () => ({
-  ChatView: ({ conversationId }: { conversationId: number | null }) => (
-    <section data-testid="global-chat-view">
+  ChatView: ({
+    conversationId,
+    density,
+  }: {
+    conversationId: number | null;
+    density?: "default" | "compact";
+  }) => (
+    <section data-testid="global-chat-view" data-chat-density={density ?? "default"}>
       ChatView conversation {conversationId ?? "pending"}
     </section>
   ),
@@ -200,6 +206,14 @@ describe("FeedbackButton placement", () => {
         "conversation 42",
       );
     });
+    expect(screen.getByTestId("global-chat-view")).toHaveAttribute(
+      "data-chat-density",
+      "compact",
+    );
+    expect(screen.getByRole("dialog")).toHaveClass(
+      "h-dvh",
+      "sm:h-[min(88vh,760px)]",
+    );
     expect(feedbackMocks.createChat).toHaveBeenCalledWith({
       title: "AI Chat Assistant",
     });

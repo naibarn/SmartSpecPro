@@ -30,6 +30,7 @@ describe("appRouter compatibility shape", () => {
         "media",
         "marketplaceCapture",
         "system",
+        "spec226DevelopmentControl",
       ])
     );
   });
@@ -69,6 +70,10 @@ describe("appRouter compatibility shape", () => {
         "gallery.adminList",
         "gallery.create",
         "ai.upload",
+        "spec226DevelopmentControl.list",
+        "spec226DevelopmentControl.get",
+        "spec226DevelopmentControl.events",
+        "spec226DevelopmentControl.command",
       ])
     );
   });

@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/209-ai-workflow-studio-miniapp-marketplace/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/209-ai-workflow-studio-miniapp-marketplace/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-workflow-domain-access",
+    "section-02-ai-builder-compiler",
+    "section-03-builder-canvas-inspector",
+    "section-04-subflow-data-binding-runtime",
+    "section-05-run-mini-app-marketplace",
+    "section-06-economics-observability-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-19T02:10:16.304105+00:00"
+}

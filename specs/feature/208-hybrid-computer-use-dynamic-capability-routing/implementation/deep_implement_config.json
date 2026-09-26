@@ -1,0 +1,27 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/208-hybrid-computer-use-dynamic-capability-routing/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/208-hybrid-computer-use-dynamic-capability-routing/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-capability-route-graph",
+    "section-02-webmcp-semantic-browser",
+    "section-03-local-browser-runner",
+    "section-04-policy-economics-fallback",
+    "section-05-operator-ui-projection",
+    "section-06-conformance-rollout"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-19T02:10:16.283766+00:00"
+}

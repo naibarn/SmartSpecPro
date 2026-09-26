@@ -8,6 +8,7 @@ let notificationsData: any[] = [];
 let urgentRemindersData: any[] = [];
 let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
+let viewerRole: string | undefined;
 const setLocationMock = vi.fn();
 const openWindowMock = vi.fn();
 const toastSuccessMock = vi.hoisted(() => vi.fn());
@@ -36,7 +37,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1 } }),
+  useAuth: () => ({ user: { id: 1, role: viewerRole } }),
 }));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
@@ -112,6 +113,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     urgentRemindersData = [];
     currentLocation = "/";
     mockLocale = "en";
+    viewerRole = undefined;
     setLocationMock.mockClear();
     openWindowMock.mockReset();
     toastSuccessMock.mockReset();
@@ -539,6 +541,65 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/feedback-hub?ticketId=398",
+    );
+  });
+
+  it("routes an admin-owned failed job notification to the Feedback Hub", async () => {
+    viewerRole = "admin";
+    urgentRemindersData = [
+      {
+        id: 105,
+        title: "งาน remotion_render_video ไม่สำเร็จ",
+        content: "งาน remotion_render_video ไม่สำเร็จ: idempotencyKey is empty or too long",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: null,
+        relatedResourceType: "worker_job",
+        metadata: {
+          source: "job_completion",
+          signal: "failed",
+          errorDetails: { errorMessage: "idempotencyKey is empty or too long" },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /open details/i }));
+
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/feedback-hub");
+  });
+
+  it("opens the linked feedback ticket when an admin clicks a failed job notification row", async () => {
+    viewerRole = "admin";
+    notificationCountData = { count: 1 };
+    notificationsData = [
+      {
+        id: 106,
+        title: "งาน remotion_render_video ไม่สำเร็จ",
+        content: "งาน remotion_render_video ไม่สำเร็จ: revisionId is not defined",
+        isRead: false,
+        priority: "high",
+        createdAt: new Date().toISOString(),
+        actionUrl: null,
+        relatedResourceType: "worker_job",
+        relatedResourceId: "worker-job-106",
+        metadata: {
+          source: "job_completion",
+          signal: "failed",
+          relatedItems: { feedbackTicketId: "603" },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(screen.getByLabelText(/unread notification/i));
+    fireEvent.click(screen.getByText("งาน remotion_render_video ไม่สำเร็จ"));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=603",
     );
   });
 

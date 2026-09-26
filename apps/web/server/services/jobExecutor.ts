@@ -36,11 +36,35 @@ export async function executeCanonicalJob(
     await reporter.complete(lease, result);
   } catch (error) {
     const errorClass = classifyJobError(error);
+    const diagnosticError = error as {
+      diagnosticCode?: unknown;
+      diagnosticStage?: unknown;
+      diagnosticFingerprint?: unknown;
+    } | null;
+    const diagnosticCode = typeof diagnosticError?.diagnosticCode === "string"
+      ? diagnosticError.diagnosticCode.slice(0, 100)
+      : undefined;
+    const diagnosticMetadata = Object.fromEntries(
+      Object.entries({
+        diagnosticCode,
+        diagnosticStage:
+          typeof diagnosticError?.diagnosticStage === "string"
+            ? diagnosticError.diagnosticStage.slice(0, 100)
+            : undefined,
+        diagnosticFingerprint:
+          typeof diagnosticError?.diagnosticFingerprint === "string"
+            ? diagnosticError.diagnosticFingerprint.slice(0, 128)
+            : undefined,
+      }).filter(([, value]) => value !== undefined),
+    );
     await reporter.fail(lease, {
-      code: error instanceof Error ? error.name.slice(0, 100) : "JOB_EXECUTOR_ERROR",
+      code: diagnosticCode ?? (error instanceof Error ? error.name.slice(0, 100) : "JOB_EXECUTOR_ERROR"),
       message: error instanceof Error ? error.message.slice(0, 2000) : "Job executor failed",
       class: errorClass,
       operatorReviewRequired: errorClass === "unknown",
+      ...(Object.keys(diagnosticMetadata).length > 0
+        ? { metadata: diagnosticMetadata }
+        : {}),
     });
     throw error;
   }

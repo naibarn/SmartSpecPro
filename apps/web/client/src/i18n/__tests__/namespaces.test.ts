@@ -40,6 +40,11 @@ describe("i18n/namespaces", () => {
     expect(getRouteNamespaces("/dashboard")).toEqual(["dashboard"]);
   });
 
+  it("/studio/workflow maps to the workflow namespace", () => {
+    expect(getRouteNamespaces("/studio/workflow")).toEqual(["workflow"]);
+    expect(getRouteNamespaces("/studio/workflow/run")).toEqual(["workflow"]);
+  });
+
   it("/presentation/123 maps to presentation namespace", () => {
     expect(getRouteNamespaces("/presentation/123")).toEqual(["presentation"]);
   });

@@ -232,8 +232,35 @@ export type VerticalDramaCompiledVideoState = {
    *  state (completed or failed) — a non-empty value with no terminal
    *  `videoUrl`/`error` means "still processing, resume polling on load." */
   pendingJobId?: string;
+  /** Retained after a failed worker render so the source page can offer a
+   *  same-job retry without creating a new assembly workflow. Cleared when
+   *  that retry is promoted back to `pendingJobId`. */
+  retryJobId?: string;
   /** Same-origin `/api/storage/...` path or absolute provider/storage URL. */
   videoUrl?: string;
+  /** Render job that owns the artifact versions below. Kept after render
+   * completion so protection can finish without rerendering the video. */
+  renderJobId?: string;
+  /** Downstream content-protection job, when protection was requested. */
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  /** Raw and protected siblings. The raw version remains available when
+   * protection fails; clients may choose either available version. */
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   /** Number of clips actually concatenated (may be less than the full shot
    *  count when the job was submitted with `allowPartial: true`). */

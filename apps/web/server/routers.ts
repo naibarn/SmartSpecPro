@@ -74,6 +74,8 @@ import { verticalDramaSpeakerAwareRouter } from "./routers/verticalDramaSpeakerA
 import { unifiedAudioRouter } from "./routers/unifiedAudio";
 import { verticalDramaShareRouter } from "./routers/verticalDramaShare";
 import { financeRouter } from "./routers/finance";
+import { economicControlPlaneRouter } from "./routers/economicControlPlane";
+import { workflowStudioRouter } from "./routers/workflowStudio";
 import { memoryRouter } from "./routers/memory";
 import { mediaRouter } from "./routers/media";
 import { mediaProvidersRouter } from "./routers/mediaProviders";
@@ -157,6 +159,7 @@ import { billingRouter } from "./routers/billing";
 import { adminBillingRouter } from "./routers/adminBilling";
 import { localAiRouter } from "./routers/localAi";
 import { workerJobsRouter } from "./routers/workerJobs";
+import { spec226DevelopmentControlRouter } from "./routers/spec226DevelopmentControl";
 import { editorMediaJobsRouter } from "./routers/editorMediaJobs";
 import { videoProjectsRouter } from "./routers/videoProjects";
 import { tenantDataTransferRouter } from "./routers/tenantDataTransfer";
@@ -3264,6 +3267,7 @@ type AppRouterShape = {
   adminBilling: typeof adminBillingRouter;
   localAi: typeof localAiRouter;
   workerJobs: typeof workerJobsRouter;
+  spec226DevelopmentControl: typeof spec226DevelopmentControlRouter;
   tenantDataTransfer: typeof tenantDataTransferRouter;
   adminTenantOperations: typeof adminTenantOperationsRouter;
   platformOperations: typeof platformOperationsRouter;
@@ -3358,6 +3362,8 @@ type AppRouterShape = {
   help: typeof helpRouter;
   databaseBackups: typeof databaseBackupsRouter;
   contentProtection: typeof contentProtectionRouter;
+  economicControlPlane: typeof economicControlPlaneRouter;
+  workflowStudio: typeof workflowStudioRouter;
 };
 
 const appRouterInternal = router<AppRouterShape>({
@@ -3367,6 +3373,7 @@ const appRouterInternal = router<AppRouterShape>({
   adminBilling: adminBillingRouter,
   localAi: localAiRouter,
   workerJobs: workerJobsRouter,
+  spec226DevelopmentControl: spec226DevelopmentControlRouter,
   tenantDataTransfer: tenantDataTransferRouter,
   adminTenantOperations: adminTenantOperationsRouter,
   platformOperations: platformOperationsRouter,
@@ -3540,6 +3547,8 @@ const appRouterInternal = router<AppRouterShape>({
   help: helpRouter,
   databaseBackups: databaseBackupsRouter,
   contentProtection: contentProtectionRouter,
+  economicControlPlane: economicControlPlaneRouter,
+  workflowStudio: workflowStudioRouter,
 
   // Feature 131 — Vertical Drama Series (flag-gated, default off)
   verticalDramaSeries: verticalDramaSeriesRouter,

@@ -1,16 +1,21 @@
 # Spec 217 — SmartAIHub AI Product & White-Label Tenant Platform
 ## Branded AI Products, Product Suites, Mini App Composition, Membership, Entitlements, Domains & Distribution
 
-**Status:** Architecture Freeze Candidate / Implementation-ready subject to conformance tests
+**Status:** Proposed / Partial identity contract slice present; product runtime integration pending
 **Spec ID:** 217  
-**Revision:** 3 — Final integrated stress-audit / architecture freeze candidate
-**Date:** 2026-09-20  
+**Revision:** 5 — Product/Skill/capability discovery alignment with Spec 229
+**Date:** 2026-09-22
 **Target repository path:** `specs/feature/217-ai-product-white-label-tenant-platform/spec.md`  
-**Core depends on:** Spec 207, Spec 214, Spec 215, Spec 216, Feature 195 and existing SmartAIHub Identity/Tenant/Library services  
-**Validation dependency:** Spec 212 R20 is the release oracle for this spec; its certification is a downstream gate, not a bootstrap prerequisite.  
-**Companion specs:** Spec 218, Spec 219, Spec 220, Spec 221, Spec 222
+**Depends on:** Spec 207, Spec 212, Spec 214, Spec 215, Spec 216, Feature 195 and existing SmartAIHub Identity/Tenant/Library services
+**Companion specs:** Spec 218, Spec 219, Spec 220, Spec 221, Spec 222 (learning/advisory), Spec 230 (Agentic Development Fabric)
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+The current source contains the pure identity contract slice in `apps/web/server/services/tenantProductIdentityContracts.ts` with focused tests for tenant/product/brand/domain/release/entitlement relationships. Existing tenant context and product-adjacent services are inputs, not proof of the Spec 217 Product/Tenant platform.
+
+No complete Spec 217 Product router, persistence model, domain provisioning path, release service or entitlement integration was found. Those remain implementation gates and must continue to use existing identity, `worker_jobs`, economic and library authorities.
 
 # 0. Executive Decision
 
@@ -1247,7 +1252,7 @@ Escalation to custom code requires Spec 218/222 engineering governance. A single
 
 ## 58. AI Product / Mini App Design Engineering
 
-Spec 217 owns the target user experience and design contracts. Spec 222 owns how coding/design harnesses implement and refine them.
+Spec 217 owns the target user experience and design contracts. Spec 230 owns how coding/design harnesses are bootstrapped, contextualized and methodologically prepared to implement and refine them. Spec 222 may provide historical learning/advisory evidence but does not own harness bootstrap.
 
 Required design inputs MAY include:
 
@@ -1293,7 +1298,7 @@ The generated Product SHALL NOT receive direct Core DB/R2/provider credentials.
 | Production release/runtime/domain routing | Spec 219 |
 | Data/Asset/Capability/API/MCP authorization | Spec 220 |
 | Skill contract/evals/review/publication | Spec 221 |
-| Harness bootstrap, project context, SmartAIHub orchestrator skills, Superpowers bridge, agentic UI/code methodology | Spec 222 |
+| Harness bootstrap, project context, SmartAIHub orchestrator skills, Superpowers bridge, agentic UI/code methodology | Spec 230 |
 
 Spec 217 MUST NOT implement its own coding-agent installation/runtime or Skill engineering lifecycle.
 
@@ -1535,3 +1540,73 @@ A Product version is publishable only if the release gate can verify:
 - [ ] Product health exposes dependency degradation.
 - [ ] Transfer/offboarding coordinates domain, source, data, economics and dependency rights.
 - [ ] Product release requires complete dependency/security/economic evidence.
+
+---
+
+# Revision 4 Canonical Cross-Spec Numbering Amendment
+
+This amendment resolves the historical Spec 222 numbering collision.
+
+Canonical ownership from this revision forward:
+
+```text
+Spec 222 = Self-Improving Exploration Layer / learning plane
+Spec 230 = Agentic Development Fabric / harness-context-methodology plane
+```
+
+Any historical Spec 217 statement using `Spec 222` to mean harness bootstrap, Project Context Pack, provider instructions, repository engineering Skills, Superpowers adapters or agentic UI/code methodology SHALL be interpreted as **Spec 230**.
+
+Spec 217 MAY consume Spec 222 advisory evidence for product-development strategy, but Spec 222 never becomes Product, Mini App, development-harness or release authority.
+
+Kimi Code CLI/Desktop is a development harness family/profile consumed through Specs 200/218/224/230; it does not create a new Product runtime, Product identity or Mini App execution model.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 5 — Product / Mini App Discovery Through Spec 229
+
+Product Builder capability search, Skill discovery, similar-template discovery and product-knowledge RAG SHALL use Spec 229 Retrieval Broker after cutover.
+
+A Product dependency MAY be suggested by semantic retrieval, but publication SHALL pin a canonical versioned dependency from Spec 221/Workflow/Capability registries. Search result identity alone is insufficient.
+
+Product-facing search MUST preserve tenant/product/visibility constraints from Spec 220. Public Marketplace discovery and private tenant/project discovery MUST NOT share authorization assumptions merely because they use the same vector provider.
+
+Required negative test: a semantically excellent private Skill from another tenant cannot appear as an eligible Product dependency.

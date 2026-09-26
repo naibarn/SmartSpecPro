@@ -158,12 +158,37 @@ export function resolveNotificationActionUrl(notification: {
   relatedResourceType?: string | null;
   content?: string | null;
   title?: string | null;
-  metadata?: { source?: unknown } | null;
-}): string | null {
-  const actionUrl = notification.actionUrl ?? null;
+  metadata?: {
+    source?: unknown;
+    signal?: unknown;
+    relatedItems?: { feedbackTicketId?: unknown } | null;
+  } | null;
+}, viewerRole?: string | null): string | null {
   const metadataSource = typeof notification.metadata?.source === "string"
     ? notification.metadata.source
     : null;
+  const isFailedJobCompletion =
+    metadataSource === "job_completion" &&
+    (notification.metadata?.signal === "failed" ||
+      /ไม่สำเร็จ|ล้มเหลว|\bfailed\b|\berror\b/i.test(
+        `${notification.title ?? ""} ${notification.content ?? ""}`,
+      ));
+
+  // Failed jobs also create a system auto-report. Admins should land on the
+  // canonical Feedback Hub to triage that report instead of the generic chat
+  // fallback used by notifications without a job result URL.
+  if (viewerRole === "admin" && isFailedJobCompletion) {
+    const feedbackTicketId = notification.metadata?.relatedItems?.feedbackTicketId;
+    if (
+      (typeof feedbackTicketId === "number" && Number.isSafeInteger(feedbackTicketId) && feedbackTicketId > 0) ||
+      (typeof feedbackTicketId === "string" && /^\d+$/.test(feedbackTicketId))
+    ) {
+      return `/admin/feedback-hub?ticketId=${feedbackTicketId}`;
+    }
+    return "/admin/feedback-hub";
+  }
+
+  const actionUrl = notification.actionUrl ?? null;
   const isFeedbackNotification =
     notification.relatedResourceType === "feedback" ||
     metadataSource === "guardian.feedbackProcessor" ||
@@ -577,6 +602,7 @@ function GlobalUrgentReminders({
   claimUrgentSurface: (surface: UrgentSurface) => boolean;
   releaseUrgentSurface: (surface: UrgentSurface) => void;
 }) {
+  const { user } = useAuth();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [shownIds, setShownIds] = useState<Set<number>>(new Set());
@@ -646,7 +672,7 @@ function GlobalUrgentReminders({
       priority: latest.priority,
       scheduledMessageId: latest.scheduledMessageId,
       conversationId: latest.conversationId,
-      actionUrl: resolveNotificationActionUrl(latest),
+      actionUrl: resolveNotificationActionUrl(latest, user?.role),
       actionLabel: latest.actionLabel ?? null,
       relatedResourceType: latest.relatedResourceType ?? null,
       relatedResourceId: latest.relatedResourceId ?? null,
@@ -664,7 +690,7 @@ function GlobalUrgentReminders({
           action: {
             label: r.actionLabel || "View",
             onClick: () => {
-              const actionUrl = resolveNotificationActionUrl(r);
+              const actionUrl = resolveNotificationActionUrl(r, user?.role);
               if (actionUrl) {
                 navigateNotificationAction(actionUrl, setLocation);
                 return;
@@ -693,6 +719,7 @@ function GlobalUrgentReminders({
     activeUrgentSurface,
     claimUrgentSurface,
     setLocation,
+    user?.role,
   ]);
 
   const handleDismiss = useCallback(() => {
@@ -1357,6 +1384,7 @@ function NotificationDetailPanel({ notification: n, onBack, onOpenInNewTab }: { 
 }
 
 function GlobalNotificationBell() {
+  const { user } = useAuth();
   const [location, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [showDropdown, setShowDropdown] = useState(false);
@@ -1511,7 +1539,7 @@ function GlobalNotificationBell() {
     if (!key || shownJobCompletionToastKeysRef.current.has(key)) return;
     shownJobCompletionToastKeysRef.current.add(key);
 
-    const actionUrl = resolveNotificationActionUrl(notification);
+    const actionUrl = resolveNotificationActionUrl(notification, user?.role);
     const toastOptions = {
       description: (notification.content || "").slice(0, 240),
       duration: 12000,
@@ -1529,7 +1557,7 @@ function GlobalNotificationBell() {
     } else {
       toast.success(notification.title || "งานเสร็จแล้ว", toastOptions);
     }
-  }, [setLocation]);
+  }, [setLocation, user?.role]);
 
   // Real-time SSE for instant notification updates (with exponential backoff)
   const handleSSEMessage = useCallback((event: MessageEvent) => {
@@ -1642,9 +1670,9 @@ function GlobalNotificationBell() {
   const handleNotificationRowClick = (notification: any) => {
     if (!notification.isRead) markRead.mutate({ id: notification.id });
 
-    const actionUrl = resolveNotificationActionUrl(notification);
+    const actionUrl = resolveNotificationActionUrl(notification, user?.role);
     const isFeedbackTarget = Boolean(
-      actionUrl?.match(/^\/admin\/feedback-hub\?ticketId=\d+\b/i),
+      actionUrl?.match(/^\/admin\/feedback-hub(?:\?ticketId=\d+)?$/i),
     );
     if (isFeedbackTarget) {
       setShowDropdown(false);
@@ -1936,11 +1964,11 @@ function GlobalNotificationBell() {
                     {expandedId === n.id && (
                       <div style={{ marginTop: "6px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                         {/* Structured action URL (preferred) */}
-                        {resolveNotificationActionUrl(n) && (
+                        {resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenInNewTab(resolveNotificationActionUrl(n)!);
+                              handleOpenInNewTab(resolveNotificationActionUrl(n, user?.role)!);
                             }}
                             style={{
                               background: "none",
@@ -1955,7 +1983,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Conversation link */}
-                        {n.conversationId && !resolveNotificationActionUrl(n) && (
+                        {n.conversationId && !resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1974,7 +2002,7 @@ function GlobalNotificationBell() {
                           </button>
                         )}
                         {/* Schedule link */}
-                        {n.scheduledMessageId && !resolveNotificationActionUrl(n) && (
+                        {n.scheduledMessageId && !resolveNotificationActionUrl(n, user?.role) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

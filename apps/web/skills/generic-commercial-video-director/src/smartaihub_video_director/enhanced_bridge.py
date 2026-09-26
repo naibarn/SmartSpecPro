@@ -27,6 +27,12 @@ from .orchestrator import DirectorOrchestrator, StageRunResult
 from .sdk_compat import installed_sdk_version, require_openai_agents_sdk
 
 ADAPTER_VERSION = "1.0.0"
+_CURRENT_BRIDGE_STAGE = "bootstrap"
+
+
+def _set_bridge_stage(stage: str) -> None:
+    global _CURRENT_BRIDGE_STAGE
+    _CURRENT_BRIDGE_STAGE = stage
 
 
 class ReadOnlyCore:
@@ -375,6 +381,10 @@ def _normalize_position_bucket(pos_str: str | None) -> str | None:
         return "viewer-screen"
     if "offscreen" in p or "off-screen" in p:
         return "viewer-offscreen"
+    if "viewer-far-left" in p:
+        return "viewer-far-left"
+    if "viewer-far-right" in p:
+        return "viewer-far-right"
     if "viewer-left" in p:
         return "viewer-left"
     if "viewer-right" in p:
@@ -877,11 +887,13 @@ def _build_grok_hard_speaker_map(
         return ""
 
     position_order = {
-        "viewer-left": 0,
-        "viewer-center-left": 1,
-        "viewer-center": 2,
-        "viewer-center-right": 3,
-        "viewer-right": 4,
+        "viewer-far-left": 0,
+        "viewer-left": 1,
+        "viewer-center-left": 2,
+        "viewer-center": 3,
+        "viewer-center-right": 4,
+        "viewer-right": 5,
+        "viewer-far-right": 6,
     }
     characters = sorted(
         characters,
@@ -1677,6 +1689,7 @@ def _terminal_prompt(
 
 
 async def run(payload: dict[str, Any]) -> dict[str, Any]:
+    _set_bridge_stage("input_validation")
     root = Path(__file__).resolve().parents[2]
     contracts = StageContractRegistry(root)
     contracts.validate_input(_package_input(payload))
@@ -1687,6 +1700,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
     if api_style not in {"responses", "chat-completions"}:
         raise RuntimeError("ENHANCED_UNSUPPORTED_PROVIDER_TRANSPORT")
     supports_function_tools = authoring_model_facts.get("supportsFunctionTools") is not False
+    _set_bridge_stage("runtime_setup")
     config = AgentRuntimeConfig(
         model=provider_model_id,
         provider_model_id=provider_model_id,
@@ -1742,6 +1756,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         for reference in payload.get("visionReferences") or []
         if isinstance(reference, dict) and reference.get("label") == "START_FRAME_IMAGE"
     ][:1]
+    _set_bridge_stage("observed_start_state")
     try:
         observed_result = await orchestrator.run_stage(
             "observed_start_state",
@@ -1768,6 +1783,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             confidence=0.0,
             attempts=0,
         )
+    _set_bridge_stage("dialogue_binding")
     bound_dialogue = _bind_dialogue_to_character_positions(
         _extract_dialogue_list(payload),
         _resolve_character_positions(payload, observed_result.payload),
@@ -1784,6 +1800,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
             "Preserve canonical dialogue exactly; when dialogue is empty, use silent acting only. Do not choose a model or provider."
         ),
     }
+    _set_bridge_stage("prompt_intent")
     try:
         result = await orchestrator.run_stage(
             "prompt_intent",
@@ -1858,6 +1875,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         prompt_warnings.extend(repair_result.warnings)
         prompt_assumptions.extend(repair_result.assumptions)
         result = repair_result
+    _set_bridge_stage("terminal_prompt")
     prompt = _terminal_prompt(runtime_payload, result.payload, observed_result.payload)
     negative_prompt_parts = [
         "Do not change identity, wardrobe, approved object geometry, "
@@ -1884,6 +1902,7 @@ async def run(payload: dict[str, Any]) -> dict[str, Any]:
         "nativeAudioEnabled" not in payload
         or payload.get("nativeAudioEnabled") is True
     )
+    _set_bridge_stage("audio_direction")
     if native_audio_enabled:
         audio_dir = _extract_audio_direction_summary(payload, result.payload)
         if audio_dir:
@@ -1901,6 +1920,7 @@ def main() -> None:
             "skillVersion": "11.0.0",
         }, separators=(",", ":")))
         return
+    _set_bridge_stage("input_decode")
     raw = sys.stdin.read()
     payload = json.loads(raw)
     result = asyncio.run(run(payload))
@@ -1911,5 +1931,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:  # stderr only; stdout remains machine-readable.
-        print(safe_bridge_error_line(exc), file=sys.stderr)
+        print(safe_bridge_error_line(exc, stage=_CURRENT_BRIDGE_STAGE), file=sys.stderr)
         raise SystemExit(2)

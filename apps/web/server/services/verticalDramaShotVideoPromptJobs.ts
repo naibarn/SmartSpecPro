@@ -10,6 +10,12 @@ import {
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
 import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
+import {
+  findCanonicalPromptJobByIdempotencyKey,
+  listCanonicalPromptJobs,
+  readCanonicalPromptJob,
+  type CanonicalPromptJobSnapshot,
+} from "./verticalDramaCanonicalPromptJobs";
 
 export const VERTICAL_DRAMA_SHOT_VIDEO_PROMPT_JOBS_QUEUE =
   "vertical_drama_shot_video_prompt_jobs";
@@ -142,6 +148,7 @@ export interface VerticalDramaShotVideoPromptJobStoreDependencies {
   redis: VerticalDramaShotVideoPromptJobRedisAdapter;
   now: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
+  heartbeat?: () => Promise<void>;
   canonicalStatusReader?: CanonicalPromptJobStatusReader;
 }
 
@@ -156,6 +163,157 @@ export type CanonicalPromptJobStatusReader = (
 
 export interface VerticalDramaShotVideoPromptJobEnqueueDependencies extends Partial<VerticalDramaShotVideoPromptJobStoreDependencies> {
   enqueueBullmqJob?: (jobId: string) => Promise<void>;
+}
+
+function canonicalRecord(
+  snapshot: CanonicalPromptJobSnapshot | null,
+): VerticalDramaShotVideoPromptJobRecord | null {
+  if (!snapshot) return null;
+  const input = snapshot.input;
+  const tenantId = typeof input.tenantId === "string" ? input.tenantId : null;
+  const userId = Number(input.userId);
+  const seriesId = Number(input.seriesId);
+  const episodeId = Number(input.episodeId);
+  const shotNumber = Number(input.shotNumber);
+  const jobInput = input.input;
+  if (
+    !tenantId ||
+    !Number.isSafeInteger(userId) ||
+    !Number.isSafeInteger(seriesId) ||
+    !Number.isSafeInteger(episodeId) ||
+    !Number.isSafeInteger(shotNumber) ||
+    !jobInput ||
+    typeof jobInput !== "object" ||
+    Array.isArray(jobInput)
+  ) {
+    return null;
+  }
+  const variantId =
+    input.variantId === "enhanced" || input.variantId === "legacy"
+      ? input.variantId
+      : undefined;
+  return {
+    jobId: snapshot.jobId,
+    tenantId,
+    userId,
+    seriesId,
+    episodeId,
+    shotNumber,
+    ...(variantId ? { variantId } : {}),
+    publicUrl: typeof input.publicUrl === "string" ? input.publicUrl : null,
+    input: jobInput as VerticalDramaShotVideoPromptJobInput,
+    sequence: 0,
+    requestFingerprint: requestFingerprint(
+      jobInput as VerticalDramaShotVideoPromptJobInput,
+    ),
+    status: snapshot.status,
+    result: snapshot.output as VerticalDramaShotVideoPromptJobResult | null,
+    error: snapshot.error,
+    createdAt: snapshot.createdAt,
+    updatedAt: snapshot.updatedAt,
+  };
+}
+
+async function readCanonicalVideoRecord(input: {
+  jobId: string;
+  owner: VerticalDramaShotVideoPromptJobOwner;
+}): Promise<VerticalDramaShotVideoPromptJobRecord | null> {
+  return canonicalRecord(
+    await readCanonicalPromptJob({
+      jobId: input.jobId,
+      tenantId: input.owner.tenantId,
+      userId: input.owner.userId,
+      jobType: "vertical_drama.shot_video_prompt",
+    }),
+  );
+}
+
+async function toCanonicalSummary(
+  record: VerticalDramaShotVideoPromptJobRecord,
+): Promise<VerticalDramaShotVideoPromptJobSummary> {
+  const active = (await listCanonicalPromptJobs({
+    tenantId: record.tenantId,
+    userId: record.userId,
+    jobType: "vertical_drama.shot_video_prompt",
+    activeOnly: true,
+  }))
+    .map(canonicalRecord)
+    .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
+  const order = active.findIndex(item => item.jobId === record.jobId);
+  return {
+    jobId: record.jobId,
+    shotNumber: record.shotNumber,
+    ...(recordVariantId(record) === "enhanced"
+      ? { variantId: "enhanced" as const }
+      : {}),
+    status: record.status,
+    result: record.result,
+    error: record.error,
+    queuePosition: order < 0 ? 0 : active.length - order,
+    activeJobCount: active.length,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+  };
+}
+
+async function enqueueCanonicalVideoPromptJob(
+  payload: VerticalDramaShotVideoPromptJobPayload,
+): Promise<VerticalDramaShotVideoPromptJobSummary & { deduplicated: boolean }> {
+  const idempotencyKey = payload.input.idempotencyKey;
+  if (idempotencyKey) {
+    const prior = await findCanonicalPromptJobByIdempotencyKey({
+      tenantId: payload.tenantId,
+      userId: payload.userId,
+      jobType: "vertical_drama.shot_video_prompt",
+      idempotencyKey,
+    });
+    const priorRecord = canonicalRecord(prior);
+    if (priorRecord && ownerMatches(priorRecord, payload)) {
+      return { ...(await toCanonicalSummary(priorRecord)), deduplicated: true };
+    }
+  }
+
+  const active = (await listCanonicalPromptJobs({
+    tenantId: payload.tenantId,
+    userId: payload.userId,
+    jobType: "vertical_drama.shot_video_prompt",
+    activeOnly: true,
+  }))
+    .map(canonicalRecord)
+    .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
+  const sameShot = active.find(
+    record =>
+      record.shotNumber === payload.shotNumber,
+  );
+  if (sameShot) {
+    if (sameShot.requestFingerprint !== requestFingerprint(payload.input)) {
+      throw new VerticalDramaShotVideoPromptConflictError();
+    }
+    return { ...(await toCanonicalSummary(sameShot)), deduplicated: true };
+  }
+
+  const requestedJobId = randomUUID();
+  const jobId = await createFeature186VerticalDramaJob({
+    jobId: requestedJobId,
+    tenantId: payload.tenantId,
+    userId: payload.userId,
+    jobType: "vertical_drama.shot_video_prompt",
+    executionClass: "long",
+    idempotencyKey,
+    payload: {
+      ...payload,
+      jobId: requestedJobId,
+      status: "queued",
+    } as unknown as Record<string, unknown>,
+  });
+  const record = await readCanonicalVideoRecord({
+    jobId,
+    owner: payload,
+  });
+  if (!record) {
+    throw new Error(`CANONICAL_VIDEO_PROMPT_JOB_NOT_FOUND:${jobId}`);
+  }
+  return { ...(await toCanonicalSummary(record)), deduplicated: jobId !== requestedJobId };
 }
 
 function defaultRedisAdapter(): VerticalDramaShotVideoPromptJobRedisAdapter {
@@ -525,6 +683,10 @@ export async function getVerticalDramaShotVideoPromptJobStatus(
   owner: VerticalDramaShotVideoPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
+  if (isFeature186HardCutoverEnabled()) {
+    const record = await readCanonicalVideoRecord({ jobId, owner });
+    return record ? toCanonicalSummary(record) : null;
+  }
   const deps = resolveDependencies(dependencies);
   const record = await readRecord(jobId, deps);
   if (!record || !ownerMatches(record, owner)) return null;
@@ -543,6 +705,17 @@ export async function getActiveVerticalDramaShotVideoPromptJobs(
   >,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary[]> {
+  if (isFeature186HardCutoverEnabled()) {
+    const records = (await listCanonicalPromptJobs({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      jobType: "vertical_drama.shot_video_prompt",
+      activeOnly: true,
+    }))
+      .map(canonicalRecord)
+      .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
+    return Promise.all(records.map(toCanonicalSummary));
+  }
   const deps = resolveDependencies(dependencies);
   const next = Number((await deps.redis.get(nextSequenceKey(owner))) ?? 1);
   const last = Number((await deps.redis.get(sequenceKey(owner))) ?? 0);
@@ -605,6 +778,18 @@ export async function getActiveVerticalDramaShotVideoPromptJob(
   owner: VerticalDramaShotVideoPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotVideoPromptJobStoreDependencies>
 ): Promise<VerticalDramaShotVideoPromptJobSummary | null> {
+  if (isFeature186HardCutoverEnabled()) {
+    const records = (await listCanonicalPromptJobs({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      jobType: "vertical_drama.shot_video_prompt",
+      activeOnly: true,
+    }))
+      .map(canonicalRecord)
+      .filter((item): item is VerticalDramaShotVideoPromptJobRecord => Boolean(item));
+    const record = records.find(item => ownerMatches(item, owner));
+    return record ? toCanonicalSummary(record) : null;
+  }
   const deps = resolveDependencies(dependencies);
   const jobId =
     (await deps.redis.get(activePointerKey(owner))) ??
@@ -637,6 +822,9 @@ export async function enqueueVerticalDramaShotVideoPromptJob(
   payload: VerticalDramaShotVideoPromptJobPayload,
   dependencies?: VerticalDramaShotVideoPromptJobEnqueueDependencies
 ): Promise<VerticalDramaShotVideoPromptJobSummary & { deduplicated: boolean }> {
+  if (isFeature186HardCutoverEnabled()) {
+    return enqueueCanonicalVideoPromptJob(payload);
+  }
   const deps = resolveDependencies(dependencies);
   const fingerprint = requestFingerprint(payload.input);
   const idempotencyPointer = payload.input.idempotencyKey
@@ -874,8 +1062,13 @@ async function waitForTurn(
   deps: VerticalDramaShotVideoPromptJobStoreDependencies
 ): Promise<boolean> {
   const startedWaiting = deps.now();
+  let lastHeartbeatAt = startedWaiting;
   const lockKey = episodeLockKey(record);
   while (deps.now() - startedWaiting < TURN_WAIT_TIMEOUT_MS) {
+    if (deps.heartbeat && deps.now() - lastHeartbeatAt >= 15_000) {
+      await deps.heartbeat();
+      lastHeartbeatAt = deps.now();
+    }
     const next = Number((await deps.redis.get(nextSequenceKey(record))) ?? 1);
     if (next > record.sequence) return false;
 
@@ -886,6 +1079,21 @@ async function waitForTurn(
     if (priorJobId) {
       const prior = await readRecord(priorJobId, deps);
       if (prior && isActive(prior.status)) {
+        const canonical = deps.canonicalStatusReader
+          ? (await deps.canonicalStatusReader([priorJobId])).get(priorJobId)
+          : undefined;
+        if (canonical && isCanonicalTerminalStatus(canonical.status)) {
+          await markTerminalAndAdvance(
+            prior,
+            canonical.status === "completed" || canonical.status === "succeeded" ? "succeeded" : "failed",
+            null,
+            canonical.status === "completed" || canonical.status === "succeeded"
+              ? null
+              : canonical.reason ?? `Canonical predecessor ended with status=${canonical.status}`,
+            deps,
+          );
+          continue;
+        }
         if (
           prior.status === "running" &&
           deps.now() - new Date(prior.updatedAt).getTime() > STALE_ACTIVE_JOB_MS
@@ -998,6 +1206,25 @@ export async function runVerticalDramaShotVideoPromptJob(
     await deps.redis
       .compareDelete(episodeLockKey(running), running.jobId)
       .catch(() => false);
+  }
+}
+
+/**
+ * Canonical worker_jobs execution path. Sequencing, retry, lease, and result
+ * persistence belong to worker_jobs; this helper only fences the protected
+ * business resolver for the duration of one canonical execution.
+ */
+export async function executeVerticalDramaShotVideoPromptJobExecutor(
+  jobId: string,
+  payload: VerticalDramaShotVideoPromptJobPayload,
+  executor: VerticalDramaShotVideoPromptJobExecutor,
+): Promise<VerticalDramaShotVideoPromptJobResult> {
+  const executionToken = randomUUID();
+  activeWorkerExecutions.set(jobId, executionToken);
+  try {
+    return await executor(payload, { jobId, token: executionToken });
+  } finally {
+    activeWorkerExecutions.delete(jobId);
   }
 }
 

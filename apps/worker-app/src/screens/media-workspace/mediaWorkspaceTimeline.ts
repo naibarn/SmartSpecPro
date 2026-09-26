@@ -39,6 +39,17 @@ export function chooseRenderSourcePath(
     ?? "";
 }
 
+/**
+ * A rendered result is a preview artifact, not a new source timeline. Its
+ * metadata must not change the source trim window or source geometry used by
+ * the next render.
+ */
+export function shouldCommitLoadedMetadataToSourceTimeline(
+  isRenderedPreview: boolean,
+): boolean {
+  return !isRenderedPreview;
+}
+
 export interface WaveformBin {
   min: number;
   max: number;
@@ -306,6 +317,7 @@ export interface DeadAirRenderSelection {
   volumeThresholdPct: number;
   minDurationSec: number;
   softeningBufferSec: number;
+  audioStreamIndex?: number | null;
   silenceSegments: SilenceRange[];
   cameraMotionPlan?: CameraMotionPlan | null;
 }

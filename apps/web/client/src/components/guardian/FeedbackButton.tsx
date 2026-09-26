@@ -647,25 +647,25 @@ export function FeedbackButton() {
       <DialogContent
         className={
           activePanel === "chat" || activePanel === "control-plane"
-            ? "flex h-[min(88vh,760px)] max-h-[90vh] w-[calc(100vw-2rem)] max-w-3xl flex-col overflow-hidden p-0"
+            ? "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0 sm:h-[min(88vh,760px)] sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-2xl sm:border"
             : "max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
         }
         onPaste={handleDialogPaste}
       >
-        <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-4 sm:px-5">
-          <DialogTitle>AI Chat &amp; Feedback</DialogTitle>
+        <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
+          <DialogTitle className="pr-10 text-left text-base sm:text-lg">AI Chat &amp; Feedback</DialogTitle>
         </DialogHeader>
         <nav
           aria-label="AI Chat and Feedback sections"
           role="tablist"
-          className="grid shrink-0 grid-cols-3 gap-1 border-b border-border bg-muted/30 p-1"
+          className="grid shrink-0 grid-cols-3 gap-1 border-b border-border bg-muted/30 p-1.5 sm:p-2"
         >
           <Button
             type="button"
             role="tab"
             aria-selected={activePanel === "chat"}
             variant={activePanel === "chat" ? "secondary" : "ghost"}
-            className="h-9 gap-2 text-xs sm:text-sm"
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("chat")}
           >
             <Bot className="h-4 w-4" aria-hidden="true" />
@@ -676,7 +676,7 @@ export function FeedbackButton() {
             role="tab"
             aria-selected={activePanel === "control-plane"}
             variant={activePanel === "control-plane" ? "secondary" : "ghost"}
-            className="h-9 gap-2 text-xs sm:text-sm"
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("control-plane")}
           >
             <Network className="h-4 w-4" aria-hidden="true" />
@@ -687,7 +687,7 @@ export function FeedbackButton() {
             role="tab"
             aria-selected={activePanel === "feedback"}
             variant={activePanel === "feedback" ? "secondary" : "ghost"}
-            className="h-9 gap-2 text-xs sm:text-sm"
+            className="h-10 min-w-0 gap-1 px-1 text-[11px] sm:h-11 sm:gap-2 sm:px-3 sm:text-sm"
             onClick={() => selectHelpPanel("feedback")}
           >
             <Siren className="h-4 w-4" aria-hidden="true" />
@@ -714,6 +714,7 @@ export function FeedbackButton() {
             ) : (
               <ChatView
                 conversationId={chatConversationId}
+                density="compact"
                 composerPrompt={chatPromptRequest}
                 showBrowserSessionEntry={false}
               />

@@ -5,6 +5,11 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { compareCachedInternalToken } from "../services/appRuntimeConfig";
 import { createJobControlPlane, recordAuthenticatedJobCallback } from "../services/jobControlPlane";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import {
+  createSpec224ApprovalContinuation,
+  createSpec224ExternalApprovalAuthority,
+  parseSpec224ExternalApprovalPayload,
+} from "../services/spec224ApprovalContinuation";
 import { db, getDb } from "../db";
 import { workerJobAttempts, workerJobDispatches, workerJobs } from "../../drizzle/schema";
 
@@ -46,6 +51,19 @@ const externalSettlementSchema = z.object({
   reason: z.string().trim().min(1).max(500).optional(),
   operatorReviewRequired: z.boolean().optional(),
   pollerLeaseTokenHash: z.string().regex(/^[a-f0-9]{64}$/i).optional(),
+});
+const p213ApprovalDecisionSchema = z.object({
+  jobId: z.string().trim().min(1).max(36),
+  tenantId: z.string().trim().min(1).max(36),
+  operationKey: z.string().trim().min(1).max(200),
+  approvalRequestId: z.string().trim().min(1).max(255),
+  decision: z.enum(["approved", "rejected"]),
+  runnerId: z.string().trim().min(1).max(160),
+  adapter: z.string().trim().min(1).max(80),
+  actionId: z.string().trim().min(1).max(255),
+  runnerSessionId: z.string().trim().min(1).max(160),
+  fencingVersion: z.number().int().nonnegative(),
+  approverId: z.number().int().positive(),
 });
 const externalRegistrationSchema = z.object({
   jobId: z.string().trim().min(1).max(36),
@@ -425,6 +443,16 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     } catch (error) { return fail(res, error); }
   });
 
+  app.post("/api/internal/job-control-plane/approval-decision", async (req, res) => {
+    if (!internalAuth(req, res)) return;
+    const parsed = p213ApprovalDecisionSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: "Invalid P213 approval decision request" });
+    try {
+      const result = await createJobControlPlane().resolveComputerUseApproval(parsed.data);
+      return res.json({ result });
+    } catch (error) { return fail(res, error); }
+  });
+
   app.post("/api/internal/job-control-plane/register-external-provider", async (req, res) => {
     if (!internalAuth(req, res)) return;
     const parsed = externalRegistrationSchema.safeParse(req.body);
@@ -446,6 +474,29 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     if (!parsed.success) return res.status(400).json({ error: "Invalid callback request" });
     try {
       const result = await recordAuthenticatedJobCallback({ ...parsed.data, signatureVerified: true });
+      if (result.disposition === "accepted" && parsed.data.payload.kind === "approval_required") {
+        const correlation = parseSpec224ExternalApprovalPayload(parsed.data.payload);
+        if (!correlation || (parsed.data.jobId && parsed.data.jobId !== correlation.jobId)) {
+          return res.status(400).json({ error: "Invalid Spec 224 approval correlation" });
+        }
+        try {
+          const continuation = createSpec224ApprovalContinuation({
+            authority: createSpec224ExternalApprovalAuthority(),
+            controlPlane: createJobControlPlane(),
+          });
+          const approval = await continuation.request(correlation);
+          return res.json({ ...result, spec224Approval: approval });
+        } catch (error) {
+          await createJobControlPlane().failExternalWait(
+            correlation.jobId,
+            error instanceof Error ? error.message : "SPEC224_APPROVAL_CONTINUATION_FAILED",
+            true,
+            new Date(),
+            correlation.operationKey,
+          );
+          return res.status(409).json({ error: "Spec 224 approval continuation requires operator review" });
+        }
+      }
       return res.json(result);
     } catch (error) { return fail(res, error); }
   });

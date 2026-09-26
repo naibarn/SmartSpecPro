@@ -419,6 +419,24 @@ describe("feedback admin tenant scope", () => {
     );
   });
 
+  it("always orders the feedback queue by newest creation time", async () => {
+    const listQuery = {
+      from: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      offset: vi.fn().mockReturnThis(),
+      where: vi.fn().mockResolvedValue([]),
+    };
+    mockGetDb.mockResolvedValue({
+      select: vi.fn(() => listQuery),
+    });
+
+    await createCaller().list({});
+
+    expect(listQuery.orderBy).toHaveBeenCalledTimes(1);
+    expect(listQuery.orderBy.mock.calls[0]).toHaveLength(2);
+  });
+
   it("does not report an automatic client error when markRead is unavailable", async () => {
     const schemaError = Object.assign(
       new Error("Failed query: feedback_ticket_reads"),

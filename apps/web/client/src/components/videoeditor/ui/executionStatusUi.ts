@@ -14,9 +14,11 @@ export type ExecutionDisplayState =
   | 'stale';
 
 export interface ExecutionJobLike {
+  jobType?: string | null;
   status?: string | null;
   statusReason?: string | null;
   failureReason?: string | null;
+  operatorReviewRequired?: boolean | null;
   runtimeType?: string | null;
   worker?: { displayName?: string | null; machineName?: string | null } | null;
   progressPercent?: number | null;
@@ -57,10 +59,22 @@ export function projectExecutionStatus(job: ExecutionJobLike): ExecutionStatusPr
     return Boolean(verificationState) && !acceptedVerificationStates.has(verificationState);
   });
   const outputBlockedByReason = hasReason(reason, ['qc', 'quality', 'stale', 'mismatch', 'conflict', 'blocked', 'unverified', 'pending']);
+  // Control-plane jobs such as episode-stage and prompt-authoring jobs are
+  // successful operations whose durable result is written to their domain
+  // projection, not to worker artifact refs. Requiring outputRefs for every
+  // job made those terminal jobs look stuck/degraded in the queue.
+  const outputRequired = new Set([
+    'remotion_render_video',
+    'editor_video_render',
+    'hyperframes_final_composite',
+    'vertical_drama_ffmpeg_assembly',
+    'content_protection.protect',
+  ]).has(job.jobType ?? '');
   const outputReady = (status === 'completed' || status === 'succeeded')
-    && outputRefs.length > 0
+    && (!outputRequired || outputRefs.length > 0)
     && !hasUnverifiedOutput
-    && !outputBlockedByReason;
+    && !outputBlockedByReason
+    && job.operatorReviewRequired !== true;
   let state: ExecutionDisplayState;
 
   if (hasReason(reason, ['capability', 'no_eligible', 'unsupported'])) state = 'capability-blocked';

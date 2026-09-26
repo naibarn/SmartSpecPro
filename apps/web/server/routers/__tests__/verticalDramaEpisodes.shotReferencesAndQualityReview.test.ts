@@ -1456,6 +1456,51 @@ describe("setShotCharacterReference — manual per-shot character/variant overri
     ]);
     expect(mockDb.update).toHaveBeenCalledTimes(1);
   });
+
+  it("preserves storyboard scene characters when adding a caller before a frame exists", async () => {
+    mockDb.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            ...episodeRowWithTwoShots(),
+            startFramePlan: {
+              selectedImageModelId: null,
+              frames: [],
+            },
+            storyboard: {
+              shots: [
+                {
+                  shot_number: 1,
+                  required_character_refs: ["hero"],
+                  characters: ["hero"],
+                },
+              ],
+            },
+          },
+        ])
+      ) // loadOwnedEpisode
+      .mockReturnValueOnce(selectChain([{ characterKey: "caller" }])); // roster validation
+    mockDb.update.mockReturnValueOnce(updateChain([{}]));
+
+    const result = await router.setShotCharacterReference({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "100",
+        shotNumber: 1,
+        characterRefs: ["caller"],
+        referenceRole: "screen_caller",
+      },
+    });
+
+    expect(result.startFramePlan.frames).toEqual([
+      expect.objectContaining({
+        shotNumber: 1,
+        requiredCharacterRefs: ["hero"],
+        screenCallerCharacterRefs: ["caller"],
+      }),
+    ]);
+  });
 });
 
 describe("setShotLocation — manual per-shot location override (Phase D, planning/polished-toasting-gadget.md)", () => {

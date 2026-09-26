@@ -2283,6 +2283,27 @@
       "when": 1789737564003,
       "tag": "0339_runner_release_build_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1789824020746,
+      "tag": "0342_vertical_drama_artifact_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 327,
+      "version": "7",
+      "when": 1789824020747,
+      "tag": "0343_content_protection_worker_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 328,
+      "version": "7",
+      "when": 1789824020748,
+      "tag": "0344_runner_session_fencing",
+      "breakpoints": true
     }
   ]
 }

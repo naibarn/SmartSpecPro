@@ -21,6 +21,15 @@ describe("useMenuItems", () => {
     expect(privateFiles?.IconComponent).not.toBe(Sparkles);
   });
 
+  it("exposes Workflow Studio from the authenticated dashboard menu", () => {
+    const items = getResolvedMenuItems("user", "main");
+    const workflowStudio = items.find(item => item.id === "workflow-studio");
+
+    expect(workflowStudio).toBeDefined();
+    expect(workflowStudio?.path).toBe("/studio/workflow");
+    expect(workflowStudio?.IconComponent).not.toBe(Sparkles);
+  });
+
   it("does not expose retired Work OS in the admin sidebar", () => {
     const items = getResolvedMenuItems("admin", "admin");
     const workOs = items.find((item) => item.id === "admin-work-os");

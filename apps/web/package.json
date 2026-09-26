@@ -25,6 +25,7 @@
     "typecheck": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
     "format": "prettier --write .",
     "test": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run",
+    "test:runner-runtime-smoke": "node scripts/runner-connect-runtime-smoke.mjs",
     "e2e:production-director": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 vitest run client/src/features/media-production/production-director.e2e.test.tsx",
     "e2e:production-director-browser": "playwright test tests/e2e/production-director-browser.spec.ts --project=chromium",
     "e2e:marketplace-hyperframes": "playwright test tests/e2e/marketplace-hyperframes-ui.spec.ts --project=chromium",

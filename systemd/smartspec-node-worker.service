@@ -12,10 +12,13 @@ Type=simple
 User=dev
 Group=dev
 WorkingDirectory=/home/dev/projects/SmartSpecPro/apps/web
+RuntimeDirectory=smartspec-node-worker
+RuntimeDirectoryMode=0755
 
 Environment="PATH=/home/dev/.nvm/versions/node/v22.22.3/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="NODE_ENV=production"
 Environment="NODE_OPTIONS=--max-old-space-size=4096"
+Environment="FEATURE_186_NODE_WORKER_HEARTBEAT_FILE=/run/smartspec-node-worker/heartbeat"
 EnvironmentFile=-/home/dev/projects/SmartSpecPro/apps/web/.env
 
 ExecStartPre=/home/dev/.nvm/versions/node/v22.22.3/bin/node /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs

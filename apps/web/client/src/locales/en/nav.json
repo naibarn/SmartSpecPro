@@ -73,5 +73,6 @@
   "sidebar.admin-billing": "Billing Review",
   "sidebar.admin-database-backups": "Database Backups",
   "sidebar.webhookTriggers": "Webhook Triggers",
+  "sidebar.workflowStudio": "Workflow Studio",
   "sidebar.workflows": "Workflows"
 }

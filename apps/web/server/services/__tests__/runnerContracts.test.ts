@@ -221,6 +221,62 @@ describe("Feature 197 Runner contracts", () => {
     });
   });
 
+  it("normalizes computer-use capability provenance and rejects unverified readiness", () => {
+    const computerUse = {
+      browser: {
+        availabilityState: "available" as const,
+        authState: "authenticated" as const,
+        probeState: "ready" as const,
+        reasonCodes: [],
+        manifest: {
+          runnerId: "runner-1",
+          runtimeVersion: "0.1.0",
+          adapterVersion: "browser.v1",
+          browserEngine: "chromium",
+          browserVersion: "120.0.0",
+          authorizationEvidenceRef: "runner-auth:sha256:test",
+          probeEvidenceRef: "browser-probe:sha256:test",
+          supports: {
+            structuredObservation: true,
+            semanticClick: true,
+            semanticType: true,
+            screenshot: true,
+            visualFallback: true,
+            cancellation: true,
+            evidence: true,
+          },
+          authState: "authenticated" as const,
+          probeState: "ready" as const,
+          observedAt: "2026-09-17T00:00:00Z",
+          expiresAt: "2026-09-17T00:10:00Z",
+        },
+      },
+      desktop: {
+        availabilityState: "unavailable" as const,
+        authState: "unavailable" as const,
+        probeState: "unavailable" as const,
+        reasonCodes: ["desktop_adapter_not_configured"],
+      },
+    };
+    const normalized = validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      computerUse,
+    });
+    expect(normalized.computerUse?.browser).toMatchObject({
+      availabilityState: "available",
+      manifest: { runnerId: "runner-1", browserEngine: "chromium" },
+    });
+    expect(() =>
+      validateRunnerCapabilitySnapshot({
+        ...snapshot,
+        computerUse: {
+          ...computerUse,
+          browser: { ...computerUse.browser, manifest: undefined },
+        },
+      })
+    ).toThrowError(expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" }));
+  });
+
   it("rejects duplicate inventory IDs and unsafe readiness claims", () => {
     const tool = {
       toolId: "codex-cli",
@@ -282,6 +338,7 @@ describe("Feature 197 Runner contracts", () => {
         correlationId: "corr-1",
         sequence: 0,
         idempotencyKey: "event-1",
+        ackState: null,
         payload: { state: "ready" },
       })
     ).toMatchObject({ profile: "local_device", sequence: 0 });
@@ -323,5 +380,58 @@ describe("Feature 197 Runner contracts", () => {
     ).toThrowError(
       expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
     );
+  });
+
+  it("accepts bounded semantic observation receipts at the canonical wire depth", () => {
+    expect(() =>
+      validateRunnerProtocolEnvelope({
+        protocolVersion: "sah-runner-v1",
+        profile: "local_device",
+        nodeKind: "local_device",
+        runnerId: "runner-1",
+        nodeId: "device-1",
+        jobId: "job-1",
+        attemptId: "attempt-1",
+        leaseId: "lease-1",
+        fencingVersion: 1,
+        correlationId: "corr-1",
+        sequence: 1,
+        idempotencyKey: "receipt-1",
+        payload: {
+          receipt: {
+            payload: {
+              observation: {
+                elements: [{ supportedActionFamilies: ["click"] }],
+              },
+            },
+          },
+        },
+      })
+    ).not.toThrow();
+  });
+
+  it("rejects runner payloads beyond the bounded depth budget", () => {
+    let payload: Record<string, unknown> = { leaf: true };
+    for (let index = 0; index < 9; index += 1) {
+      payload = { child: payload };
+    }
+
+    expect(() =>
+      validateRunnerProtocolEnvelope({
+        protocolVersion: "sah-runner-v1",
+        profile: "local_device",
+        nodeKind: "local_device",
+        runnerId: "runner-1",
+        nodeId: "device-1",
+        jobId: null,
+        attemptId: null,
+        leaseId: null,
+        fencingVersion: null,
+        correlationId: "corr-1",
+        sequence: 1,
+        idempotencyKey: "payload-depth-1",
+        payload,
+      })
+    ).toThrowError(expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" }));
   });
 });

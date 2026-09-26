@@ -89,5 +89,8 @@ describe("job canonicalization", () => {
       signed: "https://example.test/[REDACTED_PATH]",
       data: "[REDACTED_DATA_URL]",
     });
+    expect(redactJobPayload({ authEvidenceRef: "runner-auth:sha256:runtime" })).toEqual({
+      authEvidenceRef: "runner-auth:sha256:runtime",
+    });
   });
 });

@@ -15,7 +15,13 @@ import type { RunnerAuthContext } from "./runnerAuthService";
 
 type RunnerGatewayAuth = Pick<
   RunnerAuthContext,
-  "runnerId" | "tenantId" | "profile" | "nodeKind" | "deviceId" | "ownerUserId"
+  | "runnerId"
+  | "tenantId"
+  | "profile"
+  | "nodeKind"
+  | "deviceId"
+  | "ownerUserId"
+  | "runnerSessionId"
 >;
 
 export type RunnerGatewayNode = {
@@ -32,6 +38,7 @@ export type RunnerGatewayNode = {
   currentSnapshot: RunnerCapabilitySnapshot | null;
   lastSeenAt: string | null;
   revokedAt: string | null;
+  activeSessionId: string | null;
 };
 
 export type CapabilityPublicationResult = {
@@ -146,6 +153,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
         row.currentSnapshotJson as RunnerCapabilitySnapshot | null,
       lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
       revokedAt: row.revokedAt?.toISOString() ?? null,
+      activeSessionId: row.activeSessionId ?? null,
     };
   }
 
@@ -176,6 +184,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
           : null,
         lastSeenAt: node.lastSeenAt ? new Date(node.lastSeenAt) : null,
         revokedAt: node.revokedAt ? new Date(node.revokedAt) : null,
+        activeSessionId: node.activeSessionId,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -198,6 +207,7 @@ export class DrizzleRunnerRepository implements RunnerRepository {
             : null,
           lastSeenAt: node.lastSeenAt ? new Date(node.lastSeenAt) : null,
           revokedAt: node.revokedAt ? new Date(node.revokedAt) : null,
+          activeSessionId: node.activeSessionId,
           updatedAt: new Date(),
         },
       });
@@ -324,6 +334,10 @@ function compareRevisions(left: string, right: string): number {
 export class RunnerGateway {
   constructor(private readonly repository: RunnerRepository) {}
 
+  async getNode(runnerId: string, tenantId: string): Promise<RunnerGatewayNode | null> {
+    return this.repository.getNode(runnerId, tenantId);
+  }
+
   async enroll(input: {
     auth: RunnerGatewayAuth;
     deviceId: string | null;
@@ -378,6 +392,7 @@ export class RunnerGateway {
       currentSnapshot: null,
       lastSeenAt: now,
       revokedAt: null,
+      activeSessionId: null,
     };
     node.status = "online";
     node.lastSeenAt = now;
@@ -399,6 +414,7 @@ export class RunnerGateway {
         "RUNNER_NOT_ENROLLED",
         "Runner is not enrolled"
       );
+    this.assertSessionBinding(node, input.auth);
     if (node.revokedAt || node.trustState === "revoked")
       throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
     const snapshot = validateRunnerCapabilitySnapshot(input.snapshot);
@@ -479,6 +495,7 @@ export class RunnerGateway {
         "RUNNER_NOT_ENROLLED",
         "Runner is not enrolled"
       );
+    this.assertSessionBinding(node, auth);
     if (node.revokedAt || node.trustState === "revoked")
       throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
     node.status =
@@ -498,7 +515,42 @@ export class RunnerGateway {
         "RUNNER_NOT_ENROLLED",
         "Runner is not enrolled"
       );
+    this.assertSessionBinding(node, auth);
     return node;
+  }
+
+  async bindSession(input: {
+    runnerId: string;
+    tenantId: string;
+    ownerUserId: number;
+    runnerSessionId: string;
+  }): Promise<RunnerGatewayNode> {
+    const node = await this.repository.getNode(input.runnerId, input.tenantId);
+    if (!node)
+      throw new RunnerGatewayError("RUNNER_NOT_ENROLLED", "Runner is not enrolled");
+    if (node.ownerUserId !== input.ownerUserId)
+      throw new RunnerGatewayError("RUNNER_PERMISSION_DENIED", "Runner is not owned by the authenticated user");
+    if (!input.runnerSessionId.trim())
+      throw new RunnerGatewayError("RUNNER_SESSION_INVALID", "Runner session is required");
+    if (node.revokedAt || node.trustState === "revoked")
+      throw new RunnerGatewayError("RUNNER_REVOKED", "Runner is revoked");
+    node.activeSessionId = input.runnerSessionId;
+    node.status = "online";
+    node.lastSeenAt = new Date().toISOString();
+    await this.repository.saveNode(node);
+    return node;
+  }
+
+  private assertSessionBinding(node: RunnerGatewayNode, auth: RunnerGatewayAuth): void {
+    if (
+      auth.profile === "local_device" &&
+      auth.runnerSessionId !== null &&
+      node.activeSessionId !== auth.runnerSessionId
+    )
+      throw new RunnerGatewayError(
+        "RUNNER_SESSION_STALE",
+        "Runner session is stale or disconnected",
+      );
   }
 
   async revoke(input: {
@@ -519,6 +571,7 @@ export class RunnerGateway {
       );
     const revoked = new Date().toISOString();
     node.revokedAt = revoked;
+    node.activeSessionId = null;
     node.trustState = "revoked";
     node.status = "revoked";
     await this.repository.saveNode(node);

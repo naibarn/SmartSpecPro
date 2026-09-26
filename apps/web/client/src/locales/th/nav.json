@@ -73,5 +73,6 @@
   "sidebar.admin-billing": "ตรวจสอบการชำระเงิน",
   "sidebar.admin-database-backups": "สำรองฐานข้อมูล",
   "sidebar.webhookTriggers": "เว็บฮุก",
+  "sidebar.workflowStudio": "เวิร์กโฟลว์สตูดิโอ",
   "sidebar.workflows": "เวิร์กโฟลว์"
 }

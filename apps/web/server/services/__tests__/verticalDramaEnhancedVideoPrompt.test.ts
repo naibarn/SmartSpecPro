@@ -6,6 +6,7 @@ import {
   buildEnhancedJobKey,
   buildEnhancedInputFingerprint,
   classifyEnhancedBridgeDiagnostic,
+  getEnhancedBridgeDiagnosticMetadata,
   classifyEnhancedJobError,
   EnhancedVideoDirectorBridgeError,
   buildUnavailableEnhancedVideoPromptReadiness,
@@ -190,6 +191,19 @@ const baseInput: EnhancedVideoPromptReadinessInput = {
 };
 
 describe("vertical drama Enhanced prompt boundary", () => {
+  it("extracts safe diagnostic metadata from an unclassified bridge failure", () => {
+    const metadata = getEnhancedBridgeDiagnosticMetadata(
+      "ENHANCED_AGENT_FAILED: hidden details stage=terminal_prompt exception=RuntimeError",
+    );
+
+    expect(metadata).toMatchObject({
+      diagnosticCode: "ENHANCED_AGENT_FAILED",
+      diagnosticStage: "terminal_prompt",
+    });
+    expect(metadata.diagnosticFingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(metadata).not.toHaveProperty("message");
+  });
+
   it("recognizes a safe diagnostic after SDK warnings without exposing stderr", () => {
     const result = classifyEnhancedBridgeDiagnostic(
       "private SDK warning\nENHANCED_PROVIDER_RATE_LIMIT: secret response omitted",
@@ -238,6 +252,29 @@ describe("vertical drama Enhanced prompt boundary", () => {
     expect(classifyEnhancedBridgeDiagnostic(
       "ENHANCED_AGENT_MAX_TURNS: private details",
     ).message).not.toContain("private details");
+  });
+
+  it("treats bridge interruption and timeout as retryable worker failures", () => {
+    const interrupted = new EnhancedVideoDirectorBridgeError(
+      "BRIDGE_INTERRUPTED",
+      "bridge interrupted during worker shutdown",
+      { class: "retryable" },
+    );
+    const timedOut = new EnhancedVideoDirectorBridgeError(
+      "BRIDGE_TIMEOUT",
+      "bridge timed out",
+      { class: "retryable" },
+    );
+
+    expect(classifyEnhancedJobError(interrupted)).toEqual({
+      code: "retryable",
+      message: interrupted.message,
+    });
+    expect(classifyEnhancedJobError(timedOut)).toEqual({
+      code: "retryable",
+      message: timedOut.message,
+    });
+    expect((interrupted as unknown as { class: string }).class).toBe("retryable");
   });
 
   it("preserves provider-qualified authoring routing metadata in the skill input", () => {

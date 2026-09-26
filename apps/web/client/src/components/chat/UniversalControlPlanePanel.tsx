@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ function stateTone(state: string): string {
       "ready",
       "succeeded",
       "completed",
+      "ready_for_live",
     ].includes(normalized)
   ) {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
@@ -99,6 +101,11 @@ function stateTone(state: string): string {
       "reconciling",
       "verification_pending",
       "waiting_for_compatible_runner",
+      "authentication_required",
+      "runner_binding_required",
+      "workspace_approval_required",
+      "approval_required",
+      "budget_required",
     ].includes(normalized)
   ) {
     return "border-amber-200 bg-amber-50 text-amber-800";
@@ -108,6 +115,24 @@ function stateTone(state: string): string {
 
 function stateLabel(state: string): string {
   return state.replaceAll("_", " ");
+}
+
+function developmentStateLabel(state: string): string {
+  return stateLabel(state).toLowerCase();
+}
+
+function nextSafeActionLabel(action: {
+  command: string;
+  phase?: string;
+  reason?: string;
+}): string {
+  if (action.command === "RUN_PHASE" || action.command === "RECOVER_PHASE") {
+    return `${developmentStateLabel(action.command)} · ${developmentStateLabel(action.phase ?? "")}`;
+  }
+  if (action.command === "WAIT_FOR_HUMAN_DECISION") {
+    return `${developmentStateLabel(action.command)} · ${action.reason ?? "decision required"}`;
+  }
+  return `${developmentStateLabel(action.command)}${action.reason ? ` · ${action.reason}` : ""}`;
 }
 
 function QueryState({
@@ -172,6 +197,9 @@ export function UniversalControlPlanePanel({
   const [expandedTaskGroups, setExpandedTaskGroups] = useState<Set<string>>(
     new Set()
   );
+  const [expandedDevelopmentRunId, setExpandedDevelopmentRunId] = useState<
+    string | null
+  >(null);
   const [expandedRunners, setExpandedRunners] = useState<Set<string>>(
     new Set()
   );
@@ -199,6 +227,86 @@ export function UniversalControlPlanePanel({
     }
   );
   const cancelMutation = trpc.workerJobs.cancelQueued.useMutation();
+  const developmentRunsQuery = trpc.spec226DevelopmentControl.list.useQuery(
+    { limit: 25 },
+    { refetchInterval: 10_000, refetchIntervalInBackground: false }
+  );
+  const developmentRunQuery = trpc.spec226DevelopmentControl.get.useQuery(
+    { runId: expandedDevelopmentRunId ?? "" },
+    {
+      enabled: Boolean(expandedDevelopmentRunId),
+      refetchInterval: 10_000,
+      refetchIntervalInBackground: false,
+    }
+  );
+  const developmentEventsQuery = trpc.spec226DevelopmentControl.events.useQuery(
+    {
+      runId: expandedDevelopmentRunId ?? "",
+      afterSequence: 0,
+      limit: 50,
+    },
+    {
+      enabled: Boolean(expandedDevelopmentRunId),
+      refetchInterval: 10_000,
+      refetchIntervalInBackground: false,
+    }
+  );
+  const developmentCommandMutation =
+    trpc.spec226DevelopmentControl.command.useMutation();
+  // Keep the panel compatible with older test doubles/rolling deployments
+  // while the additive Spec 226 D3 procedures roll out.
+  const authorizationProcedures = trpc.spec226DevelopmentControl as typeof trpc.spec226DevelopmentControl & {
+    authorizationStatus?: typeof trpc.spec226DevelopmentControl.authorizationStatus;
+    requestAuthorizationApproval?: typeof trpc.spec226DevelopmentControl.requestAuthorizationApproval;
+    reserveAuthorizationBudget?: typeof trpc.spec226DevelopmentControl.reserveAuthorizationBudget;
+    bindAuthorization?: typeof trpc.spec226DevelopmentControl.bindAuthorization;
+    revokeAuthorization?: typeof trpc.spec226DevelopmentControl.revokeAuthorization;
+  };
+  const authorizationStatusQuery = authorizationProcedures.authorizationStatus
+    ? authorizationProcedures.authorizationStatus.useQuery(
+        {
+          runId: expandedDevelopmentRunId ?? "",
+          runnerId: runnersQuery.data?.runners.find(
+            runner => runner.status === "online" && runner.trustState === "trusted"
+          )?.runnerId,
+          provider: "codex",
+        },
+        {
+          enabled: Boolean(expandedDevelopmentRunId),
+          refetchInterval: 10_000,
+          refetchIntervalInBackground: false,
+        }
+      )
+    : {
+        data: undefined,
+        error: null,
+        isLoading: false,
+        refetch: async () => undefined,
+      };
+  const unavailableAuthorizationMutation = {
+    isPending: false,
+    mutateAsync: async () => {
+      throw new Error("Spec 226 authorization procedures are unavailable");
+    },
+  };
+  const requestAuthorizationApprovalMutation = authorizationProcedures.requestAuthorizationApproval
+    ? authorizationProcedures.requestAuthorizationApproval.useMutation()
+    : unavailableAuthorizationMutation;
+  const reserveAuthorizationBudgetMutation = authorizationProcedures.reserveAuthorizationBudget
+    ? authorizationProcedures.reserveAuthorizationBudget.useMutation()
+    : unavailableAuthorizationMutation;
+  const bindAuthorizationMutation = authorizationProcedures.bindAuthorization
+    ? authorizationProcedures.bindAuthorization.useMutation()
+    : unavailableAuthorizationMutation;
+  const revokeAuthorizationMutation = authorizationProcedures.revokeAuthorization
+    ? authorizationProcedures.revokeAuthorization.useMutation()
+    : unavailableAuthorizationMutation;
+  const [authorizationBudgetIds, setAuthorizationBudgetIds] = useState<
+    Record<string, string>
+  >({});
+  const [authorizationAmounts, setAuthorizationAmounts] = useState<
+    Record<string, string>
+  >({});
 
   const summary = summaryQuery.data;
   const devices = devicesQuery.data?.devices ?? [];
@@ -213,6 +321,7 @@ export function UniversalControlPlanePanel({
   const activeConnections = connections.filter(
     connection => connection.status === "connected"
   );
+  const developmentRuns = developmentRunsQuery.data ?? [];
   useEffect(() => {
     const incoming = (taskGroupsQuery.data?.groups ?? []) as TaskGroupView[];
     setTaskGroups(previous => {
@@ -228,12 +337,24 @@ export function UniversalControlPlanePanel({
     devicesQuery,
     runnersQuery,
     connectionsQuery,
+    developmentRunsQuery,
+      ...(expandedDevelopmentRunId
+        ? [
+            developmentRunQuery,
+            developmentEventsQuery,
+            authorizationStatusQuery,
+          ]
+        : []),
   ].some(query => query.isLoading && !query.data);
   const queryErrors = [
     summaryQuery,
     taskGroupsQuery,
     devicesQuery,
     connectionsQuery,
+    developmentRunsQuery,
+    ...(expandedDevelopmentRunId
+      ? [developmentRunQuery, developmentEventsQuery, authorizationStatusQuery]
+      : []),
   ]
     .map(query => query.error?.message)
     .filter((message): message is string => Boolean(message));
@@ -247,6 +368,14 @@ export function UniversalControlPlanePanel({
       devicesQuery.refetch(),
       runnersQuery.refetch(),
       connectionsQuery.refetch(),
+      developmentRunsQuery.refetch(),
+      ...(expandedDevelopmentRunId
+        ? [
+            developmentRunQuery.refetch(),
+            developmentEventsQuery.refetch(),
+            authorizationStatusQuery.refetch(),
+          ]
+        : []),
     ]);
   }
 
@@ -264,11 +393,131 @@ export function UniversalControlPlanePanel({
     }
   }
 
+  async function controlDevelopmentRun(
+    run: (typeof developmentRuns)[number],
+    action: "pause" | "cancel"
+  ) {
+    try {
+      await developmentCommandMutation.mutateAsync({
+        runId: run.runId,
+        action,
+        expectedRevision: run.revision,
+        expectedFencingVersion: run.fencingVersion,
+        idempotencyKey: `spec226-ui:${run.runId}:${action}:${run.revision}:${run.fencingVersion}`,
+      });
+      toast.success(
+        action === "pause"
+          ? "หยุดงานชั่วคราวแล้ว"
+          : "ยกเลิก DevelopmentRun แล้ว"
+      );
+      await Promise.all([
+        developmentRunsQuery.refetch(),
+        ...(expandedDevelopmentRunId === run.runId
+          ? [developmentRunQuery.refetch(), developmentEventsQuery.refetch()]
+          : []),
+      ]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "ควบคุม DevelopmentRun ไม่สำเร็จ"
+      );
+    }
+  }
+
   function submitPrompt() {
     const value = prompt.trim();
     if (!value) return;
     onOpenPrompt(value);
     setPrompt("");
+  }
+
+  async function requestCodexApproval(runId: string) {
+    const runnerId = runners.find(
+      runner => runner.status === "online" && runner.trustState === "trusted"
+    )?.runnerId;
+    if (!runnerId) {
+      toast.error("ต้องเชื่อมต่อและ trust Runner ก่อน");
+      return;
+    }
+    try {
+      const result = await requestAuthorizationApprovalMutation.mutateAsync({
+        runId,
+        runnerId,
+        provider: "codex",
+        deadline: new Date(Date.now() + 15 * 60_000).toISOString(),
+        spendCeilingMicros: Number(authorizationAmounts[runId] || "500"),
+      });
+      toast.success(`สร้างคำขออนุมัติแล้ว: ${result.approvalRef}`);
+      await authorizationStatusQuery.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "สร้างคำขออนุมัติไม่สำเร็จ");
+    }
+  }
+
+  async function reserveCodexBudget(runId: string) {
+    const status = authorizationStatusQuery.data;
+    const runnerId = status?.references?.runnerId;
+    const approvalRef = status?.references?.approvalRef;
+    const budgetId = authorizationBudgetIds[runId]?.trim();
+    const amountMinorUnits = Number(authorizationAmounts[runId] || "500");
+    if (!runnerId || !approvalRef || !budgetId) {
+      toast.error("ต้องมี Runner, approval และ budget ID ก่อน");
+      return;
+    }
+    try {
+      await reserveAuthorizationBudgetMutation.mutateAsync({
+        runId,
+        runnerId,
+        provider: "codex",
+        approvalRef,
+        budgetId,
+        amountMinorUnits,
+        currency: "USD",
+      });
+      toast.success("กันวงเงินแบบ durable แล้ว");
+      await authorizationStatusQuery.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "กันวงเงินไม่สำเร็จ");
+    }
+  }
+
+  async function bindCodexAuthorization(runId: string) {
+    const status = authorizationStatusQuery.data;
+    const runnerId = status?.references?.runnerId;
+    const approvalRef = status?.references?.approvalRef;
+    const budgetReservationRef = status?.references?.budgetReservationRef;
+    if (!runnerId || !approvalRef || !budgetReservationRef) return;
+    try {
+      const result = await bindAuthorizationMutation.mutateAsync({
+        runId,
+        runnerId,
+        approvalRef,
+        budgetReservationRef,
+      });
+      toast.success(result.status === "READY_FOR_LIVE" ? "พร้อมสำหรับ Owner ตรวจอนุมัติ Live" : result.status);
+      await authorizationStatusQuery.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ผูก authorization ไม่สำเร็จ");
+    }
+  }
+
+  async function revokeCodexAuthorization(runId: string) {
+    const status = authorizationStatusQuery.data;
+    const approvalRef = status?.references?.approvalRef;
+    const budgetReservationRef = status?.references?.budgetReservationRef;
+    if (!approvalRef || !budgetReservationRef) return;
+    try {
+      await revokeAuthorizationMutation.mutateAsync({
+        runId,
+        approvalRef,
+        budgetReservationRef,
+      });
+      toast.success("เพิกถอน authorization และคืนวงเงินแล้ว");
+      await authorizationStatusQuery.refetch();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "เพิกถอนไม่สำเร็จ");
+    }
   }
 
   return (
@@ -451,6 +700,287 @@ export function UniversalControlPlanePanel({
               }
               state={activeConnections.length > 0 ? "connected" : "offline"}
             />
+          </ul>
+        </section>
+
+        <section className="mt-5" aria-labelledby="development-runs-heading">
+          <header className="flex items-center justify-between gap-3">
+            <section>
+              <h3
+                id="development-runs-heading"
+                className="text-sm font-semibold text-slate-900"
+              >
+                Development runs
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                Owner-scoped Spec 224 state through the canonical Spec 226
+                control surface
+              </p>
+            </section>
+            <span className="text-xs text-slate-500">
+              {developmentRuns.length} run
+              {developmentRuns.length === 1 ? "" : "s"}
+            </span>
+          </header>
+          <ul className="mt-2 space-y-2" aria-label="Development runs">
+            {developmentRuns.length === 0 ? (
+              <li>
+                <QueryState
+                  loading={developmentRunsQuery.isLoading}
+                  error={developmentRunsQuery.error?.message}
+                  empty="No DevelopmentRun is available for this account."
+                />
+              </li>
+            ) : (
+              developmentRuns.map(run => {
+                const expanded = expandedDevelopmentRunId === run.runId;
+                const detail = expanded ? developmentRunQuery.data : null;
+                const events = expanded
+                  ? (developmentEventsQuery.data?.events ?? [])
+                  : [];
+                return (
+                  <li
+                    key={run.runId}
+                    data-testid={`development-run-${run.runId}`}
+                    className="rounded-xl border border-slate-200 bg-white p-3"
+                  >
+                    <section className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left"
+                        aria-label={`${expanded ? "Collapse" : "Expand"} development run ${run.runId}`}
+                        aria-expanded={expanded}
+                        aria-controls={`development-run-details-${run.runId}`}
+                        onClick={() =>
+                          setExpandedDevelopmentRunId(current =>
+                            current === run.runId ? null : run.runId
+                          )
+                        }
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          {expanded ? (
+                            <ChevronDown
+                              className="h-4 w-4 shrink-0 text-sky-700"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <ChevronRight
+                              className="h-4 w-4 shrink-0 text-sky-700"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <span className="truncate text-sm font-medium text-slate-900">
+                            {run.runId}
+                          </span>
+                        </span>
+                        <span className="mt-1 block pl-6 text-xs text-slate-500">
+                          Attempt {run.phaseAttempt}/{run.maxPhaseAttempts} ·
+                          Revision {run.revision} · Fence {run.fencingVersion}
+                        </span>
+                      </button>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "shrink-0 capitalize",
+                          stateTone(run.state)
+                        )}
+                      >
+                        {developmentStateLabel(run.state)}
+                      </Badge>
+                    </section>
+                    <p className="mt-2 text-xs text-slate-600">
+                      Next safe action:{" "}
+                      {nextSafeActionLabel(run.nextSafeAction)}
+                    </p>
+                    <section className="mt-2 flex flex-wrap gap-2">
+                      {run.actions.pause ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          aria-label={`Pause run ${run.runId}`}
+                          onClick={() =>
+                            void controlDevelopmentRun(run, "pause")
+                          }
+                          disabled={developmentCommandMutation.isPending}
+                        >
+                          Pause
+                        </Button>
+                      ) : null}
+                      {run.actions.cancel ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-rose-700 hover:text-rose-800"
+                          aria-label={`Cancel run ${run.runId}`}
+                          onClick={() =>
+                            void controlDevelopmentRun(run, "cancel")
+                          }
+                          disabled={developmentCommandMutation.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      ) : null}
+                    </section>
+                    {expanded ? (
+                      <section
+                        id={`development-run-details-${run.runId}`}
+                        className="mt-3 border-t border-slate-100 pt-3"
+                        aria-label={`${run.runId} details`}
+                      >
+                        {developmentRunQuery.isLoading ? (
+                          <QueryState
+                            loading
+                            empty="Loading DevelopmentRun details..."
+                          />
+                        ) : detail ? (
+                          <p className="text-xs text-slate-600">
+                            Canonical event sequence {detail.eventSequence} ·
+                            Worker job {detail.workerJobId ?? "not admitted"}
+                          </p>
+                        ) : null}
+                        {developmentEventsQuery.error ? (
+                          <p className="mt-2 text-xs text-rose-700">
+                            {developmentEventsQuery.error.message}
+                          </p>
+                        ) : events.length > 0 ? (
+                          <ol
+                            className="mt-2 space-y-1 text-xs text-slate-600"
+                            aria-label={`${run.runId} event history`}
+                          >
+                            {events.slice(-5).map(event => (
+                              <li key={event.eventId}>
+                                #{event.sequence} · {stateLabel(event.type)}
+                              </li>
+                            ))}
+                          </ol>
+                        ) : null}
+                        <section
+                          className="mt-4 rounded-xl border border-sky-100 bg-sky-50/60 p-3"
+                          aria-label={`${run.runId} Codex authorization`}
+                          data-testid={`development-authorization-${run.runId}`}
+                        >
+                          <section className="flex flex-wrap items-center justify-between gap-2">
+                            <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-900">
+                              Codex live authorization
+                            </h4>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "uppercase",
+                                stateTone(
+                                  authorizationStatusQuery.data?.status ??
+                                    "not_configured"
+                                )
+                              )}
+                            >
+                              {authorizationStatusQuery.data?.status ??
+                                "NOT_CONFIGURED"}
+                            </Badge>
+                          </section>
+                          <p className="mt-2 text-xs text-slate-600">
+                            สถานะนี้อ่านจาก Runner, approval authority และ economic hold ที่บันทึกจริง
+                            เท่านั้น ไม่มี local readiness flag
+                          </p>
+                          {authorizationStatusQuery.data?.reasons?.length ? (
+                            <p className="mt-1 text-xs text-amber-800">
+                              {authorizationStatusQuery.data.reasons.join(" · ")}
+                            </p>
+                          ) : null}
+                          <section className="mt-3 grid gap-2 sm:grid-cols-[1fr_130px]">
+                            <Input
+                              value={authorizationBudgetIds[run.runId] ?? ""}
+                              onChange={event =>
+                                setAuthorizationBudgetIds(current => ({
+                                  ...current,
+                                  [run.runId]: event.target.value,
+                                }))
+                              }
+                              placeholder="Existing budget ID"
+                              aria-label={`Budget ID for ${run.runId}`}
+                            />
+                            <Input
+                              value={authorizationAmounts[run.runId] ?? "500"}
+                              onChange={event =>
+                                setAuthorizationAmounts(current => ({
+                                  ...current,
+                                  [run.runId]: event.target.value,
+                                }))
+                              }
+                              inputMode="numeric"
+                              aria-label={`Budget ceiling for ${run.runId}`}
+                            />
+                          </section>
+                          <section className="mt-2 flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                requestAuthorizationApprovalMutation.isPending ||
+                                !runners.some(
+                                  runner =>
+                                    runner.status === "online" &&
+                                    runner.trustState === "trusted"
+                                )
+                              }
+                              onClick={() => void requestCodexApproval(run.runId)}
+                            >
+                              Request owner approval
+                            </Button>
+                            {authorizationStatusQuery.data?.references?.approvalRef ? (
+                              <Button asChild type="button" size="sm" variant="ghost">
+                                <Link href="/admin/approvals">Open approval queue</Link>
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                reserveAuthorizationBudgetMutation.isPending ||
+                                authorizationStatusQuery.data?.status !== "BUDGET_REQUIRED"
+                              }
+                              onClick={() => void reserveCodexBudget(run.runId)}
+                            >
+                              Reserve budget
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={
+                                bindAuthorizationMutation.isPending ||
+                                authorizationStatusQuery.data?.status !== "READY_FOR_LIVE"
+                              }
+                              onClick={() => void bindCodexAuthorization(run.runId)}
+                            >
+                              Bind verified policy
+                            </Button>
+                            {authorizationStatusQuery.data?.references
+                              ?.budgetReservationRef ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="text-rose-700 hover:text-rose-800"
+                                disabled={revokeAuthorizationMutation.isPending}
+                                onClick={() => void revokeCodexAuthorization(run.runId)}
+                              >
+                                Revoke
+                              </Button>
+                            ) : null}
+                          </section>
+                          <p className="mt-2 text-[11px] text-slate-500">
+                            การกด Bind ยังไม่เริ่ม provider execution; จะส่งเพียง policy binding เข้า canonical worker job
+                          </p>
+                        </section>
+                      </section>
+                    ) : null}
+                  </li>
+                );
+              })
+            )}
           </ul>
         </section>
 
@@ -731,7 +1261,8 @@ export function UniversalControlPlanePanel({
                   onClick={() =>
                     setExpandedRunners(previous => {
                       const next = new Set(previous);
-                      if (next.has(runner.runnerId)) next.delete(runner.runnerId);
+                      if (next.has(runner.runnerId))
+                        next.delete(runner.runnerId);
                       else next.add(runner.runnerId);
                       return next;
                     })
@@ -760,7 +1291,9 @@ export function UniversalControlPlanePanel({
                       <p className="truncate text-xs text-slate-500">
                         {runner.platform
                           ? `${runner.platform.os} ${runner.platform.architecture}`
-                          : runner.profile.replaceAll("_", " ")} · {runner.toolCount} tools · {runner.capabilityCount} capabilities
+                          : runner.profile.replaceAll("_", " ")}{" "}
+                        · {runner.toolCount} tools · {runner.capabilityCount}{" "}
+                        capabilities
                       </p>
                     </section>
                   </section>
@@ -778,7 +1311,8 @@ export function UniversalControlPlanePanel({
                     aria-label={`${runner.displayName} tool and capability inventory`}
                   >
                     <p className="text-[11px] text-slate-500">
-                      Safe inventory projection; paths and credentials are hidden.
+                      Safe inventory projection; paths and credentials are
+                      hidden.
                     </p>
                     <ul className="mt-2 space-y-1.5 text-xs">
                       {runner.toolInventory.map(tool => (
@@ -791,7 +1325,8 @@ export function UniversalControlPlanePanel({
                             {tool.version ? ` · ${tool.version}` : ""}
                           </span>
                           <span className="shrink-0 capitalize text-slate-500">
-                            {tool.status.replaceAll("_", " ")} · {tool.availability.replaceAll("_", " ")}
+                            {tool.status.replaceAll("_", " ")} ·{" "}
+                            {tool.availability.replaceAll("_", " ")}
                           </span>
                         </li>
                       ))}
@@ -804,13 +1339,16 @@ export function UniversalControlPlanePanel({
                             {capability.id} · {capability.label}
                           </span>
                           <span className="shrink-0 capitalize text-slate-500">
-                            {capability.status.replaceAll("_", " ")} · {capability.availability.replaceAll("_", " ")}
+                            {capability.status.replaceAll("_", " ")} ·{" "}
+                            {capability.availability.replaceAll("_", " ")}
                           </span>
                         </li>
                       ))}
                       {runner.toolInventory.length === 0 &&
                       runner.capabilityInventory.length === 0 ? (
-                        <li className="text-slate-500">No inventory reported.</li>
+                        <li className="text-slate-500">
+                          No inventory reported.
+                        </li>
                       ) : null}
                     </ul>
                   </section>

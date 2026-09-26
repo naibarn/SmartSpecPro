@@ -103,6 +103,11 @@ import {
   type VdTextOverlayAssKind,
 } from "./verticalDramaFinalRenderGraph";
 import { normalizeStorageCapacityError } from "./storageCapacityError";
+import {
+  listVerticalDramaArtifactVersionProjections,
+  upsertVerticalDramaArtifactVersion,
+} from "./verticalDramaArtifactVersionService";
+import type { ContentProtectionIntent } from "../../shared/contentProtectionWorker";
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
@@ -168,7 +173,26 @@ export type CompiledVideoStatus = "pending" | "completed" | "failed";
 
 export interface CompiledVideoState {
   pendingJobId?: string;
+  retryJobId?: string;
   videoUrl?: string;
+  renderJobId?: string;
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   shotCount?: number;
   assembledAt?: string;
@@ -1132,6 +1156,9 @@ export interface RunAssemblyJobArgs {
   /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
    *  watermark: up to 2 entries, one per `VdSeriesWatermarkSlotId`. */
   watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  /** Explicit per-export protection choice; protection is a downstream
+   * sibling job and never gates raw playback. */
+  protectionIntent?: ContentProtectionIntent;
   /** Test injection point for the total-source-duration probe the final-render
    *  path needs up front (banner timing/validation) — mirrors `ffmpegRunner`'s
    *  existing injection convention so tests never need a real `ffprobe`
@@ -1418,9 +1445,58 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
       "video/mp4"
     );
 
+    const protectionRequested = args.protectionIntent?.choice === "on";
+    let artifactVersions: Awaited<
+      ReturnType<typeof listVerticalDramaArtifactVersionProjections>
+    > | undefined;
+    try {
+      await upsertVerticalDramaArtifactVersion({
+        tenantId: owner.tenantId,
+        ownerUserId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        renderJobId: jobId,
+        versionNumber: 1,
+        artifactKind: "raw_render",
+        status: "available",
+        storageRef: storageKey,
+        checksumSha256,
+        durationSeconds,
+        shotCount: clips.length,
+      });
+      if (protectionRequested) {
+        await upsertVerticalDramaArtifactVersion({
+          tenantId: owner.tenantId,
+          ownerUserId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          renderJobId: jobId,
+          versionNumber: 2,
+          artifactKind: "protected_render",
+          status: "processing",
+          storageRef: `protection-pending:${jobId}`,
+        });
+      }
+      artifactVersions = await listVerticalDramaArtifactVersionProjections({
+        tenantId: owner.tenantId,
+        ownerUserId: owner.userId,
+        seriesId: owner.seriesId,
+        episodeId: owner.episodeId,
+        renderJobId: jobId,
+      });
+    } catch (artifactError) {
+      // Version metadata is additive. Never discard a playable raw video when
+      // an older deployment has not applied migration 0342 yet.
+      console.warn("[vertical-drama-artifact] version projection deferred", {
+        jobId,
+        error: artifactError instanceof Error ? artifactError.message : String(artifactError),
+      });
+    }
+
     jobs.set(jobId, { jobId, owner, status: "completed" });
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
+      renderJobId: jobId,
       videoUrl: url,
       storageKey,
       ...(checksumSha256
@@ -1431,6 +1507,10 @@ export async function runAssemblyJob(args: RunAssemblyJobArgs): Promise<void> {
         : {}),
       durationSeconds,
       shotCount: clips.length,
+      protectionStatus: protectionRequested ? "processing" : "not_requested",
+      ...(artifactVersions && artifactVersions.length > 0
+        ? { artifactVersions }
+        : {}),
       assembledAt: new Date().toISOString(),
       status: "completed",
       error: undefined,
@@ -1487,11 +1567,13 @@ export async function submitAssemblyJob(args: {
   /** Task #34 — additive; omitted is BYTE-IDENTICAL to before task #34. Dual
    *  watermark: up to 2 entries. */
   watermarkImages?: RunAssemblyJobWatermarkImageInput[];
+  protectionIntent?: ContentProtectionIntent;
   probeDurationSecondsFn?: (filePath: string) => Promise<number | undefined>;
 }): Promise<{ jobId: string }> {
   const jobId = randomUUID();
   await persistCompiledVideoState(args.owner, {
     pendingJobId: jobId,
+    retryJobId: undefined,
     status: "pending",
     error: undefined,
   });
@@ -1509,6 +1591,7 @@ export async function submitAssemblyJob(args: {
     dialogueAudio: args.dialogueAudio,
     subtitles: args.subtitles,
     watermarkImages: args.watermarkImages,
+    protectionIntent: args.protectionIntent,
     probeDurationSecondsFn: args.probeDurationSecondsFn,
   });
 
@@ -2178,6 +2261,7 @@ export async function submitSequentialAssemblyJobs(
       const jobId = randomUUID();
       await persistCompiledVideoState(spec.owner, {
         pendingJobId: jobId,
+        retryJobId: undefined,
         status: "pending",
         error: undefined,
       });

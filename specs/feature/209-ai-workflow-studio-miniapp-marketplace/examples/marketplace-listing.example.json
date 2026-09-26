@@ -1,0 +1,24 @@
+{
+  "schema_version": "sah.marketplace.workflow.v1",
+  "listing": {
+    "workflow_version_id": "wfv_12",
+    "name": "Professional Video Editor",
+    "access_mode": "PUBLIC_MARKETPLACE",
+    "graph_visibility": "PRIVATE_IMPLEMENTATION",
+    "creator_pricing": {
+      "type": "FIXED_CREDITS_PER_SUCCESS",
+      "credits": 10
+    },
+    "consumer_model_override": "DISABLED",
+    "execution_choice_policy": {
+      "mode": "RECOMMEND_COMPATIBLE_OPTIONS",
+      "preferred_tools_are_advisory": true,
+      "allow_user_compatible_alternative": true,
+      "show_runner_readiness_before_build": true,
+      "show_runner_readiness_before_run": true,
+      "silent_tool_switch": false
+    },
+    "dependency_policy": "PINNED",
+    "published_version": 12
+  }
+}

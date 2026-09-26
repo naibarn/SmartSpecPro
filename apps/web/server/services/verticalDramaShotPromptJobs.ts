@@ -4,17 +4,25 @@
  * Redis stores only bounded job-control state and BullMQ dispatches work.
  */
 import { createHash, randomUUID } from "crypto";
+import { inArray } from "drizzle-orm";
 import type {
   VdImagePromptModeStamp,
   VdImagePromptSourceStamp,
 } from "@shared/verticalDramaSeries/imagePromptModelFamily";
 import { debugError } from "../_core/logger";
+import { getDb } from "../db";
+import { workerJobs } from "../../drizzle/schema";
 import { getRedisClient } from "./redis";
 import {
   createFeature186VerticalDramaJob,
   isFeature186HardCutoverEnabled,
 } from "./feature186VerticalDramaJobAdapter";
 import { publishLegacyBullMqJob } from "./jobLegacyTransportAdapters";
+import {
+  findCanonicalPromptJobByIdempotencyKey,
+  listCanonicalPromptJobs,
+  readCanonicalPromptJob,
+} from "./verticalDramaCanonicalPromptJobs";
 
 export const VERTICAL_DRAMA_SHOT_PROMPT_JOBS_QUEUE =
   "vertical_drama_shot_prompt_jobs";
@@ -84,7 +92,7 @@ export type VerticalDramaShotPromptJobExecutor = (
 ) => Promise<VerticalDramaShotPromptJobResult>;
 
 /** Server-process-only proof that the protected synchronous resolver is being
- * entered by this BullMQ worker, never directly by a browser tRPC call. */
+ * entered by the canonical worker, never directly by a browser tRPC call. */
 const activeWorkerExecutions = new Map<string, string>();
 
 export function isVerticalDramaShotPromptWorkerExecution(
@@ -114,11 +122,133 @@ export interface VerticalDramaShotPromptJobRedisAdapter {
 export interface VerticalDramaShotPromptJobStoreDependencies {
   redis: VerticalDramaShotPromptJobRedisAdapter;
   now: () => number;
+  canonicalStatusReader?: CanonicalPromptJobStatusReader;
 }
+
+export type CanonicalPromptJobStatus = {
+  status: string;
+  reason?: string | null;
+};
+
+export type CanonicalPromptJobStatusReader = (
+  jobIds: readonly string[],
+) => Promise<ReadonlyMap<string, CanonicalPromptJobStatus>>;
 
 export interface VerticalDramaShotPromptJobEnqueueDependencies
   extends Partial<VerticalDramaShotPromptJobStoreDependencies> {
   enqueueBullmqJob?: (jobId: string) => Promise<void>;
+}
+
+function canonicalRecord(
+  snapshot: Awaited<ReturnType<typeof readCanonicalPromptJob>>,
+): VerticalDramaShotPromptJobRecord | null {
+  if (!snapshot) return null;
+  const input = snapshot.input;
+  const tenantId = typeof input.tenantId === "string" ? input.tenantId : null;
+  const userId = Number(input.userId);
+  const seriesId = Number(input.seriesId);
+  const episodeId = Number(input.episodeId);
+  const shotNumber = Number(input.shotNumber);
+  const jobInput = input.input;
+  if (
+    !tenantId ||
+    !Number.isSafeInteger(userId) ||
+    !Number.isSafeInteger(seriesId) ||
+    !Number.isSafeInteger(episodeId) ||
+    !Number.isSafeInteger(shotNumber) ||
+    !jobInput ||
+    typeof jobInput !== "object" ||
+    Array.isArray(jobInput)
+  ) {
+    return null;
+  }
+  return {
+    jobId: snapshot.jobId,
+    tenantId,
+    userId,
+    seriesId,
+    episodeId,
+    shotNumber,
+    frameRole:
+      input.frameRole === "stop" || input.frameRole === "start"
+        ? input.frameRole
+        : undefined,
+    publicUrl: typeof input.publicUrl === "string" ? input.publicUrl : null,
+    input: jobInput as VerticalDramaShotPromptJobInput,
+    status: snapshot.status,
+    result: snapshot.output as VerticalDramaShotPromptJobResult | null,
+    error: snapshot.error,
+    createdAt: snapshot.createdAt,
+    updatedAt: snapshot.updatedAt,
+  };
+}
+
+async function readCanonicalPromptRecord(input: {
+  jobId: string;
+  owner: VerticalDramaShotPromptJobOwner;
+}): Promise<VerticalDramaShotPromptJobRecord | null> {
+  return canonicalRecord(
+    await readCanonicalPromptJob({
+      jobId: input.jobId,
+      tenantId: input.owner.tenantId,
+      userId: input.owner.userId,
+      jobType: "vertical_drama.shot_prompt",
+    }),
+  );
+}
+
+async function enqueueCanonicalPromptJob(
+  payload: VerticalDramaShotPromptJobPayload,
+): Promise<{ jobId: string; status: VerticalDramaShotPromptJobStatus; deduped: boolean }> {
+  const owner = payload;
+  const idempotencyKey = payload.input.idempotencyKey;
+  if (idempotencyKey) {
+    const prior = await findCanonicalPromptJobByIdempotencyKey({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      jobType: "vertical_drama.shot_prompt",
+      idempotencyKey,
+    });
+    const priorRecord = canonicalRecord(prior);
+    if (priorRecord && ownerMatches(priorRecord, owner)) {
+      return { jobId: priorRecord.jobId, status: priorRecord.status, deduped: true };
+    }
+  }
+
+  const activeRows = await listCanonicalPromptJobs({
+    tenantId: owner.tenantId,
+    userId: owner.userId,
+    jobType: "vertical_drama.shot_prompt",
+    activeOnly: true,
+  });
+  const active = activeRows
+    .map(canonicalRecord)
+    .find(record => record && ownerMatches(record, owner));
+  if (active) return { jobId: active.jobId, status: active.status, deduped: true };
+
+  const requestedJobId = randomUUID();
+  const jobId = await createFeature186VerticalDramaJob({
+    jobId: requestedJobId,
+    tenantId: payload.tenantId,
+    userId: payload.userId,
+    jobType: "vertical_drama.shot_prompt",
+    executionClass: "long",
+    idempotencyKey,
+    payload: {
+      ...payload,
+      jobId: requestedJobId,
+      status: "queued",
+    } as unknown as Record<string, unknown>,
+  });
+  const record = await readCanonicalPromptRecord({ jobId, owner });
+  if (!record) {
+    throw new Error(`CANONICAL_SHOT_PROMPT_JOB_NOT_FOUND:${jobId}`);
+  }
+  return {
+    jobId,
+    status: record.status,
+    deduped: jobId !== requestedJobId,
+  };
 }
 
 function defaultRedisAdapter(): VerticalDramaShotPromptJobRedisAdapter {
@@ -148,7 +278,39 @@ function resolveDependencies(
   return {
     redis: dependencies?.redis ?? defaultRedisAdapter(),
     now: dependencies?.now ?? Date.now,
+    canonicalStatusReader:
+      dependencies?.canonicalStatusReader ??
+      (process.env.NODE_ENV !== "test"
+        ? readCanonicalPromptJobStatuses
+        : undefined),
   };
+}
+
+async function readCanonicalPromptJobStatuses(
+  jobIds: readonly string[],
+): Promise<ReadonlyMap<string, CanonicalPromptJobStatus>> {
+  if (jobIds.length === 0) return new Map();
+  const db = await getDb();
+  const rows = await db
+    .select({
+      id: workerJobs.id,
+      status: workerJobs.status,
+      failureReason: workerJobs.failureReason,
+      errorCode: workerJobs.errorCode,
+      errorMessage: workerJobs.errorMessage,
+    })
+    .from(workerJobs)
+    .where(inArray(workerJobs.id, [...jobIds]));
+  return new Map(
+    rows.map(row => [
+      row.id,
+      {
+        status: row.status,
+        reason:
+          row.failureReason ?? row.errorMessage ?? row.errorCode ?? undefined,
+      },
+    ]),
+  );
 }
 
 function recordKey(jobId: string): string {
@@ -211,6 +373,17 @@ function isActive(status: VerticalDramaShotPromptJobStatus): boolean {
   return status === "queued" || status === "running";
 }
 
+function isCanonicalTerminalStatus(status: string): boolean {
+  return [
+    "completed",
+    "succeeded",
+    "failed",
+    "canceled",
+    "cancelled",
+    "expired",
+  ].includes(status);
+}
+
 async function readRecord(
   jobId: string,
   deps: VerticalDramaShotPromptJobStoreDependencies,
@@ -259,19 +432,74 @@ async function clearPointers(
     .catch(() => false);
 }
 
+async function reconcileCanonicalActiveJob(
+  record: VerticalDramaShotPromptJobRecord,
+  deps: VerticalDramaShotPromptJobStoreDependencies,
+): Promise<VerticalDramaShotPromptJobRecord> {
+  if (!deps.canonicalStatusReader || !isActive(record.status)) return record;
+
+  let canonical: CanonicalPromptJobStatus | undefined;
+  try {
+    canonical = (await deps.canonicalStatusReader([record.jobId])).get(
+      record.jobId,
+    );
+  } catch (error) {
+    debugError(
+      "verticalDramaShotPromptJobs",
+      `Unable to reconcile canonical worker status for ${record.jobId}`,
+      error,
+    );
+    return record;
+  }
+  if (!canonical || !isCanonicalTerminalStatus(canonical.status)) return record;
+
+  const succeeded =
+    canonical.status === "completed" || canonical.status === "succeeded";
+  const reconciled: VerticalDramaShotPromptJobRecord = {
+    ...record,
+    status: succeeded ? "succeeded" : "failed",
+    result: succeeded ? record.result : null,
+    error: succeeded
+      ? null
+      : canonical.reason || `Canonical worker job ended with status=${canonical.status}`,
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+  await writeRecord(reconciled, deps).catch(() => {});
+  await clearPointers(reconciled, deps);
+  return reconciled;
+}
+
 export async function getVerticalDramaShotPromptJobStatus(
   jobId: string,
   owner: VerticalDramaShotPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
-  const record = await readRecord(jobId, resolveDependencies(dependencies));
-  return record && ownerMatches(record, owner) ? record : null;
+  if (isFeature186HardCutoverEnabled()) {
+    return readCanonicalPromptRecord({ jobId, owner });
+  }
+  const deps = resolveDependencies(dependencies);
+  const record = await readRecord(jobId, deps);
+  if (!record || !ownerMatches(record, owner)) return null;
+  return reconcileCanonicalActiveJob(record, deps);
 }
 
 export async function getActiveVerticalDramaShotPromptJob(
   owner: VerticalDramaShotPromptJobOwner,
   dependencies?: Partial<VerticalDramaShotPromptJobStoreDependencies>,
 ): Promise<VerticalDramaShotPromptJobRecord | null> {
+  if (isFeature186HardCutoverEnabled()) {
+    const rows = await listCanonicalPromptJobs({
+      tenantId: owner.tenantId,
+      userId: owner.userId,
+      jobType: "vertical_drama.shot_prompt",
+      activeOnly: true,
+    });
+    return (
+      rows
+        .map(canonicalRecord)
+        .find(record => record && ownerMatches(record, owner)) ?? null
+    );
+  }
   const deps = resolveDependencies(dependencies);
   const pointer = activePointerKey(owner, payloadRole(owner));
   const jobId = await deps.redis.get(pointer);
@@ -288,6 +516,9 @@ export async function enqueueVerticalDramaShotPromptJob(
   payload: VerticalDramaShotPromptJobPayload,
   dependencies?: VerticalDramaShotPromptJobEnqueueDependencies,
 ): Promise<{ jobId: string; status: VerticalDramaShotPromptJobStatus; deduped: boolean }> {
+  if (isFeature186HardCutoverEnabled()) {
+    return enqueueCanonicalPromptJob(payload);
+  }
   const deps = resolveDependencies(dependencies);
   const idempotencyPointer = payload.input.idempotencyKey
     ? idempotencyPointerKey(payload, payload.input.idempotencyKey)
@@ -440,6 +671,27 @@ export async function runVerticalDramaShotPromptJob(
   } finally {
     activeWorkerExecutions.delete(jobId);
     await clearPointers(running, deps);
+  }
+}
+
+/**
+ * Canonical worker_jobs execution path. It deliberately does not read or
+ * write the retired Redis projection; worker_jobs owns lifecycle and result.
+ */
+export async function executeVerticalDramaShotPromptJobExecutor(
+  jobId: string,
+  payload: VerticalDramaShotPromptJobPayload,
+  executor: VerticalDramaShotPromptJobExecutor,
+): Promise<VerticalDramaShotPromptJobResult> {
+  const executionToken = randomUUID();
+  activeWorkerExecutions.set(jobId, executionToken);
+  try {
+    return await executor(payload, {
+      jobId,
+      token: executionToken,
+    });
+  } finally {
+    activeWorkerExecutions.delete(jobId);
   }
 }
 

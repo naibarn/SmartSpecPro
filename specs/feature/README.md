@@ -1,53 +1,15 @@
-# Feature Specs Map
+# SmartAIHub Specs 214–230 — RAG / Skill Retrieval Alignment Pack
 
-- **183-public-site-webmcp**: [Public Site WebMCP](183-public-site-webmcp/spec.md) — native-first public page reading, discovery/search, Marketplace browsing and human-submitted Contact preparation; TH/EN, tenant boundaries, five implementation sections, planning only.
-- **184-web-video-editor-headless-worker**: [Web Video Editor + headless Worker](184-web-video-editor-headless-worker/spec.md) — browser-first editing with Bin/Library/Media History parity, operation-level Worker capability gates, Redis readiness, resumable media flow and production-grade rollout plan.
+This pack supersedes the earlier `214–230 canonical Kimi/RAG alignment` pack for retrieval/vector/Skill-discovery semantics.
 
-Last updated: 2026-09-10
+Primary changes:
+- one canonical Spec 229 Retrieval Broker;
+- Skill discovery projection and lifecycle;
+- Spec 222 vector-plane separation;
+- per-WorkPackage/AuditLens skill-first retrieval;
+- deterministic exact-ID protection;
+- ACL + authoritative revalidation;
+- lazy Skill materialization;
+- legacy retrieval migration bridge.
 
-- **001-workflow-scripts**: local workflow engine (`.smartspec/ss_autopilot`) used by Desktop (004) and tests (008)
-- **002-auth-generator**: generator/template (CLI) used optionally by Web server (003) or Python backend (007)
-- **003-smartspec-website**: full-stack web app in `SmartSpecWeb/` (React/Vite + Node/Express + tRPC + Drizzle)
-- **004-desktop-app**: desktop (Tauri+React) runs workflows via python bridge and calls python backend (007)
-- **005-api-generator**: generator CLI used primarily by Web server (003), optionally by 007/001
-- **006-docker**: run/deploy stack for 003 (and optionally 007)
-- **007-python-backend**: tooling/local backend for desktop and optional integration
-- **008-tests-and-validators**: tests for 001 + validators fixtures
-- **059-external-worker-provider-framework**: SmartSpec Desktop worker runtime with ZeroClaw sidecar, OpenClaw/NemoClaw worker pools, and tool-to-worker promotion
-- **060-social-video-platform-expansion**: TikTok / YouTube / YouTube Shorts background publishing and provider expansion
-- **061-upload-post-universal-gateway**: Upload-Post API integration as universal social gateway — user-configurable API key, 10+ platform cross-posting, JWT social account linking, scheduling/queue, alongside native providers
-- **062-i18n-dual-language-system**: Dual-language i18n with i18next — English always loaded as fallback, one user-selected language (th first), namespace-based lazy loading via Vite, replaces existing custom i18n
-- **063-MediaStudioContentComposer**: Media Studio article composer and publish router — topic-to-publish flow with stable library assets, role-based destination gating, and platform-first social routing
-- **066-beam-billing-invoice-phase1**: Beam-first billing, invoice, tax, document, reconciliation, and overdue-downgrade foundation for SmartSpecPro web billing
-- **068-billing-phase2-cards-autorenew**: saved cards, auto-renew subscription charging, retry/dunning policy, and customer/admin payment-method management on top of Feature 066
-- **071-openclaw-external-runtime-integration**: OpenClaw worker registration, worker/job/artifact control plane, team binding, capability routing, and fleet admin visibility as the first canonical external runtime extension after Feature 059
-- **072-claw-worker-platform-access**: delegated worker gateway sessions, runtime-aware Bound Worker expansion, worker-driven platform automation, and credit-correct API/MCP access beyond the control-plane foundation from Feature 071
-- **074-claw-worker-mcp-platform-completion**: canonical `/v1/mcp` completion for delegated workers, truthful MCP tool discovery, high-value tool parity across platform families, and consolidation of legacy MCP implementations into one budgeted and secure execution model
-- **075-unified-web-desktop-agent-platform**: canonical SmartAIHub Desktop Host architecture with one trust, package, device, and runtime-label model across web and desktop surfaces
-- **077-distributed-worker-fabric-completion**: runtime-generalized worker fabric completion across SmartSpec Desktop + ZeroClaw managed workers, local media/file job classes, and truthful NemoClaw/HiClaw runtime semantics on top of the OpenClaw feature chain
-- **078-private-personal-finance-ocr-rag**: owner-isolated personal finance workspace with draft-confirm transaction capture, OCR evidence ingestion, and project-locked finance RAG
-- **079-autonomous-work-transformation-platform**: workpack-centric product layer that converts messy business routines into reusable, evaluable, and promotable automation packs
-- **080-autonomous-team-monitor-and-persistent-role-agents**: persistent role agents, department-grade routines, and an AI operations control room built on top of workpacks
-- **081-hermes-agent-runtime-gateway-and-channel-interop**: Hermes Agent as a bring-your-own external runtime via a SmartSpecPro bridge, staged registration-to-dispatch rollout, delegated HTTP/MCP access, owner-bound bound-worker flows, audited remote-endpoint exceptions, and gated channel-companion interoperability without changing the Desktop Host core runtime model
-- **082-work-os-case-ledger-and-operating-queues**: first-class business work objects, queue ownership, SLA tracking, and case-bound approvals and exceptions as the Work OS layer above runs and chat
-- **083-agent-registry-and-organization-model**: governed registry for planner, reviewer, supervisor, connector, and role-agent identities with versioning, rollout, tool scope, memory scope, and budget policy
-- **084-stateful-handoff-and-durable-run-ledger**: absorbed into Feature 095 and Feature 096 as durable execution and resumable run state
-- **085-autonomy-ladder-and-hitl-control-plane**: absorbed into Feature 096 as autonomy levels, HITL choice windows, and approval gates
-- **086-agent-policy-guardrails-and-action-mesh**: absorbed into Feature 096 as risk classes, policy gates, and executable verification rules
-- **087-enterprise-context-fabric-and-governed-memory**: roadmap item for governed context assembly and explainable retrieval
-- **088-agentops-tracing-evaluation-and-release-gates**: roadmap item for tracing, replay, evaluation, and release gates
-- **089-workforce-exchange-and-installable-operations-packs**: roadmap item for installable workpacks and exchange bundles
-- **090-enterprise-readiness-autonomy-economics-and-agent-dev-platform**: roadmap item for identity, evidence, ROI, and SDK readiness
-- **097-enterprise-platform-continuation-roadmap**: umbrella roadmap for the remaining enterprise platform layers that are not yet core runtime blockers
-- **098-auto-team-real-execution-and-media-completion**: hardens auto-team execution so Work OS requests progress from plan to real work items, media/swarm jobs, reviewer evidence, and final results instead of discussion-only room messages
-- **099-context-engineering-ready-chat-and-team**: shared context-engineering layer for Chat and Team with state tiers, hybrid retrieval, context packs, compaction, tool/MCP flows, and evals
-- **100-team-orchestration-audit-trail-and-completion**: team orchestration audit trail, reviewer loops, revision evidence, and deterministic auto-completion for managed work
-- **101-openai-agents-sdk-chat-team-orchestration**: version-isolated OpenAI Agents SDK adapter for Chat, Team, Responses, shared skills, tracing, and orchestration release safety
-- **102-fal-ai-gemini-3-1-flash-tts**: fal.ai Gemini 3.1 Flash TTS model integration with multi-speaker Media Studio authoring
-- **103-obsidian-inspired-md-knowledge-vault**: Obsidian-inspired Markdown vault foundation with properties, links, backlinks, saved views, context packs, and canvas persistence
-- **104-md-knowledge-vault-production-readiness**: production-ready vault hardening for agent memory, context-pack approvals, citations, observability, rollout controls, snapshots, and end-to-end adoption flows
-- **116-production-director-node-canvas**: Media Studio Production Director as a goal-first, asset-aware, skill-driven React Flow planning workspace with editable nodes/edges before any generation credits are spent
-- **165-worker-comfyui-mcp-control**: Worker App ComfyUI MCP control with multi-connection profiles, capability/workflow registry, image/video/shot jobs, local output handling, optional Library publication, and Series/shot workflow binding
-- **175-vertical-drama-native-cinematic-audio**: Vertical Drama Native Audio & Cinematic Sound Design Pipeline with episode-level `nativeAudioEnabled` toggle control, multi-layer acoustic intent (dialogue, foley, ambience, negative audio), provider prompt compilation, worker QC, surgical Demucs vocal stem repair, and broadcast loudness mastering
-- **176-drama-series-emotion-timeline-web**: Grounded, reviewable emotion/music plans from active Drama Series drafts and actual transcript/edit-map evidence, with versioned timing, rights review and explicit generation authorization
-- **177-worker-minimax-music3-scoring**: Genuine MiniMax Music 3 runtime only, actual audio alignment, non-destructive score placement, measured mixing/export QC and traceable model/rights provenance; no substitute music generation
+See `CROSS-SPEC-RAG-SKILL-ALIGNMENT.md` for ownership and flow.

@@ -66,7 +66,7 @@ describe("systemAutoReportService credit routing", () => {
       .mockResolvedValueOnce([{ tenantId: "tenant-1", email: "user@example.com" }])
       .mockResolvedValueOnce([]);
 
-    await reportSystemFailure({
+    const ticketId = await reportSystemFailure({
       source: "trpc",
       userId: 7,
       tenantId: "tenant-1",
@@ -75,6 +75,7 @@ describe("systemAutoReportService credit routing", () => {
       path: "chat.complete",
     });
 
+    expect(ticketId).toBe(99);
     expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({
       userId: 7,
       priority: "high",

@@ -19,6 +19,7 @@ import { getResolvedMenuItems } from "@/hooks/useMenuItems";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { useDesktopHostStatus } from "@/features/desktop-host/useDesktopHostStatus";
 import { trpc } from "@/lib/trpc";
+import { getSmartSpecWebEndpoint } from "@/lib/webRuntime";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -321,7 +322,9 @@ export default function Dashboard() {
   } = useQuery({
     queryKey: ["content-protection-overview", tenant?.id ?? "none"],
     queryFn: async () => {
-      const response = await fetch("/api/trpc/contentProtection.overview");
+      const response = await fetch(getSmartSpecWebEndpoint("/trpc/contentProtection.overview"), {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("content_protection_overview_unavailable");
       const body = await response.json() as { result?: { data?: unknown } };
       return body.result?.data as {
@@ -1160,6 +1163,7 @@ export default function Dashboard() {
     "finance",
     "finance-reports",
     "media-studio",
+    "workflow-studio",
     "content-protection",
     "content-protection-assets",
     "content-protection-verify",
@@ -1183,6 +1187,7 @@ export default function Dashboard() {
     finance: "from-slate-700 to-emerald-700",
     "finance-reports": "from-slate-700 to-teal-700",
     "media-studio": "from-slate-700 to-slate-900",
+    "workflow-studio": "from-indigo-700 to-violet-700",
     "content-protection": "from-slate-700 to-emerald-700",
     "content-protection-assets": "from-emerald-700 to-teal-700",
     "content-protection-verify": "from-emerald-700 to-cyan-700",
@@ -1216,6 +1221,11 @@ export default function Dashboard() {
       label: t("dashboard:quickActions.mediaStudio"),
       icon: Sparkles,
       href: "/media-studio",
+    },
+    "workflow-studio": {
+      label: t("dashboard:quickActions.workflowStudio"),
+      icon: Workflow,
+      href: "/studio/workflow",
     },
     "content-protection": {
       label: t("dashboard:contentProtection.title"),

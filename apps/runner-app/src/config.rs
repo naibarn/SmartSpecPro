@@ -85,8 +85,9 @@ impl RunnerConfig {
             RunnerProfile::LocalDevice => Self::local(
                 &std::env::var("SAH_RUNNER_ID").unwrap_or_else(|_| "local-runner".into()),
                 &std::env::var("SAH_RUNNER_DEVICE_ID").unwrap_or_else(|_| "local-device".into()),
-                &std::env::var("SAH_RUNNER_CONTROL_URL")
-                    .unwrap_or_else(|_| "https://invalid.local/api/runners".into()),
+                &std::env::var("SAH_RUNNER_CONTROL_URL").unwrap_or_else(|_| {
+                    "https://smartaihub.app/api/runners/local-runner/control".into()
+                }),
             ),
             RunnerProfile::SharedContainer => Self::shared(
                 &std::env::var("SAH_RUNNER_ID").unwrap_or_else(|_| "managed-container".into()),
@@ -113,5 +114,15 @@ mod tests {
         config.job_id = Some("job".into());
         assert!(config.validate().is_err());
         assert!(RunnerConfig::shared("r", "j", "a", "l").validate().is_ok());
+    }
+
+    #[test]
+    fn local_defaults_to_smartaihub_for_browser_connect() {
+        let config = RunnerConfig::from_env().unwrap();
+        assert!(config
+            .control_url
+            .as_deref()
+            .unwrap_or_default()
+            .starts_with("https://smartaihub.app"));
     }
 }

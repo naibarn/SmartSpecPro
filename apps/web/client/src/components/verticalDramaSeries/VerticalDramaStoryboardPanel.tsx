@@ -2171,6 +2171,10 @@ interface VerticalDramaStoryboardPanelProps {
   /** True while the submit mutation itself is in flight (distinct from the
    *  server-side job, which is reflected by `compiledVideo.status`). */
   assemblingCompiledVideo?: boolean;
+  /** Server-approved retry of the existing canonical worker job. */
+  compiledVideoRetryAvailable?: boolean;
+  onRetryCompiledVideoJob?: () => void;
+  retryingCompiledVideo?: boolean;
 
   /* ---- Production Wizard meta/shot-grid disclosure split (2026-07-08 fix)
      — `VerticalDramaEpisodeWorkspace`'s "ขั้นสูง" (`vd-advanced-stages-toggle`)
@@ -2302,7 +2306,26 @@ function SpokenCallerVirtualScreen({
  *  matching every other `*View` type in this file. Field-for-field identical. */
 export interface VerticalDramaCompiledVideoView {
   pendingJobId?: string;
+  retryJobId?: string;
   videoUrl?: string;
+  renderJobId?: string;
+  protectionJobId?: string;
+  protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+  protectionError?: string;
+  artifactVersions?: Array<{
+    id: string;
+    versionNumber: number;
+    artifactKind: "raw_render" | "protected_render";
+    status: "processing" | "available" | "failed";
+    videoUrl?: string;
+    protectionJobId?: string;
+    protectionAssetId?: string;
+    durationSeconds?: number;
+    shotCount?: number;
+    errorCode?: string;
+    errorMessage?: string;
+    createdAt: string;
+  }>;
   durationSeconds?: number;
   shotCount?: number;
   assembledAt?: string;
@@ -2547,6 +2570,9 @@ export function VerticalDramaStoryboardPanel({
   assemblyTimelineSlot,
   episodePreviewSlot,
   assemblingCompiledVideo = false,
+  compiledVideoRetryAvailable = false,
+  onRetryCompiledVideoJob,
+  retryingCompiledVideo = false,
   productionWizardEnabled = false,
   advancedMetaOpen = false,
   className,
@@ -2554,6 +2580,35 @@ export function VerticalDramaStoryboardPanel({
   const t2 = vdCopy(locale as VdLocale);
   const [selectedObjectReferenceByShot, setSelectedObjectReferenceByShot] =
     useState<Record<number, string>>({});
+  const [selectedCompiledArtifactKind, setSelectedCompiledArtifactKind] =
+    useState<"raw_render" | "protected_render">("raw_render");
+  const availableCompiledArtifacts = (compiledVideo?.artifactVersions ?? []).filter(
+    artifact => artifact.status === "available" && Boolean(artifact.videoUrl),
+  );
+  const selectedCompiledArtifact =
+    availableCompiledArtifacts.find(
+      artifact => artifact.artifactKind === selectedCompiledArtifactKind,
+    ) ??
+    availableCompiledArtifacts.find(artifact => artifact.artifactKind === "raw_render") ??
+    availableCompiledArtifacts[0];
+  const selectedCompiledVideoUrl =
+    selectedCompiledArtifact?.videoUrl ?? compiledVideo?.videoUrl;
+  const contentProtectionRuntimeUnavailable =
+    compiledVideo?.protectionStatus === "failed" &&
+    /PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE|JOB_DEADLINE_EXPIRED|JOB_TIMEOUT|Job deadline has elapsed|Job hard deadline has elapsed/i.test(
+      compiledVideo.protectionError ?? "",
+    );
+
+  useEffect(() => {
+    setSelectedCompiledArtifactKind(current =>
+      availableCompiledArtifacts.some(
+        artifact => artifact.artifactKind === current,
+      )
+        ? current
+        : "raw_render",
+    );
+  }, [compiledVideo?.artifactVersions]);
+
   const sceneVisualStates = startFramePlan?.sceneVisualStates;
   const canonicalAssemblyReadiness = resolveCanonicalShotAssembly({
     clips: motionPromptPack?.clips ?? [],
@@ -4367,6 +4422,9 @@ export function VerticalDramaStoryboardPanel({
           const imagePolicyFailure =
             imageDisplayState.kind === "failed" &&
             isCharacterLockPolicyFailureMessage(imageDisplayState.error);
+          const imagePromptAdmissionFailure =
+            imageDisplayState.kind === "failed" &&
+            imageDisplayState.failureStage === "admission";
           const barrierMultiView = frame?.barrierMultiView;
           const barrierReferenceAssetId =
             barrierMultiView?.referenceView.referenceFrameAssetId;
@@ -4833,24 +4891,39 @@ export function VerticalDramaStoryboardPanel({
                           <>
                             <ImageOff aria-hidden="true" className="h-5 w-5" />
                             <span className="text-[11px] font-medium">
-                              {imagePolicyFailure
+                              {imagePromptAdmissionFailure
                                 ? t(
                                     locale,
-                                    "หยุดการส่งซ้ำเนื่องจากไม่ผ่านนโยบายความปลอดภัย กรุณาแก้ prompt หรือภาพอ้างอิงก่อนสร้างใหม่",
-                                    "Submission stopped after a safety-policy rejection. Revise the prompt or reference image before retrying"
+                                    "หยุดก่อนสร้าง prompt — ยังไม่ได้ส่งไป provider",
+                                    "Blocked before prompt creation — not sent to provider"
                                   )
-                                : imageDisplayState.failureStage === "sync"
+                                : imagePolicyFailure
                                   ? t(
                                       locale,
-                                      "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
-                                      "Image finished, but could not be linked to this shot"
+                                      "หยุดการส่งซ้ำเนื่องจากไม่ผ่านนโยบายความปลอดภัย กรุณาแก้ prompt หรือภาพอ้างอิงก่อนสร้างใหม่",
+                                      "Submission stopped after a safety-policy rejection. Revise the prompt or reference image before retrying"
                                     )
-                                  : t(
-                                      locale,
-                                      "สร้างพรอมต์แล้ว แต่สร้างภาพไม่สำเร็จ",
-                                      "Prompt ready, but image generation failed"
-                                    )}
+                                  : imageDisplayState.failureStage === "sync"
+                                    ? t(
+                                        locale,
+                                        "สร้างภาพแล้ว แต่เชื่อมเข้าช็อตไม่สำเร็จ",
+                                        "Image finished, but could not be linked to this shot"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างพรอมต์แล้ว แต่สร้างภาพไม่สำเร็จ",
+                                        "Prompt ready, but image generation failed"
+                                      )}
                             </span>
+                            {imagePromptAdmissionFailure ? (
+                              <span className="max-w-full text-[10px] text-white/80">
+                                {t(
+                                  locale,
+                                  "ยังไม่มีรายการใน Media History เพราะยังไม่มี provider task — ดูรายละเอียดด้านล่างและลองสร้างใหม่ได้",
+                                  "There is no Media History item because no provider task exists yet — review the detail below and retry"
+                                )}
+                              </span>
+                            ) : null}
                             {imageDisplayState.error ? (
                               <span className="max-w-full break-words text-[10px] text-white/80">
                                 {imageDisplayState.error}
@@ -4888,11 +4961,17 @@ export function VerticalDramaStoryboardPanel({
                                     )
                                   }
                                 >
-                                  {t(
-                                    locale,
-                                    "สร้างภาพใหม่",
-                                    "Generate image again"
-                                  )}
+                                  {imagePromptAdmissionFailure
+                                    ? t(
+                                        locale,
+                                        "สร้าง prompt + ภาพใหม่",
+                                        "Create prompt + image again"
+                                      )
+                                    : t(
+                                        locale,
+                                        "สร้างภาพใหม่",
+                                        "Generate image again"
+                                      )}
                                 </Button>
                               ) : null}
                               {onChangeStartFrame ? (
@@ -10660,7 +10739,7 @@ export function VerticalDramaStoryboardPanel({
                 {locale === "th" ? "ประกอบวิดีโอ" : "Assembly"}
               </Badge>
             </div>
-            {compiledVideo?.status === "completed" && compiledVideo.videoUrl ? (
+            {compiledVideo?.status === "completed" && selectedCompiledVideoUrl ? (
               <div className="flex flex-col gap-2">
                 {compiledVideo.stale ? (
                   <p className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
@@ -10669,9 +10748,92 @@ export function VerticalDramaStoryboardPanel({
                       : "The footage timeline changed after this video was rendered. Reassemble to apply the latest order."}
                   </p>
                 ) : null}
+                {availableCompiledArtifacts.length > 0 ? (
+                  <div
+                    className="flex flex-wrap items-center gap-1.5"
+                    aria-label={
+                      locale === "th"
+                        ? "เลือกเวอร์ชันวิดีโอ"
+                        : "Choose video artifact version"
+                    }
+                    data-testid="vd-compiled-video-artifact-choices"
+                  >
+                    {availableCompiledArtifacts.map(artifact => {
+                      const isRaw = artifact.artifactKind === "raw_render";
+                      const isSelected =
+                        artifact.artifactKind === selectedCompiledArtifactKind;
+                      return (
+                        <Button
+                          key={artifact.id}
+                          type="button"
+                          size="sm"
+                          variant={isSelected ? "default" : "outline"}
+                          className="h-7 gap-1 px-2 text-[10px]"
+                          aria-pressed={isSelected}
+                          data-testid={`vd-compiled-video-artifact-${isRaw ? "raw" : "protected"}`}
+                          onClick={() =>
+                            setSelectedCompiledArtifactKind(artifact.artifactKind)
+                          }
+                        >
+                          {isRaw
+                            ? locale === "th"
+                              ? "ไม่ Protect"
+                              : "Unprotected"
+                            : locale === "th"
+                              ? "ผ่าน Protection"
+                              : "Protected"}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {compiledVideo.protectionStatus === "processing" ||
+                compiledVideo.protectionStatus === "failed" ? (
+                  <div
+                    className="rounded-md border border-amber-400/50 bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300"
+                    data-testid="vd-compiled-video-protection-warning"
+                  >
+                    <p>
+                      {compiledVideo.protectionStatus === "processing"
+                        ? locale === "th"
+                          ? "วิดีโอแบบไม่ Protect พร้อมใช้งานแล้ว ระบบกำลังทำ Content Protection ต่อ"
+                          : "The unprotected video is ready while Content Protection continues."
+                        : contentProtectionRuntimeUnavailable
+                          ? locale === "th"
+                            ? "Worker ยังไม่พร้อมทำ Content Protection: ติดตั้งหรือซ่อมแซม Content Protection native runtime ใน Worker App แล้วกดลองใหม่"
+                            : "The Worker was not ready for Content Protection. Install or repair the native Content Protection runtime in Worker App, then retry."
+                        : locale === "th"
+                          ? `Content Protection ไม่สำเร็จ แต่ยังใช้วิดีโอแบบไม่ Protect ได้${compiledVideo.protectionError ? `: ${compiledVideo.protectionError}` : ""}`
+                          : `Content Protection failed, but the unprotected video is still available${compiledVideo.protectionError ? `: ${compiledVideo.protectionError}` : ""}`}
+                    </p>
+                    {compiledVideo.protectionStatus === "failed" &&
+                    compiledVideoRetryAvailable &&
+                    onRetryCompiledVideoJob ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 h-7 gap-1.5 px-2 text-[10px]"
+                        onClick={() => onRetryCompiledVideoJob()}
+                        disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                        data-testid="vd-compiled-video-protection-retry"
+                      >
+                        {retryingCompiledVideo ? (
+                          <Loader2
+                            aria-hidden="true"
+                            className="h-3 w-3 animate-spin"
+                          />
+                        ) : null}
+                        {locale === "th"
+                          ? "ลองทำ Protection อีกครั้ง"
+                          : "Retry protection"}
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
                 <div className="w-56 max-w-full overflow-hidden rounded-md border border-border bg-black">
                   <video
-                    src={compiledVideo.videoUrl}
+                    src={selectedCompiledVideoUrl}
                     controls
                     playsInline
                     preload="metadata"
@@ -10746,7 +10908,7 @@ export function VerticalDramaStoryboardPanel({
                           ? `series-${seriesId}-ep-${episodeNumber ?? 0}-full.mp4`
                           : "compiled-episode.mp4";
                       void downloadStoryboardMediaUrl(
-                        compiledVideo.videoUrl!,
+                        selectedCompiledVideoUrl,
                         filename
                       );
                     }}
@@ -10826,9 +10988,27 @@ export function VerticalDramaStoryboardPanel({
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {locale === "th"
-                    ? "กดปุ่มด้านล่างเพื่อสั่งประกอบใหม่ — ระบบจะใช้ Remotion ผ่านคิว Worker Jobs หากยังล้มเหลวซ้ำ ให้ตรวจว่าเครื่อง Worker ออนไลน์และติดตั้ง Remotion runtime แล้วที่หน้าคิวงาน Worker"
-                    : "Press the button below to run the assembly again — it uses Remotion through the Worker Jobs queue. If it keeps failing, check on the Worker Jobs page that a worker is online with the Remotion runtime installed."}
+                    ? "ถ้างานเดิมยัง retry ได้ ให้กดปุ่ม ‘ลอง retry งานเดิม’ เพื่อใช้ job เดิมโดยไม่เริ่ม workflow ใหม่; ปุ่ม ‘ลองใหม่’ ด้านล่างเป็นทางเลือกสำหรับส่งงานประกอบใหม่"
+                    : "If the existing job is eligible, use ‘Retry existing worker job’ to reuse it without starting a new workflow. The ‘Retry’ button below submits a new assembly as a fallback."}
                 </p>
+                {compiledVideoRetryAvailable && onRetryCompiledVideoJob ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="w-fit gap-1.5"
+                    onClick={() => onRetryCompiledVideoJob()}
+                    disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                    data-testid="vd-compiled-video-retry-existing"
+                  >
+                    {retryingCompiledVideo ? (
+                      <Loader2
+                        aria-hidden="true"
+                        className="h-3.5 w-3.5 animate-spin"
+                      />
+                    ) : null}
+                    {locale === "th" ? "ลอง retry งานเดิม" : "Retry existing worker job"}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -10867,6 +11047,31 @@ export function VerticalDramaStoryboardPanel({
                     {t2.compiledVideoOpenRenderJobs}
                   </Link>
                 </div>
+                {compiledVideoRetryAvailable && onRetryCompiledVideoJob ? (
+                  <>
+                    <p className="pl-6 text-xs text-amber-700 dark:text-amber-300">
+                      {locale === "th"
+                        ? "งานเดิมจบแล้วแต่ยังไม่มี artifact ที่ผ่าน QC — กด retry งานเดิมได้โดยไม่ต้องเริ่มขั้นตอนทั้งหมดใหม่"
+                        : "The existing job finished without a verified artifact. Retry it without restarting the whole workflow."}
+                    </p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="ml-6 w-fit gap-1.5"
+                      onClick={() => onRetryCompiledVideoJob()}
+                      disabled={retryingCompiledVideo || assemblingCompiledVideo}
+                      data-testid="vd-compiled-video-retry-existing-pending"
+                    >
+                      {retryingCompiledVideo ? (
+                        <Loader2
+                          aria-hidden="true"
+                          className="h-3.5 w-3.5 animate-spin"
+                        />
+                      ) : null}
+                      {locale === "th" ? "ลอง retry งานเดิม" : "Retry existing worker job"}
+                    </Button>
+                  </>
+                ) : null}
                 {/* Escape hatch: never leave the user with a spinner and no
                   action. If a job dies in a way the reconciler cannot see,
                   starting a fresh one must still be possible. */}

@@ -1098,11 +1098,6 @@ function EpisodeWorkspaceShell({
   const contentProtectionEnabled = useTenantFeatureFlag(
     "contentProtectionEnabled"
   );
-  const contentProtectionSettings = trpc.contentProtection.getSettings.useQuery(undefined, {
-    enabled: contentProtectionEnabled,
-    retry: false,
-  });
-
   const seriesQuery = trpc.verticalDramaSeries.get.useQuery(
     { seriesId },
     { enabled: Boolean(seriesId), staleTime: 30_000 }
@@ -6489,7 +6484,18 @@ function EpisodeWorkspaceShell({
             while (queue.length > 0) {
               const shotNumber = queue.shift();
               if (shotNumber == null) return;
-              await handleGeneratePromptAndImage(shotNumber, "single");
+              // A single shot is an independent paid operation. Do not let a
+              // prompt/admission failure abort the worker loop and suppress
+              // every later shot in the same bulk request.
+              try {
+                await handleGeneratePromptAndImage(shotNumber, "single");
+              } catch (error) {
+                toast.error(
+                  lang === "th"
+                    ? `ช็อต ${shotNumber} ส่งงานไม่สำเร็จ: ${error instanceof Error ? error.message : String(error)}`
+                    : `Shot ${shotNumber} could not be submitted: ${error instanceof Error ? error.message : String(error)}`
+                );
+              }
             }
           })
         );
@@ -6515,12 +6521,23 @@ function EpisodeWorkspaceShell({
         await Promise.all(
           lanes.map(async lane => {
             for (const shotNumber of lane) {
-              await handleGeneratePromptAndImage(
-                shotNumber,
-                "single",
-                true,
-                true
-              );
+              // Preserve scene ordering within a lane, while isolating a
+              // failed shot so one bad prompt cannot prevent the remaining
+              // shots from being submitted.
+              try {
+                await handleGeneratePromptAndImage(
+                  shotNumber,
+                  "single",
+                  true,
+                  true
+                );
+              } catch (error) {
+                toast.error(
+                  lang === "th"
+                    ? `ช็อต ${shotNumber} ส่งงานไม่สำเร็จ: ${error instanceof Error ? error.message : String(error)}`
+                    : `Shot ${shotNumber} could not be submitted: ${error instanceof Error ? error.message : String(error)}`
+                );
+              }
             }
           })
         );
@@ -6676,13 +6693,22 @@ function EpisodeWorkspaceShell({
           // image request can reach the provider.
           preparedImagePrompt = promptResult.prompt?.trim() ?? "";
         } catch (err) {
-          toast.error(
+          const promptAdmissionError =
             err instanceof Error
               ? err.message
               : lang === "th"
-                ? "ซิงก์ shot ล่าสุดเพื่อสร้างพรอมต์ไม่สำเร็จ"
-                : "Failed to sync the latest shot source into the image prompt"
-          );
+                ? "ระบบสร้าง prompt ไม่สำเร็จและยังไม่ได้ส่งงานไป provider"
+                : "Prompt creation failed before the request was sent to the provider.";
+          // Prompt authoring can fail before a provider task exists. Persist
+          // that admission failure on the shot frame so it survives a reload
+          // without pretending that a Media History/provider task was created.
+          setImageGenerationError(shotNumber, promptAdmissionError);
+          await persistTerminalImageFailure({
+            shotNumber,
+            failureStage: "admission",
+            error: promptAdmissionError,
+          });
+          toast.error(promptAdmissionError);
           return;
         }
       }
@@ -8001,25 +8027,67 @@ function EpisodeWorkspaceShell({
       | { assemblyManifest?: { compiledVideo?: Record<string, unknown> } }
       | undefined
   )?.assemblyManifest?.compiledVideo as
-    | {
-        pendingJobId?: string;
-        videoUrl?: string;
-        durationSeconds?: number;
-        shotCount?: number;
-        assembledAt?: string;
-        status?: "pending" | "completed" | "failed";
-        error?: string;
-        stale?: boolean;
-        footageApplied?: boolean;
-        timelineRevision?: number;
-        /** `planning/vd-remotion-render-option/plan.md` wave 2 — mirrors
-         *  `assemblyManifest.compiledVideo.renderEngine` (server-side,
-         *  `verticalDramaEpisodeVideoAssembly.ts`/`verticalDramaRemotionRender.ts`)
-         *  verbatim. Absent for compiled videos rendered before this option
-         *  existed (treated as `"ffmpeg"` by the panel's badge check). */
-        renderEngine?: "ffmpeg" | "remotion_queue";
-      }
+      | {
+          pendingJobId?: string;
+          retryJobId?: string;
+          videoUrl?: string;
+          renderJobId?: string;
+          protectionJobId?: string;
+          protectionStatus?: "not_requested" | "processing" | "available" | "failed";
+          protectionError?: string;
+          artifactVersions?: Array<{
+            id: string;
+            versionNumber: number;
+            artifactKind: "raw_render" | "protected_render";
+            status: "processing" | "available" | "failed";
+            videoUrl?: string;
+            protectionJobId?: string;
+            protectionAssetId?: string;
+            durationSeconds?: number;
+            shotCount?: number;
+            errorCode?: string;
+            errorMessage?: string;
+            createdAt: string;
+          }>;
+          durationSeconds?: number;
+          shotCount?: number;
+          assembledAt?: string;
+          status?: "pending" | "completed" | "failed";
+          error?: string;
+          stale?: boolean;
+          footageApplied?: boolean;
+          timelineRevision?: number;
+          /** `planning/vd-remotion-render-option/plan.md` wave 2 — mirrors
+           *  `assemblyManifest.compiledVideo.renderEngine` (server-side,
+           *  `verticalDramaEpisodeVideoAssembly.ts`/`verticalDramaRemotionRender.ts`)
+           *  verbatim. Absent for compiled videos rendered before this option
+           *  existed (treated as `"ffmpeg"` by the panel's badge check). */
+          renderEngine?: "ffmpeg" | "remotion_queue";
+        }
     | undefined;
+
+  // The source page and Worker Jobs page share the same user-scoped retry
+  // policy. Fail closed when the persisted job is gone or belongs to another
+  // scope; the existing "ประกอบใหม่" action remains available as the
+  // explicit new-submission fallback below.
+  const compiledVideoWorkerJobQuery = trpc.workerJobs.detail.useQuery(
+    {
+      jobId:
+        compiledVideo?.protectionJobId ??
+        compiledVideo?.retryJobId ??
+        compiledVideo?.pendingJobId ??
+        "",
+    },
+    {
+        enabled:
+          enabled &&
+        Boolean(
+            compiledVideo?.protectionJobId ??
+            compiledVideo?.retryJobId ??
+            compiledVideo?.pendingJobId,
+        ),
+    },
+  );
 
   const previewShotOptions = useMemo(() => {
     const clips = episodeDetailQuery.data?.motionPromptPack?.clips ?? [];
@@ -8109,10 +8177,12 @@ function EpisodeWorkspaceShell({
       compiledVideo?.status === "completed" ||
       compiledVideo?.status === "failed"
     ) {
-      stopCompiledVideoPoll();
+      if (compiledVideo?.protectionStatus !== "processing") {
+        stopCompiledVideoPoll();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compiledVideo?.status]);
+  }, [compiledVideo?.status, compiledVideo?.protectionStatus]);
 
   // Cleanup on unmount.
   useEffect(() => {
@@ -8126,16 +8196,22 @@ function EpisodeWorkspaceShell({
   const resumedCompiledVideoPollRef = useRef(false);
   useEffect(() => {
     if (resumedCompiledVideoPollRef.current) return;
-    if (!compiledVideo?.pendingJobId) return;
+    if (
+      !compiledVideo?.pendingJobId &&
+      compiledVideo?.protectionStatus !== "processing"
+    ) {
+      return;
+    }
     if (
       compiledVideo.status === "completed" ||
       compiledVideo.status === "failed"
-    )
-      return;
+    ) {
+      if (compiledVideo.protectionStatus !== "processing") return;
+    }
     resumedCompiledVideoPollRef.current = true;
     startCompiledVideoPoll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compiledVideo?.pendingJobId, compiledVideo?.status]);
+  }, [compiledVideo?.pendingJobId, compiledVideo?.status, compiledVideo?.protectionStatus]);
 
   /* ---- Task #21 / W12.5 "Final Render Suite" phase B (2026-07-09) —
    *  dialogue-audio + subtitle option VALUES for `assembleEpisodeVideo`,
@@ -8177,22 +8253,6 @@ function EpisodeWorkspaceShell({
         return defaults;
       }
     });
-  useEffect(() => {
-    const defaultChoice = contentProtectionSettings.data?.defaultChoice;
-    if (!contentProtectionEnabled || (defaultChoice !== "on" && defaultChoice !== "off")) {
-      return;
-    }
-    setFinalRenderOptions(current => current.protectionIntent
-      ? current
-      : {
-          ...current,
-          protectionIntent: {
-            choice: defaultChoice,
-            choiceSource: "per_export",
-            requireBeforePublish: true,
-          },
-        });
-  }, [contentProtectionEnabled, contentProtectionSettings.data?.defaultChoice]);
   useEffect(() => {
     safeStorageSet(
       finalRenderOptionsStorageKey,
@@ -8289,6 +8349,24 @@ function EpisodeWorkspaceShell({
       },
     });
 
+  const retryCompiledVideoJobMutation = trpc.workerJobs.retry.useMutation({
+    onSuccess: async (_data, variables) => {
+      toast.success(
+        lang === "th"
+          ? "สั่ง retry งานเดิมแล้ว"
+          : "Retried the existing worker job"
+      );
+      startCompiledVideoPoll();
+      await Promise.all([
+        episodeDetailQuery.refetch(),
+        utils.workerJobs.detail.invalidate({
+          jobId: variables.jobId,
+        }),
+      ]);
+    },
+    onError: error => toast.error(error.message),
+  });
+
   function handleAssembleCompiledVideo(opts?: { allowPartial?: boolean }) {
     assembleEpisodeVideoMutation.mutate({
       seriesId,
@@ -8320,6 +8398,27 @@ function EpisodeWorkspaceShell({
         ? { renderEngine: "remotion_queue" as const }
         : {}),
       idempotencyKey: crypto.randomUUID(),
+    });
+  }
+
+  function handleRetryCompiledVideoJob() {
+    const jobId =
+      compiledVideo?.protectionJobId ??
+      compiledVideo?.retryJobId ??
+      compiledVideo?.pendingJobId;
+    if (!jobId || compiledVideoWorkerJobQuery.data?.canRetry !== true) return;
+    if (
+      !window.confirm(
+        lang === "th"
+          ? "ยืนยัน retry งานเดิม? ระบบจะไม่สร้าง workflow ใหม่และจะไม่ทำขั้นตอนที่สำเร็จแล้วซ้ำ"
+          : "Retry this existing worker job? Completed workflow steps will not run again."
+      )
+    ) {
+      return;
+    }
+    retryCompiledVideoJobMutation.mutate({
+      jobId,
+      actionId: crypto.randomUUID(),
     });
   }
 
@@ -10623,6 +10722,10 @@ function EpisodeWorkspaceShell({
               : undefined,
             compiledVideo,
             onAssembleCompiledVideo: handleAssembleCompiledVideo,
+            compiledVideoRetryAvailable:
+              compiledVideoWorkerJobQuery.data?.canRetry === true,
+            onRetryCompiledVideoJob: handleRetryCompiledVideoJob,
+            retryingCompiledVideo: retryCompiledVideoJobMutation.isPending,
             assemblyTimelineSlot: (
               <VerticalDramaEpisodeAssemblyTimeline
                 timeline={episodeAssemblyTimelineQuery.data?.timeline}

@@ -18,12 +18,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
 #[cfg(target_os = "windows")]
 use std::process::Stdio;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{
+    atomic::{AtomicBool, AtomicU64},
+    Arc, Mutex,
+};
 use std::time::{Duration, Instant};
 #[cfg(target_os = "windows")]
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -48,8 +52,10 @@ use crate::local_llm_registry::{
     load_registry, save_registry, LocalLlmModelRecord, LocalLlmProviderProfile, LocalLlmRegistry,
 };
 use crate::media_pipeline::{
-    analyze_media_file, build_interactive_render_debug, build_media_plan, probe_media_file,
-    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_interactive_media_render,
+    analyze_media_file, detect_audio_silence_custom, build_interactive_render_debug,
+    build_media_plan, probe_media_file, qc_derived_output_with_probe,
+    qc_derived_output_with_probe_limit, run_allowlisted_ffmpeg,
+    run_allowlisted_ffmpeg_segments, run_interactive_media_render,
     validate_camera_motion_plan, CameraMotionPlan, LocalMediaAnalysis, LocalMediaEditPlan,
     LocalMediaQc, MediaPlanOptions, MediaRuntimeReadiness, MediaToolchain,
 };
@@ -243,6 +249,615 @@ fn ensure_media_tools_ready(tools: &MediaToolchain) -> Result<(), String> {
             "{detail}; open Runtime and repair the managed runtime before analyzing or rendering media"
         ))
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalFolderBatchVideoRequest {
+    pub source_relative_name: String,
+    pub output_relative_name: String,
+    pub display_name: String,
+    #[serde(default)]
+    pub scan_error: Option<String>,
+    #[serde(default)]
+    pub canceled_before_start: bool,
+    #[serde(default)]
+    pub camera_motion_plan: Option<CameraMotionPlan>,
+    #[serde(default)]
+    pub reframe_9x16: bool,
+    #[serde(default = "default_batch_volume_threshold")]
+    pub volume_threshold_pct: f64,
+    #[serde(default = "default_batch_min_silence_seconds")]
+    pub min_duration_sec: f64,
+    #[serde(default = "default_batch_softening_seconds")]
+    pub softening_buffer_sec: f64,
+    #[serde(default)]
+    pub audio_stream_index: Option<usize>,
+}
+
+fn default_batch_volume_threshold() -> f64 { 25.0 }
+fn default_batch_min_silence_seconds() -> f64 { 0.5 }
+fn default_batch_softening_seconds() -> f64 { 0.2 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalFolderBatchRequest {
+    pub project_folder_path: String,
+    pub videos: Vec<LocalFolderBatchVideoRequest>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalFolderBatchItemStatus {
+    pub source_relative_name: String,
+    pub display_name: String,
+    pub output_relative_name: String,
+    pub status: String,
+    pub stage: String,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalFolderBatchSnapshot {
+    pub batch_id: String,
+    pub status: String,
+    pub current_file: Option<String>,
+    pub stage: String,
+    pub completed_count: usize,
+    pub skipped_count: usize,
+    pub failed_count: usize,
+    pub canceled_count: usize,
+    pub items: Vec<LocalFolderBatchItemStatus>,
+}
+
+#[derive(Default)]
+pub struct LocalFolderBatchRuntimeState {
+    pub snapshot: Option<LocalFolderBatchSnapshot>,
+    pub cancel_requested: Option<Arc<AtomicBool>>,
+}
+
+static LOCAL_FOLDER_BATCH_SEQUENCE: AtomicU64 = AtomicU64::new(1);
+
+#[tauri::command]
+pub async fn worker_app_start_local_folder_batch(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, WorkerAppState>,
+    request: LocalFolderBatchRequest,
+) -> Result<LocalFolderBatchSnapshot, String> {
+    if request.videos.is_empty() || request.videos.len() > 2_000 {
+        return Err("folder_batch_video_count_invalid".into());
+    }
+    if request.project_folder_path.trim().is_empty() || request.project_folder_path.len() > 32_768 {
+        return Err("project_folder_path_invalid".into());
+    }
+    let root_path = crate::media_pipeline::strip_verbatim_prefix(&PathBuf::from(request.project_folder_path.trim()))
+        .canonicalize()
+        .map_err(|_| "project_folder_not_found".to_string())?;
+    if !root_path.is_dir() {
+        return Err("project_folder_not_found".into());
+    }
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("app data directory unavailable: {error}"))?;
+    let settings = state
+        .settings
+        .lock()
+        .map_err(|_| "settings lock poisoned".to_string())?
+        .clone();
+    let tools = MediaToolchain::from_settings(&settings, &app_data_dir);
+    ensure_media_tools_ready(&tools)?;
+
+    let batch_id = format!(
+        "local-{}-{}-{}",
+        std::process::id(),
+        OffsetDateTime::now_utc().unix_timestamp_nanos(),
+        LOCAL_FOLDER_BATCH_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    );
+    let mut reserved_output_names = HashSet::new();
+    for entry in fs::read_dir(&root_path).map_err(|_| "folder_batch_output_scan_failed".to_string())? {
+        let entry = entry.map_err(|_| "folder_batch_output_scan_failed".to_string())?;
+        reserved_output_names.insert(entry.file_name().to_string_lossy().to_lowercase());
+    }
+    let mut batch_videos = request.videos;
+    let mut items = Vec::with_capacity(batch_videos.len());
+    for video in &mut batch_videos {
+        validate_folder_batch_relative_name(&video.source_relative_name)?;
+        validate_folder_batch_relative_name(&video.output_relative_name)?;
+        let source_relative = Path::new(&video.source_relative_name);
+        let requested_output_relative = Path::new(&video.output_relative_name);
+        let source_parent = source_relative.parent().and_then(Path::to_str).unwrap_or("");
+        if !source_parent.is_empty()
+            || source_relative.parent() != requested_output_relative.parent()
+            || requested_output_relative.extension().and_then(|value| value.to_str()).map(|value| value.to_ascii_lowercase()).as_deref() != Some("mp4")
+            || video.source_relative_name == video.output_relative_name
+            || video.display_name.len() > 512
+            || video.scan_error.as_ref().is_some_and(|error| error.len() > 1_000)
+        {
+            return Err("folder_batch_video_request_invalid".into());
+        }
+        video.output_relative_name = reserve_unique_folder_batch_output_name(
+            &video.output_relative_name,
+            &mut reserved_output_names,
+        )?;
+        if let Some(camera_plan) = video.camera_motion_plan.as_ref() {
+            validate_camera_motion_plan(camera_plan)?;
+        }
+        let source = root_path.join(source_relative);
+        let source_in_project = source.canonicalize().ok()
+            .and_then(|path| path.parent().map(|parent| parent == root_path))
+            .unwrap_or(false);
+        let (status, stage, error) = if video.canceled_before_start {
+            ("canceled", "canceled", None)
+        } else if let Some(error) = video.scan_error.as_ref() {
+            ("failed", "face_activity_scan", Some(error.clone()))
+        } else if video.camera_motion_plan.is_none() {
+            ("failed", "face_activity_scan", Some("face_activity_plan_missing".into()))
+        } else if !source.exists() {
+            ("failed", "preflight", Some("media_source_missing".into()))
+        } else if !source_in_project {
+            ("failed", "preflight", Some("media_source_outside_project_folder".into()))
+        } else {
+            ("queued", "queued", None)
+        };
+        items.push(LocalFolderBatchItemStatus {
+            source_relative_name: video.source_relative_name.clone(),
+            display_name: video.display_name.clone(),
+            output_relative_name: video.output_relative_name.clone(),
+            status: status.into(),
+            stage: stage.into(),
+            error,
+        });
+    }
+
+    let cancel_requested = Arc::new(AtomicBool::new(false));
+    let mut runtime = state
+        .local_folder_batch
+        .lock()
+        .map_err(|_| "folder batch state lock poisoned".to_string())?;
+    if runtime
+        .snapshot
+        .as_ref()
+        .is_some_and(|snapshot| snapshot.status == "running")
+    {
+        return Err("local_folder_batch_already_running".into());
+    }
+    let snapshot = make_local_folder_batch_snapshot(
+        batch_id,
+        "running",
+        None,
+        "starting",
+        items,
+    );
+    runtime.snapshot = Some(snapshot.clone());
+    runtime.cancel_requested = Some(Arc::clone(&cancel_requested));
+    drop(runtime);
+
+    let batch_state = Arc::clone(&state.local_folder_batch);
+    let batch_id = snapshot.batch_id.clone();
+    let media_debug_dir = app_data_dir.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        run_local_folder_batch(
+            &batch_state,
+            &batch_id,
+            root_path.clone(),
+            root_path,
+            batch_videos,
+            tools,
+            cancel_requested,
+            &media_debug_dir,
+        );
+    });
+    Ok(snapshot)
+}
+
+#[tauri::command]
+pub async fn worker_app_get_local_folder_batch_status(
+    state: tauri::State<'_, WorkerAppState>,
+) -> Result<Option<LocalFolderBatchSnapshot>, String> {
+    state
+        .local_folder_batch
+        .lock()
+        .map(|runtime| runtime.snapshot.clone())
+        .map_err(|_| "folder batch state lock poisoned".to_string())
+}
+
+#[tauri::command]
+pub async fn worker_app_cancel_local_folder_batch(
+    state: tauri::State<'_, WorkerAppState>,
+    batch_id: String,
+) -> Result<(), String> {
+    let runtime = state
+        .local_folder_batch
+        .lock()
+        .map_err(|_| "folder batch state lock poisoned".to_string())?;
+    let snapshot = runtime
+        .snapshot
+        .as_ref()
+        .filter(|snapshot| snapshot.batch_id == batch_id && snapshot.status == "running")
+        .ok_or_else(|| "local_folder_batch_not_running".to_string())?;
+    let _ = snapshot;
+    if let Some(cancel_requested) = runtime.cancel_requested.as_ref() {
+        cancel_requested.store(true, std::sync::atomic::Ordering::Relaxed);
+        Ok(())
+    } else {
+        Err("local_folder_batch_not_running".into())
+    }
+}
+
+fn validate_folder_batch_relative_name(name: &str) -> Result<(), String> {
+    let path = Path::new(name);
+    if name.trim().is_empty()
+        || name.contains('\\')
+        || path.is_absolute()
+        || path.components().any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return Err("relative_path_escape".into());
+    }
+    Ok(())
+}
+
+fn reserve_unique_folder_batch_output_name(
+    requested_name: &str,
+    reserved_names: &mut HashSet<String>,
+) -> Result<String, String> {
+    let requested = Path::new(requested_name);
+    let file_name = requested.file_name().and_then(|value| value.to_str())
+        .ok_or_else(|| "folder_batch_video_request_invalid".to_string())?;
+    let stem = requested.file_stem().and_then(|value| value.to_str())
+        .ok_or_else(|| "folder_batch_video_request_invalid".to_string())?;
+    let extension = requested.extension().and_then(|value| value.to_str())
+        .ok_or_else(|| "folder_batch_video_request_invalid".to_string())?;
+
+    for suffix in 1..=10_000 {
+        let candidate = if suffix == 1 {
+            file_name.to_string()
+        } else {
+            format!("{stem}_{suffix}.{extension}")
+        };
+        if reserved_names.insert(candidate.to_lowercase()) {
+            return Ok(candidate);
+        }
+    }
+    Err("folder_batch_output_name_exhausted".into())
+}
+
+fn make_local_folder_batch_snapshot(
+    batch_id: String,
+    status: &str,
+    current_file: Option<String>,
+    stage: &str,
+    items: Vec<LocalFolderBatchItemStatus>,
+) -> LocalFolderBatchSnapshot {
+    LocalFolderBatchSnapshot {
+        batch_id,
+        status: status.into(),
+        current_file,
+        stage: stage.into(),
+        completed_count: items.iter().filter(|item| item.status == "completed").count(),
+        skipped_count: items.iter().filter(|item| item.status == "skipped").count(),
+        failed_count: items.iter().filter(|item| item.status == "failed").count(),
+        canceled_count: items.iter().filter(|item| item.status == "canceled").count(),
+        items,
+    }
+}
+
+fn update_local_folder_batch(
+    batch_state: &Arc<Mutex<LocalFolderBatchRuntimeState>>,
+    batch_id: &str,
+    stage: &str,
+    current_file: Option<&str>,
+    source_relative_name: Option<&str>,
+    item_status: Option<&str>,
+    item_error: Option<Option<String>>,
+) {
+    let Ok(mut runtime) = batch_state.lock() else { return };
+    let Some(snapshot) = runtime.snapshot.as_mut().filter(|snapshot| snapshot.batch_id == batch_id) else { return };
+    snapshot.stage = stage.into();
+    snapshot.current_file = current_file.map(str::to_string);
+    if let Some(relative_name) = source_relative_name {
+        if let Some(item) = snapshot.items.iter_mut().find(|item| item.source_relative_name == relative_name) {
+            if let Some(status) = item_status {
+                item.status = status.into();
+                item.stage = stage.into();
+            }
+            if let Some(error) = item_error {
+                item.error = error;
+            }
+        }
+    }
+    snapshot.completed_count = snapshot.items.iter().filter(|item| item.status == "completed").count();
+    snapshot.skipped_count = snapshot.items.iter().filter(|item| item.status == "skipped").count();
+    snapshot.failed_count = snapshot.items.iter().filter(|item| item.status == "failed").count();
+    snapshot.canceled_count = snapshot.items.iter().filter(|item| item.status == "canceled").count();
+}
+
+fn run_local_folder_batch(
+    batch_state: &Arc<Mutex<LocalFolderBatchRuntimeState>>,
+    batch_id: &str,
+    root: PathBuf,
+    project_folder: PathBuf,
+    videos: Vec<LocalFolderBatchVideoRequest>,
+    tools: MediaToolchain,
+    cancel_requested: Arc<AtomicBool>,
+    media_debug_dir: &Path,
+) {
+    for video in videos {
+        let item = batch_state
+            .lock()
+            .ok()
+            .and_then(|runtime| runtime.snapshot.as_ref().filter(|snapshot| snapshot.batch_id == batch_id)
+                .and_then(|snapshot| snapshot.items.iter().find(|item| item.source_relative_name == video.source_relative_name).cloned()));
+        let Some(item) = item else { continue };
+        if item.status != "queued" {
+            continue;
+        }
+        if cancel_requested.load(std::sync::atomic::Ordering::Relaxed) {
+            update_local_folder_batch(batch_state, batch_id, "canceled", None, Some(&item.source_relative_name), Some("canceled"), None);
+            continue;
+        }
+        update_local_folder_batch(batch_state, batch_id, "dead_air_scan", Some(&item.display_name), Some(&item.source_relative_name), Some("dead_air_scan"), Some(None));
+        let result = render_local_folder_video(
+            &root,
+            &project_folder,
+            &video,
+            &item,
+            batch_id,
+            &tools,
+            batch_state,
+            media_debug_dir,
+        );
+        match result {
+            Ok(true) => {
+                append_media_debug_event(media_debug_dir, "media.batch_render.skipped", json!({
+                    "batchId": batch_id,
+                    "sourceRelativeName": &item.source_relative_name,
+                    "outputRelativeName": &item.output_relative_name,
+                    "reason": "output_exists",
+                }));
+                update_local_folder_batch(batch_state, batch_id, "output_exists", None, Some(&item.source_relative_name), Some("skipped"), Some(None));
+            }
+            Ok(false) => {
+                append_media_debug_event(media_debug_dir, "media.batch_render.completed", json!({
+                    "batchId": batch_id,
+                    "sourceRelativeName": &item.source_relative_name,
+                    "outputRelativeName": &item.output_relative_name,
+                    "cameraPlanKeyframeCount": video.camera_motion_plan.as_ref().map(|plan| plan.keyframes.len()),
+                    "cameraPlanKeyframes": video.camera_motion_plan.as_ref().map(|plan| &plan.keyframes),
+                }));
+                update_local_folder_batch(batch_state, batch_id, "completed", None, Some(&item.source_relative_name), Some("completed"), Some(None));
+            }
+            Err(error) => {
+                append_media_debug_event(media_debug_dir, "media.batch_render.failed", json!({
+                    "batchId": batch_id,
+                    "sourceRelativeName": &item.source_relative_name,
+                    "outputRelativeName": &item.output_relative_name,
+                    "error": &error,
+                    "cameraPlanKeyframeCount": video.camera_motion_plan.as_ref().map(|plan| plan.keyframes.len()),
+                    "cameraPlanKeyframes": video.camera_motion_plan.as_ref().map(|plan| &plan.keyframes),
+                }));
+                update_local_folder_batch(batch_state, batch_id, "failed", None, Some(&item.source_relative_name), Some("failed"), Some(Some(error)));
+            }
+        }
+    }
+    let canceled = cancel_requested.load(std::sync::atomic::Ordering::Relaxed);
+    if let Ok(mut runtime) = batch_state.lock() {
+        if let Some(snapshot) = runtime.snapshot.as_mut().filter(|snapshot| snapshot.batch_id == batch_id) {
+            let has_failures = snapshot.items.iter().any(|item| item.status == "failed");
+            let has_canceled = snapshot.items.iter().any(|item| item.status == "canceled");
+            let final_status = if has_failures {
+                "completed_with_errors"
+            } else if canceled || has_canceled {
+                "canceled"
+            } else {
+                "completed"
+            };
+            snapshot.status = final_status.into();
+            snapshot.current_file = None;
+            snapshot.stage = "finished".into();
+        }
+        runtime.cancel_requested = None;
+    }
+}
+
+fn render_local_folder_video(
+    root: &Path,
+    project_folder: &Path,
+    request: &LocalFolderBatchVideoRequest,
+    status: &LocalFolderBatchItemStatus,
+    batch_id: &str,
+    tools: &MediaToolchain,
+    batch_state: &Arc<Mutex<LocalFolderBatchRuntimeState>>,
+    media_debug_dir: &Path,
+) -> Result<bool, String> {
+    if let Some(error) = request.scan_error.as_ref() {
+        return Err(error.clone());
+    }
+    let camera_plan = request.camera_motion_plan.as_ref().ok_or_else(|| "face_activity_plan_missing".to_string())?;
+    validate_camera_motion_plan(camera_plan)?;
+    let canonical_root = root.canonicalize().map_err(|_| "local_root_not_found".to_string())?;
+    let source_relative = Path::new(&request.source_relative_name);
+    let output_relative = Path::new(&request.output_relative_name);
+    let source = canonical_root.join(source_relative).canonicalize().map_err(|_| "media_source_missing".to_string())?;
+    if !source.starts_with(&canonical_root)
+        || !source.is_file()
+        || source.parent() != Some(project_folder)
+    {
+        return Err("media_source_scope_violation".into());
+    }
+    let source_parent = source.parent().ok_or_else(|| "media_source_path_invalid".to_string())?;
+    let output_parent = canonical_root.join(output_relative.parent().unwrap_or_else(|| Path::new("")))
+        .canonicalize().map_err(|_| "media_output_path_invalid".to_string())?;
+    if output_parent != source_parent {
+        return Err("media_output_path_invalid".into());
+    }
+    let output = output_parent.join(output_relative.file_name().ok_or_else(|| "media_output_path_invalid".to_string())?);
+    if output.exists() {
+        return Ok(true);
+    }
+
+    let initial_probe = probe_media_file(&source, tools)?;
+    let duration_ms = initial_probe.duration_ms.filter(|duration| *duration > 0)
+        .ok_or_else(|| "source_duration_unknown".to_string())?;
+    if duration_ms > 86_400_000 || camera_plan.duration_ms == 0 {
+        return Err("source_duration_unknown_or_unsupported".into());
+    }
+    let threshold_pct = if request.volume_threshold_pct.is_finite() { request.volume_threshold_pct.clamp(1.0, 100.0) } else { 25.0 };
+    let min_silence_ms = ((if request.min_duration_sec.is_finite() { request.min_duration_sec.clamp(0.05, 5.0) } else { 0.5 }) * 1000.0).round() as u64;
+    let padding_ms = ((if request.softening_buffer_sec.is_finite() { request.softening_buffer_sec.clamp(0.0, 2.0) } else { 0.2 }) * 1000.0).round() as u64;
+    // Keep Batch aligned with the normal UI dead-air detector. Besides
+    // FFmpeg's silencedetect intervals, this analyzes PCM speech activity and
+    // fills in leading/trailing silence that silencedetect can miss when the
+    // opening/closing audio contains low-level noise.
+    let analysis = if initial_probe.has_audio {
+        Some(detect_audio_silence_custom(
+            &source,
+            tools,
+            threshold_pct,
+            min_silence_ms as f64 / 1000.0,
+            padding_ms as f64 / 1000.0,
+            request.audio_stream_index,
+        )?)
+    } else {
+        None
+    };
+    let keep_segments = if let Some(analysis) = analysis.as_ref() {
+        invert_padded_silence_ranges(duration_ms, &analysis.silence_segments.iter()
+            .filter_map(|segment| segment.end_ms.map(|end| (segment.start_ms, end)))
+            .collect::<Vec<_>>(), padding_ms)
+    } else {
+        vec![(0, duration_ms)]
+    };
+    if keep_segments.is_empty() {
+        return Err("dead_air_removed_all_content".into());
+    }
+
+    append_media_debug_event(media_debug_dir, "media.batch_render.native_request", json!({
+        "batchId": batch_id,
+        "sourcePath": source.to_string_lossy(),
+        "outputPath": output.to_string_lossy(),
+        "sourceDurationMs": duration_ms,
+        "reframe9x16": request.reframe_9x16,
+        "activeSegments": &keep_segments,
+        "cameraPlanDurationMs": camera_plan.duration_ms,
+        "cameraPlanKeyframeCount": camera_plan.keyframes.len(),
+        "cameraPlanKeyframes": &camera_plan.keyframes,
+        "cameraPlanEvidence": &camera_plan.evidence,
+    }));
+
+    update_local_folder_batch(batch_state, batch_id, "rendering", Some(&status.display_name), Some(&status.source_relative_name), Some("rendering"), None);
+    let batch_token = batch_id.chars().filter(|character| character.is_ascii_alphanumeric()).take(24).collect::<String>();
+    let output_stem = output.file_stem().and_then(|value| value.to_str()).ok_or_else(|| "media_output_path_invalid".to_string())?;
+    // QC deliberately accepts artifacts only under `derived`. Render the
+    // private temporary there, then commit the verified file beside its
+    // source below so the user-facing Batch output still matches the project
+    // folder contract.
+    let temporary_relative = Path::new("derived")
+        .join(format!(".{output_stem}.batch-{batch_token}.tmp.mp4"));
+    let temporary_name = temporary_relative.to_str().ok_or_else(|| "media_output_path_invalid".to_string())?.replace('\\', "/");
+    if canonical_root.join(&temporary_relative).exists() {
+        return Err("media_output_temp_exists".into());
+    }
+    let source_name = request.source_relative_name.replace('\\', "/");
+    let rendered = run_allowlisted_ffmpeg_segments(
+        &canonical_root,
+        &source_name,
+        &temporary_name,
+        &keep_segments,
+        request.reframe_9x16,
+        false,
+        None,
+        None,
+        &[],
+        Some(camera_plan),
+        257,
+        duration_ms,
+        tools,
+    );
+    let rendered = match rendered {
+        Ok(path) => path,
+        Err(error) => {
+            let _ = fs::remove_file(canonical_root.join(&temporary_relative));
+            return Err(error);
+        }
+    };
+    update_local_folder_batch(batch_state, batch_id, "saving", Some(&status.display_name), Some(&status.source_relative_name), Some("saving"), None);
+    let qc_result = qc_derived_output_with_probe_limit(
+        &canonical_root,
+        &rendered,
+        tools,
+        crate::media_pipeline::MAX_FULL_VIDEO_OUTPUT_BYTES,
+    );
+    let qc = match qc_result {
+        Ok(qc) => qc,
+        Err(error) => {
+            let _ = fs::remove_file(&rendered);
+            return Err(error);
+        }
+    };
+    match fs::hard_link(&rendered, &output) {
+        Ok(()) => {
+            let _ = fs::remove_file(&rendered);
+            append_media_debug_event(media_debug_dir, "media.batch_render.native_completed", json!({
+                "batchId": batch_id,
+                "sourcePath": source.to_string_lossy(),
+                "outputPath": output.to_string_lossy(),
+                "outputRelativeName": request.output_relative_name,
+                "cameraPlanApplied": request.reframe_9x16 && !camera_plan.keyframes.is_empty(),
+                "cameraPlanKeyframeCount": camera_plan.keyframes.len(),
+                "cameraPlanKeyframes": &camera_plan.keyframes,
+                "outputQc": qc,
+            }));
+            Ok(false)
+        }
+        Err(error) if output.exists() => {
+            let _ = fs::remove_file(&rendered);
+            let _ = error;
+            Ok(true)
+        }
+        Err(_) => {
+            let _ = fs::remove_file(&rendered);
+            Err("media_output_commit_failed".into())
+        }
+    }
+}
+
+fn invert_padded_silence_ranges(
+    duration_ms: u64,
+    silence_ranges: &[(u64, u64)],
+    padding_ms: u64,
+) -> Vec<(u64, u64)> {
+    let mut ranges = silence_ranges.iter().filter_map(|(start, end)| {
+        let start = start.saturating_sub(padding_ms).min(duration_ms);
+        let end = end.saturating_add(padding_ms).min(duration_ms);
+        (end > start).then_some((start, end))
+    }).collect::<Vec<_>>();
+    ranges.sort_by_key(|range| range.0);
+    let mut merged: Vec<(u64, u64)> = Vec::with_capacity(ranges.len());
+    for (start, end) in ranges {
+        if let Some(last) = merged.last_mut().filter(|last| start <= last.1) {
+            last.1 = last.1.max(end);
+        } else {
+            merged.push((start, end));
+        }
+    }
+    let mut kept = Vec::with_capacity(merged.len() + 1);
+    let mut cursor = 0u64;
+    for (start, end) in merged {
+        if start.saturating_sub(cursor) >= 250 {
+            kept.push((cursor, start));
+        }
+        cursor = cursor.max(end);
+    }
+    if duration_ms.saturating_sub(cursor) >= 250 {
+        kept.push((cursor, duration_ms));
+    }
+    if kept.is_empty() && silence_ranges.is_empty() {
+        vec![(0, duration_ms)]
+    } else {
+        kept
+    }
 }
 
 #[tauri::command]
@@ -3448,6 +4063,8 @@ pub async fn worker_app_submit_media_job(
     softening_buffer_sec: Option<f64>,
     custom_silence_segments: Option<Vec<CustomSilenceSegmentInput>>,
     camera_motion_plan: Option<CameraMotionPlan>,
+    full_video: Option<bool>,
+    audio_stream_index: Option<usize>,
     processing_mode: String,
     idempotency_key: String,
 ) -> Result<Value, String> {
@@ -3519,6 +4136,15 @@ pub async fn worker_app_submit_media_job(
     let asset_id = format!("local-{}", &fingerprint[..24]);
     let source_probe = crate::media_pipeline::probe_media_file(&canonical_source, &tools).ok();
     let duration_ms = source_probe.as_ref().and_then(|probe| probe.duration_ms);
+    let full_video = full_video.unwrap_or(false);
+    if full_video && duration_ms.is_none_or(|duration| duration == 0 || duration > 86_400_000) {
+        return Err("source_duration_unknown_or_unsupported".into());
+    }
+    let requested_duration_ms = if full_video {
+        duration_ms.unwrap_or_default()
+    } else {
+        max_duration_ms.clamp(1000, 90_000)
+    };
     let kind = match canonical_source
         .extension()
         .and_then(|value| value.to_str())
@@ -3554,7 +4180,7 @@ pub async fn worker_app_submit_media_job(
     if let Some(camera_plan) = camera_motion_plan.as_ref() {
         validate_camera_motion_plan(camera_plan)?;
     }
-    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": "worker-local-v2-dead-air-profile", "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "cameraMotionPlan": camera_motion_plan, "deadAir": { "enabled": remove_dead_air, "thresholdDb": threshold_db, "minSilenceMs": min_silence_ms, "padMs": pad_ms, "silenceRanges": silence_ranges }, "budget": { "maxDurationMs": max_duration_ms.clamp(1000, 90000), "minDurationMs": 1000, "maxBrollMs": max_duration_ms.clamp(1000, 90000), "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(max_duration_ms).min(max_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": max_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
+    let payload = json!({ "kind": "broll_preprocess", "seriesId": series_id, "binding": { "seriesId": root.series_id, "rootId": root.root_id, "rootFingerprint": root.root_fingerprint, "bindingRevision": binding_revision, "workspaceMode": root.workspace_mode, "status": "active" }, "source": { "assetId": asset_id, "kind": kind, "sourceRevision": fingerprint, "sourceFingerprint": fingerprint, "fileName": canonical_source.file_name().and_then(|value| value.to_str()).unwrap_or("media"), "relativeName": source_relative_name, "sizeBytes": metadata.len(), "durationMs": duration_ms, "captureAt": Value::Null }, "probe": { "width": source_probe.as_ref().and_then(|probe| probe.width), "height": source_probe.as_ref().and_then(|probe| probe.height), "fps": Value::Null, "durationMs": duration_ms, "hasAudio": source_probe.as_ref().map(|probe| probe.has_audio).unwrap_or(false), "rotationDegrees": 0, "codec": source_probe.as_ref().and_then(|probe| probe.codec.clone()), "container": source_probe.as_ref().and_then(|probe| probe.container.clone()) }, "editPlan": { "planId": format!("plan-{}", &fingerprint[..24]), "planRevision": if full_video { "worker-local-v3-full-video-dead-air" } else { "worker-local-v2-dead-air-profile" }, "mode": processing_mode, "aspectRatio": if reframe_9x16 { "9:16" } else { "source" }, "fullVideo": full_video, "cameraMotionPlan": camera_motion_plan, "deadAir": { "enabled": remove_dead_air, "thresholdDb": threshold_db, "minSilenceMs": min_silence_ms, "padMs": pad_ms, "audioStreamIndex": audio_stream_index, "silenceRanges": silence_ranges }, "budget": { "maxDurationMs": requested_duration_ms, "minDurationMs": 1000, "maxBrollMs": requested_duration_ms, "preserveNarrativeAudio": true }, "segments": [{ "segmentId": "segment-1", "sourceAssetId": asset_id, "sourceRevision": fingerprint, "startMs": 0, "endMs": duration_ms.unwrap_or(requested_duration_ms).min(requested_duration_ms), "removeDeadAir": remove_dead_air, "reframe": { "enabled": reframe_9x16, "target": target, "trackingMode": tracking_mode, "aspectRatio": "9:16", "maxCropFraction": 0.6, "fallback": "reject", "focusTrack": focus_track }, "stillMotion": still_motion.map(|motion| json!({ "enabled": true, "motion": motion, "startScale": 1.0, "endScale": 1.18, "durationMs": requested_duration_ms.clamp(500, 90000) })) }], "rationale": if processing_mode == "automated_ai_editing" { "Worker App automated AI editing intent" } else { "Worker App local preprocessing intent" } }, "idempotencyKey": idempotency_key });
     post_worker_json(
         &connection.server_url,
         &format!("/api/workers/{}/media-jobs", connection.worker_id),
@@ -3563,6 +4189,131 @@ pub async fn worker_app_submit_media_job(
         &connection.device_proof,
     )
     .await
+}
+
+#[tauri::command]
+pub async fn worker_app_copy_media_job_output_to_source(
+    state: tauri::State<'_, WorkerAppState>,
+    series_id: String,
+    binding_revision: i32,
+    job_id: String,
+    source_relative_name: String,
+    output_disambiguator: Option<String>,
+) -> Result<Value, String> {
+    if binding_revision <= 0
+        || job_id.is_empty()
+        || job_id.len() > 64
+        || !job_id.bytes().all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    {
+        return Err("media_job_output_request_invalid".into());
+    }
+    let relative_source = Path::new(source_relative_name.trim());
+    if relative_source.as_os_str().is_empty()
+        || relative_source.is_absolute()
+        || relative_source.components().any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return Err("media_source_path_invalid".into());
+    }
+    let source_stem = relative_source.file_stem().and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty()).ok_or_else(|| "media_source_path_invalid".to_string())?;
+    let disambiguator = output_disambiguator.unwrap_or_default();
+    if !disambiguator.is_empty()
+        && (disambiguator.len() > 12
+            || !disambiguator.bytes().all(|byte| byte.is_ascii_alphanumeric()))
+    {
+        return Err("media_output_name_invalid".into());
+    }
+    let output_name = if disambiguator.is_empty() {
+        format!("{source_stem}_edited.mp4")
+    } else {
+        format!("{source_stem}_edited_{disambiguator}.mp4")
+    };
+    let root = state.series_workspace.lock()
+        .map_err(|_| "workspace lock poisoned".to_string())?
+        .root.clone().ok_or_else(|| "local_root_not_selected".to_string())?;
+    if root.series_id != series_id {
+        return Err("local_root_series_mismatch".into());
+    }
+    let canonical_root = root.root_path.canonicalize().map_err(|_| "local_root_not_found".to_string())?;
+    let canonical_source = canonical_root.join(relative_source).canonicalize()
+        .map_err(|_| "media_source_missing".to_string())?;
+    if !canonical_source.starts_with(&canonical_root) || !canonical_source.is_file() {
+        return Err("media_source_scope_violation".into());
+    }
+    let source_metadata = fs::metadata(&canonical_source).map_err(|_| "media_source_missing".to_string())?;
+    let source_fingerprint = format!(
+        "{:064x}",
+        Sha256::digest(format!(
+            "{}:{}:{}",
+            source_relative_name,
+            source_metadata.len(),
+            source_metadata.modified().ok()
+                .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|value| value.as_millis()).unwrap_or_default()
+        ).as_bytes())
+    );
+
+    let checkpoint_dir = canonical_root.join("derived/.checkpoints").canonicalize()
+        .map_err(|_| "media_job_checkpoint_missing".to_string())?;
+    let checkpoint_path = checkpoint_dir.join(format!("{job_id}.json"));
+    let checkpoint_path = checkpoint_path.canonicalize().map_err(|_| "media_job_checkpoint_missing".to_string())?;
+    if !checkpoint_path.starts_with(&checkpoint_dir) {
+        return Err("media_job_checkpoint_scope_violation".into());
+    }
+    let checkpoint: Value = serde_json::from_slice(&fs::read(&checkpoint_path)
+        .map_err(|_| "media_job_checkpoint_missing".to_string())?)
+        .map_err(|_| "media_job_checkpoint_invalid".to_string())?;
+    if checkpoint.get("rootId").and_then(Value::as_str) != Some(root.root_id.as_str())
+        || checkpoint.get("bindingRevision").and_then(Value::as_i64) != Some(binding_revision as i64)
+        || checkpoint.get("sourceFingerprint").and_then(Value::as_str) != Some(source_fingerprint.as_str())
+        || checkpoint.get("stage").and_then(Value::as_str) != Some("published")
+    {
+        return Err("media_job_output_checkpoint_mismatch".into());
+    }
+    let output_relative_name = checkpoint.get("outputRelativeName").and_then(Value::as_str)
+        .ok_or_else(|| "media_job_output_missing".to_string())?;
+    let relative_output = Path::new(output_relative_name);
+    if relative_output.is_absolute()
+        || relative_output.components().any(|part| !matches!(part, Component::Normal(_)))
+        || relative_output.components().next() != Some(Component::Normal("derived".as_ref()))
+    {
+        return Err("media_job_output_scope_violation".into());
+    }
+    let derived_root = canonical_root.join("derived").canonicalize()
+        .map_err(|_| "media_job_output_missing".to_string())?;
+    let canonical_output = canonical_root.join(relative_output).canonicalize()
+        .map_err(|_| "media_job_output_missing".to_string())?;
+    if !canonical_output.starts_with(&derived_root) || !canonical_output.is_file() {
+        return Err("media_job_output_scope_violation".into());
+    }
+    let destination_dir = canonical_source.parent().ok_or_else(|| "media_source_path_invalid".to_string())?;
+    let destination = destination_dir.join(&output_name);
+    if fs::symlink_metadata(&destination).is_ok() {
+        return Ok(json!({ "status": "skipped_exists", "outputRelativeName": destination.strip_prefix(&canonical_root).ok().and_then(|path| path.to_str()).unwrap_or(&output_name) }));
+    }
+    let temp_path = destination_dir.join(format!(".{output_name}.{job_id}.tmp"));
+    let copy_result = (|| -> Result<(), String> {
+        let mut input = File::open(&canonical_output).map_err(|_| "media_job_output_read_failed".to_string())?;
+        let mut temporary = OpenOptions::new().write(true).create_new(true).open(&temp_path)
+            .map_err(|_| "media_job_output_temp_create_failed".to_string())?;
+        io::copy(&mut input, &mut temporary).map_err(|_| "media_job_output_copy_failed".to_string())?;
+        temporary.sync_all().map_err(|_| "media_job_output_copy_failed".to_string())?;
+        drop(temporary);
+        fs::hard_link(&temp_path, &destination).map_err(|error| {
+            if error.kind() == std::io::ErrorKind::AlreadyExists {
+                "media_job_output_already_exists".to_string()
+            } else {
+                "media_job_output_publish_failed".to_string()
+            }
+        })?;
+        Ok(())
+    })();
+    let _ = fs::remove_file(&temp_path);
+    match copy_result {
+        Ok(()) => Ok(json!({ "status": "copied", "outputRelativeName": destination.strip_prefix(&canonical_root).ok().and_then(|path| path.to_str()).unwrap_or(&output_name) })),
+        Err(error) if error == "media_job_output_already_exists" => Ok(json!({ "status": "skipped_exists", "outputRelativeName": destination.strip_prefix(&canonical_root).ok().and_then(|path| path.to_str()).unwrap_or(&output_name) })),
+        Err(error) => Err(error),
+    }
 }
 
 #[tauri::command]
@@ -9035,7 +9786,8 @@ mod tests {
         find_comfy_schema_section, is_allowed_comfy_output_path, is_mac_worker_app_update_url,
         is_windows_installer_payload, is_worker_app_update_url, normalize_machine_fingerprint_hash,
         parse_managed_wsl_runtime_profile_hash, parse_managed_wsl_runtime_version, replace_dir,
-        replace_runtime_directories, runtime_update_available, runtime_update_reason,
+        invert_padded_silence_ranges, replace_runtime_directories,
+        reserve_unique_folder_batch_output_name, runtime_update_available, runtime_update_reason,
         runtime_update_required, same_url_origin, summarize_local_device_proof,
         token_device_binding_mismatches, validate_windows_installer, worker_connect_url,
         WorkerTokenBindingSummary,
@@ -9044,8 +9796,38 @@ mod tests {
     use crate::runtime_manifest::DoctorSummary;
     use crate::settings::WorkerAppSettings;
     use base64::Engine;
+    use std::collections::HashSet;
     use std::fs;
     use std::path::Path;
+
+    #[test]
+    fn repeating_folder_batch_reserves_a_new_output_name() {
+        let mut reserved = HashSet::from(["clip_edited.mp4".to_string()]);
+
+        assert_eq!(
+            reserve_unique_folder_batch_output_name("clip_edited.mp4", &mut reserved).unwrap(),
+            "clip_edited_2.mp4",
+        );
+        assert_eq!(
+            reserve_unique_folder_batch_output_name("clip_edited.mp4", &mut reserved).unwrap(),
+            "clip_edited_3.mp4",
+        );
+        assert!(reserved.contains("clip_edited.mp4"));
+    }
+
+    #[test]
+    fn batch_dead_air_ranges_trim_vad_detected_leading_and_trailing_silence() {
+        // These edge intervals are also synthesized by the UI's PCM/VAD
+        // fallback when FFmpeg silencedetect does not report the quiet opening
+        // or ending reliably.
+        let keep_segments = invert_padded_silence_ranges(
+            120_000,
+            &[(0, 6_000), (116_000, 120_000)],
+            200,
+        );
+
+        assert_eq!(keep_segments, vec![(6_200, 115_800)]);
+    }
 
     #[test]
     fn worker_connect_url_uses_configured_server_without_double_slashes() {
@@ -9526,6 +10308,43 @@ mod tests {
         assert_eq!(req.focus_x, Some(0.45));
         assert!(!req.auto_pan_zoom);
         assert_eq!(req.auto_pan_zoom_mode, "");
+        assert_eq!(req.debug_render_id, None);
+    }
+
+    #[test]
+    fn interactive_process_request_round_trips_debug_render_id() {
+        let req = super::InteractiveProcessRequest {
+            source_path: "/tmp/test.mp4".into(),
+            trim_start_ms: Some(1000),
+            trim_end_ms: Some(5000),
+            remove_dead_air: true,
+            aspect_ratio: "9:16".into(),
+            focus_mode: "auto_person".into(),
+            focus_x: Some(0.5),
+            focus_y: Some(0.5),
+            auto_pan_zoom: true,
+            auto_pan_zoom_mode: "face_activity".into(),
+            auto_pan_zoom_scale: Some(1.16),
+            camera_motion_plan: None,
+            series_id: None,
+            volume_threshold_pct: None,
+            min_duration_sec: None,
+            softening_buffer_sec: None,
+            audio_stream_index: None,
+            custom_silence_segments: None,
+            playback_speed: None,
+            target_width: Some(1080),
+            target_height: Some(1920),
+            source_geometry: None,
+            debug_render_id: Some("render-test-123".into()),
+        };
+        let encoded = serde_json::to_value(&req).unwrap();
+        assert_eq!(
+            encoded["debugRenderId"],
+            serde_json::json!("render-test-123")
+        );
+        let decoded: super::InteractiveProcessRequest = serde_json::from_value(encoded).unwrap();
+        assert_eq!(decoded.debug_render_id.as_deref(), Some("render-test-123"));
     }
 }
 
@@ -9767,6 +10586,10 @@ pub struct InteractiveProcessRequest {
     /// Canonical source geometry shared by preview/full scan/native render.
     #[serde(default)]
     pub source_geometry: Option<SourceGeometryInput>,
+    /// Correlates the frontend transaction with native FFmpeg evidence. This
+    /// is optional for older clients, but every current Worker render sends it.
+    #[serde(default)]
+    pub debug_render_id: Option<String>,
 }
 
 #[tauri::command]
@@ -9962,6 +10785,7 @@ pub async fn worker_app_process_media_interactive(
         &app_data_dir,
         "media.render.native_request_received",
         json!({
+            "renderId": request.debug_render_id,
             "sourcePath": source.to_string_lossy(),
             "sourceFileName": source.file_name().and_then(|value| value.to_str()),
             "request": &request,
@@ -10153,6 +10977,34 @@ pub async fn worker_app_process_media_interactive(
         active_segments.push((effective_trim_start, effective_trim_end));
     }
 
+    let requested_span_ms = effective_trim_end.saturating_sub(effective_trim_start);
+    let retained_duration_ms = active_segments
+        .iter()
+        .map(|(start, end)| end.saturating_sub(*start))
+        .sum::<u64>();
+    append_media_debug_event(
+        &app_data_dir,
+        "media.render.native_segments_computed",
+        json!({
+            "renderId": request.debug_render_id,
+            "sourcePath": source.to_string_lossy(),
+            "sourceDurationMs": source_duration_ms,
+            "requestedTrimStartMs": req_trim_start,
+            "requestedTrimEndMs": req_trim_end,
+            "effectiveTrimStartMs": effective_trim_start,
+            "effectiveTrimEndMs": effective_trim_end,
+            "requestedTrimSpanMs": requested_span_ms,
+            "removeDeadAir": request.remove_dead_air,
+            "hasCustomSilence": has_custom_silence,
+            "silenceIntervals": silence_intervals,
+            "activeSegments": active_segments,
+            "retainedDurationMs": retained_duration_ms,
+            "computedRemovedDurationMs": requested_span_ms.saturating_sub(retained_duration_ms),
+            "silenceCutCount": silence_cut_count,
+            "timeSavedMs": time_saved_ms,
+        }),
+    );
+
     let parent_dir = source.parent().unwrap_or(Path::new("."));
     let derived_dir = parent_dir.join("derived");
     fs::create_dir_all(&derived_dir).map_err(|e| format!("cannot_create_derived_dir: {e}"))?;
@@ -10189,21 +11041,48 @@ pub async fn worker_app_process_media_interactive(
         request.auto_pan_zoom,
         &request.auto_pan_zoom_mode,
         request.auto_pan_zoom_scale,
-        probe.width.zip(probe.height).or(canonical_source_dimensions),
+        probe
+            .width
+            .zip(probe.height)
+            .or(canonical_source_dimensions),
         request.camera_motion_plan.as_ref(),
     );
     match &render_debug {
         Ok(snapshot) => append_media_debug_event(
             &app_data_dir,
             "media.render.native_filter_snapshot",
-            snapshot.clone(),
+            json!({
+                "renderId": request.debug_render_id,
+                "snapshot": snapshot,
+            }),
         ),
         Err(error) => append_media_debug_event(
             &app_data_dir,
             "media.render.native_filter_snapshot_failed",
-            json!({ "error": error }),
+            json!({ "renderId": request.debug_render_id, "error": error }),
         ),
     }
+
+    append_media_debug_event(
+        &app_data_dir,
+        "media.render.native_command_plan",
+        json!({
+            "renderId": request.debug_render_id,
+            "sourcePath": source.to_string_lossy(),
+            "outputPath": output_path.to_string_lossy(),
+            "renderMode": if active_segments.len() == 1 { "single_segment" } else { "multi_segment_filter_complex" },
+            "segmentCount": active_segments.len(),
+            "activeSegments": active_segments,
+            "retainedDurationMs": retained_duration_ms,
+            "sourceDimensions": probe.width.zip(probe.height),
+            "canonicalSourceDimensions": canonical_source_dimensions,
+            "targetDimensions": { "width": request.target_width, "height": request.target_height },
+            "aspectRatio": request.aspect_ratio,
+            "autoPanZoom": request.auto_pan_zoom,
+            "cameraPlanKeyframes": request.camera_motion_plan.as_ref().map(|plan| plan.keyframes.len()).unwrap_or(0),
+            "cameraPlanDurationMs": request.camera_motion_plan.as_ref().map(|plan| plan.duration_ms),
+        }),
+    );
 
     run_interactive_media_render(
         &source,
@@ -10228,7 +11107,19 @@ pub async fn worker_app_process_media_interactive(
         .as_ref()
         .map(|plan| plan.keyframes.len())
         .unwrap_or(0);
-    let camera_plan_applied = camera_plan_keyframes > 0 && request.aspect_ratio != "source";
+    let render_debug_value = render_debug.as_ref().ok().cloned();
+    let camera_plan_applied = camera_plan_keyframes > 0
+        && request.aspect_ratio != "source"
+        && render_debug_value
+            .as_ref()
+            .and_then(|snapshot| snapshot.get("effectiveAutoPanZoom"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        && render_debug_value
+            .as_ref()
+            .and_then(|snapshot| snapshot.get("filters"))
+            .and_then(Value::as_array)
+            .is_some_and(|filters| !filters.is_empty());
 
     let out_probe = probe_media_file(&output_path, &tools)?;
     let out_meta = fs::metadata(&output_path).map_err(|e| format!("output_missing: {e}"))?;
@@ -10239,14 +11130,18 @@ pub async fn worker_app_process_media_interactive(
         &app_data_dir,
         "media.render.native_completed",
         json!({
+            "renderId": request.debug_render_id,
             "sourcePath": source.to_string_lossy(),
             "outputPath": output_path.to_string_lossy(),
             "inputProbe": &probe,
             "outputProbe": &out_probe,
             "activeSegments": &active_segments,
+            "expectedRetainedDurationMs": retained_duration_ms,
+            "actualOutputDurationMs": out_probe.duration_ms,
+            "durationDeltaMs": out_probe.duration_ms.map(|duration| duration as i64 - retained_duration_ms as i64),
             "cameraPlanKeyframes": camera_plan_keyframes,
             "cameraPlanApplied": camera_plan_applied,
-            "renderDebug": render_debug.ok(),
+            "renderDebug": render_debug_value,
             "checksum": checksum,
         }),
     );

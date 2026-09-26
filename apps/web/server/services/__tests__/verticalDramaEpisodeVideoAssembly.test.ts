@@ -57,6 +57,11 @@ vi.mock("../../storage", () => ({
   storageStreamFile: storageStreamFileMock,
 }));
 
+vi.mock("../verticalDramaArtifactVersionService", () => ({
+  upsertVerticalDramaArtifactVersion: vi.fn(async () => ({})),
+  listVerticalDramaArtifactVersionProjections: vi.fn(async () => []),
+}));
+
 // Avoid a real network fetch in `downloadClipToFile` during `runAssemblyJob`.
 vi.stubGlobal(
   "fetch",

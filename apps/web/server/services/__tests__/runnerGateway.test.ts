@@ -245,6 +245,21 @@ describe("RunnerGateway", () => {
     });
   });
 
+  it("preserves the authenticated Runner session fence across token refresh", async () => {
+    const tokens = issueRunnerAccessTokens({
+      runnerId: "runner-session-refresh",
+      tenantId: "tenant-a",
+      profile: "local_device",
+      nodeKind: "local_device",
+      runnerSessionId: "session-refresh",
+      deviceBinding: localDeviceBinding,
+    });
+    const refreshed = await refreshRunnerAccessTokens(tokens.refreshToken);
+    await expect(
+      verifyRunnerAccessToken(refreshed.executionToken, { runnerSessionId: "session-refresh" }, ["runner_execution"]),
+    ).resolves.toMatchObject({ runnerSessionId: "session-refresh" });
+  });
+
   it("rotates a Runner token and revokes the previous token", async () => {
     const token = createRunnerControlToken({
       runnerId: "runner-rotate",
@@ -329,6 +344,39 @@ describe("RunnerGateway", () => {
         displayName: "bad container",
       })
     ).rejects.toMatchObject({ code: "RUNNER_PROFILE_MISMATCH" });
+  });
+
+  it("rejects a capability publication from a reconnected local Runner session", async () => {
+    const gateway = new RunnerGateway(new InMemoryRunnerRepository());
+    const authOne = await verifyRunnerControlToken(
+      createRunnerControlToken({
+        runnerId: "runner-session-fence",
+        tenantId: "tenant-a",
+        profile: "local_device",
+        nodeKind: "local_device",
+        runnerSessionId: "session-one",
+        deviceBinding: localDeviceBinding,
+      }),
+    );
+    await gateway.enroll({ auth: authOne, deviceId: "device-1", displayName: "Fenced Runner", ownerUserId: 7 });
+    await gateway.bindSession({ runnerId: "runner-session-fence", tenantId: "tenant-a", ownerUserId: 7, runnerSessionId: "session-one" });
+    const authTwo = await verifyRunnerControlToken(
+      createRunnerControlToken({
+        runnerId: "runner-session-fence",
+        tenantId: "tenant-a",
+        profile: "local_device",
+        nodeKind: "local_device",
+        runnerSessionId: "session-two",
+        deviceBinding: localDeviceBinding,
+      }),
+    );
+    await gateway.bindSession({ runnerId: "runner-session-fence", tenantId: "tenant-a", ownerUserId: 7, runnerSessionId: "session-two" });
+    await expect(
+      gateway.publishCapabilities({ auth: authOne, snapshot: snapshot("1", "runner-session-fence"), idempotencyKey: "old-session" }),
+    ).rejects.toMatchObject({ code: "RUNNER_SESSION_STALE" });
+    await expect(
+      gateway.publishCapabilities({ auth: authTwo, snapshot: snapshot("2", "runner-session-fence"), idempotencyKey: "new-session" }),
+    ).resolves.toMatchObject({ status: "accepted" });
   });
 
   it("revokes an owned Runner and rejects another owner", async () => {

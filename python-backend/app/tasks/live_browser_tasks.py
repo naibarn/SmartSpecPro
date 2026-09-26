@@ -97,8 +97,9 @@ def build_live_browser_readiness_snapshot(
 
     provider_readiness = assess_live_browser_provider_readiness(adapter, telemetry=telemetry)
     provider_details.update(provider_readiness.details)
+    provider_details["readiness_evidence"] = dict(provider_readiness.evidence)
 
-    return {
+    snapshot = {
         "runtimeReady": runtime_ready,
         "providerReady": provider_readiness.ready,
         "runtimeFailures": runtime_failures,
@@ -112,6 +113,8 @@ def build_live_browser_readiness_snapshot(
         "maxAgeSeconds": _readiness_max_age_seconds(),
         "checkedAt": timestamp.isoformat(),
     }
+    snapshot.update(provider_readiness.evidence)
+    return snapshot
 
 
 def run_live_browser_maintenance_job(

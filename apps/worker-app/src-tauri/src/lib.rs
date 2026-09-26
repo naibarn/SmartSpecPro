@@ -54,6 +54,7 @@ pub struct WorkerAppState {
     pub startup_recovery_required: AtomicBool,
     pub series_workspace: Arc<Mutex<series_workspace::SeriesWorkspaceState>>,
     pub comfy_interactive_runs: Arc<Mutex<HashMap<String, Arc<AtomicBool>>>>,
+    pub local_folder_batch: Arc<Mutex<commands::LocalFolderBatchRuntimeState>>,
 }
 
 impl Default for WorkerAppState {
@@ -76,6 +77,9 @@ impl WorkerAppState {
                 series_workspace::SeriesWorkspaceState::default(),
             )),
             comfy_interactive_runs: Arc::new(Mutex::new(HashMap::new())),
+            local_folder_batch: Arc::new(Mutex::new(
+                commands::LocalFolderBatchRuntimeState::default(),
+            )),
         }
     }
 
@@ -355,8 +359,12 @@ pub fn run() {
             commands::worker_app_get_series_queue,
             commands::worker_app_bind_series,
             commands::worker_app_build_media_plan,
+            commands::worker_app_start_local_folder_batch,
+            commands::worker_app_get_local_folder_batch_status,
+            commands::worker_app_cancel_local_folder_batch,
             commands::worker_app_process_media_asset,
             commands::worker_app_submit_media_job,
+            commands::worker_app_copy_media_job_output_to_source,
             commands::worker_app_submit_speaker_aware_job,
             commands::worker_app_get_speaker_model_status,
             commands::worker_app_set_speaker_model_path,

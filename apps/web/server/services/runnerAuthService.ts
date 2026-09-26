@@ -130,11 +130,13 @@ type RunnerTokenContext = {
   scopes: string[];
   tokenUse: RunnerTokenUse;
   ownerUserId: number | null;
+  runnerSessionId: string | null;
 };
 
 type RunnerTokenExpectation = {
   runnerId?: string;
   tenantId?: string;
+  runnerSessionId?: string;
   requiredScopes?: string[];
   requestProof?: RunnerDeviceRequestProof | null;
 };
@@ -345,12 +347,13 @@ async function assertRunnerDeviceProof(
     path: proof.path,
     timestamp: proof.timestamp,
   });
-  if (!verifyRunnerSignature(expectedPublicKey, payload, proof.signature))
+  if (!verifyRunnerSignature(expectedPublicKey, payload, proof.signature)) {
     throw new RunnerAuthError(
       "runner_device_mismatch",
       401,
       "Runner device proof signature is invalid"
     );
+  }
   if (hasRunnerProofRedis()) {
     try {
       const consumed = await getCacheClient().set(
@@ -453,6 +456,7 @@ export function createRunnerControlToken(
     nodeKind: RunnerNodeKind;
     scopes?: string[];
     deviceBinding?: RunnerDeviceBindingInput;
+    runnerSessionId?: string;
   },
   expiresIn: "5m" | "15m" | "1h" = "15m"
 ): string {
@@ -464,6 +468,7 @@ export function createRunnerControlToken(
       runnerProfile: input.profile,
       runnerNodeKind: input.nodeKind,
       ...runnerDeviceClaims(input.profile, input.deviceBinding),
+      ...(input.runnerSessionId ? { runnerSessionId: input.runnerSessionId } : {}),
       aud: RUNNER_CONTROL_PLANE_AUDIENCE,
       tokenUse: "runner_control",
       scopes: input.scopes ?? [
@@ -487,6 +492,7 @@ export function createRunnerRegistrationToken(input: {
   scopes?: string[];
   deviceBinding?: RunnerDeviceBindingInput;
   ownerUserId?: number | null;
+  runnerSessionId?: string;
 }): string {
   return signBearerToken(
     {
@@ -496,6 +502,7 @@ export function createRunnerRegistrationToken(input: {
       runnerProfile: input.profile,
       runnerNodeKind: input.nodeKind,
       ...runnerDeviceClaims(input.profile, input.deviceBinding),
+      ...(input.runnerSessionId ? { runnerSessionId: input.runnerSessionId } : {}),
       ...(input.ownerUserId ? { runnerOwnerUserId: input.ownerUserId } : {}),
       aud: RUNNER_REGISTRATION_AUDIENCE,
       tokenUse: "runner_registration",
@@ -514,6 +521,7 @@ export function issueRunnerAccessTokens(input: {
   nodeKind: RunnerNodeKind;
   scopes?: string[];
   deviceBinding?: RunnerDeviceBindingInput;
+  runnerSessionId?: string;
 }): { executionToken: string; uploadToken: string; refreshToken: string } {
   const base = {
     sub: input.subject ?? input.runnerId,
@@ -522,6 +530,7 @@ export function issueRunnerAccessTokens(input: {
     runnerProfile: input.profile,
     runnerNodeKind: input.nodeKind,
     ...runnerDeviceClaims(input.profile, input.deviceBinding),
+    ...(input.runnerSessionId ? { runnerSessionId: input.runnerSessionId } : {}),
     aud: RUNNER_CONTROL_PLANE_AUDIENCE,
     scopes: input.scopes ?? ["runner:execute", "runner:upload"],
   } as const;
@@ -642,6 +651,7 @@ export async function refreshRunnerAccessTokens(
     subject: current.subject,
     profile: current.profile,
     nodeKind: current.nodeKind,
+    runnerSessionId: current.runnerSessionId ?? undefined,
     scopes: current.scopes,
     deviceBinding:
       current.deviceId && current.devicePublicKey
@@ -730,6 +740,18 @@ async function verifyRunnerToken(
       403,
       "Runner token tenant does not match the request"
     );
+  const runnerSessionId = claims.runnerSessionId
+    ? String(claims.runnerSessionId)
+    : null;
+  if (
+    input.expected?.runnerSessionId &&
+    input.expected.runnerSessionId !== runnerSessionId
+  )
+    throw new RunnerAuthError(
+      "runner_session_mismatch",
+      403,
+      "Runner token session does not match the active Runner session"
+    );
   if (
     profile === "local_device" &&
     input.expected &&
@@ -773,6 +795,7 @@ async function verifyRunnerToken(
       Number.isInteger(ownerUserIdNumber) && ownerUserIdNumber > 0
         ? ownerUserIdNumber
         : null,
+    runnerSessionId,
     scopes: Array.isArray(claims.scopes) ? claims.scopes : [],
     tokenUse,
   };
@@ -808,6 +831,7 @@ export async function rotateRunnerControlToken(token: string): Promise<string> {
     subject: current.subject,
     profile: current.profile,
     nodeKind: current.nodeKind,
+    runnerSessionId: current.runnerSessionId ?? undefined,
     scopes: current.scopes,
     deviceBinding:
       current.deviceId && current.devicePublicKey

@@ -3,18 +3,23 @@
 
 **Status:** Proposed / Implementation Upgrade Specification  
 **Spec ID:** 216  
-**Date:** 2026-09-20  
+**Revision:** 3 — AI Builder discovery through canonical Retrieval Broker without UI/provider coupling
+**Date:** 2026-09-22
 **Target repository path:** `specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md`  
 **Implementation baseline:** Spec 209 — already implemented / partially implemented Workflow Studio  
-**Canonical product validation:** Spec 212 Revision 20+  
-**Canonical Node Type contract:** Spec 214 v5+  
-**Canonical compiler/runtime contract:** Spec 215 v3+  
+**Canonical product validation:** Spec 212 Revision 20 / R20
+**Canonical Node Type contract:** Spec 214 Revision 6+
+**Canonical compiler/runtime contract:** Spec 215 Revision 4+
 **Economic authority:** Spec 207  
 **Durable physical job authority:** Feature 195 / `worker_jobs`  
 
-**Repository baseline evidence (2026-09-20):** the implemented baseline is exposed by `apps/web/server/routers/workflowStudio.ts`, `apps/web/server/services/workflowStudioContracts.ts`, `apps/web/server/services/workflowStudioRuntime.ts` and `apps/web/server/services/workflowBuilderCompiler.ts`. Those modules still carry the pre-upgrade graph/compiler shapes (including `feature-209-v1` runtime steps), so Specs 214/215 remain an upgrade target until their conformance gates pass; this specification does not claim that cutover is already implemented.
-
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+The current `workflowStudio` tRPC router exposes node-type discovery, draft/version persistence, run/control procedures and marketplace/entitlement queries. Migration `0341_feature_209_workflow_studio.sql` defines persisted definitions, versions, apps, runs, events and checkpoints. `workflowStudioCanonicalAdapter.ts` and `workflowBuilderCompiler.ts` provide partial canonical wiring, while legacy graph translation and existing Studio persistence/run paths remain.
+
+The source tree does not prove a complete Spec 216 cutover, Mini App publication/economics integration, durable Spec 215 execution or R20 certification. The section below is therefore an upgrade target and migration plan, not a claim that persisted production workflows are absent.
 
 # 0. Executive Decision
 
@@ -22,7 +27,7 @@ Spec 209 SHALL be treated as the **implemented baseline**, not rewritten retroac
 
 Spec 216 SHALL be the normative implementation-upgrade program that transforms the existing Workflow Studio into the architecture required by Specs 212/214/215 and the Flow-to-Mini-App monetization model.
 
-The upgrade SHALL reuse useful Spec 209 code and UX, but MAY make breaking internal schema/refactor changes because there are currently **no persisted production workflows that require backward-compatible workflow data migration**.
+The upgrade SHALL reuse useful Spec 209 code and UX. Any breaking schema/refactor change requires deployment data inventory, an explicit compatibility/migration decision and rollback evidence because the repository contains persisted Workflow Studio structures.
 
 The system MUST NOT create a second Workflow Studio, second workflow format, second Mini App runtime, second job queue, second Capability Registry, or second credit ledger.
 
@@ -835,20 +840,19 @@ During/after run:
 
 # 36. API Surface
 
-Illustrative canonical product APIs:
+Current Workflow Studio transport is tRPC. The procedures below are the current
+Studio procedures; future Mini App REST/SDK projections are logical transport
+designs, not existing routes:
 
 ```text
-POST   /workflow-definitions/{workflowId}/mini-apps:generate
-POST   /mini-apps/{miniAppId}:preview
-PATCH  /mini-apps/{miniAppId}/presentation
-POST   /mini-apps/{miniAppId}:submit-public-review
-POST   /admin/mini-app-publication-requests/{requestId}:approve
-POST   /admin/mini-app-publication-requests/{requestId}:request-changes
-POST   /admin/mini-app-publication-requests/{requestId}:reject
-POST   /mini-apps/{miniAppId}:publish
-POST   /mini-apps/{miniAppId}:quote-run
-POST   /mini-apps/{miniAppId}:run
-POST   /mini-apps/{miniAppId}:suspend
+workflowStudio.generateDraft / editDraft
+workflowStudio.createDraft / saveDraft
+workflowStudio.publishVersion / publishApp
+workflowStudio.run / getRun / controlRun
+workflowStudio.marketplace / marketplaceDetail / dependencyCheck / entitlement
+
+Future Mini App publication, presentation and public-API operations remain
+logical Spec 216 design until a matching source route is implemented.
 ```
 
 Exact endpoint naming MAY follow existing SmartAIHub API conventions, but all operations MUST resolve to canonical services and identities.
@@ -1061,3 +1065,105 @@ Spec 216 is complete when the already-implemented Workflow Studio can be evolved
 # 48. Canonical Upgrade Principle
 
 > **Spec 209 remains the implemented product baseline. Spec 216 owns the upgrade path. Specs 214 and 215 own the new semantic/runtime contracts. Spec 212 proves the product works. Spec 207 owns money. No layer is allowed to recreate another layer's source of truth.**
+
+---
+
+# 49. Device-Independent Mini App and Mobile Surface Amendment
+
+**Implementation timing:** Spec 216 is an upgrade program not yet implemented at the time of this amendment; the requirements below are normative for the first implementation.
+
+Mini Apps SHALL be capable of presenting an execution-oriented mobile/tablet experience without requiring the full Workflow Studio authoring canvas.
+
+The same published Mini App/workflow version SHALL be consumable from eligible surfaces through Spec 225:
+
+```text
+Web
+PWA
+Mobile
+Tablet
+future first-party surface
+```
+
+Mobile-oriented Mini App schemas MAY use:
+
+- camera/photo/video capture;
+- voice input;
+- document scan/file picker;
+- share-sheet asset intake;
+- preview/review cards;
+- approval/action cards;
+- progress and Needs Attention state;
+- deep links into the exact run/artifact/approval.
+
+These controls bind to existing typed WorkflowInterface inputs and outputs. They MUST NOT create mobile-specific workflow semantics.
+
+Full graph authoring, advanced schema debugging, bulk administration and complex timeline editing MAY remain Web/Desktop-only while execution/review/approval remains available on mobile.
+
+Publication preflight SHALL additionally validate:
+
+- responsive/mobile schema when listing declares mobile support;
+- permissions for camera/microphone/photo/file access;
+- safe notification/deep-link behavior;
+- no secrets in client schema or push payload;
+- upload size/background-upload policy;
+- graceful fallback when a client lacks a required capture capability.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 3 — AI Builder / Studio Retrieval Discovery Alignment
+
+AI Builder and Workflow Studio MAY search Node descriptions, Skills, capabilities, templates, Help and workflow examples, but all production semantic/document search SHALL use Spec 229 Retrieval Broker.
+
+The Studio SHALL consume normalized discovery results and MUST NOT embed provider-specific Vectorize/AI Search logic in the browser/client.
+
+When a user asks the AI Builder to "find a Skill" or "use an existing capability", the Builder SHALL prefer:
+
+```text
+exact identity / pinned dependency
+→ authorized candidate discovery via Spec 229
+→ canonical Skill/capability revalidation
+→ bind versioned reference
+```
+
+rather than copying retrieved Skill implementation text into the WorkflowDefinition.
+
+Search ranking is advisory. Final graph validity remains governed by Spec 214 manifests, Spec 215 compilation, Spec 220 policy and Spec 221 Skill state.

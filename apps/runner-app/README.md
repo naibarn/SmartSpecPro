@@ -13,24 +13,47 @@ smartaihub-runner rescan # one explicit local discovery and capability refresh
 smartaihub-runner run    # local refresh loop or shared_container /health/runner
 ```
 
-`SAH_RUNNER_PROFILE=local_device` requires a device identity and control URL.
+`SAH_RUNNER_PROFILE=local_device` uses browser approval by default. Run
+`smartaihub-runner connect`; the Runner generates its device proof locally,
+opens the authenticated SmartAIHub approval page, polls until the user clicks
+Allow, and stores the resulting credential bundle under the configured data
+root with local-only permissions. No key or token needs to be entered into or
+copied from the browser. `reconnect` starts the same flow again.
+
+The older `SAH_RUNNER_DEVICE_PUBLIC_KEY`, `SAH_RUNNER_DEVICE_PRIVATE_KEY`,
+`SAH_RUNNER_MACHINE_FINGERPRINT`, and `SAH_RUNNER_ACCESS_TOKEN` environment
+variables remain supported for existing managed deployments. A local Runner
+that has completed browser approval does not need them. The Runner signs the
+request proof required by the control gateway for both the WSS handshake and
+HTTPS fallback; private material never enters protocol payloads or diagnostics.
+
 `SAH_RUNNER_PROFILE=shared_container` requires a Job/attempt/lease scope and
-cannot persist a user-device identity. Credentials are injected by the host
-runtime and are never serialized into the local journal or diagnostics.
+cannot persist a user-device identity. The local control URL defaults to
+`https://smartaihub.app` and may be overridden with `SAH_RUNNER_CONTROL_URL`.
+After approval, `connect`, `rescan`, and `run` scan the bounded known-tool
+catalog and run bounded adapter probes before sending one sequenced capability
+snapshot plus reconciliation event over authenticated WSS. A network failure
+keeps the events queued for the authenticated HTTPS durable endpoint. For
+`browser.v1`, readiness additionally requires the current authorized Runner
+session, a tenant/session-bound grant, an isolated Chromium remote-debugging
+context, CDP transport, structured DOM/accessibility observation, screenshot
+evidence, and successful cleanup. Evidence is published as immutable hash
+references only; a version probe never implies account authentication.
 
-For an enrolled local device, provide `SAH_RUNNER_DEVICE_PUBLIC_KEY`,
-`SAH_RUNNER_DEVICE_PRIVATE_KEY` (PKCS#8 or PKCS#1 PEM) and
-`SAH_RUNNER_MACHINE_FINGERPRINT`. The Runner signs the request proof required
-by the control gateway for both the WSS handshake and HTTPS fallback. These
-values are environment-only and are never included in protocol payloads.
+The browser probe uses `SAH_RUNNER_BROWSER_CERTIFICATION_FIXTURE_URL` when set,
+and otherwise the controlled SmartAIHub `/healthz` fixture. The URL must remain
+under `https://smartaihub.app/`. Browser readiness is fail-closed when the
+grant is missing, expired, revoked, stale, cross-tenant, or bound to another
+Runner session.
 
-The local control URL must use `https://`; `connect`/`reconnect` reads the
-short-lived `SAH_RUNNER_ACCESS_TOKEN` from the environment, scans the bounded
-known-tool catalog, runs approved `--version` probes with a timeout, and sends
-one sequenced capability snapshot plus reconciliation event over authenticated
-WSS. A network failure keeps the events queued for the authenticated HTTPS
-durable endpoint. A version probe never implies account authentication, so a
-tool remains `auth_required` until the adapter-specific auth gate succeeds.
+Browser executable discovery is deterministic and does not require adding a
+directory to `PATH`. The order is: `SAH_RUNNER_BROWSER_EXECUTABLE` (absolute
+path only), Playwright-managed browsers (`PLAYWRIGHT_BROWSERS_PATH` or the
+standard user cache), Runner/browser-managed cache, compatible OS-installed
+locations, and finally `PATH`. An invalid explicit path fails closed rather
+than silently falling back. Capability and probe evidence records the selected
+discovery source and Chromium version; the executable path itself is kept
+inside the Runner process and is never serialized into a capability snapshot.
 
 `run` on a local device repeats that authenticated scan/reconciliation cycle
 every five minutes by default. Set `SAH_RUNNER_REFRESH_INTERVAL_SECONDS` to a

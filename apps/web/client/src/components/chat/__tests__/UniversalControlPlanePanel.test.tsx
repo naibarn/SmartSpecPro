@@ -9,6 +9,10 @@ const mocks = vi.hoisted(() => ({
   runnersQuery: vi.fn(),
   connectionsQuery: vi.fn(),
   cancelMutation: vi.fn(),
+  developmentRunsQuery: vi.fn(),
+  developmentRunQuery: vi.fn(),
+  developmentEventsQuery: vi.fn(),
+  developmentCommandMutation: vi.fn(),
   refetch: vi.fn(),
 }));
 
@@ -23,6 +27,21 @@ vi.mock("@/lib/trpc", () => ({
       },
       cancelQueued: {
         useMutation: (...args: unknown[]) => mocks.cancelMutation(...args),
+      },
+    },
+    spec226DevelopmentControl: {
+      list: {
+        useQuery: (...args: unknown[]) => mocks.developmentRunsQuery(...args),
+      },
+      get: {
+        useQuery: (...args: unknown[]) => mocks.developmentRunQuery(...args),
+      },
+      events: {
+        useQuery: (...args: unknown[]) => mocks.developmentEventsQuery(...args),
+      },
+      command: {
+        useMutation: (...args: unknown[]) =>
+          mocks.developmentCommandMutation(...args),
       },
     },
     connectedDevices: {
@@ -80,6 +99,19 @@ beforeEach(() => {
   mocks.runnersQuery.mockReturnValue({ ...emptyQuery, data: { runners: [] } });
   mocks.connectionsQuery.mockReturnValue({ ...emptyQuery, data: [] });
   mocks.cancelMutation.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  });
+  mocks.developmentRunsQuery.mockReturnValue({
+    ...emptyQuery,
+    data: [],
+  });
+  mocks.developmentRunQuery.mockReturnValue(emptyQuery);
+  mocks.developmentEventsQuery.mockReturnValue({
+    ...emptyQuery,
+    data: { events: [], nextCursor: 0 },
+  });
+  mocks.developmentCommandMutation.mockReturnValue({
     mutateAsync: vi.fn(),
     isPending: false,
   });
@@ -286,7 +318,9 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByText("Codex CLI · 1.2.3")).toBeInTheDocument();
     expect(screen.getByText("code.edit · codex-cli")).toBeInTheDocument();
     expect(
-      screen.getByText("Safe inventory projection; paths and credentials are hidden.")
+      screen.getByText(
+        "Safe inventory projection; paths and credentials are hidden."
+      )
     ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Task to run"), {
       target: { value: "Create a storyboard" },
@@ -387,5 +421,114 @@ describe("UniversalControlPlanePanel", () => {
     expect(
       screen.getByRole("button", { name: "Collapse task Plan plan-42" })
     ).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("shows canonical DevelopmentRun state and controls it with the returned fence", async () => {
+    const mutateAsync = vi.fn().mockResolvedValue({ accepted: true });
+    mocks.developmentRunsQuery.mockReturnValue({
+      ...emptyQuery,
+      data: [
+        {
+          bridgeVersion: "spec-226-development-control-v1",
+          runId: "run-226-ui",
+          state: "IMPLEMENT",
+          phaseAttempt: 2,
+          maxPhaseAttempts: 3,
+          workerJobId: "job-226-ui",
+          fencingVersion: 7,
+          revision: 3,
+          eventSequence: 9,
+          nextSafeAction: { command: "RUN_PHASE", phase: "BUILD" },
+          actions: { pause: true, cancel: true },
+        },
+      ],
+    });
+    mocks.developmentCommandMutation.mockReturnValue({
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(
+      <UniversalControlPlanePanel
+        conversationId={42}
+        onClose={vi.fn()}
+        onOpenPrompt={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("Development runs")).toBeInTheDocument();
+    expect(screen.getByText("run-226-ui")).toBeInTheDocument();
+    expect(screen.getByText("implement")).toBeInTheDocument();
+    expect(
+      screen.getByText("Next safe action: run phase · build")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Pause run run-226-ui" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancel run run-226-ui" })
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Expand development run run-226-ui" })
+    );
+    expect(mocks.developmentRunQuery).toHaveBeenLastCalledWith(
+      { runId: "run-226-ui" },
+      expect.objectContaining({ enabled: true })
+    );
+    expect(mocks.developmentEventsQuery).toHaveBeenLastCalledWith(
+      { runId: "run-226-ui", afterSequence: 0, limit: 50 },
+      expect.objectContaining({ enabled: true })
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Pause run run-226-ui" })
+    );
+    await vi.waitFor(() =>
+      expect(mutateAsync).toHaveBeenCalledWith({
+        runId: "run-226-ui",
+        action: "pause",
+        expectedRevision: 3,
+        expectedFencingVersion: 7,
+        idempotencyKey: "spec226-ui:run-226-ui:pause:3:7",
+      })
+    );
+  });
+
+  it("does not render DevelopmentRun controls when the canonical view disallows them", () => {
+    mocks.developmentRunsQuery.mockReturnValue({
+      ...emptyQuery,
+      data: [
+        {
+          bridgeVersion: "spec-226-development-control-v1",
+          runId: "run-226-done",
+          state: "COMPLETED",
+          phaseAttempt: 1,
+          maxPhaseAttempts: 1,
+          workerJobId: null,
+          fencingVersion: 4,
+          revision: 8,
+          eventSequence: 4,
+          nextSafeAction: { command: "STOP", reason: "COMPLETED" },
+          actions: { pause: false, cancel: false },
+        },
+      ],
+    });
+
+    render(
+      <UniversalControlPlanePanel
+        conversationId={42}
+        onClose={vi.fn()}
+        onOpenPrompt={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("run-226-done")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Pause run run-226-done" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel run run-226-done" })
+    ).not.toBeInTheDocument();
   });
 });

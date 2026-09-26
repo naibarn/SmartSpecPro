@@ -70,6 +70,15 @@ describe("requestResilience", () => {
       expect(shouldRetryQuery(RETRYABLE_QUERY_MAX_ATTEMPTS, error)).toBe(false);
     });
 
+    it("retries a gateway HTML response that lost its server or proxy connection", () => {
+      const error = new Error(
+        "The API request for /trpc/media.getTask lost its server/proxy connection before returning JSON. The operation may still have completed. (status=502; content-type=text/html)"
+      );
+
+      expect(shouldRetryQuery(0, error)).toBe(true);
+      expect(shouldRetryQuery(RETRYABLE_QUERY_MAX_ATTEMPTS, error)).toBe(false);
+    });
+
     it("retries a tenant bootstrap gateway status without retrying ordinary 500s", () => {
       expect(
         shouldRetryQuery(0, Object.assign(new Error("tenant/current 503"), { status: 503 })),

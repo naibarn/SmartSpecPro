@@ -99,6 +99,7 @@ export const deadAirPolicySchema = z.object({
   thresholdDb: z.number().min(-80).max(0),
   minSilenceMs: z.number().int().min(100).max(30_000),
   padMs: z.number().int().min(0).max(2000),
+  audioStreamIndex: z.number().int().nonnegative().max(64).nullable().optional(),
   silenceRanges: z.array(z.object({
     startMs: z.number().int().nonnegative().max(86_400_000),
     endMs: z.number().int().positive().max(86_400_000).nullable(),
@@ -140,6 +141,12 @@ export const shotBudgetPolicySchema = z.object({
   maxDurationMs: z.number().int().min(1000).max(90_000),
   minDurationMs: z.number().int().min(250).max(30_000),
   maxBrollMs: z.number().int().min(0).max(90_000),
+  preserveNarrativeAudio: z.boolean(),
+}).strict();
+const mediaEditBudgetSchema = z.object({
+  maxDurationMs: z.number().int().min(1000).max(86_400_000),
+  minDurationMs: z.number().int().min(250).max(30_000),
+  maxBrollMs: z.number().int().min(0).max(86_400_000),
   preserveNarrativeAudio: z.boolean(),
 }).strict();
 
@@ -186,12 +193,17 @@ export const mediaEditPlanSchema = z.object({
   planRevision: revision,
   mode: mediaProcessingModeSchema,
   aspectRatio: mediaAspectRatioSchema,
+  fullVideo: z.boolean().default(false),
   deadAir: deadAirPolicySchema,
-  budget: shotBudgetPolicySchema,
+  budget: mediaEditBudgetSchema,
   segments: z.array(mediaEditSegmentSchema).min(1).max(64),
   cameraMotionPlan: cameraMotionPlanSchema.optional(),
   rationale: safeDescription,
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (!value.fullVideo && (value.budget.maxDurationMs > 90_000 || value.budget.maxBrollMs > 90_000)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["budget"], message: "Only full-video media edits may exceed 90 seconds" });
+  }
+});
 
 export const mediaQcReportSchema = z.object({
   qcVersion: revision,

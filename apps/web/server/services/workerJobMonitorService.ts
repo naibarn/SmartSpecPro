@@ -55,13 +55,144 @@ type WorkerJobRow = Pick<
   | "statusReason"
   | "resourceProfile"
   | "outputJson"
+  | "instructionsJson"
   | "failureReason"
+  | "errorCode"
+  | "errorMessage"
+  | "operatorReviewRequired"
+  | "operatorReviewReason"
   | "inputJson"
   | "progressJson"
   | "createdAt"
   | "startedAt"
   | "finishedAt"
 >;
+
+export type UserWorkerJobRetryMode =
+  | "retry_scheduled"
+  | "dispatch_recovery"
+  | "review_recovery"
+  | "artifact_publication_recovery"
+  | "replacement_job";
+
+export type UserWorkerJobRetryReason =
+  | "automatic_retry"
+  | "adapter_contract_unsupported"
+  | "known_runtime_failure"
+  | "artifact_qc_failure"
+  | "protection_provider_unavailable";
+
+export type UserWorkerJobRetryPolicy = {
+  mode: UserWorkerJobRetryMode;
+  reason: UserWorkerJobRetryReason;
+};
+
+function isRetryableContentProtectionFailure(
+  row: Pick<WorkerJobRow, "status" | "jobType" | "errorCode" | "failureReason" | "errorMessage" | "statusReason">,
+): boolean {
+  if (
+    row.jobType !== "content_protection.protect" ||
+    !["failed", "expired"].includes(row.status)
+  ) {
+    return false;
+  }
+  const failureText = [
+    row.errorCode,
+    row.errorMessage,
+    row.failureReason,
+    row.statusReason,
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join(" ");
+  // A missing/unready optional native runtime used to sit queued until the
+  // control-plane deadline and become `expired`. It is safe to retry this
+  // sibling job after the user installs the runtime; the completed render is
+  // never submitted again.
+  return [
+    "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+    "JOB_DEADLINE_EXPIRED",
+    "JOB_TIMEOUT",
+    "Job deadline has elapsed",
+    "Job hard deadline has elapsed",
+  ].some(marker => failureText.includes(marker));
+}
+
+/**
+ * User retry is deliberately narrower than admin recovery. A retry from a
+ * user-facing page may only reopen a transport failure that never reached a
+ * worker, an already-approved automatic retry, or the known pre-submission
+ * Remotion runtime regression fixed in the current release.
+ */
+export function getUserWorkerJobRetryPolicy(
+  row: Pick<WorkerJobRow, "status" | "jobType" | "errorCode" | "failureReason" | "operatorReviewRequired" | "operatorReviewReason">,
+  evidence: { hasVerifiedOutput?: boolean; hasUnpublishedRemotionArtifact?: boolean } = {},
+): UserWorkerJobRetryPolicy | null {
+  if (row.statusReason?.startsWith("remotion_replaced:")) {
+    return null;
+  }
+
+  if (row.status === "retry_scheduled" && !row.operatorReviewRequired) {
+    return { mode: "retry_scheduled", reason: "automatic_retry" };
+  }
+
+  if (
+    row.status === "queued" &&
+    row.operatorReviewRequired === true &&
+    row.operatorReviewReason === "adapter_contract_unsupported"
+  ) {
+    return { mode: "dispatch_recovery", reason: "adapter_contract_unsupported" };
+  }
+
+  if (
+    row.status === "failed" &&
+    row.operatorReviewRequired === true &&
+    row.errorCode === "UNSUPPORTED_JOB_CONTRACT" &&
+    row.operatorReviewReason === "adapter_contract_unsupported"
+  ) {
+    return { mode: "review_recovery", reason: "adapter_contract_unsupported" };
+  }
+
+  if (
+    row.status === "failed" &&
+    row.jobType === "remotion_render_video" &&
+    [row.errorCode, row.errorMessage, row.failureReason, row.operatorReviewReason]
+      .filter((value): value is string => typeof value === "string")
+      .some(value => value.includes("revisionId is not defined"))
+  ) {
+    return { mode: "review_recovery", reason: "known_runtime_failure" };
+  }
+
+  // Content protection is a downstream sibling of the render. When its
+  // provider capability is unavailable, the raw render remains usable and a
+  // user retry must reopen only this protection job, never rerender the video.
+  if (isRetryableContentProtectionFailure(row)) {
+    return { mode: "review_recovery", reason: "protection_provider_unavailable" };
+  }
+
+  // A worker can report `job.completed` before the artifact protocol/QC
+  // projection proves a usable Remotion output. The canonical job is already
+  // terminal in that case, so reopening it would violate the control-plane
+  // transition table. A bounded replacement job is the safe recovery path,
+  // but only for this output-producing job type and only when the server has
+  // confirmed that no verified output exists.
+  if (
+    row.status === "completed" &&
+    row.jobType === "remotion_render_video" &&
+    evidence.hasUnpublishedRemotionArtifact === true
+  ) {
+    return { mode: "artifact_publication_recovery", reason: "artifact_qc_failure" };
+  }
+
+  if (
+    row.status === "completed" &&
+    row.jobType === "remotion_render_video" &&
+    evidence.hasVerifiedOutput === false
+  ) {
+    return { mode: "replacement_job", reason: "artifact_qc_failure" };
+  }
+
+  return null;
+}
 
 // Vertical Drama Render Queue plan §4.5, Wave 3 — `cancelQueuedJob`'s
 // `.returning()` (no column list) already returns EVERY `workerJobs` column
@@ -124,6 +255,24 @@ export type WorkerJobMonitorRepository = {
   }): Promise<WorkerJobRowWithInput | null>;
 };
 
+type UserWorkerJobControlPlane = Pick<
+  ReturnType<typeof createJobControlPlane>,
+  "makeRetryDue" | "recoverReviewGatedJob"
+>;
+
+type RetryCompletedRemotionJob = (input: {
+  job: WorkerJob;
+  tenantId: string;
+  userId: number;
+  actionId: string;
+}) => Promise<{ jobId: string }>;
+
+type PublishRawWorkerArtifacts = (input: {
+  tenantId: string;
+  userId: number;
+  jobId: string;
+}) => Promise<void>;
+
 export type SafeWorkerJobEvent = {
   id: string;
   eventType: string;
@@ -169,6 +318,8 @@ export type UserWorkerJobSummary = {
   jobType: string;
   status: UserWorkerJobStatus;
   statusReason: string | null;
+  operatorReviewRequired: boolean;
+  operatorReviewReason: string | null;
   failureReason: string | null;
   runtimeType: string;
   resourceProfile: string;
@@ -183,6 +334,8 @@ export type UserWorkerJobSummary = {
   worker: WorkerSummaryRow | null;
   outputRefs: SafeWorkerOutputRef[];
   canCancel: boolean;
+  canRetry: boolean;
+  retryReason: UserWorkerJobRetryReason | null;
 };
 
 export type UserWorkerJobDetail = UserWorkerJobSummary & {
@@ -254,7 +407,12 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
         failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
         inputJson: workerJobs.inputJson,
         progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
@@ -294,7 +452,12 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
         failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
         inputJson: workerJobs.inputJson,
         progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
@@ -334,7 +497,12 @@ export const defaultWorkerJobMonitorRepo: WorkerJobMonitorRepository = {
         statusReason: workerJobs.statusReason,
         resourceProfile: workerJobs.resourceProfile,
         outputJson: workerJobs.outputJson,
+        instructionsJson: workerJobs.instructionsJson,
         failureReason: workerJobs.failureReason,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        operatorReviewRequired: workerJobs.operatorReviewRequired,
+        operatorReviewReason: workerJobs.operatorReviewReason,
         inputJson: workerJobs.inputJson,
         progressJson: workerJobs.progressJson,
         createdAt: workerJobs.createdAt,
@@ -493,6 +661,25 @@ function isVerifiedArtifact(artifact: ArtifactRow): boolean {
     || verificationState === "verified"
     || verificationState === "passed"
     || verificationState === "server_verification_passed";
+}
+
+function isPublishableRemotionArtifact(artifact: ArtifactRow): boolean {
+  if (artifact.publishedItemId != null) return false;
+  if (![
+    "remotion_render_mp4",
+    "vertical_drama_final_video",
+  ].includes(artifact.artifactType)) {
+    return false;
+  }
+
+  const metadata = asRecord(artifact.metadataJson);
+  const contentType = safeString(metadata.contentType ?? metadata.mimeType);
+  const checksum = safeString(metadata.checksumSha256 ?? metadata.sha256 ?? metadata.contentHash);
+  const sizeBytes = safeNumber(metadata.sizeBytes ?? metadata.size);
+  return contentType?.startsWith("video/") === true
+    && /^[a-f0-9]{64}$/i.test(checksum ?? "")
+    && typeof sizeBytes === "number"
+    && sizeBytes >= 0;
 }
 
 function projectOutputJson(outputJson: unknown): SafeWorkerOutputRef[] {
@@ -667,12 +854,20 @@ function projectJob(
   const orchestration = projectOrchestration(row);
   const persistedProgress = projectProgress(row);
   const latestEvent = events[0] ?? null;
+  const retryPolicy = getUserWorkerJobRetryPolicy(row, {
+    hasVerifiedOutput: outputRefs.length > 0,
+    hasUnpublishedRemotionArtifact:
+      row.jobType === "remotion_render_video"
+      && (artifactsByJobId.get(row.id) ?? []).some(isPublishableRemotionArtifact),
+  });
 
   return {
     id: row.id,
     jobType: row.jobType,
     status: status as UserWorkerJobStatus,
     statusReason: row.statusReason,
+    operatorReviewRequired: row.operatorReviewRequired,
+    operatorReviewReason: row.operatorReviewReason,
     failureReason:
       status === "failed" && !row.failureReason
         ? "HyperFrames final video verification failed."
@@ -690,6 +885,8 @@ function projectJob(
     worker: row.worker?.id ? row.worker : null,
     outputRefs,
     canCancel: ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled", "claimed", "preparing", "uploading", "publishing", "indexing"].includes(status),
+    canRetry: retryPolicy !== null,
+    retryReason: retryPolicy?.reason ?? null,
   };
 }
 
@@ -971,6 +1168,127 @@ export async function getUserWorkerJobDetail(
       .sort((a, b) => (a.eventSequence ?? Number.MAX_SAFE_INTEGER) - (b.eventSequence ?? Number.MAX_SAFE_INTEGER) || a.createdAt.getTime() - b.createdAt.getTime())
       .map(projectEvent),
   };
+}
+
+export async function retryUserWorkerJob(
+  input: {
+    auth: WorkerJobMonitorAuth;
+    jobId: string;
+    actionId: string;
+  },
+  deps: {
+    repo?: WorkerJobMonitorRepository;
+    controlPlane?: UserWorkerJobControlPlane;
+    retryCompletedRemotionJob?: RetryCompletedRemotionJob;
+    publishRawArtifacts?: PublishRawWorkerArtifacts;
+  } = {},
+): Promise<{ retried: true; jobId: string; mode: UserWorkerJobRetryMode }> {
+  const repo = deps.repo ?? defaultWorkerJobMonitorRepo;
+  const current = await repo.getUserJob(input);
+  if (!current) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Worker job not found" });
+  }
+
+  const artifacts = await repo.listArtifacts([current.id]);
+  const hasVerifiedOutput =
+    artifacts.some(isVerifiedArtifact) || projectOutputJson(current.outputJson).length > 0;
+  const hasUnpublishedRemotionArtifact =
+    current.jobType === "remotion_render_video"
+    && artifacts.some(isPublishableRemotionArtifact);
+  const retryPolicy = getUserWorkerJobRetryPolicy(current, {
+    hasVerifiedOutput,
+    hasUnpublishedRemotionArtifact,
+  });
+  if (!retryPolicy) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "งานนี้ยังไม่อยู่ในสถานะที่ retry จากผู้ใช้ได้",
+    });
+  }
+
+  if (retryPolicy.mode === "artifact_publication_recovery") {
+    const publishRawArtifacts = deps.publishRawArtifacts ?? (async input => {
+      const { publishWorkerArtifacts } = await import("./workerArtifactService");
+      await publishWorkerArtifacts({
+        tenantId: input.tenantId,
+        jobId: input.jobId,
+        actorUserId: input.userId,
+      });
+    });
+    await publishRawArtifacts({
+      tenantId: input.auth.tenantId,
+      userId: input.auth.userId,
+      jobId: current.id,
+    });
+    return { retried: true, jobId: current.id, mode: retryPolicy.mode };
+  }
+
+  if (retryPolicy.mode === "replacement_job") {
+    const retryCompletedRemotionJob = deps.retryCompletedRemotionJob ?? (async input => {
+      const { retryRemotionRenderJobFromExisting } = await import("./verticalDramaRemotionRender");
+      return retryRemotionRenderJobFromExisting(input);
+    });
+    const replacement = await retryCompletedRemotionJob({
+      job: current as WorkerJob,
+      tenantId: input.auth.tenantId,
+      userId: input.auth.userId,
+      actionId: input.actionId,
+    });
+    return { retried: true, jobId: replacement.jobId, mode: retryPolicy.mode };
+  }
+
+  const controlPlane = deps.controlPlane ?? (
+    repo === defaultWorkerJobMonitorRepo ? createJobControlPlane() : undefined
+  );
+  if (!controlPlane) {
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Worker job retry control plane is unavailable",
+    });
+  }
+
+  const scope = {
+    tenantId: input.auth.tenantId,
+    requestedByUserId: input.auth.userId,
+    authorizationScope: "worker_jobs.user_retry",
+  };
+  const reason = "user_requested_retry";
+  const recoveryEvidence = retryPolicy.reason === "known_runtime_failure"
+    ? {
+        disposition: "pre_submission_failure" as const,
+        knownRuntime: "remotion_revision_id" as const,
+      }
+    : retryPolicy.reason === "protection_provider_unavailable"
+      ? {
+          disposition: "provider_operation_resolved" as const,
+          knownRuntime: "content_protection_provider" as const,
+        }
+      : { disposition: "pre_submission_failure" as const };
+  const accepted = retryPolicy.mode === "review_recovery"
+    ? await controlPlane.recoverReviewGatedJob(
+      input.jobId,
+      input.actionId,
+      reason,
+      recoveryEvidence,
+      input.auth.userId,
+      scope,
+    )
+    : await controlPlane.makeRetryDue(
+      input.jobId,
+      input.actionId,
+      input.auth.userId,
+      reason,
+      scope,
+    );
+
+  if (!accepted) {
+    throw new TRPCError({
+      code: "CONFLICT",
+      message: "งานเปลี่ยนสถานะแล้วหรือไม่สามารถ retry ได้ในขณะนี้",
+    });
+  }
+
+  return { retried: true, jobId: input.jobId, mode: retryPolicy.mode };
 }
 
 export async function cancelQueuedUserWorkerJob(

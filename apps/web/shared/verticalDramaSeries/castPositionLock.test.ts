@@ -49,7 +49,7 @@ describe("Vertical Drama cast position lock", () => {
     ]);
   });
 
-  it("uses symmetric layouts for one through five characters", () => {
+  it("uses symmetric layouts for one through six characters", () => {
     expect(viewerPositionsForCastCount(1)).toEqual(["viewer-center"]);
     expect(viewerPositionsForCastCount(2)).toEqual([
       "viewer-left",
@@ -66,7 +66,46 @@ describe("Vertical Drama cast position lock", () => {
       "viewer-center-right",
       "viewer-right",
     ]);
-    expect(viewerPositionsForCastCount(6)).toEqual([]);
+    expect(viewerPositionsForCastCount(6)).toEqual([
+      "viewer-far-left",
+      "viewer-left",
+      "viewer-center-left",
+      "viewer-center-right",
+      "viewer-right",
+      "viewer-far-right",
+    ]);
+  });
+
+  it("accepts and maps a six-character cast position lock", () => {
+    const orderedCharacterRefs = ["a", "b", "c", "d", "e", "f"];
+    const lock = {
+      assetId: "2163",
+      orderedCharacterRefs,
+      confirmedAt: "now",
+    };
+
+    expect(
+      validateVerticalDramaCastPositionLock({
+        lock,
+        activeAssetId: "2163",
+        requiredCharacterRefs: orderedCharacterRefs,
+      })
+    ).toEqual({ valid: true });
+    expect(
+      buildVerticalDramaVerifiedCastPositions({
+        lock,
+        characterNameByKey: new Map(
+          orderedCharacterRefs.map(key => [key, key.toUpperCase()])
+        ),
+      })
+    ).toEqual([
+      { characterKey: "a", name: "A", position: "viewer-far-left" },
+      { characterKey: "b", name: "B", position: "viewer-left" },
+      { characterKey: "c", name: "C", position: "viewer-center-left" },
+      { characterKey: "d", name: "D", position: "viewer-center-right" },
+      { characterKey: "e", name: "E", position: "viewer-right" },
+      { characterKey: "f", name: "F", position: "viewer-far-right" },
+    ]);
   });
 
   it("rejects stale, duplicate, and incomplete locks", () => {
@@ -174,7 +213,7 @@ describe("Vertical Drama cast position lock", () => {
         long: "x".repeat(300),
         invalid: 42,
       },
-      ["alice", "bob", "long"],
+      ["alice", "bob", "long"]
     );
 
     expect(result).toEqual({

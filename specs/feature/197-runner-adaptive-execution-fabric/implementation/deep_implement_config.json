@@ -1,0 +1,52 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/197-runner-adaptive-execution-fabric/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/197-runner-adaptive-execution-fabric/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-runner-contracts",
+    "section-02-identity-and-discovery",
+    "section-03-claims-and-leasing",
+    "section-04-control-and-recovery",
+    "section-05-ui-and-mcp-boundary",
+    "section-06-migration-and-acceptance"
+  ],
+  "sections_state": {
+    "section-01-runner-contracts": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-03-claims-and-leasing": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-04-control-and-recovery": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-02-identity-and-discovery": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-05-ui-and-mcp-boundary": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    },
+    "section-06-migration-and-acceptance": {
+      "status": "complete",
+      "commit_hash": "b9ab0913a"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-17T15:15:50.720244+00:00"
+}

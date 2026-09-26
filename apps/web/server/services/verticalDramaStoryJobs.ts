@@ -79,7 +79,9 @@ import {
   formatAffectedUsersForText,
   resolveAffectedUsers,
 } from "./feedbackAffectedUsers";
-import type { DrizzleDB } from "../db";
+import { getDb, type DrizzleDB } from "../db";
+import { workerJobs } from "../../drizzle/schema";
+import { and, eq } from "drizzle-orm";
 import {
   finalizeStoryGeneration,
   StoryGenerationFenceLostError,
@@ -397,15 +399,6 @@ export interface VerticalDramaStoryJobStoreDependencies {
   now: () => number;
   /** Injectable only for tests; production waits without blocking a request. */
   sleep: (milliseconds: number) => Promise<void>;
-  /**
-   * Finds a failed BullMQ delivery for a domain job that still looks active
-   * in Redis. This makes already-failed/stalled deliveries repairable after a
-   * deploy, even when the worker's `failed` event happened before the new
-   * reconciliation handler was installed.
-   */
-  findFailedBullmqJob?: (
-    jobId: string,
-  ) => Promise<{ error: string; dispatchId?: string } | null>;
 }
 
 function defaultRedisAdapter(): VerticalDramaStoryJobRedisAdapter {
@@ -436,7 +429,6 @@ function resolveDeps(
       dependencies?.sleep ??
       ((milliseconds: number) =>
         new Promise(resolve => setTimeout(resolve, milliseconds))),
-    findFailedBullmqJob: dependencies?.findFailedBullmqJob ?? defaultFindFailedBullmqJob,
   };
 }
 
@@ -788,6 +780,18 @@ export async function enqueueVerticalDramaStoryJob(
       await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId, dispatchId);
     }
   } catch (error) {
+    if (isFeature186HardCutoverEnabled()) {
+      const failedRecord: VerticalDramaStoryJobRecord = {
+        ...record,
+        status: "failed",
+        error: error instanceof Error ? error.message.slice(0, 2000) : "Canonical job submission failed",
+        updatedAt: new Date(deps.now()).toISOString(),
+      };
+      await enqueueWrite(jobId, () => writeRecord(failedRecord, deps));
+      await clearActivePointerIfOwned(failedRecord, deps);
+      await notifyStoryJobTerminal(failedRecord);
+      throw error;
+    }
     // Best-effort — mirrors `jobAutomationService.ts`'s own "queue
     // unavailable -> job stays queued until a worker comes up" degradation.
     // The record itself is already durably written, so this never turns a
@@ -814,10 +818,71 @@ export async function getVerticalDramaStoryJobStatus(
   dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
 ): Promise<VerticalDramaStoryJobRecord | null> {
   const deps = resolveDeps(dependencies);
-  const record = await readRecord(jobId, deps);
+  let record = await readRecord(jobId, deps);
   if (!record) return null;
   if (record.tenantId !== owner.tenantId || record.seriesId !== owner.seriesId) return null;
+  record = await refreshStoryJobFromCanonicalControlPlane(record, deps);
   return record;
+}
+
+/** Redis is the story-domain projection; worker_jobs owns execution truth after
+ * Feature 186 cutover. Refresh terminal state on reads so a lost worker event
+ * cannot leave the UI showing a job as active forever. */
+async function refreshStoryJobFromCanonicalControlPlane(
+  record: VerticalDramaStoryJobRecord,
+  deps: VerticalDramaStoryJobStoreDependencies,
+): Promise<VerticalDramaStoryJobRecord> {
+  if (record.status === "succeeded" || record.status === "failed") {
+    return record;
+  }
+  const [canonical] = await getDb()
+    .select({
+      status: workerJobs.status,
+      failureReason: workerJobs.failureReason,
+      errorMessage: workerJobs.errorMessage,
+    })
+    .from(workerJobs)
+    .where(and(
+      eq(workerJobs.id, record.jobId),
+      eq(workerJobs.tenantId, record.tenantId),
+      eq(workerJobs.jobType, "vertical_drama.story"),
+    ))
+    .limit(1);
+  if (!canonical) return record;
+  const terminalStatus = canonical.status === "completed" || canonical.status === "succeeded"
+    ? "succeeded"
+    : ["failed", "canceled", "cancelled", "expired"].includes(canonical.status)
+      ? "failed"
+      : null;
+  if (!terminalStatus) return record;
+  let synced = record;
+  await enqueueWrite(record.jobId, async () => {
+    const latest = await readRecord(record.jobId, deps);
+    if (!latest || latest.status === "succeeded" || latest.status === "failed") {
+      synced = latest ?? record;
+      return;
+    }
+    synced = {
+      ...latest,
+      status: terminalStatus,
+      ...(terminalStatus === "failed"
+        ? {
+            error: (
+              canonical.failureReason ||
+              canonical.errorMessage ||
+              `Canonical worker job ${canonical.status}`
+            ).slice(0, 2000),
+          }
+        : {}),
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await writeRecord(synced, deps);
+  });
+  if (synced.status !== terminalStatus) return synced;
+  await clearActivePointerIfOwned(synced, deps);
+  if (terminalStatus === "failed") await publishRecoverablePointer(synced, deps);
+  await notifyStoryJobTerminal(synced);
+  return synced;
 }
 
 /**
@@ -833,32 +898,6 @@ export async function getVerticalDramaStoryJobRecovery(
   const deps = resolveDeps(dependencies);
   const active = await getActiveVerticalDramaStoryJob(owner, deps);
   if (active && (owner.userId === undefined || active.userId === owner.userId)) {
-    // A worker can die after BullMQ marks the delivery failed but before the
-    // domain-level failed-event reconciler runs. Reconcile that orphan on the
-    // next refresh so the repair CTA is available without a manual database
-    // or Redis intervention.
-    if (deps.findFailedBullmqJob) {
-      const failedDelivery = await deps.findFailedBullmqJob(active.jobId).catch(() => null);
-      if (failedDelivery) {
-        await reconcileVerticalDramaStoryJobFailure(
-          active.jobId,
-          failedDelivery.error,
-          deps,
-          failedDelivery.dispatchId,
-        );
-        const reconciled = await getVerticalDramaStoryJobStatus(
-          active.jobId,
-          { tenantId: owner.tenantId, seriesId: owner.seriesId },
-          deps,
-        );
-        if (reconciled?.status === "failed") {
-          return getVerticalDramaStoryJobRecovery(owner, deps);
-        }
-        // A failed delivery from an older/stale BullMQ attempt must not
-        // overwrite a newer active dispatch; keep reporting the live record.
-        return recoveryState(reconciled ?? active);
-      }
-    }
     return recoveryState(active);
   }
 
@@ -1083,11 +1122,13 @@ export async function getActiveVerticalDramaStoryJob(
   const jobId = await deps.redis.get(pointerKey);
   if (!jobId) return null;
 
-  const record = await readRecord(jobId, deps);
+  let record = await readRecord(jobId, deps);
   if (!record || record.status === "succeeded" || record.status === "failed") {
     await deps.redis.del(pointerKey).catch(() => {});
     return null;
   }
+  record = await refreshStoryJobFromCanonicalControlPlane(record, deps);
+  if (record.status === "succeeded" || record.status === "failed") return null;
   if (owner.userId !== undefined && record.userId !== owner.userId) return null;
   return record;
 }
@@ -1832,35 +1873,6 @@ export function setVerticalDramaStoryJobsDraining(draining: boolean): void {
 
 export function isVerticalDramaStoryJobsDraining(): boolean {
   return storyJobsDraining;
-}
-
-async function defaultFindFailedBullmqJob(
-  jobId: string,
-): Promise<{ error: string; dispatchId?: string } | null> {
-  if (!queue || typeof queue.getJobs !== "function") return null;
-  const failedJobs: unknown[] = await queue.getJobs(["failed"], 0, 100);
-  const failedJob = failedJobs.find(candidate => {
-    if (!candidate || typeof candidate !== "object") return false;
-    const data = (candidate as { data?: unknown }).data;
-    return Boolean(
-      data &&
-        typeof data === "object" &&
-        (data as { jobId?: unknown }).jobId === jobId,
-    );
-  });
-  if (!failedJob) return null;
-  const failedReasonValue = (failedJob as { failedReason?: unknown }).failedReason;
-  const failedReason = typeof failedReasonValue === "string"
-    ? failedReasonValue
-    : "BullMQ delivery failed";
-  const data = (failedJob as { data?: unknown }).data;
-  const dispatchIdValue = data && typeof data === "object"
-    ? (data as { dispatchId?: unknown }).dispatchId
-    : undefined;
-  const dispatchId = typeof dispatchIdValue === "string"
-    ? dispatchIdValue
-    : undefined;
-  return { error: failedReason, dispatchId };
 }
 
 async function defaultEnqueueBullmqJob(jobId: string, dispatchId: string): Promise<void> {

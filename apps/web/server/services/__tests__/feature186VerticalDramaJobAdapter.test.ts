@@ -41,6 +41,23 @@ describe("Feature 186 job payload boundary", () => {
     );
   });
 
+  it("returns the canonical job id when admission deduplicates", async () => {
+    vi.mocked(createControlPlaneJob).mockResolvedValueOnce({
+      jobId: "canonical-job-2",
+    } as any);
+
+    await expect(
+      createFeature186VerticalDramaJob({
+        jobId: "producer-job-2",
+        tenantId: "tenant-1",
+        userId: 42,
+        jobType: "vertical_drama.shot_prompt",
+        executionClass: "long",
+        payload: { input: { shotNumber: 3 } },
+      }),
+    ).resolves.toBe("canonical-job-2");
+  });
+
   it("omits undefined optional object properties recursively", () => {
     const payload = {
       publicUrl: undefined,

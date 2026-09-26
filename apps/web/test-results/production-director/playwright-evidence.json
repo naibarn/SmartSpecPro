@@ -1,7 +1,14 @@
 {
   "config": {
+    "argv": [
+      "/home/dev/.nvm/versions/node/v22.22.3/bin/node",
+      "/home/dev/projects/SmartSpecPro/node_modules/.bin/playwright",
+      "test",
+      "tests/e2e/workflow-studio-browser.spec.ts"
+    ],
     "configFile": "/home/dev/projects/SmartSpecPro/apps/web/playwright.config.ts",
     "rootDir": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e",
+    "failOnFlakyTests": false,
     "forbidOnly": false,
     "fullyParallel": false,
     "globalSetup": null,
@@ -10,14 +17,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 1
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "/home/dev/projects/SmartSpecPro/apps/web/test-results/production-director",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "chromium",
         "name": "chromium",
         "testDir": "/home/dev/projects/SmartSpecPro/apps/web/tests/e2e",
@@ -49,30 +60,170 @@
     "tags": [],
     "updateSnapshots": "missing",
     "updateSourceMethod": "patch",
-    "version": "1.60.0",
+    "version": "1.63.0",
     "workers": 1,
-    "webServer": {
-      "command": "PORT=3017 npm run dev:no-watch",
-      "url": "http://127.0.0.1:3017",
-      "timeout": 120000,
-      "reuseExistingServer": true
-    }
+    "webServer": null
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "SyntaxError: The requested module './limits' does not provide an export named 'HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC'",
-      "stack": "SyntaxError: The requested module './limits' does not provide an export named 'HYPERFRAMES_FINAL_COMPOSITE_MAX_SEC'"
-    },
-    {
-      "message": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments.",
-      "stack": "Error: No tests found.\nMake sure that arguments are regular expressions matching test files.\nYou may need to escape symbols like \"$\" or \"*\" and quote the arguments."
+      "title": "workflow-studio-browser.spec.ts",
+      "file": "workflow-studio-browser.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Spec 209 Workflow Studio mockup flow",
+          "file": "workflow-studio-browser.spec.ts",
+          "line": 49,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Dashboard to builder, subflow, and run at mobile",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3313,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-19T10:15:04.355Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "28ddd7772c5b38e59474-0ab5a69123931895e705",
+              "file": "workflow-studio-browser.spec.ts",
+              "line": 51,
+              "column": 5
+            },
+            {
+              "title": "Dashboard to builder, subflow, and run at tablet",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3287,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-19T10:15:07.741Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "28ddd7772c5b38e59474-ced445cd7d8742e494ac",
+              "file": "workflow-studio-browser.spec.ts",
+              "line": 51,
+              "column": 5
+            },
+            {
+              "title": "Dashboard to builder, subflow, and run at desktop",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3252,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-19T10:15:11.035Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "28ddd7772c5b38e59474-28670ab6907cdf1d35c4",
+              "file": "workflow-studio-browser.spec.ts",
+              "line": 51,
+              "column": 5
+            },
+            {
+              "title": "edits the graph with node, edge, preset, and handle interactions",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7455,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-19T10:15:14.296Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "28ddd7772c5b38e59474-55a8b9715cba18b4d68b",
+              "file": "workflow-studio-browser.spec.ts",
+              "line": 111,
+              "column": 3
+            }
+          ]
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-08-29T12:29:01.915Z",
-    "duration": 6274.984,
-    "expected": 0,
+    "startTime": "2026-09-19T10:15:04.057Z",
+    "duration": 17741.083,
+    "expected": 4,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0

@@ -203,6 +203,45 @@ describe("vertical drama shot video prompt queue", () => {
     );
   });
 
+  it("reconciles a stale Redis turn when the canonical predecessor is terminal", async () => {
+    const redis = makeFakeRedis();
+    const first = await enqueueVerticalDramaShotVideoPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const second = await enqueueVerticalDramaShotVideoPromptJob(
+      payload({
+        shotNumber: 10,
+        input: { ...payload().input, shotNumber: 10, idempotencyKey: "shot-10" },
+      }),
+      { redis, enqueueBullmqJob: vi.fn().mockResolvedValue(undefined) },
+    );
+
+    const firstRecordKey = `vd:shot-video-prompt-job:${first.jobId}`;
+    const firstRecord = JSON.parse(redis.store.get(firstRecordKey) ?? "null");
+    redis.store.set(firstRecordKey, JSON.stringify({
+      ...firstRecord,
+      status: "running",
+      updatedAt: new Date().toISOString(),
+    }));
+
+    await runVerticalDramaShotVideoPromptJob(second.jobId, vi.fn().mockResolvedValue({
+      prompt: "generated after stale predecessor recovery",
+      creditsUsed: 1,
+      usedVision: false,
+    }), {
+      redis,
+      canonicalStatusReader: vi.fn().mockResolvedValue(new Map([
+        [first.jobId, { status: "failed", reason: "canonical predecessor failed" }],
+      ])),
+      sleep: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await expect(
+      getVerticalDramaShotVideoPromptJobStatus(second.jobId, { ...owner, shotNumber: 10 }, { redis }),
+    ).resolves.toMatchObject({ status: "succeeded" });
+  });
+
   it("persists terminal success, clears the active shot, and proves worker-only execution", async () => {
     const redis = makeFakeRedis();
     const submitted = await enqueueVerticalDramaShotVideoPromptJob(payload(), {

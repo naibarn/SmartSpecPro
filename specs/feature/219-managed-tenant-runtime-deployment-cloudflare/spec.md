@@ -1,15 +1,21 @@
 # Spec 219 — SmartAIHub Managed Tenant Runtime & Deployment Fabric
 ## Workers for Platforms, Release Service, Environments, Subdomains, Custom Domains, Managed Cloud, BYOC & Runtime Governance
 
-**Status:** Architecture Freeze Candidate / Implementation-ready subject to conformance tests
+**Status:** Proposed / Partial deployment contract slice present; Cloudflare integration pending
 **Spec ID:** 219  
-**Revision:** 3 — Final integrated stress-audit / architecture freeze candidate
-**Date:** 2026-09-20  
+**Revision:** 5 — production runtime retrieval access through governed Spec 220/229 contracts
+**Date:** 2026-09-22
 **Target repository path:** `specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md`  
-**Depends on:** Spec 217 Product identity, Spec 218 ReleaseCandidate contract, core Spec 220 gateway contracts, Spec 207, canonical worker job control plane and SmartAIHub observability/security services  
+**Depends on:** Spec 217, Spec 218, Spec 220, Spec 207, canonical worker job control plane, SmartAIHub observability/security services
 **Companion specs:** Spec 217, Spec 218, Spec 220
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+`apps/web/server/services/managedRuntimeDeploymentContracts.ts` and its focused tests define namespace, release-candidate, domain, promotion, rollback and suspension contracts. No matching Cloudflare Workers for Platforms/Containers adapter, Release Service, DNS/TLS provisioning path or production deployment certification was found in the current source tree.
+
+Cloudflare is therefore a normative target/provider boundary in this spec, not an implemented runtime fact. Promotion and rollback must remain gated by the existing job, approval, observability and tenant authorities.
 
 # 0. Executive Decision
 
@@ -1174,7 +1180,7 @@ Every custom Product/Mini App release produced by agentic development SHOULD inc
 source commit/tree hash
 build artifact hash
 DevelopmentJob
-DevelopmentWorkPackage / ContextPack revision (Spec 222)
+DevelopmentWorkPackage / ContextPack revision (Spec 230)
 harness family/version
 SmartAIHub engineering skill-pack version
 Superpowers methodology version/commit when used
@@ -1367,3 +1373,60 @@ Provider drift that affects isolation, routing, limits or deployment APIs trigge
 - [ ] Custom domain routing does not replace Spec 220 identity/session checks.
 - [ ] BYOC preserves release/security/audit invariants.
 - [ ] Rollback cannot bypass a dependency security revocation.
+
+---
+
+# Revision 4 Cross-Spec Context Ownership Amendment
+
+Spec 219 production runtime/deployment ownership is unchanged. Historical references to a development `ContextPack` owned by Spec 222 SHALL now resolve to **Spec 230 Agentic Development Fabric**. Spec 222 remains the self-improving learning/advisory plane and is not a release/deployment dependency.
+
+Kimi Code Desktop/CLI is a development harness and SHALL NOT become a production hosting target. ReleaseCandidate admission and deployment remain owned by Spec 219.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 5 — Managed Runtime Retrieval Boundary
+
+Tenant Product runtime code SHALL access SmartAIHub RAG/vector/search only through governed Spec 220/229 contracts. Production Workers/Containers SHALL NOT receive platform-wide Vectorize, AI Search or legacy pgvector credentials.
+
+A deployment may bind a narrow platform service/RPC token for Retrieval Broker access, scoped to tenant/product/environment/purpose. Runtime rollback MUST preserve compatibility with the Retrieval Broker contract version used by the release.
+
+Provider migration inside Spec 229 SHALL NOT require rebuilding Tenant Product source merely to change the underlying search/vector backend.

@@ -2966,9 +2966,13 @@ export const skillsRouter = router({
       if (skill.skillFilePath) {
         possiblePaths.push(
           path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "ui.json"),
           path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "ui.json"),
           path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "input.json"),
           path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "input.json"),
         );
       }
 
@@ -2976,11 +2980,17 @@ export const skillsRouter = router({
       for (const skillIdVariant of skillIdVariations) {
         possiblePaths.push(
           path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "ui.json"),
           path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "ui.json"),
           path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "ui.json"),
           path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "input.json"),
           path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "input.json"),
           path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "input.json"),
         );
       }
 
@@ -2992,9 +3002,11 @@ export const skillsRouter = router({
             const folders = fs.readdirSync(skillsDir);
             for (const folder of folders) {
               possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "ui.schema.json"));
+              possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "ui.json"));
             }
             for (const folder of folders) {
               possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "input.schema.json"));
+              possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "input.json"));
             }
           }
         }
@@ -3028,12 +3040,16 @@ export const skillsRouter = router({
               break;
             } else if (schema.properties) {
               let siblingUiSchema: any | undefined;
-              const siblingUiSchemaPath = path.resolve(path.dirname(schemaPath), "ui.schema.json");
-              if (path.basename(schemaPath) !== "ui.schema.json" && fs.existsSync(siblingUiSchemaPath)) {
-                try {
-                  siblingUiSchema = JSON.parse(fs.readFileSync(siblingUiSchemaPath, "utf-8"));
-                } catch {
-                  siblingUiSchema = undefined;
+              if (path.basename(schemaPath) !== "ui.schema.json" && path.basename(schemaPath) !== "ui.json") {
+                for (const uiFileName of ["ui.schema.json", "ui.json"]) {
+                  const siblingUiSchemaPath = path.resolve(path.dirname(schemaPath), uiFileName);
+                  if (!fs.existsSync(siblingUiSchemaPath)) continue;
+                  try {
+                    siblingUiSchema = JSON.parse(fs.readFileSync(siblingUiSchemaPath, "utf-8"));
+                    break;
+                  } catch {
+                    siblingUiSchema = undefined;
+                  }
                 }
               }
               foundSchema = convertJsonSchemaToSkillSchema(schema, input.skillId, siblingUiSchema);

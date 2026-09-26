@@ -22,6 +22,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "notification.digest",
   "notification.retention",
   "notification.webhook_delivery",
+  "gdrive.edit_session_cleanup",
   "memory.archive_cleanup",
   "memory.chunk_cleanup",
   "memory.embedding_reconciliation",
@@ -37,6 +38,11 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "video.intelligence",
   "video.composition_scan",
   "content_protection.verify",
+  "computer_use.browser",
+  // Feature 195 is the sole durable execution authority for the
+  // provider-neutral external-agent handoff. Provider selection remains in
+  // the governed job manifest; it must not create a second queue or worker.
+  "external_agent_task",
 ]);
 
 export function isPostgresNodeJobType(jobType: string): boolean {

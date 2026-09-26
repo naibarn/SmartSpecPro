@@ -1198,7 +1198,12 @@ export function VerticalDramaDeepStoryDraftsActions({
 
   const recoveryQuery = trpc.verticalDramaSeries.getStoryJobRecovery.useQuery(
     { seriesId },
-    { enabled: Boolean(seriesId), staleTime: 10_000 },
+    {
+      enabled: Boolean(seriesId),
+      staleTime: 0,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+    },
   );
   const repairMutation = trpc.verticalDramaSeries.repairStoryJob.useMutation({
     onError: (err: { message?: string }) => {
@@ -1223,7 +1228,12 @@ export function VerticalDramaDeepStoryDraftsActions({
   const activeStoryJobQuery =
     trpc.verticalDramaSeries.getActiveStoryJob.useQuery(
       { seriesId },
-      { enabled: Boolean(seriesId), staleTime: 15_000 }
+      {
+        enabled: Boolean(seriesId),
+        staleTime: 0,
+        refetchOnMount: "always",
+        refetchOnWindowFocus: true,
+      }
     );
 
   async function pollStoryJob(

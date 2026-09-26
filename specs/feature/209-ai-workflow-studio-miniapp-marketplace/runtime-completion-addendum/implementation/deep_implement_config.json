@@ -1,0 +1,29 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/209-ai-workflow-studio-miniapp-marketplace/runtime-completion-addendum/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "JWT_SECRET=test-jwt-secret-32-chars-minimum-1234567890 node_modules/.bin/vitest run --config apps/web/vitest.config.ts",
+  "sections": [
+    "section-01-run-foundation",
+    "section-02-library-marketplace",
+    "section-03-job-admission",
+    "section-04-checkpoints-run-modes",
+    "section-05-run-lifecycle-controls",
+    "section-06-results-observability",
+    "section-07-ui-state-integration",
+    "section-08-economics-release"
+  ],
+  "sections_state": {},
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-19T07:27:49.767882+00:00"
+}

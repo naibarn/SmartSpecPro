@@ -197,6 +197,8 @@ class Settings(BaseSettings):
     POSTHOG_API_KEY: str = ""
 
     # Live Browser readiness / operations
+    LIVE_BROWSER_BACKEND: Literal["browser_pool", "runner", "in_memory"] = "browser_pool"
+    LIVE_BROWSER_IN_MEMORY_TEST_OVERRIDE: bool = False
     LIVE_BROWSER_READINESS_PUBLISHER: str = "python_celery_beat"
     LIVE_BROWSER_READINESS_OWNER: str = "python-live-browser-oncall"
     LIVE_BROWSER_READINESS_RUNBOOK_URL: str = "https://runbooks.smartaihub.app/live-browser/readiness"
@@ -284,6 +286,13 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_live_browser_operational_contract(self):
         """Validate live-browser operational ownership and cadence config."""
+        if self.LIVE_BROWSER_BACKEND == "in_memory":
+            if self.ENVIRONMENT == "production" or not self.LIVE_BROWSER_IN_MEMORY_TEST_OVERRIDE:
+                raise ValueError(
+                    "LIVE_BROWSER_IN_MEMORY_TEST_OVERRIDE must be true for an explicit test-only "
+                    "in-memory live-browser backend; production cannot use in_memory"
+                )
+
         if not self.LIVE_BROWSER_READINESS_PUBLISHER.strip():
             raise ValueError("LIVE_BROWSER_READINESS_PUBLISHER must not be empty")
 
@@ -334,6 +343,17 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
         return v
+
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def normalize_async_database_url(cls, value):
+        """Keep the application async engine on asyncpg for PostgreSQL URLs."""
+        if not isinstance(value, str):
+            return value
+        for prefix in ("postgresql+psycopg2://", "postgresql+psycopg://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+asyncpg://" + value[len(prefix):]
+        return value
 
 
 # Global settings instance

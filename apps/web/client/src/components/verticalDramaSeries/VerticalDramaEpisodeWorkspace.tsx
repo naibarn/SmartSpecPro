@@ -917,6 +917,9 @@ export interface VerticalDramaStoryboardPanelData {
   compiledVideo?: VerticalDramaCompiledVideoView | null;
   onAssembleCompiledVideo?: (opts?: { allowPartial?: boolean }) => void;
   assemblingCompiledVideo?: boolean;
+  compiledVideoRetryAvailable?: boolean;
+  onRetryCompiledVideoJob?: () => void;
+  retryingCompiledVideo?: boolean;
   /** Main-track footage timeline editor for the final assembly. */
   assemblyTimelineSlot?: ReactNode;
 
@@ -1992,6 +1995,9 @@ export function VerticalDramaEpisodeWorkspace({
           }
           compiledVideo={storyboardPanel?.compiledVideo}
           onAssembleCompiledVideo={storyboardPanel?.onAssembleCompiledVideo}
+          compiledVideoRetryAvailable={storyboardPanel?.compiledVideoRetryAvailable}
+          onRetryCompiledVideoJob={storyboardPanel?.onRetryCompiledVideoJob}
+          retryingCompiledVideo={storyboardPanel?.retryingCompiledVideo}
           episodePreviewSlot={episodePreviewPanel}
           assemblingCompiledVideo={storyboardPanel?.assemblingCompiledVideo}
           speechBudgetEnabled={storyboardPanel?.speechBudgetEnabled}
@@ -4155,8 +4161,8 @@ function VerticalDramaFinalRenderOptionsSection({
           </p>
           <p className="text-[11px] text-muted-foreground">
             {locale === "th"
-              ? "สร้างหลังการรวม/เรนเดอร์ไฟล์สุดท้ายเท่านั้น และ ON จะรอตรวจสอบก่อนเผยแพร่ ส่วน OFF จะถูกระบุว่าไม่ป้องกัน"
-              : "Created only after the final compound/render bytes exist. ON waits for verification; OFF is explicitly unprotected."}
+              ? "สร้างต่อจากไฟล์ที่เรนเดอร์เสร็จแล้ว โดยจะแสดงไฟล์ไม่ Protect ให้ใช้ได้ก่อนเสมอ และเก็บไฟล์ Protect เป็นอีกเวอร์ชันเมื่อผ่าน"
+              : "Runs after the render completes. The unprotected file is available first, while a protected sibling is added only when verification passes."}
           </p>
           <div className="flex items-center gap-4" role="group" aria-label="Digital watermark choice">
             <label className="flex items-center gap-2 text-sm">
@@ -4199,8 +4205,8 @@ function VerticalDramaFinalRenderOptionsSection({
           <p className="text-[11px] text-muted-foreground" role="status">
             {protectionChoice === "on"
               ? locale === "th"
-                ? "ON: จะไม่ถือว่า final artifact พร้อมเผยแพร่จนกว่าการตรวจสอบลายน้ำจะผ่าน"
-                : "ON: the final artifact is not publishable until watermark verification passes"
+                ? "ON: ขอสร้างไฟล์ Protect เพิ่ม แต่ไฟล์ไม่ Protect ยังใช้ได้ระหว่างรอหรือเมื่อขั้นตอนนี้ล้มเหลว"
+                : "ON: create a protected sibling; the unprotected file remains usable while it runs or if it fails"
               : locale === "th"
                 ? "OFF: ผู้ใช้เลือกไม่ใช้ลายน้ำดิจิทัลสำหรับการส่งออกครั้งนี้"
                 : "OFF: digital watermark is disabled for this export by the user"}

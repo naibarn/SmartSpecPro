@@ -64,6 +64,18 @@ def test_local_errors_keep_reason_without_prompt_or_provider_secrets():
         assert "private" not in diagnostic
 
 
+def test_unknown_bridge_failures_include_safe_stage_and_exception_context():
+    diagnostic = safe_bridge_error_line(
+        RuntimeError("private provider response"),
+        stage="terminal_prompt",
+    )
+
+    assert diagnostic.startswith("ENHANCED_AGENT_FAILED:")
+    assert "stage=terminal_prompt" in diagnostic
+    assert "exception=RuntimeError" in diagnostic
+    assert "private provider response" not in diagnostic
+
+
 def test_provider_stage_failure_uses_controller_owned_local_prompt_fallback():
     import asyncio
     import smartaihub_video_director.enhanced_bridge as bridge

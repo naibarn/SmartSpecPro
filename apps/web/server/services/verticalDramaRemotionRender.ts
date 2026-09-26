@@ -30,13 +30,13 @@
  * `smartspec-web`'s cgroup — guaranteed OOM, see
  * `verticalDramaAssemblyCgroupThrottle` memory note). The queued job sits in
  * `workerJobs` awaiting a Lane B (worker-app) claim; `reconcileVdRemotionAssembly`
- * falls back only after a 60-minute queued-TTL timeout (no reconstructible `renderFeed` to
+ * falls back only after a 10-minute queued-claim timeout (no reconstructible `renderFeed` to
  * re-queue against ffmpeg, so the fallback marks `compiledVideo` failed with
  * a Thai message asking the user to re-run assembly without the Remotion
  * toggle — see that function's doc comment).
  */
 import { createHash } from "crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { contentProtectionAssets, verticalDramaEpisodes } from "../../drizzle/schema";
 import {
@@ -66,8 +66,13 @@ import {
   type QueueRemotionRenderVideoJobInput,
 } from "./workerSchedulerService";
 import type { ContentProtectionIntent } from "../../shared/contentProtectionWorker";
+import { contentProtectionIntentSchema } from "../../shared/contentProtectionWorker";
 import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 import { normalizeStorageCapacityError } from "./storageCapacityError";
+import {
+  listVerticalDramaArtifactVersionProjections,
+  upsertVerticalDramaArtifactVersion,
+} from "./verticalDramaArtifactVersionService";
 import {
   getAdBannerPlacementPreset,
   resolvePlacementBox,
@@ -75,7 +80,7 @@ import {
 import {
   REMOTION_RENDER_VIDEO_PLATFORM_CONTRACT_VERSION,
   REMOTION_RENDER_VIDEO_RENDERER_POLICY_VERSION,
-  REMOTION_RENDER_VIDEO_QUEUED_TTL_MS,
+  remotionRenderVideoWorkerInputSchema,
   type RemotionRenderVideoWorkerInput,
 } from "../../shared/workerRuntime";
 import {
@@ -1710,6 +1715,12 @@ export async function submitVdRemotionAssembly(
 
   await persistCompiledVideoState(input.owner, {
     pendingJobId: job.id,
+    renderJobId: job.id,
+    protectionJobId: undefined,
+    protectionStatus: undefined,
+    protectionError: undefined,
+    artifactVersions: undefined,
+    retryJobId: undefined,
     status: "pending",
     error: undefined,
     // Additive on `CompiledVideoState` — the ONLY marker
@@ -1720,12 +1731,130 @@ export async function submitVdRemotionAssembly(
     ...(input.timelineRevision != null
       ? { timelineRevision: input.timelineRevision }
       : {}),
-    // Stamped so the 60-minute queued-TTL fallback in `reconcileVdRemotionAssembly`
+    // Stamped so the 10-minute queued-claim fallback in `reconcileVdRemotionAssembly`
     // knows how long this job has been waiting for a Lane B claim.
     renderSubmittedAt: Date.now(),
   });
 
   return { jobId: job.id, created, layerCount, videoDurationSeconds };
+}
+
+/**
+ * Repairs the legacy terminal shape where a Remotion worker reported
+ * `completed` but no verified artifact was persisted. The canonical job is
+ * intentionally not reopened (terminal jobs are immutable); instead, queue
+ * the exact saved worker input as one idempotent replacement and move the VD
+ * projection to that replacement when the input identifies a VD episode.
+ */
+export async function retryRemotionRenderJobFromExisting(input: {
+  job: WorkerJob;
+  tenantId: string;
+  userId: number;
+  actionId: string;
+}): Promise<{ jobId: string; created: boolean }> {
+  if (input.job.jobType !== "remotion_render_video") {
+    throw new Error("remotion_retry_job_type_invalid");
+  }
+  const parsed = remotionRenderVideoWorkerInputSchema.safeParse(input.job.inputJson);
+  if (!parsed.success) {
+    throw new Error("remotion_retry_input_invalid");
+  }
+
+  const instructions =
+    input.job.instructionsJson && typeof input.job.instructionsJson === "object"
+      ? input.job.instructionsJson as Record<string, unknown>
+      : {};
+  const protectionIntent = contentProtectionIntentSchema.safeParse(
+    instructions.contentProtectionIntent,
+  );
+  const retry = await queueRemotionRenderVideoJob({
+    ...parsed.data,
+    tenantId: input.tenantId,
+    teamId: input.job.teamId,
+    requestedByUserId: input.userId,
+    workflowRunId: input.job.workflowRunId,
+    // The old canonical job id, rather than the browser action id, is the
+    // idempotency identity. A timed-out browser request must not create a
+    // second replacement render when the user presses Retry again.
+    idempotencyKey: `remotion-retry:${input.job.id}:artifact-qc`.slice(0, 128),
+    ...(protectionIntent.success ? { protectionIntent: protectionIntent.data } : {}),
+  });
+
+  const vdMatch = /^vd-sub-episode:(\d+):(\d+)$/.exec(parsed.data.videoProjectId.trim());
+  if (vdMatch) {
+    const seriesId = Number(vdMatch[1]);
+    const episodeId = Number(vdMatch[2]);
+    if (Number.isSafeInteger(seriesId) && Number.isSafeInteger(episodeId)) {
+      const [episode] = await db
+        .select({ assemblyManifest: verticalDramaEpisodes.assemblyManifest })
+        .from(verticalDramaEpisodes)
+        .where(
+          and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.seriesId, seriesId),
+            eq(verticalDramaEpisodes.tenantId, input.tenantId),
+            eq(verticalDramaEpisodes.userId, input.userId),
+          ),
+        )
+        .limit(1);
+      const manifest =
+        episode?.assemblyManifest && typeof episode.assemblyManifest === "object"
+          ? episode.assemblyManifest as Record<string, unknown>
+          : null;
+      const compiledVideo =
+        manifest?.compiledVideo && typeof manifest.compiledVideo === "object"
+          ? manifest.compiledVideo as Record<string, unknown>
+          : null;
+      const ownsCurrentProjection =
+        compiledVideo?.pendingJobId === input.job.id ||
+        compiledVideo?.renderJobId === input.job.id ||
+        compiledVideo?.retryJobId === input.job.id;
+      if (manifest && compiledVideo && ownsCurrentProjection) {
+        const nextManifest = {
+          ...manifest,
+          compiledVideo: {
+            ...compiledVideo,
+            pendingJobId: retry.job.id,
+            renderJobId: retry.job.id,
+            protectionJobId: undefined,
+            protectionStatus: undefined,
+            protectionError: undefined,
+            artifactVersions: undefined,
+            retryJobId: undefined,
+            status: "pending",
+            error: undefined,
+            renderEngine: "remotion_queue",
+            renderSubmittedAt: Date.now(),
+          },
+        };
+        await db
+          .update(verticalDramaEpisodes)
+          .set({ assemblyManifest: nextManifest, updatedAt: new Date() })
+          .where(
+            and(
+              eq(verticalDramaEpisodes.id, episodeId),
+              eq(verticalDramaEpisodes.seriesId, seriesId),
+              eq(verticalDramaEpisodes.tenantId, input.tenantId),
+              eq(verticalDramaEpisodes.userId, input.userId),
+            ),
+          );
+      }
+    }
+  }
+
+  await db
+    .update(workerJobs)
+    .set({ statusReason: `remotion_replaced:${retry.job.id}` })
+    .where(
+      and(
+        eq(workerJobs.id, input.job.id),
+        eq(workerJobs.tenantId, input.tenantId),
+        eq(workerJobs.requestedByUserId, input.userId),
+        eq(workerJobs.status, "completed"),
+      ),
+    );
+
+  return { jobId: retry.job.id, created: retry.created };
 }
 
 export interface SubmitVdProductionEpisodeAssemblyInput {
@@ -2309,14 +2438,17 @@ export interface ReconcileVdRemotionAssemblyResult {
  * tests. Distinct from any Lane-A/legacy render-timeout constant — this one
  * governs "was this ever picked up at all", not "did the render itself hang".
  */
-export const VD_REMOTION_QUEUED_TTL_MS = REMOTION_RENDER_VIDEO_QUEUED_TTL_MS;
+// Keep the claim deadline separate from the one-hour worker execution lease:
+// the latter covers three bounded render attempts after a Worker claims the job,
+// while this deadline detects that no Lane B Worker claimed it at all.
+export const VD_REMOTION_QUEUED_TTL_MS = 10 * 60 * 1000;
 
 /**
  * Polls the `worker_jobs` row a `submitVdRemotionAssembly` call created and,
  * on terminal status, writes the SAME `assemblyManifest.compiledVideo` shape
  * the ffmpeg path writes (contract-identical downstream — every existing
  * reader of `compiledVideo` keeps working unmodified). No-op (and reports
- * `reconciled: false`) while the job is still queued (within the 60-minute TTL) or
+ * `reconciled: false`) while the job is still queued (within the 10-minute claim TTL) or
  * running. Called from `getEpisodeDetail`'s read path (the workspace's
  * existing "poll while a compile job is pending" convention) whenever
  * `compiledVideo.status === "pending"` and
@@ -2383,6 +2515,7 @@ export async function resolveRemotionOutputRef(
   const direct =
     publishedSourceUrl ||
     asRef(output?.outputUrl) ||
+    asRef(output?.videoUrl) ||
     asRef(payload?.outputUrl) ||
     asRef(artifactRef?.url) ||
     asRef(artifactRef?.storageRef) ||
@@ -2397,7 +2530,10 @@ export async function resolveRemotionOutputRef(
     .where(
       and(
         eq(workerArtifacts.workerJobId, job.id),
-        eq(workerArtifacts.artifactType, REMOTION_RENDER_MP4_ARTIFACT_TYPE)
+        inArray(workerArtifacts.artifactType, [
+          REMOTION_RENDER_MP4_ARTIFACT_TYPE,
+          "vertical_drama_final_video",
+        ])
       )
     )
     .limit(1);
@@ -2441,7 +2577,10 @@ export async function reconcileVdRemotionAssembly(
       ? ((currentEpisode.assemblyManifest as Record<string, unknown>)
           .compiledVideo as Record<string, unknown>)
       : null;
-  if (currentCompiledVideo?.pendingJobId !== jobId) {
+  if (
+    currentCompiledVideo?.pendingJobId !== jobId
+    && currentCompiledVideo?.renderJobId !== jobId
+  ) {
     return { reconciled: false };
   }
 
@@ -2455,6 +2594,7 @@ export async function reconcileVdRemotionAssembly(
 
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
+      retryJobId: jobId,
       status: "failed",
       error:
         "[vd_remotion_worker_unavailable] ไม่มีเครื่อง Worker ออนไลน์รับงาน Remotion " +
@@ -2468,6 +2608,7 @@ export async function reconcileVdRemotionAssembly(
     const rawFailureReason = job.failureReason || "Remotion render failed";
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
+      retryJobId: jobId,
       status: "failed",
       error:
         normalizeStorageCapacityError(rawFailureReason) ?? rawFailureReason,
@@ -2487,42 +2628,28 @@ export async function reconcileVdRemotionAssembly(
     !Array.isArray(jobOutput.contentProtection)
       ? (jobOutput.contentProtection as Record<string, unknown>)
       : null;
-  let protectedOutputRef: string | null = null;
-  if (protectionGate && protectionGate.status !== "UNPROTECTED_BY_USER_CHOICE") {
-    const protectionAssetId = String(protectionGate.protectionAssetId ?? "").trim();
-    const [protectionAsset] = protectionAssetId
-      ? await db
-          .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage, protectedObjectKey: contentProtectionAssets.protectedObjectKey })
-          .from(contentProtectionAssets)
-          .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
-          .limit(1)
-      : [];
-    if (!protectionAsset || ["QUEUED", "PROCESSING", "INCONCLUSIVE"].includes(protectionAsset.status)) {
-      return { reconciled: false };
-    }
-    if (!["PROTECTED", "PROTECTED_WITH_WARNINGS"].includes(protectionAsset.status)) {
-      await persistCompiledVideoState(owner, {
-        pendingJobId: undefined,
-        status: "failed",
-        error: protectionAsset.errorMessage || "Final artifact protection did not pass verification",
-      });
-      return { reconciled: true, status: "failed" };
-    }
-    protectedOutputRef = String(protectionAsset.protectedObjectKey ?? protectionGate.protectedObjectKey ?? "").trim() || null;
-    if (!protectedOutputRef) {
-      await persistCompiledVideoState(owner, {
-        pendingJobId: undefined,
-        status: "failed",
-        error: "Protected artifact passed status gate without a protected output reference",
-      });
-      return { reconciled: true, status: "failed" };
-    }
-  }
-
-  const rawOutputUrl = protectedOutputRef || await resolveRemotionOutputRef(job as WorkerJob);
-  if (!rawOutputUrl) {
+  const jobInput =
+    job.inputJson && typeof job.inputJson === "object" && !Array.isArray(job.inputJson)
+      ? (job.inputJson as Record<string, unknown>)
+      : {};
+  const renderFeed =
+    jobInput.renderFeed && typeof jobInput.renderFeed === "object" && !Array.isArray(jobInput.renderFeed)
+      ? (jobInput.renderFeed as Record<string, unknown>)
+      : {};
+  const jobInstructions =
+    job.instructionsJson && typeof job.instructionsJson === "object" && !Array.isArray(job.instructionsJson)
+      ? (job.instructionsJson as Record<string, unknown>)
+      : {};
+  const requestedProtectionIntent =
+    (jobInput.protectionIntent ??
+      renderFeed.protectionIntent ??
+      jobInstructions.contentProtectionIntent) as Record<string, unknown> | undefined;
+  const protectionRequested = requestedProtectionIntent?.choice === "on";
+  const rawOutputRef = await resolveRemotionOutputRef(job as WorkerJob);
+  if (!rawOutputRef) {
     await persistCompiledVideoState(owner, {
       pendingJobId: undefined,
+      retryJobId: jobId,
       status: "failed",
       error: "Remotion render completed but produced no output URL",
     });
@@ -2538,23 +2665,158 @@ export async function reconcileVdRemotionAssembly(
   // already a servable `/api/storage/files/...` path) are playable as-is —
   // only a bare storage KEY needs `storageGet`. Passing a served path to
   // `storageGet` as if it were a key just fails into the catch below.
-  const outputUrl = /^(https?:\/\/|\/)/i.test(rawOutputUrl)
-    ? rawOutputUrl
+  const rawOutputUrl = /^(https?:\/\/|\/)/i.test(rawOutputRef)
+    ? rawOutputRef
     : await (async () => {
         try {
           const { storageGet } = await import("../storage");
-          const resolved = await storageGet(rawOutputUrl);
-          return String(resolved?.url ?? "").trim() || rawOutputUrl;
+          const resolved = await storageGet(rawOutputRef);
+          return String(resolved?.url ?? "").trim() || rawOutputRef;
         } catch {
           // Never fail the whole reconcile over URL resolution — persist the
           // raw ref so the render isn't lost and the failure is visible.
-          return rawOutputUrl;
+          return rawOutputRef;
         }
       })();
 
+  const [rawArtifact] = await db
+    .select({ id: workerArtifacts.id, storageRef: workerArtifacts.storageRef, metadataJson: workerArtifacts.metadataJson })
+    .from(workerArtifacts)
+    .where(and(
+      eq(workerArtifacts.workerJobId, jobId),
+      eq(workerArtifacts.storageRef, rawOutputRef),
+    ))
+    .limit(1);
+  const rawMetadata = rawArtifact?.metadataJson && typeof rawArtifact.metadataJson === "object"
+    ? rawArtifact.metadataJson as Record<string, unknown>
+    : {};
+  await upsertVerticalDramaArtifactVersion({
+    tenantId: owner.tenantId,
+    ownerUserId: owner.userId,
+    seriesId: owner.seriesId,
+    episodeId: owner.episodeId,
+    renderJobId: jobId,
+    sourceArtifactId: rawArtifact?.id ?? null,
+    versionNumber: 1,
+    artifactKind: "raw_render",
+    status: "available",
+    storageRef: rawOutputRef,
+    checksumSha256: typeof rawMetadata.checksumSha256 === "string" ? rawMetadata.checksumSha256 : null,
+    durationSeconds: typeof jobOutput?.videoDurationSeconds === "number" ? jobOutput.videoDurationSeconds : null,
+    shotCount: typeof jobOutput?.shotCount === "number" ? jobOutput.shotCount : null,
+  });
+
+  const protectionAssetId = String(protectionGate?.protectionAssetId ?? "").trim();
+  let protectionJobId = "";
+  let protectionStatus: "not_requested" | "processing" | "available" | "failed" =
+    !protectionGate && protectionRequested ? "processing" : "not_requested";
+  let protectionError: string | undefined;
+  if (protectionGate && protectionGate.status !== "UNPROTECTED_BY_USER_CHOICE") {
+    const [protectionAsset] = protectionAssetId
+      ? await db
+          .select({ status: contentProtectionAssets.status, errorMessage: contentProtectionAssets.errorMessage, protectedObjectKey: contentProtectionAssets.protectedObjectKey, causalJobId: contentProtectionAssets.causalJobId })
+          .from(contentProtectionAssets)
+          .where(and(eq(contentProtectionAssets.id, protectionAssetId), eq(contentProtectionAssets.tenantId, owner.tenantId)))
+          .limit(1)
+      : [];
+    // Newer completion envelopes carry the linked protection job directly.
+    // Older/partially persisted envelopes may only carry the asset id; the
+    // asset's causalJobId is the durable source of truth for retry and status
+    // reconciliation in that case.
+    protectionJobId = String(
+      protectionGate.protectionJobId ??
+        (protectionAsset as { causalJobId?: string | null } | undefined)?.causalJobId ??
+        "",
+    ).trim();
+    const [protectionJob] = protectionJobId
+      ? await db
+          .select({ status: workerJobs.status, failureReason: workerJobs.failureReason, errorCode: workerJobs.errorCode, errorMessage: workerJobs.errorMessage })
+          .from(workerJobs)
+          .where(and(eq(workerJobs.id, protectionJobId), eq(workerJobs.tenantId, owner.tenantId)))
+          .limit(1)
+      : [];
+    const protectionJobTerminalFailure = protectionJob
+      && ["failed", "canceled", "cancelled", "expired"].includes(protectionJob.status);
+    const protectedOutputRef = String(
+      protectionAsset?.protectedObjectKey ?? protectionGate.protectedObjectKey ?? "",
+    ).trim();
+    const protectionFailure = [
+      protectionJob?.failureReason,
+      protectionJob?.errorMessage,
+      protectionJob?.errorCode,
+      protectionAsset?.errorMessage,
+      protectionGate.errorMessage,
+    ].find(value => typeof value === "string" && value.trim());
+
+    if (["PROTECTED", "PROTECTED_WITH_WARNINGS"].includes(protectionAsset?.status ?? "")) {
+      if (protectedOutputRef) {
+        protectionStatus = "available";
+        await upsertVerticalDramaArtifactVersion({
+          tenantId: owner.tenantId,
+          ownerUserId: owner.userId,
+          seriesId: owner.seriesId,
+          episodeId: owner.episodeId,
+          renderJobId: jobId,
+          protectionJobId: protectionJobId || null,
+          protectionAssetId: protectionAssetId || null,
+          versionNumber: 2,
+          artifactKind: "protected_render",
+          status: "available",
+          storageRef: protectedOutputRef,
+          errorCode: null,
+          errorMessage: null,
+        });
+      } else {
+        protectionStatus = "failed";
+        protectionError = "Protected artifact passed status gate without a protected output reference";
+      }
+    } else if (
+      protectionJobTerminalFailure
+      || protectionAsset?.status === "FAILED"
+      || protectionAsset?.status === "INCONCLUSIVE"
+      || protectionGate.status === "FAILED"
+      || (!protectionJob && !protectionAsset)
+    ) {
+      protectionStatus = "failed";
+      protectionError = protectionFailure || "Final artifact protection worker failed";
+    } else {
+      protectionStatus = "processing";
+    }
+
+    await upsertVerticalDramaArtifactVersion({
+      tenantId: owner.tenantId,
+      ownerUserId: owner.userId,
+      seriesId: owner.seriesId,
+      episodeId: owner.episodeId,
+      renderJobId: jobId,
+      protectionJobId: protectionJobId || null,
+      protectionAssetId: protectionAssetId || null,
+      versionNumber: 2,
+      artifactKind: "protected_render",
+      status: protectionStatus === "available" ? "available" : protectionStatus === "failed" ? "failed" : "processing",
+      storageRef: protectedOutputRef || `protection-pending:${protectionJobId || protectionAssetId || jobId}`,
+      errorCode: protectionStatus === "failed" ? (protectionJob?.errorCode ?? "CONTENT_PROTECTION_FAILED") : null,
+      errorMessage: protectionError ?? null,
+    });
+  }
+
+  const artifactVersions = await listVerticalDramaArtifactVersionProjections({
+    tenantId: owner.tenantId,
+    ownerUserId: owner.userId,
+    seriesId: owner.seriesId,
+    episodeId: owner.episodeId,
+    renderJobId: jobId,
+  });
+
   await persistCompiledVideoState(owner, {
     pendingJobId: undefined,
-    videoUrl: outputUrl,
+    retryJobId: undefined,
+    renderJobId: jobId,
+    protectionJobId: protectionJobId || undefined,
+    protectionStatus,
+    protectionError,
+    artifactVersions,
+    videoUrl: rawOutputUrl,
     assembledAt: new Date().toISOString(),
     status: "completed",
     error: undefined,

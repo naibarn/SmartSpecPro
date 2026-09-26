@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { appendJobEvent, calculateRetryDelay, classifyJobError, createJobControlPlane, normalizeResultReference, recordAuthenticatedJobCallback, sanitizeJobErrorMessage } from "../jobControlPlane";
+import {
+  appendJobEvent,
+  calculateRetryDelay,
+  classifyJobError,
+  createJobControlPlane,
+  normalizeResultReference,
+  recordAuthenticatedJobCallback,
+  sanitizeJobErrorMessage,
+} from "../jobControlPlane";
+import { assertCanonicalJobTransition } from "../jobControlPlaneTypes";
 import type { JobControlPlaneRepository } from "../jobControlPlane";
 
 function makeRepository() {
@@ -11,83 +20,205 @@ function makeRepository() {
   const settlements: any[] = [];
   const actions: any[] = [];
   const callbacks: any[] = [];
+  const transitions: string[] = [];
   const repository: JobControlPlaneRepository = {
-    transaction: async work => work({
-      findJob: async jobId => jobs.get(jobId) ?? null,
-      findByIdempotency: async (tenantId, key) => [...jobs.values()].find(job => job.tenantId === tenantId && job.idempotencyKey === key) ?? null,
-      lockAdmission: async () => {},
-      countActiveJobs: async ({ tenantId, executionClass }) => [...jobs.values()].filter(job =>
-        job.tenantId === tenantId
-        && job.executionClass === executionClass
-        && ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"].includes(job.status),
-      ).length,
-      countActiveJobsGlobal: async executionClass => [...jobs.values()].filter(job =>
-        job.executionClass === executionClass
-        && ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"].includes(job.status),
-      ).length,
-      findAttempt: async (jobId, attempt) => attempts.find(item => item.workerJobId === jobId && item.attempt === attempt) ?? null,
-      findEventByIdempotency: async (jobId, key) => events.find(event => event.workerJobId === jobId && event.eventIdempotencyKey === key) ?? null,
-      findAction: async actionId => actions.find(action => action.actionId === actionId) ?? null,
-      insertAction: async values => {
-        if (!actions.some(action => action.actionId === values.actionId)) actions.push(values);
-      },
-      updateAction: async (actionId, values) => {
-        const action = actions.find(item => item.actionId === actionId);
-        if (action) Object.assign(action, values);
-      },
-      findCallback: async input => callbacks.find(callback => callback.adapterNamespace === input.adapterNamespace && ((input.providerEventId && callback.providerEventId === input.providerEventId) || (input.replayKey && callback.replayKey === input.replayKey))) ?? null,
-      insertCallback: async values => {
-        if (callbacks.some(callback => callback.adapterNamespace === values.adapterNamespace && (callback.providerEventId === values.providerEventId || callback.replayKey === values.replayKey))) return false;
-        callbacks.push(values);
-        return true;
-      },
-      insertJob: async values => {
-        const row = {
-          ...values,
-          status: values.status ?? "queued",
-          attempt: values.attempt ?? 1,
-          maxAttempts: values.maxAttempts ?? 1,
-          fencingVersion: values.fencingVersion ?? 0,
-          createdAt: values.createdAt ?? new Date(),
-          timeoutSeconds: values.timeoutSeconds ?? 3600,
-        };
-        if ([...jobs.values()].some(job => job.tenantId === row.tenantId && job.idempotencyKey && job.idempotencyKey === row.idempotencyKey)) return null;
-        jobs.set(String(row.id), row);
-        return row;
-      },
-      updateJob: async input => {
-        const row = jobs.get(input.jobId);
-        if (!row || row.status !== input.expectedStatus) return null;
-        if (input.expectedAttempt !== undefined && row.attempt !== input.expectedAttempt) return null;
-        if (input.expectedLeaseHash !== undefined && row.leaseOwnerToken !== input.expectedLeaseHash) return null;
-        if (input.expectedFencingVersion !== undefined && row.fencingVersion !== input.expectedFencingVersion) return null;
-        Object.assign(row, input.values);
-        return row;
-      },
-      insertAttempt: async values => { attempts.push(values); },
-      updateAttempt: async ({ attemptId, values }) => {
-        const attempt = attempts.find(item => item.id === attemptId);
-        if (attempt) Object.assign(attempt, values);
-      },
-      insertSettlement: async values => { settlements.push(values); },
-      insertEvent: async input => { events.push(input); },
-      insertOutbox: async values => { outbox.push({ id: `outbox-${outbox.length + 1}`, ...values }); },
-      findOutboxForAttempt: async (jobId, attemptId) => [...outbox].reverse().find(item => item.workerJobId === jobId && (!attemptId || item.attemptId === attemptId)) ?? null,
-      resetOutbox: async ({ id, nextAttemptAt }) => {
-        const item = outbox.find(entry => entry.id === id);
-        if (item) Object.assign(item, { nextAttemptAt, cancelledAt: null, quarantinedAt: null, failedReason: null, operatorReviewReason: null });
-      },
-      cancelUnpublishedOutbox: async ({ jobId, cancelledAt, reason }) => {
-        for (const item of outbox) {
-          if (item.workerJobId === jobId && !item.publishedAt && !item.cancelledAt) {
-            item.cancelledAt = cancelledAt;
-            item.failedReason = reason;
+    transaction: async work =>
+      work({
+        findJob: async jobId => jobs.get(jobId) ?? null,
+        findByIdempotency: async (tenantId, key) =>
+          [...jobs.values()].find(
+            job => job.tenantId === tenantId && job.idempotencyKey === key
+          ) ?? null,
+        lockAdmission: async () => {},
+        countActiveJobs: async ({ tenantId, executionClass }) =>
+          [...jobs.values()].filter(
+            job =>
+              job.tenantId === tenantId &&
+              job.executionClass === executionClass &&
+              [
+                "pending",
+                "queued",
+                "leased",
+                "claimed",
+                "preparing",
+                "running",
+                "waiting_external",
+                "retry_scheduled",
+                "uploading",
+                "publishing",
+                "indexing",
+              ].includes(job.status)
+          ).length,
+        countActiveJobsGlobal: async executionClass =>
+          [...jobs.values()].filter(
+            job =>
+              job.executionClass === executionClass &&
+              [
+                "pending",
+                "queued",
+                "leased",
+                "claimed",
+                "preparing",
+                "running",
+                "waiting_external",
+                "retry_scheduled",
+                "uploading",
+                "publishing",
+                "indexing",
+              ].includes(job.status)
+          ).length,
+        findAttempt: async (jobId, attempt) =>
+          attempts.find(
+            item => item.workerJobId === jobId && item.attempt === attempt
+          ) ?? null,
+        findEventByIdempotency: async (jobId, key) =>
+          events.find(
+            event =>
+              event.workerJobId === jobId && event.eventIdempotencyKey === key
+          ) ?? null,
+        findAction: async actionId =>
+          actions.find(action => action.actionId === actionId) ?? null,
+        insertAction: async values => {
+          if (!actions.some(action => action.actionId === values.actionId))
+            actions.push(values);
+        },
+        updateAction: async (actionId, values) => {
+          const action = actions.find(item => item.actionId === actionId);
+          if (action) Object.assign(action, values);
+        },
+        findCallback: async input =>
+          callbacks.find(
+            callback =>
+              callback.adapterNamespace === input.adapterNamespace &&
+              ((input.providerEventId &&
+                callback.providerEventId === input.providerEventId) ||
+                (input.replayKey && callback.replayKey === input.replayKey))
+          ) ?? null,
+        insertCallback: async values => {
+          if (
+            callbacks.some(
+              callback =>
+                callback.adapterNamespace === values.adapterNamespace &&
+                (callback.providerEventId === values.providerEventId ||
+                  callback.replayKey === values.replayKey)
+            )
+          )
+            return false;
+          callbacks.push(values);
+          return true;
+        },
+        insertJob: async values => {
+          const row = {
+            ...values,
+            status: values.status ?? "queued",
+            attempt: values.attempt ?? 1,
+            maxAttempts: values.maxAttempts ?? 1,
+            fencingVersion: values.fencingVersion ?? 0,
+            createdAt: values.createdAt ?? new Date(),
+            timeoutSeconds: values.timeoutSeconds ?? 3600,
+          };
+          if (
+            [...jobs.values()].some(
+              job =>
+                job.tenantId === row.tenantId &&
+                job.idempotencyKey &&
+                job.idempotencyKey === row.idempotencyKey
+            )
+          )
+            return null;
+          jobs.set(String(row.id), row);
+          return row;
+        },
+        updateJob: async input => {
+          const row = jobs.get(input.jobId);
+          if (!row || row.status !== input.expectedStatus) return null;
+          if (
+            input.expectedAttempt !== undefined &&
+            row.attempt !== input.expectedAttempt
+          )
+            return null;
+          if (
+            input.expectedLeaseHash !== undefined &&
+            row.leaseOwnerToken !== input.expectedLeaseHash
+          )
+            return null;
+          if (
+            input.expectedFencingVersion !== undefined &&
+            row.fencingVersion !== input.expectedFencingVersion
+          )
+            return null;
+          if (typeof input.values.status === "string") {
+            const terminalRecovery =
+              input.allowTerminalRecovery === true &&
+              ["failed", "expired"].includes(row.status) &&
+              input.values.status === "queued";
+            if (!terminalRecovery)
+              assertCanonicalJobTransition(row.status, input.values.status);
+            transitions.push(`${row.status}->${input.values.status}`);
           }
-        }
-      },
-    }),
+          Object.assign(row, input.values);
+          return row;
+        },
+        insertAttempt: async values => {
+          attempts.push(values);
+        },
+        updateAttempt: async ({ attemptId, values }) => {
+          const attempt = attempts.find(item => item.id === attemptId);
+          if (attempt) Object.assign(attempt, values);
+        },
+        insertSettlement: async values => {
+          settlements.push(values);
+        },
+        insertEvent: async input => {
+          events.push(input);
+        },
+        insertOutbox: async values => {
+          outbox.push({ id: `outbox-${outbox.length + 1}`, ...values });
+        },
+        findOutboxForAttempt: async (jobId, attemptId) =>
+          [...outbox]
+            .reverse()
+            .find(
+              item =>
+                item.workerJobId === jobId &&
+                (!attemptId || item.attemptId === attemptId)
+            ) ?? null,
+        resetOutbox: async ({ id, nextAttemptAt }) => {
+          const item = outbox.find(entry => entry.id === id);
+          if (item)
+            Object.assign(item, {
+              nextAttemptAt,
+              cancelledAt: null,
+              quarantinedAt: null,
+              failedReason: null,
+              operatorReviewReason: null,
+            });
+        },
+        cancelUnpublishedOutbox: async ({ jobId, cancelledAt, reason }) => {
+          for (const item of outbox) {
+            if (
+              item.workerJobId === jobId &&
+              !item.publishedAt &&
+              !item.cancelledAt
+            ) {
+              item.cancelledAt = cancelledAt;
+              item.failedReason = reason;
+            }
+          }
+        },
+      }),
   };
-  return { repository, jobs, events, outbox, attempts, settlements, actions, callbacks };
+  return {
+    repository,
+    jobs,
+    events,
+    outbox,
+    attempts,
+    settlements,
+    actions,
+    callbacks,
+    transitions,
+  };
 }
 
 const definition = {
@@ -98,17 +229,231 @@ const definition = {
   executionClass: "short" as const,
   input: { value: 1 },
   idempotencyKey: "same-request",
-  retryPolicy: { maxAttempts: 2, baseDelayMs: 1, maxDelayMs: 10, jitter: "none" as const, deadlineMs: 1000, allowedErrorClasses: ["timeout"] },
+  retryPolicy: {
+    maxAttempts: 2,
+    baseDelayMs: 1,
+    maxDelayMs: 10,
+    jitter: "none" as const,
+    deadlineMs: 1000,
+    allowedErrorClasses: ["timeout"],
+  },
   timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 200 },
 };
 
 describe("job control plane", () => {
+  it("holds a certified computer-use action for approval and fences the decision", async () => {
+    const state = makeRepository();
+    const jobId = "job-p213-approval";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-p213",
+      requestedByUserId: 109,
+      jobType: "computer_use.browser",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "waiting_external",
+      attempt: 1,
+      maxAttempts: 1,
+      fencingVersion: 7,
+      inputJson: { payload: { requiresIndependentVerification: true } },
+      progressJson: {
+        externalWait: {
+          operationKey: "computer-use:job-p213-approval:1",
+          metadata: {
+            commandId: "observe-p213",
+            runnerId: "runner-p213",
+            runnerSessionId: "session-p213",
+            capabilitySnapshotId: "snapshot-p213",
+            capabilitySnapshotRevision: "revision-p213",
+          },
+        },
+      },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 600,
+    });
+    state.attempts.push({
+      id: "attempt-p213",
+      workerJobId: jobId,
+      attempt: 1,
+      leaseGeneration: 7,
+    });
+    const controlPlane = createJobControlPlane(state.repository);
+    const semanticState = {
+      actionId: "action-p213",
+      actionCommandId: "action-command-p213",
+      decision: {
+        decisionId: "decision-p213",
+        selectedCandidateId: "candidate-p213",
+      },
+      selectedCandidate: { candidateId: "candidate-p213" },
+    };
+
+    await expect(
+      controlPlane.requestComputerUseApproval(jobId, {
+        tenantId: "tenant-p213",
+        operationKey: "computer-use:job-p213-approval:1",
+        approvalRequestId: "approval-p213",
+        runnerId: "runner-p213",
+        runnerSessionId: "session-p213",
+        capabilitySnapshotId: "snapshot-p213",
+        capabilitySnapshotRevision: "revision-p213",
+        currentCommandId: "observe-p213",
+        actionId: "action-p213",
+        semanticState,
+      })
+    ).resolves.toBe("requested");
+
+    expect(state.jobs.get(jobId)).toMatchObject({
+      status: "waiting_external",
+      statusReason: "waiting_approval",
+    });
+    expect(state.events.map(event => event.eventType)).toContain(
+      "WAITING_APPROVAL"
+    );
+
+    await expect(
+      controlPlane.resolveComputerUseApproval({
+        jobId,
+        tenantId: "tenant-p213",
+        operationKey: "computer-use:job-p213-approval:1",
+        approvalRequestId: "approval-p213",
+        decision: "approved",
+        runnerId: "runner-p213",
+        adapter: "browser.v1",
+        actionId: "action-p213",
+        runnerSessionId: "session-p213",
+        fencingVersion: 7,
+        approverId: 207,
+      })
+    ).resolves.toBe("resumed");
+
+    expect(state.jobs.get(jobId)).toMatchObject({
+      status: "queued",
+      statusReason: "approval_approved",
+    });
+    expect(
+      state.events.filter(event => event.eventType === "DISPATCH_REQUESTED")
+    ).toHaveLength(1);
+    await expect(
+      controlPlane.resolveComputerUseApproval({
+        jobId,
+        tenantId: "tenant-p213",
+        operationKey: "computer-use:job-p213-approval:1",
+        approvalRequestId: "approval-p213",
+        decision: "approved",
+        runnerId: "runner-p213",
+        adapter: "browser.v1",
+        actionId: "action-p213",
+        runnerSessionId: "session-p213",
+        fencingVersion: 7,
+        approverId: 207,
+      })
+    ).resolves.toBe("duplicate");
+  });
+
+  it("denies a certified action without dispatch and ignores conflicting or stale decisions", async () => {
+    const state = makeRepository();
+    const jobId = "job-p213-deny";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-p213",
+      requestedByUserId: 109,
+      jobType: "computer_use.browser",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "waiting_external",
+      attempt: 1,
+      maxAttempts: 1,
+      fencingVersion: 8,
+      inputJson: { payload: { requiresIndependentVerification: true } },
+      progressJson: {
+        externalWait: {
+          operationKey: "computer-use:job-p213-deny:1",
+          metadata: {
+            commandId: "observe-deny",
+            runnerId: "runner-p213",
+            runnerSessionId: "session-p213",
+            capabilitySnapshotId: "snapshot-p213",
+            capabilitySnapshotRevision: "revision-p213",
+          },
+        },
+      },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 600,
+    });
+    state.attempts.push({
+      id: "attempt-p213-deny",
+      workerJobId: jobId,
+      attempt: 1,
+      leaseGeneration: 8,
+    });
+    const controlPlane = createJobControlPlane(state.repository);
+    await controlPlane.requestComputerUseApproval(jobId, {
+      tenantId: "tenant-p213",
+      operationKey: "computer-use:job-p213-deny:1",
+      approvalRequestId: "approval-deny",
+      runnerId: "runner-p213",
+      runnerSessionId: "session-p213",
+      capabilitySnapshotId: "snapshot-p213",
+      capabilitySnapshotRevision: "revision-p213",
+      currentCommandId: "observe-deny",
+      actionId: "action-deny",
+      semanticState: {
+        actionId: "action-deny",
+        selectedCandidate: { candidateId: "candidate-deny" },
+      },
+    });
+
+    await expect(
+      controlPlane.resolveComputerUseApproval({
+        jobId,
+        tenantId: "tenant-p213",
+        operationKey: "computer-use:job-p213-deny:1",
+        approvalRequestId: "approval-deny",
+        decision: "rejected",
+        runnerId: "runner-p213",
+        adapter: "browser.v1",
+        actionId: "action-deny",
+        runnerSessionId: "session-p213",
+        fencingVersion: 8,
+        approverId: 207,
+      })
+    ).resolves.toBe("failed");
+    expect(state.jobs.get(jobId)).toMatchObject({
+      status: "failed",
+      statusReason: "approval_rejected",
+      errorCode: "APPROVAL_DENIED",
+    });
+    expect(state.outbox).toHaveLength(0);
+    expect(
+      state.events.some(event => event.eventType === "ACTION_DISPATCHED")
+    ).toBe(false);
+    await expect(
+      controlPlane.resolveComputerUseApproval({
+        jobId,
+        tenantId: "tenant-p213",
+        operationKey: "computer-use:job-p213-deny:1",
+        approvalRequestId: "approval-deny",
+        decision: "approved",
+        runnerId: "runner-p213",
+        adapter: "browser.v1",
+        actionId: "action-deny",
+        runnerSessionId: "session-p213",
+        fencingVersion: 8,
+        approverId: 207,
+      })
+    ).resolves.toBe("ignored");
+  });
+
   it("omits undefined optional fields from lifecycle event payloads", async () => {
     let inserted: Record<string, unknown> | undefined;
     const query = {
-      execute: async (statement: unknown) => String(statement).includes("nextSequence")
-        ? [{ nextSequence: "1" }]
-        : [],
+      execute: async (statement: unknown) =>
+        String(statement).includes("nextSequence")
+          ? [{ nextSequence: "1" }]
+          : [],
       insert: () => ({
         values: async (values: Record<string, unknown>) => {
           inserted = values;
@@ -120,17 +465,30 @@ describe("job control plane", () => {
       workerJobId: "job-1",
       eventType: "RECOVERED",
       eventIdempotencyKey: "recovered:job-1",
-      payloadJson: { retryDelayMs: undefined, nested: { jitter: undefined, kept: true } },
+      payloadJson: {
+        retryDelayMs: undefined,
+        nested: { jitter: undefined, kept: true },
+      },
     });
 
     expect(inserted?.payloadJson).toEqual({ nested: { kept: true } });
   });
 
   it("keeps permanent errors out of retry and unknown errors in operator review", () => {
-    expect(classifyJobError({ status: 400, message: "bad request" })).toBe("permanent");
+    expect(classifyJobError({ status: 400, message: "bad request" })).toBe(
+      "permanent"
+    );
     expect(classifyJobError({ code: "ETIMEDOUT" })).toBe("retryable");
-    expect(classifyJobError(new Error("provider response was ambiguous"))).toBe("unknown");
-    expect(classifyJobError(Object.assign(new Error("validated domain failure"), { class: "permanent" }))).toBe("permanent");
+    expect(classifyJobError(new Error("provider response was ambiguous"))).toBe(
+      "unknown"
+    );
+    expect(
+      classifyJobError(
+        Object.assign(new Error("validated domain failure"), {
+          class: "permanent",
+        })
+      )
+    ).toBe("permanent");
   });
 
   it("creates one canonical job and outbox intent for duplicate creates", async () => {
@@ -144,13 +502,20 @@ describe("job control plane", () => {
     expect(second).toEqual({ jobId: first.jobId, created: false });
     expect(state.jobs.size).toBe(1);
     expect(state.outbox).toHaveLength(1);
-    expect(state.events.map(event => event.eventType)).toEqual(["CREATED", "QUEUED", "DISPATCH_REQUESTED"]);
+    expect(state.events.map(event => event.eventType)).toEqual([
+      "CREATED",
+      "QUEUED",
+      "DISPATCH_REQUESTED",
+    ]);
   });
 
   it("does not claim a dependent Job before its prerequisite succeeds", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const parent = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const parent = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     const child = await controlPlane.create({
       ...definition,
       idempotencyKey: undefined,
@@ -158,30 +523,49 @@ describe("job control plane", () => {
     });
 
     expect(
-      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+      await controlPlane.claim({
+        jobId: child.jobId,
+        runnerId: "runner-child",
+        adapter: "test",
+      })
     ).toBeNull();
     expect(state.jobs.get(child.jobId).status).toBe("queued");
 
-    const parentLease = await controlPlane.claim({ jobId: parent.jobId, runnerId: "runner-parent", adapter: "test" });
+    const parentLease = await controlPlane.claim({
+      jobId: parent.jobId,
+      runnerId: "runner-parent",
+      adapter: "test",
+    });
     await controlPlane.start(parentLease!);
     await controlPlane.complete(parentLease!, { output: { ok: true } });
     expect(state.jobs.get(parent.jobId).status).toBe("succeeded");
     expect(
-      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+      await controlPlane.claim({
+        jobId: child.jobId,
+        runnerId: "runner-child",
+        adapter: "test",
+      })
     ).toMatchObject({ jobId: child.jobId });
   });
 
   it("fails a dependent Job closed when its prerequisite permanently fails", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const parent = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const parent = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     const child = await controlPlane.create({
       ...definition,
       idempotencyKey: undefined,
       input: { orchestration: { dependsOnJobIds: [parent.jobId] } },
     });
 
-    const parentLease = await controlPlane.claim({ jobId: parent.jobId, runnerId: "runner-parent", adapter: "test" });
+    const parentLease = await controlPlane.claim({
+      jobId: parent.jobId,
+      runnerId: "runner-parent",
+      adapter: "test",
+    });
     await controlPlane.start(parentLease!);
     await controlPlane.fail(parentLease!, {
       code: "INVALID_INPUT",
@@ -190,7 +574,11 @@ describe("job control plane", () => {
     });
 
     expect(
-      await controlPlane.claim({ jobId: child.jobId, runnerId: "runner-child", adapter: "test" })
+      await controlPlane.claim({
+        jobId: child.jobId,
+        runnerId: "runner-child",
+        adapter: "test",
+      })
     ).toBeNull();
     expect(state.jobs.get(child.jobId)).toMatchObject({
       status: "failed",
@@ -207,47 +595,71 @@ describe("job control plane", () => {
   it("rejects a known adapter that does not match the persisted runtime", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create(definition, { runtimeType: "python_job_worker" });
+    const created = await controlPlane.create(definition, {
+      runtimeType: "python_job_worker",
+    });
 
-    await expect(controlPlane.claim({
-      jobId: created.jobId,
-      runnerId: "node-runner",
-      adapter: "postgres-direct",
-    })).rejects.toMatchObject({ code: "JOB_ADAPTER_RUNTIME_MISMATCH" });
+    await expect(
+      controlPlane.claim({
+        jobId: created.jobId,
+        runnerId: "node-runner",
+        adapter: "postgres-direct",
+      })
+    ).rejects.toMatchObject({ code: "JOB_ADAPTER_RUNTIME_MISMATCH" });
     expect(state.jobs.get(created.jobId).status).toBe("queued");
-    expect(state.events.map(event => event.eventType)).toEqual(["CREATED", "QUEUED", "DISPATCH_REQUESTED"]);
+    expect(state.events.map(event => event.eventType)).toEqual([
+      "CREATED",
+      "QUEUED",
+      "DISPATCH_REQUESTED",
+    ]);
   });
 
   it("applies bounded per-tenant admission before creating another canonical job", async () => {
-    const previousLimit = process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
+    const previousLimit =
+      process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
     process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = "8";
     try {
       const state = makeRepository();
       const controlPlane = createJobControlPlane(state.repository);
       for (let index = 0; index < 8; index += 1) {
-        await controlPlane.create({ ...definition, idempotencyKey: undefined, input: { value: index } });
+        await controlPlane.create({
+          ...definition,
+          idempotencyKey: undefined,
+          input: { value: index },
+        });
       }
 
-      await expect(controlPlane.create({ ...definition, idempotencyKey: undefined, input: { value: 8 } }))
-        .rejects.toMatchObject({ code: "JOB_ADMISSION_BACKPRESSURE" });
+      await expect(
+        controlPlane.create({
+          ...definition,
+          idempotencyKey: undefined,
+          input: { value: 8 },
+        })
+      ).rejects.toMatchObject({ code: "JOB_ADMISSION_BACKPRESSURE" });
       expect(state.jobs).toHaveLength(8);
       expect(state.outbox).toHaveLength(8);
     } finally {
-      if (previousLimit === undefined) delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
-      else process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = previousLimit;
+      if (previousLimit === undefined)
+        delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
+      else
+        process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = previousLimit;
     }
   });
 
   it("accepts provider-backed work into the durable queue when execution admission is full", async () => {
-    const previousLimit = process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
+    const previousLimit =
+      process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
     process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = "1";
     try {
       const state = makeRepository();
       const controlPlane = createJobControlPlane(state.repository);
-      const first = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+      const first = await controlPlane.create({
+        ...definition,
+        idempotencyKey: undefined,
+      });
       const second = await controlPlane.create(
         { ...definition, idempotencyKey: undefined, input: { value: 2 } },
-        { admissionMode: "durable_queue" },
+        { admissionMode: "durable_queue" }
       );
 
       expect(first.created).toBe(true);
@@ -256,41 +668,81 @@ describe("job control plane", () => {
       expect(state.jobs.get(second.jobId).status).toBe("queued");
       expect(state.outbox).toHaveLength(2);
     } finally {
-      if (previousLimit === undefined) delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
-      else process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = previousLimit;
+      if (previousLimit === undefined)
+        delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT;
+      else
+        process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_SHORT = previousLimit;
     }
   });
 
   it("holds a queued job and cancels unpublished dispatch before a domain pause", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
 
-    expect(await controlPlane.holdQueued(created.jobId, "storyboard.pause:run-1", "domain_paused")).toBe(true);
+    expect(
+      await controlPlane.holdQueued(
+        created.jobId,
+        "storyboard.pause:run-1",
+        "domain_paused"
+      )
+    ).toBe(true);
     expect(state.jobs.get(created.jobId).status).toBe("waiting_external");
     expect(state.outbox[0].cancelledAt).toBeInstanceOf(Date);
-    expect(state.events.at(-1)).toMatchObject({ eventType: "WAITING_EXTERNAL" });
-    expect(await controlPlane.claim({ jobId: created.jobId, runnerId: "late", adapter: "postgres-pull" })).toBeNull();
-    expect(await controlPlane.holdQueued(created.jobId, "storyboard.pause:run-1", "domain_paused")).toBe(true);
+    expect(state.events.at(-1)).toMatchObject({
+      eventType: "WAITING_EXTERNAL",
+    });
+    expect(
+      await controlPlane.claim({
+        jobId: created.jobId,
+        runnerId: "late",
+        adapter: "postgres-pull",
+      })
+    ).toBeNull();
+    expect(
+      await controlPlane.holdQueued(
+        created.jobId,
+        "storyboard.pause:run-1",
+        "domain_paused"
+      )
+    ).toBe(true);
   });
 
   it("does not let a second external operation reuse an existing waiting job", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
 
-    expect(await controlPlane.holdQueued(created.jobId, "provider:operation-1")).toBe(true);
-    expect(await controlPlane.holdQueued(created.jobId, "provider:operation-2")).toBe(false);
-    expect((state.jobs.get(created.jobId).progressJson as any).externalWait.operationKey).toBe("provider:operation-1");
+    expect(
+      await controlPlane.holdQueued(created.jobId, "provider:operation-1")
+    ).toBe(true);
+    expect(
+      await controlPlane.holdQueued(created.jobId, "provider:operation-2")
+    ).toBe(false);
+    expect(
+      (state.jobs.get(created.jobId).progressJson as any).externalWait
+        .operationKey
+    ).toBe("provider:operation-1");
   });
 
   it("bounds long pause and external event keys without losing idempotency", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     const longOperationKey = "operation:" + "x".repeat(190);
 
-    await expect(controlPlane.holdQueued(created.jobId, longOperationKey)).resolves.toBe(true);
+    await expect(
+      controlPlane.holdQueued(created.jobId, longOperationKey)
+    ).resolves.toBe(true);
 
     const event = state.events.at(-1);
     expect(event.eventIdempotencyKey.length).toBeLessThanOrEqual(200);
@@ -301,12 +753,26 @@ describe("job control plane", () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
     const created = await controlPlane.create(definition);
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.fail(lease!, { code: "timeout", message: "retry", class: "retryable" });
+    await controlPlane.fail(lease!, {
+      code: "timeout",
+      message: "retry",
+      class: "retryable",
+    });
 
     expect(state.jobs.get(created.jobId).status).toBe("retry_scheduled");
-    expect(await controlPlane.holdQueued(created.jobId, "storyboard.pause:run-1", "domain_paused")).toBe(true);
+    expect(
+      await controlPlane.holdQueued(
+        created.jobId,
+        "storyboard.pause:run-1",
+        "domain_paused"
+      )
+    ).toBe(true);
     expect(state.jobs.get(created.jobId).status).toBe("waiting_external");
     expect(state.outbox.at(-1)?.cancelledAt).toBeInstanceOf(Date);
   });
@@ -314,23 +780,44 @@ describe("job control plane", () => {
   it("cancels a queued job, fences claim, and keeps the action repeatable", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-
-    await controlPlane.cancel(created.jobId, "storyboard_cancelled", "storyboard-cancel:run-1", 1, {
-      tenantId: definition.tenantId,
-      requestedByUserId: definition.requestedByUserId,
-      authorizationScope: "storyboard",
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
     });
+
+    await controlPlane.cancel(
+      created.jobId,
+      "storyboard_cancelled",
+      "storyboard-cancel:run-1",
+      1,
+      {
+        tenantId: definition.tenantId,
+        requestedByUserId: definition.requestedByUserId,
+        authorizationScope: "storyboard",
+      }
+    );
     expect(state.jobs.get(created.jobId).status).toBe("cancelled");
     expect(state.outbox[0].cancelledAt).toBeInstanceOf(Date);
-    expect(state.events.some(event => event.eventType === "CANCEL_REQUESTED")).toBe(true);
-    expect(state.events.some(event => event.eventType === "CANCELLED")).toBe(true);
-    await controlPlane.cancel(created.jobId, "storyboard_cancelled", "storyboard-cancel:run-1", 1, {
-      tenantId: definition.tenantId,
-      requestedByUserId: definition.requestedByUserId,
-      authorizationScope: "storyboard",
-    });
-    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(
+      state.events.some(event => event.eventType === "CANCEL_REQUESTED")
+    ).toBe(true);
+    expect(state.events.some(event => event.eventType === "CANCELLED")).toBe(
+      true
+    );
+    await controlPlane.cancel(
+      created.jobId,
+      "storyboard_cancelled",
+      "storyboard-cancel:run-1",
+      1,
+      {
+        tenantId: definition.tenantId,
+        requestedByUserId: definition.requestedByUserId,
+        authorizationScope: "storyboard",
+      }
+    );
+    expect(
+      state.events.filter(event => event.eventType === "CANCELLED")
+    ).toHaveLength(1);
   });
 
   it("rejects idempotency reuse with a different definition", async () => {
@@ -338,17 +825,28 @@ describe("job control plane", () => {
     const controlPlane = createJobControlPlane(state.repository);
     await controlPlane.create(definition);
 
-    await expect(controlPlane.create({ ...definition, input: { value: 2 } })).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+    await expect(
+      controlPlane.create({ ...definition, input: { value: 2 } })
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
   });
 
   it("fences stale workers and does not consume a retry for heartbeat", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
     const created = await controlPlane.create(definition);
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     expect(lease).not.toBeNull();
     await controlPlane.start(lease!);
-    await expect(controlPlane.heartbeat({ ...lease!, fencingVersion: lease!.fencingVersion - 1 })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(
+      controlPlane.heartbeat({
+        ...lease!,
+        fencingVersion: lease!.fencingVersion - 1,
+      })
+    ).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
     await controlPlane.heartbeat(lease!);
     expect(state.jobs.get(created.jobId).attempt).toBe(1);
     expect(state.attempts).toHaveLength(1);
@@ -357,70 +855,141 @@ describe("job control plane", () => {
   it("fences a reporter whose attempt id does not match the current attempt", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    const staleAttempt = { ...lease!, attemptId: "00000000-0000-4000-8000-000000000099" };
+    const staleAttempt = {
+      ...lease!,
+      attemptId: "00000000-0000-4000-8000-000000000099",
+    };
 
-    await expect(controlPlane.heartbeat(staleAttempt)).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
-    await expect(controlPlane.progress(staleAttempt, { progress: 10, stage: "work" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
-    await expect(controlPlane.complete(staleAttempt, { resultRef: "artifact:stale" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
-    await expect(controlPlane.fail(staleAttempt, { code: "timeout", message: "stale", class: "retryable" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(controlPlane.heartbeat(staleAttempt)).rejects.toMatchObject({
+      code: "JOB_LEASE_STALE",
+    });
+    await expect(
+      controlPlane.progress(staleAttempt, { progress: 10, stage: "work" })
+    ).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(
+      controlPlane.complete(staleAttempt, { resultRef: "artifact:stale" })
+    ).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(
+      controlPlane.fail(staleAttempt, {
+        code: "timeout",
+        message: "stale",
+        class: "retryable",
+      })
+    ).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
     expect(state.jobs.get(created.jobId).status).toBe("running");
   });
 
   it("does not allow a late completion after cancellation or fencing", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
     state.jobs.get(created.jobId).status = "cancelled";
-    await expect(controlPlane.complete(lease!, { resultRef: "artifact:1" })).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
+    await expect(
+      controlPlane.complete(lease!, { resultRef: "artifact:1" })
+    ).rejects.toMatchObject({ code: "JOB_LEASE_STALE" });
   });
 
   it("increments the business attempt once and prepares a deduplicated retry outbox", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
     const created = await controlPlane.create(definition);
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.fail(lease!, { code: "timeout", message: "try again", class: "retryable" });
+    await controlPlane.fail(lease!, {
+      code: "timeout",
+      message: "try again",
+      class: "retryable",
+    });
 
     expect(state.jobs.get(created.jobId).status).toBe("retry_scheduled");
     expect(state.jobs.get(created.jobId).attempt).toBe(2);
     expect(state.attempts).toHaveLength(2);
     expect(state.outbox).toHaveLength(2);
     expect(state.outbox[1].envelopeJson.attemptId).toBe(state.attempts[1].id);
-    expect(state.outbox[1].envelopeJson.contractVersion).toBe(definition.contractVersion);
+    expect(state.outbox[1].envelopeJson.contractVersion).toBe(
+      definition.contractVersion
+    );
   });
 
   it("writes a durable result marker before completing", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.complete(lease!, { resultRef: "artifact:1", output: { apiKey: "do-not-persist", value: "safe" } });
+    await controlPlane.complete(lease!, {
+      resultRef: "artifact:1",
+      output: { apiKey: "do-not-persist", value: "safe" },
+    });
     expect(state.settlements).toHaveLength(1);
     expect(state.jobs.get(created.jobId).status).toBe("succeeded");
-    expect(state.jobs.get(created.jobId).outputJson).toEqual({ apiKey: "[REDACTED]", value: "safe" });
+    expect(state.jobs.get(created.jobId).outputJson).toEqual({
+      apiKey: "[REDACTED]",
+      value: "safe",
+    });
   });
 
   it("rejects expiring result URLs and sanitizes error evidence before persistence", async () => {
-    expect(() => normalizeResultReference("https://storage.example/result?X-Amz-Signature=secret")).toThrowError(
-      expect.objectContaining({ code: "JOB_RESULT_INVALID" }),
-    );
-    expect(sanitizeJobErrorMessage("provider apiKey=secret\nBearer abc123")).toBe("provider apiKey=[REDACTED] Bearer [REDACTED]");
+    expect(() =>
+      normalizeResultReference(
+        "https://storage.example/result?X-Amz-Signature=secret"
+      )
+    ).toThrowError(expect.objectContaining({ code: "JOB_RESULT_INVALID" }));
+    expect(
+      sanitizeJobErrorMessage("provider apiKey=secret\nBearer abc123")
+    ).toBe("provider apiKey=[REDACTED] Bearer [REDACTED]");
 
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.fail(lease!, { code: "provider_error", message: "provider apiKey=secret\nBearer abc123", class: "permanent" });
+    await controlPlane.fail(lease!, {
+      code: "provider_error",
+      message: "provider apiKey=secret\nBearer abc123",
+      class: "permanent",
+    });
 
-    expect(state.jobs.get(created.jobId).errorMessage).toBe("provider apiKey=[REDACTED] Bearer [REDACTED]");
+    expect(state.jobs.get(created.jobId).errorMessage).toBe(
+      "provider apiKey=[REDACTED] Bearer [REDACTED]"
+    );
     expect(state.jobs.get(created.jobId).errorMessage).not.toContain("secret");
     expect(state.jobs.get(created.jobId).errorMessage).not.toContain("abc123");
   });
@@ -428,10 +997,16 @@ describe("job control plane", () => {
   it("redacts legacy error evidence at the status API boundary", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    state.jobs.get(created.jobId).errorMessage = "Bearer legacy-secret\napiKey=another-secret";
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    state.jobs.get(created.jobId).errorMessage =
+      "Bearer legacy-secret\napiKey=another-secret";
 
-    const status = await controlPlane.getStatus(created.jobId, { tenantId: definition.tenantId });
+    const status = await controlPlane.getStatus(created.jobId, {
+      tenantId: definition.tenantId,
+    });
 
     expect(status?.errorMessage).toBe("Bearer [REDACTED] apiKey=[REDACTED]");
     expect(status?.errorMessage).not.toContain("legacy-secret");
@@ -441,14 +1016,26 @@ describe("job control plane", () => {
   it("fences and records a hard timeout instead of leaving a running row", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
     state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 10_000);
     state.jobs.get(created.jobId).startedAt = new Date(Date.now() - 10_000);
     state.jobs.get(created.jobId).timeoutSeconds = 1;
-    state.jobs.get(created.jobId).timeoutPolicyJson = { softTimeoutMs: 100, hardTimeoutMs: 1 };
-    await expect(controlPlane.heartbeat(lease!)).rejects.toMatchObject({ code: "JOB_TIMEOUT" });
+    state.jobs.get(created.jobId).timeoutPolicyJson = {
+      softTimeoutMs: 100,
+      hardTimeoutMs: 1,
+    };
+    await expect(controlPlane.heartbeat(lease!)).rejects.toMatchObject({
+      code: "JOB_TIMEOUT",
+    });
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.events.map(event => event.eventType)).toContain("TIMEOUT");
   });
@@ -456,8 +1043,16 @@ describe("job control plane", () => {
   it("does not count queue time against the execution hard timeout", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined, timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 60_000 } });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+      timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 60_000 },
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
     state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 120_000);
     await expect(controlPlane.heartbeat(lease!)).resolves.toBeUndefined();
@@ -466,14 +1061,31 @@ describe("job control plane", () => {
   it("records cancellation request before final cancellation and keeps action idempotent", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    await controlPlane.cancel(created.jobId, "operator_requested", "00000000-0000-4000-8000-000000000001", 7);
-    await controlPlane.cancel(created.jobId, "operator_requested", "00000000-0000-4000-8000-000000000001", 7);
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    await controlPlane.cancel(
+      created.jobId,
+      "operator_requested",
+      "00000000-0000-4000-8000-000000000001",
+      7
+    );
+    await controlPlane.cancel(
+      created.jobId,
+      "operator_requested",
+      "00000000-0000-4000-8000-000000000001",
+      7
+    );
 
     expect(state.jobs.get(created.jobId).status).toBe("cancelled");
-    expect(state.events.map(event => event.eventType)).toContain("CANCEL_REQUESTED");
+    expect(state.events.map(event => event.eventType)).toContain(
+      "CANCEL_REQUESTED"
+    );
     expect(state.events.map(event => event.eventType)).toContain("CANCELLED");
-    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "CANCELLED")
+    ).toHaveLength(1);
     expect(state.outbox[0].cancelledAt).toBeInstanceOf(Date);
     expect(state.actions).toHaveLength(1);
   });
@@ -481,63 +1093,143 @@ describe("job control plane", () => {
   it("reconciles a durable cancellation request after finalization is interrupted", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     await controlPlane.requestCancel(created.jobId, "publisher_shutdown");
     expect(state.jobs.get(created.jobId).status).toBe("queued");
-    await expect(controlPlane.reconcileCancellationRequest(created.jobId)).resolves.toBe("finalized");
+    await expect(
+      controlPlane.reconcileCancellationRequest(created.jobId)
+    ).resolves.toBe("finalized");
     expect(state.jobs.get(created.jobId).status).toBe("cancelled");
-    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "CANCELLED")
+    ).toHaveLength(1);
   });
 
   it("treats an already-recorded cancellation request as an idempotent cancel", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     state.jobs.get(created.jobId).status = "queued";
-    state.jobs.get(created.jobId).statusReason = "cancel_requested:storyboard_cancelled";
+    state.jobs.get(created.jobId).statusReason =
+      "cancel_requested:storyboard_cancelled";
 
-    await expect(controlPlane.cancel(created.jobId, "storyboard_cancelled")).resolves.toBeUndefined();
+    await expect(
+      controlPlane.cancel(created.jobId, "storyboard_cancelled")
+    ).resolves.toBeUndefined();
     expect(state.jobs.get(created.jobId).status).toBe("cancelled");
-    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "CANCELLED")
+    ).toHaveLength(1);
   });
 
   it("does not surface a cancellation race when another actor already finalized the job", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
     state.jobs.get(created.jobId).status = "succeeded";
 
-    await expect(controlPlane.cancel(created.jobId, "storyboard_cancelled")).resolves.toBeUndefined();
+    await expect(
+      controlPlane.cancel(created.jobId, "storyboard_cancelled")
+    ).resolves.toBeUndefined();
   });
 
   it("does not auto-dispatch an operator-review retry, but requeues it with the same outbox", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
     const created = await controlPlane.create(definition);
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.fail(lease!, { code: "timeout", message: "review", class: "retryable", operatorReviewRequired: true });
+    await controlPlane.fail(lease!, {
+      code: "timeout",
+      message: "review",
+      class: "retryable",
+      operatorReviewRequired: true,
+    });
     const job = state.jobs.get(created.jobId);
     const retryOutbox = state.outbox[1];
     retryOutbox.quarantinedAt = new Date();
     expect(await controlPlane.makeRetryDue(created.jobId)).toBe(false);
-    expect(await controlPlane.makeRetryDue(created.jobId, "00000000-0000-4000-8000-000000000003", 9, "operator reviewed provider timeout")).toBe(true);
+    expect(
+      await controlPlane.makeRetryDue(
+        created.jobId,
+        "00000000-0000-4000-8000-000000000003",
+        9,
+        "operator reviewed provider timeout"
+      )
+    ).toBe(true);
     expect(job.status).toBe("queued");
     expect(job.operatorReviewRequired).toBe(false);
     expect(job.operatorReviewReason).toBeNull();
     expect(state.outbox).toHaveLength(2);
     expect(retryOutbox.quarantinedAt).toBeNull();
-    const operatorAction = state.events.find(event => event.eventType === "OPERATOR_ACTION");
-    expect(operatorAction?.payloadJson).toMatchObject({ action: "requeue", reason: "operator reviewed provider timeout" });
+    const operatorAction = state.events.find(
+      event => event.eventType === "OPERATOR_ACTION"
+    );
+    expect(operatorAction?.payloadJson).toMatchObject({
+      action: "requeue",
+      reason: "operator reviewed provider timeout",
+    });
+  });
+
+  it("recovers a quarantined adapter-contract dispatch only through an audited admin requeue", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const job = state.jobs.get(created.jobId);
+    const outbox = state.outbox[0];
+    job.operatorReviewRequired = true;
+    job.operatorReviewReason = "adapter_contract_unsupported";
+    outbox.quarantinedAt = new Date();
+    outbox.operatorReviewReason = "adapter_contract_unsupported";
+
+    expect(await controlPlane.makeRetryDue(created.jobId)).toBe(false);
+    expect(
+      await controlPlane.makeRetryDue(
+        created.jobId,
+        "00000000-0000-4000-8000-000000000005",
+        9,
+        "deployed adapter contract admission fix"
+      )
+    ).toBe(true);
+
+    expect(job.status).toBe("queued");
+    expect(job.operatorReviewRequired).toBe(false);
+    expect(state.outbox).toHaveLength(1);
+    expect(outbox.quarantinedAt).toBeNull();
+    expect(state.events.at(-1)).toMatchObject({ eventType: "RECOVERED" });
   });
 
   it("does not requeue a cancellation request as normal work", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
     const created = await controlPlane.create(definition);
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.fail(lease!, { code: "timeout", message: "retry", class: "retryable" });
+    await controlPlane.fail(lease!, {
+      code: "timeout",
+      message: "retry",
+      class: "retryable",
+    });
     await controlPlane.requestCancel(created.jobId, "account_move");
     expect(await controlPlane.makeRetryDue(created.jobId)).toBe(false);
     expect(state.jobs.get(created.jobId).status).toBe("retry_scheduled");
@@ -548,22 +1240,50 @@ describe("job control plane", () => {
   it("supports an audited, idempotent operator force-fail action", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    await controlPlane.forceFail(created.jobId, "manual recovery decision", "00000000-0000-4000-8000-000000000002", 8);
-    await controlPlane.forceFail(created.jobId, "manual recovery decision", "00000000-0000-4000-8000-000000000002", 8);
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    await controlPlane.forceFail(
+      created.jobId,
+      "manual recovery decision",
+      "00000000-0000-4000-8000-000000000002",
+      8
+    );
+    await controlPlane.forceFail(
+      created.jobId,
+      "manual recovery decision",
+      "00000000-0000-4000-8000-000000000002",
+      8
+    );
 
     expect(state.jobs.get(created.jobId).status).toBe("failed");
     expect(state.jobs.get(created.jobId).operatorReviewRequired).toBe(true);
-    expect(state.events.filter(event => event.eventType === "OPERATOR_ACTION")).toHaveLength(1);
-    expect(state.actions[0].outcomeJson).toMatchObject({ accepted: true, phase: "force_failed" });
+    expect(
+      state.events.filter(event => event.eventType === "OPERATOR_ACTION")
+    ).toHaveLength(1);
+    expect(state.actions[0].outcomeJson).toMatchObject({
+      accepted: true,
+      phase: "force_failed",
+    });
   });
 
   it("rejects unsafe direct action identifiers before mutating the job", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
 
-    await expect(controlPlane.forceFail(created.jobId, "operator decision", "bad action\nid", 8)).rejects.toMatchObject({ code: "JOB_ACTION_INVALID" });
+    await expect(
+      controlPlane.forceFail(
+        created.jobId,
+        "operator decision",
+        "bad action\nid",
+        8
+      )
+    ).rejects.toMatchObject({ code: "JOB_ACTION_INVALID" });
     expect(state.jobs.get(created.jobId).status).toBe("queued");
     expect(state.actions).toHaveLength(0);
   });
@@ -577,44 +1297,76 @@ describe("job control plane", () => {
       requestedByUserId: 8,
       idempotencyKey: undefined,
     });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "story-runner", adapter: "postgres-pull" });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "story-runner",
+      adapter: "postgres-pull",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.forceFail(created.jobId, "provider outcome requires checkpoint review", "story-force-fail", 8);
+    await controlPlane.forceFail(
+      created.jobId,
+      "provider outcome requires checkpoint review",
+      "story-force-fail",
+      8
+    );
 
     const evidence = {
       checkpointDigest: "a".repeat(64),
       completedEpisodeCount: 3,
     };
-    await expect(controlPlane.recoverCheckpoint(
-      created.jobId,
-      "story-checkpoint-recovery-1",
-      "story_checkpoint_recovery",
-      evidence,
-      8,
-      { tenantId: definition.tenantId, requestedByUserId: 8, authorizationScope: "storyboard" },
-    )).resolves.toBe(true);
-    await expect(controlPlane.recoverCheckpoint(
-      created.jobId,
-      "story-checkpoint-recovery-1",
-      "story_checkpoint_recovery",
-      evidence,
-      8,
-      { tenantId: definition.tenantId, requestedByUserId: 8, authorizationScope: "storyboard" },
-    )).resolves.toBe(true);
+    await expect(
+      controlPlane.recoverCheckpoint(
+        created.jobId,
+        "story-checkpoint-recovery-1",
+        "story_checkpoint_recovery",
+        evidence,
+        8,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: 8,
+          authorizationScope: "storyboard",
+        }
+      )
+    ).resolves.toBe(true);
+    await expect(
+      controlPlane.recoverCheckpoint(
+        created.jobId,
+        "story-checkpoint-recovery-1",
+        "story_checkpoint_recovery",
+        evidence,
+        8,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: 8,
+          authorizationScope: "storyboard",
+        }
+      )
+    ).resolves.toBe(true);
 
     expect(state.jobs.get(created.jobId).status).toBe("queued");
     expect(state.jobs.get(created.jobId).attempt).toBe(2);
     expect(state.attempts).toHaveLength(2);
     expect(state.outbox).toHaveLength(2);
-    expect(state.events.filter(event => event.eventType === "RECOVERED")).toHaveLength(1);
-    expect(state.actions.filter(action => action.command === "recover_checkpoint")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "RECOVERED")
+    ).toHaveLength(1);
+    expect(
+      state.actions.filter(action => action.command === "recover_checkpoint")
+    ).toHaveLength(1);
   });
 
   it("recovers a review-gated terminal job idempotently on the same canonical id", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "review-runner", adapter: "postgres-pull" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "review-runner",
+      adapter: "postgres-pull",
+    });
     await controlPlane.start(lease!);
     await controlPlane.fail(lease!, {
       code: "IMAGE_PROVIDER_UNKNOWN",
@@ -623,23 +1375,31 @@ describe("job control plane", () => {
       operatorReviewRequired: true,
     });
 
-    const scope = { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId, authorizationScope: "storyboard" as const };
-    await expect(controlPlane.recoverReviewGatedJob(
-      created.jobId,
-      "storyboard-review:one",
-      "storyboard_user_repair",
-      { disposition: "pre_submission_failure" },
-      definition.requestedByUserId,
-      scope,
-    )).resolves.toBe(true);
-    await expect(controlPlane.recoverReviewGatedJob(
-      created.jobId,
-      "storyboard-review:one",
-      "storyboard_user_repair",
-      { disposition: "pre_submission_failure" },
-      definition.requestedByUserId,
-      scope,
-    )).resolves.toBe(true);
+    const scope = {
+      tenantId: definition.tenantId,
+      requestedByUserId: definition.requestedByUserId,
+      authorizationScope: "storyboard" as const,
+    };
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "storyboard-review:one",
+        "storyboard_user_repair",
+        { disposition: "pre_submission_failure" },
+        definition.requestedByUserId,
+        scope
+      )
+    ).resolves.toBe(true);
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "storyboard-review:one",
+        "storyboard_user_repair",
+        { disposition: "pre_submission_failure" },
+        definition.requestedByUserId,
+        scope
+      )
+    ).resolves.toBe(true);
 
     const job = state.jobs.get(created.jobId);
     expect(job.status).toBe("queued");
@@ -648,15 +1408,26 @@ describe("job control plane", () => {
     expect(job.errorCode).toBeNull();
     expect(state.attempts).toHaveLength(2);
     expect(state.outbox).toHaveLength(2);
-    expect(state.events.filter(event => event.eventType === "RECOVERED")).toHaveLength(1);
-    expect(state.actions.filter(action => action.command === "recover_review")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "RECOVERED")
+    ).toHaveLength(1);
+    expect(
+      state.actions.filter(action => action.command === "recover_review")
+    ).toHaveLength(1);
   });
 
   it("does not recover a failed job without an operator review gate", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "review-runner", adapter: "postgres-pull" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "review-runner",
+      adapter: "postgres-pull",
+    });
     await controlPlane.start(lease!);
     await controlPlane.fail(lease!, {
       code: "INVALID_INPUT",
@@ -664,72 +1435,258 @@ describe("job control plane", () => {
       class: "permanent",
     });
 
-    await expect(controlPlane.recoverReviewGatedJob(
-      created.jobId,
-      "storyboard-review:two",
-      "storyboard_user_repair",
-      { disposition: "pre_submission_failure" },
-    )).resolves.toBe(false);
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "storyboard-review:two",
+        "storyboard_user_repair",
+        { disposition: "pre_submission_failure" }
+      )
+    ).resolves.toBe(false);
     expect(state.jobs.get(created.jobId).status).toBe("failed");
     expect(state.outbox).toHaveLength(1);
+  });
+
+  it("allows only the exact fixed Remotion runtime failure to recover without a pre-existing review flag", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "remotion_render_video",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "review-runner",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, {
+      code: "render_failed",
+      message: "revisionId is not defined",
+      class: "permanent",
+    });
+
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "00000000-0000-4000-8000-000000000005",
+        "user_requested_retry",
+        {
+          disposition: "pre_submission_failure",
+          knownRuntime: "remotion_revision_id",
+        },
+        definition.requestedByUserId,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: definition.requestedByUserId,
+          authorizationScope: "worker_jobs.user_retry",
+        }
+      )
+    ).resolves.toBe(true);
+
+    expect(state.jobs.get(created.jobId).status).toBe("queued");
+    expect(state.jobs.get(created.jobId).attempt).toBe(2);
+    expect(state.transitions.slice(-1)).toEqual(["failed->queued"]);
+  });
+
+  it("recovers a failed protection capability job on the same canonical id", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "content_protection.protect",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "protection-runner",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, {
+      code: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+      message: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+      class: "permanent",
+    });
+
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "00000000-0000-4000-8000-000000000006",
+        "user_requested_retry",
+        {
+          disposition: "provider_operation_resolved",
+          knownRuntime: "content_protection_provider",
+        },
+        definition.requestedByUserId,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: definition.requestedByUserId,
+          authorizationScope: "worker_jobs.user_retry",
+        }
+      )
+    ).resolves.toBe(true);
+
+    expect(state.jobs.get(created.jobId).status).toBe("queued");
+    expect(state.jobs.get(created.jobId).attempt).toBe(2);
+    expect(state.transitions.slice(-1)).toEqual(["failed->queued"]);
+  });
+
+  it("recovers an expired protection job after the optional runtime becomes ready", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "content_protection.protect",
+      idempotencyKey: undefined,
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 10 },
+    });
+    state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 1000);
+    await expect(
+      controlPlane.expireDeadline(created.jobId, new Date())
+    ).resolves.toBe("expired");
+
+    await expect(
+      controlPlane.recoverReviewGatedJob(
+        created.jobId,
+        "00000000-0000-4000-8000-000000000007",
+        "user_requested_retry",
+        {
+          disposition: "provider_operation_resolved",
+          knownRuntime: "content_protection_provider",
+        },
+        definition.requestedByUserId,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: definition.requestedByUserId,
+          authorizationScope: "worker_jobs.user_retry",
+        }
+      )
+    ).resolves.toBe(true);
+
+    expect(state.jobs.get(created.jobId).status).toBe("queued");
+    expect(state.jobs.get(created.jobId).attempt).toBe(2);
+    expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
   });
 
   it("rejects reusing an action key for another command or job", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    await controlPlane.forceFail(created.jobId, "manual recovery decision", "00000000-0000-4000-8000-000000000004", 8);
-    await expect(controlPlane.requestCancel(created.jobId, "different command", "00000000-0000-4000-8000-000000000004", 8)).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    await controlPlane.forceFail(
+      created.jobId,
+      "manual recovery decision",
+      "00000000-0000-4000-8000-000000000004",
+      8
+    );
+    await expect(
+      controlPlane.requestCancel(
+        created.jobId,
+        "different command",
+        "00000000-0000-4000-8000-000000000004",
+        8
+      )
+    ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
   });
 
   it("records an authenticated callback once without mutating lifecycle state", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const input = { adapterNamespace: "provider", providerEventId: "event-1", occurredAt: new Date().toISOString(), tenantId: "tenant-a", jobId: created.jobId, signatureVerified: true, payload: { state: "done" } };
-    await expect(recordAuthenticatedJobCallback(input, state.repository)).resolves.toMatchObject({ disposition: "accepted" });
-    await expect(recordAuthenticatedJobCallback(input, state.repository)).resolves.toMatchObject({ disposition: "duplicate" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const input = {
+      adapterNamespace: "provider",
+      providerEventId: "event-1",
+      occurredAt: new Date().toISOString(),
+      tenantId: "tenant-a",
+      jobId: created.jobId,
+      signatureVerified: true,
+      payload: { state: "done" },
+    };
+    await expect(
+      recordAuthenticatedJobCallback(input, state.repository)
+    ).resolves.toMatchObject({ disposition: "accepted" });
+    await expect(
+      recordAuthenticatedJobCallback(input, state.repository)
+    ).resolves.toMatchObject({ disposition: "duplicate" });
     expect(state.callbacks).toHaveLength(1);
     expect(state.jobs.get(created.jobId).status).toBe("queued");
-    expect(state.events.filter(event => event.eventType === "CALLBACK_ACCEPTED")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "CALLBACK_ACCEPTED")
+    ).toHaveLength(1);
   });
 
   it("treats a callback insert that loses the unique race as duplicate", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const input = { adapterNamespace: "provider", providerEventId: "race-1", occurredAt: new Date().toISOString(), tenantId: "tenant-a", jobId: created.jobId, signatureVerified: true, payload: { state: "done" } };
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const input = {
+      adapterNamespace: "provider",
+      providerEventId: "race-1",
+      occurredAt: new Date().toISOString(),
+      tenantId: "tenant-a",
+      jobId: created.jobId,
+      signatureVerified: true,
+      payload: { state: "done" },
+    };
     const racingRepository: JobControlPlaneRepository = {
-      transaction: async work => state.repository.transaction(repo => work({
-        ...repo,
-        insertCallback: async () => false,
-      })),
+      transaction: async work =>
+        state.repository.transaction(repo =>
+          work({
+            ...repo,
+            insertCallback: async () => false,
+          })
+        ),
     };
 
-    await expect(recordAuthenticatedJobCallback(input, racingRepository)).resolves.toMatchObject({ disposition: "duplicate" });
+    await expect(
+      recordAuthenticatedJobCallback(input, racingRepository)
+    ).resolves.toMatchObject({ disposition: "duplicate" });
     expect(state.callbacks).toHaveLength(0);
-    expect(state.events.filter(event => event.eventType === "CALLBACK_ACCEPTED")).toHaveLength(0);
+    expect(
+      state.events.filter(event => event.eventType === "CALLBACK_ACCEPTED")
+    ).toHaveLength(0);
   });
 
   it("rejects callbacks that provide two replay identities", async () => {
     const state = makeRepository();
-    await expect(recordAuthenticatedJobCallback({
-      adapterNamespace: "provider",
-      providerEventId: "event-1",
-      replayKey: "replay-1",
-      occurredAt: new Date().toISOString(),
-      signatureVerified: true,
-      payload: { state: "completed" },
-    }, state.repository)).rejects.toMatchObject({ code: "CALLBACK_INVALID" });
+    await expect(
+      recordAuthenticatedJobCallback(
+        {
+          adapterNamespace: "provider",
+          providerEventId: "event-1",
+          replayKey: "replay-1",
+          occurredAt: new Date().toISOString(),
+          signatureVerified: true,
+          payload: { state: "completed" },
+        },
+        state.repository
+      )
+    ).rejects.toMatchObject({ code: "CALLBACK_INVALID" });
   });
 
   it("expires a queued job at the persisted absolute deadline without a worker heartbeat", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined, retryPolicy: { ...definition.retryPolicy, deadlineMs: 10 } });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+      retryPolicy: { ...definition.retryPolicy, deadlineMs: 10 },
+    });
     state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 1000);
 
-    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("expired");
+    await expect(
+      controlPlane.expireDeadline(created.jobId, new Date())
+    ).resolves.toBe("expired");
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.events.map(event => event.eventType)).toContain("EXPIRED");
   });
@@ -737,12 +1694,24 @@ describe("job control plane", () => {
   it("resumes external work through a durable dispatch signal instead of inline claim", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.waitForExternal(lease!, { operationKey: "provider-op-1", resumeAfter: new Date(Date.now() + 10_000).toISOString() });
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "provider-op-1",
+      resumeAfter: new Date(Date.now() + 10_000).toISOString(),
+    });
 
-    await expect(controlPlane.resumeExternal(created.jobId, "callback", "provider")).resolves.toBe(true);
+    await expect(
+      controlPlane.resumeExternal(created.jobId, "callback", "provider")
+    ).resolves.toBe(true);
     expect(state.jobs.get(created.jobId).status).toBe("queued");
     expect(state.outbox).toHaveLength(2);
     expect(state.outbox[1].envelopeJson.reason).toBe("external_resumed");
@@ -752,20 +1721,59 @@ describe("job control plane", () => {
   it("advances the business attempt when a resumable storyboard pass is repaired", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
-    await controlPlane.waitForExternal(lease!, { operationKey: "storyboard.pause:run-1", resumeAfter: "9999-12-31T00:00:00.000Z" });
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "storyboard.pause:run-1",
+      resumeAfter: "9999-12-31T00:00:00.000Z",
+    });
 
-    await expect(controlPlane.resumeExternal(created.jobId, "storyboard-resume", "postgres-pull", undefined, "resume:run-1", true)).resolves.toBe(true);
+    await expect(
+      controlPlane.resumeExternal(
+        created.jobId,
+        "storyboard-resume",
+        "postgres-pull",
+        undefined,
+        "resume:run-1",
+        true
+      )
+    ).resolves.toBe(true);
     expect(state.jobs.get(created.jobId).status).toBe("queued");
     expect(state.jobs.get(created.jobId).attempt).toBe(2);
     expect(state.attempts[0].finishedAt).toBeTruthy();
     expect(state.attempts).toHaveLength(2);
-    expect(state.attempts[1]).toMatchObject({ workerJobId: created.jobId, attempt: 2, recoveryReason: "external_resume_retry" });
-    expect(state.outbox[state.outbox.length - 1]?.attemptId).toBe(state.attempts[1].id);
-    expect(state.outbox[state.outbox.length - 1]?.envelopeJson).toMatchObject({ jobId: created.jobId, businessAttempt: 2, attemptId: state.attempts[1].id, reason: "external_resumed" });
-    await expect(controlPlane.resumeExternal(created.jobId, "storyboard-resume", "postgres-pull", undefined, "resume:run-1", true)).resolves.toBe(true);
+    expect(state.attempts[1]).toMatchObject({
+      workerJobId: created.jobId,
+      attempt: 2,
+      recoveryReason: "external_resume_retry",
+    });
+    expect(state.outbox[state.outbox.length - 1]?.attemptId).toBe(
+      state.attempts[1].id
+    );
+    expect(state.outbox[state.outbox.length - 1]?.envelopeJson).toMatchObject({
+      jobId: created.jobId,
+      businessAttempt: 2,
+      attemptId: state.attempts[1].id,
+      reason: "external_resumed",
+    });
+    await expect(
+      controlPlane.resumeExternal(
+        created.jobId,
+        "storyboard-resume",
+        "postgres-pull",
+        undefined,
+        "resume:run-1",
+        true
+      )
+    ).resolves.toBe(true);
     expect(state.attempts).toHaveLength(2);
     expect(state.outbox).toHaveLength(2);
   });
@@ -773,25 +1781,233 @@ describe("job control plane", () => {
   it("persists a cooperative soft-timeout request exactly once", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);
-    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined, timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 1000 } });
-    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+      timeoutPolicy: { softTimeoutMs: 100, hardTimeoutMs: 1000 },
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
     await controlPlane.start(lease!);
     const job = state.jobs.get(created.jobId);
     job.timeoutPolicyJson = { softTimeoutMs: 100, hardTimeoutMs: 1000 };
     job.startedAt = new Date(job.startedAt.getTime() - 1000);
 
-    await expect(controlPlane.requestSoftTimeout(created.jobId, new Date())).resolves.toBe("requested");
-    await expect(controlPlane.requestSoftTimeout(created.jobId, new Date())).resolves.toBe("requested");
+    await expect(
+      controlPlane.requestSoftTimeout(created.jobId, new Date())
+    ).resolves.toBe("requested");
+    await expect(
+      controlPlane.requestSoftTimeout(created.jobId, new Date())
+    ).resolves.toBe("requested");
     expect(job.status).toBe("running");
     expect(job.statusReason).toBe("soft_timeout_requested");
-    expect(state.events.filter(event => event.eventType === "TIMEOUT")).toHaveLength(1);
+    expect(
+      state.events.filter(event => event.eventType === "TIMEOUT")
+    ).toHaveLength(1);
   });
 
   it("uses deterministic bounded jitter and keeps it below the configured cap", () => {
     const first = calculateRetryDelay(3, 1000, 10_000, "bounded", "job-1");
-    expect(first).toBe(calculateRetryDelay(3, 1000, 10_000, "bounded", "job-1"));
+    expect(first).toBe(
+      calculateRetryDelay(3, 1000, 10_000, "bounded", "job-1")
+    );
     expect(first).toBeGreaterThanOrEqual(4000);
     expect(first).toBeLessThanOrEqual(10_000);
     expect(calculateRetryDelay(3, 1000, 10_000, "none", "job-1")).toBe(4000);
+  });
+
+  it("keeps a Computer Use job non-terminal until independent verification PASS", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "computer_use.browser",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-command:command-1",
+      resumeAfter: "2026-09-20T18:00:00.000Z",
+      metadata: { requiresIndependentVerification: true },
+    });
+    await controlPlane.recordRunnerReceipt({
+      jobId: created.jobId,
+      commandId: "command-1",
+      eventId: "event-execution-completed",
+      eventType: "EXECUTION_COMPLETED",
+      sequence: 1,
+      runnerId: "runner-a",
+      runnerSessionId: "session-a",
+      tenantId: definition.tenantId,
+      payload: {
+        resultRef: "result:sha256:runner",
+        requiresIndependentVerification: true,
+      },
+    });
+    expect(state.jobs.get(created.jobId).status).toBe("waiting_external");
+
+    await expect(
+      controlPlane.markComputerUseVerificationPending(
+        created.jobId,
+        "runner-command:command-1",
+        {
+          decisionId: "decision-1",
+          actionId: "action-1",
+        }
+      )
+    ).resolves.toBe(true);
+    await expect(
+      controlPlane.startComputerUseVerification(
+        created.jobId,
+        "runner-command:command-1",
+        "verification-1"
+      )
+    ).resolves.toBe(true);
+    expect(state.jobs.get(created.jobId).status).toBe("waiting_external");
+    expect(state.events.map(event => event.eventType)).toEqual(
+      expect.arrayContaining([
+        "RUNNER_EXECUTION_COMPLETED",
+        "WAITING_VERIFICATION",
+        "VERIFICATION_STARTED",
+      ])
+    );
+
+    await expect(
+      controlPlane.completeComputerUseVerification(
+        created.jobId,
+        "runner-command:command-1",
+        {
+          verificationId: "verification-1",
+          result: "PASS",
+          reasonCode: "EXPECTED_OUTCOME_OBSERVED",
+          verificationEvidenceRef: "verification-evidence:sha256:pass",
+        }
+      )
+    ).resolves.toBe("succeeded");
+    expect(state.jobs.get(created.jobId).status).toBe("succeeded");
+    expect(state.events.at(-2)).toMatchObject({
+      eventType: "VERIFICATION_COMPLETED",
+    });
+    expect(state.events.at(-1)).toMatchObject({ eventType: "COMPLETED" });
+  });
+
+  it("fences external-agent receipts to the persisted attempt, lease and fence", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:task-1:plan-1:1",
+      providerReference: "runner-command:command-1",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-1",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-stale",
+        eventType: "EXECUTION_COMPLETED",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: 999,
+          leaseId: "stale-lease",
+          fenceVersion: 1,
+          resultRef: "agent-result:sha256:stale",
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-current",
+        eventType: "EXECUTION_COMPLETED",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+          resultRef: "agent-result:sha256:current",
+        },
+      })
+    ).resolves.toBe("recorded");
+  });
+
+  it("does not terminalize on FAIL, REOBSERVE, or INCONCLUSIVE verification", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-command:command-2",
+      resumeAfter: "2026-09-20T18:00:00.000Z",
+    });
+    await controlPlane.markComputerUseVerificationPending(
+      created.jobId,
+      "runner-command:command-2",
+      { decisionId: "decision-2", actionId: "action-2" }
+    );
+    await controlPlane.startComputerUseVerification(
+      created.jobId,
+      "runner-command:command-2",
+      "verification-2"
+    );
+
+    for (const result of ["FAIL", "REOBSERVE", "INCONCLUSIVE"] as const) {
+      await expect(
+        controlPlane.completeComputerUseVerification(
+          created.jobId,
+          "runner-command:command-2",
+          {
+            verificationId: `verification-${result.toLowerCase()}`,
+            result,
+            reasonCode: `TEST_${result}`,
+            verificationEvidenceRef: `verification-evidence:${result.toLowerCase()}`,
+          }
+        )
+      ).resolves.toBe("waiting");
+      expect(state.jobs.get(created.jobId).status).toBe("waiting_external");
+    }
   });
 });

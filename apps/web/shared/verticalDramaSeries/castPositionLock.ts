@@ -7,7 +7,11 @@ export const VERTICAL_DRAMA_VIEWER_POSITIONS = [
 ] as const;
 
 export type VerticalDramaViewerPosition =
-  (typeof VERTICAL_DRAMA_VIEWER_POSITIONS)[number];
+  | (typeof VERTICAL_DRAMA_VIEWER_POSITIONS)[number]
+  | "viewer-far-left"
+  | "viewer-far-right";
+
+export const VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS = 6;
 
 export type VerticalDramaCastPositionLock = {
   /** Exact approved/video-safe frame the user inspected. */
@@ -33,7 +37,7 @@ export const VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH = 240;
  * empty object cleanly means "no override". */
 export function normalizeVerticalDramaCharacterDescriptionOverrides(
   value: unknown,
-  allowedCharacterRefs?: readonly string[],
+  allowedCharacterRefs?: readonly string[]
 ): VerticalDramaCharacterDescriptionOverrides {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const allowed = allowedCharacterRefs
@@ -45,7 +49,9 @@ export function normalizeVerticalDramaCharacterDescriptionOverrides(
     const key = rawKey.trim();
     const description =
       typeof rawDescription === "string"
-        ? rawDescription.trim().slice(0, VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH)
+        ? rawDescription
+            .trim()
+            .slice(0, VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH)
         : "";
     if (!key || !description || (allowed && !allowed.has(key))) continue;
     normalized[key] = description;
@@ -83,6 +89,14 @@ const POSITION_LAYOUTS: Record<number, readonly VerticalDramaViewerPosition[]> =
       "viewer-right",
     ],
     5: VERTICAL_DRAMA_VIEWER_POSITIONS,
+    6: [
+      "viewer-far-left",
+      "viewer-left",
+      "viewer-center-left",
+      "viewer-center-right",
+      "viewer-right",
+      "viewer-far-right",
+    ],
   };
 
 export function viewerPositionsForCastCount(
@@ -107,7 +121,7 @@ export function validateVerticalDramaCastPositionLock(args: {
   requiredCharacterRefs: readonly string[];
 }): VerticalDramaCastPositionLockValidation {
   const required = uniqueTrimmed(args.requiredCharacterRefs);
-  if (required.length > VERTICAL_DRAMA_VIEWER_POSITIONS.length) {
+  if (required.length > VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS) {
     return { valid: false, reason: "too_many_characters" };
   }
   if (

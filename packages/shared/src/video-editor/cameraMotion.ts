@@ -317,16 +317,44 @@ function buildJointActivityComposition(input: {
     }
   }
 
-  // The two regions cannot coexist in one crop at a useful scale. Keep the
-  // movement deterministic and let the strong-activity path make a slow,
-  // intentional reveal instead of producing a large blended jump.
+  // The two regions cannot coexist in one crop at a useful scale. Allow the
+  // activity to influence the composition only up to the closest position
+  // that still keeps the locked face inside the crop with a small safety
+  // margin. A distant activity shot must never push the presenter off-frame.
   const fallbackBounds = getFeasibleCameraAnchorBounds(
     input.outputAspectRatio,
     input.sourceAspectRatio,
     1,
   );
+  const fallbackCrop = cropDimensions(fallbackBounds);
+  const faceSafeMargin = 0.025;
+  const faceSafeBounds = {
+    minX: Math.max(
+      fallbackBounds.minX,
+      faceRect.maxX + faceSafeMargin - fallbackCrop.width / 2,
+    ),
+    maxX: Math.min(
+      fallbackBounds.maxX,
+      faceRect.minX - faceSafeMargin + fallbackCrop.width / 2,
+    ),
+    minY: Math.max(
+      fallbackBounds.minY,
+      faceRect.maxY + faceSafeMargin - fallbackCrop.height / 2,
+    ),
+    maxY: Math.min(
+      fallbackBounds.maxY,
+      faceRect.minY - faceSafeMargin + fallbackCrop.height / 2,
+    ),
+  };
+  const canKeepFaceSafe = faceSafeBounds.minX <= faceSafeBounds.maxX
+    && faceSafeBounds.minY <= faceSafeBounds.maxY;
   return {
-    target: clampToBounds(input.activity, fallbackBounds),
+    target: clampToBounds(
+      canKeepFaceSafe
+        ? input.activity
+        : input.face,
+      canKeepFaceSafe ? faceSafeBounds : fallbackBounds,
+    ),
     scale: 1,
     fitsBoth: false,
   };
@@ -1125,6 +1153,131 @@ function buildFaceActivityKeyframes(
   return dedupeKeyframes([...keyframes, ...marked]);
 }
 
+/**
+ * Face + Activity is an automatic portrait composition, not an instruction to
+ * chase every moving pixel. Pixel-cluster activity often spans the presenter,
+ * product, and background; use it only to time a restrained zoom pulse while
+ * keeping a robust face-track anchor fixed for the whole shot.
+ */
+function buildFaceActivityZoomKeyframes(
+  input: CameraMotionPlanInput,
+): CameraMotionKeyframe[] {
+  const durationMs = Math.max(0, Math.round(finiteOr(input.durationMs, 0)));
+  const sourceAspect = Number.isFinite(input.sourceAspectRatio) && (input.sourceAspectRatio ?? 0) > 0
+    ? input.sourceAspectRatio!
+    : 16 / 9;
+  let baseScale = Math.min(1.18, safeScale(input.baseScale, 1.14));
+  let peakScale = Math.min(1.28, baseScale + 0.1);
+  const facePoints = (input.trackPoints ?? [])
+    .filter((point) =>
+      (point.kind === "face" || point.kind === "person") &&
+      point.timeMs >= 0 && point.timeMs <= durationMs &&
+      point.visible !== false && safeConfidence(point.confidence) >= 0.3,
+    )
+    .sort((a, b) => a.timeMs - b.timeMs);
+  const fallback = input.analysisMode === "quick"
+    ? safePoint(input.focusX, input.focusY)
+    : { x: 0.5, y: 0.5 };
+  let anchor = fallback;
+  let stableFacePoints = facePoints;
+  if (facePoints.length > 0) {
+    const median = (values: number[]) => {
+      const sorted = [...values].sort((a, b) => a - b);
+      const middle = Math.floor(sorted.length / 2);
+      return sorted.length % 2 === 0
+        ? (sorted[middle - 1] + sorted[middle]) / 2
+        : sorted[middle];
+    };
+    const medianX = median(facePoints.map((point) => point.x));
+    const medianY = median(facePoints.map((point) => point.y));
+    // Reject isolated detector jumps before deriving the stable centre. This
+    // avoids opening on one bad early face box when the rest of the scan has
+    // a consistent dominant-face track.
+    const filteredFacePoints = facePoints.filter((point) =>
+      Math.hypot(point.x - medianX, point.y - medianY) <= 0.2,
+    );
+    stableFacePoints = filteredFacePoints.length > 0 ? filteredFacePoints : facePoints;
+    anchor = {
+      x: median(stableFacePoints.map((point) => point.x)),
+      y: median(stableFacePoints.map((point) => point.y)),
+    };
+  }
+  if (stableFacePoints.length > 0) {
+    const fullFrameCrop = cropDimensions(
+      getFeasibleCameraAnchorBounds(input.outputAspectRatio, sourceAspect, 1),
+    );
+    const faceSafeScale = stableFacePoints.reduce((maximumSafeScale, point) => {
+      const halfWidth = Math.max(0.015, finiteOr(point.width, 0.08) / 2);
+      const halfHeight = Math.max(0.015, finiteOr(point.height, 0.14) / 2);
+      const requiredHalfWidth = Math.abs(point.x - anchor.x) + halfWidth + 0.015;
+      const requiredHalfHeight = Math.abs(point.y - anchor.y) + halfHeight + 0.015;
+      return Math.min(
+        maximumSafeScale,
+        fullFrameCrop.width / (2 * requiredHalfWidth),
+        fullFrameCrop.height / (2 * requiredHalfHeight),
+      );
+    }, 2.5);
+    baseScale = Math.min(baseScale, Math.max(1, faceSafeScale));
+    peakScale = Math.min(peakScale, Math.max(1, faceSafeScale));
+  }
+  const anchorBounds = getFeasibleCameraAnchorBounds(
+    input.outputAspectRatio,
+    sourceAspect,
+    peakScale,
+  );
+  anchor = clampToBounds(anchor, anchorBounds);
+
+  const frames: CameraMotionKeyframe[] = [
+    autoKeyframe(0, anchor.x, anchor.y, baseScale, "linear"),
+  ];
+  const activityPoints = (input.trackPoints ?? [])
+    .filter((point) =>
+      (point.kind === "activity" || point.kind === "hand" || point.kind === "object") &&
+      point.timeMs >= 0 && point.timeMs <= durationMs &&
+      point.visible !== false && safeConfidence(point.confidence) >= 0.3 &&
+      point.trackId !== "full-scan-global-motion",
+    )
+    .sort((a, b) => a.timeMs - b.timeMs);
+  const activityGroups: CameraMotionTrackPoint[][] = [];
+  for (const point of activityPoints) {
+    const previousGroup = activityGroups.at(-1);
+    if (
+      previousGroup &&
+      point.timeMs - previousGroup.at(-1)!.timeMs <= 4_000 &&
+      point.timeMs - previousGroup[0].timeMs <= 8_000
+    ) {
+      previousGroup.push(point);
+    } else {
+      activityGroups.push([point]);
+    }
+  }
+
+  let cooldownUntilMs = 0;
+  for (const group of activityGroups) {
+    if (group.length < AUTO_CAMERA_ACTIVITY_CONFIRMATIONS) continue;
+    const startMs = Math.max(cooldownUntilMs, group[0].timeMs - 1_000);
+    if (startMs >= durationMs) continue;
+    const zoomInEndMs = Math.min(durationMs, startMs + 2_000);
+    const zoomOutStartMs = Math.min(
+      durationMs,
+      Math.max(zoomInEndMs + 500, Math.min(group.at(-1)!.timeMs + 1_000, zoomInEndMs + 3_500)),
+    );
+    const zoomOutEndMs = Math.min(durationMs, zoomOutStartMs + 1_800);
+    if (zoomInEndMs <= startMs || zoomOutEndMs <= zoomOutStartMs) continue;
+    frames.push(
+      autoKeyframe(startMs, anchor.x, anchor.y, baseScale, "ease-in-out"),
+      autoKeyframe(zoomInEndMs, anchor.x, anchor.y, peakScale, "ease-in-out"),
+      autoKeyframe(zoomOutStartMs, anchor.x, anchor.y, peakScale, "ease-in-out"),
+      autoKeyframe(zoomOutEndMs, anchor.x, anchor.y, baseScale, "ease-in-out"),
+    );
+    cooldownUntilMs = zoomOutEndMs + 6_000;
+  }
+
+  const marks = (input.marks ?? []).filter((mark) => mark && typeof mark.id === "string");
+  const marked = buildMarkedKeyframes(durationMs, anchor, baseScale, marks, false);
+  return dedupeKeyframes([...frames, ...marked]);
+}
+
 function autoKeyframe(
   timeMs: number,
   x: number,
@@ -1310,8 +1463,9 @@ export function createCameraMotionPlan(
     (mark) => mark && typeof mark.id === "string",
   );
   const keyframes =
-    input.mode === "face_activity" ||
-    (input.mode === "face_focus" && (input.trackPoints?.length ?? 0) > 0)
+    input.mode === "face_activity"
+      ? buildFaceActivityZoomKeyframes(input)
+      : input.mode === "face_focus" && (input.trackPoints?.length ?? 0) > 0
       ? buildFaceActivityKeyframes(input)
       : marks.length > 0
         ? buildMarkedKeyframes(durationMs, point, baseScale, marks)

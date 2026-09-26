@@ -1,22 +1,39 @@
-use crate::adapters::{apply_probe, probe_candidate};
+use crate::adapters::{
+    apply_probe, build_browser_authorization_grant, execute_browser_candidate,
+    build_external_agent_authorization_ref,
+    probe_browser_candidate, probe_candidate, AdapterProbeResult, BrowserAuthorizationGrant,
+};
 use crate::config::RunnerConfig;
-use crate::control_channel::ControlChannel;
+use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
 use crate::device_proof::DeviceProofSigner;
 use crate::device_proof::{canonical_json_bytes, endpoint_path};
 use crate::discovery::{scan_environment, CapabilityDimension, ToolCandidate, TrustState};
-use crate::protocol::Envelope;
+use crate::external_agent::{start_external_agent, ExternalAgentProcess, ExternalAgentResult};
+use crate::protocol::{
+    AckState, Envelope, NodeKind, RunnerJobCommand, RunnerJobReceipt, RunnerJobReceiptEventType,
+};
 use crate::transport::{
-    ControlEndpoint, NativeControlTransport, TransportCoordinator, TransportError,
+    ControlEndpoint, ControlTransport, NativeControlTransport, TransportCoordinator,
+    TransportError, TransportMode,
 };
 use crate::update::apply_verified_update;
-use crate::RUNNER_VERSION;
+use crate::{
+    MIN_COMPATIBLE_RUNNER_VERSION, RUNNER_CONNECT_SCHEMA_REVISION, RUNNER_CONTROL_CONTRACT_VERSION,
+    RUNNER_VERSION,
+};
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 
 const DEFAULT_REFRESH_INTERVAL_SECONDS: u64 = 300;
 const MIN_REFRESH_INTERVAL_SECONDS: u64 = 15;
 const MAX_REFRESH_INTERVAL_SECONDS: u64 = 86_400;
+const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
+
+fn keepalive_due(idle_for: Duration, interval: Duration) -> bool {
+    idle_for >= interval
+}
 
 pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
     let tools = scan_environment(config.profile);
@@ -29,7 +46,11 @@ pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
         "profile": config.profile,
         "runnerId": config.runner_id,
         "runnerVersion": RUNNER_VERSION,
-        "contractVersion": "sah-runner-v1",
+        "contractVersion": RUNNER_CONTROL_CONTRACT_VERSION,
+        "connectSchemaRevision": RUNNER_CONNECT_SCHEMA_REVISION,
+        "minRunnerVersion": MIN_COMPATIBLE_RUNNER_VERSION,
+        "supportedRunnerContractVersions": [RUNNER_CONTROL_CONTRACT_VERSION],
+        "supportedConnectSchemaRevisions": [RUNNER_CONNECT_SCHEMA_REVISION],
         "state": "ready",
         "toolCount": tools.len(),
         "readyToolCount": ready_tools,
@@ -45,16 +66,106 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
         .as_deref()
         .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
     let endpoint = ControlEndpoint::from_control_url(control_url)?;
-    let access_token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
+    let configured_token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
+    let stored_connection = if configured_token.trim().is_empty() {
+        crate::connection::load_or_refresh(config)?
+    } else {
+        None
+    };
+    let access_token = if configured_token.trim().is_empty() {
+        stored_connection
+            .as_ref()
+            .map(|connection| connection.control_token.clone())
+            .unwrap_or_default()
+    } else {
+        configured_token.clone()
+    };
     if access_token.trim().is_empty() {
         return Err("RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into());
     }
 
+    let runner_session_id = stored_connection
+        .as_ref()
+        .and_then(|connection| connection.runner_session_id.clone())
+        .or_else(|| crate::connection::token_runner_session_id(&access_token));
+    let tenant_id = stored_connection
+        .as_ref()
+        .and_then(|connection| connection.tenant_id.clone())
+        .or_else(|| crate::connection::token_tenant_id(&access_token));
+    let browser_grant = runner_session_id.as_deref().and_then(|session_id| {
+        tenant_id.as_deref().and_then(|tenant_id| {
+            crate::connection::token_expiry_ms(&access_token).map(|expires_at_ms| {
+                build_browser_authorization_grant(
+                    &config.runner_id,
+                    session_id,
+                    tenant_id,
+                    expires_at_ms,
+                )
+            })
+        })
+    });
     let mut tools = scan_environment(config.profile);
     for tool in &mut tools {
         if tool.executable_path.is_some() && tool.adapter_id.is_some() {
-            if let Ok(probe) = probe_candidate(tool, std::time::Duration::from_secs(1)) {
+            if matches!(tool.kind, crate::discovery::ToolKind::Browser) {
+                if let Some(grant) = browser_grant.as_ref() {
+                    match probe_browser_candidate(tool, std::time::Duration::from_secs(10), grant) {
+                        Ok(probe) => {
+                            let _ = apply_probe(tool, probe.result);
+                            tool.authorization_evidence_ref =
+                                Some(grant.authorization_evidence_ref.clone());
+                            tool.probe_evidence_ref = Some(probe.evidence.probe_evidence_ref);
+                        }
+                        Err(error) => {
+                            let version = probe_candidate(tool, std::time::Duration::from_secs(1))
+                                .ok()
+                                .map(|probe| probe.version)
+                                .or_else(|| Some("browser_probe_failed".into()));
+                            let _ = apply_probe(
+                                tool,
+                                AdapterProbeResult {
+                                    version: version
+                                        .unwrap_or_else(|| "browser_probe_failed".into()),
+                                    authenticated: true,
+                                    healthy: false,
+                                    available: false,
+                                    reason_codes: vec![
+                                        "runner_session_authorized".into(),
+                                        "browser_probe_failed".into(),
+                                        error.chars().take(96).collect(),
+                                    ],
+                                },
+                            );
+                            tool.authorization_evidence_ref =
+                                Some(grant.authorization_evidence_ref.clone());
+                        }
+                    }
+                } else if let Ok(probe) = probe_candidate(tool, std::time::Duration::from_secs(1)) {
+                    let _ = apply_probe(tool, probe);
+                }
+            } else if let Ok(probe) = probe_candidate(tool, std::time::Duration::from_secs(1)) {
                 let _ = apply_probe(tool, probe);
+                if deterministic_certification_adapter_enabled() {
+                    if let (Some(adapter_id), Some(session_id), Some(tenant_id)) = (
+                        tool.adapter_id.as_deref(),
+                        runner_session_id.as_deref(),
+                        tenant_id.as_deref(),
+                    ) {
+                        if matches!(adapter_id, "codex.v1" | "claude.v1")
+                            && tool.trust_state == TrustState::Ready
+                        {
+                            tool.authorization_evidence_ref = Some(
+                                build_external_agent_authorization_ref(
+                                    &config.runner_id,
+                                    session_id,
+                                    tenant_id,
+                                    adapter_id,
+                                    snapshot_expiry_ms(),
+                                ),
+                            );
+                        }
+                    }
+                }
             }
         }
     }
@@ -67,21 +178,36 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
     let mut channel = ControlChannel::default();
     channel.connect();
     channel.authenticated();
-    let snapshot = capability_snapshot(config, &tools);
+    let snapshot = capability_snapshot(
+        config,
+        &tools,
+        runner_session_id.as_deref(),
+        tenant_id.as_deref(),
+        endpoint.control_plane_origin(),
+    );
+    let execution_snapshot = snapshot.clone();
     let snapshot_revision = snapshot
         .get("revision")
         .and_then(serde_json::Value::as_str)
         .unwrap_or("unknown")
         .to_string();
-    let capability_event = channel.next_event(Envelope::new(
+    let correlation_id = format!(
+        "runner:{}:{}:{}",
+        config.runner_id,
+        command,
+        current_time_iso()
+    );
+    let mut capability_envelope = Envelope::new(
         node_kind,
         &config.runner_id,
         config.job_id.as_deref(),
         config.attempt_id.as_deref(),
         config.lease_id.as_deref(),
         json!({ "type": "runner.capabilities.update", "snapshot": snapshot }),
-    ))?;
-    let reconciliation_event = channel.next_event(Envelope::new(
+    );
+    capability_envelope.correlation_id = correlation_id.clone();
+    let capability_event = channel.next_event(capability_envelope)?;
+    let mut reconciliation_envelope = Envelope::new(
         node_kind,
         &config.runner_id,
         config.job_id.as_deref(),
@@ -93,21 +219,39 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
             "activeJobs": [],
             "command": command
         }),
-    ))?;
+    );
+    reconciliation_envelope.correlation_id = correlation_id;
+    let reconciliation_event = channel.next_event(reconciliation_envelope)?;
     let snapshot_count = capability_event
         .payload
         .get("snapshot")
         .and_then(|snapshot| snapshot.get("toolInventory"))
         .and_then(serde_json::Value::as_array)
         .map_or(0, Vec::len);
-    let mut coordinator = TransportCoordinator::new(endpoint, 128)?;
+    let mut coordinator = TransportCoordinator::new(endpoint.clone(), 128)?;
     coordinator.enqueue(capability_event)?;
     coordinator.enqueue(reconciliation_event)?;
     let device_proof = match config.profile {
-        crate::config::RunnerProfile::LocalDevice => DeviceProofSigner::from_env(
-            config.device_id.as_deref().unwrap_or_default(),
-            &access_token,
-        )?,
+        crate::config::RunnerProfile::LocalDevice if !configured_token.trim().is_empty() => {
+            DeviceProofSigner::from_env(
+                config.device_id.as_deref().unwrap_or_default(),
+                &access_token,
+            )?
+        }
+        crate::config::RunnerProfile::LocalDevice => stored_connection
+            .as_ref()
+            .map(|connection| {
+                DeviceProofSigner::from_material(
+                    &crate::device_proof::DeviceProofMaterial {
+                        device_id: connection.device_id.clone(),
+                        machine_fingerprint: connection.machine_fingerprint.clone(),
+                        public_key_pem: connection.public_key_pem.clone(),
+                        private_key_pem: connection.private_key_pem.clone(),
+                    },
+                    &access_token,
+                )
+            })
+            .transpose()?,
         crate::config::RunnerProfile::SharedContainer => None,
     };
     let mut transport = NativeControlTransport::with_device_proof(
@@ -119,14 +263,23 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
     for attempt in 0..2 {
         match coordinator.flush_one(&mut transport) {
             Ok(Some(ack)) => {
+                if !matches!(
+                    ack,
+                    AckState::Accepted | AckState::Applied | AckState::Duplicate
+                ) {
+                    delivery = json!({
+                        "delivery": "rejected",
+                        "ackState": format!("{ack:?}")
+                    });
+                    break;
+                }
                 if coordinator.reconcile("delivery").pending_events > 0 {
                     continue;
                 }
-                delivery = if attempt == 0 {
-                    json!({ "delivery": "accepted", "ack": ack })
-                } else {
-                    json!({ "delivery": "https_fallback", "ack": ack })
-                };
+                delivery = json!({
+                    "delivery": delivery_transport_label(coordinator.mode()),
+                    "ack": ack,
+                });
                 break;
             }
             Ok(None) => break,
@@ -137,18 +290,636 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
             }
         }
     }
+    if command == "run" {
+        return run_live_control_loop(
+            config,
+            &endpoint,
+            &mut transport,
+            &mut channel,
+            node_kind,
+            browser_grant,
+            &execution_snapshot,
+        );
+    }
     let report = coordinator.reconcile("runner_startup");
     Ok(json!({
         "command": command,
         "state": if report.pending_events == 0 { "connected" } else { "reconciling" },
         "transport": "wss_fast_path_with_https_fallback",
+        "deliveryTransport": delivery_transport_label(coordinator.mode()),
         "delivery": delivery,
+        "capabilitySnapshot": snapshot_evidence(&execution_snapshot),
         "snapshotToolCount": snapshot_count,
         "pendingEvents": report.pending_events,
         "unknownActiveScopes": report.unknown_active_scopes,
         "credentials": "accepted_from_environment_and_redacted"
     })
     .to_string())
+}
+
+fn delivery_transport_label(mode: TransportMode) -> &'static str {
+    match mode {
+        TransportMode::WssFastPath => "wss",
+        TransportMode::HttpsDurableFallback => "https_fallback",
+    }
+}
+
+fn snapshot_evidence(snapshot: &serde_json::Value) -> serde_json::Value {
+    let browser = snapshot
+        .get("computerUse")
+        .and_then(|value| value.get("browser"));
+    let manifest = browser.and_then(|value| value.get("manifest"));
+    let browser_tool = snapshot
+        .get("toolInventory")
+        .and_then(serde_json::Value::as_array)
+        .and_then(|tools| {
+            tools.iter().find(|tool| {
+                tool.get("toolId").and_then(serde_json::Value::as_str) == Some("browser")
+            })
+        });
+    json!({
+        "runnerId": snapshot.get("runnerId"),
+        "tenantId": snapshot.get("tenantId"),
+        "runnerSessionId": snapshot.get("runnerSessionId"),
+        "capabilitySnapshotId": snapshot.get("capabilitySnapshotId"),
+        "controlPlaneOrigin": snapshot.get("controlPlaneOrigin"),
+        "revision": snapshot.get("revision"),
+        "observedAt": snapshot.get("observedAt"),
+        "expiresAt": snapshot.get("expiresAt"),
+        "browser": {
+            "availabilityState": browser.and_then(|value| value.get("availabilityState")),
+            "authState": browser.and_then(|value| value.get("authState")),
+            "probeState": browser.and_then(|value| value.get("probeState")),
+            "discoverySource": browser_tool.and_then(|value| value.get("discoverySource")),
+            "browserEngine": manifest.and_then(|value| value.get("browserEngine")),
+            "browserVersion": manifest.and_then(|value| value.get("browserVersion")),
+            "authorizationEvidenceRef": manifest.and_then(|value| value.get("authorizationEvidenceRef")),
+            "probeEvidenceRef": manifest.and_then(|value| value.get("probeEvidenceRef")),
+        }
+    })
+}
+
+fn run_live_control_loop(
+    config: &RunnerConfig,
+    endpoint: &ControlEndpoint,
+    transport: &mut NativeControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    browser_grant: Option<BrowserAuthorizationGrant>,
+    snapshot: &serde_json::Value,
+) -> Result<String, String> {
+    let browser_manifest = snapshot
+        .get("computerUse")
+        .and_then(|value| value.get("browser"))
+        .and_then(|value| value.get("manifest"))
+        .unwrap_or(&serde_json::Value::Null);
+    let browser_ready = snapshot
+        .get("computerUse")
+        .and_then(|value| value.get("browser"))
+        .and_then(|value| value.get("availabilityState"))
+        .and_then(serde_json::Value::as_str)
+        == Some("available")
+        && browser_manifest
+            .get("authState")
+            .and_then(serde_json::Value::as_str)
+            == Some("authenticated")
+        && browser_manifest
+            .get("probeState")
+            .and_then(serde_json::Value::as_str)
+            == Some("ready")
+        && browser_manifest
+            .get("supports")
+            .and_then(|value| value.get("structuredObservation"))
+            .and_then(serde_json::Value::as_bool)
+            == Some(true);
+    let tenant_id = snapshot
+        .get("tenantId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_TENANT_REQUIRED".to_string())?;
+    let runner_session_id = snapshot
+        .get("runnerSessionId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_SESSION_REQUIRED".to_string())?;
+    let snapshot_id = snapshot
+        .get("capabilitySnapshotId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_CAPABILITY_SNAPSHOT_REQUIRED".to_string())?;
+    let revision = snapshot
+        .get("revision")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_CAPABILITY_REVISION_REQUIRED".to_string())?;
+    let expires_at = snapshot
+        .get("expiresAt")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_CAPABILITY_EXPIRY_REQUIRED".to_string())?;
+    channel.bind_execution(RunnerExecutionBinding {
+        runner_id: config.runner_id.clone(),
+        tenant_id: tenant_id.to_string(),
+        runner_session_id: runner_session_id.to_string(),
+        capability_snapshot_id: snapshot_id.to_string(),
+        capability_snapshot_revision: revision.to_string(),
+        control_plane_origin: snapshot
+            .get("controlPlaneOrigin")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| "RUNNER_CONTROL_PLANE_ORIGIN_REQUIRED".to_string())?
+            .to_string(),
+        capability_expires_at: expires_at.to_string(),
+        browser_ready,
+        authorization_grant_ref: browser_grant
+            .as_ref()
+            .map(|grant| grant.authorization_evidence_ref.clone())
+            .unwrap_or_default(),
+    });
+    let external_agent_adapters = snapshot
+        .get("toolInventory")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|tool| {
+            let adapter = tool.get("adapterId").and_then(serde_json::Value::as_str)?;
+            let ready = tool.get("trustState").and_then(serde_json::Value::as_str) == Some("ready")
+                && tool.get("availabilityState").and_then(serde_json::Value::as_str)
+                    .is_some_and(|state| matches!(state, "available" | "busy"))
+                && tool.get("authState").and_then(serde_json::Value::as_str)
+                    .is_some_and(|state| matches!(state, "authenticated" | "not_required"));
+            if ready && matches!(adapter, "codex.v1" | "claude.v1") {
+                Some(adapter.to_string())
+            } else {
+                None
+            }
+        })
+        .collect();
+    channel.bind_external_agent_adapters(external_agent_adapters);
+    let external_agent_authorization_refs = snapshot
+        .get("toolInventory")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|tool| {
+            let adapter = tool.get("adapterId").and_then(serde_json::Value::as_str)?;
+            let evidence = tool
+                .get("authorizationEvidenceRef")
+                .and_then(serde_json::Value::as_str)?;
+            matches!(adapter, "codex.v1" | "claude.v1")
+                .then(|| (adapter.to_string(), evidence.to_string()))
+        })
+        .collect();
+    channel.bind_external_agent_authorization_refs(external_agent_authorization_refs);
+    let mut receipt_sequences = std::collections::HashMap::<String, u64>::new();
+    let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
+    let mut last_keepalive = std::time::Instant::now();
+    loop {
+        if keepalive_due(last_keepalive.elapsed(), CONTROL_CHANNEL_KEEPALIVE_INTERVAL) {
+            let keepalive = build_keepalive_envelope(
+                channel,
+                node_kind,
+                &config.runner_id,
+                revision,
+            )?;
+            match transport.send_wss(&endpoint.wss_url, &keepalive) {
+                Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
+                    last_keepalive = std::time::Instant::now();
+                }
+                Ok(other) => return Err(format!("RUNNER_KEEPALIVE_REJECTED_{other:?}")),
+                Err(error) => return Err(format!("RUNNER_KEEPALIVE_DELIVERY_{error:?}")),
+            }
+        }
+        poll_external_agents(
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            &mut receipt_sequences,
+            &mut external_processes,
+        )?;
+        let incoming = match transport.receive_server_message() {
+            Ok(incoming) => incoming,
+            Err(TransportError::Idle) => continue,
+            Err(error) => return Err(format!("RUNNER_CONTROL_CHANNEL_{error:?}")),
+        };
+        let envelope: Envelope = serde_json::from_value(incoming.clone())
+            .map_err(|_| "RUNNER_SERVER_ENVELOPE_INVALID".to_string())?;
+        let Some(payload) = envelope
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+        else {
+            continue;
+        };
+        if payload != "runner.job.command" {
+            continue;
+        }
+        let command: RunnerJobCommand = serde_json::from_value(
+            envelope
+                .payload
+                .get("command")
+                .cloned()
+                .ok_or_else(|| "RUNNER_COMMAND_MISSING".to_string())?,
+        )
+        .map_err(|_| "RUNNER_COMMAND_INVALID".to_string())?;
+        let remote_ack = channel.accept_remote(&envelope);
+        if remote_ack != AckState::Applied {
+            send_runner_receipt(
+                endpoint,
+                transport,
+                channel,
+                node_kind,
+                &command,
+                &mut receipt_sequences,
+                RunnerJobReceiptEventType::CommandRejected,
+                "rejected",
+                Some("RUNNER_COMMAND_OUT_OF_ORDER"),
+                None,
+            )?;
+            continue;
+        }
+        let accepted = channel.accept_job_command(&command, &current_time_iso());
+        let accepted_state = match accepted {
+            Ok(AckState::Duplicate) => continue,
+            Ok(AckState::Accepted) => true,
+            Ok(_) => false,
+            Err(error) => {
+                send_runner_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &command,
+                    &mut receipt_sequences,
+                    RunnerJobReceiptEventType::CommandRejected,
+                    "rejected",
+                    Some(&error),
+                    None,
+                )?;
+                false
+            }
+        };
+        if !accepted_state {
+            continue;
+        }
+        send_runner_receipt(
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            &command,
+            &mut receipt_sequences,
+            RunnerJobReceiptEventType::CommandReceived,
+            "received",
+            None,
+            None,
+        )?;
+        send_runner_receipt(
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            &command,
+            &mut receipt_sequences,
+            RunnerJobReceiptEventType::CommandAccepted,
+            "accepted",
+            None,
+            None,
+        )?;
+        if command.command_type == "cancel" {
+            if command.execution_kind == "external_agent_task" {
+                if let Some(mut active) = external_processes.remove(&command.command_id) {
+                    let _ = active.process.cancel();
+                }
+            }
+            send_runner_receipt(
+                endpoint,
+                transport,
+                channel,
+                node_kind,
+                &command,
+                &mut receipt_sequences,
+                RunnerJobReceiptEventType::CancelAcknowledged,
+                "cancelled",
+                None,
+                None,
+            )?;
+            continue;
+        }
+        send_runner_receipt(
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            &command,
+            &mut receipt_sequences,
+            RunnerJobReceiptEventType::ExecutionStarted,
+            "running",
+            None,
+            None,
+        )?;
+        if command.execution_kind == "external_agent_task" {
+            let candidate = scan_environment(config.profile)
+                .into_iter()
+                .find(|tool| tool.adapter_id.as_deref() == Some(command.adapter_id.as_str()));
+            let result = candidate
+                .ok_or_else(|| "RUNNER_AGENT_NOT_DISCOVERED".to_string())
+                .and_then(|mut candidate| {
+                    let probe = probe_candidate(&candidate, std::time::Duration::from_secs(1))?;
+                    apply_probe(&mut candidate, probe)?;
+                    start_external_agent(config, &command, &candidate, std::time::Instant::now())
+                });
+            match result {
+                Ok(process) => {
+                    external_processes.insert(
+                        command.command_id.clone(),
+                        ActiveExternalAgent { command, process },
+                    );
+                }
+                Err(error) => {
+                    send_external_receipt(
+                        endpoint,
+                        transport,
+                        channel,
+                        node_kind,
+                        &command,
+                        &mut receipt_sequences,
+                        RunnerJobReceiptEventType::ExecutionFailed,
+                        "failed",
+                        None,
+                        Some(&error),
+                    )?;
+                }
+            }
+            continue;
+        }
+        let candidate = scan_environment(config.profile)
+            .into_iter()
+            .find(|tool| tool.adapter_id.as_deref() == Some("browser.v1"))
+            .ok_or_else(|| "RUNNER_BROWSER_NOT_DISCOVERED".to_string());
+        let result = candidate.and_then(|candidate| {
+            let grant = browser_grant
+                .as_ref()
+                .ok_or_else(|| "RUNNER_BROWSER_AUTHORIZATION_REQUIRED".to_string())?;
+            execute_browser_candidate(
+                &candidate,
+                std::time::Duration::from_secs(30),
+                grant,
+                &command.payload,
+            )
+        });
+        match result {
+            Ok(evidence) => {
+                if let Some(observation) = evidence.semantic_observation.as_ref() {
+                    channel.record_semantic_observation(&command, observation)?;
+                }
+                send_runner_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &command,
+                    &mut receipt_sequences,
+                    RunnerJobReceiptEventType::EvidenceCreated,
+                    "evidence",
+                    None,
+                    Some(&evidence),
+                )?;
+                send_runner_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &command,
+                    &mut receipt_sequences,
+                    RunnerJobReceiptEventType::ExecutionCompleted,
+                    "completed",
+                    None,
+                    Some(&evidence),
+                )?;
+            }
+            Err(error) => {
+                send_runner_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &command,
+                    &mut receipt_sequences,
+                    RunnerJobReceiptEventType::ExecutionFailed,
+                    "failed",
+                    Some(&error),
+                    None,
+                )?;
+            }
+        }
+    }
+}
+
+fn build_keepalive_envelope(
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    runner_id: &str,
+    capability_revision: &str,
+) -> Result<Envelope, String> {
+    let mut envelope = Envelope::new(
+        node_kind,
+        runner_id,
+        None,
+        None,
+        None,
+        json!({
+            "type": "runner.reconcile",
+            "capabilityRevision": capability_revision,
+            "activeJobs": [],
+            "command": "keepalive"
+        }),
+    );
+    envelope.correlation_id = format!("runner:{runner_id}:keepalive:{}", current_time_iso());
+    channel.next_event(envelope)
+}
+
+struct ActiveExternalAgent {
+    command: RunnerJobCommand,
+    process: ExternalAgentProcess,
+}
+
+fn poll_external_agents(
+    endpoint: &ControlEndpoint,
+    transport: &mut NativeControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
+) -> Result<(), String> {
+    let command_ids = processes.keys().cloned().collect::<Vec<_>>();
+    for command_id in command_ids {
+        let outcome = processes
+            .get_mut(&command_id)
+            .map(|active| active.process.try_collect(std::time::Instant::now()));
+        let Some(outcome) = outcome else { continue };
+        match outcome {
+            Ok(Some(result)) => {
+                let active = processes.remove(&command_id).expect("active process exists");
+                send_external_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &active.command,
+                    receipt_sequences,
+                    RunnerJobReceiptEventType::ExecutionCompleted,
+                    "completed",
+                    Some(&result),
+                    None,
+                )?;
+            }
+            Ok(None) => {}
+            Err(error) => {
+                let active = processes.remove(&command_id).expect("active process exists");
+                send_external_receipt(
+                    endpoint,
+                    transport,
+                    channel,
+                    node_kind,
+                    &active.command,
+                    receipt_sequences,
+                    RunnerJobReceiptEventType::ExecutionFailed,
+                    "failed",
+                    None,
+                    Some(&error),
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn send_external_receipt(
+    endpoint: &ControlEndpoint,
+    transport: &mut NativeControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    command: &RunnerJobCommand,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    event_type: RunnerJobReceiptEventType,
+    status: &str,
+    result: Option<&ExternalAgentResult>,
+    error_summary: Option<&str>,
+) -> Result<(), String> {
+    let sequence = receipt_sequences
+        .entry(command.command_id.clone())
+        .or_insert(0);
+    *sequence = sequence.saturating_add(1);
+    let receipt = RunnerJobReceipt {
+        event_id: format!("receipt:{}:{}", command.command_id, *sequence),
+        event_type,
+        command_id: command.command_id.clone(),
+        job_id: command.job_id.clone(),
+        runner_id: command.runner_id.clone(),
+        runner_session_id: command.runner_session_id.clone(),
+        sequence: *sequence,
+        observed_at: current_time_iso(),
+        status: status.into(),
+        result_ref: result.map(|value| value.result_ref.clone()),
+        evidence_refs: result.map(|value| vec![value.evidence_ref.clone()]),
+        error_code: error_summary.map(|_| "RUNNER_EXTERNAL_AGENT_FAILED".into()),
+        error_summary: error_summary.map(|value| value.chars().take(500).collect()),
+        correlation: Some(json!({
+            "taskId": command.payload.get("taskId"),
+            "adapterId": command.adapter_id,
+        })),
+        payload: Some(json!({
+            "executionKind": command.execution_kind,
+            "adapterId": command.adapter_id,
+            "attempt": command.attempt,
+            "leaseId": command.lease_id,
+            "fenceVersion": command.fencing_token,
+            "workspaceRef": command.workspace_ref,
+            "exitCode": result.map(|value| value.exit_code),
+        })),
+    };
+    let envelope = channel.build_receipt(node_kind, command, receipt)?;
+    match transport.send_wss(&endpoint.wss_url, &envelope) {
+        Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => Ok(()),
+        Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
+        Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
+    }
+}
+
+fn send_runner_receipt(
+    endpoint: &ControlEndpoint,
+    transport: &mut NativeControlTransport,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    command: &RunnerJobCommand,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    event_type: RunnerJobReceiptEventType,
+    status: &str,
+    error_summary: Option<&str>,
+    evidence: Option<&crate::adapters::BrowserExecutionEvidence>,
+) -> Result<(), String> {
+    let sequence = receipt_sequences
+        .entry(command.command_id.clone())
+        .or_insert(0);
+    *sequence = sequence.saturating_add(1);
+    let semantic_payload = semantic_receipt_payload(command, &event_type);
+    let receipt = RunnerJobReceipt {
+        event_id: format!("receipt:{}:{}", command.command_id, *sequence),
+        event_type,
+        command_id: command.command_id.clone(),
+        job_id: command.job_id.clone(),
+        runner_id: command.runner_id.clone(),
+        runner_session_id: command.runner_session_id.clone(),
+        sequence: *sequence,
+        observed_at: current_time_iso(),
+        status: status.into(),
+        result_ref: evidence.map(|value| value.result_ref.clone()),
+        evidence_refs: evidence.map(|value| value.evidence_refs.clone()),
+        error_code: error_summary.map(|_| "RUNNER_BROWSER_EXECUTION_FAILED".into()),
+        error_summary: error_summary.map(|value| value.chars().take(500).collect()),
+        correlation: Some(
+            command
+                .payload
+                .get("correlation")
+                .cloned()
+                .unwrap_or_else(|| json!({})),
+        ),
+        payload: semantic_payload.and_then(|mut payload| {
+            if let Some(observation) = evidence.and_then(|value| value.semantic_observation.clone())
+            {
+                payload["observation"] = observation;
+            }
+            Some(payload)
+        }),
+    };
+    let envelope = channel.build_receipt(node_kind, command, receipt)?;
+    match transport.send_wss(&endpoint.wss_url, &envelope) {
+        Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => Ok(()),
+        Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
+        Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
+    }
+}
+
+/// Echoes only the bounded semantic-verification contract. Raw command input
+/// (including targets, text, selectors, or credentials) must not be copied into
+/// a receipt payload; execution evidence remains in the typed refs.
+fn semantic_receipt_payload(
+    command: &RunnerJobCommand,
+    event_type: &RunnerJobReceiptEventType,
+) -> Option<serde_json::Value> {
+    if !matches!(
+        event_type,
+        RunnerJobReceiptEventType::EvidenceCreated | RunnerJobReceiptEventType::ExecutionCompleted
+    ) || command.payload.get("requiresIndependentVerification") != Some(&json!(true))
+    {
+        return None;
+    }
+    let mut payload = json!({
+        "requiresIndependentVerification": true,
+        "stage": command.payload.get("stage").cloned().unwrap_or_else(|| json!("observe")),
+    });
+    for key in ["decisionRequest", "verification"] {
+        if let Some(value) = command.payload.get(key) {
+            payload[key] = value.clone();
+        }
+    }
+    Some(payload)
 }
 
 /// Runs the local-device lifecycle. Each refresh creates a fresh authenticated
@@ -188,10 +959,7 @@ pub fn poll_and_apply_update(config: &RunnerConfig) -> Result<String, String> {
         .control_url
         .as_deref()
         .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
-    let token = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
-    if token.trim().is_empty() {
-        return Err("RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into());
-    }
+    let token = control_access_token(config)?;
     let command_url = control_url
         .trim_end_matches('/')
         .strip_suffix("/control")
@@ -576,18 +1344,37 @@ fn request_bytes(
         .header("Authorization", format!("Bearer {token}"))
         .header("X-SmartAIHub-Runner-Id", &config.runner_id)
         .header("Content-Type", "application/json");
-    if let Some(device_id) = config.device_id.as_deref() {
-        if let Some(proof) = DeviceProofSigner::from_env(device_id, token)? {
-            let headers = proof.headers(method, &path, body)?;
-            request_builder = request_builder
-                .header("X-Runner-Device-Id", headers.device_id)
-                .header("X-Runner-Device-Public-Key", headers.public_key)
-                .header("X-Runner-Machine-Fingerprint", headers.machine_fingerprint)
-                .header("X-Runner-Device-Nonce", headers.nonce)
-                .header("X-Runner-Device-Timestamp", headers.timestamp)
-                .header("X-Runner-Device-Signature", headers.signature)
-                .header("X-Runner-Body-Sha256", headers.body_hash);
-        }
+    let proof = if std::env::var("SAH_RUNNER_ACCESS_TOKEN")
+        .unwrap_or_default()
+        .trim()
+        .is_empty()
+    {
+        crate::connection::load_connection(&config.data_root)?
+            .map(|connection| {
+                DeviceProofSigner::from_material(
+                    &crate::device_proof::DeviceProofMaterial {
+                        device_id: connection.device_id,
+                        machine_fingerprint: connection.machine_fingerprint,
+                        public_key_pem: connection.public_key_pem,
+                        private_key_pem: connection.private_key_pem,
+                    },
+                    token,
+                )
+            })
+            .transpose()?
+    } else {
+        DeviceProofSigner::from_env(config.device_id.as_deref().unwrap_or_default(), token)?
+    };
+    if let Some(proof) = proof {
+        let headers = proof.headers(method, &path, body)?;
+        request_builder = request_builder
+            .header("X-Runner-Device-Id", headers.device_id)
+            .header("X-Runner-Device-Public-Key", headers.public_key)
+            .header("X-Runner-Machine-Fingerprint", headers.machine_fingerprint)
+            .header("X-Runner-Device-Nonce", headers.nonce)
+            .header("X-Runner-Device-Timestamp", headers.timestamp)
+            .header("X-Runner-Device-Signature", headers.signature)
+            .header("X-Runner-Body-Sha256", headers.body_hash);
     }
     let request = request_builder
         .body(body.to_vec())
@@ -607,6 +1394,16 @@ fn request_bytes(
         .limit(750 * 1024 * 1024)
         .read_to_vec()
         .map_err(|_| "RUNNER_UPDATE_RESPONSE_READ_FAILED".into())
+}
+
+fn control_access_token(config: &RunnerConfig) -> Result<String, String> {
+    let configured = std::env::var("SAH_RUNNER_ACCESS_TOKEN").unwrap_or_default();
+    if !configured.trim().is_empty() {
+        return Ok(configured);
+    }
+    crate::connection::load_or_refresh(config)?
+        .map(|connection| connection.control_token)
+        .ok_or_else(|| "RUNNER_ACCESS_TOKEN_REQUIRED_FOR_CONTROL".into())
 }
 
 pub fn refresh_interval_seconds() -> Result<std::time::Duration, String> {
@@ -630,9 +1427,17 @@ fn parse_refresh_interval(raw: Option<&str>) -> Result<std::time::Duration, Stri
     Ok(std::time::Duration::from_secs(seconds))
 }
 
-fn capability_snapshot(config: &RunnerConfig, tools: &[ToolCandidate]) -> serde_json::Value {
+fn capability_snapshot(
+    config: &RunnerConfig,
+    tools: &[ToolCandidate],
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+    control_plane_origin: &str,
+) -> serde_json::Value {
     let observed_at = current_time_iso();
     let expires_at = current_time_iso_after(std::time::Duration::from_secs(300));
+    let snapshot_revision = format!("snapshot:{}:{}", config.runner_id, observed_at);
+    let capability_snapshot_id = format!("capability:{}:{}", config.runner_id, observed_at);
     let tool_inventory = tools
         .iter()
         .map(|tool| {
@@ -651,6 +1456,7 @@ fn capability_snapshot(config: &RunnerConfig, tools: &[ToolCandidate]) -> serde_
                 "availabilityState": dimension_to_availability(tool.availability_state, tool.trust_state),
                 "trustState": tool.trust_state,
                 "fingerprint": tool.fingerprint,
+                "authorizationEvidenceRef": tool.authorization_evidence_ref,
                 "observedAt": observed_at,
                 "expiresAt": expires_at,
                 "reasonCodes": tool.reason_codes,
@@ -669,18 +1475,68 @@ fn capability_snapshot(config: &RunnerConfig, tools: &[ToolCandidate]) -> serde_
                 "maxConcurrency": u64::from(tool.concurrency_limit.max(1)),
                 "availabilityState": dimension_to_availability(tool.availability_state, tool.trust_state),
                 "policyDecision": "pending",
-                "confidence": if tool.trust_state == TrustState::Ready { 1.0 } else { 0.5 },
+                "confidence": if tool.trust_state == TrustState::Ready { json!(1) } else { json!(0.5) },
                 "observedAt": observed_at,
                 "expiresAt": expires_at,
                 "reasonCodes": tool.reason_codes,
             })
         })
         .collect::<Vec<_>>();
+    let browser_tool = tools
+        .iter()
+        .find(|tool| matches!(tool.kind, crate::discovery::ToolKind::Browser));
+    let browser_ready = browser_tool.is_some_and(|tool| tool.trust_state == TrustState::Ready);
+    let browser_capability = browser_tool.map_or_else(
+        || {
+            json!({
+                "availabilityState": "unavailable",
+                "authState": "unavailable",
+                "probeState": "unavailable",
+                "reasonCodes": ["browser_not_discovered"],
+            })
+        },
+        |tool| {
+            json!({
+                "availabilityState": if browser_ready { "available" } else { "unavailable" },
+                "authState": dimension_to_auth(tool.auth_state),
+                "probeState": browser_probe_state(tool),
+                "reasonCodes": tool.reason_codes,
+                "manifest": {
+                    "runnerId": config.runner_id,
+                    "runnerSessionId": runner_session_id,
+                    "capabilitySnapshotId": capability_snapshot_id,
+                    "runtimeVersion": RUNNER_VERSION,
+                    "adapterVersion": tool.adapter_id,
+                    "browserEngine": if browser_ready { json!("chromium") } else { serde_json::Value::Null },
+                    "browserVersion": if browser_ready { tool.version.clone() } else { None::<String> },
+                    "supports": {
+                        "structuredObservation": browser_ready,
+                        "semanticClick": browser_ready,
+                        "semanticType": browser_ready,
+                        "screenshot": browser_ready,
+                        "visualFallback": browser_ready,
+                        "cancellation": browser_ready,
+                        "evidence": browser_ready,
+                    },
+                    "authState": dimension_to_auth(tool.auth_state),
+                    "probeState": browser_probe_state(tool),
+                    "observedAt": observed_at,
+                    "expiresAt": expires_at,
+                    "authorizationEvidenceRef": tool.authorization_evidence_ref,
+                    "probeEvidenceRef": tool.probe_evidence_ref,
+                }
+            })
+        },
+    );
     json!({
         "runnerId": config.runner_id,
+        "tenantId": tenant_id,
         "runnerVersion": RUNNER_VERSION,
         "contractVersion": "sah-runner-v1",
-        "revision": format!("snapshot:{}:{}", config.runner_id, observed_at),
+        "controlPlaneOrigin": control_plane_origin,
+        "revision": snapshot_revision,
+        "runnerSessionId": runner_session_id,
+        "capabilitySnapshotId": capability_snapshot_id,
         "observedAt": observed_at,
         "expiresAt": expires_at,
         "capabilities": tools.iter().map(|tool| format!("tool.execute.{}", tool.tool_id)).collect::<Vec<_>>(),
@@ -693,7 +1549,47 @@ fn capability_snapshot(config: &RunnerConfig, tools: &[ToolCandidate]) -> serde_
         },
         "toolInventory": tool_inventory,
         "capabilityInventory": capability_inventory,
+        "computerUse": {
+            "browser": browser_capability,
+            "desktop": {
+                "availabilityState": "unavailable",
+                "authState": "unavailable",
+                "probeState": "unavailable",
+                "reasonCodes": ["desktop_adapter_not_configured"],
+            },
+        },
     })
+}
+
+fn deterministic_certification_adapter_enabled() -> bool {
+    if std::env::var("SAH_RUNNER_CERTIFICATION_ADAPTER").as_deref() != Ok("deterministic") {
+        return false;
+    }
+    let Ok(control_url) = std::env::var("SAH_RUNNER_CONTROL_URL") else {
+        return false;
+    };
+    control_url.starts_with("http://127.0.0.1:")
+        || control_url.starts_with("http://localhost:")
+        || control_url.starts_with("http://[::1]:")
+}
+
+fn snapshot_expiry_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .saturating_add(300_000)
+        .min(u128::from(u64::MAX)) as u64
+}
+
+fn browser_probe_state(tool: &ToolCandidate) -> &'static str {
+    match tool.trust_state {
+        TrustState::Ready => "ready",
+        TrustState::AuthRequired => "pairing_required",
+        TrustState::Degraded => "degraded",
+        TrustState::Unsupported => "unavailable",
+        _ => "probe_required",
+    }
 }
 
 fn target_triple() -> String {
@@ -784,7 +1680,15 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 
 #[cfg(test)]
 mod lifecycle_tests {
-    use super::{parse_refresh_interval, update_ack_statuses};
+    use super::{
+        build_keepalive_envelope, capability_snapshot, delivery_transport_label, keepalive_due,
+        parse_refresh_interval, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+    };
+    use crate::config::{RunnerConfig, RunnerProfile};
+    use crate::discovery::scan_known_tools;
+    use crate::protocol::{NodeKind, RunnerJobCommand, RunnerJobReceiptEventType};
+    use crate::transport::TransportMode;
+    use serde_json::json;
     use std::time::Duration;
 
     #[test]
@@ -812,10 +1716,123 @@ mod lifecycle_tests {
     }
 
     #[test]
+    fn control_channel_keepalive_is_due_only_after_bounded_idle_interval() {
+        assert!(!keepalive_due(
+            Duration::from_secs(29),
+            Duration::from_secs(30)
+        ));
+        assert!(keepalive_due(
+            Duration::from_secs(30),
+            Duration::from_secs(30)
+        ));
+        assert!(keepalive_due(
+            Duration::from_secs(90),
+            Duration::from_secs(30)
+        ));
+    }
+
+    #[test]
+    fn control_channel_keepalive_uses_reconcile_contract() {
+        let mut channel = crate::control_channel::ControlChannel::default();
+        channel.connect();
+        channel.authenticated();
+        let envelope = build_keepalive_envelope(
+            &mut channel,
+            NodeKind::LocalDevice,
+            "runner-p213",
+            "revision-p213",
+        )
+        .expect("keepalive should use the existing envelope contract");
+
+        assert_eq!(envelope.payload["type"], "runner.reconcile");
+        assert_eq!(envelope.payload["command"], "keepalive");
+    }
+
+    #[test]
+    fn delivery_evidence_reports_the_actual_transport_mode() {
+        assert_eq!(delivery_transport_label(TransportMode::WssFastPath), "wss");
+        assert_eq!(
+            delivery_transport_label(TransportMode::HttpsDurableFallback),
+            "https_fallback"
+        );
+    }
+
+    #[test]
     fn update_ack_sequence_matches_server_state_machine() {
         assert_eq!(
             update_ack_statuses(),
             ["verifying", "replacing", "restarting", "completed"]
+        );
+    }
+
+    #[test]
+    fn computer_use_browser_is_unavailable_until_probe_and_pairing_are_ready() {
+        let config = RunnerConfig::local("runner-1", "device-1", "https://example.test");
+        let tools = scan_known_tools(RunnerProfile::LocalDevice, &["browser".into()]);
+        let snapshot = capability_snapshot(&config, &tools, None, None, "https://example.test");
+        let evidence = snapshot_evidence(&snapshot);
+
+        assert_eq!(
+            snapshot["computerUse"]["browser"]["availabilityState"],
+            "unavailable"
+        );
+        assert_eq!(snapshot["computerUse"]["browser"]["authState"], "unknown");
+        assert_eq!(evidence["runnerId"], "runner-1");
+        assert_eq!(evidence["revision"], snapshot["revision"]);
+        assert_eq!(evidence["browser"]["probeState"], "probe_required");
+        assert_eq!(
+            snapshot["computerUse"]["desktop"]["availabilityState"],
+            "unavailable"
+        );
+    }
+
+    #[test]
+    fn semantic_completion_receipt_carries_only_bounded_verification_intent() {
+        let command = RunnerJobCommand {
+            command_id: "command-1".into(),
+            command_type: "execute".into(),
+            contract_version: "runner-job-v1".into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(1),
+            project_ref: None,
+            workspace_ref: None,
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "computer_use.browser".into(),
+            adapter_id: "browser.v1".into(),
+            adapter_version_constraint: Some("0.1.0".into()),
+            browser_engine_constraint: Some("chromium".into()),
+            idempotency_key: "idem-1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "runner-auth:sha256:grant".into(),
+            input_ref: "runner-input:sha256:input".into(),
+            payload: json!({
+                "requiresIndependentVerification": true,
+                "decisionRequest": { "requestedProvider": "rules", "goal": "observe page" },
+                "verification": { "required": true, "verifier": "spec208-independent-v1" },
+                "secret": "must-not-echo",
+            }),
+        };
+        let payload =
+            semantic_receipt_payload(&command, &RunnerJobReceiptEventType::ExecutionCompleted)
+                .unwrap();
+        assert_eq!(payload["requiresIndependentVerification"], true);
+        assert_eq!(payload["decisionRequest"]["requestedProvider"], "rules");
+        assert_eq!(
+            payload["verification"]["verifier"],
+            "spec208-independent-v1"
+        );
+        assert!(payload.get("secret").is_none());
+        assert!(
+            semantic_receipt_payload(&command, &RunnerJobReceiptEventType::ExecutionStarted)
+                .is_none()
         );
     }
 }

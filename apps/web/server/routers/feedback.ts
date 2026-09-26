@@ -529,13 +529,10 @@ export const feedbackRouter = router({
       const query = db
         .select()
         .from(feedbackTickets)
-        .orderBy(
-          sql`CASE WHEN ${unreadCondition} THEN 0 ELSE 1 END`,
-          sql`CASE WHEN ${unreadCondition}
-            AND ${feedbackTickets.updatedAt} < NOW() - INTERVAL '2 hours'
-            THEN 0 ELSE 1 END`,
-          desc(feedbackTickets.createdAt)
-        )
+        // The queue must remain chronological. Unread/overdue is a filter and
+        // badge concern, not a priority that may move an older ticket above a
+        // newly-created report.
+        .orderBy(desc(feedbackTickets.createdAt), desc(feedbackTickets.id))
         .limit(input.limit)
         .offset(input.offset);
 

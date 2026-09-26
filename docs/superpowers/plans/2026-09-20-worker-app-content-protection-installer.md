@@ -66,7 +66,7 @@
 
 **Interfaces:**
 - Produces runtime ID `content-protection-windows-x64`.
-- Produces manifest fields `contractVersion`, `runtimeId`, `version`, `targetPlatform`, `provider`, `providerCommand`, `modelPath`, `videoSealCommit`, `requiresWorkerRuntimeVersion`, `files`, `archiveSha256`, and `signature`.
+- Produces archive manifest fields `contractVersion`, `runtimeId`, `version`, `targetPlatform`, `provider`, `providerCommand`, `modelPath`, `videoSealCommit`, `requiresWorkerRuntimeVersion`, and per-file `files` checksums; the server release manifest carries archive SHA-256 and signature metadata.
 - Produces archive naming contract `smart-ai-hub-content-protection-runtime-windows-x64-{version}.zip`.
 
 - [ ] **Step 1: Write failing contract tests** asserting the new runtime ID, archive filename, Windows target, required manifest entries, and the absence of `content-protection-runtime` in the Tauri resource map.

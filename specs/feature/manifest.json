@@ -1,0 +1,223 @@
+{
+  "created": "2026-09-22",
+  "pack": "214-230-rag-skill-retrieval-alignment",
+  "supersedes": "smartaihub-spec-214-230-canonical-kimi-rag-alignment-2026-09-22.zip",
+  "files": [
+    {
+      "name": "CROSS-SPEC-RAG-SKILL-ALIGNMENT.md",
+      "bytes": 3005,
+      "sha256": "113ee6fcd924f775078348cc03880071bf7848002cc1febe026f021a1d998787"
+    },
+    {
+      "name": "README.md",
+      "bytes": 595,
+      "sha256": "6b2123563a7ccc95d7bd9772cbe7f6ffbb9decb9d8923f2e92764451f589a608"
+    },
+    {
+      "name": "spec-214-r6-retrieval-alignment-canonical.md",
+      "bytes": 70516,
+      "sha256": "6621787d4c7d9dc7ba15c5ad6d89b46bba2ecd6e64d8333a45aaaf3f1556a18a"
+    },
+    {
+      "name": "spec-215-r4-retrieval-runtime-alignment-canonical.md",
+      "bytes": 60879,
+      "sha256": "2a96264c38f1bbe294c1a73a25c50db21b74db080992d0e614b03b25eb46b842"
+    },
+    {
+      "name": "spec-216-r3-retrieval-discovery-alignment-canonical.md",
+      "bytes": 32770,
+      "sha256": "221d109f03d7c0d4557322827cdba80f2041c1620a54fd375f202daee90ba6d3"
+    },
+    {
+      "name": "spec-217-r5-product-discovery-retrieval-alignment-canonical.md",
+      "bytes": 47154,
+      "sha256": "8d1adf2bcdf6e44d446ea1520a210cef8e203ffb7d57657f44d088a80759f276"
+    },
+    {
+      "name": "spec-218-r5-development-context-retrieval-alignment-canonical.md",
+      "bytes": 44612,
+      "sha256": "bc8d8000cc9dbc01e07e4b3a5376901c0af72f3e05f8d0aa14bc6ad192547bbc"
+    },
+    {
+      "name": "spec-219-r5-runtime-retrieval-boundary-canonical.md",
+      "bytes": 40122,
+      "sha256": "dc811bdbdd8a87a36a1ea0b66c5afb77bfa1bffe426b900c0f9d9fe4193f0c4a"
+    },
+    {
+      "name": "spec-220-r5-retrieval-security-alignment-canonical.md",
+      "bytes": 41496,
+      "sha256": "7d99bfbe25df40f84bfe5c8bb8549e609df7fa8b3bd5459e8517a312cfb19e8f"
+    },
+    {
+      "name": "spec-221-r6-skill-retrieval-alignment-canonical.md",
+      "bytes": 174126,
+      "sha256": "f7a651903d65436961b26cfd40c59a2cce3dc305c8a21d10e726fdb388d3e2de"
+    },
+    {
+      "name": "spec-222-r17-retrieval-plane-separation-canonical.md",
+      "bytes": 278978,
+      "sha256": "89e6aa0979f72fc7aeca67c8be35f14f359051c603932f16eba6f8eec113476c"
+    },
+    {
+      "name": "spec-223-r5-retrieval-context-alignment-canonical.md",
+      "bytes": 115666,
+      "sha256": "aebc5f7b782e1491693e466a81e173c1b31dea1b98e7f77082d9c7a8228221c1"
+    },
+    {
+      "name": "spec-224-r19-retrieval-skill-closure-alignment-canonical.md",
+      "bytes": 444528,
+      "sha256": "98cd7682541896d16cb02fba06e9c6d224358449200d61d612a1ab25f97c0ce3"
+    },
+    {
+      "name": "spec-225-r7-universal-retrieval-surface-alignment-canonical.md",
+      "bytes": 79329,
+      "sha256": "28f443d386e5868a9cd11ff51aa2f4c02bf2adc584b2c066db0b2a99e9e492fd"
+    },
+    {
+      "name": "spec-226-r9-retrieval-v2-compatibility-bridge-canonical.md",
+      "bytes": 102836,
+      "sha256": "863a6d31022d49a32b84ec6688bb58f5a6d2db87a5bd827a426249c24d2ccf88"
+    },
+    {
+      "name": "spec-227-r6-policy-retrieval-alignment-canonical.md",
+      "bytes": 142124,
+      "sha256": "9bd9dd5a65507b622218880e38b1b2a55d742847c7b58ba013a0ef0a5c73de3d"
+    },
+    {
+      "name": "spec-228-r7-maintenance-retrieval-alignment-canonical.md",
+      "bytes": 185895,
+      "sha256": "58c5519015a858255c6ce0bd7abeac1ae2942a9650523e1832b507e0419443dc"
+    },
+    {
+      "name": "spec-229-r2-skill-first-retrieval-canonical.md",
+      "bytes": 47320,
+      "sha256": "b0a22d3c0217560cb9f7f214bdd0431bc27d243e8f8324ae8f21919cdd205a07"
+    },
+    {
+      "name": "spec-230-r2-skill-first-context-retrieval-canonical.md",
+      "bytes": 67982,
+      "sha256": "1fe0fbcd85d80a6af8959dea1e80c85e1d990db7aeca712e548e7b9787125389"
+    }
+  ],
+  "validation": [
+    {
+      "file": "spec-214-r6-retrieval-alignment-canonical.md",
+      "bytes": 70516,
+      "fences": 112,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-215-r4-retrieval-runtime-alignment-canonical.md",
+      "bytes": 60879,
+      "fences": 162,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-216-r3-retrieval-discovery-alignment-canonical.md",
+      "bytes": 32770,
+      "fences": 68,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-217-r5-product-discovery-retrieval-alignment-canonical.md",
+      "bytes": 47154,
+      "fences": 98,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-218-r5-development-context-retrieval-alignment-canonical.md",
+      "bytes": 44612,
+      "fences": 108,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-219-r5-runtime-retrieval-boundary-canonical.md",
+      "bytes": 40122,
+      "fences": 98,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-220-r5-retrieval-security-alignment-canonical.md",
+      "bytes": 41496,
+      "fences": 100,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-221-r6-skill-retrieval-alignment-canonical.md",
+      "bytes": 174126,
+      "fences": 200,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-222-r17-retrieval-plane-separation-canonical.md",
+      "bytes": 278978,
+      "fences": 788,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-223-r5-retrieval-context-alignment-canonical.md",
+      "bytes": 115666,
+      "fences": 178,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-224-r19-retrieval-skill-closure-alignment-canonical.md",
+      "bytes": 444528,
+      "fences": 1728,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-225-r7-universal-retrieval-surface-alignment-canonical.md",
+      "bytes": 79329,
+      "fences": 202,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-226-r9-retrieval-v2-compatibility-bridge-canonical.md",
+      "bytes": 102836,
+      "fences": 226,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-227-r6-policy-retrieval-alignment-canonical.md",
+      "bytes": 142124,
+      "fences": 212,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-228-r7-maintenance-retrieval-alignment-canonical.md",
+      "bytes": 185895,
+      "fences": 202,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-229-r2-skill-first-retrieval-canonical.md",
+      "bytes": 47320,
+      "fences": 94,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    },
+    {
+      "file": "spec-230-r2-skill-first-context-retrieval-canonical.md",
+      "bytes": 67982,
+      "fences": 188,
+      "fences_balanced": true,
+      "duplicate_numeric_h1": []
+    }
+  ]
+}

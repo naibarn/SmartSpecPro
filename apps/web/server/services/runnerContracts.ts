@@ -6,6 +6,114 @@ import {
 } from "./jobControlPlaneTypes";
 
 export const RUNNER_CONTRACT_VERSION = "sah-runner-v1";
+export const CONNECT_SCHEMA_REVISION = "sah-runner-connect-v2";
+export const MIN_COMPATIBLE_RUNNER_VERSION = "0.1.0";
+
+export const SUPPORTED_RUNNER_CONTRACT_VERSIONS = [
+  RUNNER_CONTRACT_VERSION,
+] as const;
+export const SUPPORTED_CONNECT_SCHEMA_REVISIONS = [
+  CONNECT_SCHEMA_REVISION,
+] as const;
+
+export type RunnerCompatibilityMetadata = {
+  controlPlaneContractVersion: typeof RUNNER_CONTRACT_VERSION;
+  connectSchemaRevision: typeof CONNECT_SCHEMA_REVISION;
+  minRunnerVersion: typeof MIN_COMPATIBLE_RUNNER_VERSION;
+};
+
+export type RunnerCompatibilityFailureCode =
+  | "CONTROL_PLANE_TOO_OLD"
+  | "RUNNER_UPGRADE_REQUIRED"
+  | "UNSUPPORTED_RUNNER_CONTRACT";
+
+export type RunnerCompatibilityResult =
+  | { compatible: true }
+  | {
+      compatible: false;
+      code: RunnerCompatibilityFailureCode;
+      reason: string;
+    };
+
+export class RunnerCompatibilityError extends Error {
+  readonly code: RunnerCompatibilityFailureCode;
+
+  constructor(code: RunnerCompatibilityFailureCode, message: string) {
+    super(message);
+    this.name = "RunnerCompatibilityError";
+    this.code = code;
+  }
+}
+
+export function getRunnerCompatibilityMetadata(): RunnerCompatibilityMetadata {
+  return {
+    controlPlaneContractVersion: RUNNER_CONTRACT_VERSION,
+    connectSchemaRevision: CONNECT_SCHEMA_REVISION,
+    minRunnerVersion: MIN_COMPATIBLE_RUNNER_VERSION,
+  };
+}
+
+function compareVersions(left: string, right: string): number | null {
+  const parse = (value: string) => {
+    const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value.trim());
+    return match ? match.slice(1).map(Number) : null;
+  };
+  const leftParts = parse(left);
+  const rightParts = parse(right);
+  if (!leftParts || !rightParts) return null;
+  for (let index = 0; index < 3; index += 1) {
+    if (leftParts[index] !== rightParts[index]) {
+      return leftParts[index] > rightParts[index] ? 1 : -1;
+    }
+  }
+  return 0;
+}
+
+function advertisedStringList(value: unknown): string[] | null {
+  if (value === undefined) return null;
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+export function negotiateRunnerCompatibility(input: {
+  runnerVersion?: unknown;
+  supportedRunnerContractVersions?: unknown;
+  supportedConnectSchemaRevisions?: unknown;
+}): RunnerCompatibilityResult {
+  const contracts = advertisedStringList(input.supportedRunnerContractVersions);
+  if (contracts && !contracts.includes(RUNNER_CONTRACT_VERSION)) {
+    return {
+      compatible: false,
+      code: "UNSUPPORTED_RUNNER_CONTRACT",
+      reason: "Runner does not support the active control-plane contract",
+    };
+  }
+
+  const schemas = advertisedStringList(input.supportedConnectSchemaRevisions);
+  if (schemas && !schemas.includes(CONNECT_SCHEMA_REVISION)) {
+    return {
+      compatible: false,
+      code: "UNSUPPORTED_RUNNER_CONTRACT",
+      reason: "Runner does not support the active connect schema revision",
+    };
+  }
+
+  if (typeof input.runnerVersion === "string") {
+    const comparison = compareVersions(
+      input.runnerVersion,
+      MIN_COMPATIBLE_RUNNER_VERSION,
+    );
+    if (comparison !== null && comparison < 0) {
+      return {
+        compatible: false,
+        code: "RUNNER_UPGRADE_REQUIRED",
+        reason: `Runner ${input.runnerVersion} is below ${MIN_COMPATIBLE_RUNNER_VERSION}`,
+      };
+    }
+  }
+
+  return { compatible: true };
+}
 
 export type RunnerProfile = "local_device" | "shared_container";
 export type RunnerNodeKind = "local_device" | "managed_container";
@@ -87,6 +195,8 @@ export type RunnerToolInventoryEntry = {
   availabilityState: RunnerAvailabilityState;
   trustState: RunnerInventoryTrustState;
   fingerprint: string;
+  /** Immutable, redacted proof that this adapter passed its auth/readiness gate. */
+  authorizationEvidenceRef?: string;
   observedAt: string;
   expiresAt: string;
   reasonCodes: string[];
@@ -107,6 +217,44 @@ export type RunnerCapabilityInventoryEntry = {
   reasonCodes: string[];
 };
 
+export type RunnerComputerUseManifest = {
+  runnerId: string;
+  runnerSessionId?: string;
+  capabilitySnapshotId?: string;
+  runtimeVersion: string;
+  adapterVersion: string | null;
+  browserEngine: string | null;
+  browserVersion: string | null;
+  authorizationEvidenceRef?: string;
+  probeEvidenceRef?: string;
+  supports: {
+    structuredObservation: boolean;
+    semanticClick: boolean;
+    semanticType: boolean;
+    screenshot: boolean;
+    visualFallback: boolean;
+    cancellation: boolean;
+    evidence: boolean;
+  };
+  authState: RunnerAuthState | "unavailable";
+  probeState: "ready" | "pairing_required" | "degraded" | "unavailable" | "probe_required";
+  observedAt: string;
+  expiresAt: string;
+};
+
+export type RunnerComputerUseCapability = {
+  availabilityState: RunnerAvailabilityState;
+  authState: RunnerAuthState | "unavailable";
+  probeState: RunnerComputerUseManifest["probeState"];
+  reasonCodes: string[];
+  manifest?: RunnerComputerUseManifest;
+};
+
+export type RunnerComputerUseSnapshot = {
+  browser: RunnerComputerUseCapability;
+  desktop: RunnerComputerUseCapability;
+};
+
 export type RunnerIdentity = {
   runnerId: string;
   tenantId: string;
@@ -118,8 +266,16 @@ export type RunnerIdentity = {
 
 export type RunnerCapabilitySnapshot = {
   runnerId: string;
+  /** Tenant binding emitted by an authenticated local Runner session. */
+  tenantId?: string | null;
+  /** Session fence for local-device capabilities; absent only for legacy/container snapshots. */
+  runnerSessionId?: string | null;
+  /** Immutable capability identity used by localRunner command fencing. */
+  capabilitySnapshotId?: string | null;
   /** Additive version identity; legacy snapshots normalize this to null. */
   runnerVersion?: string | null;
+  /** Normalized origin of the control plane that produced this snapshot. */
+  controlPlaneOrigin?: string | null;
   revision: string;
   observedAt: string;
   expiresAt: string;
@@ -135,6 +291,7 @@ export type RunnerCapabilitySnapshot = {
   /** Additive fields; omitted by legacy snapshots and normalized to empty lists. */
   toolInventory?: RunnerToolInventoryEntry[];
   capabilityInventory?: RunnerCapabilityInventoryEntry[];
+  computerUse?: RunnerComputerUseSnapshot;
 };
 
 export type WorkOffer = {
@@ -166,8 +323,109 @@ export type RunnerControlEvent = {
   reason?: string;
 };
 
+/** Generic command/receipt contract carried by the existing Runner channel. */
+export const RUNNER_JOB_COMMAND_CONTRACT_VERSION = "runner-job-v1" as const;
+
+export type RunnerJobCommandType = "execute" | "cancel";
+export type RunnerJobExecutionKind = "computer_use.browser" | (string & {});
+
+export type RunnerJobCommand = {
+  commandId: string;
+  commandType: RunnerJobCommandType;
+  contractVersion: typeof RUNNER_JOB_COMMAND_CONTRACT_VERSION;
+  jobId: string;
+  attempt: number;
+  leaseId: string;
+  fencingToken: number;
+  tenantId: string;
+  userId?: number;
+  projectRef?: string;
+  workspaceRef?: string;
+  runnerId: string;
+  runnerSessionId: string;
+  capabilitySnapshotId: string;
+  capabilitySnapshotRevision: string;
+  /** Fences Feature 195 dispatch to the same control plane as the Runner. */
+  controlPlaneOrigin: string;
+  executionKind: RunnerJobExecutionKind;
+  adapterId: string;
+  adapterVersionConstraint?: string;
+  browserEngineConstraint?: string;
+  idempotencyKey: string;
+  deadline: string;
+  authorizationGrantRef: string;
+  inputRef: string;
+  payload: Record<string, unknown>;
+};
+
+export type RunnerJobReceiptEventType =
+  | "COMMAND_RECEIVED"
+  | "COMMAND_ACCEPTED"
+  | "EXECUTION_STARTED"
+  | "PROGRESS"
+  | "EVIDENCE_CREATED"
+  | "EXECUTION_COMPLETED"
+  | "COMMAND_REJECTED"
+  | "EXECUTION_FAILED"
+  | "CANCEL_ACKNOWLEDGED"
+  | "UNKNOWN_OUTCOME";
+
+export type RunnerJobReceiptStatus =
+  | "received"
+  | "accepted"
+  | "running"
+  | "progress"
+  | "evidence"
+  | "completed"
+  | "rejected"
+  | "failed"
+  | "cancelled"
+  | "unknown";
+
+export type RunnerJobReceipt = {
+  eventId: string;
+  eventType: RunnerJobReceiptEventType;
+  commandId: string;
+  jobId: string;
+  runnerId: string;
+  runnerSessionId: string;
+  sequence: number;
+  observedAt: string;
+  status: RunnerJobReceiptStatus;
+  resultRef?: string;
+  evidenceRefs?: string[];
+  errorCode?: string;
+  errorSummary?: string;
+  correlation?: Record<string, string>;
+  payload?: Record<string, unknown>;
+};
+
 function invalid(message: string): never {
   throw new JobControlPlaneError("RUNNER_CONTRACT_INVALID", message);
+}
+
+/** Returns the origin only; paths, credentials, queries and fragments are not
+ * valid control-plane identities. */
+export function normalizeControlPlaneOrigin(value: unknown): string {
+  if (typeof value !== "string" || !value.trim())
+    invalid("control plane origin is invalid");
+  let parsed: URL;
+  try {
+    parsed = new URL(value.trim());
+  } catch {
+    invalid("control plane origin is invalid");
+  }
+  if (
+    (parsed.protocol !== "http:" && parsed.protocol !== "https:")
+    || parsed.username
+    || parsed.password
+    || parsed.pathname !== "/"
+    || parsed.search
+    || parsed.hash
+  ) {
+    invalid("control plane origin is invalid");
+  }
+  return parsed.origin;
 }
 
 function requiredText(
@@ -213,13 +471,15 @@ const RUNNER_ENVELOPE_SECRET_KEYS = new Set([
   "secret",
   "token",
 ]);
+const MAX_RUNNER_PAYLOAD_DEPTH = 8;
 
 function assertSafeRunnerPayload(
   value: unknown,
   path = "payload",
   depth = 0
 ): void {
-  if (depth > 6) invalid(`${path} is too deeply nested`);
+  if (depth > MAX_RUNNER_PAYLOAD_DEPTH)
+    invalid(`${path} is too deeply nested`);
   if (typeof value === "string") {
     if (value.length > 8_000) invalid(`${path} is too large`);
     return;
@@ -309,7 +569,7 @@ export function validateRunnerProtocolEnvelope(
     ),
     payload: payload as Record<string, unknown>,
     ackState:
-      raw.ackState === undefined
+      raw.ackState === undefined || raw.ackState === null
         ? undefined
         : enumText(raw.ackState, "envelope.ackState", [
             "accepted",
@@ -469,6 +729,15 @@ function validateRunnerToolInventory(
       availabilityState,
       trustState,
       fingerprint: requiredText(raw.fingerprint, `${prefix}.fingerprint`, 256),
+      ...(raw.authorizationEvidenceRef === undefined || raw.authorizationEvidenceRef === null
+        ? {}
+        : {
+            authorizationEvidenceRef: requiredText(
+              raw.authorizationEvidenceRef,
+              `${prefix}.authorizationEvidenceRef`,
+              240,
+            ),
+          }),
       observedAt,
       expiresAt,
       reasonCodes: stringList(raw.reasonCodes, `${prefix}.reasonCodes`, 32, 96),
@@ -596,6 +865,105 @@ export function validateRunnerIdentity(
   };
 }
 
+function validateRunnerComputerUseCapability(
+  value: unknown,
+  prefix: string,
+  runnerId: string
+): RunnerComputerUseCapability {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid(`${prefix} is invalid`);
+  const raw = value as Record<string, unknown>;
+  const availabilityState = enumText(
+    raw.availabilityState,
+    `${prefix}.availabilityState`,
+    ["unknown", "unavailable", "available", "busy", "stale", "disabled"] as const
+  );
+  const authState = enumText(
+    raw.authState,
+    `${prefix}.authState`,
+    ["unknown", "not_required", "auth_required", "authenticated", "auth_failed", "unavailable"] as const
+  );
+  const probeState = enumText(
+    raw.probeState,
+    `${prefix}.probeState`,
+    ["ready", "pairing_required", "degraded", "unavailable", "probe_required"] as const
+  );
+  const reasonCodes = stringList(raw.reasonCodes, `${prefix}.reasonCodes`, 32, 96);
+  let manifest: RunnerComputerUseManifest | undefined;
+  if (raw.manifest !== undefined && raw.manifest !== null) {
+    if (typeof raw.manifest !== "object" || Array.isArray(raw.manifest))
+      invalid(`${prefix}.manifest is invalid`);
+    const rawManifest = raw.manifest as Record<string, unknown>;
+    if (!rawManifest.supports || typeof rawManifest.supports !== "object" || Array.isArray(rawManifest.supports))
+      invalid(`${prefix}.manifest.supports is invalid`);
+    const rawSupports = rawManifest.supports as Record<string, unknown>;
+    const supportKeys = [
+      "structuredObservation",
+      "semanticClick",
+      "semanticType",
+      "screenshot",
+      "visualFallback",
+      "cancellation",
+      "evidence",
+    ] as const;
+    const supports = Object.fromEntries(
+      supportKeys.map(key => {
+        if (typeof rawSupports[key] !== "boolean")
+          invalid(`${prefix}.manifest.supports.${key} is invalid`);
+        return [key, rawSupports[key]];
+      })
+    ) as RunnerComputerUseManifest["supports"];
+    const window = validateInventoryWindow(rawManifest, `${prefix}.manifest`);
+    manifest = {
+      runnerId: requiredText(rawManifest.runnerId, `${prefix}.manifest.runnerId`, 128),
+      ...(rawManifest.runnerSessionId === undefined
+        ? {}
+        : { runnerSessionId: requiredText(rawManifest.runnerSessionId, `${prefix}.manifest.runnerSessionId`, 160) }),
+      ...(rawManifest.capabilitySnapshotId === undefined
+        ? {}
+        : { capabilitySnapshotId: requiredText(rawManifest.capabilitySnapshotId, `${prefix}.manifest.capabilitySnapshotId`, 160) }),
+      runtimeVersion: requiredText(rawManifest.runtimeVersion, `${prefix}.manifest.runtimeVersion`, 80),
+      adapterVersion: nullableText(rawManifest.adapterVersion, `${prefix}.manifest.adapterVersion`, 80),
+      browserEngine: nullableText(rawManifest.browserEngine, `${prefix}.manifest.browserEngine`, 80),
+      browserVersion: nullableText(rawManifest.browserVersion, `${prefix}.manifest.browserVersion`, 80),
+      ...(rawManifest.authorizationEvidenceRef === undefined || rawManifest.authorizationEvidenceRef === null
+        ? {}
+        : { authorizationEvidenceRef: requiredText(rawManifest.authorizationEvidenceRef, `${prefix}.manifest.authorizationEvidenceRef`, 240) }),
+      ...(rawManifest.probeEvidenceRef === undefined || rawManifest.probeEvidenceRef === null
+        ? {}
+        : { probeEvidenceRef: requiredText(rawManifest.probeEvidenceRef, `${prefix}.manifest.probeEvidenceRef`, 240) }),
+      supports,
+      authState: enumText(
+        rawManifest.authState,
+        `${prefix}.manifest.authState`,
+        ["unknown", "not_required", "auth_required", "authenticated", "auth_failed", "unavailable"] as const
+      ),
+      probeState: enumText(
+        rawManifest.probeState,
+        `${prefix}.manifest.probeState`,
+        ["ready", "pairing_required", "degraded", "unavailable", "probe_required"] as const
+      ),
+      observedAt: window.observedAt,
+      expiresAt: window.expiresAt,
+    };
+  }
+  if (availabilityState === "available") {
+    if (!manifest || manifest.runnerId !== runnerId || manifest.probeState !== "ready")
+      invalid(`${prefix} claims available without a fresh capability manifest`);
+    if (!Object.values(manifest.supports).every(Boolean))
+      invalid(`${prefix} claims available without complete execution support`);
+    if (!manifest.authorizationEvidenceRef || !manifest.probeEvidenceRef)
+      invalid(`${prefix} claims available without immutable authorization and probe evidence`);
+  }
+  return {
+    availabilityState,
+    authState,
+    probeState,
+    reasonCodes,
+    ...(manifest ? { manifest } : {}),
+  };
+}
+
 export function validateRunnerCapabilitySnapshot(
   snapshot: RunnerCapabilitySnapshot
 ): RunnerCapabilitySnapshot {
@@ -603,9 +971,15 @@ export function validateRunnerCapabilitySnapshot(
     invalid("runner capability snapshot is invalid");
   const raw = snapshot as unknown as Record<string, unknown>;
   const runnerId = requiredText(raw.runnerId, "snapshot.runnerId", 128);
+  const tenantId = raw.tenantId === undefined || raw.tenantId === null
+    ? null
+    : requiredText(raw.tenantId, "snapshot.tenantId", 160);
   const runnerVersion = raw.runnerVersion === undefined || raw.runnerVersion === null
     ? null
     : requiredText(raw.runnerVersion, "snapshot.runnerVersion", 64);
+  const controlPlaneOrigin = raw.controlPlaneOrigin === undefined || raw.controlPlaneOrigin === null
+    ? null
+    : normalizeControlPlaneOrigin(raw.controlPlaneOrigin);
   const revision = requiredText(raw.revision, "snapshot.revision", 128);
   const observedAt = raw.observedAt;
   const expiresAt = raw.expiresAt;
@@ -636,7 +1010,15 @@ export function validateRunnerCapabilitySnapshot(
   }
   return {
     runnerId,
+    ...(tenantId ? { tenantId } : {}),
+    ...(raw.runnerSessionId === undefined || raw.runnerSessionId === null
+      ? {}
+      : { runnerSessionId: requiredText(raw.runnerSessionId, "snapshot.runnerSessionId", 160) }),
+    ...(raw.capabilitySnapshotId === undefined || raw.capabilitySnapshotId === null
+      ? {}
+      : { capabilitySnapshotId: requiredText(raw.capabilitySnapshotId, "snapshot.capabilitySnapshotId", 160) }),
     runnerVersion,
+    ...(controlPlaneOrigin ? { controlPlaneOrigin } : {}),
     revision,
     observedAt: new Date(observedAt).toISOString(),
     expiresAt: new Date(expiresAt).toISOString(),
@@ -653,6 +1035,27 @@ export function validateRunnerCapabilitySnapshot(
       raw.capabilityInventory === undefined
         ? []
         : validateRunnerCapabilityInventory(raw.capabilityInventory),
+    ...(raw.computerUse === undefined
+      ? {}
+      : (() => {
+          if (!raw.computerUse || typeof raw.computerUse !== "object" || Array.isArray(raw.computerUse))
+            invalid("snapshot.computerUse is invalid");
+          const rawComputerUse = raw.computerUse as Record<string, unknown>;
+          return {
+            computerUse: {
+              browser: validateRunnerComputerUseCapability(
+                rawComputerUse.browser,
+                "snapshot.computerUse.browser",
+                runnerId
+              ),
+              desktop: validateRunnerComputerUseCapability(
+                rawComputerUse.desktop,
+                "snapshot.computerUse.desktop",
+                runnerId
+              ),
+            },
+          };
+        })()),
   };
 }
 

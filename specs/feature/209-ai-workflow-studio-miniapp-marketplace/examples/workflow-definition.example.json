@@ -1,0 +1,200 @@
+{
+  "schema_version": "sah.workflow.v1",
+  "workflow": {
+    "id": "wf_professional_video_editor",
+    "name": "Professional Video Editor",
+    "version": 12,
+    "inputs": {
+      "videos": {
+        "type": "MediaAsset[]",
+        "required": true
+      },
+      "reference_images": {
+        "type": "ImageAsset[]",
+        "required": false
+      },
+      "goal": {
+        "type": "String",
+        "required": true
+      },
+      "max_duration_seconds": {
+        "type": "Number",
+        "default": 180
+      }
+    },
+    "outputs": {
+      "video": {
+        "type": "VideoAsset"
+      },
+      "report": {
+        "type": "EditReport"
+      }
+    },
+    "nodes": [
+      {
+        "id": "input",
+        "type": "form",
+        "name": "Project Input"
+      },
+      {
+        "id": "analyze",
+        "type": "capability",
+        "name": "Analyze Assets",
+        "capability_requirement": "media.analysis"
+      },
+      {
+        "id": "production",
+        "type": "subflow",
+        "name": "Video Production",
+        "workflow_ref": {
+          "workflow_id": "wf_video_production",
+          "version": 12
+        }
+      },
+      {
+        "id": "approval",
+        "type": "approval",
+        "name": "Human Approval"
+      },
+      {
+        "id": "result",
+        "type": "result",
+        "name": "Result View"
+      }
+    ],
+    "edges": [
+      {
+        "from": "input",
+        "to": "analyze",
+        "kind": "control"
+      },
+      {
+        "from": "analyze",
+        "to": "production",
+        "kind": "control"
+      },
+      {
+        "from": "production",
+        "to": "approval",
+        "kind": "control"
+      },
+      {
+        "from": "approval",
+        "to": "result",
+        "kind": "control"
+      }
+    ],
+    "bindings": [
+      {
+        "target_node_id": "production",
+        "target_field": "assets",
+        "source": {
+          "kind": "NODE_OUTPUT",
+          "node_id": "analyze",
+          "path": "$.assets"
+        },
+        "expected_type": "MediaAsset[]"
+      }
+    ],
+    "policies": {
+      "model_policy": "balanced",
+      "max_credits": 500,
+      "creator_execution_policy": "durable"
+    },
+    "concurrency": {
+      "policy": "KEYED_SINGLETON",
+      "key_fields": [
+        "project_id"
+      ]
+    },
+    "runtime": {
+      "checkpoint_policy": "AUTO",
+      "cancel_policy": "PROPAGATE_WHERE_SUPPORTED",
+      "max_causal_depth": 16,
+      "execution_selection": {
+        "mode": "USER_CHOICE",
+        "preferred_tools": [
+          "smartaihub-native",
+          "user-runner-compatible-media-agent"
+        ],
+        "allowed_adapter_families": [
+          "native",
+          "openai_agents",
+          "pydantic_ai",
+          "external_agent",
+          "a2a"
+        ],
+        "hard_constraints": [
+          "media.analysis",
+          "structured_output",
+          "tenant_policy",
+          "residency_policy"
+        ],
+        "fallback_policy": "ASK_USER",
+        "selected_option_source": "USER"
+      }
+    },
+    "environment_bindings": {
+      "provider_connection": "connection://environment/video-provider"
+    },
+    "expression_language": {
+      "name": "sah-expression",
+      "version": "1"
+    },
+    "deadlines": {
+      "run_timeout_seconds": 7200
+    },
+    "release": {
+      "channel": "STABLE"
+    },
+    "resource_envelope": {
+      "max_credits": 500,
+      "max_parallelism": 4,
+      "max_model_calls": 30
+    },
+    "data_policy": {
+      "default_classification": "INTERNAL"
+    },
+    "parallel_state_policy": {
+      "default_conflict": "ERROR_ON_CONFLICT"
+    },
+    "input_snapshot_policy": "PIN_EXISTING_VERSION",
+    "priority_class": "NORMAL",
+    "dependency_policy": {
+      "lock_transitive": true,
+      "require_contract_test_for_auto_upgrade": true
+    },
+    "storage_policy": {
+      "checkpoint_retention": "UNTIL_RUN_FINAL_PLUS_POLICY",
+      "pinned_test_data": "UNTIL_UNPINNED_OR_POLICY"
+    },
+    "shared_contracts": {
+      "execution": "SAH-EXEC-compatible-range",
+      "capability": "SAH-CAP-compatible-range",
+      "runner": "SAH-RUNNER-compatible-range",
+      "context": "SAH-CONTEXT-compatible-range",
+      "asset": "SAH-ASSET-compatible-range"
+    },
+    "runtime_expansion": {
+      "allowed": true,
+      "max_generated_tasks": 50,
+      "max_depth": 2
+    },
+    "child_workflow_policy": {
+      "default_mode": "ATTACHED"
+    },
+    "residency_policy": {
+      "allowed_regions": [
+        "tenant-policy-derived"
+      ]
+    },
+    "telemetry_policy": {
+      "metric_cardinality": "BOUNDED",
+      "debug_trace": "POLICY_CONTROLLED"
+    },
+    "evaluator_policy": {
+      "pin_rubric_revision": true,
+      "pin_threshold": true
+    }
+  }
+}

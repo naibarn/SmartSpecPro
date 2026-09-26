@@ -1,91 +1,36 @@
-# Orchestra Plan — Feature 201 Spec/Implementation Convergence Audit
+# Orchestra Plan — Spec 214 Completion
 
-# Current Audit — Specs 202/203 follow-up
+## Task classification
+- Scope: large; canonical contracts, authoring integration, compiler boundary, corpus coverage, migration safety, and conformance verification.
+- Risk: high; node semantics and persisted workflow definitions are shared product contracts. No production deployment or destructive migration is authorized by this repo-local task.
+- Route: standard-light direct conductor; explicit `deep-plan` followed by `deep-implement` as requested.
+- Implementation target: SmartSpecPro repo root; planning directory `specs/feature/214-node-type-contract-architecture/`.
+- Worktree: heavily dirty before task. Preserve all unrelated changes; no broad staging, reset, stash, or commit.
+- Research: SocratiCode unavailable; targeted shell evidence used. Web research not needed because scope is existing repo contracts, not changing an external API.
+- Retired systems: do not use Agency, `work/request(s)`, `workpacks/*`, `/workflows` legacy engine, OpenSandbox, `sandbox_jobs`, or Docker dispatch.
 
-## Task Classification
-- Scope: large
-- Risk: high
-- Route: direct-inline-waves in standard-light mode; no sub-agents available
-- Goal: run at least 10 independent spec/code/runtime audit rounds and immediately repair safe in-scope gaps
-- SocratiCode: unavailable in current MCP tool set; use targeted shell discovery and record this fallback
-- Worktree: already dirty; preserve unrelated changes and avoid destructive cleanup
+## Existing implementation snapshot
+`workflowNodeContracts.ts` already contains 16 v4 core IDs, manifest digesting, registry lookup/search, and instance secret/runtime-key checks. The manifest shape is partial relative to Spec 214. `workflowCompilerRuntimeContracts.ts` has partial WorkflowDefinitionV2/Spec 215 v3 compiler contracts. Studio adapter/compiler/runtime and focused tests exist in the dirty worktree. Feature 195 `worker_jobs` remains the physical durable job authority.
 
-## Acceptance
-- 10+ independent audit rounds recorded
-- no safe in-scope MUST_FIX or MUST_DO_NOW gap remains
-- fresh focused tests and runtime/import checks pass after the final repair
-- external browser/Windows/deployment/production evidence is classified as a gate, not inferred from local tests
+## Non-negotiable proof boundaries
+- Code/contracts and focused local tests do not prove live provider generation, production data inventory, deployed route activation, or Spec 212’s 5,860 authenticated prompt executions.
+- Do not delete or rewrite historical type registrations or persisted workflow data without the required read-only production inventory and rollback evidence. Implement fail-closed canonical authoring and local conformance safely first.
+- Preserve migration `0341_feature_209_workflow_studio.sql` and all unrelated worktree state.
 
-## Task Classification
-- Scope: large
-- Risk: high
-- Affected domains: shared contracts, Drizzle persistence/migration, API/auth/tenant scoping, worker runtime, compound/render pipelines, React UI/navigation, rights/evidence verification
-- Estimated file count: >10 read; edits only when a concrete gap is proven
-- Chosen route: direct-inline-waves — review/repair/convergence loop in standard light mode
-- Bug route: false
-- Classification notes: The user requested a spec-to-code completeness audit across an already implemented cross-domain feature, with immediate repair of any safe in-scope gap. The work includes tenant/user isolation, public review tokens, final artifact gating, DB migration, worker capability admission, and browser-visible UI, so it is large/high risk.
+## Delivery waves
+1. Evidence, spec synthesis, and TDD section plan.
+2. Canonical v4 manifest/type/validation completeness.
+3. Registry/version/search and binding-derived contract resolution.
+4. Studio/AI Builder canonical node selection and compiler boundary integration.
+5. Extension admission, legacy-name disposition guard, and R20 static corpus coverage.
+6. Focused tests, implementation review, 10+ gap-convergence passes, lifecycle closeout.
 
-## Intent and Evidence
-- Intent signals: "วนตรวจสอบ", "เปรียบเทียบกับ spec", "มี block/gap", and "ปรับปรุงทันที" explicitly require review plus execution.
-- SocratiCode: unavailable in the current MCP tool set; use narrowed `rg`, targeted reads, symbol/call-path inspection, tests, and the existing Feature 201 audit artifact as fallback.
-- Existing baseline: Feature 201 deep-plan and deep-implement artifacts report 10/10 sections and a prior 15-round audit. This session independently rechecks the current worktree and does not treat that report as sufficient by itself.
+## Verification policy
+Use focused Vitest suites for changed contract/service/router modules, focused Python/Node static validators where applicable, `git diff --check`, corpus identity/localization checks, and forbidden-system scans. Never run repository `typecheck` (AGENTS RAM policy). Browser/live provider/production-data checks are reported separately if unavailable.
 
-## Audit Acceptance
-- Run at least 10 independent rounds; each round must record boundary, evidence, result, finding classification, and next action.
-- Compare spec requirements to implementation and tests, including final compound integration, image/video/audio modality, UI navigation, permission controls, tenant isolation, and rollout gates.
-- Fix every safe in-scope MUST_FIX or MUST_DO_NOW finding immediately.
-- Rerun all stale focused gates after each code/config/schema change.
-- Stop only after two consecutive clean convergence rounds in the standard-light high-risk review path, or report an explicit external/product blocker.
-
-Follow-up audit target is 16 rounds so repaired code and documentation have two
-fresh consecutive clean convergence rounds after the final change. The audit
-records are under each spec's `implementation/audits/` folder.
-
-# Current UI/UX Improvement Plan — Specs 202/203
-
-- Target: active Web Video Editor (`/video-editor`) and `/worker-jobs` UI/UX
-  convergence, not a new runtime or project model.
-- Plan: six ordered sections under
-  `specs/feature/202-ai_rough_cut_video_editor_unified/implementation/sections/`.
-- Order: UI foundation/accessibility → revision/conflict safety → execution and
-  capability/job truth → AI/change-set/transcript/QC review → responsive visual
-  consistency → browser evidence and rollout.
-- Planning quality gates: section manifest complete (6/6) and UI contracts
-  complete (6/6); final self-review records are in `implementation/reviews/`.
-- Implementation must preserve existing dirty worktree changes and keep
-  browser/Windows/deployment/production checks as explicit evidence gates.
-
-## Fresh 15-round convergence result — Specs 202/203
-
-- The fresh session completed 15 rounds, including two clean convergence reads
-  after the active runtime repair and documentation reconciliation.
-- The repaired boundary is `editorMediaJobContract.resolveEditorRuntimeRouting`
-  plus `editorMediaJobs.submit`: composition scan is Node-owned and fails closed
-  before billing/job creation when the Node lane is disabled.
-- The current Web route, revision pin, snapshot admission, capability claims,
-  migration markers, and explicit external release gates were rechecked.
-- Fresh records: `implementation/audits/15-round-audit-2026-09-18.md` under
-  both Spec 202 and Spec 203.
-
-## Desktop build stuck investigation (2026-09-18)
-
-### Task Classification
-- Scope: medium
-- Risk: medium
-- Affected domains: GitHub Actions desktop release workflow, Desktop Release UI, focused tests
-- Estimated file count: 5
-- Chosen route: direct-inline debugging and repair in standard-light mode
-- Bug route: true
-- Classification notes: The user reported a stuck release build with concrete browser/network evidence. The fix crosses CI workflow and user-visible progress state but does not change auth, schema, or production data.
-
-### Evidence ledger
-- source: GitHub Actions run and browser screenshot
-- identifier: run `35360618065`, job `105650721669`, screenshot console `/api/runner-releases/admin/builds` 502
-- observed failure: Desktop workflow completed with `failure`; Windows job failed at `Build SmartAIHub Web assets for desktop` with exit code 1 after about one second.
-- data state: the workflow called `npm --workspace apps/web run build`, which enters `apps/web/scripts/build-atomic.sh`; that script requires Linux `flock`. Local Linux `build` and portable `build:unsafe` both pass.
-- confidence: high for the desktop build failure; medium for the separate runner API 502 because authenticated production DB state is not available in this workspace.
-- next evidence needed: authenticated production response/log for `/api/runner-releases/admin/builds` and migration state 0336–0339.
-
-### Repair
-- Changed `.github/workflows/desktop-release.yml` to use the portable `build:unsafe` path for desktop artifacts while retaining the atomic wrapper for Linux production deploys.
-- Added a workflow contract regression test and a 30-minute stale-state guard so queued/running builds no longer remain indefinitely labeled as active.
+## Loop policy
+- mode: standard-light inline conductor
+- minimum convergence rounds requested: 10
+- max implementation retries per failed focused gate: 3 before evidence-led debug/backtrack
+- subagents: none unless a skill-required independent review step is needed and has a bounded ownership scope
+- stop only for destructive/external action or unresolved product decision; continue local safe work meanwhile.

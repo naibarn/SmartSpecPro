@@ -11,6 +11,21 @@ export type AgentProvider =
   "codex" | "claude_code" | "antigravity" | "deepseek";
 export type AgentRuntime = "local_runner" | "cloudflare_container";
 
+/** Opaque policy references only. Credentials and provider tokens never cross
+ * the canonical job boundary. */
+export type AgentTaskPolicyBinding = {
+  runnerId: string;
+  runnerSessionId: string;
+  capabilitySnapshotId: string;
+  capabilitySnapshotRevision: string;
+  authorizationGrantRef: string;
+  approvalRef: string;
+  budgetReservationRef: string;
+  spendCeilingMicros: number;
+  workspaceRef: string;
+  deadline: string;
+};
+
 export type AgentTaskManifest = {
   taskId: string;
   tenantId: string;
@@ -25,6 +40,7 @@ export type AgentTaskManifest = {
   skillIds: string[];
   mcpGrantIds: string[];
   requestedCapabilities: string[];
+  policyBinding?: AgentTaskPolicyBinding;
 };
 
 export type AgentEvent = {
@@ -80,12 +96,33 @@ function normalizedIdList(value: unknown, field: string): string[] {
 function containsSecret(value: unknown): boolean {
   if (Array.isArray(value)) return value.some(containsSecret);
   if (!value || typeof value !== "object") return false;
-  return Object.entries(value as Record<string, unknown>).some(
-    ([key, child]) =>
-      /authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret|private[_-]?key|credential/i.test(
-        key
-      ) || containsSecret(child)
-  );
+  return Object.entries(value as Record<string, unknown>).some(([key, child]) => {
+    const opaqueReference = /(?:ref|id)$/i.test(key);
+    return (!opaqueReference && /authorization|api[_-]?key|access[_-]?token|refresh[_-]?token|password|secret|private[_-]?key|credential/i.test(key))
+      || containsSecret(child);
+  });
+}
+
+function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid("policy binding is invalid");
+  const raw = value as Record<string, unknown>;
+  const deadline = requiredText(raw.deadline, "policyBinding.deadline", 64);
+  if (!Number.isFinite(Date.parse(deadline))) invalid("policy binding deadline is invalid");
+  if (!Number.isSafeInteger(raw.spendCeilingMicros) || (raw.spendCeilingMicros as number) <= 0)
+    invalid("policy binding spend ceiling is invalid");
+  return {
+    runnerId: requiredText(raw.runnerId, "policyBinding.runnerId", 160),
+    runnerSessionId: requiredText(raw.runnerSessionId, "policyBinding.runnerSessionId", 160),
+    capabilitySnapshotId: requiredText(raw.capabilitySnapshotId, "policyBinding.capabilitySnapshotId", 160),
+    capabilitySnapshotRevision: requiredText(raw.capabilitySnapshotRevision, "policyBinding.capabilitySnapshotRevision", 160),
+    authorizationGrantRef: requiredText(raw.authorizationGrantRef, "policyBinding.authorizationGrantRef", 200),
+    approvalRef: requiredText(raw.approvalRef, "policyBinding.approvalRef", 200),
+    budgetReservationRef: requiredText(raw.budgetReservationRef, "policyBinding.budgetReservationRef", 200),
+    spendCeilingMicros: raw.spendCeilingMicros as number,
+    workspaceRef: requiredText(raw.workspaceRef, "policyBinding.workspaceRef", 200),
+    deadline,
+  };
 }
 
 export function validateAgentTaskManifest(
@@ -129,6 +166,9 @@ export function validateAgentTaskManifest(
   );
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");
+  const policyBinding = raw.policyBinding === undefined
+    ? undefined
+    : validatePolicyBinding(raw.policyBinding);
   return {
     taskId,
     tenantId,
@@ -143,6 +183,7 @@ export function validateAgentTaskManifest(
     skillIds,
     mcpGrantIds,
     requestedCapabilities,
+    ...(policyBinding ? { policyBinding } : {}),
   };
 }
 

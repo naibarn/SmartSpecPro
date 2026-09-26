@@ -86,6 +86,16 @@ export const defaultMenuItems: MenuItem[] = [
     sortOrder: 2,
   },
   {
+    id: "workflow-studio",
+    label: "Workflow Studio",
+    labelTh: "เวิร์กโฟลว์สตูดิโอ",
+    icon: "Workflow",
+    path: "/studio/workflow",
+    platforms: ["web", "desktop"],
+    group: "main",
+    sortOrder: 2.005,
+  },
+  {
     id: "content-protection",
     label: "Content Protection",
     labelTh: "การปกป้องเนื้อหา",

@@ -1,10 +1,18 @@
 import unittest
 from pathlib import Path
-from smartaihub_video_director.enhanced_bridge import _terminal_prompt, _package_input
+from smartaihub_video_director.enhanced_bridge import (
+    _normalize_position_bucket,
+    _terminal_prompt,
+    _package_input,
+)
 from smartaihub_video_director.schema_registry import StageContractRegistry
 
 
 class TestEnhancedAudioBridge(unittest.TestCase):
+    def test_normalizes_six_character_viewer_position_buckets(self):
+        self.assertEqual(_normalize_position_bucket("viewer-far-left"), "viewer-far-left")
+        self.assertEqual(_normalize_position_bucket("viewer-far-right"), "viewer-far-right")
+
     def test_terminal_prompt_uses_server_selected_cast_over_narrative_mentions(self):
         payload = {
             "targetVideoModel": {"id": "grok-imagine-video-1-5-preview"},

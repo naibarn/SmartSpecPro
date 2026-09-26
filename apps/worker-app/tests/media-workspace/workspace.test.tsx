@@ -2,11 +2,13 @@ import React, { act, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { invoke } from "@tauri-apps/api/core";
+import { confirm as confirmDialog } from "@tauri-apps/plugin-dialog";
 import { MediaWorkspaceHost } from "../../src/screens/media-workspace/MediaWorkspaceHost";
 import { createDefaultProjectDraft } from "../../src/types/nleProject";
 import { normalizeDisplayPath, resolveWorkspaceRelativePath, resolveWorkspaceSourcePath } from "../../src/screens/media-workspace/sourcePath";
 const state = vi.hoisted(() => ({ explorer: null as any, player: null as any, mounts: 0, unmounts: 0 }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
+vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), confirm: vi.fn() }));
 vi.mock("../../src/app/workerContext", () => ({ useWorkerAppContext: () => ({locale: "th"}) }));
 vi.mock("../../src/screens/media-workspace/MediaExplorerView", () => ({
   MediaExplorerView: (props: any) => { state.explorer = props; return null; },
@@ -18,9 +20,15 @@ vi.mock("../../src/screens/media-workspace/MediaVideoEditorPlayer", () => ({
 }));
 const entry = (path: string) => ({path, name: path.split('/').pop(), extension: "mp4", isVideo: true, isDirectory: false, sizeBytes: 0, modifiedUnixMs: 0});
 let root: ReturnType<typeof createRoot>; let container: HTMLElement;
-beforeEach(() => { (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement("section"); root = createRoot(container); state.mounts = 0; state.unmounts = 0; vi.mocked(invoke).mockReset(); });
+beforeEach(() => { (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true; container = document.createElement("section"); root = createRoot(container); state.mounts = 0; state.unmounts = 0; vi.mocked(invoke).mockReset().mockResolvedValue(null as any); vi.mocked(confirmDialog).mockReset().mockResolvedValue(false); });
 afterEach(() => act(() => root.unmount()));
 const render = (path = '/root', onSelectSourceFile = vi.fn()) => act(() => root.render(<MediaWorkspaceHost workspace={{localPath: path, status: "ready", fileCount: 0, totalBytes: 0}} scan={null} plan={null} busy={false} onSelectSourceFile={onSelectSourceFile} />));
+const browseResult = (entries: ReturnType<typeof entry>[]) => ({ currentPath: "/root", parentPath: null, entries, breadcrumbs: [], totalFolders: 0, totalFiles: entries.length, totalVideoFiles: entries.filter((item) => item.isVideo).length });
+const clickBatchButton = async () => {
+  const button = [...container.querySelectorAll("button")].find((candidate) => candidate.textContent?.includes("ตัดต่อวิดีโอทั้งโฟลเดอร์"));
+  if (!button) throw new Error("folder batch button not found");
+  await act(async () => { button.click(); await Promise.resolve(); await Promise.resolve(); });
+};
 it("remounts editor state for identical filenames at different paths", () => {
   render(); act(() => state.explorer.onSelectVideoFile(entry('/a/same.mp4')));
   const mounts = state.mounts;
@@ -122,4 +130,31 @@ it("resets the editor when workspace changes", () => {
   render('/root', select); act(() => state.explorer.onSelectVideoFile(entry('/root/a.mp4')));
   render('/other', select); expect(state.player.videoFile).toBeNull();
   expect(select).toHaveBeenLastCalledWith('', '/other');
+});
+it("asks for confirmation before starting a folder batch when no prior output exists", async () => {
+  vi.mocked(invoke).mockImplementation(async (command: string) => command === "worker_app_browse_directory"
+    ? browseResult([entry("/root/clip.mp4")]) as any
+    : null as any);
+  render();
+
+  await clickBatchButton();
+
+  expect(confirmDialog).toHaveBeenCalledTimes(1);
+  expect(vi.mocked(confirmDialog).mock.calls[0][0]).toContain("ยืนยันตัดต่อวิดีโอทั้งหมด 1 ไฟล์");
+  expect(invoke).not.toHaveBeenCalledWith("worker_app_start_local_folder_batch", expect.anything());
+  expect(container.textContent).toContain("ยกเลิกแล้ว");
+});
+it("warns about existing outputs and asks whether to repeat without starting on cancel", async () => {
+  vi.mocked(invoke).mockImplementation(async (command: string) => command === "worker_app_browse_directory"
+    ? browseResult([entry("/root/clip.mp4"), entry("/root/clip_edited.mp4")]) as any
+    : null as any);
+  render();
+
+  await clickBatchButton();
+
+  expect(confirmDialog).toHaveBeenCalledTimes(1);
+  const prompt = vi.mocked(confirmDialog).mock.calls[0][0];
+  expect(prompt).toContain("ผลลัพธ์เดิมที่เกี่ยวข้อง 1 ไฟล์");
+  expect(prompt).toContain("ไม่เขียนทับไฟล์เดิม");
+  expect(invoke).not.toHaveBeenCalledWith("worker_app_start_local_folder_batch", expect.anything());
 });

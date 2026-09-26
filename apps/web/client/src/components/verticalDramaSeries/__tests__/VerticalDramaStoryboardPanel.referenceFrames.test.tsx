@@ -137,6 +137,35 @@ describe("VerticalDramaStoryboardPanel — supplementary reference frames (Phase
     expect(screen.getByTestId("vd-generate-image-1")).toBeInTheDocument();
   });
 
+  it("keeps a pre-prompt admission failure visible in the shot image card", () => {
+    render(
+      <VerticalDramaStoryboardPanel
+        {...(baseProps({
+          startFramePlan: {
+            frames: [
+              {
+                shotNumber: 1,
+                imagePrompt: "",
+                imageTask: {
+                  status: "failed",
+                  failureStage: "admission",
+                  error:
+                    "Policy-safe synopsis rewrite still contains a high-risk image prompt.",
+                },
+              },
+            ],
+          },
+          onRetryStartFrameImage: vi.fn(),
+        }) as any)}
+      />
+    );
+
+    const status = screen.getByTestId("vd-storyboard-image-status-1");
+    expect(status).toHaveTextContent("หยุดก่อนสร้าง prompt — ยังไม่ได้ส่งไป provider");
+    expect(status).toHaveTextContent("Policy-safe synopsis rewrite");
+    expect(status).toHaveTextContent("สร้าง prompt + ภาพใหม่");
+  });
+
   it("shows tie-in dialogue from the canonical shot draft before a clip exists", () => {
     render(
       <VerticalDramaStoryboardPanel

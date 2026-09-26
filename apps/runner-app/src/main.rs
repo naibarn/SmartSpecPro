@@ -1,9 +1,11 @@
 use smartaihub_runner::{
     config::{RunnerConfig, RunnerProfile},
+    connection::connect_local_runner,
     container::run_container_entrypoint,
     diagnostics::{
         confirm_update, connection_status, redacted_status, run_local_entrypoint, run_update_child,
     },
+    MIN_COMPATIBLE_RUNNER_VERSION, RUNNER_CONNECT_SCHEMA_REVISION, RUNNER_CONTROL_CONTRACT_VERSION,
     RUNNER_VERSION,
 };
 
@@ -32,12 +34,21 @@ fn main() {
             }
         }
         "version" => {
-            println!("{{\"version\":\"{RUNNER_VERSION}\",\"contractVersion\":\"sah-runner-v1\"}}")
+            println!(
+                "{{\"version\":\"{RUNNER_VERSION}\",\"contractVersion\":\"{RUNNER_CONTROL_CONTRACT_VERSION}\",\"connectSchemaRevision\":\"{RUNNER_CONNECT_SCHEMA_REVISION}\",\"minRunnerVersion\":\"{MIN_COMPATIBLE_RUNNER_VERSION}\"}}"
+            )
         }
         "status" | "doctor" | "capabilities" => {
             println!("{}", redacted_status(&config, command));
         }
-        "connect" | "reconnect" | "rescan" => match connection_status(&config, command) {
+        "connect" | "reconnect" => match connect_local_runner(&config) {
+            Ok(status) => println!("{status}"),
+            Err(error) => {
+                eprintln!("runner connection error: {error}");
+                std::process::exit(3);
+            }
+        },
+        "rescan" => match connection_status(&config, command) {
             Ok(status) => println!("{status}"),
             Err(error) => {
                 eprintln!("runner connection error: {error}");

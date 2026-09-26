@@ -53,9 +53,10 @@ export function omitUndefinedJobPayloadProperties(value: unknown): unknown {
 }
 
 /**
- * Bind an existing domain-owned UUID to the canonical worker_jobs row. The
- * domain record remains a projection during the migration, while dispatch,
- * lease, retry, and fencing are owned by the control plane.
+ * Bind an existing producer UUID to the canonical worker_jobs row. In the
+ * hard-cutover path, dispatch, lifecycle, retry, fencing, and result are all
+ * owned by the control plane. Legacy domain projections may still exist only
+ * for compatibility callers with the hard cutover flag disabled.
  */
 export async function createFeature186VerticalDramaJob(input: {
   jobId: string;
@@ -66,7 +67,7 @@ export async function createFeature186VerticalDramaJob(input: {
   payload: Record<string, unknown>;
   idempotencyKey?: string;
 }): Promise<string> {
-  await createControlPlaneJob({
+  const job = await createControlPlaneJob({
     context: {
       tenantId: input.tenantId,
       actorType: input.userId ? "user" : "system",
@@ -107,5 +108,5 @@ export async function createFeature186VerticalDramaJob(input: {
       admissionMode: "durable_queue",
     },
   });
-  return input.jobId;
+  return job.jobId;
 }

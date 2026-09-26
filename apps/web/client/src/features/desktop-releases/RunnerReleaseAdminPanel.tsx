@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Play, RefreshCw, ShieldCheck } from "lucide-react";
+import { KeyRound, Loader2, Play, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,108 @@ type BuildStatus = {
   workflowRunUrl: string | null;
   syncError: string | null;
 };
+
+type GuideTranslation = (key: string) => string;
+
+function RunnerSigningGuide({ t }: { t: GuideTranslation }) {
+  const codeClassName = "mt-3 overflow-x-auto rounded-lg border border-slate-200 bg-slate-950 p-3 text-xs leading-5 text-slate-100";
+  const sectionClassName = "rounded-xl border border-indigo-100 bg-white/80 px-4 py-3";
+
+  return (
+    <section className="mt-6 rounded-2xl border border-indigo-200 bg-white/85 p-4 shadow-sm" aria-labelledby="runner-signing-guide-heading">
+      <header className="flex items-start gap-3">
+        <span className="mt-0.5 rounded-lg bg-indigo-100 p-2 text-indigo-700"><KeyRound className="h-5 w-5" aria-hidden="true" /></span>
+        <section className="min-w-0">
+          <h3 id="runner-signing-guide-heading" className="text-lg font-semibold text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.title")}</h3>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.intro")}</p>
+        </section>
+      </header>
+
+      <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-6 text-amber-950" role="note">
+        <strong>{t("dashboard:runnerReleases.admin.signingGuide.privateKeyLabel")}:</strong> {t("dashboard:runnerReleases.admin.signingGuide.privateKeyWarning")}
+      </p>
+
+      <section className="mt-4 space-y-2" aria-label={t("dashboard:runnerReleases.admin.signingGuide.title")}>
+        <details className={sectionClassName} open>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.what")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.whatBody")}</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+            <li><code>RUNNER_SIGNING_KEY</code> {t("dashboard:runnerReleases.admin.signingGuide.whatPrivate")}</li>
+            <li><code>SAH_RUNNER_RELEASE_PUBLIC_KEY</code> {t("dashboard:runnerReleases.admin.signingGuide.whatPublic")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.whatBoundary")}</li>
+          </ul>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.generate")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.generateBody")}</p>
+          <pre className={codeClassName}><code>{t("dashboard:runnerReleases.admin.signingGuide.generateCommand")}</code></pre>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{t("dashboard:runnerReleases.admin.signingGuide.generateNote")}</p>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.test")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.testBody")}</p>
+          <pre className={codeClassName}><code>{t("dashboard:runnerReleases.admin.signingGuide.testCommand")}</code></pre>
+          <p className="mt-2 text-sm font-medium text-emerald-700">{t("dashboard:runnerReleases.admin.signingGuide.testExpected")}</p>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.github")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.githubBody")}</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.githubStepOne")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.githubStepTwo")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.githubStepThree")}</li>
+          </ol>
+          <pre className={codeClassName}><code>{t("dashboard:runnerReleases.admin.signingGuide.githubCommand")}</code></pre>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{t("dashboard:runnerReleases.admin.signingGuide.githubNote")}</p>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.windows")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.windowsBody")}</p>
+          <pre className={codeClassName}><code>{t("dashboard:runnerReleases.admin.signingGuide.windowsCommand")}</code></pre>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-slate-500">
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.windowsStepOne")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.windowsStepTwo")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.windowsStepThree")}</li>
+          </ul>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.publish")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.publishBody")}</p>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm leading-6 text-slate-600">
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.publishStepOne")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.publishStepTwo")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.publishStepThree")}</li>
+          </ol>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.verify")}</summary>
+          <p className="mt-3 text-sm leading-6 text-slate-600">{t("dashboard:runnerReleases.admin.signingGuide.verifyBody")}</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-slate-600">
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.verifyStepOne")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.verifyStepTwo")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.verifyStepThree")}</li>
+          </ul>
+        </details>
+
+        <details className={sectionClassName}>
+          <summary className="cursor-pointer font-medium text-slate-900">{t("dashboard:runnerReleases.admin.signingGuide.section.troubleshoot")}</summary>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-600">
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.troubleshootMissing")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.troubleshootRequired")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.troubleshootMismatch")}</li>
+            <li>{t("dashboard:runnerReleases.admin.signingGuide.troubleshootRotate")}</li>
+          </ul>
+        </details>
+      </section>
+    </section>
+  );
+}
 
 export function RunnerReleaseAdminPanel() {
   const { t } = useScopedTranslation(["dashboard"]);
@@ -121,6 +223,7 @@ export function RunnerReleaseAdminPanel() {
       {build && <p className="mt-4 rounded-xl border border-indigo-100 bg-white p-3 text-sm text-slate-700" aria-live="polite">{t("dashboard:runnerReleases.admin.buildStatus", { releaseId: build.releaseId })}: <span className="font-medium">{build.status}</span> · {build.publish ? `${t("dashboard:runnerReleases.admin.catalogSync")}: ${build.syncStatus}` : t("dashboard:runnerReleases.admin.artifactOnly")}{build.workflowRunUrl && <a className="ml-2 text-indigo-700 underline" href={build.workflowRunUrl} target="_blank" rel="noreferrer">{t("dashboard:runnerReleases.admin.buildDetails")}</a>}</p>}
       {error && <p className="mt-3 text-sm text-rose-700" role="alert">{error}</p>}
       <p className="mt-4 flex items-center gap-2 text-xs text-slate-500"><ShieldCheck className="h-3.5 w-3.5" /> {t("dashboard:runnerReleases.admin.securityNote")}</p>
+      <RunnerSigningGuide t={t} />
     </section>
   );
 }

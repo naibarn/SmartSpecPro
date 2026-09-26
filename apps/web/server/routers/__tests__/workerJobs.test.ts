@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockListUserWorkerJobs = vi.fn();
 const mockListUserWorkerTaskGroups = vi.fn();
 const mockGetWorkerJobDashboardSummary = vi.fn();
+const mockRetryUserWorkerJob = vi.fn();
 
 vi.mock("../../services/workerJobMonitorService", () => ({
   USER_WORKER_JOB_STATUSES: [
@@ -34,6 +35,7 @@ vi.mock("../../services/workerJobMonitorService", () => ({
   listUserWorkerTaskGroups: (...args: unknown[]) => mockListUserWorkerTaskGroups(...args),
   getUserWorkerJobDetail: vi.fn(),
   cancelQueuedUserWorkerJob: vi.fn(),
+  retryUserWorkerJob: (...args: unknown[]) => mockRetryUserWorkerJob(...args),
   getWorkerJobDashboardSummary: (...args: unknown[]) => mockGetWorkerJobDashboardSummary(...args),
 }));
 
@@ -198,5 +200,27 @@ describe("workerJobsRouter.list — jobType filter", () => {
       offset: 1,
     });
     expect(result.items.map((j: any) => j.id)).toEqual(["b"]);
+  });
+});
+
+describe("workerJobsRouter.retry", () => {
+  it("passes the authenticated owner scope and client action id to the retry service", async () => {
+    mockRetryUserWorkerJob.mockResolvedValueOnce({
+      retried: true,
+      jobId: "job-1",
+      mode: "retry_scheduled",
+    });
+
+    const fn = workerJobsRouter.retry as unknown as Function;
+    await expect(fn({
+      ctx: CTX,
+      input: { jobId: "job-1", actionId: "00000000-0000-4000-8000-000000000001" },
+    })).resolves.toMatchObject({ retried: true, jobId: "job-1" });
+
+    expect(mockRetryUserWorkerJob).toHaveBeenCalledWith({
+      auth: { tenantId: "tenant-1", userId: 9 },
+      jobId: "job-1",
+      actionId: "00000000-0000-4000-8000-000000000001",
+    });
   });
 });

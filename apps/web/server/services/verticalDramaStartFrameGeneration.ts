@@ -114,6 +114,7 @@ import type { VerticalDramaCharacterLookAssignment } from "@shared/verticalDrama
 import {
   analyzeVerticalDramaStorySafety,
   buildVerticalDramaImagePromptSafetyInput,
+  rewriteVerticalDramaStoryForSafeMedia,
   VerticalDramaStorySafetyError,
 } from "./verticalDramaStorySafety";
 // Two-mode start-frame image prompt switch
@@ -3866,32 +3867,35 @@ export async function generateStartFrameShotPrompt(
       }
     }
 
-    const outputPrompt = buildDeterministicPolicySafeImagePrompt({
-      rewrittenSynopsis,
-      shotNumber: params.shotNumber,
-      characterReferenceManifest: params.characterReferenceManifest,
-      dialogueLines: params.dialogueLines,
-      screenCallerCharacterRefs: params.screenCallerCharacterRefs,
-      spokenCallerCharacterRefs: params.spokenCallerCharacterRefs,
-      locationReferenceImage: params.locationReferenceImage,
-      sceneContinuityLockBlock: params.sceneContinuityLockBlock,
-      shotComposition: params.shotComposition,
-      excludedVisualCharacterNames: params.excludedVisualCharacterNames,
-    });
-    const policySafePrompt = [
-      outputPrompt,
-      appendAttachedObjectReferencePromptLocks({
-        prompt: "",
-        productReferenceImages: params.productReferenceImages,
-        propObjectReferenceImages: params.propObjectReferenceImages,
-      }).trim(),
-      renderSupportingPresencePromptBlock(params.supportingPresence ?? []),
-      buildVideoFaceVisibilityPromptBlock(
-        params.videoFaceVisibilityRequired === true
-      ),
-    ]
-      .filter(Boolean)
-      .join("\n");
+    const buildPolicySafePrompt = (synopsis: string): string => {
+      const outputPrompt = buildDeterministicPolicySafeImagePrompt({
+        rewrittenSynopsis: synopsis,
+        shotNumber: params.shotNumber,
+        characterReferenceManifest: params.characterReferenceManifest,
+        dialogueLines: params.dialogueLines,
+        screenCallerCharacterRefs: params.screenCallerCharacterRefs,
+        spokenCallerCharacterRefs: params.spokenCallerCharacterRefs,
+        locationReferenceImage: params.locationReferenceImage,
+        sceneContinuityLockBlock: params.sceneContinuityLockBlock,
+        shotComposition: params.shotComposition,
+        excludedVisualCharacterNames: params.excludedVisualCharacterNames,
+      });
+      return [
+        outputPrompt,
+        appendAttachedObjectReferencePromptLocks({
+          prompt: "",
+          productReferenceImages: params.productReferenceImages,
+          propObjectReferenceImages: params.propObjectReferenceImages,
+        }).trim(),
+        renderSupportingPresencePromptBlock(params.supportingPresence ?? []),
+        buildVideoFaceVisibilityPromptBlock(
+          params.videoFaceVisibilityRequired === true
+        ),
+      ]
+        .filter(Boolean)
+        .join("\n");
+    };
+    let policySafePrompt = buildPolicySafePrompt(rewrittenSynopsis);
     const imagePromptMaxChars = Math.min(
       VD_IMAGE_PROMPT_ABSOLUTE_MAX,
       Math.max(
@@ -3938,12 +3942,46 @@ export async function generateStartFrameShotPrompt(
     // "บังคับให้ตอบ"). The rewritten current synopsis is the authoritative
     // story payload for this mode; keep the full prompt only as a fallback for
     // legacy/manual shapes without a canonical synopsis.
-    const policySafety = analyzeVerticalDramaStorySafety(
+    let policySafety = analyzeVerticalDramaStorySafety(
       buildVerticalDramaImagePromptSafetyInput({
         imagePrompt: policySafePrompt,
         shotContext: { canonicalShotSummary: rewrittenSynopsis },
       })
     );
+    if (policySafety.level === "high") {
+      // The model rewrite is intentionally exact-replacement-only. Apply the
+      // existing deterministic safety vocabulary as one bounded recovery pass
+      // before failing admission, then scan the rebuilt provider prompt again.
+      // This can remove a missed lexical marker without inventing plot facts;
+      // genuinely high-risk context still remains blocked below.
+      const deterministicFallback = rewriteVerticalDramaStoryForSafeMedia(
+        rewrittenSynopsis
+      );
+      if (
+        deterministicFallback.changed &&
+        typeof deterministicFallback.value === "string"
+      ) {
+        const fallbackSynopsis = deterministicFallback.value.trim();
+        const fallbackPrompt = buildPolicySafePrompt(fallbackSynopsis);
+        const fallbackSafety = analyzeVerticalDramaStorySafety(
+          buildVerticalDramaImagePromptSafetyInput({
+            imagePrompt: fallbackPrompt,
+            shotContext: { canonicalShotSummary: fallbackSynopsis },
+          })
+        );
+        if (fallbackSafety.level !== "high") {
+          rewrittenSynopsis = fallbackSynopsis;
+          policySafePrompt = fallbackPrompt;
+          policySafety = fallbackSafety;
+          if (policySafePrompt.length > imagePromptMaxChars) {
+            throw new VdSchemaValidationError(
+              `Policy-safe synopsis prompt exceeds ${imagePromptMaxChars} characters`,
+              { length: policySafePrompt.length }
+            );
+          }
+        }
+      }
+    }
     if (policySafety.level === "high") {
       throw new VerticalDramaStorySafetyError(
         "Policy-safe synopsis rewrite still contains a high-risk image prompt.",

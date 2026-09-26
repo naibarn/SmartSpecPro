@@ -13,7 +13,11 @@ import {
   getAuthenticatedAttachmentUrl,
   openAuthenticatedAttachment,
 } from "@/components/feedback/AuthenticatedAttachmentImage";
-import { parseFeedbackTicketId } from "./feedbackHubNavigation";
+import {
+  parseFeedbackTicketId,
+  pinSelectedFeedbackTicket,
+  sortFeedbackTicketsNewestFirst,
+} from "./feedbackHubNavigation";
 import {
   FEEDBACK_LIGHTBOX_ZOOM_DEFAULT,
   getFeedbackLightboxImageStyle,
@@ -131,13 +135,6 @@ export default function AdminFeedbackHub() {
     useState<Set<number>>(() => new Set());
   const [ticketOffset, setTicketOffset] = useState(0);
   const [loadedTickets, setLoadedTickets] = useState<any[]>([]);
-  const [ticketOrderIds, setTicketOrderIds] = useState<number[]>([]);
-  const ticketFilterKey = [
-    statusFilter ?? "",
-    typeFilter ?? "",
-    sourceFilter ?? "all",
-  ].join("|");
-  const previousTicketFilterKeyRef = useRef(ticketFilterKey);
 
   // Deep-link: auto-select ticket from ?ticketId=X
   useEffect(() => {
@@ -347,55 +344,28 @@ export default function AdminFeedbackHub() {
 
   // A notification can deep-link to a ticket outside the current source
   // filter (for example, an auto-filed system report while "User Feedback" is
-  // selected). Keep the opened ticket visible in the left list so the detail
-  // view and navigation context never disagree.
+  // selected). Keep the opened ticket visible and pin it to the top so the
+  // detail view and navigation context never disagree after markRead changes
+  // its unread state.
   const ticketsForDisplay = useMemo(() => {
-    if (
-      selectedTicketId == null ||
-      detail?.id !== selectedTicketId ||
-      tickets.some(ticket => ticket.id === selectedTicketId)
-    ) {
-      return tickets;
-    }
-    return [
-      {
-        ...detail,
-        reporterEmail: reporter?.email ?? null,
-      },
-      ...tickets,
-    ];
+    const detailTicket =
+      selectedTicketId != null && detail?.id === selectedTicketId
+        ? {
+            ...detail,
+            reporterEmail: reporter?.email ?? null,
+          }
+        : undefined;
+    const mergedTickets = detailTicket && !tickets.some(ticket => ticket.id === selectedTicketId)
+      ? [detailTicket, ...tickets]
+      : tickets;
+    const chronologicalTickets = sortFeedbackTicketsNewestFirst(mergedTickets);
+    return pinSelectedFeedbackTicket(
+      chronologicalTickets,
+      selectedTicketId,
+      detailTicket,
+    );
   }, [detail, reporter?.email, selectedTicketId, tickets]);
-
-  // Keep the server's order stable during the current session. A refetch can
-  // add new tickets, but reading a ticket must not make every existing row
-  // jump around underneath the admin. Changing a filter starts a new list.
-  useEffect(() => {
-    const incomingIds = ticketsForDisplay.map(ticket => ticket.id);
-    setTicketOrderIds(previousIds => {
-      if (previousTicketFilterKeyRef.current !== ticketFilterKey) {
-        previousTicketFilterKeyRef.current = ticketFilterKey;
-        return incomingIds;
-      }
-      const incomingIdSet = new Set(incomingIds);
-      const retainedIds = previousIds.filter(id => incomingIdSet.has(id));
-      const knownIds = new Set(previousIds);
-      const newIds = incomingIds.filter(id => !knownIds.has(id));
-      return ticketOffset > 0
-        ? [...retainedIds, ...newIds]
-        : [...newIds, ...retainedIds];
-    });
-  }, [ticketFilterKey, ticketOffset, ticketsForDisplay]);
-
-  const ticketsById = new Map(
-    ticketsForDisplay.map(ticket => [ticket.id, ticket])
-  );
-  const orderedTickets = ticketOrderIds
-    .map(ticketId => ticketsById.get(ticketId))
-    .filter((ticket): ticket is (typeof tickets)[number] => Boolean(ticket));
-  const visibleTickets =
-    orderedTickets.length > 0 || ticketsForDisplay.length === 0
-      ? orderedTickets
-      : ticketsForDisplay;
+  const visibleTickets = ticketsForDisplay;
   const hasMoreTickets = (ticketsQuery.data?.length ?? 0) === TICKET_PAGE_SIZE;
 
   const uploadReplyFiles = async (ticketId: number): Promise<number[]> => {

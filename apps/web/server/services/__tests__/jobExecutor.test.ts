@@ -65,4 +65,44 @@ describe("canonical job executor", () => {
     expect(controlPlane.complete).not.toHaveBeenCalled();
     expect(controlPlane.fail).not.toHaveBeenCalled();
   });
+
+  it("preserves safe executor diagnostic metadata when reporting a failure", async () => {
+    const lease = {
+      jobId: "job-diagnostic",
+      attemptId: "attempt-diagnostic",
+      leaseToken: "token",
+      fencingVersion: 1,
+      expiresAt: "2026-09-13T00:00:00.000Z",
+    };
+    const controlPlane = {
+      claim: vi.fn().mockResolvedValue(lease),
+      getContext: vi.fn().mockResolvedValue({ jobId: lease.jobId, jobType: "demo" }),
+      start: vi.fn(),
+      assertActive: vi.fn(),
+      complete: vi.fn(),
+      fail: vi.fn(),
+    } as any;
+    const error = Object.assign(new Error("safe failure"), {
+      diagnosticCode: "ENHANCED_AGENT_FAILED",
+      diagnosticStage: "terminal_prompt",
+      diagnosticFingerprint: "f".repeat(64),
+    });
+
+    await expect(executeCanonicalJob(
+      { jobId: lease.jobId, runnerId: "runner-1", adapter: "fake" },
+      { controlPlane, executor: vi.fn().mockRejectedValue(error) },
+    )).rejects.toThrow("safe failure");
+
+    expect(controlPlane.fail).toHaveBeenCalledWith(
+      lease,
+      expect.objectContaining({
+        code: "ENHANCED_AGENT_FAILED",
+        metadata: {
+          diagnosticCode: "ENHANCED_AGENT_FAILED",
+          diagnosticStage: "terminal_prompt",
+          diagnosticFingerprint: "f".repeat(64),
+        },
+      }),
+    );
+  });
 });

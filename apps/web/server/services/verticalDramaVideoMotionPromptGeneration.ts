@@ -1075,7 +1075,7 @@ function buildUserPrompt(
       : null,
     `Storyboard shots (bridge shots into motion clips per the skill's usual pairing strategy):\n${shotLines}`,
     visionBundleFacts.length
-      ? `${visionBundleFacts.join("\n")} For every spoken line, bind the exact named character to the observed screen position using viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right, always from the viewer/camera side; never use anatomical left/right or left/right hand. All other established characters remain silent with mouths fully closed. Never infer identity from gender, clothing, or requested layout when the attached images disagree.`
+      ? `${visionBundleFacts.join("\n")} For every spoken line, bind the exact named character to the observed screen position using viewer-far-left/viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right/viewer-far-right, always from the viewer/camera side; never use anatomical left/right or left/right hand. All other established characters remain silent with mouths fully closed. Never infer identity from gender, clothing, or requested layout when the attached images disagree.`
       : null,
     ...(params.startFrameImages ?? [])
       .map(frame => frame.mediaReferenceInstruction)
@@ -1811,7 +1811,7 @@ function findQuotedLineStartIndex(prompt: string, lineTh: string): number {
 }
 
 /** Screen-position vocabulary the skill's FRAME ANALYSIS FIRST section teaches. */
-const POSITION_ANCHOR_WORDS = /\b(center[-\s]left|center[-\s]right|left|center|right)\b/i;
+const POSITION_ANCHOR_WORDS = /\b(far[-\s]left|far[-\s]right|center[-\s]left|center[-\s]right|left|center|right)\b/i;
 const POSITION_ANCHOR_MARKER = "position mismatch";
 const CUSTOM_IDENTITY_POSITION_MARKER = "custom identity position conflict";
 const SPEAKER_CUE_MARKER = "missing explicit speaker cue";
@@ -1822,7 +1822,7 @@ const SPEAKER_CUE_MARKER = "missing explicit speaker cue";
 const SPEAKING_VERB_WORDS =
   /\b(?:say|says|said|speak|speaks|spoke|whisper|whispers|whispered|reply|replies|replied|answer|answers|answered|continue|continues|continued|state|states|stated|utter|utters|call|calls|shout|shouts|shouted|yell|yells|yelled|talk|talks)\b|พูด|กล่าว|กระซิบ|ตอบ|ตะโกน|ตะโกนเรียก/iu;
 const CUSTOM_IDENTITY_POSITION_WORDS =
-  /\b(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)\b/iu;
+  /\b(?:viewer|screen)[ -](?:far[ -](?:left|right)|left|right|center(?:[ -](?:left|right))?)\b/iu;
 const POSITION_AMBIGUITY_MARKER = "ambiguous screen position";
 const POSITION_VIEW_SCOPE_MARKER = "view scope mismatch";
 const MAX_VIDEO_PROMPT_REPAIR_ATTEMPTS = 3;
@@ -1843,7 +1843,14 @@ function isStructuralPositionIssue(issue: string): boolean {
 }
 const POSITION_AMBIGUITY_WORDS = /\b(?:left|right)[ -]hand(?:[ -]side)?\b/i;
 
-type VdScreenPosition = "left" | "center-left" | "center" | "center-right" | "right";
+type VdScreenPosition =
+  | "far-left"
+  | "left"
+  | "center-left"
+  | "center"
+  | "center-right"
+  | "right"
+  | "far-right";
 type VdFrameViewRole = "start_frame" | "barrier_reference";
 type VdFramePositionEntry = {
   position: VdScreenPosition;
@@ -1866,7 +1873,7 @@ function hasExplicitSpeakerCue(window: string, speaker: string | undefined): boo
   return SPEAKING_VERB_WORDS.test(afterSpeaker);
 }
 
-/** Normalize the weak-model position prose into the contract's five buckets. */
+/** Normalize the weak-model position prose into the contract's six buckets. */
 function normalizeScreenPosition(value: unknown): VdScreenPosition | undefined {
   if (typeof value !== "string" || value.trim().length === 0) return undefined;
   const normalized = value
@@ -1874,12 +1881,14 @@ function normalizeScreenPosition(value: unknown): VdScreenPosition | undefined {
     .toLocaleLowerCase()
     .replace(/[–—]/g, "-")
     .replace(/\s+/g, " ");
+  if (/\bfar(?:-| )left\b|\bleftmost\b|\bviewer[ -]far[ -]left\b|\bscreen[ -]far[ -]left\b/.test(normalized)) return "far-left";
+  if (/\bfar(?:-| )right\b|\brightmost\b|\bviewer[ -]far[ -]right\b|\bscreen[ -]far[ -]right\b/.test(normalized)) return "far-right";
   if (/\bcenter(?:-| )left\b|\bleft(?:-| )center\b/.test(normalized)) return "center-left";
   if (/\bcenter(?:-| )right\b|\bright(?:-| )center\b/.test(normalized)) return "center-right";
-  if (/\b(leftmost|far left|viewer[ -]left|screen[ -]left)\b/.test(normalized)) return "left";
-  if (/\b(rightmost|far right|viewer[ -]right|screen[ -]right)\b/.test(normalized)) return "right";
-  if (/\b(left)\b/.test(normalized)) return "left";
-  if (/\b(right)\b/.test(normalized)) return "right";
+  if (/\bviewer[ -]left\b|\bscreen[ -]left\b/.test(normalized)) return "left";
+  if (/\bviewer[ -]right\b|\bscreen[ -]right\b/.test(normalized)) return "right";
+  if (/\bleft\b/.test(normalized)) return "left";
+  if (/\bright\b/.test(normalized)) return "right";
   if (/\b(center|middle|centred|centered)\b/.test(normalized)) return "center";
   return undefined;
 }
@@ -2069,7 +2078,8 @@ function removeCustomIdentityPositionCues(
   characterNameByKey: ReadonlyMap<string, string>,
 ): string {
   let repaired = prompt;
-  const position = "(?:viewer|screen)[ -](?:left|right|center(?:[ -](?:left|right))?)";
+  const position =
+    "(?:viewer|screen)[ -](?:far[ -](?:left|right)|left|right|center(?:[ -](?:left|right))?)";
   for (const [characterKey, description] of Object.entries(overrides ?? {})) {
     if (!description.trim()) continue;
     const label = characterNameByKey.get(characterKey) ?? characterKey;
@@ -3163,7 +3173,7 @@ export function buildShotVideoPromptUserPrompt(
     dialogueLines,
   });
   const speakerFaceBindingInstruction = dialogueLines.length
-    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, state the observed screen position from frame_analysis using ONLY viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
+    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named characterKey. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, state the observed screen position from frame_analysis using ONLY viewer-far-left, viewer-left, viewer-center-left, viewer-center, viewer-center-right, viewer-right, or viewer-far-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
     : null;
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — same purely FACTUAL announcement
@@ -3225,7 +3235,7 @@ export function buildShotVideoPromptUserPrompt(
       ? `บริบทฉากของตอน (อ้างอิงเพื่อความสอดคล้อง ห้ามคัดลอกลง output):\n${params.episodePlanContext}`
       : null,
     params.imagePrompt && params.attachShotImage !== false
-    ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
+    ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-far-left / viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right / viewer-far-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : params.imagePrompt && params.attachShotImage === false
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
@@ -3712,7 +3722,7 @@ export async function generateVerticalDramaShotVideoPrompt(
           : "";
         if (genericPositionIssues.length > 0) {
           correctionParts.push(
-            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
+            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-far-left/viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right/viewer-far-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
           );
         }
       }
@@ -4358,7 +4368,7 @@ function buildSpeakerSwitchUserPrompt(
       ? `SILENT BEAT (MANDATORY): this shot is intentionally silent — no character speaks aloud. Express the beat purely through action, expression, and camera. Return "dialogue" as [] and do NOT write any spoken line, lip-sync direction, or verbatim dialogue block.`
       : null,
     params.imagePrompt && params.attachShotImage !== false
-      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
+      ? `The ATTACHED IMAGE is the ACTUAL start frame and is the SINGLE SOURCE OF TRUTH for what is really on screen — who stands WHERE (viewer-far-left / viewer-left / viewer-center-left / viewer-center / viewer-center-right / viewer-right / viewer-far-right), framing, blocking, poses. The prompt text below is ONLY the REQUEST that was sent to the image model to produce that frame; image models frequently do NOT follow it exactly, and character left/right placement is the field that drifts most often. Use the text only as supporting context for intent/identity/wardrobe, and whenever it CONTRADICTS the attached image, TRUST THE ATTACHED IMAGE and describe what you actually SEE. Never restate a character's on-screen position from this text without first confirming it against the image: ${params.imagePrompt}`
       : params.imagePrompt && params.attachShotImage === false
         ? `Start frame image description (note: the start frame image itself is not attached for this run; base your adjustments on this description and user instructions): ${params.imagePrompt}`
         : null,
@@ -4375,7 +4385,7 @@ function buildSpeakerSwitchUserPrompt(
       ? `CHARACTER FACE IDENTITY MANIFEST (label-to-face mapping; the attached start frame remains authoritative for actual position): ${characterIdentityManifest}`
       : null,
     allDialogueLines.length
-      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match every visible face to the labeled portrait manifest by facial identity, and bind each timed segment to the exact characterKey/name. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, include the observed screen position from frame_analysis using only viewer-left, viewer-center-left, viewer-center, viewer-center-right, or viewer-right. These are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
+      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match every visible face to the labeled portrait manifest by facial identity, and bind each timed segment to the exact characterKey/name. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character, include the observed screen position from frame_analysis using only viewer-far-left, viewer-left, viewer-center-left, viewer-center, viewer-center-right, viewer-right, or viewer-far-right. These are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
       : null,
     // Location reference image (Phase E of `planning/polished-toasting-
     // gadget.md` — location visual bible) — factual announcement only; see
@@ -4717,7 +4727,7 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
           : "";
         if (genericPositionIssues.length > 0) {
           correctionParts.push(
-            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
+            `POSITION-ANCHOR CORRECTION (MANDATORY): your previous response's "frame_analysis" was missing/empty, unscoped, or these quoted line(s) were not anchored by the speaker's NAME and VIEWER SCREEN POSITION (viewer-far-left/viewer-left/viewer-center-left/viewer-center/viewer-center-right/viewer-right/viewer-far-right) close to the quote: ${genericPositionIssues.join("; ")}. Return "frame_analysis.people" with every established character's name+position read from that character's assigned ATTACHED IMAGE, and rewrite "prompt" so each of those quoted lines is preceded by its speaker's name and the EXACT matching viewer screen position. Never use anatomical left/right or left-hand/right-hand as a screen-position label.${dualViewCorrection} ${positionLock ? `${params.shotContext.barrierMultiView ? "AUTHORITATIVE POSITION LOCK FROM THE CORRECT ASSIGNED VIEW" : "AUTHORITATIVE POSITION LOCK FROM THE ATTACHED IMAGE"}: ${positionLock}. Do not use any other position for these names.` : "Re-read the assigned image; do not invent or guess a position."}`,
           );
         }
       }

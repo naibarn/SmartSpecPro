@@ -1,0 +1,47 @@
+{
+  "schema_version": "sah.ui.v1",
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/videos",
+      "options": {
+        "widget": "asset-picker",
+        "sources": [
+          "upload",
+          "library"
+        ],
+        "accept": [
+          "video/*"
+        ],
+        "multiple": true
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/reference_images",
+      "options": {
+        "widget": "asset-picker",
+        "sources": [
+          "upload",
+          "library"
+        ],
+        "accept": [
+          "image/*"
+        ],
+        "multiple": true
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/goal",
+      "options": {
+        "multi": true
+      }
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/max_duration_seconds"
+    }
+  ]
+}

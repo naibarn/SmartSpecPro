@@ -109,6 +109,9 @@ export interface MediaVideoEditorPlayerProps {
   } | null;
   onBuildPlan?: (deadAir?: DeadAirRenderSelection) => void;
   onSubmitJob?: (deadAir?: DeadAirRenderSelection) => void;
+  batchFullScanRequest?: { id: string; sourcePath: string } | null;
+  onBatchFullScanResult?: (requestId: string, result: { selection?: DeadAirRenderSelection; error?: string; failureReason?: string; debugLogPath?: string | null; debugLogWriteError?: string | null }) => void;
+  onBatchDebugLogUpdate?: (path: string | null, error: string | null) => void;
   canSubmitJob?: boolean;
   isBusy?: boolean;
   loadedProjectDraft?: SmartSpecProjectDraft | null;
@@ -167,6 +170,7 @@ type FullCameraScanResult = {
   activityIntervals: CameraMotionActivityInterval[];
   summary: FaceScanSummary | null;
   cameraMotionPlan: CameraMotionPlan | null;
+  failureReason?: string;
 };
 
 const EMPTY_CAMERA_SCAN_RESULT: FullCameraScanResult = {
@@ -357,6 +361,9 @@ export function MediaVideoEditorPlayer({
   plan,
   onBuildPlan,
   onSubmitJob,
+  batchFullScanRequest,
+  onBatchFullScanResult,
+  onBatchDebugLogUpdate,
   canSubmitJob,
   isBusy,
   loadedProjectDraft,
@@ -376,6 +383,7 @@ export function MediaVideoEditorPlayer({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
+  const isBatchFullScan = Boolean(batchFullScanRequest);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
@@ -432,6 +440,7 @@ export function MediaVideoEditorPlayer({
     propsReframe9x16 === false ? "source" : "9:16"
   );
   const [videoDimensions, setVideoDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [videoReadinessRevision, setVideoReadinessRevision] = useState(0);
   // Keep the dimensions tied to the media element's current source. A draft
   // can legitimately retain the job's original geometry after another clip
   // is loaded, but camera coordinates must be interpreted in the active file's
@@ -496,6 +505,8 @@ export function MediaVideoEditorPlayer({
   const mediaPipeFaceDetectorRef = useRef<MediaPipeFaceDetector | null>(null);
   const mediaPipeFaceDetectorInitRef = useRef<Promise<MediaPipeFaceDetector | null> | null>(null);
   const mediaPipeDetectorGenerationRef = useRef(0);
+  const mediaPipeInitErrorRef = useRef<string | null>(null);
+  const mediaPipeGpuFallbackRef = useRef<string | null>(null);
   const mediaPipeLastTimestampRef = useRef(-1);
   const faceTrackingConfigRef = useRef<{ aspectRatio: PreviewAspectRatio; scale: number; targetRatio: number | null }>({
     aspectRatio: propsReframe9x16 === false ? "source" : "9:16",
@@ -611,6 +622,8 @@ export function MediaVideoEditorPlayer({
     if (mediaPipeFaceDetectorRef.current) return mediaPipeFaceDetectorRef.current;
     if (mediaPipeFaceDetectorInitRef.current) return mediaPipeFaceDetectorInitRef.current;
 
+    mediaPipeInitErrorRef.current = null;
+    mediaPipeGpuFallbackRef.current = null;
     setFaceDetectorStatus("loading");
     const detectorGeneration = mediaPipeDetectorGenerationRef.current;
     const initPromise = (async () => {
@@ -632,6 +645,7 @@ export function MediaVideoEditorPlayer({
       try {
         detector = await FaceDetector.createFromOptions(wasmFileset, options);
       } catch (gpuError) {
+        mediaPipeGpuFallbackRef.current = gpuError instanceof Error ? gpuError.message : String(gpuError);
         console.warn("MediaPipe GPU delegate unavailable; retrying with CPU:", gpuError);
         detector = await FaceDetector.createFromOptions(wasmFileset, {
           ...options,
@@ -649,6 +663,7 @@ export function MediaVideoEditorPlayer({
     })()
       .catch((error) => {
         console.error("MediaPipe Face Detector initialization failed:", error);
+        mediaPipeInitErrorRef.current = error instanceof Error ? error.message : String(error);
         setFaceDetectorStatus("error");
         return null;
       });
@@ -857,17 +872,19 @@ export function MediaVideoEditorPlayer({
   // analysis source instead of continuing to probe the old V1/videoFile path.
   // Project files are deliberately skipped so preview, Full Scan, and native
   // Render all consume the same actual media path.
-  const analysisSourcePath = useMemo(() => chooseRenderSourcePath(
-    selectedAnalysisSource?.path ?? "",
-    videoFile?.path ?? "",
-    projectSourceFallbackPaths,
-  ), [projectSourceFallbackPaths, selectedAnalysisSource?.path, videoFile?.path]);
+  const analysisSourcePath = useMemo(() => batchFullScanRequest?.sourcePath?.trim()
+    || chooseRenderSourcePath(
+      selectedAnalysisSource?.path ?? "",
+      videoFile?.path ?? "",
+      projectSourceFallbackPaths,
+    ), [batchFullScanRequest?.sourcePath, projectSourceFallbackPaths, selectedAnalysisSource?.path, videoFile?.path]);
 
   // Packaged Worker builds do not provide a dependable DevTools console. Keep
   // one bounded native JSONL trace for the actual media boundary so a failed
   // render can be compared with the Full Scan that produced its plan.
   const mediaDebugSessionIdRef = useRef(`media-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   const mediaDebugLogPathRef = useRef<string | null>(null);
+  const mediaDebugWriteErrorRef = useRef<string | null>(null);
   const mediaDebugSequenceRef = useRef(0);
   const mediaDebugWriteQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activeMediaRenderIdRef = useRef<string | null>(null);
@@ -878,23 +895,30 @@ export function MediaVideoEditorPlayer({
       debugSessionId: mediaDebugSessionIdRef.current,
       component: "MediaVideoEditorPlayer",
       renderId: resolvedRenderId,
+      batchScanRequestId: batchFullScanRequest?.id ?? null,
       sequence: ++mediaDebugSequenceRef.current,
       ...details,
     };
-    const write = async () => {
+    const write = async (): Promise<string | null> => {
       try {
         const path = await invoke<string>("worker_app_append_media_debug_event", { event, details: payload });
         mediaDebugLogPathRef.current = path;
+        mediaDebugWriteErrorRef.current = null;
         setMediaDebugLogPath(path);
+        if (batchFullScanRequest) onBatchDebugLogUpdate?.(path, null);
+        return path;
       } catch (error) {
         console.warn("Media debug event could not be persisted:", error);
+        mediaDebugWriteErrorRef.current = error instanceof Error ? error.message : String(error);
+        if (batchFullScanRequest) onBatchDebugLogUpdate?.(mediaDebugLogPathRef.current, mediaDebugWriteErrorRef.current);
+        return null;
       }
     };
     const next = mediaDebugWriteQueueRef.current.then(write, write);
     // A failed write must not prevent later events from reaching the file.
     mediaDebugWriteQueueRef.current = next.then(() => undefined, () => undefined);
     return next;
-  }, []);
+  }, [batchFullScanRequest, onBatchDebugLogUpdate]);
 
   // Full Scan and native FFmpeg must receive the exact same source path.
   const renderSourcePath = analysisSourcePath;
@@ -1326,6 +1350,7 @@ export function MediaVideoEditorPlayer({
     volumeThresholdPct: volumeThreshold,
     minDurationSec: minDuration,
     softeningBufferSec: softeningBuffer,
+    audioStreamIndex: selectedAudioStreamIndex,
     silenceSegments: silenceSegments
       .map((segment) => ({
         startMs: segment.startMs,
@@ -1334,7 +1359,7 @@ export function MediaVideoEditorPlayer({
       }))
       .filter((segment) => Number.isFinite(segment.startMs)),
     cameraMotionPlan,
-  }), [cameraMotionPlan, minDuration, silenceSegments, softeningBuffer, volumeThreshold, _propsRemoveDeadAir]);
+  }), [cameraMotionPlan, minDuration, selectedAudioStreamIndex, silenceSegments, softeningBuffer, volumeThreshold, _propsRemoveDeadAir]);
 
   // Workspace Splitter State: Height percentage for video stage (Default 62%)
   const [stageHeightPercent, setStageHeightPercent] = useState<number>(() => {
@@ -1476,7 +1501,10 @@ export function MediaVideoEditorPlayer({
 
   // Initialize NLE Project draft from video + silence cuts (with automatic draft restoration)
   useEffect(() => {
-    if (loadedProjectDraft) return; // Don't override if explicit draft was provided
+    // The Batch scanner mounts this editor only to decode/analyze a source.
+    // Creating a timeline draft here changes editor metadata while Full Scan
+    // is awaiting MediaPipe, which used to invalidate the active scan.
+    if (isBatchFullScan || loadedProjectDraft) return; // Don't override an explicit draft or initialize one for Batch
     if (videoFile && !isProjectFilePath(videoFile.path) && duration > 0) {
       setNleProject((prev) => {
         if (!prev || prev.metadata?.originalSourceVideo !== videoFile.path) {
@@ -1534,7 +1562,7 @@ export function MediaVideoEditorPlayer({
         return prev;
       });
     }
-  }, [videoFile, duration, silenceSegments, aspectRatio, focusX, focusY, loadedProjectDraft, draftStorageKey, videoDimensions.height, videoDimensions.width]);
+  }, [videoFile, duration, silenceSegments, aspectRatio, focusX, focusY, loadedProjectDraft, draftStorageKey, videoDimensions.height, videoDimensions.width, isBatchFullScan]);
 
   // Audio Ducking simulation during playback: detect voice in A1/V1 and duck A2
   useEffect(() => {
@@ -2487,6 +2515,14 @@ export function MediaVideoEditorPlayer({
       sourcePath: analysisSourcePath,
       renderSourcePath,
       elementCurrentSrc: video?.currentSrc ?? null,
+      elementMuted: video?.muted ?? null,
+      elementReadyState: video?.readyState ?? 0,
+      documentVisibilityState: document.visibilityState,
+      videoElementConnected: video?.isConnected ?? false,
+      videoElementRect: video ? (() => {
+        const rect = video.getBoundingClientRect();
+        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      })() : null,
       videoWidth: video?.videoWidth ?? 0,
       videoHeight: video?.videoHeight ?? 0,
       durationSec: video?.duration ?? 0,
@@ -2499,11 +2535,22 @@ export function MediaVideoEditorPlayer({
     });
     const scanGeneration = cameraScanGenerationRef.current;
     const scanSourceKey = cameraSourceKeyRef.current;
-    const isCurrentScan = () => (
-      cameraScanGenerationRef.current === scanGeneration
-      && cameraSourceKeyRef.current === scanSourceKey
-      && videoRef.current === video
-    );
+    const inspectScanIdentity = () => {
+      const currentGeneration = cameraScanGenerationRef.current;
+      const currentSourceKey = cameraSourceKeyRef.current;
+      const videoElementMatches = videoRef.current === video;
+      const generationMatches = currentGeneration === scanGeneration;
+      const sourceKeyMatches = currentSourceKey === scanSourceKey;
+      return {
+        currentGeneration,
+        currentSourceKey,
+        videoElementMatches,
+        generationMatches,
+        sourceKeyMatches,
+        isCurrent: generationMatches && sourceKeyMatches && videoElementMatches,
+      };
+    };
+    const isCurrentScan = () => inspectScanIdentity().isCurrent;
     if (!video || video.videoWidth <= 0 || video.duration <= 0) {
       writeMediaDebugEvent("media.full_scan.aborted", {
         reason: "video_not_ready",
@@ -2514,20 +2561,38 @@ export function MediaVideoEditorPlayer({
       });
       cameraScanStatusRef.current = "degraded";
       setCameraScanStatus("degraded");
-      return EMPTY_CAMERA_SCAN_RESULT;
+      return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "video_not_ready" };
     }
     const detector = await initializeMediaPipeFaceDetector();
-    if (!detector || !isCurrentScan()) {
+    const scanIdentity = inspectScanIdentity();
+    if (!detector || !scanIdentity.isCurrent) {
       writeMediaDebugEvent("media.full_scan.aborted", {
-        reason: detector ? "scan_generation_changed" : "face_detector_unavailable",
+        reason: detector ? "scan_identity_changed_after_detector_init" : "face_detector_unavailable",
         detectorReady: Boolean(detector),
-        isCurrentScan: isCurrentScan(),
+        isCurrentScan: scanIdentity.isCurrent,
+        sourceGeneration: scanGeneration,
+        currentGeneration: scanIdentity.currentGeneration,
+        sourceGenerationMatches: scanIdentity.generationMatches,
+        sourceKey: scanSourceKey,
+        currentSourceKey: scanIdentity.currentSourceKey,
+        sourceKeyMatches: scanIdentity.sourceKeyMatches,
+        videoElementMatches: scanIdentity.videoElementMatches,
+        videoElementConnected: video.isConnected,
+        detectorInitError: mediaPipeInitErrorRef.current,
+        gpuFallbackError: mediaPipeGpuFallbackRef.current,
+        videoReadyState: video.readyState,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        elementCurrentSrc: video.currentSrc,
       });
-      if (isCurrentScan()) {
+      if (scanIdentity.isCurrent) {
         cameraScanStatusRef.current = "degraded";
         setCameraScanStatus("degraded");
       }
-      return EMPTY_CAMERA_SCAN_RESULT;
+      return {
+        ...EMPTY_CAMERA_SCAN_RESULT,
+        failureReason: detector ? "scan_identity_changed_after_detector_init" : "face_detector_unavailable",
+      };
     }
     const wasPlaying = !video.paused;
     const originalTime = video.currentTime;
@@ -2651,9 +2716,32 @@ export function MediaVideoEditorPlayer({
       let sampleIndex = 0;
       for (const timeMs of scanTimesMs) {
         if (faceFrames.length >= 256) break;
-        if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
+        if (!isCurrentScan()) {
+          writeMediaDebugEvent("media.full_scan.aborted", {
+            reason: "scan_source_changed_before_sample",
+            sampleIndex,
+            requestedTimeMs: timeMs,
+            sourceGeneration: scanGeneration,
+            currentGeneration: cameraScanGenerationRef.current,
+            sourceKey: scanSourceKey,
+            currentSourceKey: cameraSourceKeyRef.current,
+          });
+          return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_source_changed_before_sample" };
+        }
         await seek(timeMs);
-        if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
+        if (!isCurrentScan()) {
+          writeMediaDebugEvent("media.full_scan.aborted", {
+            reason: "scan_source_changed_after_seek",
+            sampleIndex,
+            requestedTimeMs: timeMs,
+            observedTimeMs: Math.round(video.currentTime * 1000),
+            sourceGeneration: scanGeneration,
+            currentGeneration: cameraScanGenerationRef.current,
+            sourceKey: scanSourceKey,
+            currentSourceKey: cameraSourceKeyRef.current,
+          });
+          return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_source_changed_after_seek" };
+        }
         sampleIndex += 1;
         if (sampleIndex === 1 || sampleIndex % 5 === 0) {
           const percent = Math.min(99, Math.round((timeMs / Math.max(1, durationMs)) * 100));
@@ -2796,7 +2884,17 @@ export function MediaVideoEditorPlayer({
           }
         }
       }
-      if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
+      if (!isCurrentScan()) {
+        writeMediaDebugEvent("media.full_scan.aborted", {
+          reason: "scan_source_changed_after_sampling",
+          sampleCount: faceFrames.length,
+          sourceGeneration: scanGeneration,
+          currentGeneration: cameraScanGenerationRef.current,
+          sourceKey: scanSourceKey,
+          currentSourceKey: cameraSourceKeyRef.current,
+        });
+        return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_source_changed_after_sampling" };
+      }
       const dominantTrack = buildDominantFaceTrack(faceFrames);
       const fallbackFaceTrack = dominantTrack.length > 0 ? [] : buildFallbackFaceTrack(faceFrames);
       const selectedFaceTrack = dominantTrack.length > 0 ? dominantTrack : fallbackFaceTrack;
@@ -2903,7 +3001,19 @@ export function MediaVideoEditorPlayer({
         ...reducedFacePoints,
         ...reduceCameraMotionTrackPoints(activityEvidence),
       ].sort((left, right) => left.timeMs - right.timeMs || (left.kind === "face" ? -1 : 1));
-      if (!isCurrentScan()) return EMPTY_CAMERA_SCAN_RESULT;
+      if (!isCurrentScan()) {
+        writeMediaDebugEvent("media.full_scan.aborted", {
+          reason: "scan_source_changed_before_plan",
+          sampleCount: faceFrames.length,
+          detectedFrames,
+          landmarkFrames,
+          sourceGeneration: scanGeneration,
+          currentGeneration: cameraScanGenerationRef.current,
+          sourceKey: scanSourceKey,
+          currentSourceKey: cameraSourceKeyRef.current,
+        });
+        return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_source_changed_before_plan" };
+      }
       setCameraTrackPoints(reducedPoints);
       const intervals: CameraMotionActivityInterval[] = [];
       const reducedActivityPoints = reducedPoints.filter((point) => point.kind === "activity");
@@ -2974,7 +3084,7 @@ export function MediaVideoEditorPlayer({
         cameraScanStatusRef.current = "degraded";
         setCameraScanStatus("degraded");
       }
-      return EMPTY_CAMERA_SCAN_RESULT;
+      return { ...EMPTY_CAMERA_SCAN_RESULT, failureReason: "scan_failed" };
     } finally {
       if (isCurrentScan()) {
         const restoredTimeMs = getPlayableTimeMs(originalTime * 1000, playbackSilenceSegments, durationMs);
@@ -3018,6 +3128,135 @@ export function MediaVideoEditorPlayer({
       }
     }
   }, [activeSourceDimensions, analysisSourcePath, canonicalSourceGeometry, createFullScanCameraPlan, detectPersonCenter, initializeMediaPipeFaceDetector, playbackSilenceSegments, renderSourcePath, resetMediaPipeDetector, t, writeMediaDebugEvent]);
+
+  const handledBatchScanRequestRef = useRef<string | null>(null);
+  const batchVideoWaitLoggedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const request = batchFullScanRequest;
+    const video = videoRef.current;
+    if (!request || handledBatchScanRequestRef.current === request.id) return;
+    const waitReason = !videoFile?.isVideo
+      ? "selected_file_is_not_video"
+      : videoFile.path !== request.sourcePath
+        ? "source_path_mismatch"
+        : !video
+          ? "video_element_missing"
+          : video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
+            ? "video_data_not_ready"
+            : video.videoWidth <= 0 || video.videoHeight <= 0
+              ? "video_dimensions_unavailable"
+              : video.duration <= 0
+                ? "video_duration_unavailable"
+                : null;
+    if (waitReason) {
+      if (batchVideoWaitLoggedRef.current !== request.id) {
+        batchVideoWaitLoggedRef.current = request.id;
+        writeMediaDebugEvent("media.batch_scan.waiting_for_video", {
+          requestId: request.id,
+          reason: waitReason,
+          expectedSourcePath: request.sourcePath,
+          selectedSourcePath: videoFile?.path ?? null,
+          elementCurrentSrc: video?.currentSrc ?? null,
+          readyState: video?.readyState ?? 0,
+          networkState: video?.networkState ?? 0,
+          videoWidth: video?.videoWidth ?? 0,
+          videoHeight: video?.videoHeight ?? 0,
+          durationSec: video?.duration ?? 0,
+          mediaError: video?.error ? { code: video.error.code, message: video.error.message } : null,
+          documentVisibilityState: document.visibilityState,
+          videoElementConnected: video?.isConnected ?? false,
+        });
+      }
+      return;
+    }
+    batchVideoWaitLoggedRef.current = null;
+    handledBatchScanRequestRef.current = request.id;
+    void (async () => {
+      const reportResult = async (result: {
+        selection?: DeadAirRenderSelection;
+        error?: string;
+        failureReason?: string;
+        summary?: FaceScanSummary | null;
+        pointCount?: number;
+        hasCameraMotionPlan?: boolean;
+      }) => {
+        const debugLogPath = await writeMediaDebugEvent("media.batch_scan.result", {
+          requestId: request.id,
+          sourcePath: analysisSourcePath,
+          status: result.selection ? "completed" : "failed",
+          failureReason: result.failureReason ?? null,
+          error: result.error ?? null,
+          summary: result.summary ?? null,
+          pointCount: result.pointCount ?? null,
+          hasCameraMotionPlan: result.hasCameraMotionPlan ?? false,
+        });
+        onBatchFullScanResult?.(request.id, {
+          ...(result.selection ? { selection: result.selection } : { error: result.error }),
+          failureReason: result.failureReason,
+          debugLogPath: debugLogPath ?? mediaDebugLogPathRef.current,
+          debugLogWriteError: mediaDebugWriteErrorRef.current,
+        });
+      };
+      try {
+        const scanned = await scanFullVideoForCameraPlan();
+        if (!hasRenderableFaceCameraPlan(scanned.cameraMotionPlan)) {
+          const summary = scanned.summary;
+          const failureReason = scanned.failureReason ?? "no_renderable_face_camera_plan";
+          const scanDetails = summary
+            ? t(
+              ` (สแกน ${summary.sampledFrames} เฟรม · พบกรอบ ${summary.detectedFrames} · จุดใบหน้า ${summary.landmarkFrames} · เลือกติดตาม ${summary.selectedFrames})`,
+              ` (sampled ${summary.sampledFrames} frames · boxes ${summary.detectedFrames} · face landmarks ${summary.landmarkFrames} · tracked ${summary.selectedFrames})`,
+            )
+            : t(
+              ` (ไม่มีผลสรุปเฟรม · สาเหตุ: ${failureReason})`,
+              ` (no frame summary · reason: ${failureReason})`,
+            );
+          const error = t(
+            `Full Scan ไม่พบใบหน้าที่ติดตามได้ จึงไม่ส่งวิดีโอนี้เข้า render${scanDetails}`,
+            `Full Scan found no trackable face; this video will not be submitted for rendering${scanDetails}`,
+          );
+          await reportResult({
+            error,
+            failureReason,
+            summary,
+            pointCount: scanned.points.length,
+            hasCameraMotionPlan: Boolean(scanned.cameraMotionPlan),
+          });
+          return;
+        }
+        const selection: DeadAirRenderSelection = {
+          ...deadAirRenderSelection,
+          enabled: true,
+          audioStreamIndex: selectedAudioStreamIndex,
+          cameraMotionPlan: scanned.cameraMotionPlan,
+        };
+        await reportResult({
+          selection: {
+            ...selection,
+          },
+          summary: scanned.summary,
+          pointCount: scanned.points.length,
+          hasCameraMotionPlan: Boolean(scanned.cameraMotionPlan),
+        });
+      } catch (error) {
+        await reportResult({
+          error: error instanceof Error ? error.message : String(error),
+          failureReason: "batch_scan_exception",
+        });
+      }
+    })();
+  }, [
+    batchFullScanRequest,
+    analysisSourcePath,
+    deadAirRenderSelection,
+    onBatchFullScanResult,
+    scanFullVideoForCameraPlan,
+    selectedAudioStreamIndex,
+    t,
+    videoReadinessRevision,
+    videoFile,
+    writeMediaDebugEvent,
+  ]);
 
   // Every export surface must use the same authoritative evidence pass. The
   // direct FFmpeg button used to refresh this plan, while the Remotion/queue
@@ -3320,15 +3559,15 @@ export function MediaVideoEditorPlayer({
       // project open decodes the entire audio stream into memory and can kill
       // the desktop WebView/native process before the editor is usable. Keep
       // project opening lightweight; users can still run Analyze explicitly.
-      if (!hasLoadedProjectDraft) {
+      if (!hasLoadedProjectDraft && !isBatchFullScan) {
         void runCustomSilenceDetection(undefined, undefined, undefined, null);
       }
     }
-  }, [videoFile?.path, hasLoadedProjectDraft]);
+  }, [videoFile?.path, hasLoadedProjectDraft, isBatchFullScan]);
 
   // Auto-run person/product centering with early burst scan to lock target immediately
   useEffect(() => {
-    if (focusMode === "auto_person") {
+    if (!isBatchFullScan && focusMode === "auto_person") {
       const t0 = setTimeout(() => detectPersonCenter(true), 30);
       const t1 = setTimeout(() => detectPersonCenter(true), 120);
       const t2 = setTimeout(() => detectPersonCenter(true), 300);
@@ -3344,7 +3583,7 @@ export function MediaVideoEditorPlayer({
         clearTimeout(t5);
       };
     }
-  }, [focusMode, videoSrc, detectPersonCenter]);
+  }, [focusMode, videoSrc, detectPersonCenter, isBatchFullScan]);
 
   const lastTrackTimeRef = useRef<number>(0);
 
@@ -3375,7 +3614,8 @@ export function MediaVideoEditorPlayer({
       const dur = videoRef.current.duration;
       const vw = videoRef.current.videoWidth || 1920;
       const vh = videoRef.current.videoHeight || 1080;
-      const commitToSourceTimeline = shouldCommitLoadedMetadataToSourceTimeline(Boolean(overrideVideoSrc));
+      const commitToSourceTimeline = !isBatchFullScan
+        && shouldCommitLoadedMetadataToSourceTimeline(Boolean(overrideVideoSrc));
       setDuration(dur);
       setVideoDimensions({ width: vw, height: vh });
       const loadedSourcePath = analysisSourcePath && !isProjectFilePath(analysisSourcePath)
@@ -3437,7 +3677,7 @@ export function MediaVideoEditorPlayer({
       if (commitToSourceTimeline && (trimEnd === 0 || trimEnd > dur)) {
         setTrimEnd(dur);
       }
-      if (commitToSourceTimeline && focusMode === "auto_person") {
+      if (!isBatchFullScan && commitToSourceTimeline && focusMode === "auto_person") {
         setTimeout(() => detectPersonCenter(true), 200);
       }
     }
@@ -3466,7 +3706,7 @@ export function MediaVideoEditorPlayer({
         skipSeekTargetRef.current = null;
       }
       setCurrentTime(cur);
-      const inspectFace = !overrideVideoSrc && (
+      const inspectFace = !isBatchFullScan && !overrideVideoSrc && (
         smartDirectorMode === "face_activity"
         || smartDirectorMode === "auto"
         || (focusMode === "auto_person" && (smartDirectorMode !== "product_focus" || productPins.length === 0))
@@ -3511,11 +3751,11 @@ export function MediaVideoEditorPlayer({
     const video = videoRef.current;
     if (!video) return;
     const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
-    const isMasterMuted = isMuted || Boolean(v1Track?.muted);
+    const isMasterMuted = isBatchFullScan || isMuted || Boolean(v1Track?.muted);
     const masterVol = Math.min(1, Math.max(0, volume * (v1Track?.volume ?? 1.0)));
     video.muted = isMasterMuted;
     video.volume = masterVol;
-  }, [volume, isMuted, nleProject]);
+  }, [isBatchFullScan, volume, isMuted, nleProject]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -3541,7 +3781,7 @@ export function MediaVideoEditorPlayer({
           setCurrentTime(playable);
         }
         const v1Track = nleProject?.tracks?.find((t) => t.id === "track_v1");
-        video.muted = isMuted || Boolean(v1Track?.muted);
+        video.muted = isBatchFullScan || isMuted || Boolean(v1Track?.muted);
         video.volume = Math.min(1, Math.max(0, volume * (v1Track?.volume ?? 1.0)));
         void video.play().then(() => {
           if (videoRef.current === video) setIsPlaying(!video.paused);
@@ -5989,17 +6229,19 @@ export function MediaVideoEditorPlayer({
                     : undefined
                 }
                 style={wysiwygVideoStyle}
-                muted={isMuted || Boolean(nleProject?.tracks?.find((t) => t.id === "track_v1")?.muted)}
+                muted={isBatchFullScan || isMuted || Boolean(nleProject?.tracks?.find((t) => t.id === "track_v1")?.muted)}
                 onLoadedMetadata={handleLoadedMetadata}
                 onLoadedData={() => {
-                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
+                  if (isBatchFullScan) setVideoReadinessRevision((revision) => revision + 1);
+                  if (!isBatchFullScan && !overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onCanPlay={() => {
-                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
+                  if (isBatchFullScan) setVideoReadinessRevision((revision) => revision + 1);
+                  if (!isBatchFullScan && !overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onTimeUpdate={handleTimeUpdate}
                 onSeeked={() => {
-                  if (!overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
+                  if (!isBatchFullScan && !overrideVideoSrc && (focusMode === "auto_person" || smartDirectorMode === "face_activity")) detectPersonCenter(true);
                 }}
                 onEnded={() => setIsPlaying(false)}
                 onError={() => {

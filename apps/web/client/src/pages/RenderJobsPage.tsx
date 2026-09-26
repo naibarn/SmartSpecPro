@@ -290,6 +290,12 @@ function getOutputVideoEditorRoute(ref: RenderJobOutputRef): string | null {
     : null;
 }
 
+function createWorkerRetryActionId(): string | null {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : null;
+}
+
 export default function RenderJobsPage() {
   useEffect(() => {
     const previousTitle = document.title;
@@ -337,6 +343,30 @@ export default function RenderJobsPage() {
       toast.error(projection.kind === "unknown" ? "ยกเลิกงานไม่สำเร็จ" : projection.message);
     },
   });
+
+  const retryMutation = trpc.workerJobs.retry.useMutation({
+    onSuccess: async () => {
+      toast.success("สั่ง retry งานเดิมแล้ว");
+      await Promise.all([
+        utils.workerJobs.list.invalidate(),
+        utils.workerJobs.detail.invalidate(),
+      ]);
+    },
+    onError: (error) => {
+      const projection = mapEditorError(error, "th");
+      toast.error(projection.kind === "unknown" ? "สั่ง retry งานไม่สำเร็จ" : projection.message);
+    },
+  });
+
+  const requestRetry = (jobId: string) => {
+    if (!window.confirm("ยืนยัน retry งานเดิม? ระบบจะไม่สร้าง workflow ใหม่และจะไม่ทำขั้นตอนที่สำเร็จแล้วซ้ำ")) return;
+    const actionId = createWorkerRetryActionId();
+    if (!actionId) {
+      toast.error("เบราว์เซอร์นี้ไม่รองรับการสร้างรหัส retry");
+      return;
+    }
+    retryMutation.mutate({ jobId, actionId });
+  };
 
   const activeCount = useMemo(
     () => jobs.filter((job) => ["claimed", "preparing", "running", "uploading", "publishing", "indexing"].includes(job.status)).length,
@@ -511,6 +541,23 @@ export default function RenderJobsPage() {
                             <TableCell>
                               <div className="font-medium">{formatJobType(job.jobType)}</div>
                               <div className="max-w-52 truncate text-xs text-slate-500">{job.id}</div>
+                              {job.canRetry ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="mt-2 h-7 gap-1 border-cyan-300/30 px-2 text-[11px] text-cyan-700 hover:bg-cyan-50"
+                                  data-testid={`worker-job-retry-${job.id}`}
+                                  disabled={retryMutation.isPending}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    requestRetry(job.id);
+                                  }}
+                                >
+                                  {retryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                                  Retry งานเดิม
+                                </Button>
+                              ) : null}
                             </TableCell>
                             <TableCell><JobStatusBadge status={job.status} job={job} /></TableCell>
                             <TableCell>
@@ -659,6 +706,18 @@ export default function RenderJobsPage() {
                   ) : null}
 
                   <div className="flex flex-wrap gap-2">
+                    {detailQuery.data.canRetry ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        data-testid="worker-job-retry"
+                        disabled={retryMutation.isPending}
+                        onClick={() => requestRetry(detailQuery.data!.id)}
+                      >
+                        {retryMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                        Retry งานเดิม
+                      </Button>
+                    ) : null}
                     <Button
                       variant="destructive"
                       size="sm"

@@ -251,6 +251,31 @@ describe("runVerticalDramaShotPromptJob", () => {
     ).toBe(false);
   });
 
+  it("reconciles an active Redis record from a terminal canonical worker row", async () => {
+    const redis = makeFakeRedis();
+    const submitted = await enqueueVerticalDramaShotPromptJob(payload(), {
+      redis,
+      enqueueBullmqJob: vi.fn().mockResolvedValue(undefined),
+    });
+    const recordKey = `vd:shot-prompt-job:${submitted.jobId}`;
+    const record = JSON.parse(redis.store.get(recordKey) ?? "null");
+    redis.store.set(recordKey, JSON.stringify({
+      ...record,
+      status: "running",
+      updatedAt: new Date().toISOString(),
+    }));
+
+    await expect(
+      getVerticalDramaShotPromptJobStatus(submitted.jobId, owner, {
+        redis,
+        canonicalStatusReader: vi.fn().mockResolvedValue(new Map([
+          [submitted.jobId, { status: "failed", reason: "worker shutdown" }],
+        ])),
+      }),
+    ).resolves.toMatchObject({ status: "failed", error: "worker shutdown" });
+    expect(redis.compareDelete).toHaveBeenCalled();
+  });
+
   it("stores a bounded failure and never exposes it to a foreign owner", async () => {
     const redis = makeFakeRedis();
     const submitted = await enqueueVerticalDramaShotPromptJob(payload(), {

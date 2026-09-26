@@ -64,6 +64,11 @@ htmlcov/
 .tox/
 .venv/
 venv/
+/ckpts/
+apps/worker-app/src-tauri/resources/content-protection-runtime/*
+!apps/worker-app/src-tauri/resources/content-protection-runtime/.gitkeep
+apps/worker-app/.content-protection-build/
+apps/worker-app/.content-protection-release/
 
 # ============================================================================
 # Node / JavaScript / TypeScript
@@ -231,6 +236,7 @@ orchestra/archive/
 .codex
 .codex/
 apps/runner-app/target/
+.smartaihub-runner/
 default.profraw
 apps/tauri-shell/default.profraw
 apps/tauri-shell/binaries/.downloads/

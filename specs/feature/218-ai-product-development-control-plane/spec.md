@@ -1,16 +1,21 @@
 # Spec 218 — SmartAIHub AI Product Development Control Plane
 ## Natural-Language Development, Runner Workspaces, Harness Adapters, Git Source Control, Preview & Change Governance
 
-**Status:** Architecture Freeze Candidate / Implementation-ready subject to conformance tests
+**Status:** Proposed / Partial development contract slice present; control-plane integration pending
 **Spec ID:** 218  
-**Revision:** 3 — Final integrated stress-audit / architecture freeze candidate
-**Date:** 2026-09-20  
+**Revision:** 5 — Development context retrieval boundary through Specs 230/229
+**Date:** 2026-09-22
 **Target repository path:** `specs/feature/218-ai-product-development-control-plane/spec.md`  
-**Core depends on:** Spec 217 Product identity, core Spec 220 gateway contracts, Spec 222 Phases 1–2 harness/context contracts, Feature 195 / canonical worker job control plane, existing SmartAIHub Runner architecture and external-agent/harness specs  
-**Integration depends on:** Spec 219 deployment adapter, Spec 221 Skill release integration and Spec 222 Phases 3–5. Spec 219 is not a bootstrap prerequisite for the development control-plane records.  
-**Companion specs:** Spec 217, Spec 219, Spec 220, Spec 221, Spec 222
+**Depends on:** Spec 217, Spec 219, Spec 220, Spec 221 where Skill work is involved, Spec 230, Spec 222 as optional learning/advisory input, Feature 195 / canonical worker job control plane, existing SmartAIHub Runner architecture, external-agent/harness specs
+**Companion specs:** Spec 217, Spec 219, Spec 220, Spec 221, Spec 222, Spec 230
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+`apps/web/server/services/developmentControlPlaneContracts.ts` and its focused tests define pure `DevelopmentJob`, `ChangeSet`, evidence and `ReleaseCandidate` contracts. Existing Runner pairing/command and source-control surfaces are separate platform inputs; they do not prove a Spec 218 DevelopmentJob persistence/router, harness launcher, preview flow or Spec 219 release handoff.
+
+Spec 218 remains an implementation target. The canonical durable execution boundary is still Feature 195 / `worker_jobs` and outbox; no second development queue or release ledger is implied by the contract slice.
 
 # 0. Executive Decision
 
@@ -184,7 +189,7 @@ SmartAIHub Runner SHALL publish a signed capability manifest such as:
     "git": "2.x",
     "node": "24.x",
     "python": "3.x",
-    "approved_container_runtime": "cloudflare-container",
+    "docker": null,
     "playwright": "available"
   },
   "harnesses": [
@@ -1201,23 +1206,23 @@ Spec 218 is production-ready only when the full development supply chain passes:
 
 # Revision 2 Addendum — Agentic Development Fabric Boundary
 
-**Normative precedence:** Spec 222 owns cross-harness cognitive/context/bootstrap semantics; this Revision 2 addendum overrides earlier Spec 218 text if ownership wording conflicts.
+**Normative precedence:** Spec 230 owns cross-harness cognitive/context/bootstrap semantics; this Revision 2 addendum overrides earlier Spec 218 text if ownership wording conflicts.
 
-## 49. Spec 222 Is the Cognitive/Context Owner
+## 49. Spec 230 Is the Cognitive/Context Owner
 
 Spec 218 owns **execution mechanics** for development: DevelopmentJob, target resolution, Runner/cloud workspace, Git changes, build, tests, preview artifacts and ReleaseCandidate creation.
 
-Spec 222 owns **how a development harness is prepared and instructed**: harness bootstrap, project context packs, `AGENTS.md`/`CLAUDE.md` adapters, SmartAIHub orchestrator skills, Superpowers methodology bridge, context/resource discovery and artifact-type routing.
+Spec 230 owns **how a development harness is prepared and instructed**: harness bootstrap, project context packs, `AGENTS.md`/`CLAUDE.md` adapters, SmartAIHub orchestrator skills, Superpowers methodology bridge, context/resource discovery and artifact-type routing.
 
 Canonical handoff:
 
 ```text
 Spec 217/221 requirement
-→ Spec 222 DevelopmentWorkPackage + ContextPack + MethodologyProfile
+→ Spec 230 DevelopmentWorkPackage + ContextPack + MethodologyProfile
 → Spec 218 DevelopmentJob
 → Runner / Managed Sandbox / Harness Adapter
 → evidence + source changes
-→ Spec 222 domain-specific verification interpretation
+→ Spec 230 domain-specific verification interpretation
 → Spec 218 ReleaseCandidate
 ```
 
@@ -1242,7 +1247,7 @@ Runner performs compatibility checks and returns explicit `READY`, `MISSING_OPTI
 
 ## 51. Do Not Treat CLAUDE.md / AGENTS.md as Source of Truth
 
-Repo instruction files are harness adapters generated from the canonical Spec 222 Project Context Pack. They MAY contain project-specific human-maintained content, but platform/security authority remains server-side and in signed machine-readable contracts.
+Repo instruction files are harness adapters generated from the canonical Spec 230 Project Context Pack. They MAY contain project-specific human-maintained content, but platform/security authority remains server-side and in signed machine-readable contracts.
 
 Changing an instruction file MUST NOT widen API/MCP/Data/Skill permissions.
 
@@ -1256,7 +1261,7 @@ The normal UX remains SmartAIHub Web. Tenant Admins SHOULD be able to request:
 "สร้าง Skill คำนวณ BOQ แล้วนำมาใช้ใน Mini App"
 ```
 
-without manually launching the harness. Spec 222 resolves artifact/methodology; Spec 218 dispatches the resulting work to the selected Runner/harness.
+without manually launching the harness. Spec 230 resolves artifact/methodology; Spec 218 dispatches the resulting work to the selected Runner/harness.
 
 ## 53. Product/Skill Workspaces
 
@@ -1273,7 +1278,7 @@ Workspace type affects context, allowed SmartAIHub capabilities, release authori
 
 ## 54. Revision 2 Acceptance Criteria
 
-- [ ] Spec 218 does not duplicate Spec 222 project-context/methodology semantics.
+- [ ] Spec 218 does not duplicate Spec 230 project-context/methodology semantics.
 - [ ] Runner can report harness + SmartAIHub skill-pack + Superpowers compatibility state.
 - [ ] Project instruction files cannot grant platform permissions.
 - [ ] Skill and Product jobs can share execution mechanics while retaining different domain release gates.
@@ -1287,7 +1292,7 @@ If a harness requires a different integration credential/API for automation, tha
 
 # Revision 3 — Final Integrated Architecture Stress-Audit Addendum
 
-**Normative precedence:** Revision 3 supersedes conflicting earlier development/harness mechanics. Spec 222 remains the owner of cognitive/context/methodology bootstrap; Spec 218 owns durable development work and source-change mechanics.
+**Normative precedence:** Revision 3 supersedes conflicting earlier development/harness mechanics. Spec 230 remains the owner of cognitive/context/methodology bootstrap; Spec 218 owns durable development work and source-change mechanics.
 
 
 ## R3.1 Shared Contract Family and Version Negotiation
@@ -1503,3 +1508,79 @@ SmartAIHub-issued developer grants remain separate from vendor-harness authentic
 - [ ] External Git changes invalidate stale evidence/context appropriately.
 - [ ] High-impact permission/schema/network/economic changes trigger stronger review.
 - [ ] ReleaseCandidate contains enough immutable evidence for Spec 219 admission.
+
+---
+
+# Revision 4 Canonical Harness-Fabric and Kimi Code Amendment
+
+Canonical split:
+
+```text
+Spec 218 = DevelopmentJob/workspace/Git/build/test/preview mechanics
+Spec 230 = harness bootstrap/context/methodology preparation
+Spec 222 = learning/replay/advisory optimization only
+Spec 224 = durable multi-phase autonomous development lifecycle
+```
+
+Kimi Code SHALL be treated as an eligible replaceable harness family, not as a separate SmartAIHub control plane. A `HarnessBootstrapProfile` MAY resolve:
+
+```text
+family = KIMI_CODE
+transport = KIMI_WEB_SERVER_API | KIMI_NONINTERACTIVE_CLI | CERTIFIED_FALLBACK
+ui_surface = KIMI_DESKTOP_OPTIONAL
+```
+
+SmartAIHub SHOULD prefer a capability-probed programmatic transport. Kimi Desktop may be used by the human for local review/control, but Spec 218 SHALL NOT automate the Desktop GUI as its primary integration contract.
+
+Local Kimi authentication remains user-owned harness state. SmartAIHub SHALL NOT scrape Kimi session credentials or Desktop auth state. Programmatic transport credentials/tokens are local execution secrets and remain bounded to the Runner/workspace adapter.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
+
+---
+
+# Revision 5 — Development Context Retrieval Boundary
+
+Spec 218 does not own repository/spec/Skill semantic search. A DevelopmentJob receives bounded context prepared by Spec 230; Spec 230 obtains semantic/document retrieval through Spec 229.
+
+Runner/harness adapters MUST NOT create hidden local vector indexes over SmartAIHub private knowledge unless operating under an explicitly certified offline/local profile with equivalent scope/deletion controls.
+
+DevelopmentJob evidence SHOULD record retrieval/context snapshot references sufficient to reproduce which source revisions were supplied to the harness, without storing provider credentials or unnecessary private text.
+
+External harness native search features MAY search the checked-out repository locally; they do not replace SmartAIHub retrieval authorization for Library, Help, private RAG, Marketplace or cross-project knowledge.

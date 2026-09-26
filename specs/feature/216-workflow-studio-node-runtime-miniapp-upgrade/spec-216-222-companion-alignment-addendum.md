@@ -97,33 +97,12 @@ A release candidate for Specs 217–222 SHOULD NOT be called architecture-freeze
 
 ---
 
-## 8. Canonical Implementation Order
-
-The `Depends on` lines in Specs 217–222 describe full integration relationships, not a single topological implementation graph. Implement the work in these waves so bootstrap contracts do not wait on their own consumers:
-
-| Wave | Implement first | Exit gate |
-|---:|---|---|
-| 0 | Existing authorities: Feature 195/`worker_jobs`, tenant identity, Spec 207 economics, Specs 199/200/206/208/211, and the implemented Spec 209 Workflow Studio baseline | Baseline inventory and ownership freeze |
-| 1 | Spec 214 canonical Node Type/admission contracts, then Spec 215 WorkflowInterface, bindings, scopes, policies, instrumentation and compiler/runtime contract | Contract schemas and admission/conformance tests |
-| 2 | Spec 216 Phases 0–3: baseline inventory, registry-driven authoring, canonical WorkflowDefinition and compiler/runtime cutover | Existing Studio uses only admitted 214/215 contracts |
-| 3 | Spec 220 gateway core: canonical invocation envelope, tenant authorization, Asset/RAG access, secret handles and egress policy | Direct Core SQL/R2/provider access denied; tenant isolation tests pass |
-| 4 | Spec 217 Product/Tenant/Brand/Mini App identity, entitlement and release/dependency-lock skeleton | Immutable Product identity and release lineage pass |
-| 5 | Spec 222 Phases 1–2 context/harness foundation, then Spec 221 Skill identity, dependency/eval/review/release contracts | Context integrity and Skill admission tests pass |
-| 6 | Spec 218 DevelopmentJob/WorkPackage/ChangeSet/ReleaseCandidate control plane using Wave 5 harness contracts and Feature 195 jobs | Build/test/preview evidence is immutable and resumable |
-| 7 | Spec 219 managed runtime, dispatch namespaces, domains, promotion, rollback and suspension | Staging/production isolation and release admission pass |
-| 8 | Integration hardening: Spec 216 Phases 4–8, Spec 221 Product capability-gap integration, Spec 222 Phases 3–5, Spec 220 runtime enforcement, Spec 217 publication/marketplace | Cross-spec conformance and economic/security gates pass |
-| 9 | Spec 212 Revision 20 certification across representative modes, then the full corpus | Critical R20 failures block release |
-
-Spec 213 is a parallel provider-hardening lane for the already-implemented Spec 208 path. It does not block Waves 1–4, but its provider/conformance gates MUST pass before Computer Use is admitted into Wave 5 harness integrations or the affected Spec 212 certification slices.
-
-Each wave may use feature flags and shadow/canary evidence, but it MUST NOT create a second source of truth or publish a downstream integration before the preceding exit gate passes.
-
-## 9. Canonical End-to-End Flow
+## 8. Canonical End-to-End Flow
 
 ```text
 Tenant/Product Intent
 → Spec 217 Product architecture
-→ Spec 222 development intent/context (Wave 5 foundation)
+→ Spec 222 development intent/context
 → capability search
    ├ existing capability → reuse
    └ missing → Spec 221 Skill Engineering

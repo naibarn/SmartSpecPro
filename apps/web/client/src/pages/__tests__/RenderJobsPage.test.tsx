@@ -10,12 +10,15 @@
  * Also covers spec 143 §5 R1 — the job-type filter added next to the
  * existing status filter.
  */
+// @vitest-environment jsdom
+
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const listQueryMock = vi.fn();
 const detailQueryMock = vi.fn();
 const cancelMutationMock = vi.fn();
+const retryMutationMock = vi.fn();
 
 // Same native-<select> mock convention as
 // AdminMediaModels.hermesTransport.test.tsx — lets tests drive the filter
@@ -55,6 +58,7 @@ vi.mock("@/lib/trpc", () => ({
       list: { useQuery: (...args: unknown[]) => listQueryMock(...args) },
       detail: { useQuery: (...args: unknown[]) => detailQueryMock(...args) },
       cancelQueued: { useMutation: (...args: unknown[]) => cancelMutationMock(...args) },
+      retry: { useMutation: (...args: unknown[]) => retryMutationMock(...args) },
     },
   },
 }));
@@ -118,6 +122,7 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
       isError: false,
     });
     cancelMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    retryMutationMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
 
   it("renders the Thai label for remotion_render_video in the job list", () => {
@@ -138,6 +143,66 @@ describe("RenderJobsPage — remotion_render_video jobType", () => {
   it("still maps shotIndex/shotTotal progress for this job type (no structural change)", () => {
     render(<RenderJobsPage />);
     expect(screen.getAllByText(/Shot 2\/4/).length).toBeGreaterThan(0);
+  });
+
+  it("shows a retry button for a server-approved job and sends the canonical job id", () => {
+    const mutate = vi.fn();
+    retryMutationMock.mockReturnValue({ mutate, isPending: false });
+    detailQueryMock.mockReturnValue({
+      data: {
+        ...REMOTION_JOB,
+        status: "failed",
+        canCancel: false,
+        canRetry: true,
+        retryReason: "known_runtime_failure",
+        failureReason: "revisionId is not defined",
+        outputRefs: [],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    vi.stubGlobal("confirm", () => true);
+    render(<RenderJobsPage />);
+
+    fireEvent.click(screen.getByTestId("worker-job-retry"));
+
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: REMOTION_JOB.id,
+      actionId: expect.any(String),
+    }));
+  });
+
+  it("shows retry directly in the worker-job list row", () => {
+    const mutate = vi.fn();
+    listQueryMock.mockReturnValue({
+      data: { items: [{ ...REMOTION_JOB, canRetry: true, retryReason: "artifact_qc_failure" }] },
+      isLoading: false,
+      isError: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    detailQueryMock.mockReturnValue({
+      data: {
+        ...REMOTION_JOB,
+        canRetry: true,
+        canCancel: false,
+        outputRefs: [],
+        events: [],
+      },
+      isLoading: false,
+      isError: false,
+    });
+    retryMutationMock.mockReturnValue({ mutate, isPending: false });
+    vi.stubGlobal("confirm", () => true);
+    render(<RenderJobsPage />);
+
+    fireEvent.click(screen.getByTestId(`worker-job-retry-${REMOTION_JOB.id}`));
+
+    expect(mutate).toHaveBeenCalledWith(expect.objectContaining({
+      jobId: REMOTION_JOB.id,
+      actionId: expect.any(String),
+    }));
   });
 
   it("falls back to the raw jobType string for an unrecognized job type", () => {

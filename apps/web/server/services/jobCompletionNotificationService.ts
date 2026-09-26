@@ -33,6 +33,7 @@ export interface JobCompletionNotificationInput {
   source?: string;
   relatedResourceType?: ResourceType;
   relatedResourceId?: string | null;
+  feedbackTicketId?: number | null;
   relatedItems?: Record<string, string>;
 }
 
@@ -101,6 +102,9 @@ export function buildJobCompletionNotification(
       source,
       ...(input.tenantId ? { tenantId: input.tenantId } : {}),
       ...(input.traceId ? { traceId: input.traceId } : {}),
+      ...(input.feedbackTicketId != null
+        ? { feedbackTicketId: String(input.feedbackTicketId) }
+        : {}),
       ...(input.relatedItems ?? {}),
     },
   };

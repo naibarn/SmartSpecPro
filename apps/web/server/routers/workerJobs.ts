@@ -8,6 +8,7 @@ import {
   getUserWorkerJobDetail,
   listUserWorkerTaskGroups,
   listUserWorkerJobs,
+  retryUserWorkerJob,
 } from "../services/workerJobMonitorService";
 import {
   applyCanonicalJobAction,
@@ -98,6 +99,14 @@ export const workerJobsRouter = router({
         jobId: input.jobId,
       });
     }),
+
+  retry: protectedProcedure
+    .input(z.object({ jobId: z.string().min(1), actionId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => retryUserWorkerJob({
+      auth: requireWorkerJobAuth(ctx),
+      jobId: input.jobId,
+      actionId: input.actionId,
+    })),
 
   controlPlaneList: adminProcedure
     .input(z.object({

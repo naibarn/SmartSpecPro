@@ -49,6 +49,16 @@ export interface EpisodeOptionItem {
   title: string;
 }
 
+export function getWorkerJobReference(
+  job: { id?: unknown; jobId?: unknown },
+  index: number,
+): string {
+  const id = [job.id, job.jobId].find((value): value is string => (
+    typeof value === "string" && value.trim().length > 0
+  ));
+  return id?.trim() || `summary-row-${index}`;
+}
+
 export const SMARTAIHUB_CLOUD_LIBRARY_PRESETS: MediaAssetItem[] = [
   {
     id: "smartaihub_bgm_cinematic",
@@ -642,7 +652,8 @@ export function AssetDrawerPanel({
     // 2. Fetch Cross-workload Job Renders & Summary from SmartAIHub
     const fetchJobSummary = invoke<{
       items?: Array<{
-        id: string;
+        id?: string;
+        jobId?: string;
         jobType: string;
         status: string;
         createdAt: string;
@@ -679,19 +690,20 @@ export function AssetDrawerPanel({
         if (!job || !["completed", "finished", "succeeded"].includes(job.status)) continue;
         const out = job.outputJson || {};
         const inp = job.inputJson || {};
+        const jobReference = getWorkerJobReference(job, idx);
         const title =
           (out.fileName as string) ||
           (out.title as string) ||
           (inp.title as string) ||
           (inp.fileName as string) ||
-          `[ผลลัพธ์เรนเดอร์] ${job.jobType} #${job.id.slice(0, 8)}`;
+          `[ผลลัพธ์เรนเดอร์] ${job.jobType} #${jobReference.slice(0, 8)}`;
 
         const src = (out.videoUrl as string) || (out.artifactUrl as string) || (out.downloadUrl as string) || (out.outputPath as string) || "";
         const thumb = (out.thumbnailUrl as string) || (out.previewUrl as string) || undefined;
         const isAud = job.jobType.includes("audio") || job.jobType.includes("music") || job.jobType.includes("sound");
 
         serverHistoryItems.push({
-          id: `summary_render_${job.id || idx}`,
+          id: `summary_render_${jobReference}`,
           title,
           category: isAud ? "music" : "video",
           durationMs: Number(out.durationMs || inp.durationMs || 15000),

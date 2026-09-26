@@ -22,8 +22,8 @@ source file `skills/sub-agents/agents/research.md`.
 
 ## 2. Capabilities
 
-- Use SocratiCode or targeted `rg`/file reads to inspect the bounded files needed for the
-  research question
+- Use targeted `rg`/file reads to inspect the bounded files needed for the research
+  question
 - Summarize existing architecture, patterns, and conventions across all layers (React client, tRPC server, FastAPI, Drizzle schema)
 - Identify risks, gaps, and open questions in the codebase
 - Read third-party library documentation referenced from source files

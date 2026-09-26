@@ -15,7 +15,9 @@ use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use crate::settings::{RuntimeEnvironment, WorkerAppSettings};
 
 const MAX_MEDIA_DURATION_MS: u64 = 90_000;
+const MAX_FULL_VIDEO_DURATION_MS: u64 = 86_400_000;
 const MAX_OUTPUT_BYTES: u64 = 2_000_000_000;
+pub const MAX_FULL_VIDEO_OUTPUT_BYTES: u64 = 50_000_000_000;
 const CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v2";
 const LEGACY_CAMERA_MOTION_PLAN_VERSION: &str = "camera.motion.v1";
 // FFmpeg receives the animated crop as one filter argument. On Windows the
@@ -137,6 +139,8 @@ pub struct LocalMediaManifestEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaPlanOptions {
+    #[serde(default)]
+    pub full_video: bool,
     pub remove_dead_air: bool,
     pub reframe_9x16: bool,
     pub focus_mode: String,
@@ -299,6 +303,7 @@ pub struct LocalMediaAnalysis {
 
 const MAX_ANALYSIS_DURATION_MS: u64 = 90_000;
 const MAX_ANALYSIS_SEGMENTS: usize = 256;
+const MAX_FULL_VIDEO_RENDER_SEGMENTS: usize = MAX_ANALYSIS_SEGMENTS + 1;
 const MAX_BLUR_SCORES: usize = 256;
 
 #[derive(Debug, Clone)]
@@ -939,6 +944,97 @@ pub fn analyze_media_file(
         focus_candidates,
         status: "needs_review".into(),
         warning: Some("subject_focus_requires_vision_review".into()),
+    })
+}
+
+pub fn analyze_media_file_full_video(
+    file: &Path,
+    tools: &MediaToolchain,
+    audio_stream_index: Option<usize>,
+    threshold_db: f64,
+    min_silence_ms: u64,
+) -> Result<LocalMediaAnalysis, String> {
+    let canonical = if file.exists() {
+        strip_verbatim_prefix(file)
+    } else {
+        file.canonicalize()
+            .map(|path| strip_verbatim_prefix(&path))
+            .map_err(|_| "media_source_missing".to_string())?
+    };
+    let probe = probe_media_file(&canonical, tools)?;
+    let duration_ms = probe.duration_ms.filter(|duration| *duration > 0)
+        .ok_or_else(|| "source_duration_unknown".to_string())?;
+    if duration_ms > MAX_FULL_VIDEO_DURATION_MS {
+        return Err("duration_budget_exceeded".into());
+    }
+    let selected_audio_stream = resolve_audio_stream_index(&probe.audio_tracks, audio_stream_index)?
+        .ok_or_else(|| "dead_air_audio_unavailable".to_string())?;
+    let threshold_db = threshold_db.clamp(-80.0, 0.0);
+    let min_silence_ms = min_silence_ms.clamp(100, 30_000);
+    let output = tools.output(MediaBinary::Ffmpeg, vec![
+        literal("-hide_banner"),
+        literal("-nostats"),
+        literal("-loglevel"),
+        literal("info"),
+        literal("-i"),
+        media_path(&canonical),
+        literal("-map"),
+        literal(format!("0:{selected_audio_stream}")),
+        literal("-vn"),
+        literal("-af"),
+        literal(format!("silencedetect=noise={threshold_db:.1}dB:d={:.3}", min_silence_ms as f64 / 1000.0)),
+        literal("-f"),
+        literal("null"),
+        literal("-"),
+    ]).map_err(|_| "ffmpeg_unavailable".to_string())?;
+    if !output.status.success() {
+        return Err("media_analysis_failed".into());
+    }
+
+    let mut silence_segments = Vec::new();
+    let mut silence_start = None;
+    let mut silence_segment_overflow = false;
+    for line in String::from_utf8_lossy(&output.stderr).lines() {
+        if line.contains("silence_start:") {
+            silence_start = value_after(line, "silence_start:").map(seconds_to_ms);
+        } else if line.contains("silence_end:") {
+            let end_ms = value_after(line, "silence_end:").map(seconds_to_ms);
+            let duration = value_after(line, "silence_duration:").map(seconds_to_ms);
+            let start_ms = silence_start.take().or_else(|| end_ms.zip(duration).map(|(end, span)| end.saturating_sub(span)));
+            if let (Some(start), Some(end)) = (start_ms, end_ms) {
+                if end > start {
+                    if silence_segments.len() < MAX_ANALYSIS_SEGMENTS {
+                        push_segment(&mut silence_segments, start, Some(end), "silence");
+                    } else {
+                        silence_segment_overflow = true;
+                    }
+                }
+            }
+        }
+    }
+    if let Some(start_ms) = silence_start {
+        if silence_segments.len() < MAX_ANALYSIS_SEGMENTS {
+            push_segment(&mut silence_segments, start_ms, Some(duration_ms), "silence");
+        } else {
+            silence_segment_overflow = true;
+        }
+    }
+    if silence_segment_overflow {
+        return Err("dead_air_segment_limit_exceeded".into());
+    }
+
+    Ok(LocalMediaAnalysis {
+        analysis_version: "local-media-analysis.v1".into(),
+        duration_ms: Some(duration_ms),
+        probe,
+        silence_segments,
+        black_segments: Vec::new(),
+        frozen_segments: Vec::new(),
+        scene_candidates: Vec::new(),
+        blur_scores: Vec::new(),
+        focus_candidates: Vec::new(),
+        status: "ready".into(),
+        warning: None,
     })
 }
 
@@ -1757,7 +1853,8 @@ pub fn build_media_plan(
     if options.source_duration_ms == 0 {
         return Err("source_duration_unknown".into());
     }
-    if options.max_duration_ms == 0 || options.max_duration_ms > MAX_MEDIA_DURATION_MS {
+    let max_allowed_duration = if options.full_video { MAX_FULL_VIDEO_DURATION_MS } else { MAX_MEDIA_DURATION_MS };
+    if options.max_duration_ms == 0 || options.max_duration_ms > max_allowed_duration {
         return Err("duration_budget_exceeded".into());
     }
     let start = options
@@ -2353,11 +2450,13 @@ pub fn run_allowlisted_ffmpeg_segments(
     focus_y: Option<f64>,
     focus_track: &[MediaFocusKeyframe],
     camera_motion_plan: Option<&CameraMotionPlan>,
+    max_segment_count: usize,
+    max_output_duration_ms: u64,
     tools: &MediaToolchain,
 ) -> Result<PathBuf, String> {
     validate_relative_name(source_relative_name)?;
     validate_relative_name(output_relative_name)?;
-    if segments.is_empty() || segments.len() > 64 {
+    if segments.is_empty() || segments.len() > max_segment_count.min(MAX_FULL_VIDEO_RENDER_SEGMENTS) {
         return Err("approval_required".into());
     }
     let remapped_camera_plan = camera_motion_plan
@@ -2387,7 +2486,7 @@ pub fn run_allowlisted_ffmpeg_segments(
             .checked_add(*end - *start)
             .ok_or_else(|| "duration_budget_exceeded".to_string())
     })?;
-    if total_duration > MAX_MEDIA_DURATION_MS {
+    if total_duration > max_output_duration_ms.min(MAX_FULL_VIDEO_DURATION_MS) {
         return Err("duration_budget_exceeded".into());
     }
     if let Some(parent) = output.parent() {
@@ -3044,6 +3143,61 @@ pub fn build_interactive_render_debug(
     }))
 }
 
+fn build_interactive_multi_segment_filter_graph(
+    segments: &[(u64, u64)],
+    video_filters: &[String],
+    audio_filter: &str,
+    has_audio: bool,
+) -> Result<String, String> {
+    if segments.is_empty() {
+        return Err("no_segments_to_render".into());
+    }
+    if segments.len() != video_filters.len() {
+        return Err("multi_segment_video_filter_count_mismatch".into());
+    }
+
+    let mut filters = Vec::with_capacity(segments.len() * if has_audio { 2 } else { 1 } + 1);
+    for (index, &(start_ms, end_ms)) in segments.iter().enumerate() {
+        if end_ms <= start_ms {
+            return Err("multi_segment_invalid_range".into());
+        }
+        let duration_s = (end_ms - start_ms) as f64 / 1000.0;
+        filters.push(format!(
+            "[{index}:v:0]trim=duration={duration_s:.3},setpts=PTS-STARTPTS,{}[vseg{index}]",
+            video_filters[index]
+        ));
+        if has_audio {
+            filters.push(format!(
+                "[{index}:a:0]atrim=duration={duration_s:.3},asetpts=PTS-STARTPTS,{audio_filter}[aseg{index}]"
+            ));
+        }
+    }
+
+    let concat_inputs = (0..segments.len())
+        .map(|index| {
+            if has_audio {
+                format!("[vseg{index}][aseg{index}]")
+            } else {
+                format!("[vseg{index}]")
+            }
+        })
+        .collect::<String>();
+    let audio_mode = if has_audio { 1 } else { 0 };
+    filters.push(if has_audio {
+        format!(
+            "{concat_inputs}concat=n={}:v=1:a={audio_mode}[vout][aout]",
+            segments.len()
+        )
+    } else {
+        format!(
+            "{concat_inputs}concat=n={}:v=1:a={audio_mode}[vout]",
+            segments.len()
+        )
+    });
+
+    Ok(filters.join(";"))
+}
+
 pub fn run_interactive_media_render(
     source: &Path,
     output: &Path,
@@ -3090,9 +3244,14 @@ pub fn run_interactive_media_render(
         },
     };
     let effective_auto_pan_zoom = resolve_render_auto_pan_zoom(auto_pan_zoom, camera_motion_plan);
-    let probed_source_dimensions = probe_media_file(source, tools)
-        .ok()
+    let probed_source = probe_media_file(source, tools).ok();
+    let probed_source_dimensions = probed_source
+        .as_ref()
         .and_then(|probe| probe.width.zip(probe.height));
+    let source_has_audio = probed_source
+        .as_ref()
+        .map(|probe| probe.has_audio)
+        .unwrap_or(false);
     let source_dimensions = if effective_auto_pan_zoom {
         resolve_render_source_dimensions(probed_source_dimensions, canonical_source_dimensions)
     } else {
@@ -3176,10 +3335,16 @@ pub fn run_interactive_media_render(
         fs::create_dir_all(&scratch).map_err(|e| format!("cannot_create_tmp_dir: {e}"))?;
 
         let render_res: Result<(), String> = (|| {
-            let mut files = Vec::new();
+            let mut input_args = Vec::with_capacity(segments.len() * 6 + 2);
+            input_args.extend([
+                literal("-hide_banner"),
+                literal("-loglevel"),
+                literal("error"),
+                literal("-y"),
+            ]);
+            let mut video_filters = Vec::with_capacity(segments.len());
             let mut output_offset_ms = 0u64;
-            for (idx, &(seg_start, seg_end)) in segments.iter().enumerate() {
-                let part = scratch.join(format!("part-{:03}.mp4", idx));
+            for &(seg_start, seg_end) in segments {
                 let dur_s = (seg_end - seg_start) as f64 / 1000.0;
                 let crop_filter = build_interactive_crop_filter(
                     out_w,
@@ -3193,109 +3358,59 @@ pub fn run_interactive_media_render(
                     remapped_camera_plan.as_ref(),
                     output_offset_ms,
                     &speed_vf_suffix,
-                );
-                let mut part_args = vec![
-                    literal("-hide_banner"),
-                    literal("-loglevel"),
-                    literal("error"),
-                    literal("-y"),
+                )
+                .ok_or_else(|| "interactive_crop_filter_failed".to_string())?;
+                video_filters.push(crop_filter);
+                input_args.extend([
                     literal("-ss"),
                     literal(format!("{:.3}", seg_start as f64 / 1000.0)),
                     literal("-t"),
                     literal(format!("{:.3}", dur_s)),
                     literal("-i"),
                     media_path(source),
-                    literal("-map"),
-                    literal("0:v:0"),
-                    literal("-map"),
-                    literal("0:a?"),
-                ];
-                if let Some(ref cf) = crop_filter {
-                    part_args.extend([literal("-vf"), literal(cf.clone())]);
-                }
-                part_args.extend([
-                    literal("-c:v"),
-                    literal("libx264"),
-                    literal("-preset"),
-                    literal("veryfast"),
-                    literal("-vsync"),
-                    literal("1"),
-                    literal("-c:a"),
-                    literal("aac"),
-                    literal("-af"),
-                    literal(&audio_filter),
-                    media_path(&part),
                 ]);
-                let s = tools
-                    .status(MediaBinary::Ffmpeg, part_args)
-                    .map_err(|error| format!("ffmpeg_spawn_failed:segment_{idx}: {error}"))?;
-                if !s.success() {
-                    return Err(format!("ffmpeg_part_{idx}_failed"));
-                }
-                files.push(part);
                 output_offset_ms = output_offset_ms.saturating_add(seg_end - seg_start);
             }
 
-            let list_path = scratch.join("concat.txt");
-            let list = files
-                .iter()
-                .map(|path| {
-                    let filename = path
-                        .file_name()
-                        .map(|n| n.to_string_lossy().to_string())
-                        .unwrap_or_else(|| path.to_string_lossy().replace('\\', "/"));
-                    format!("file '{}'\n", filename.replace('\'', "'\\''"))
-                })
-                .collect::<String>();
-            fs::write(&list_path, list).map_err(|_| "cannot_write_concat_list".to_string())?;
+            let filter_graph = build_interactive_multi_segment_filter_graph(
+                segments,
+                &video_filters,
+                &audio_filter,
+                source_has_audio,
+            )?;
+            let filter_script_path = scratch.join("filter-complex.txt");
+            fs::write(&filter_script_path, filter_graph)
+                .map_err(|_| "cannot_write_filter_script".to_string())?;
 
-            let concat_args = vec![
-                literal("-hide_banner"),
-                literal("-loglevel"),
-                literal("error"),
-                literal("-y"),
-                literal("-f"),
-                literal("concat"),
-                literal("-safe"),
-                literal("0"),
-                literal("-i"),
-                media_path(&list_path),
-                literal("-c"),
-                literal("copy"),
-                literal("-fflags"),
-                literal("+genpts"),
-                media_path(output),
-            ];
-            let status = tools
-                .status(MediaBinary::Ffmpeg, concat_args)
-                .map_err(|error| format!("ffmpeg_spawn_failed:concat: {error}"))?;
-
-            if !status.success() {
-                let fallback_args = vec![
-                    literal("-hide_banner"),
-                    literal("-loglevel"),
-                    literal("error"),
-                    literal("-y"),
-                    literal("-f"),
-                    literal("concat"),
-                    literal("-safe"),
-                    literal("0"),
-                    literal("-i"),
-                    media_path(&list_path),
-                    literal("-c:v"),
-                    literal("libx264"),
-                    literal("-preset"),
-                    literal("fast"),
+            input_args.extend([
+                literal("-filter_complex_script"),
+                media_path(&filter_script_path),
+                literal("-map"),
+                literal("[vout]"),
+                literal("-c:v"),
+                literal("libx264"),
+                literal("-preset"),
+                literal("veryfast"),
+                literal("-vsync"),
+                literal("1"),
+            ]);
+            if source_has_audio {
+                input_args.extend([
+                    literal("-map"),
+                    literal("[aout]"),
                     literal("-c:a"),
                     literal("aac"),
-                    media_path(output),
-                ];
-                let fb_status = tools
-                    .status(MediaBinary::Ffmpeg, fallback_args)
-                    .map_err(|error| format!("ffmpeg_spawn_failed:concat_fallback: {error}"))?;
-                if !fb_status.success() {
-                    return Err("ffmpeg_concat_failed".into());
-                }
+                    literal("-b:a"),
+                    literal("192k"),
+                ]);
+            }
+            input_args.push(media_path(output));
+
+            let status = tools
+                .status(MediaBinary::Ffmpeg, input_args)
+                .map_err(|error| format!("ffmpeg_spawn_failed:multi_segment: {error}"))?;
+            if !status.success() {
+                return Err("ffmpeg_multi_segment_failed".into());
             }
             Ok(())
         })();
@@ -3386,6 +3501,14 @@ fn select_trim_bounds_from_silence_diagnostics(diagnostics: &str) -> (Option<u64
 }
 
 pub fn qc_derived_output(root: &Path, output: &Path) -> Result<LocalMediaQc, String> {
+    qc_derived_output_with_size_limit(root, output, MAX_OUTPUT_BYTES)
+}
+
+pub fn qc_derived_output_with_size_limit(
+    root: &Path,
+    output: &Path,
+    max_output_bytes: u64,
+) -> Result<LocalMediaQc, String> {
     let canonical_root = root
         .canonicalize()
         .map_err(|_| "local_root_not_found".to_string())?;
@@ -3397,15 +3520,21 @@ pub fn qc_derived_output(root: &Path, output: &Path) -> Result<LocalMediaQc, Str
     }
     let metadata =
         fs::metadata(&canonical_output).map_err(|_| "derived_output_missing".to_string())?;
-    if metadata.len() == 0 || metadata.len() > MAX_OUTPUT_BYTES {
+    if metadata.len() == 0 || metadata.len() > max_output_bytes {
         return Err("derived_output_size_invalid".into());
     }
-    let bytes =
-        fs::read(&canonical_output).map_err(|_| "derived_output_read_failed".to_string())?;
+    let mut file = File::open(&canonical_output).map_err(|_| "derived_output_read_failed".to_string())?;
+    let mut hasher = Sha256::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let read = file.read(&mut buffer).map_err(|_| "derived_output_read_failed".to_string())?;
+        if read == 0 { break; }
+        hasher.update(&buffer[..read]);
+    }
     Ok(LocalMediaQc {
         passed: true,
         size_bytes: metadata.len(),
-        checksum: hex(&Sha256::digest(bytes)),
+        checksum: hex(&hasher.finalize()),
         reason: None,
         duration_ms: None,
         width: None,
@@ -3876,7 +4005,16 @@ pub fn qc_derived_output_with_probe(
     output: &Path,
     tools: &MediaToolchain,
 ) -> Result<LocalMediaQc, String> {
-    let mut qc = qc_derived_output(root, output)?;
+    qc_derived_output_with_probe_limit(root, output, tools, MAX_OUTPUT_BYTES)
+}
+
+pub fn qc_derived_output_with_probe_limit(
+    root: &Path,
+    output: &Path,
+    tools: &MediaToolchain,
+    max_output_bytes: u64,
+) -> Result<LocalMediaQc, String> {
+    let mut qc = qc_derived_output_with_size_limit(root, output, max_output_bytes)?;
     let probe = probe_media_file(output, tools)?;
     let width = probe.width.ok_or_else(|| "qc_failed".to_string())?;
     let height = probe.height.ok_or_else(|| "qc_failed".to_string())?;
@@ -3942,6 +4080,7 @@ mod tests {
     #[test]
     fn plan_is_bounded_and_deterministic() {
         let options = MediaPlanOptions {
+            full_video: false,
             remove_dead_air: true,
             reframe_9x16: true,
             focus_mode: "auto_person".into(),
@@ -4316,6 +4455,39 @@ mod tests {
     }
 
     #[test]
+    fn multi_segment_filter_graph_uses_one_concat_stage_and_resets_each_input() {
+        let segments = vec![(0, 2_000), (3_000, 4_500)];
+        let video_filters = vec![
+            "scale=1080:1920,setsar=1".to_string(),
+            "scale=1080:1920,setsar=1".to_string(),
+        ];
+        let graph = build_interactive_multi_segment_filter_graph(
+            &segments,
+            &video_filters,
+            "atempo=1.000000",
+            true,
+        )
+        .expect("audio graph should be generated");
+
+        assert_eq!(graph.matches("concat=n=2:v=1:a=1").count(), 1);
+        assert!(graph.contains("[0:v:0]trim=duration=2.000,setpts=PTS-STARTPTS"));
+        assert!(graph.contains("[1:v:0]trim=duration=1.500,setpts=PTS-STARTPTS"));
+        assert!(graph.contains("[0:a:0]atrim=duration=2.000,asetpts=PTS-STARTPTS"));
+        assert!(graph.contains("[1:a:0]atrim=duration=1.500,asetpts=PTS-STARTPTS"));
+        assert!(graph.contains("[vseg0][aseg0][vseg1][aseg1]concat=n=2:v=1:a=1[vout][aout]"));
+
+        let video_only = build_interactive_multi_segment_filter_graph(
+            &segments,
+            &video_filters,
+            "atempo=1.000000",
+            false,
+        )
+        .expect("video-only graph should be generated");
+        assert!(video_only.contains("concat=n=2:v=1:a=0[vout]"));
+        assert!(!video_only.contains(":a:0]"));
+    }
+
+    #[test]
     fn native_render_prefers_dimensions_probed_from_the_actual_source() {
         assert_eq!(
             resolve_render_source_dimensions(Some((1920, 1080)), Some((1080, 1920))),
@@ -4543,6 +4715,111 @@ mod tests {
         let probe = probe_media_file(&output, &tools).unwrap();
         assert!(probe.duration_ms.unwrap_or(0) >= 1_000);
         assert!(probe.has_audio);
+    }
+
+    #[test]
+    fn camera_plan_multi_segment_render_keeps_framing_after_dead_air_concat() {
+        if !Command::new("ffmpeg")
+            .arg("-version")
+            .status()
+            .map(|status| status.success())
+            .unwrap_or(false)
+        {
+            return;
+        }
+        let dir = tempdir().unwrap();
+        let source = dir.path().join("static-halves-with-audio.mp4");
+        let output = dir.path().join("multi-segment-moving-camera.mp4");
+        let generated = Command::new("ffmpeg")
+            .args([
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:size=640x360:rate=30,drawbox=x=0:y=0:w=320:h=360:color=red:t=fill,drawbox=x=320:y=0:w=320:h=360:color=blue:t=fill",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:sample_rate=48000",
+                "-t",
+                "4",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-c:a",
+                "aac",
+                source.to_str().unwrap(),
+            ])
+            .status()
+            .unwrap();
+        assert!(generated.success());
+
+        let keyframes = (0..36)
+            .map(|index| CameraMotionKeyframe {
+                time_ms: index * (4_000 / 35),
+                x: 0.2 + 0.6 * (index as f64 / 35.0),
+                y: 0.5,
+                scale: 1.0,
+                easing: Some("linear".into()),
+                source: "auto".into(),
+                source_mark_id: None,
+            })
+            .collect();
+        let plan = CameraMotionPlan {
+            version: CAMERA_MOTION_PLAN_VERSION.into(),
+            mode: "face_activity".into(),
+            duration_ms: 4_000,
+            keyframes,
+            analysis_mode: Some("full_scan".into()),
+            target_tracks: Vec::new(),
+            evidence: None,
+        };
+        let tools = MediaToolchain::native("ffmpeg", "ffprobe");
+        run_interactive_media_render(
+            &source,
+            &output,
+            &[(0, 2_000), (3_000, 4_000)],
+            "9:16",
+            0.5,
+            0.5,
+            1.0,
+            &tools,
+            Some(1080),
+            Some(1920),
+            true,
+            "face_activity",
+            Some(1.0),
+            None,
+            Some(&plan),
+        )
+        .unwrap();
+
+        let frame_md5 = |time: &str| {
+            let frame = Command::new("ffmpeg")
+                .args([
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    "-ss",
+                    time,
+                    "-i",
+                    output.to_str().unwrap(),
+                    "-frames:v",
+                    "1",
+                    "-f",
+                    "md5",
+                    "-",
+                ])
+                .output()
+                .unwrap();
+            assert!(frame.status.success());
+            String::from_utf8_lossy(&frame.stdout).into_owned()
+        };
+        assert_ne!(frame_md5("0.1"), frame_md5("2.9"));
     }
 
     #[test]

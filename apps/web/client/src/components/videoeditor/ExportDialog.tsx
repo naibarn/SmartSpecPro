@@ -8,6 +8,7 @@ import { Link } from 'wouter';
 import { toast } from 'sonner';
 import { sanitizeRenderOutputFilename } from '@smartspec/shared';
 import { videoEditorMediaLibrary } from '../../services/videoEditorService';
+import { getSmartSpecWebEndpoint } from '@/lib/webRuntime';
 import type { VideoEditorProject, ExportSettings } from '../../types/videoEditor';
 import type { QueueEditorOperation } from './EditorPanelShared';
 import { useEditorFocusScope } from './ui/focusManagement';
@@ -114,7 +115,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
         const enabled = tenantPayload.tenant?.featureFlags?.contentProtectionEnabled === true;
         if (!active || !enabled) return;
         setContentProtectionEnabled(true);
-        const settingsResponse = await fetch('/api/trpc/contentProtection.getSettings', { credentials: 'include' });
+        const settingsResponse = await fetch(getSmartSpecWebEndpoint('/trpc/contentProtection.getSettings'), { credentials: 'include' });
         if (!settingsResponse.ok) return;
         const settingsPayload = await settingsResponse.json() as { result?: { data?: unknown } };
         const resultData = settingsPayload.result?.data;

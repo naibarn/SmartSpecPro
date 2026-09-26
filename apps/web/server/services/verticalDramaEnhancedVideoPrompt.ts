@@ -618,23 +618,64 @@ function resolveEnhancedPromptBudget(
   return resolved;
 }
 
+export type EnhancedBridgeDiagnosticMetadata = {
+  diagnosticCode: string;
+  diagnosticStage?: string;
+  diagnosticFingerprint: string;
+};
+
+export function getEnhancedBridgeDiagnosticMetadata(
+  diagnostic: string,
+): EnhancedBridgeDiagnosticMetadata {
+  const diagnosticLine = diagnostic.split(/\r?\n/).reverse().find(
+    line => /^ENHANCED_[A-Z_]+:/.test(line),
+  ) ?? diagnostic;
+  const diagnosticCode =
+    diagnosticLine.match(/^(ENHANCED_[A-Z_]+):/)?.[1] ??
+    "ENHANCED_AGENT_FAILED";
+  const diagnosticStage = diagnosticLine.match(
+    /\bstage=([A-Za-z0-9_-]+)/i,
+  )?.[1];
+  return {
+    diagnosticCode,
+    ...(diagnosticStage ? { diagnosticStage } : {}),
+    diagnosticFingerprint: createHash("sha256").update(diagnostic).digest("hex"),
+  };
+}
+
 export class EnhancedVideoDirectorBridgeError extends Error {
   readonly code:
     | "BRIDGE_UNAVAILABLE"
     | "BRIDGE_FAILED"
     | "BRIDGE_INVALID_OUTPUT"
+    | "BRIDGE_INTERRUPTED"
+    | "BRIDGE_TIMEOUT"
     | "BRIDGE_PROVIDER_CREDIT_LIMIT"
     | "BRIDGE_PROVIDER_RATE_LIMIT"
     | "BRIDGE_PROVIDER_AUTH"
     | "BRIDGE_UNSUPPORTED_TRANSPORT";
+  readonly class?: "retryable";
+  readonly diagnosticCode?: string;
+  readonly diagnosticStage?: string;
+  readonly diagnosticFingerprint?: string;
 
   constructor(
     code: EnhancedVideoDirectorBridgeError["code"],
     message: string,
+    options?: {
+      class?: "retryable";
+      diagnosticCode?: string;
+      diagnosticStage?: string;
+      diagnosticFingerprint?: string;
+    },
   ) {
     super(message);
     this.name = "EnhancedVideoDirectorBridgeError";
     this.code = code;
+    if (options?.class) this.class = options.class;
+    this.diagnosticCode = options?.diagnosticCode;
+    this.diagnosticStage = options?.diagnosticStage;
+    this.diagnosticFingerprint = options?.diagnosticFingerprint;
   }
 }
 
@@ -852,18 +893,45 @@ export async function invokeEnhancedVideoDirectorBridge(
   child.stdout.on("data", chunk => chunks.push(Buffer.from(chunk)));
   child.stderr.on("data", chunk => errors.push(Buffer.from(chunk)));
   child.stdin.end(JSON.stringify(normalizedInput));
-  const timeout = setTimeout(() => child.kill("SIGTERM"), options.timeoutMs ?? 10 * 60_000);
+  let timeoutTriggered = false;
+  const timeout = setTimeout(() => {
+    timeoutTriggered = true;
+    child.kill("SIGTERM");
+  }, options.timeoutMs ?? 10 * 60_000);
   try {
-    const [result] = (await once(child, "close")) as [number | null];
+    const [result, signal] = (await once(child, "close")) as [
+      number | null,
+      NodeJS.Signals | null,
+    ];
     const stdout = Buffer.concat(chunks).toString("utf8").trim();
     if (result !== 0) {
+      // A supervised worker may be stopped while a provider request is in
+      // flight. The child then exits with a signal and no stderr, which used
+      // to be misclassified as a permanent generic Agent failure. Preserve
+      // the canonical job for the control-plane retry instead.
+      if (timeoutTriggered) {
+        throw new EnhancedVideoDirectorBridgeError(
+          "BRIDGE_TIMEOUT",
+          "Enhanced Agent bridge timed out; the job can be retried safely.",
+          { class: "retryable" },
+        );
+      }
+      if (signal) {
+        throw new EnhancedVideoDirectorBridgeError(
+          "BRIDGE_INTERRUPTED",
+          "Enhanced Agent bridge was interrupted by worker shutdown; the job can be retried safely.",
+          { class: "retryable" },
+        );
+      }
       const diagnostic = errors.length
         ? Buffer.concat(errors).toString("utf8").trim()
         : "";
       const classified = classifyEnhancedBridgeDiagnostic(diagnostic);
+      const diagnosticMetadata = getEnhancedBridgeDiagnosticMetadata(diagnostic);
       throw new EnhancedVideoDirectorBridgeError(
         classified.code,
         classified.message,
+        diagnosticMetadata,
       );
     }
     let parsed: unknown;
@@ -1079,7 +1147,11 @@ export function classifyEnhancedJobError(error: unknown): {
 } {
   const message = error instanceof Error ? error.message : String(error);
   if (error instanceof EnhancedVideoDirectorBridgeError) {
-    if (error.code === "BRIDGE_PROVIDER_RATE_LIMIT") return { code: "retryable", message };
+    if (
+      error.code === "BRIDGE_PROVIDER_RATE_LIMIT" ||
+      error.code === "BRIDGE_INTERRUPTED" ||
+      error.code === "BRIDGE_TIMEOUT"
+    ) return { code: "retryable", message };
     if (
       error.code === "BRIDGE_PROVIDER_CREDIT_LIMIT" ||
       error.code === "BRIDGE_PROVIDER_AUTH" ||

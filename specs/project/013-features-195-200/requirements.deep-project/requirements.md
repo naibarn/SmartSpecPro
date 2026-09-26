@@ -2,9 +2,9 @@
 
 Implement the approved target specifications in dependency order:
 
-1. `specs/feature/195/spec.md` — Unified Async Job Control Plane.
-2. `specs/feature/196/spec.md` — Universal Goal Orchestration, Capability and Command Gateway.
-3. `specs/feature/197/spec.md` — Runner Adaptive Execution Fabric.
+1. `specs/feature/195-unified-async-job-control-plane/spec.md` — Unified Async Job Control Plane.
+2. `specs/feature/196-universal-goal-orchestration/spec.md` — Universal Goal Orchestration, Capability and Command Gateway.
+3. `specs/feature/197-runner-adaptive-execution-fabric/spec.md` — Runner Adaptive Execution Fabric.
 4. `specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md` — Intelligent Chat and Capability Evolution.
 5. `specs/feature/199-external-mcp-gateway-upstream-management/spec.md` — External MCP Gateway and Upstream Management.
 6. `specs/feature/200-universal-coding-agent-control-plane/spec.md` — Universal External Agent Control Plane.
@@ -31,4 +31,3 @@ Implement the approved target specifications in dependency order:
 ## Acceptance
 
 All six specs have a deep plan, TDD plan and section task set; implementation follows the dependency order; focused tests and static checks pass for changed paths; no duplicate source of truth or retired dispatch path is introduced; target gaps are either implemented or recorded with an explicit blocker and evidence; the final ten-round audit has no unresolved high-confidence gap.
-

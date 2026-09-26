@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // `submitVdRemotionAssembly` no longer dispatches Lane A in-process
 // (`planning/worker-app-remotion-render-video/plan.md` §P3 — Lane A must
@@ -11,6 +11,7 @@ import { describe, expect, it, vi } from "vitest";
 //   db.select({...}).from(table).where(...).limit(1)      -> Promise<rows>
 //   db.update(table).set({...}).where(...)                -> Promise<void>
 import {
+  contentProtectionAssets,
   workerArtifacts,
   workerJobs,
   verticalDramaEpisodes,
@@ -20,17 +21,32 @@ let episodeRow: { assemblyManifest: Record<string, unknown> | null } = {
   assemblyManifest: {},
 };
 let workerJobRow: Record<string, unknown> | undefined;
+let protectionWorkerJobRow: Record<string, unknown> | undefined;
+let protectionAssetRow: Record<string, unknown> | undefined;
+let workerJobLookupCount = 0;
 /** `worker_artifacts` rows the mp4 last-resort lookup reads. */
-let workerArtifactRows: Array<{ storageRef: string }> = [];
+let workerArtifactRows: Array<{ storageRef: string; id?: string; metadataJson?: Record<string, unknown> }> = [];
+let artifactVersionRows: Array<Record<string, unknown>> = [];
 
 function tableOfFrom(
   fromArg: unknown
-): "episode" | "workerJob" | "workerArtifact" | "unknown" {
+): "episode" | "workerJob" | "protectionAsset" | "workerArtifact" | "unknown" {
   if (fromArg === verticalDramaEpisodes) return "episode";
   if (fromArg === workerJobs) return "workerJob";
+  if (fromArg === contentProtectionAssets) return "protectionAsset";
   if (fromArg === workerArtifacts) return "workerArtifact";
   return "unknown";
 }
+
+beforeEach(() => {
+  episodeRow = { assemblyManifest: {} };
+  workerJobRow = undefined;
+  protectionWorkerJobRow = undefined;
+  protectionAssetRow = undefined;
+  workerJobLookupCount = 0;
+  workerArtifactRows = [];
+  artifactVersionRows = [];
+});
 
 vi.mock("../../db", () => ({
   db: {
@@ -39,8 +55,15 @@ vi.mock("../../db", () => ({
         where: () => ({
           limit: async () => {
             const table = tableOfFrom(fromArg);
-            if (table === "workerJob")
-              return workerJobRow ? [workerJobRow] : [];
+            if (table === "workerJob") {
+              workerJobLookupCount += 1;
+              const row = workerJobLookupCount === 1
+                ? workerJobRow
+                : protectionWorkerJobRow;
+              return row ? [row] : [];
+            }
+            if (table === "protectionAsset")
+              return protectionAssetRow ? [protectionAssetRow] : [];
             if (table === "workerArtifact") return workerArtifactRows;
             return [episodeRow];
           },
@@ -68,6 +91,45 @@ vi.mock("../../db", () => ({
 // is persisted as the player's `videoUrl` — Lane B always reports a key.
 vi.mock("../../storage", () => ({
   storageGet: async () => ({ url: "https://cdn.example.com/resolved.mp4" }),
+}));
+
+vi.mock("../verticalDramaArtifactVersionService", () => ({
+  upsertVerticalDramaArtifactVersion: async (input: Record<string, unknown>) => {
+    const row = {
+      id: `${String(input.artifactKind)}-${String(input.renderJobId)}`,
+      ...input,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const existingIndex = artifactVersionRows.findIndex(
+      existing =>
+        existing.artifactKind === input.artifactKind &&
+        existing.renderJobId === input.renderJobId,
+    );
+    if (existingIndex >= 0) artifactVersionRows[existingIndex] = row;
+    else artifactVersionRows.push(row);
+    return row;
+  },
+  listVerticalDramaArtifactVersionProjections: async () =>
+    artifactVersionRows.map(row => ({
+      id: row.id,
+      versionNumber: row.versionNumber,
+      artifactKind: row.artifactKind,
+      status: row.status,
+      ...(row.status === "available"
+        ? {
+            videoUrl:
+              String(row.storageRef).startsWith("http")
+                ? row.storageRef
+                : `/api/storage/files/${row.storageRef}`,
+          }
+        : {}),
+      ...(row.protectionJobId ? { protectionJobId: row.protectionJobId } : {}),
+      ...(row.protectionAssetId ? { protectionAssetId: row.protectionAssetId } : {}),
+      ...(row.errorCode ? { errorCode: row.errorCode } : {}),
+      ...(row.errorMessage ? { errorMessage: row.errorMessage } : {}),
+      createdAt: new Date().toISOString(),
+    })),
 }));
 
 import { createHash } from "crypto";
@@ -1591,6 +1653,9 @@ describe("reconcileVdRemotionAssembly", () => {
       videoUrl: "https://cdn.example.com/final.mp4",
       stale: false,
     });
+    expect((episodeRow.assemblyManifest as any).compiledVideo.artifactVersions).toEqual([
+      expect.objectContaining({ artifactKind: "raw_render", status: "available" }),
+    ]);
   });
 
   it("ignores a late terminal event from an older assembly job", async () => {
@@ -1728,7 +1793,138 @@ describe("reconcileVdRemotionAssembly", () => {
     expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
       status: "failed",
       error: "Remotion render completed but produced no output URL",
+      retryJobId: "job-8",
     });
+  });
+
+  it("keeps the raw render usable when the linked protection job is terminal", async () => {
+    episodeRow = {
+      assemblyManifest: {
+        compiledVideo: { status: "pending", pendingJobId: "job-protected" },
+      },
+    };
+    workerJobRow = {
+      id: "job-protected",
+      status: "completed",
+      outputJson: {
+        contentProtection: {
+          status: "PROTECTION_REQUESTED",
+          protectionAssetId: "asset-1",
+        },
+        lastEventPayload: { outputUrl: "worker-artifacts/job-protected/render.mp4" },
+      },
+    };
+    protectionAssetRow = {
+      status: "QUEUED",
+      errorMessage: null,
+      protectedObjectKey: null,
+      causalJobId: "protection-job-1",
+    };
+    protectionWorkerJobRow = {
+      id: "protection-job-1",
+      status: "failed",
+      failureReason: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+      errorCode: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+      errorMessage: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+    };
+
+    const result = await reconcileVdRemotionAssembly(owner, "job-protected");
+
+    expect(result).toEqual({ reconciled: true, status: "completed" });
+    expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
+      status: "completed",
+      videoUrl: "https://cdn.example.com/resolved.mp4",
+      protectionJobId: "protection-job-1",
+      protectionStatus: "failed",
+      protectionError: "PROTECTION_PROVIDER_CAPABILITY_UNAVAILABLE",
+    });
+    expect((episodeRow.assemblyManifest as any).compiledVideo.artifactVersions).toEqual([
+      expect.objectContaining({ artifactKind: "raw_render", status: "available" }),
+      expect.objectContaining({ artifactKind: "protected_render", status: "failed" }),
+    ]);
+  });
+
+  it("publishes the raw render before protection finishes", async () => {
+    episodeRow = {
+      assemblyManifest: {
+        compiledVideo: { status: "pending", pendingJobId: "job-processing" },
+      },
+    };
+    workerJobRow = {
+      id: "job-processing",
+      status: "completed",
+      outputJson: {
+        contentProtection: {
+          status: "PROTECTION_REQUESTED",
+          protectionAssetId: "asset-processing",
+          protectionJobId: "protection-job-processing",
+        },
+        lastEventPayload: { outputUrl: "worker-artifacts/job-processing/raw.mp4" },
+      },
+    };
+    protectionAssetRow = { status: "QUEUED", errorMessage: null, protectedObjectKey: null };
+    protectionWorkerJobRow = { id: "protection-job-processing", status: "queued" };
+
+    const result = await reconcileVdRemotionAssembly(owner, "job-processing");
+
+    expect(result).toEqual({ reconciled: true, status: "completed" });
+    expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
+      status: "completed",
+      videoUrl: "https://cdn.example.com/resolved.mp4",
+      protectionStatus: "processing",
+    });
+    expect((episodeRow.assemblyManifest as any).compiledVideo.artifactVersions).toEqual([
+      expect.objectContaining({ artifactKind: "raw_render", status: "available" }),
+      expect.objectContaining({ artifactKind: "protected_render", status: "processing" }),
+    ]);
+  });
+
+  it("keeps raw as the default while exposing a completed protected sibling", async () => {
+    episodeRow = {
+      assemblyManifest: {
+        compiledVideo: { status: "pending", pendingJobId: "job-both" },
+      },
+    };
+    workerJobRow = {
+      id: "job-both",
+      status: "completed",
+      outputJson: {
+        contentProtection: {
+          status: "PROTECTION_REQUESTED",
+          protectionAssetId: "asset-both",
+          protectionJobId: "protection-job-both",
+        },
+        lastEventPayload: { outputUrl: "worker-artifacts/job-both/raw.mp4" },
+      },
+    };
+    protectionAssetRow = {
+      status: "PROTECTED",
+      errorMessage: null,
+      protectedObjectKey: "worker-artifacts/job-both/protected.mp4",
+    };
+    protectionWorkerJobRow = { id: "protection-job-both", status: "completed" };
+
+    const result = await reconcileVdRemotionAssembly(owner, "job-both");
+
+    expect(result).toEqual({ reconciled: true, status: "completed" });
+    const compiledVideo = (episodeRow.assemblyManifest as any).compiledVideo;
+    expect(compiledVideo).toMatchObject({
+      status: "completed",
+      videoUrl: "https://cdn.example.com/resolved.mp4",
+      protectionStatus: "available",
+    });
+    expect(compiledVideo.artifactVersions).toEqual([
+      expect.objectContaining({
+        artifactKind: "raw_render",
+        status: "available",
+        videoUrl: "/api/storage/files/worker-artifacts/job-both/raw.mp4",
+      }),
+      expect.objectContaining({
+        artifactKind: "protected_render",
+        status: "available",
+        videoUrl: "/api/storage/files/worker-artifacts/job-both/protected.mp4",
+      }),
+    ]);
   });
 
   it("writes status:'failed' with the worker job's failureReason", async () => {
@@ -1747,6 +1943,7 @@ describe("reconcileVdRemotionAssembly", () => {
     expect((episodeRow.assemblyManifest as any).compiledVideo).toMatchObject({
       status: "failed",
       error: "renderer crashed",
+      retryJobId: "job-2",
     });
   });
 
@@ -1755,7 +1952,7 @@ describe("reconcileVdRemotionAssembly", () => {
   /* ---------------------------------------------------------------------- */
 
   it("is a no-op while still queued and within the TTL", async () => {
-    expect(VD_REMOTION_QUEUED_TTL_MS).toBe(60 * 60 * 1000);
+    expect(VD_REMOTION_QUEUED_TTL_MS).toBe(10 * 60 * 1000);
     episodeRow = {
       assemblyManifest: {
         compiledVideo: { status: "pending", pendingJobId: "job-3" },
@@ -1792,6 +1989,7 @@ describe("reconcileVdRemotionAssembly", () => {
     expect(compiledVideo.status).toBe("failed");
     expect(compiledVideo.error).toContain("vd_remotion_worker_unavailable");
     expect(compiledVideo.pendingJobId).toBeUndefined();
+    expect(compiledVideo.retryJobId).toBe("job-4");
   });
 
   it("treats a missing submittedAt as never-timed-out (stays pending)", async () => {

@@ -57,6 +57,24 @@ describe("jobCompletionNotificationService", () => {
     );
   });
 
+  it("preserves the linked feedback ticket in notification metadata", () => {
+    const payload = buildJobCompletionNotification({
+      db: {} as any,
+      userId: 42,
+      jobId: "job-1",
+      jobType: "worker:remotion_render_video",
+      status: "failed",
+      title: "งาน remotion_render_video",
+      feedbackTicketId: 603,
+    });
+
+    expect(payload?.metadata).toEqual(
+      expect.objectContaining({
+        relatedItems: expect.objectContaining({ feedbackTicketId: "603" }),
+      }),
+    );
+  });
+
   it("does not build a notification without an owner", () => {
     expect(
       buildJobCompletionNotification({

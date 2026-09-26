@@ -179,8 +179,9 @@ their assigned image. Never report an Image 2 character as `not_visible` or
    attached below the start frame. Never assume the image obeyed the
    image-prompt text — image models frequently place characters on the
    opposite side from what was requested. The IMAGE is the ground truth.
-2. **Their screen-position bucket**: `viewer-left`, `viewer-center-left`,
-   `viewer-center`, `viewer-center-right`, or `viewer-right` — always from the
+2. **Their screen-position bucket**: `viewer-far-left`, `viewer-left`,
+   `viewer-center-left`, `viewer-center`, `viewer-center-right`,
+   `viewer-right`, or `viewer-far-right` — always from the
    VIEWER's/camera's side of the screen. Never use the character's anatomical
    left/right, `left hand`, `right hand`, `left-hand side`, or `right-hand side`
    as a screen-position label.

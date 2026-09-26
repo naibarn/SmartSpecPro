@@ -583,8 +583,29 @@ describe("policy-safe synopsis deterministic contract", () => {
     expect(mockDeductCredits).toHaveBeenCalledTimes(1);
   });
 
-  it("still blocks a truly high-risk rewritten synopsis", async () => {
+  it("uses the deterministic safety fallback before blocking a high-risk rewrite", async () => {
     const unsafeSynopsis = "ผู้ใหญ่บังคับเด็กให้เซ็นเอกสารและเด็กพยายามถอยหนี";
+    mockExecute.mockResolvedValue(
+      successResponse({
+        rewritten_synopsis: unsafeSynopsis,
+        safety_adjustments: [],
+      })
+    );
+
+    const result = await generateStartFrameShotPrompt(
+      baseShotParams({
+        imagePromptMode: "policy_safe_rewrite",
+        canonicalShotSummary: unsafeSynopsis,
+      })
+    );
+
+    expect(result.prompt).toContain("ความขัดแย้งและแรงกดดัน");
+    expect(result.prompt).not.toContain("ผู้ใหญ่บังคับเด็ก");
+    expect(mockDeductCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it("still blocks a truly high-risk rewritten synopsis", async () => {
+    const unsafeSynopsis = "A child is physically restrained by an adult.";
     mockExecute.mockResolvedValue(
       successResponse({
         rewritten_synopsis: unsafeSynopsis,

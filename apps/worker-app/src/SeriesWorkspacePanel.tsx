@@ -91,6 +91,7 @@ function buildMediaIdempotencyKey(input: {
   focusY: number;
   stillMotion: string | null;
   maxDurationMs: number;
+  fullVideo?: boolean;
   deadAir?: DeadAirRenderSelection;
 }): string {
   const safe = (value: string, maxLength: number) =>
@@ -106,6 +107,8 @@ function buildMediaIdempotencyKey(input: {
       input.focusY.toFixed(2),
       input.stillMotion || "none",
       input.maxDurationMs,
+      input.fullVideo ? "full-video" : "bounded-clip",
+      input.deadAir?.audioStreamIndex ?? "default-audio",
       input.deadAir
         ? `${input.deadAir.volumeThresholdPct}:${input.deadAir.minDurationSec}:${input.deadAir.softeningBufferSec}:${input.deadAir.silenceSegments.map((segment) => `${segment.startMs}-${segment.endMs ?? "end"}`).join(",")}`
         : "profile-default",
@@ -546,8 +549,13 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       setBusy(false);
     }
   };
-  const submitJob = async (deadAir?: DeadAirRenderSelection) => {
-    if (!selected || !sourceRelativeName.trim() || !selected.bindingRevision)
+  const submitJob = async (
+    deadAir?: DeadAirRenderSelection,
+    requestedSourceRelativeName?: string,
+    options: { fullVideo?: boolean } = {},
+  ) => {
+    const jobSourceRelativeName = requestedSourceRelativeName?.trim() || sourceRelativeName.trim();
+    if (!selected || !jobSourceRelativeName || !selected.bindingRevision)
       return;
     setBusy(true);
     setError("");
@@ -557,8 +565,8 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
         {
           seriesId: selected.seriesId,
           bindingRevision: selected.bindingRevision,
-          sourceRelativeName: sourceRelativeName.trim(),
-          removeDeadAir: deadAir?.enabled ?? removeDeadAir,
+          sourceRelativeName: jobSourceRelativeName,
+          removeDeadAir: options.fullVideo ? true : deadAir?.enabled ?? removeDeadAir,
           reframe9x16,
           focusMode,
           focusX,
@@ -570,19 +578,22 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
           softeningBufferSec: deadAir?.softeningBufferSec,
           customSilenceSegments: deadAir?.silenceSegments,
           cameraMotionPlan: deadAir?.cameraMotionPlan ?? null,
+          fullVideo: options.fullVideo ?? false,
+          audioStreamIndex: deadAir?.audioStreamIndex ?? null,
           processingMode,
           idempotencyKey: buildMediaIdempotencyKey({
             seriesId: selected.seriesId,
-            sourceRelativeName: sourceRelativeName.trim(),
-            sourceFingerprint: scan?.entries.find((entry) => entry.relativeName === sourceRelativeName.trim())?.fingerprint,
+            sourceRelativeName: jobSourceRelativeName,
+            sourceFingerprint: scan?.entries.find((entry) => entry.relativeName === jobSourceRelativeName)?.fingerprint,
             processingMode,
-            removeDeadAir: deadAir?.enabled ?? removeDeadAir,
+            removeDeadAir: options.fullVideo ? true : deadAir?.enabled ?? removeDeadAir,
             reframe9x16,
             focusMode,
             focusX,
             focusY,
             stillMotion,
             maxDurationMs,
+            fullVideo: options.fullVideo,
             deadAir,
           }),
         },
@@ -594,6 +605,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
       );
     } catch (caught) {
       setError(invokeError(caught));
+      if (options.fullVideo) throw caught;
     } finally {
       setBusy(false);
     }
@@ -1134,7 +1146,7 @@ export function SeriesWorkspacePanel({ mode = "series", onNavigate }: WorkspaceP
                 selected?.bindingRevision &&
                 !focusNeedsVisionWorker,
               )}
-              onSubmit={(deadAir) => void submitJob(deadAir)}
+              onSubmit={(deadAir, relativeName, options) => submitJob(deadAir, relativeName, options)}
               onIngest={() => void submitIngest()}
               sourceRelativeName={sourceRelativeName}
               onSelectSourceFile={(relName) => setSourceRelativeName(relName)}

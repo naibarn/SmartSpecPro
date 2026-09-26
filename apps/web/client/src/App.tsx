@@ -92,6 +92,7 @@ function AstryxWouterLink({
 // Route-based code splitting — all page components are loaded lazily
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const AutomationPage = lazy(() => import("@/pages/AutomationPage"));
+const WorkflowStudioPage = lazy(() => import("@/pages/WorkflowStudioPage"));
 const TerminalPage = lazy(() => import("@/pages/TerminalPage"));
 const CLIPage = lazy(() => import("@/pages/CLIPage"));
 const Factory = lazy(() => import("@/pages/Factory"));
@@ -134,6 +135,8 @@ const MarketplaceConnectorLab = lazy(
   () => import("./pages/MarketplaceConnectorLab")
 );
 const WorkerAppConnect = lazy(() => import("./pages/WorkerAppConnect"));
+const RunnerConnect = lazy(() => import("./pages/RunnerConnect"));
+const P213CertificationFixture = lazy(() => import("./pages/P213CertificationFixture"));
 const McpAgentPairingApprove = lazy(
   () => import("./pages/McpAgentPairingApprove")
 );
@@ -629,6 +632,7 @@ function Router() {
       <Suspense fallback={<RouteLoadingSkeleton />}>
         <Switch>
           <Route path="/" component={Home} />
+          <Route path="/__p213/certification/approval-required" component={P213CertificationFixture} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/features" component={Features} />
           <Route path="/docs" component={Docs} />
@@ -1046,6 +1050,16 @@ function Router() {
               <AutomationPage />
             </RequireAuth>
           </Route>
+          <Route path="/studio/workflow/run">
+            <RequireAuth>
+              <WorkflowStudioPage />
+            </RequireAuth>
+          </Route>
+          <Route path="/studio/workflow">
+            <RequireAuth>
+              <WorkflowStudioPage />
+            </RequireAuth>
+          </Route>
           <Route path="/automation/live/:sessionId">
             <RequireAuth>
               <AutomationPage />
@@ -1334,6 +1348,11 @@ function Router() {
           <Route path="/workers/connect">
             <RequireAuth>
               <WorkerAppConnect />
+            </RequireAuth>
+          </Route>
+          <Route path="/runners/connect">
+            <RequireAuth>
+              <RunnerConnect />
             </RequireAuth>
           </Route>
           <Route path="/mcp/pairing/approve">

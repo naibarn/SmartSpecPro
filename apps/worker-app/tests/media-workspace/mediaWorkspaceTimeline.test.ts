@@ -17,6 +17,7 @@ import {
   normalizeWaveformBinsForDisplay,
   normalizeWaveformPeaksForDisplay,
   moveTimelineClip,
+  shouldCommitLoadedMetadataToSourceTimeline,
 } from "../../src/screens/media-workspace/mediaWorkspaceTimeline";
 import type { NleClip, NleTrack } from "../../src/types/nleProject";
 
@@ -79,6 +80,11 @@ describe("media workspace dead-air timeline", () => {
     expect(chooseRenderSourcePath("D:/timeline-main.mp4", "D:/opened-project-source.mp4"))
       .toBe("D:/timeline-main.mp4");
     expect(chooseRenderSourcePath("", "D:/opened-source.mp4")).toBe("D:/opened-source.mp4");
+  });
+
+  it("does not let rendered-output metadata overwrite the source timeline on rerender", () => {
+    expect(shouldCommitLoadedMetadataToSourceTimeline(true)).toBe(false);
+    expect(shouldCommitLoadedMetadataToSourceTimeline(false)).toBe(true);
   });
 
   it("skips a project file and resolves the real media source for a loaded project", () => {

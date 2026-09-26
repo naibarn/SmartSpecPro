@@ -165,6 +165,7 @@ export function classifyError(error: unknown): ErrorClass {
   if (
     isNetworkFailure(error) ||
     isHtmlInsteadOfJsonError(error) ||
+    isTransientReconnectClass(error) ||
     isTransientTenantServiceError(error)
   ) {
     return "system";

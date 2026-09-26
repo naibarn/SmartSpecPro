@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { parseFeedbackTicketId } from "../feedbackHubNavigation";
+import {
+  parseFeedbackTicketId,
+  pinSelectedFeedbackTicket,
+  sortFeedbackTicketsNewestFirst,
+} from "../feedbackHubNavigation";
 import { FeedbackLightboxZoomControls } from "../FeedbackLightboxZoomControls";
 import {
   clampFeedbackLightboxZoom,
@@ -20,6 +24,30 @@ describe("Admin Feedback Hub deep-link and lightbox contracts", () => {
   it("ignores a missing or malformed ticket id", () => {
     expect(parseFeedbackTicketId("")).toBeNull();
     expect(parseFeedbackTicketId("ticketId=not-a-number")).toBeNull();
+  });
+
+  it("keeps the notification target visible at the top of the queue", () => {
+    const tickets = [
+      { id: 605, createdAt: "2026-09-18T12:34:00.000Z", isRead: false },
+      { id: 603, createdAt: "2026-09-18T09:16:00.000Z", isRead: false },
+      { id: 606, createdAt: "2026-09-19T12:45:00.000Z", isRead: true },
+    ];
+
+    const ordered = pinSelectedFeedbackTicket(
+      sortFeedbackTicketsNewestFirst(tickets),
+      606,
+    );
+
+    expect(ordered.map(ticket => ticket.id)).toEqual([606, 605, 603]);
+  });
+
+  it("sorts read and unread tickets by newest creation time when no ticket is selected", () => {
+    const ordered = sortFeedbackTicketsNewestFirst([
+      { id: 603, createdAt: "2026-09-18T09:16:00.000Z", isRead: false },
+      { id: 606, createdAt: "2026-09-19T12:45:00.000Z", isRead: true },
+    ]);
+
+    expect(ordered.map(ticket => ticket.id)).toEqual([606, 603]);
   });
 
   it("clamps lightbox zoom to readable bounds", () => {

@@ -1,7 +1,9 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use rsa::pkcs1::{DecodeRsaPrivateKey, DecodeRsaPublicKey};
 use rsa::pkcs1v15::SigningKey;
-use rsa::pkcs8::{DecodePrivateKey, DecodePublicKey};
+use rsa::pkcs8::{
+    DecodePrivateKey, DecodePublicKey, EncodePrivateKey, EncodePublicKey, LineEnding,
+};
 use rsa::signature::{SignatureEncoding, Signer};
 use rsa::{RsaPrivateKey, RsaPublicKey};
 use serde::Serialize;
@@ -11,6 +13,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const MAX_PUBLIC_KEY_LENGTH: usize = 16 * 1024;
 const MAX_MACHINE_FINGERPRINT_LENGTH: usize = 512;
+
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
+pub struct DeviceProofMaterial {
+    pub device_id: String,
+    pub machine_fingerprint: String,
+    pub public_key_pem: String,
+    pub private_key_pem: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct DeviceProofHeaders {
@@ -24,7 +34,7 @@ pub struct DeviceProofHeaders {
 }
 
 /// Signs the same request-proof payload verified by the SmartAIHub Runner gateway.
-/// The private key is loaded only from the host environment and is never serialized.
+/// Private key material is kept in the local runner credential store or environment only.
 pub struct DeviceProofSigner {
     device_id: String,
     machine_fingerprint: String,
@@ -52,10 +62,34 @@ impl DeviceProofSigner {
         {
             return Err("RUNNER_DEVICE_PROOF_CONFIGURATION_INCOMPLETE".into());
         }
-        let public_key = normalize_public_key(&public_key)?;
-        let machine_fingerprint =
-            normalize_header_value(&machine_fingerprint, MAX_MACHINE_FINGERPRINT_LENGTH)?;
-        let private_key = private_key.replace("\\n", "\n");
+        Ok(Some(Self::from_material(
+            &DeviceProofMaterial {
+                device_id: device_id.trim().to_owned(),
+                machine_fingerprint,
+                public_key_pem: public_key,
+                private_key_pem: private_key,
+            },
+            access_token,
+        )?))
+    }
+
+    pub fn from_material(
+        material: &DeviceProofMaterial,
+        access_token: &str,
+    ) -> Result<Self, String> {
+        if material.device_id.trim().is_empty()
+            || material.public_key_pem.trim().is_empty()
+            || material.private_key_pem.trim().is_empty()
+            || material.machine_fingerprint.trim().is_empty()
+        {
+            return Err("RUNNER_DEVICE_PROOF_CONFIGURATION_INCOMPLETE".into());
+        }
+        let public_key = normalize_public_key(&material.public_key_pem)?;
+        let machine_fingerprint = normalize_header_value(
+            &material.machine_fingerprint,
+            MAX_MACHINE_FINGERPRINT_LENGTH,
+        )?;
+        let private_key = material.private_key_pem.replace("\\n", "\n");
         let private_key = RsaPrivateKey::from_pkcs8_pem(&private_key)
             .or_else(|_| RsaPrivateKey::from_pkcs1_pem(&private_key))
             .map_err(|_| "RUNNER_DEVICE_PRIVATE_KEY_INVALID")?;
@@ -66,13 +100,13 @@ impl DeviceProofSigner {
             return Err("RUNNER_DEVICE_KEY_PAIR_MISMATCH".into());
         }
         let token_jti = token_jti(access_token)?;
-        Ok(Some(Self {
-            device_id: device_id.trim().to_owned(),
+        Ok(Self {
+            device_id: material.device_id.trim().to_owned(),
             machine_fingerprint,
             public_key,
             token_jti,
             signing_key: SigningKey::<Sha256>::new(private_key),
-        }))
+        })
     }
 
     pub fn headers(
@@ -106,6 +140,46 @@ impl DeviceProofSigner {
             body_hash,
         })
     }
+}
+
+pub fn generate_device_proof_material(
+    device_id: Option<&str>,
+) -> Result<DeviceProofMaterial, String> {
+    let resolved_device_id = device_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+        .unwrap_or_else(|| {
+            let mut bytes = [0_u8; 8];
+            let _ = getrandom::fill(&mut bytes);
+            format!("runner-device-{}", hex_encode(&bytes))
+        });
+    let mut private_key_rng = rsa::rand_core::OsRng;
+    let private_key = RsaPrivateKey::new(&mut private_key_rng, 2048)
+        .map_err(|_| "RUNNER_DEVICE_KEY_GENERATION_FAILED")?;
+    let public_key = RsaPublicKey::from(&private_key);
+    let private_key_pem = private_key
+        .to_pkcs8_pem(LineEnding::LF)
+        .map_err(|_| "RUNNER_DEVICE_PRIVATE_KEY_SERIALIZATION_FAILED")?
+        .to_string();
+    let public_key_pem = public_key
+        .to_public_key_pem(LineEnding::LF)
+        .map_err(|_| "RUNNER_DEVICE_PUBLIC_KEY_SERIALIZATION_FAILED")?;
+    let host = std::env::var("COMPUTERNAME")
+        .or_else(|_| std::env::var("HOSTNAME"))
+        .unwrap_or_else(|_| "unknown-host".into());
+    let fingerprint_input = format!(
+        "{host}|{}|{}|{resolved_device_id}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    let machine_fingerprint = hex_encode(Sha256::digest(fingerprint_input.as_bytes()).as_slice());
+    Ok(DeviceProofMaterial {
+        device_id: resolved_device_id,
+        machine_fingerprint,
+        public_key_pem,
+        private_key_pem,
+    })
 }
 
 pub fn canonical_body_hash(body: &[u8]) -> Result<String, String> {

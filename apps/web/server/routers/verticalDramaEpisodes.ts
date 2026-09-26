@@ -53,7 +53,6 @@ import {
   verticalDramaSeriesSoundBibles,
   verticalDramaAudioQcReports,
   verticalDramaAudioManifests,
-  contentProtectionSettings,
 } from "../../drizzle/schema";
 import type { VerticalDramaShotBrollBinding } from "../../drizzle/schema";
 import {
@@ -550,6 +549,7 @@ import {
   normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
   validateVerticalDramaCastPositionLock,
+  VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS,
   type VerticalDramaCastPositionLock,
   type VerticalDramaCharacterDescriptionOverrides,
   type VerticalDramaSpeakerIdentityCandidate,
@@ -809,6 +809,7 @@ import {
   buildEnhancedVariantStore,
   buildUnavailableEnhancedVideoPromptReadiness,
   classifyEnhancedJobError,
+  EnhancedVideoDirectorBridgeError,
   evaluateEnhancedVideoPromptReadiness,
   isEnhancedCapabilityCompatible,
   invokeEnhancedVideoDirectorBridge,
@@ -15663,6 +15664,69 @@ export const verticalDramaEpisodesRouter = router({
         const compiledVideoState = (
           row.assemblyManifest as { compiledVideo?: CompiledVideoState } | null
         )?.compiledVideo;
+        // A failed Remotion render keeps its canonical worker id in
+        // `retryJobId`. If the user retries it from either the Worker Jobs
+        // page or this source page, the control-plane action changes that
+        // same row back to an active status. Promote the durable episode
+        // projection back to pending so the existing reconciliation/polling
+        // path resumes without submitting a replacement assembly job.
+        if (
+          compiledVideoState?.status === "failed" &&
+          compiledVideoState.renderEngine === "remotion_queue" &&
+          compiledVideoState.retryJobId
+        ) {
+          const [retryJob] = await db
+            .select({ status: workerJobs.status })
+            .from(workerJobs)
+            .where(
+              and(
+                eq(workerJobs.id, compiledVideoState.retryJobId),
+                eq(workerJobs.tenantId, tenantId),
+                eq(workerJobs.requestedByUserId, userId),
+              ),
+            )
+            .limit(1);
+          if (
+            retryJob &&
+            [
+              "queued",
+              "leased",
+              "claimed",
+              "preparing",
+              "running",
+              "uploading",
+              "publishing",
+              "indexing",
+              "waiting_external",
+              "retry_scheduled",
+            ].includes(retryJob.status)
+          ) {
+            const nextManifest = {
+              ...((row.assemblyManifest as Record<string, unknown> | null) ??
+                {}),
+              compiledVideo: {
+                ...compiledVideoState,
+                pendingJobId: compiledVideoState.retryJobId,
+                retryJobId: undefined,
+                status: "pending" as const,
+                error: undefined,
+                renderSubmittedAt: Date.now(),
+              },
+            };
+            await db
+              .update(verticalDramaEpisodes)
+              .set({ assemblyManifest: nextManifest, updatedAt: new Date() })
+              .where(
+                and(
+                  eq(verticalDramaEpisodes.id, episodeId),
+                  eq(verticalDramaEpisodes.tenantId, tenantId),
+                  eq(verticalDramaEpisodes.userId, userId),
+                  eq(verticalDramaEpisodes.seriesId, seriesId),
+                ),
+              );
+            row.assemblyManifest = nextManifest as typeof row.assemblyManifest;
+          }
+        }
         // A pending ffmpeg assembly was NEVER reconciled: this block only ran
         // for `remotion_queue`. Combined with the ffmpeg queue having no
         // consumer at all (see the `vd_assembly_remotion_failed_and_no_ffmpeg_worker`
@@ -15715,16 +15779,22 @@ export const verticalDramaEpisodesRouter = router({
             row.assemblyManifest = nextManifest as typeof row.assemblyManifest;
           }
         }
+        const assemblyRenderJobId =
+          compiledVideoState?.pendingJobId ?? compiledVideoState?.renderJobId;
         if (
-          compiledVideoState?.status === "pending" &&
-          compiledVideoState.renderEngine === "remotion_queue" &&
-          compiledVideoState.pendingJobId
+          (compiledVideoState?.renderEngine === "remotion_queue" ||
+            compiledVideoState?.renderEngine === "ffmpeg") &&
+          assemblyRenderJobId &&
+          (compiledVideoState.status === "pending" ||
+            compiledVideoState.protectionStatus === "processing" ||
+            (compiledVideoState.protectionStatus === "failed" &&
+              Boolean(compiledVideoState.protectionJobId)))
         ) {
           const { reconcileVdRemotionAssembly } =
             await import("../services/verticalDramaRemotionRender");
           const result = await reconcileVdRemotionAssembly(
             owner,
-            compiledVideoState.pendingJobId,
+            assemblyRenderJobId,
             compiledVideoState.renderSubmittedAt
           ).catch(() => ({ reconciled: false as const }));
           if (result.reconciled) {
@@ -17580,6 +17650,26 @@ export const verticalDramaEpisodesRouter = router({
         f => f.shotNumber === input.shotNumber
       );
       const updatedFrames = basePlan.frames.slice();
+      const storyboard = sceneRecord(row.storyboard);
+      const storyboardShots = Array.isArray(storyboard.shots)
+        ? storyboard.shots.map(sceneRecord)
+        : [];
+      const storyboardShot = storyboardShots.find(
+        shot =>
+          sceneNumber(shot.shot_number ?? shot.shotNumber) ===
+          input.shotNumber
+      );
+      const storyboardCharacterRefs = Array.isArray(
+        storyboardShot?.required_character_refs
+      )
+        ? storyboardShot.required_character_refs.filter(
+            (value): value is string => typeof value === "string"
+          )
+        : Array.isArray(storyboardShot?.characters)
+          ? storyboardShot.characters.filter(
+              (value): value is string => typeof value === "string"
+            )
+          : [];
       // Direct router tests/callers may invoke the resolver without the zod
       // default being materialized, so preserve the legacy scene role here.
       const referenceRole = input.referenceRole ?? "scene";
@@ -17595,7 +17685,9 @@ export const verticalDramaEpisodesRouter = router({
           imagePrompt: "",
           negativePrompt: "",
           requiredCharacterRefs:
-            referenceRole === "scene" ? input.characterRefs : [],
+            referenceRole === "scene"
+              ? input.characterRefs
+              : storyboardCharacterRefs,
           ...(referenceRole === "screen_caller"
             ? { screenCallerCharacterRefs: input.characterRefs }
             : {}),
@@ -17777,7 +17869,10 @@ export const verticalDramaEpisodesRouter = router({
         seriesId: z.string().min(1),
         episodeId: z.string().min(1),
         shotNumber: z.number().int().positive(),
-        orderedCharacterRefs: z.array(z.string().trim().min(1)).min(1).max(5),
+        orderedCharacterRefs: z
+          .array(z.string().trim().min(1))
+          .min(1)
+          .max(VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -27799,7 +27894,7 @@ export const verticalDramaEpisodesRouter = router({
         } catch (error) {
           const classified = classifyEnhancedJobError(error);
           if (classified.code === "retryable") throw error;
-          throw new TRPCError({
+          const wrapped = new TRPCError({
             code:
               classified.code === "blocked" || classified.code === "stale"
                 ? "PRECONDITION_FAILED"
@@ -27807,6 +27902,14 @@ export const verticalDramaEpisodesRouter = router({
             message: classified.message,
             cause: error,
           });
+          if (error instanceof EnhancedVideoDirectorBridgeError) {
+            Object.assign(wrapped, {
+              diagnosticCode: error.diagnosticCode ?? error.code,
+              diagnosticStage: error.diagnosticStage,
+              diagnosticFingerprint: error.diagnosticFingerprint,
+            });
+          }
+          throw wrapped;
         }
       }
       const row = await loadOwnedEpisode({
@@ -32469,17 +32572,13 @@ export const verticalDramaEpisodesRouter = router({
         if (input.protectionIntent) {
           protectionIntent = contentProtectionIntentSchema.parse(input.protectionIntent);
         } else {
-          const [settings] = await db
-            .select({ defaultChoice: contentProtectionSettings.defaultChoice })
-            .from(contentProtectionSettings)
-            .where(and(
-              eq(contentProtectionSettings.tenantId, tenantId),
-              eq(contentProtectionSettings.userId, userId),
-            ))
-            .limit(1);
           protectionIntent = {
-            choice: settings?.defaultChoice === "on" ? "on" : "off",
-            choiceSource: "user_default",
+            // Protection is an explicit per-export choice. A tenant/user
+            // default must not silently turn a completed render into a
+            // protection-gated workflow; the raw artifact is the safe
+            // default and the user can opt into a protected sibling.
+            choice: "off",
+            choiceSource: "disabled_by_user",
             requireBeforePublish: true,
           };
         }
@@ -32939,6 +33038,12 @@ export const verticalDramaEpisodesRouter = router({
         });
         await persistCompiledVideoState(owner, {
           pendingJobId: job.id,
+          renderJobId: job.id,
+          protectionJobId: undefined,
+          protectionStatus: undefined,
+          protectionError: undefined,
+          artifactVersions: undefined,
+          retryJobId: undefined,
           status: "pending",
           error: undefined,
           renderEngine: "ffmpeg",

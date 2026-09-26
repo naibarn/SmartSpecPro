@@ -47,9 +47,9 @@ use crate::hermes_runtime::{
 };
 use crate::local_llm_registry::{load_registry, LocalLlmRegistry};
 use crate::media_pipeline::{
-    analyze_media_file, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
+    analyze_media_file, analyze_media_file_full_video, audio_has_detectable_activity, build_media_plan, collect_media_manifest,
     editor_render_handoff_metadata, execute_editor_media_operation, probe_media_file,
-    qc_derived_output_with_probe, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
+    qc_derived_output_with_probe, qc_derived_output_with_probe_limit, run_allowlisted_ffmpeg, run_allowlisted_ffmpeg_segments,
     run_editor_nle_render, run_episode_score_export, run_episode_score_mix,
     write_checkpoint_atomic, CameraMotionPlan, LocalMediaAnalysis, LocalMediaProbe, LocalMediaQc,
     MediaCheckpoint, MediaFocusKeyframe, MediaPlanOptions, MediaToolchain,
@@ -5717,7 +5717,7 @@ async fn execute_vertical_drama_media_job(
             let output_relative = format!("derived/footage-prepared/{}/prepared.mp4", sanitize_segment(&job.id));
             let fit_policy = job.input_json.get("fitPolicy").and_then(Value::as_str).unwrap_or("9:16_cover");
             let mute_audio = job.input_json.get("baseAudioPolicy").and_then(Value::as_str) == Some("mute");
-            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], None, &media_tools)?;
+            let output = run_allowlisted_ffmpeg_segments(&root_path, &source_relative, &output_relative, &approved_segments, fit_policy == "9:16_cover", mute_audio, None, None, &[], None, 64, max_duration, &media_tools)?;
             let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
             if fit_policy != "source" { ensure_portrait_9x16_qc(&qc)?; }
             let mut prepared_cursor = 0u64;
@@ -5851,11 +5851,17 @@ async fn execute_vertical_drama_media_job(
         let probe = job.input_json.get("probe").cloned().unwrap_or_else(|| json!({}));
         let source_path = resolve_worker_media_source_path(&root_path, source_name)?;
         let local_probe = probe_media_file(&source_path, &media_tools)?;
-        let duration_ms = local_probe.duration_ms.or_else(|| probe.get("durationMs").and_then(Value::as_u64)).unwrap_or(90_000);
         let edit_plan = job.input_json.get("editPlan").cloned().unwrap_or_else(|| json!({}));
+        let full_video = edit_plan.get("fullVideo").and_then(Value::as_bool).unwrap_or(false);
+        let duration_ms = match local_probe.duration_ms.or_else(|| probe.get("durationMs").and_then(Value::as_u64)) {
+            Some(duration) if duration <= 86_400_000 => duration,
+            Some(_) => return Err("duration_budget_exceeded".into()),
+            None if full_video => return Err("source_duration_unknown".into()),
+            None => 90_000,
+        };
         let remove_dead_air_requested = edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false);
         let dead_air = edit_plan.get("deadAir").cloned().unwrap_or_else(|| json!({}));
-        let silence_ranges = dead_air.get("silenceRanges").and_then(Value::as_array).map(|ranges| {
+        let mut silence_ranges = dead_air.get("silenceRanges").and_then(Value::as_array).map(|ranges| {
             ranges.iter().filter_map(|range| {
                 let start = range.get("startMs")?.as_u64()?;
                 let end = range.get("endMs").and_then(Value::as_u64).unwrap_or(duration_ms);
@@ -5868,6 +5874,11 @@ async fn execute_vertical_drama_media_job(
         }).unwrap_or_default();
         let local_analysis = if kind == "image" {
             None
+        } else if full_video {
+            let audio_stream_index = dead_air.get("audioStreamIndex").and_then(Value::as_u64).and_then(|value| usize::try_from(value).ok());
+            let threshold_db = dead_air.get("thresholdDb").and_then(Value::as_f64).unwrap_or(-42.0);
+            let min_silence_ms = dead_air.get("minSilenceMs").and_then(Value::as_u64).unwrap_or(650);
+            Some(analyze_media_file_full_video(&source_path, &media_tools, audio_stream_index, threshold_db, min_silence_ms)?)
         } else {
             match analyze_media_file(&source_path, &media_tools) {
                 Ok(analysis) => Some(analysis),
@@ -5875,6 +5886,16 @@ async fn execute_vertical_drama_media_job(
                 Err(_) => None,
             }
         };
+        if full_video && remove_dead_air_requested && silence_ranges.is_empty() {
+            let padding_ms = dead_air.get("padMs").and_then(Value::as_u64).unwrap_or(0).min(2_000);
+            silence_ranges = local_analysis.as_ref().map(|analysis| {
+                analysis.silence_segments.iter().filter_map(|segment| {
+                    let start = segment.start_ms.saturating_sub(padding_ms);
+                    let end = segment.end_ms.unwrap_or(duration_ms).saturating_add(padding_ms).min(duration_ms);
+                    (end > start).then_some((start, end))
+                }).collect()
+            }).unwrap_or_default();
+        }
         let budget = edit_plan.get("budget").cloned().unwrap_or_else(|| json!({}));
         let target = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|reframe| reframe.get("target"));
         let still_motion = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("stillMotion")).and_then(|motion| motion.get("motion")).and_then(Value::as_str).map(str::to_string);
@@ -5884,7 +5905,9 @@ async fn execute_vertical_drama_media_job(
             _ => None,
         };
         let selected_segment = edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first());
-        let options = MediaPlanOptions { remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms: budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(90_000).min(90_000), source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None, camera_motion_plan };
+        let max_duration_ms = budget.get("maxDurationMs").and_then(Value::as_u64).unwrap_or(if full_video { duration_ms } else { 90_000 });
+        let max_duration_ms = if full_video { max_duration_ms.min(86_400_000) } else { max_duration_ms.min(90_000) };
+        let options = MediaPlanOptions { full_video, remove_dead_air: edit_plan.get("deadAir").and_then(|value| value.get("enabled")).and_then(Value::as_bool).unwrap_or(false), reframe_9x16: edit_plan.get("aspectRatio").and_then(Value::as_str) == Some("9:16"), focus_mode: edit_plan.get("segments").and_then(Value::as_array).and_then(|segments| segments.first()).and_then(|segment| segment.get("reframe")).and_then(|value| value.get("trackingMode")).and_then(Value::as_str).unwrap_or("auto_person").into(), still_motion, max_duration_ms, source_duration_ms: duration_ms, requested_start_ms: selected_segment.and_then(|segment| segment.get("startMs")).and_then(Value::as_u64), requested_end_ms: selected_segment.and_then(|segment| segment.get("endMs")).and_then(Value::as_u64), focus_x: target.and_then(|value| value.get("normalizedX")).and_then(Value::as_f64), focus_y: target.and_then(|value| value.get("normalizedY")).and_then(Value::as_f64), focus_track, volume_threshold_pct: dead_air.get("thresholdDb").and_then(Value::as_f64).map(|db| ((db + 50.0) / 35.0 * 100.0).clamp(1.0, 100.0)), min_duration_sec: dead_air.get("minSilenceMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), softening_buffer_sec: dead_air.get("padMs").and_then(Value::as_u64).map(|value| value as f64 / 1000.0), custom_silence_segments: None, camera_motion_plan };
         let plan = build_media_plan(source_name, &options)?;
         let binding_revision = expected_binding_revision;
         let checkpoint_path = root_path.join("derived/.checkpoints").join(format!("{}.json", job.id));
@@ -5915,10 +5938,16 @@ async fn execute_vertical_drama_media_job(
                 plan.focus_y,
                 &plan.focus_track,
                 plan.camera_motion_plan.as_ref(),
+                if full_video { 257 } else { 64 },
+                options.max_duration_ms,
                 &media_tools,
             )?
         };
-        let qc = qc_derived_output_with_probe(&root_path, &output, &media_tools)?;
+        let qc = if full_video {
+            qc_derived_output_with_probe_limit(&root_path, &output, &media_tools, crate::media_pipeline::MAX_FULL_VIDEO_OUTPUT_BYTES)?
+        } else {
+            qc_derived_output_with_probe(&root_path, &output, &media_tools)?
+        };
         if options.reframe_9x16 {
             ensure_portrait_9x16_qc(&qc)?;
         }

@@ -46,6 +46,33 @@ describe("Feature 200 Agent control-plane contracts", () => {
     ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
+  it("validates immutable Runner policy bindings when external dispatch is requested", () => {
+    const bound = {
+      ...manifest,
+      policyBinding: {
+        runnerId: "runner-1",
+        runnerSessionId: "session-1",
+        capabilitySnapshotId: "capability-1",
+        capabilitySnapshotRevision: "revision-1",
+        authorizationGrantRef: "grant:1",
+        approvalRef: "approval:1",
+        budgetReservationRef: "budget:1",
+        spendCeilingMicros: 100_000,
+        workspaceRef: "workspace-1",
+        deadline: "2099-01-01T00:00:00.000Z",
+      },
+    };
+    expect(validateAgentTaskManifest(bound)).toMatchObject({
+      policyBinding: expect.objectContaining({ runnerId: "runner-1" }),
+    });
+    expect(() =>
+      validateAgentTaskManifest({
+        ...bound,
+        policyBinding: { ...bound.policyBinding, spendCeilingMicros: 0 },
+      })
+    ).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
   it("deduplicates normalized events and creates one canonical Job handoff", () => {
     expect(
       acceptAgentEvent(1, {

@@ -355,6 +355,24 @@ export const liveBrowserStreamTokenRequestSchema = z.object({
   scope: liveBrowserStreamScopeSchema,
 }).strict();
 
+/**
+ * Canonical P213 request input. This is only an intent/candidate reference;
+ * the authenticated server derives tenant, actor, Runner session, capability
+ * snapshot and authorization evidence from the existing Runner gateway.
+ */
+export const liveBrowserRunnerExecutionRequestSchema = z.object({
+  runnerId: z.string().trim().min(1).max(160),
+  idempotencyKey: z.string().trim().min(1).max(200),
+  operation: z.enum(["observe", "observe_and_act"]).default("observe"),
+  action: z.enum(["none", "click", "type", "refresh"]).default("none"),
+  targetId: z.string().trim().min(1).max(160).optional(),
+  selector: z.string().trim().min(1).max(200).optional(),
+  text: z.string().max(2_000).optional(),
+  fixtureUrl: z.string().url().max(2_048).optional(),
+  projectRef: z.string().trim().min(1).max(160).optional(),
+  workspaceRef: z.string().trim().min(1).max(160).optional(),
+}).strict();
+
 export const liveBrowserStreamTokenResponseSchema = z.object({
   sessionId: z.string().min(1),
   scope: liveBrowserStreamScopeSchema,
@@ -391,6 +409,7 @@ export type LiveBrowserListEventsRequest = z.infer<typeof liveBrowserListEventsR
 export type LiveBrowserListEventsResponse = z.infer<typeof liveBrowserListEventsResponseSchema>;
 export type LiveBrowserStreamTokenRequest = z.infer<typeof liveBrowserStreamTokenRequestSchema>;
 export type LiveBrowserStreamTokenResponse = z.infer<typeof liveBrowserStreamTokenResponseSchema>;
+export type LiveBrowserRunnerExecutionRequest = z.infer<typeof liveBrowserRunnerExecutionRequestSchema>;
 
 export function getLiveBrowserEventSessionSnapshot(
   event: Pick<LiveBrowserEventEnvelope, "payload">,
