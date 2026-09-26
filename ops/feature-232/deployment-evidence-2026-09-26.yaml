@@ -600,3 +600,39 @@ g3_request_quota_isolated_branch_2026_09_26:
   production_counter_import: false
   remaining_g3_redis_usage: [abuse_rate_limiting, financial_credit_accounting, idempotency]
   status: CODE_VERIFIED_ISOLATED_BRANCH_NOT_PRODUCTION_READY
+
+latest_g2_recovery_probe_2026_09_27:
+  observed_at_utc: "2026-09-26T17:19:03Z"
+  evidence_scope: local_host_and_control_plane_container_read_only
+  web_services: {web: masked_inactive, backend: masked_inactive, watchdog: masked_inactive}
+  redis_postgres_listeners: ["0.0.0.0", "::"]
+  provider_routes_origins_firewall: unverified
+  trusted_external_probe: unavailable
+  r2:
+    configured_endpoint: "mock.r2.cloudflarestorage.com"
+    endpoint_is_placeholder: true
+    host_dns: resolved_to_cloudflare_anycast
+    host_tls_1_2: handshake_failure_alert_40_verification_enabled
+    host_tls_1_3: handshake_failure_alert_40_verification_enabled
+    host_clock_ntp_synchronized: true
+    host_ca_bundle_present: true
+    host_proxy_configured: false
+    control_plane_container_dns: docker_127_0_0_11_no_external_nameservers
+    control_plane_public_dns_lookup: timed_out
+    backup_write_attempted: false
+    tls_verification_disabled: false
+  backup_restore:
+    approved_durable_encrypted_destination: unavailable
+    new_backup_or_restore_this_probe: false
+  g2:
+    writer_fence_complete: false
+    post_fence_jti_snapshot: false
+    guarded_import: false
+    security_tests: false
+    reopen_or_restart: false
+    status: BLOCKED
+  owner_actions:
+    - set_the_actual_r2_account_endpoint_in_the_control_plane_environment
+    - restore_container_dns_and_https_egress_or_provide_an_approved_durable_encrypted_backup_target
+    - provide_cloudflare_dns_load_balancer_origin_and_provider_acl_evidence
+    - attest_all_auth_writers_replicas_and_direct_origin_paths_are_fenced

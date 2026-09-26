@@ -657,3 +657,23 @@ production_execution_recheck:
     web_replicas_behind_load_balancer_verified: false
     redis_global_shutdown_authorized: false
     cloudflare_job_activation: disabled
+
+latest_local_recovery_probe_2026_09_27:
+  observed_at_utc: "2026-09-26T17:19:03Z"
+  scope: host_and_control_plane_container_read_only
+  web_backend_watchdog: masked_and_inactive
+  postgres_redis_wildcard_listener: true
+  provider_dns_origins_acl_external_reachability: unverified
+  configured_r2_endpoint: mock_placeholder
+  host_clock_ca_proxy: {ntp_synchronized: true, ca_bundle_present: true, proxy_configured: false}
+  host_r2_dns: resolves_to_cloudflare_anycast
+  host_r2_tls: handshake_failure_alert_40_on_tls_1_2_and_1_3_verification_enabled
+  container_dns: docker_embedded_resolver_no_upstream_external_lookup_times_out
+  backup_or_restore_this_probe: false
+  writer_fence_jti_import_security_tests_reopen: not_performed
+  g2_status: BLOCKED
+  owner_actions:
+    - configure_the_actual_r2_account_endpoint
+    - restore_container_dns_https_egress_or_supply_approved_durable_encrypted_backup_destination
+    - verify_provider_dns_load_balancer_origins_and_firewall_acl
+    - attest_complete_auth_writer_replica_and_direct_origin_fence
