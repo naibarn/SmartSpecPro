@@ -30,14 +30,14 @@ const baseRun = buildDevelopmentRun({
 });
 baseRun.evidenceRefs.push("evidence:blocker-closure");
 
-function graphInput() {
+function graphInput(revision = "21") {
   const sourceArtifactDigest = "c".repeat(64);
   const digest = "b".repeat(64);
   const requirementText =
     "Persist the closure graph without a second event store.";
   const requirementId = deriveSpec224RequirementId({
     specId: "224",
-    revision: "21",
+    revision,
     sourceArtifactDigest,
     sourceDigest: digest,
     line: 1,
@@ -46,17 +46,17 @@ function graphInput() {
   return {
     baseline: {
       specId: "224",
-      revision: "21",
+      revision,
       sourceArtifactDigest,
       digest,
-      baselineId: "baseline:224-r21",
+      baselineId: `baseline:224-r${revision}`,
       authorityRef: "authority:platform-engineering",
-      scopeEnvelopeRef: "scope:224-r21",
+      scopeEnvelopeRef: `scope:224-r${revision}`,
     },
     requirements: [
       {
         id: requirementId,
-        sourceRef: "spec:224@21#L1",
+        sourceRef: `spec:224@${revision}#L1`,
         text: requirementText,
       },
     ],
@@ -311,10 +311,7 @@ describe("Spec 224 persisted requirement closure projection", () => {
       service.attachGraph(
         attachmentInput({
           expectedRevision: 1,
-          graph: compileRequirementClosureGraph({
-            ...graphInput(),
-            baseline: { ...graphInput().baseline, revision: "22" },
-          }),
+          graph: compileRequirementClosureGraph(graphInput("22")),
         })
       )
     ).rejects.toThrow("RUN_IDEMPOTENCY_CONFLICT");

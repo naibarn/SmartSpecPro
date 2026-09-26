@@ -145,9 +145,10 @@ function boundedIds(ids: readonly string[]): string[] {
 
 function validateGraph(
   graph: RequirementClosureGraph,
-  expectedRunId?: string
+  expectedRunId?: string,
+  options: { allowStaleEvidence?: boolean } = {}
 ): RequirementClosureGraph {
-  const cloned = validateRequirementClosureGraph(graph);
+  const cloned = validateRequirementClosureGraph(graph, options);
   if (
     expectedRunId &&
     (cloned.blockers.some(blocker => blocker.runId !== expectedRunId) ||
@@ -570,7 +571,9 @@ export function createRequirementClosurePersistenceService(
         const { deferredTestObligations: _ignored, ...requestedGraphInput } =
           input.graph;
         void _ignored;
-        const requestedGraph = validateGraph(requestedGraphInput, input.runId);
+        const requestedGraph = validateGraph(requestedGraphInput, input.runId, {
+          allowStaleEvidence: true,
+        });
         const operationDigest = eventOperationDigest({
           action: "closure_graph_attached",
           graphDigest: digest(requestedGraph),

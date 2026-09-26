@@ -1579,7 +1579,8 @@ export function compileRequirementClosureGraph(input: {
 
 /** Validate persisted or caller-supplied graphs without trusting derived fields. */
 export function validateRequirementClosureGraph(
-  graph: RequirementClosureGraph
+  graph: RequirementClosureGraph,
+  options: { allowStaleEvidence?: boolean } = {}
 ): RequirementClosureGraph {
   if (!graph || graph.contractVersion !== "spec-224-closure-v2") {
     throw new Spec224ClosureError("CLOSURE_GRAPH_INVALID");
@@ -1681,7 +1682,11 @@ export function validateRequirementClosureGraph(
           !normalized.sourceInventory ||
           binding.implementationDigest !==
             normalized.sourceInventory.candidateManifestDigest;
-        if ((staleBaseline || staleImplementation) && invalidatedAt === null) {
+        if (
+          (staleBaseline || staleImplementation) &&
+          invalidatedAt === null &&
+          !options.allowStaleEvidence
+        ) {
           throw new Spec224ClosureError(
             "REQUIREMENT_EVIDENCE_STALE_NOT_INVALIDATED"
           );
@@ -1786,7 +1791,7 @@ export function validateRequirementClosureGraph(
           !normalized.sourceInventory ||
           binding.implementationDigest !==
             normalized.sourceInventory.candidateManifestDigest;
-        if (stale && invalidatedAt === null)
+        if (stale && invalidatedAt === null && !options.allowStaleEvidence)
           throw new Spec224ClosureError(
             "WORK_PACKAGE_EVIDENCE_STALE_NOT_INVALIDATED"
           );
