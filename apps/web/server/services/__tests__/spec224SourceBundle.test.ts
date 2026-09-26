@@ -433,6 +433,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "sample-pkg",
           version: "1.0.0",
+          locator: "package-lock.json#node_modules/sample-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/sample-pkg.tgz",
@@ -443,6 +444,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "transitive-pkg",
           version: "2.1.0",
+          locator: "package-lock.json#node_modules/transitive-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/transitive-pkg.tgz",
@@ -493,6 +495,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "sample-pkg",
           version: "1.0.0",
+          locator: "package-lock.json#node_modules/sample-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/sample-pkg.tgz",
@@ -503,6 +506,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "transitive-pkg",
           version: "2.1.0",
+          locator: "package-lock.json#node_modules/transitive-pkg",
           packageManager: "npm",
           lockfilePath: "package-lock.json",
           path: "artifacts/transitive-pkg.tgz",
@@ -556,6 +560,7 @@ describe("Spec 224 source bundle tooling", () => {
         {
           name: "sample-lib",
           version: "1.2.3",
+          locator: "uv.lock#uv:sample-lib@1.2.3|https://pypi.org/simple",
           packageManager: "uv",
           lockfilePath: "uv.lock",
           path: "artifacts/sample_lib-1.2.3-cp312-cp312-manylinux_x86_64.whl",
@@ -653,5 +658,93 @@ describe("Spec 224 source bundle tooling", () => {
         specifier: "UNVERIFIED_ARTIFACT:optional-pkg@1.0.0",
       })
     );
+  });
+
+  it("resolves npm multi-version transitive dependencies by install locator and rejects cross-version artifact bytes", async () => {
+    const root = await sourceFixture();
+    const pkgA = Buffer.from("pkg-a 1.0.0 tarball");
+    const sharedV1 = Buffer.from("shared-dep 1.0.0 tarball");
+    const sharedV2 = Buffer.from("shared-dep 2.0.0 tarball");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const pkgAUrl = "https://registry.npmjs.org/pkg-a/-/pkg-a-1.0.0.tgz";
+    const sharedV1Url = "https://registry.npmjs.org/shared-dep/-/shared-dep-1.0.0.tgz";
+    const sharedV2Url = "https://registry.npmjs.org/shared-dep/-/shared-dep-2.0.0.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "pkg-a"; import "shared-dep";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "pkg-a": "1.0.0", "shared-dep": "2.0.0" } }));
+    await writeFile(join(root, "package-lock.json"), JSON.stringify({ lockfileVersion: 3, packages: {
+      "": { dependencies: { "pkg-a": "1.0.0", "shared-dep": "2.0.0" } },
+      "node_modules/pkg-a": { version: "1.0.0", resolved: pkgAUrl, integrity: sri(pkgA), dependencies: { "shared-dep": "^1.0.0" } },
+      "node_modules/pkg-a/node_modules/shared-dep": { version: "1.0.0", resolved: sharedV1Url, integrity: sri(sharedV1) },
+      "node_modules/shared-dep": { version: "2.0.0", resolved: sharedV2Url, integrity: sri(sharedV2) },
+    } }));
+    await writeFile(join(root, "artifacts/pkg-a.tgz"), pkgA);
+    await writeFile(join(root, "artifacts/shared-v1.tgz"), sharedV1);
+    await writeFile(join(root, "artifacts/shared-v2.tgz"), sharedV2);
+
+    const bindings = [
+      { name: "pkg-a", version: "1.0.0", locator: "package-lock.json#node_modules/pkg-a", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/pkg-a.tgz", source: pkgAUrl, kind: "npm-tarball" as const, platform: "linux-x64" },
+      { name: "shared-dep", version: "1.0.0", locator: "package-lock.json#node_modules/pkg-a/node_modules/shared-dep", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/shared-v1.tgz", source: sharedV1Url, kind: "npm-tarball" as const, platform: "linux-x64" },
+      { name: "shared-dep", version: "2.0.0", locator: "package-lock.json#node_modules/shared-dep", packageManager: "npm" as const, lockfilePath: "package-lock.json", path: "artifacts/shared-v2.tgz", source: sharedV2Url, kind: "npm-tarball" as const, platform: "linux-x64" },
+    ];
+    const input = { sourceRoot: root, entryPaths: ["src/main.ts"], dependencyArtifacts: ["package-lock.json"], profileInputs: [{ path: "package.json", kind: "runtime-config" as const }], profileId: "npm-multi-locator", runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" }, externalArtifacts: bindings };
+    const closure = await discoverSourceClosure(input);
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining(bindings.map(item => item.locator)));
+    expect(closure.externalPackageIdentities.filter(item => item.name === "shared-dep").map(item => [item.version, item.locator, item.artifactStatus])).toEqual([
+      ["1.0.0", "package-lock.json#node_modules/pkg-a/node_modules/shared-dep", "VERIFIED_ARTIFACT"],
+      ["2.0.0", "package-lock.json#node_modules/shared-dep", "VERIFIED_ARTIFACT"],
+    ]);
+    const bundlePath = join(root, "..", "npm-multi-locator-bundle");
+    const sealed = await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["package-lock.json"] });
+    expect(sealed.files.filter(file => file.path.startsWith("artifacts/") && file.provenance.includes("dependency-artifact"))).toHaveLength(3);
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+
+    await writeFile(join(root, "artifacts/shared-v1.tgz"), sharedV2);
+    const mismatched = await discoverSourceClosure(input);
+    expect(mismatched.closureComplete).toBe(false);
+    expect(mismatched.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:shared-dep@1.0.0" }));
+    await expect(assembleReadOnlySourceBundle({ sourceRoot: root, destination: join(root, "..", "npm-mismatch-bundle"), closure: mismatched, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["package-lock.json"] })).rejects.toThrow("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  });
+
+  it("selects the exact pnpm peer-dependency locator through the workspace importer", async () => {
+    const root = await sourceFixture();
+    const selectedBytes = Buffer.from("peer-consumer with peer@2");
+    const peerV2Bytes = Buffer.from("peer dependency 2.0.0");
+    const peerV1Bytes = Buffer.from("peer dependency 1.0.0");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    const consumerV1Url = "https://registry.npmjs.org/peer-consumer/-/peer-consumer-1.0.0.tgz";
+    const peerV1Url = "https://registry.npmjs.org/peer/-/peer-1.0.0.tgz";
+    const peerV2Url = "https://registry.npmjs.org/peer/-/peer-2.0.0.tgz";
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "peer-consumer";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "peer-consumer": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      peer-consumer:\n        specifier: 1.0.0\n        version: peer-consumer@1.0.0(peer@2.0.0)\npackages:\n  peer-consumer@1.0.0(peer@1.0.0):\n    resolution:\n      tarball: ${consumerV1Url}\n      integrity: ${sri(selectedBytes)}\n    dependencies:\n      peer: 1.0.0\n  peer-consumer@1.0.0(peer@2.0.0):\n    resolution:\n      tarball: ${consumerV1Url}\n      integrity: ${sri(selectedBytes)}\n    dependencies:\n      peer: 2.0.0\n  peer@1.0.0:\n    resolution:\n      tarball: ${peerV1Url}\n      integrity: ${sri(peerV1Bytes)}\n  peer@2.0.0:\n    resolution:\n      tarball: ${peerV2Url}\n      integrity: ${sri(peerV2Bytes)}\n`);
+    await writeFile(join(root, "artifacts/consumer.tgz"), selectedBytes);
+    await writeFile(join(root, "artifacts/peer-v1.tgz"), peerV1Bytes);
+    await writeFile(join(root, "artifacts/peer-v2.tgz"), peerV2Bytes);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-peer-variant",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      externalArtifacts: [
+        { name: "peer-consumer", version: "1.0.0", locator: "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/consumer.tgz", source: consumerV1Url, kind: "npm-tarball", platform: "linux-x64" },
+        { name: "peer", version: "2.0.0", locator: "pnpm-lock.yaml#peer@2.0.0", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/peer-v2.tgz", source: peerV2Url, kind: "npm-tarball", platform: "linux-x64" },
+      ],
+    });
+    console.log("peer debug", closure.unresolvedImports, closure.requiredExternalPackages, closure.externalPackageIdentities.map(item => [item.locator, item.dependencyLocators]));
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([
+      "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)",
+      "pnpm-lock.yaml#peer@2.0.0",
+    ]));
+    expect(closure.requiredExternalPackages).not.toContain("pnpm-lock.yaml#peer-consumer@1.0.0(peer@1.0.0)");
+    expect(closure.requiredExternalPackages).not.toContain("pnpm-lock.yaml#peer@1.0.0");
+    const bundlePath = join(root, "..", "pnpm-peer-variant-bundle");
+    await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pnpm-lock.yaml"] });
+    expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
   });
 });

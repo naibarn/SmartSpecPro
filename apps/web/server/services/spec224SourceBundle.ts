@@ -38,12 +38,15 @@ export type SourceLockedArtifact = {
 export type SourceExternalPackageIdentity = {
   name: string;
   version: string;
+  locator: string;
   packageManager: "npm" | "pnpm" | "uv";
   lockfilePath: string;
   integrity: string[];
   source: string | null;
   dependencies: string[];
   optionalDependencies: string[];
+  dependencyLocators: Record<string, string | null>;
+  optionalDependencyLocators: Record<string, string | null>;
   lockedArtifacts: SourceLockedArtifact[];
   artifactStatus: "NOT_REQUIRED" | "UNVERIFIED_ARTIFACT" | "VERIFIED_ARTIFACT";
   artifactPath: string | null;
@@ -59,10 +62,11 @@ export type SourceExternalPackageIdentity = {
 export type SourceExternalArtifactBinding = {
   name: string;
   version: string;
+  locator: string;
   packageManager: "npm" | "pnpm" | "uv";
   lockfilePath: string;
   path: string;
-  source: string;
+  source: string | null;
   kind: SourceLockedArtifact["kind"];
   platform: string;
 };
@@ -161,7 +165,7 @@ function integrityMatches(bytes: Buffer, integrity: string[]): boolean {
 }
 
 function artifactBindingsFor(identity: SourceExternalPackageIdentity, bindings: SourceExternalArtifactBinding[]): SourceExternalArtifactBinding[] {
-  return bindings.filter(binding => binding.name === identity.name && binding.version === identity.version && binding.packageManager === identity.packageManager && binding.lockfilePath === identity.lockfilePath);
+  return bindings.filter(binding => binding.name === identity.name && binding.version === identity.version && binding.locator === identity.locator && binding.packageManager === identity.packageManager && binding.lockfilePath === identity.lockfilePath);
 }
 
 function platformMatches(runtimePlatform: string | undefined, artifactPlatform: string, source: string | null): boolean {
@@ -187,37 +191,75 @@ function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runt
   return matches(identity.os, runtimeOs) && matches(identity.cpu, runtimeCpu);
 }
 
-function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: Set<string>, selectedOptionals: Set<string>): { required: Set<string>; unresolved: string[] } {
+type ExternalRoot = { name: string; requesterPath: string };
+type ParsedDependencyLock = { packages: SourceExternalPackageIdentity[]; importers: Record<string, Record<string, string | null>> };
+
+function importerPathFor(requesterPath: string, importers: Record<string, Record<string, string | null>>): string | null {
+  const requesterDirectory = dirname(requesterPath).split(sep).join("/");
+  return Object.keys(importers).filter(path => !path || path === "." || requesterDirectory === path || requesterDirectory.startsWith(`${path}/`)).sort((a, b) => b.length - a.length)[0] ?? null;
+}
+
+function resolveNpmLocator(name: string, requesterPath: string, locators: Set<string>): string | null {
+  let directory = dirname(requesterPath).split(sep).join("/");
+  while (true) {
+    const candidate = `${directory && directory !== "." ? `${directory}/` : ""}node_modules/${name}`;
+    if (locators.has(candidate)) return candidate;
+    if (!directory || directory === ".") break;
+    const parent = dirname(directory).split(sep).join("/");
+    directory = parent === directory ? "" : parent;
+  }
+  return null;
+}
+
+function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: ExternalRoot[], importersByLockfile: Map<string, Record<string, Record<string, string | null>>>, selectedOptionals: Set<string>): { required: Set<string>; unresolved: string[]; rootLocators: Map<string, string> } {
   const required = new Set<string>();
   const unresolved: string[] = [];
-  const byName = new Map<string, SourceExternalPackageIdentity[]>();
-  for (const identity of identities) {
-    const key = `${identity.lockfilePath}\0${identity.packageManager}\0${identity.name}`;
-    const items = byName.get(key) ?? [];
-    items.push(identity);
-    byName.set(key, items);
+  const rootLocators = new Map<string, string>();
+  const byLocator = new Map(identities.map(identity => [identity.locator, identity]));
+  const queue: Array<{ locator: string; label: string }> = [];
+  for (const root of roots) {
+    const candidates = identities.filter(item => item.name === normalizePackageName(root.name));
+    const matches: string[] = [];
+    for (const item of candidates) {
+      const importers = importersByLockfile.get(item.lockfilePath) ?? {};
+      const importerPath = importerPathFor(root.requesterPath, importers);
+      const importedLocator = importerPath === null ? undefined : importers[importerPath]?.[item.name];
+      if (importerPath !== null && Object.hasOwn(importers[importerPath] ?? {}, item.name)) {
+        if (importedLocator === item.locator) matches.push(item.locator);
+        continue;
+      }
+      if (item.packageManager === "npm" && resolveNpmLocator(item.name, root.requesterPath, new Set(identities.filter(candidate => candidate.lockfilePath === item.lockfilePath).map(candidate => candidate.locator))) === item.locator) matches.push(item.locator);
+      else if (candidates.length === 1 && item.packageManager === "uv") matches.push(item.locator);
+    }
+    if (matches.length !== 1) {
+      unresolved.push(`${matches.length ? "external-package-resolution-ambiguous" : "external-package-lock-entry-missing"}:${normalizePackageName(root.name)}:${root.requesterPath}`);
+      continue;
+    }
+    rootLocators.set(`${root.requesterPath}\0${normalizePackageName(root.name)}`, matches[0]);
+    queue.push({ locator: matches[0], label: root.name });
   }
-  const queue = [...roots];
   while (queue.length) {
-    const name = normalizePackageName(queue.shift()!);
-    if (required.has(name)) continue;
-    required.add(name);
-    const candidates = identities.filter(item => item.name === name);
-    if (!candidates.length) {
-      unresolved.push(`external-package-lock-entry-missing:${name}`);
+    const { locator, label } = queue.shift()!;
+    if (required.has(locator)) continue;
+    required.add(locator);
+    const item = byLocator.get(locator);
+    if (!item) {
+      unresolved.push(`transitive-package-locator-missing:${label}:${locator}`);
       continue;
     }
-    if (candidates.length !== 1) {
-      unresolved.push(`external-package-resolution-ambiguous:${name}`);
-      continue;
+    for (const dependency of item.dependencies) {
+      const dependencyLocator = item.dependencyLocators[dependency];
+      if (!dependencyLocator) unresolved.push(`transitive-package-resolution-ambiguous:${item.name}->${dependency}`);
+      else queue.push({ locator: dependencyLocator, label: `${item.name}->${dependency}` });
     }
-    const item = candidates[0];
-    for (const dependency of item.dependencies) queue.push(dependency);
     for (const dependency of item.optionalDependencies) {
-      if (selectedOptionals.has(dependency)) queue.push(dependency);
+      if (!selectedOptionals.has(dependency)) continue;
+      const dependencyLocator = item.optionalDependencyLocators[dependency];
+      if (!dependencyLocator) unresolved.push(`optional-package-resolution-ambiguous:${item.name}->${dependency}`);
+      else queue.push({ locator: dependencyLocator, label: `${item.name}->optional:${dependency}` });
     }
   }
-  return { required, unresolved };
+  return { required, unresolved, rootLocators };
 }
 
 function compareText(a: string, b: string): number {
@@ -363,6 +405,14 @@ function normalizePackageName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, "-");
 }
 
+function packageLocatorId(lockfilePath: string, locator: string): string {
+  return `${lockfilePath}#${locator.replace(/^\//, "")}`;
+}
+
+function packageNameFromSpecifier(specifier: string): string {
+  return specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
+}
+
 function unresolvedCommandDependencies(command: string, declaredDependencies: Set<string>): string[] {
   const runtimeCommands = new Set(["node", "npm", "pnpm", "yarn", "bun", "git", "sh", "bash", "python", "python3", "uv", "echo", "cd", "export", "env", "mkdir", "rm", "cp", "mv", "grep", "sed", "cat", "find", "chmod", "sleep"]);
   const binaryAliases: Record<string, string> = {
@@ -430,7 +480,7 @@ function pythonProjectRequirements(source: string): string[] {
   return requirements;
 }
 
-function parseUvLockPackages(source: string, lockfilePath: string): SourceExternalPackageIdentity[] {
+function parseUvLockPackages(source: string, lockfilePath: string): ParsedDependencyLock {
   const packageBlocks = source.split(/^\[\[package\]\]\s*$/m).slice(1);
   const identities: SourceExternalPackageIdentity[] = [];
   for (const block of packageBlocks) {
@@ -486,12 +536,15 @@ function parseUvLockPackages(source: string, lockfilePath: string): SourceExtern
     identities.push({
       name: normalizePackageName(name),
       version,
+      locator: packageLocatorId(lockfilePath, `uv:${normalizePackageName(name)}@${version}|${source ?? ""}`),
       packageManager: "uv",
       lockfilePath,
       integrity,
       source,
       dependencies,
       optionalDependencies,
+      dependencyLocators: {},
+      optionalDependencyLocators: {},
       lockedArtifacts,
       artifactStatus: "NOT_REQUIRED",
       artifactPath: null,
@@ -505,19 +558,29 @@ function parseUvLockPackages(source: string, lockfilePath: string): SourceExtern
       cpu: [],
     });
   }
-  return identities;
+  const byName = new Map<string, SourceExternalPackageIdentity[]>();
+  for (const identity of identities) byName.set(identity.name, [...(byName.get(identity.name) ?? []), identity]);
+  for (const identity of identities) {
+    for (const name of identity.dependencies) identity.dependencyLocators[name] = byName.get(name)?.length === 1 ? byName.get(name)![0].locator : null;
+    for (const name of identity.optionalDependencies) identity.optionalDependencyLocators[name] = byName.get(name)?.length === 1 ? byName.get(name)![0].locator : null;
+  }
+  return { packages: identities, importers: {} };
 }
 
-function parseNodeLockPackages(source: string, lockfilePath: string): SourceExternalPackageIdentity[] {
+function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDependencyLock {
   if (lockfilePath.endsWith("package-lock.json") || lockfilePath.endsWith("npm-shrinkwrap.json")) {
     const lock = JSON.parse(source) as {
       packages?: Record<string, Record<string, unknown>>;
     };
     const result: SourceExternalPackageIdentity[] = [];
+    const importerRaw: Record<string, Record<string, unknown>> = {};
     for (const [path, value] of Object.entries(lock.packages ?? {})) {
       const marker = "node_modules/";
       const index = path.lastIndexOf(marker);
-      if (index < 0) continue;
+      if (index < 0) {
+        importerRaw[path || "."] = value;
+        continue;
+      }
       const name = path.slice(index + marker.length);
       if (value.link === true || typeof value.version !== "string") continue;
       const integrity =
@@ -533,12 +596,15 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
       result.push({
         name: normalizePackageName(name),
         version: value.version,
+        locator: packageLocatorId(lockfilePath, path),
         packageManager: "npm",
         lockfilePath,
         integrity,
         source,
         dependencies: [...new Set(dependencies)].sort(),
         optionalDependencies: [...new Set(optionalDependencies)].sort(),
+        dependencyLocators: {},
+        optionalDependencyLocators: {},
         lockedArtifacts: [{ source, integrity, kind: "npm-tarball", sizeBytes: null }],
         artifactStatus: "NOT_REQUIRED",
         artifactPath: null,
@@ -552,12 +618,37 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
         cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
       });
     }
-    return result;
+    const locatorPrefix = `${lockfilePath}#`;
+    const locators = new Set(result.map(item => item.locator.slice(locatorPrefix.length)));
+    for (const identity of result) {
+      const parent = identity.locator;
+      const rawParent = parent.slice(locatorPrefix.length);
+      for (const name of identity.dependencies) {
+        const resolved = resolveNpmLocator(name, `${rawParent}/package.json`, locators);
+        identity.dependencyLocators[name] = resolved ? packageLocatorId(lockfilePath, resolved) : null;
+      }
+      for (const name of identity.optionalDependencies) {
+        const resolved = resolveNpmLocator(name, `${rawParent}/package.json`, locators);
+        identity.optionalDependencyLocators[name] = resolved ? packageLocatorId(lockfilePath, resolved) : null;
+      }
+    }
+    const importers: Record<string, Record<string, string | null>> = {};
+    for (const [importerPath, value] of Object.entries(importerRaw)) {
+      const dependencyMaps = ["dependencies", "optionalDependencies", "devDependencies"].map(key => value[key] && typeof value[key] === "object" ? value[key] as Record<string, unknown> : {});
+      const entries = Object.assign({}, ...dependencyMaps);
+      const requester = importerPath === "." ? "package.json" : `${importerPath}/package.json`;
+      importers[importerPath] = Object.fromEntries(Object.keys(entries).map(name => {
+        const resolved = resolveNpmLocator(name, requester, locators);
+        return [normalizePackageName(name), resolved ? packageLocatorId(lockfilePath, resolved) : null];
+      }));
+    }
+    return { packages: result, importers };
   }
-  const lock = yaml.load(source) as { packages?: Record<string, Record<string, unknown>> } | undefined;
+  const lock = yaml.load(source) as { packages?: Record<string, Record<string, unknown>>; importers?: Record<string, Record<string, unknown>> } | undefined;
   const result: SourceExternalPackageIdentity[] = [];
   for (const [rawKey, value] of Object.entries(lock?.packages ?? {})) {
-    let key = rawKey.replace(/^\//, "").replace(/\([^)]*\)$/, "");
+    const locator = rawKey.replace(/^\//, "");
+    let key = locator.replace(/\([^)]*\)$/, "");
     let name: string;
     let version: string;
     if (key.startsWith("@")) {
@@ -580,12 +671,15 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
     result.push({
       name: normalizePackageName(name),
       version,
+      locator: packageLocatorId(lockfilePath, locator),
       packageManager: "pnpm",
       lockfilePath,
       integrity,
       source,
       dependencies: [...new Set(dependencies)].sort(),
       optionalDependencies: [...new Set(optionalDependencies)].sort(),
+      dependencyLocators: {},
+      optionalDependencyLocators: {},
       lockedArtifacts: [{ source, integrity, kind: "npm-tarball", sizeBytes: null }],
       artifactStatus: "NOT_REQUIRED",
       artifactPath: null,
@@ -599,7 +693,30 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
       cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
     });
   }
-  return result;
+  const resolvePnpmLocator = (name: string, value: unknown): string | null => {
+    const version = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Record<string, unknown>).version === "string" ? (value as Record<string, unknown>).version as string : null;
+    if (!version) return null;
+    // pnpm importer resolutions may carry the full peer-qualified package
+    // locator (name@version(peer@...)); dependency entries usually carry only
+    // a version. Preserve the full locator when present so peer variants do
+    // not collapse into an ambiguous name/version match.
+    const expected = (version.startsWith(`${name}@`) ? version : `${name}@${version}`).replace(/^\//, "");
+    const matches = result.filter(item => item.locator === packageLocatorId(lockfilePath, expected));
+    return matches.length === 1 ? matches[0].locator : null;
+  };
+  for (const identity of result) {
+    const rawLocator = identity.locator.slice(`${lockfilePath}#`.length);
+    const packageEntry = lock?.packages?.[rawLocator] ?? lock?.packages?.[`/${rawLocator}`] ?? {};
+    for (const name of identity.dependencies) identity.dependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.dependencies as Record<string, unknown> | undefined)?.[name]);
+    for (const name of identity.optionalDependencies) identity.optionalDependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.optionalDependencies as Record<string, unknown> | undefined)?.[name]);
+  }
+  const importers: Record<string, Record<string, string | null>> = {};
+  for (const [importerPath, value] of Object.entries(lock?.importers ?? {})) {
+    const dependencyMaps = ["dependencies", "optionalDependencies", "devDependencies"].map(key => value[key] && typeof value[key] === "object" ? value[key] as Record<string, unknown> : {});
+    const entries = Object.assign({}, ...dependencyMaps);
+    importers[importerPath === "." ? "." : importerPath] = Object.fromEntries(Object.entries(entries).map(([name, resolution]) => [normalizePackageName(name), resolvePnpmLocator(name, resolution)]));
+  }
+  return { packages: result, importers };
 }
 
 function workspaceExportTargets(manifest: Record<string, unknown>, subpath: string): string[] {
@@ -713,6 +830,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const dependencyEdges: SourceDependencyEdge[] = [];
   const external = new Set<string>();
   const declaredExternal = new Set<string>();
+  const externalRoots: ExternalRoot[] = [];
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
@@ -813,6 +931,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const packageName = requirement[1].toLowerCase().replace(/[-_.]+/g, "-");
         external.add(packageName);
         declaredExternal.add(packageName);
+        externalRoots.push({ name: packageName, requesterPath: filePath });
         dependencyEdges.push({
           from: filePath,
           specifier: `${packageName}${requirement[2]}`,
@@ -834,6 +953,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const packageName = normalizePackageName(name);
         external.add(packageName);
         declaredExternal.add(packageName);
+        externalRoots.push({ name: packageName, requesterPath: filePath });
         dependencyEdges.push({
           from: filePath,
           specifier: requirement,
@@ -875,6 +995,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           if (!local) {
             external.add(name);
             declaredExternal.add(normalizePackageName(name));
+            externalRoots.push({ name, requesterPath: filePath });
             dependencyEdges.push({
               from: filePath,
               specifier: `${name}@${String(range)}`,
@@ -1029,7 +1150,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           });
         if (!resolution.files.length) unresolved.push({ from: filePath, specifier: name });
       } else {
-        external.add(name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0]);
+        const packageName = packageNameFromSpecifier(name);
+        external.add(packageName);
+        externalRoots.push({ name: packageName, requesterPath: filePath });
         dependencyEdges.push({
           from: filePath,
           specifier: name,
@@ -1092,8 +1215,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             });
           if (!resolution.files.length) unresolved.push({ from: filePath, specifier });
         } else {
-          const packageName = specifier.startsWith("@") ? specifier.split("/").slice(0, 2).join("/") : specifier.split("/")[0];
+          const packageName = packageNameFromSpecifier(specifier);
           external.add(packageName);
+          externalRoots.push({ name: packageName, requesterPath: filePath });
           dependencyEdges.push({
             from: filePath,
             specifier,
@@ -1156,11 +1280,13 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   const lockfilePaths = [...seen].filter(path => path.endsWith("package-lock.json") || path.endsWith("npm-shrinkwrap.json") || path.endsWith("pnpm-lock.yaml") || path.endsWith("yarn.lock") || path.endsWith("uv.lock"));
   const lockedPackages: SourceExternalPackageIdentity[] = [];
+  const importersByLockfile = new Map<string, Record<string, Record<string, string | null>>>();
   for (const lockfilePath of lockfilePaths) {
     try {
       const lockSource = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, lockfilePath), "utf8");
-      if (lockfilePath.endsWith("uv.lock")) lockedPackages.push(...parseUvLockPackages(lockSource, lockfilePath));
-      else lockedPackages.push(...parseNodeLockPackages(lockSource, lockfilePath));
+      const parsed = lockfilePath.endsWith("uv.lock") ? parseUvLockPackages(lockSource, lockfilePath) : parseNodeLockPackages(lockSource, lockfilePath);
+      lockedPackages.push(...parsed.packages);
+      importersByLockfile.set(lockfilePath, parsed.importers);
     } catch {
       unresolved.push({
         from: lockfilePath,
@@ -1177,12 +1303,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         specifier: `optional-dependency-not-declared:${name}`,
       });
   }
-  const { required: requiredExternalSet, unresolved: dependencyClosureIssues } = selectExternalClosure(lockedPackages, external, selectedOptionalSet);
+  const { required: requiredExternalSet, unresolved: dependencyClosureIssues, rootLocators } = selectExternalClosure(lockedPackages, externalRoots, importersByLockfile, selectedOptionalSet);
   for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   const externalArtifacts = input.externalArtifacts ?? [];
   const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
   for (const identity of lockedPackages) {
-    if (!requiredExternalSet.has(identity.name)) {
+    if (!requiredExternalSet.has(identity.locator)) {
       externalPackageIdentities.push(identity);
       continue;
     }
@@ -1277,13 +1403,15 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
-  for (const identity of externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT")) {
-    for (const edge of dependencyEdges) {
-      const suffix = edge.specifier.slice(identity.name.length, identity.name.length + 1);
-      if (edge.status === "external-package" && edge.specifier.startsWith(identity.name) && (suffix === "" || "@/<>!=~;[".includes(suffix))) {
-        edge.status = "verified-external-artifact";
-        edge.to = identity.artifactPath;
-      }
+  for (const edge of dependencyEdges) {
+    if (edge.status !== "external-package") continue;
+    const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}/`)));
+    const packageName = normalizePackageName(declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier));
+    const locator = rootLocators.get(`${edge.from}\0${packageName}`);
+    const identity = externalPackageIdentities.find(item => item.locator === locator);
+    if (identity?.artifactStatus === "VERIFIED_ARTIFACT") {
+      edge.status = "verified-external-artifact";
+      edge.to = identity.artifactPath;
     }
   }
   if (!input.profileId?.trim()) unresolved.push({ from: "<profile>", specifier: "<profile-id-missing>" });
@@ -1315,7 +1443,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     unresolvedImports: unresolved.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : a.specifier < b.specifier ? -1 : a.specifier > b.specifier ? 1 : 0)),
     selectedOptionalDependencies,
     requiredExternalPackages: [...requiredExternalSet].sort(),
-    closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(name => externalPackageIdentities.filter(item => item.name === name).length === 1 && externalPackageIdentities.find(item => item.name === name)?.artifactStatus === "VERIFIED_ARTIFACT"),
+    closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
 }
 
@@ -1349,7 +1477,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   if (new Set(packageIdentities.map(item => item.name)).size !== packageIdentities.length || packageIdentities.some(item => !item.name.trim() || !fileSet.has(safeRelative(sourceRoot, item.manifestPath)) || !item.manifestPath.endsWith("package.json"))) throw new Error("SPEC224_BUNDLE_PACKAGE_IDENTITY_INVALID");
   if (closure.externalPackageIdentities.some(item => !item.name.trim() || !item.version.trim() || !fileSet.has(safeRelative(sourceRoot, item.lockfilePath)) || item.integrity.some(hash => !/^(?:sha256:[a-f0-9]{64}|sha(?:256|384|512)-[A-Za-z0-9+/=]+)$/i.test(hash)))) throw new Error("SPEC224_BUNDLE_EXTERNAL_PACKAGE_IDENTITY_INVALID");
   for (const name of closure.requiredExternalPackages) {
-    const matches = closure.externalPackageIdentities.filter(item => item.name === name);
+    const matches = closure.externalPackageIdentities.filter(item => item.locator === name);
     if (matches.length !== 1 || matches[0].artifactStatus !== "VERIFIED_ARTIFACT" || !matches[0].artifactPath || !matches[0].artifactSha256 || !fileSet.has(safeRelative(sourceRoot, matches[0].artifactPath))) throw new Error("SPEC224_BUNDLE_REQUIRED_ARTIFACT_UNVERIFIED");
     const identity = matches[0];
     const entry = content.find(item => item.path === identity.artifactPath);
