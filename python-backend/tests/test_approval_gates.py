@@ -5,8 +5,10 @@ Simple tests to verify ApprovalService can be instantiated with database session
 Full functional tests will be added when service is fully refactored.
 """
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
 import pytest
-from uuid import uuid4
 
 from app.models.approval import ApprovalRequest, ApprovalStatus, ApprovalType
 
@@ -68,6 +70,31 @@ def test_approval_db_service_has_required_methods():
     assert hasattr(ApprovalDBService, 'list_pending_requests')
     assert hasattr(ApprovalDBService, 'submit_decision')
     assert hasattr(ApprovalDBService, 'cleanup_expired_requests')
+
+
+@pytest.mark.asyncio
+async def test_cancel_request_revalidates_requester_and_tenant():
+    from app.services.approval_db_service import ApprovalDBService
+
+    request = SimpleNamespace(
+        id="approval-1",
+        requester_id=7,
+        tenant_id="tenant-1",
+        status=ApprovalStatus.PENDING,
+        resolved_at=None,
+    )
+    db = SimpleNamespace(commit=AsyncMock())
+    service = ApprovalDBService(db)
+    service.get_request = AsyncMock(return_value=request)
+
+    unauthorized = await service.cancel_request("approval-1", cancelled_by=8, tenant_id="tenant-1")
+    assert unauthorized is None
+    db.commit.assert_not_awaited()
+
+    cancelled = await service.cancel_request("approval-1", cancelled_by=7, tenant_id="tenant-1")
+    assert cancelled is request
+    assert request.status == ApprovalStatus.CANCELLED
+    db.commit.assert_awaited_once()
 
 
 # Placeholder for future integration tests with full database

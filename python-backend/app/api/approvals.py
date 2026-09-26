@@ -1058,7 +1058,16 @@ async def cancel_approval_request(
             detail="Only pending requests can be cancelled",
         )
 
-    cancelled = await approval_service.cancel_request(request_id)
+    cancelled = await approval_service.cancel_request(
+        request_id,
+        cancelled_by=current_user.id,
+        tenant_id=tenant_id,
+    )
+    if not cancelled:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Approval request changed before cancellation could be persisted",
+        )
     return cancelled
 
 

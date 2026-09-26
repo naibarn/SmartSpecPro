@@ -757,6 +757,23 @@ class ApprovalDBService:
             )
             return None
 
+        if request.requester_id != cancelled_by:
+            self._logger.warning(
+                "approval_cancel_requester_mismatch",
+                request_id=request_id,
+                cancelled_by=cancelled_by,
+                tenant_id=tenant_id,
+            )
+            return None
+
+        if tenant_id and request.tenant_id != tenant_id:
+            self._logger.warning(
+                "approval_cancel_tenant_mismatch",
+                request_id=request_id,
+                tenant_id=tenant_id,
+            )
+            return None
+
         request.status = ApprovalStatus.CANCELLED
         request.resolved_at = datetime.utcnow()
 
@@ -766,6 +783,7 @@ class ApprovalDBService:
             "approval_request_cancelled",
             request_id=request_id,
             cancelled_by=cancelled_by,
+            tenant_id=request.tenant_id,
             reason=reason,
         )
 
