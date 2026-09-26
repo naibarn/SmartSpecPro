@@ -293,4 +293,50 @@ production_execution_recheck:
     production_cutover_complete: false
     redis_must_remain_enabled_for_voice_pubsub_g3_g6: true
     cloudflare_activation: disabled
-    immediate_action: reconcile_union_of_jti_revocations_under_approved_maintenance_after_backup_restore_and_writer_fence
+    immediate_action: keep_local_web_backend_and_web_watchdog_stopped_until_production_target_scope_backup_restore_and_revocation_reconciliation_gates_pass
+
+emergency_g2_reconciliation_2026_09_26:
+  observed_at_utc: "2026-09-26T14:35:50Z"
+  inspected_commit: 045a6fc728bed97b053747b977db0faf575c9dc6
+  local_host_http_maintenance:
+    web_service_stopped: true
+    python_backend_service_stopped: true
+    web_watchdog_stopped: true
+    web_service_disabled_from_boot: true
+    python_backend_service_disabled_from_boot: true
+    web_watchdog_disabled_from_boot: true
+    direct_port_3000_listener: false
+    direct_port_8000_listener: false
+    direct_web_probe_http: 000_connection_refused
+    direct_backend_probe_http: 000_connection_refused
+    nginx_trpc_probe_http: 502
+    nginx_python_api_probe_http: 502
+    scope: inspected_host_only_external_replicas_and_worker_origin_not_verified
+  redis_postgres_jti_digest_snapshot:
+    redis_active: 270
+    redis_persistent: 0
+    postgres_active: 1
+    redis_only_missing_from_postgres: 270
+    postgres_only_missing_from_redis: 1
+    overlap: 0
+    identifiers_logged: false
+    source: read_only_python_redis_psycopg_sha256_digest_set_comparison
+  recovery_gates:
+    g2_auth_http_intake: closed_on_inspected_host
+    remaining_auth_writer_fence: not_proven_for_all_background_services_or_external_replicas
+    backup_artifact_found_in_inspected_paths: false
+    isolated_backup_restore_verified: false
+    import_attempted: false
+    production_security_tests: not_run_services_stopped_no_authorized_test_tokens
+    migrations_0345_0349_present: true
+    migrations_0345_0349_database_hashes_match_local_sql_files: true
+    migrations_origin_verified_from_deployment_logs: false
+    do_not_restart_web_backend_or_web_watchdog: true
+    do_not_run_migrations_or_import: true
+  local_validation:
+    command: "npm --prefix apps/web test -- --run server/_core/revocation.test.ts server/services/jtiRevocationImporter.test.ts"
+    result: 2_test_files_passed_10_tests_passed
+  status:
+    g1: BLOCKED_no_authorized_sessions_or_production_worker_trace
+    g2: BLOCKED_auth_http_paused_revocations_unreconciled_backup_restore_and_full_writer_fence_missing
+    production_cutover_verified: false
