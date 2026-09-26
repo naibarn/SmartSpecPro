@@ -66,14 +66,17 @@ async function refreshWorkerJobHealth(): Promise<void> {
   const backlog = (counts.get("queued") ?? 0) + (counts.get("retry_scheduled") ?? 0);
   const active = (counts.get("leased") ?? 0) + (counts.get("running") ?? 0) + (counts.get("waiting_external") ?? 0);
   const workers = Number(workerSummary[0]?.count ?? 0);
-  const severity = backlog >= BACKLOG_CRITICAL_THRESHOLD ? "critical"
+  const noWorkerForQueuedJobs = backlog > 0 && workers === 0;
+  const severity = noWorkerForQueuedJobs || backlog >= BACKLOG_CRITICAL_THRESHOLD ? "critical"
     : backlog >= BACKLOG_WARNING_THRESHOLD ? "warning" : null;
   const alerts: QueueHealthStatus["activeAlerts"] = severity ? [{
     queue: "worker_jobs",
     label: "Canonical worker_jobs backlog",
     severity,
-    type: "backlog",
-    message: `worker_jobs has ${backlog} queued or retry-scheduled jobs`,
+    type: noWorkerForQueuedJobs ? "dead_consumer" : "backlog",
+    message: noWorkerForQueuedJobs
+      ? `worker_jobs has ${backlog} queued jobs and no live worker heartbeat`
+      : `worker_jobs has ${backlog} queued or retry-scheduled jobs`,
     currentLength: backlog,
     previousLength: null,
     threshold: severity === "critical" ? BACKLOG_CRITICAL_THRESHOLD : BACKLOG_WARNING_THRESHOLD,
@@ -81,7 +84,7 @@ async function refreshWorkerJobHealth(): Promise<void> {
   const checkedAt = new Date();
   const rowStatus = severity === "critical" ? "critical" : severity ? "warning" : "ok";
   latestStatus = {
-    healthy: workers > 0 && severity !== "critical",
+    healthy: !noWorkerForQueuedJobs && severity !== "critical",
     lastCheckAt: checkedAt.toISOString(),
     queues: [{
       name: "worker_jobs",
