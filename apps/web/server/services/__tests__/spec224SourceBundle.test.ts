@@ -735,7 +735,6 @@ describe("Spec 224 source bundle tooling", () => {
         { name: "peer", version: "2.0.0", locator: "pnpm-lock.yaml#peer@2.0.0", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/peer-v2.tgz", source: peerV2Url, kind: "npm-tarball", platform: "linux-x64" },
       ],
     });
-    console.log("peer debug", closure.unresolvedImports, closure.requiredExternalPackages, closure.externalPackageIdentities.map(item => [item.locator, item.dependencyLocators]));
     expect(closure.closureComplete).toBe(true);
     expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([
       "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)",
