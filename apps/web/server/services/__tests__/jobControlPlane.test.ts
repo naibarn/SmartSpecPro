@@ -1355,6 +1355,86 @@ describe("job control plane", () => {
     ).toHaveLength(1);
   });
 
+  it("recovers a lease-expired story checkpoint even after automatic attempts are exhausted", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "vertical_drama.story",
+      requestedByUserId: 8,
+      idempotencyKey: undefined,
+    });
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "story-runner",
+      adapter: "postgres-pull",
+    });
+    await controlPlane.start(lease!);
+
+    const job = state.jobs.get(created.jobId);
+    job.attempt = job.maxAttempts;
+    job.leaseExpiresAt = new Date(Date.now() - 1_000);
+    await expect(
+      controlPlane.recoverExpiredLease(created.jobId, new Date(Date.now() + 2_000))
+    ).resolves.toBe("recovered");
+    expect(job.status).toBe("expired");
+    expect(job.errorCode).toBe("LEASE_EXPIRED");
+
+    await expect(
+      controlPlane.recoverCheckpoint(
+        created.jobId,
+        "story-checkpoint-recovery-expired-1",
+        "story_checkpoint_recovery",
+        { checkpointDigest: "b".repeat(64), completedEpisodeCount: 2 },
+        8,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: 8,
+          authorizationScope: "feature-186:vertical_drama.story:recover",
+        },
+      ),
+    ).resolves.toBe(true);
+
+    expect(job.status).toBe("queued");
+    expect(job.attempt).toBe(3);
+    expect(job.maxAttempts).toBe(3);
+    expect(job.errorCode).toBeNull();
+    expect(state.outbox).toHaveLength(2);
+  });
+
+  it("does not treat a hard-deadline expiry as a resumable lease expiry", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "vertical_drama.story",
+      requestedByUserId: 8,
+      idempotencyKey: undefined,
+    });
+    Object.assign(state.jobs.get(created.jobId), {
+      status: "expired",
+      errorCode: "JOB_DEADLINE_EXPIRED",
+      finishedAt: new Date(),
+    });
+
+    await expect(
+      controlPlane.recoverCheckpoint(
+        created.jobId,
+        "story-checkpoint-recovery-deadline-1",
+        "story_checkpoint_recovery",
+        { checkpointDigest: "c".repeat(64), completedEpisodeCount: 2 },
+        8,
+        {
+          tenantId: definition.tenantId,
+          requestedByUserId: 8,
+          authorizationScope: "feature-186:vertical_drama.story:recover",
+        },
+      ),
+    ).resolves.toBe(false);
+    expect(state.jobs.get(created.jobId).status).toBe("expired");
+    expect(state.outbox).toHaveLength(1);
+  });
+
   it("recovers a review-gated terminal job idempotently on the same canonical id", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

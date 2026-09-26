@@ -757,11 +757,12 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   // non-lease recovery/operator paths cannot bypass the shared
                   // lifecycle table. The sole exception is an explicit,
                   // action-audited terminal recovery command; ordinary callers
-                  // still cannot reopen failed jobs.
+                  // still cannot reopen failed or expired jobs.
                   const terminalRecovery =
                     input.allowTerminalRecovery === true &&
-                    canonicalizeStoredStatus(input.expectedStatus) ===
-                      "failed" &&
+                    ["failed", "expired"].includes(
+                      canonicalizeStoredStatus(input.expectedStatus)
+                    ) &&
                     canonicalizeStoredStatus(requestedStatus) === "queued";
                   if (!terminalRecovery) {
                     assertCanonicalJobTransition(
@@ -3761,9 +3762,9 @@ export function createJobControlPlane(
     /**
      * Recover a checkpoint-bearing domain job after an evidence-backed
      * failure. This is deliberately narrower than `makeRetryDue`: it is the
-     * only ordinary API that may reopen a terminal failed row, and it always
-     * creates exactly one new business attempt plus one durable outbox intent
-     * on the same canonical job.
+     * only ordinary API that may reopen a review-gated failed story job or a
+     * lease-expired story job, and it always creates exactly one new business
+     * attempt plus one durable outbox intent on the same canonical job.
      */
     async recoverCheckpoint(
       jobId: string,
@@ -3810,14 +3811,15 @@ export function createJobControlPlane(
           return true;
         }
         assertJobMutationScope(job, scope);
-        if (
-          !job ||
-          job.jobType !== "vertical_drama.story" ||
-          job.status !== "failed"
-        )
+        if (!job || job.jobType !== "vertical_drama.story")
           return false;
-        if (!job.operatorReviewRequired) return false;
-        if (job.attempt >= job.maxAttempts) return false;
+        const recoverableFailed =
+          job.status === "failed" && job.operatorReviewRequired;
+        const recoverableLeaseExpiry =
+          job.status === "expired" && job.errorCode === "LEASE_EXPIRED";
+        if (!recoverableFailed && !recoverableLeaseExpiry) return false;
+        if (job.attempt >= job.maxAttempts && !recoverableLeaseExpiry)
+          return false;
 
         if (
           !(await prepareOperatorAction(repo, {
@@ -3837,17 +3839,25 @@ export function createJobControlPlane(
         const now = new Date();
         const updated = await repo.updateJob({
           jobId,
-          expectedStatus: "failed",
+          expectedStatus: job.status,
           expectedTenantId: scope?.tenantId,
           expectedRequestedByUserId: scope?.requestedByUserId,
           expectedAttempt: job.attempt,
           values: {
             status: "queued",
             attempt: nextAttempt,
+            // A user-confirmed checkpoint recovery is one bounded new
+            // attempt. The story-domain recovery counter caps these explicit
+            // repairs; keep the canonical attempt ceiling in sync so the
+            // recovered delivery can actually be claimed.
+            maxAttempts: Math.max(job.maxAttempts, nextAttempt),
             nextRetryAt: null,
             statusReason: "checkpoint_recovery",
             operatorReviewRequired: false,
             operatorReviewReason: null,
+            errorCode: null,
+            errorMessage: null,
+            failureReason: null,
             leaseOwnerToken: null,
             leaseExpiresAt: null,
             heartbeatAt: null,
