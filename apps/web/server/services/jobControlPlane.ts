@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -14,6 +14,8 @@ import {
   workerJobDispatches,
   workerJobProviderReservations,
   workerJobs,
+  runnerNodes,
+  runnerCapabilitySnapshots,
   tenantIdentityActions,
   type WorkerJob,
 } from "../../drizzle/schema";
@@ -98,6 +100,14 @@ export type TxRepo = {
     leaseGeneration: number;
     runnerId: string | null;
   } | null>;
+  assertRunnerAuthorizationBinding?(input: {
+    tenantId: string;
+    runnerId: string;
+    runnerSessionId: string;
+    capabilitySnapshotId: string;
+    capabilitySnapshotRevision: string;
+    now: Date;
+  }): Promise<boolean>;
   markDispatchConsumed?(input: {
     jobId: string;
     attemptId?: string;
@@ -107,7 +117,7 @@ export type TxRepo = {
   findEventByIdempotency(
     jobId: string,
     key: string
-  ): Promise<{ eventType: string } | null>;
+  ): Promise<{ eventType: string; payloadJson?: Record<string, unknown> } | null>;
   findAction(actionId: string): Promise<{
     workerJobId: string;
     command: string;
@@ -627,6 +637,41 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .limit(1);
                 return row ?? null;
               },
+              async assertRunnerAuthorizationBinding(input) {
+                const [runner] = await query
+                  .select({
+                    trustState: runnerNodes.trustState,
+                    activeSessionId: runnerNodes.activeSessionId,
+                    currentSnapshotRevision: runnerNodes.currentSnapshotRevision,
+                    snapshotExpiresAt: runnerNodes.snapshotExpiresAt,
+                    revokedAt: runnerNodes.revokedAt,
+                  })
+                  .from(runnerNodes)
+                  .where(and(
+                    eq(runnerNodes.runnerId, input.runnerId),
+                    eq(runnerNodes.tenantId, input.tenantId),
+                  ))
+                  .limit(1);
+                if (!runner
+                  || runner.trustState !== "trusted"
+                  || runner.activeSessionId !== input.runnerSessionId
+                  || runner.currentSnapshotRevision !== input.capabilitySnapshotRevision
+                  || runner.revokedAt !== null
+                  || !runner.snapshotExpiresAt
+                  || runner.snapshotExpiresAt <= input.now) return false;
+                const [snapshot] = await query
+                  .select({ id: runnerCapabilitySnapshots.id })
+                  .from(runnerCapabilitySnapshots)
+                  .where(and(
+                    eq(runnerCapabilitySnapshots.id, input.capabilitySnapshotId),
+                    eq(runnerCapabilitySnapshots.runnerId, input.runnerId),
+                    eq(runnerCapabilitySnapshots.tenantId, input.tenantId),
+                    eq(runnerCapabilitySnapshots.revision, input.capabilitySnapshotRevision),
+                    gt(runnerCapabilitySnapshots.expiresAt, input.now),
+                  ))
+                  .limit(1);
+                return Boolean(snapshot);
+              },
               async findAttemptDetails(jobId, attempt) {
                 const [row] = await query
                   .select({
@@ -673,7 +718,7 @@ function buildDefaultRepository(): JobControlPlaneRepository {
               },
               async findEventByIdempotency(jobId, key) {
                 const [row] = await query
-                  .select({ eventType: workerJobEvents.eventType })
+                  .select({ eventType: workerJobEvents.eventType, payloadJson: workerJobEvents.payloadJson })
                   .from(workerJobEvents)
                   .where(
                     and(
@@ -1882,6 +1927,7 @@ export type ComputerUseApprovalRequestInput = {
   currentCommandId: string;
   actionId: string;
   semanticState: Record<string, unknown>;
+  provider?: "codex" | "claude_code";
 };
 
 export type ComputerUseApprovalDecisionInput = {
@@ -1896,6 +1942,27 @@ export type ComputerUseApprovalDecisionInput = {
   runnerSessionId: string;
   fencingVersion: number;
   approverId: number;
+  schemaVersion?: "spec224.approval-decision.v1";
+  deliveryId?: string;
+  decisionEpoch?: number;
+  payloadDigest?: string;
+  capabilitySnapshotId?: string;
+  capabilitySnapshotRevision?: string;
+  providerRequestId?: string;
+  provider?: "codex" | "claude_code";
+};
+
+export type Spec224ApprovalDeliveryReceiptInput = {
+  jobId: string;
+  tenantId: string;
+  approvalRequestId: string;
+  operationId: string;
+  decision: "approved" | "rejected" | "expired" | "cancelled";
+  deliveryId: string;
+  decisionEpoch: number;
+  payloadDigest: string;
+  result: "resumed" | "failed" | "duplicate" | "operator_review";
+  acknowledged?: boolean;
 };
 
 export function createJobControlPlane(
@@ -4316,7 +4383,8 @@ export function createJobControlPlane(
       operatorReviewRequired = true,
       now = new Date(),
       operationKey?: string,
-      pollerLeaseTokenHash?: string
+      pollerLeaseTokenHash?: string,
+      approvalDelivery?: Omit<Spec224ApprovalDeliveryReceiptInput, "acknowledged">
     ): Promise<"failed" | "ignored"> {
       const safeReason = sanitizeJobErrorMessage(
         reason,
@@ -4326,6 +4394,11 @@ export function createJobControlPlane(
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (!job || job.status !== "waiting_external") return "ignored";
+        if (approvalDelivery && (
+          approvalDelivery.jobId !== jobId
+          || approvalDelivery.tenantId !== job.tenantId
+          || approvalDelivery.operationId !== operationKey
+        )) return "ignored";
         if (operationKey) {
           const externalWait =
             job.progressJson &&
@@ -4396,6 +4469,24 @@ export function createJobControlPlane(
             operatorReviewRequired,
           },
         });
+        if (approvalDelivery) {
+          await repo.insertEvent({
+            workerJobId: jobId,
+            eventType: "APPROVAL_DELIVERY_RECONCILED",
+            eventIdempotencyKey: `spec224-approval-delivery:${approvalDelivery.deliveryId}`.slice(0, 200),
+            payloadJson: {
+              schemaVersion: "spec224.approval-decision.v1",
+              approvalRequestId: approvalDelivery.approvalRequestId,
+              operationId: approvalDelivery.operationId,
+              decision: approvalDelivery.decision,
+              deliveryId: approvalDelivery.deliveryId,
+              decisionEpoch: approvalDelivery.decisionEpoch,
+              payloadDigest: approvalDelivery.payloadDigest,
+              result: approvalDelivery.result,
+              recordedAt: now.toISOString(),
+            },
+          });
+        }
         return "failed";
       });
     },
@@ -4694,6 +4785,7 @@ export function createJobControlPlane(
           runnerSessionId: input.runnerSessionId,
           capabilitySnapshotId: input.capabilitySnapshotId,
           capabilitySnapshotRevision: input.capabilitySnapshotRevision,
+          ...(input.provider ? { provider: input.provider } : {}),
           fencingVersion: job.fencingVersion,
           operationKey: input.operationKey,
           requestedAt: now.toISOString(),
@@ -4762,19 +4854,36 @@ export function createJobControlPlane(
         !input.actionId.trim() ||
         !input.runnerSessionId.trim() ||
         !Number.isSafeInteger(input.fencingVersion) ||
-        !Number.isSafeInteger(input.approverId)
+        !Number.isSafeInteger(input.approverId) ||
+        ((input.schemaVersion !== undefined || input.deliveryId !== undefined || input.decisionEpoch !== undefined || input.payloadDigest !== undefined)
+          && (input.schemaVersion !== "spec224.approval-decision.v1"
+            || !input.deliveryId?.trim()
+            || input.deliveryId.length > 100
+            || input.decisionEpoch !== 1
+            || !input.payloadDigest
+            || !/^[a-f0-9]{64}$/.test(input.payloadDigest)
+            || !input.capabilitySnapshotId?.trim()
+            || !input.capabilitySnapshotRevision?.trim()
+            || !input.providerRequestId?.trim()
+            || (input.provider !== "codex" && input.provider !== "claude_code")))
       )
         return "ignored";
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
         if (!job || job.tenantId !== input.tenantId) return "ignored";
         const eventKey =
-          `computer-use-approval-resolved:${input.jobId}:${input.approvalRequestId}:${input.decision}`.slice(
+          (input.deliveryId
+            ? `spec224-approval-delivery:${input.deliveryId}`
+            : `computer-use-approval-resolved:${input.jobId}:${input.approvalRequestId}:${input.decision}`).slice(
             0,
             200
           );
-        if (await repo.findEventByIdempotency(input.jobId, eventKey))
+        const priorDecision = await repo.findEventByIdempotency(input.jobId, eventKey);
+        if (priorDecision) {
+          if (input.payloadDigest && priorDecision.payloadJson?.payloadDigest !== input.payloadDigest)
+            return "ignored";
           return "duplicate";
+        }
         if (job.status !== "waiting_external") return "ignored";
         const progress =
           job.progressJson &&
@@ -4806,12 +4915,31 @@ export function createJobControlPlane(
           approval.state !== "pending" ||
           approval.requestId !== input.approvalRequestId ||
           approval.actionId !== input.actionId ||
+          (input.schemaVersion !== undefined && (
+            approval.commandId !== input.providerRequestId ||
+            approval.provider !== input.provider
+          )) ||
+          (input.schemaVersion !== undefined && (
+            approval.capabilitySnapshotId !== input.capabilitySnapshotId ||
+            approval.capabilitySnapshotRevision !== input.capabilitySnapshotRevision
+          )) ||
           approval.runnerId !== input.runnerId ||
           approval.runnerSessionId !== input.runnerSessionId ||
           approval.fencingVersion !== input.fencingVersion ||
           job.fencingVersion !== input.fencingVersion
         )
           return "ignored";
+        if (input.schemaVersion && (
+          !repo.assertRunnerAuthorizationBinding ||
+          !(await repo.assertRunnerAuthorizationBinding({
+            tenantId: input.tenantId,
+            runnerId: input.runnerId,
+            runnerSessionId: input.runnerSessionId,
+            capabilitySnapshotId: input.capabilitySnapshotId!,
+            capabilitySnapshotRevision: input.capabilitySnapshotRevision!,
+            now,
+          }))
+        )) return "ignored";
         const attempt = await repo.findAttempt(input.jobId, job.attempt);
         const resolvedApproval = {
           ...approval,
@@ -4858,6 +4986,14 @@ export function createJobControlPlane(
               actionId: input.actionId,
               approverId: input.approverId,
               resolvedAt: now.toISOString(),
+              ...(input.deliveryId ? {
+                schemaVersion: input.schemaVersion,
+                deliveryId: input.deliveryId,
+                decisionEpoch: input.decisionEpoch,
+                payloadDigest: input.payloadDigest,
+                operationId: input.operationKey,
+                result: "failed",
+              } : {}),
             },
           });
           await repo.insertEvent({
@@ -4961,6 +5097,14 @@ export function createJobControlPlane(
             actionId: input.actionId,
             approverId: input.approverId,
             resolvedAt: now.toISOString(),
+            ...(input.deliveryId ? {
+              schemaVersion: input.schemaVersion,
+              deliveryId: input.deliveryId,
+              decisionEpoch: input.decisionEpoch,
+              payloadDigest: input.payloadDigest,
+              operationId: input.operationKey,
+              result: "resumed",
+            } : {}),
           },
         });
         await repo.insertEvent({
@@ -5016,6 +5160,62 @@ export function createJobControlPlane(
           nextAttemptAt: now,
         });
         return "resumed";
+      });
+    },
+
+    async recordSpec224ApprovalDelivery(
+      input: Spec224ApprovalDeliveryReceiptInput,
+      now = new Date()
+    ): Promise<boolean> {
+      if (
+        !input.jobId.trim() || !input.tenantId.trim() || !input.approvalRequestId.trim()
+        || !input.operationId.trim() || !input.deliveryId.trim() || input.decisionEpoch !== 1
+        || !/^[a-f0-9]{64}$/.test(input.payloadDigest)
+      ) return false;
+      return repository.transaction(async repo => {
+        const job = await repo.findJob(input.jobId);
+        if (!job || job.tenantId !== input.tenantId) return false;
+        const decisionKey = `spec224-approval-delivery:${input.deliveryId}`.slice(0, 200);
+        const existing = await repo.findEventByIdempotency(input.jobId, decisionKey);
+        if (existing && existing.payloadJson?.payloadDigest !== input.payloadDigest) return false;
+        if (!existing) {
+          await repo.insertEvent({
+            workerJobId: input.jobId,
+            eventType: "APPROVAL_DELIVERY_RECONCILED",
+            eventIdempotencyKey: decisionKey,
+            payloadJson: {
+              schemaVersion: "spec224.approval-decision.v1",
+              approvalRequestId: input.approvalRequestId,
+              operationId: input.operationId,
+              decision: input.decision,
+              deliveryId: input.deliveryId,
+              decisionEpoch: input.decisionEpoch,
+              payloadDigest: input.payloadDigest,
+              result: input.result,
+              recordedAt: now.toISOString(),
+            },
+          });
+        }
+        if (input.acknowledged) {
+          const ackKey = `spec224-approval-ack:${input.deliveryId}`.slice(0, 200);
+          const ack = await repo.findEventByIdempotency(input.jobId, ackKey);
+          if (ack) return ack.payloadJson?.payloadDigest === input.payloadDigest;
+          await repo.insertEvent({
+            workerJobId: input.jobId,
+            eventType: "APPROVAL_DELIVERY_ACKNOWLEDGED",
+            eventIdempotencyKey: ackKey,
+            payloadJson: {
+              schemaVersion: "spec224.approval-decision.v1",
+              approvalRequestId: input.approvalRequestId,
+              operationId: input.operationId,
+              deliveryId: input.deliveryId,
+              decisionEpoch: input.decisionEpoch,
+              payloadDigest: input.payloadDigest,
+              acknowledgedAt: now.toISOString(),
+            },
+          });
+        }
+        return true;
       });
     },
 

@@ -13,11 +13,19 @@ const mocks = vi.hoisted(() => ({
   developmentRunQuery: vi.fn(),
   developmentEventsQuery: vi.fn(),
   developmentCommandMutation: vi.fn(),
+  fetchDevelopmentRun: vi.fn(),
   refetch: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
+    useUtils: () => ({
+      spec226DevelopmentControl: {
+        get: {
+          fetch: (...args: unknown[]) => mocks.fetchDevelopmentRun(...args),
+        },
+      },
+    }),
     workerJobs: {
       dashboardSummary: {
         useQuery: (...args: unknown[]) => mocks.summaryQuery(...args),
@@ -114,6 +122,13 @@ beforeEach(() => {
   mocks.developmentCommandMutation.mockReturnValue({
     mutateAsync: vi.fn(),
     isPending: false,
+  });
+  mocks.fetchDevelopmentRun.mockResolvedValue({
+    bridgeVersion: "spec-226-development-control-v1",
+    revision: 3,
+    fencingVersion: 7,
+    decisionEpoch: 4,
+    actions: { pause: true, cancel: true },
   });
 });
 
@@ -437,6 +452,7 @@ describe("UniversalControlPlanePanel", () => {
           workerJobId: "job-226-ui",
           fencingVersion: 7,
           revision: 3,
+          decisionEpoch: 4,
           eventSequence: 9,
           nextSafeAction: { command: "RUN_PHASE", phase: "BUILD" },
           actions: { pause: true, cancel: true },
@@ -490,7 +506,8 @@ describe("UniversalControlPlanePanel", () => {
         action: "pause",
         expectedRevision: 3,
         expectedFencingVersion: 7,
-        idempotencyKey: "spec226-ui:run-226-ui:pause:3:7",
+        expectedDecisionEpoch: 4,
+        idempotencyKey: "spec226-ui:run-226-ui:pause:3:7:4",
       })
     );
   });

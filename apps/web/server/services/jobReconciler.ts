@@ -1,11 +1,12 @@
-import { and, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { alias, and, eq, inArray, isNotNull, lte, notExists, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
-import { storyboardSkillRuns, workerJobs } from "../../drizzle/schema";
+import { storyboardSkillRuns, workerJobEvents, workerJobs } from "../../drizzle/schema";
 import { createJobControlPlane } from "./jobControlPlane";
 import { classifyWaitingExternal, type WaitingExternalDecision } from "./jobReconciliationPolicy";
 import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPublisher";
 import type { JobTransportAdapter } from "./jobTransportAdapters";
+import { createSpec224ApprovalContinuation, createSpec224ExternalApprovalAuthority } from "./spec224ApprovalContinuation";
 
 export type JobReconcilerOptions = {
   adapters?: ReadonlyMap<string, JobTransportAdapter>;
@@ -116,7 +117,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   let waitingPending = 0;
   let reconciliationErrors = 0;
   const decisions: JobReconcilerResult["decisions"] = [];
-  const externalWaits = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType, inputJson: workerJobs.inputJson, progressJson: workerJobs.progressJson })
+  const externalWaits = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, jobType: workerJobs.jobType, inputJson: workerJobs.inputJson, progressJson: workerJobs.progressJson })
     .from(workerJobs)
     .where(eq(workerJobs.status, "waiting_external" as any))
     .limit(limit);
@@ -134,7 +135,7 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   const storyboardRunStatus = new Map(storyboardRuns.map(row => [row.id, row.status]));
 
   for (const row of externalWaits) {
-    const wait = (row.progressJson as { externalWait?: { operationKey?: string; providerReference?: string; resumeAfter?: string } } | null)?.externalWait;
+    const wait = (row.progressJson as { externalWait?: { operationKey?: string; providerReference?: string; resumeAfter?: string; metadata?: unknown } } | null)?.externalWait;
     if (!wait?.operationKey) {
       const decision: WaitingExternalDecision = {
         action: "fail_review",
@@ -146,6 +147,76 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
       await controlPlane.forceFail(row.id, decision.explanation, `reconcile:fail:${row.id}:${decision.reasonCode}`);
       waitingFailedForReview += 1;
       await controlPlane.recordReconciliation({ jobId: row.id, ...decision, evidence: { status: "waiting_external" } });
+      continue;
+    }
+
+    const externalMetadata = wait.metadata && typeof wait.metadata === "object" && !Array.isArray(wait.metadata)
+      ? wait.metadata as Record<string, unknown>
+      : {};
+    const approval = externalMetadata.approval && typeof externalMetadata.approval === "object" && !Array.isArray(externalMetadata.approval)
+      ? externalMetadata.approval as Record<string, unknown>
+      : null;
+    if (approval) {
+      const approvalRef = typeof approval.requestId === "string" ? approval.requestId : "";
+      if (!approvalRef || approval.state !== "pending") {
+        const reasonCode = "spec224_approval_metadata_invalid";
+        const failed = await controlPlane.failExternalWait(row.id, reasonCode, true, now, wait.operationKey);
+        decisions.push({ jobId: row.id, action: "fail_review", reasonCode });
+        if (failed === "failed") waitingFailedForReview += 1;
+        await controlPlane.recordReconciliation({
+          jobId: row.id,
+          action: "fail_review",
+          reasonCode,
+          explanation: "Approval continuation metadata is invalid; the canonical job was not resumed.",
+          operatorReviewRequired: true,
+          evidence: { approvalRequestId: approvalRef || null, operationKey: wait.operationKey },
+        });
+        continue;
+      }
+      try {
+        const continuation = createSpec224ApprovalContinuation({
+          authority: createSpec224ExternalApprovalAuthority(),
+          controlPlane,
+        });
+        const result = await continuation.resolve({
+          approvalRef,
+          tenantId: row.tenantId,
+          jobId: row.id,
+          operationId: wait.operationKey,
+        });
+        const action = result === "resumed" || result === "duplicate" ? "resume" : result === "operator_review" ? "fail_review" : "hold";
+        const reasonCode = `spec224_approval_${result}`;
+        decisions.push({ jobId: row.id, action, reasonCode });
+        if (result === "resumed") waitingResumed += 1;
+        else if (result === "operator_review") waitingFailedForReview += 1;
+        else if (result === "pending") waitingPending += 1;
+        else if (result === "ignored") waitingHeld += 1;
+        await controlPlane.recordReconciliation({
+          jobId: row.id,
+          action,
+          reasonCode,
+          explanation: "Spec 224 approval decision was reconciled through the existing approval authority and Feature 195 control plane.",
+          operatorReviewRequired: result === "operator_review",
+          evidence: { approvalRequestId: approvalRef, operationKey: wait.operationKey, result },
+        });
+      } catch (error) {
+        reconciliationErrors += 1;
+        const code = error instanceof Error ? error.message : "unknown_error";
+        const failClosed = code.startsWith("SPEC224_APPROVAL_DELIVERY_")
+          || code.startsWith("SPEC224_APPROVAL_CORRELATION_")
+          || code.startsWith("SPEC224_APPROVAL_RESUME_")
+          || code === "SPEC224_APPROVAL_ACK_REJECTED";
+        if (failClosed) {
+          const reasonCode = code.slice(0, 200);
+          if (await controlPlane.failExternalWait(row.id, reasonCode, true, now, wait.operationKey) === "failed")
+            waitingFailedForReview += 1;
+        }
+        console.error("[Feature186] Spec 224 approval reconciliation failed", {
+          jobId: row.id,
+          error: code.slice(0, 300),
+        });
+      }
+      // Approval-marked waits must never flow through generic external-wait resume policy.
       continue;
     }
 
@@ -229,6 +300,75 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
           jobId: row.id,
           error: recordError instanceof Error ? recordError.message.slice(0, 500) : "unknown_error",
         });
+      });
+    }
+  }
+
+  // Delivery acknowledgements are reconciled from canonical job events even
+  // after the job has left waiting_external (e.g. a process died after resume).
+  const approvalAckEvents = alias(workerJobEvents, "spec224_approval_ack_events");
+  const approvalDecisionEvents = await db.select({
+    jobId: workerJobEvents.workerJobId,
+    tenantId: workerJobs.tenantId,
+    payloadJson: workerJobEvents.payloadJson,
+  })
+    .from(workerJobEvents)
+    .innerJoin(workerJobs, eq(workerJobs.id, workerJobEvents.workerJobId))
+    .where(and(
+      inArray(workerJobEvents.eventType, ["APPROVAL_RESOLVED", "APPROVAL_DELIVERY_RECONCILED"]),
+      sql`${workerJobEvents.payloadJson}->>'schemaVersion' = 'spec224.approval-decision.v1'`,
+      notExists(db.select({ id: approvalAckEvents.id })
+        .from(approvalAckEvents)
+        .where(and(
+          eq(approvalAckEvents.workerJobId, workerJobEvents.workerJobId),
+          eq(approvalAckEvents.eventIdempotencyKey, sql`'spec224-approval-ack:' || (${workerJobEvents.payloadJson}->>'deliveryId')`),
+        ))),
+    ))
+    .orderBy(workerJobEvents.createdAt)
+    .limit(limit);
+  const approvalAuthority = createSpec224ExternalApprovalAuthority();
+  for (const row of approvalDecisionEvents) {
+    const payload = row.payloadJson ?? {};
+    const deliveryId = typeof payload.deliveryId === "string" ? payload.deliveryId : "";
+    const payloadDigest = typeof payload.payloadDigest === "string" ? payload.payloadDigest : "";
+    const approvalRef = typeof payload.approvalRequestId === "string" ? payload.approvalRequestId : "";
+    const operationId = typeof payload.operationId === "string" ? payload.operationId : "";
+    const decision = payload.decision;
+    const result = payload.result;
+    const decisionEpoch = payload.decisionEpoch;
+    if (!deliveryId || !payloadDigest || !approvalRef || !operationId
+      || !Number.isSafeInteger(decisionEpoch)
+      || !["approved", "rejected", "expired", "cancelled"].includes(String(decision))
+      || !["resumed", "failed", "duplicate", "operator_review"].includes(String(result))) continue;
+    try {
+      await approvalAuthority.acknowledge({
+        approvalRef,
+        tenantId: row.tenantId,
+        jobId: row.jobId,
+        operationId,
+        deliveryId,
+        payloadDigest,
+        receipt: { deliveryId, payloadDigest, result, acknowledgedAt: now.toISOString() },
+      });
+      const recorded = await controlPlane.recordSpec224ApprovalDelivery({
+        jobId: row.jobId,
+        tenantId: row.tenantId,
+        approvalRequestId: approvalRef,
+        operationId,
+        decision: decision as "approved" | "rejected" | "expired" | "cancelled",
+        deliveryId,
+        decisionEpoch: decisionEpoch as number,
+        payloadDigest,
+        result: result as "resumed" | "failed" | "duplicate" | "operator_review",
+        acknowledged: true,
+      }, now);
+      if (!recorded) throw new Error("SPEC224_APPROVAL_ACK_RECEIPT_CONFLICT");
+    } catch (error) {
+      reconciliationErrors += 1;
+      console.error("[Feature186] Spec 224 approval acknowledgement reconciliation failed", {
+        jobId: row.jobId,
+        deliveryId,
+        error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
       });
     }
   }

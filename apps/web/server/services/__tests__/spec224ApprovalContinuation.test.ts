@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 import {
   createSpec224ApprovalContinuation,
@@ -32,13 +33,33 @@ function makeDeps() {
         payload: {},
       }),
       get: vi.fn(),
+      acknowledge: vi.fn().mockResolvedValue(undefined),
     },
     controlPlane: {
       requestComputerUseApproval: vi.fn().mockResolvedValue("requested"),
       resolveComputerUseApproval: vi.fn().mockResolvedValue("resumed"),
-      failExternalWait: vi.fn().mockResolvedValue(true),
+      failExternalWait: vi.fn().mockResolvedValue("failed"),
+      recordSpec224ApprovalDelivery: vi.fn().mockResolvedValue(true),
     },
   };
+}
+
+function delivery(decision: "approved" | "rejected" | "expired" | "cancelled" = "approved") {
+  const event = {
+    schemaVersion: "spec224.approval-decision.v1",
+    deliveryId: "delivery-224-1",
+    decisionEpoch: 1,
+    approvalRequestId: "approval-224",
+    tenantId: correlation.tenantId,
+    jobId: correlation.jobId,
+    operationId: correlation.operationKey,
+    decision,
+    actorId: decision === "expired" ? null : 207,
+    decidedAt: "2026-09-26T00:00:00Z",
+    correlation,
+  };
+  const canonicalPayload = JSON.stringify(event);
+  return { event, canonicalPayload, payloadDigest: createHash("sha256").update(canonicalPayload).digest("hex") };
 }
 
 describe("Spec 224 external-agent approval continuation", () => {
@@ -85,6 +106,7 @@ describe("Spec 224 external-agent approval continuation", () => {
       executionId: correlation.jobId,
       requesterId: correlation.requesterId,
       approverId: 207,
+      decisionDelivery: delivery(),
       payload: {
         kind: "spec224_external_agent_approval",
         spec224ExternalAgentResume: correlation,
@@ -93,7 +115,7 @@ describe("Spec 224 external-agent approval continuation", () => {
     const service = createSpec224ApprovalContinuation(deps);
 
     await expect(
-      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId }),
+      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey }),
     ).resolves.toBe("resumed");
     expect(deps.controlPlane.resolveComputerUseApproval).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -105,6 +127,10 @@ describe("Spec 224 external-agent approval continuation", () => {
         runnerSessionId: correlation.runnerSessionId,
         fencingVersion: correlation.fencingVersion,
         approverId: 207,
+        schemaVersion: "spec224.approval-decision.v1",
+        deliveryId: "delivery-224-1",
+        decisionEpoch: 1,
+        payloadDigest: delivery().payloadDigest,
       }),
     );
   });
@@ -125,8 +151,8 @@ describe("Spec 224 external-agent approval continuation", () => {
     const service = createSpec224ApprovalContinuation(deps);
 
     await expect(
-      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId }),
-    ).resolves.toBe("ignored");
+      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey }),
+    ).resolves.toBe("operator_review");
     expect(deps.controlPlane.resolveComputerUseApproval).not.toHaveBeenCalled();
   });
 
@@ -137,6 +163,7 @@ describe("Spec 224 external-agent approval continuation", () => {
       status: "expired",
       tenantId: correlation.tenantId,
       executionId: correlation.jobId,
+      decisionDelivery: delivery("expired"),
       payload: {
         kind: "spec224_external_agent_approval",
         spec224ExternalAgentResume: correlation,
@@ -147,7 +174,7 @@ describe("Spec 224 external-agent approval continuation", () => {
     });
 
     await expect(
-      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId }),
+      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey }),
     ).resolves.toBe("operator_review");
     expect(deps.controlPlane.failExternalWait).toHaveBeenCalledWith(
       correlation.jobId,
@@ -155,7 +182,15 @@ describe("Spec 224 external-agent approval continuation", () => {
       true,
       expect.any(Date),
       correlation.operationKey,
+      undefined,
+      expect.objectContaining({
+        deliveryId: "delivery-224-1",
+        payloadDigest: delivery("expired").payloadDigest,
+        decision: "expired",
+        result: "operator_review",
+      }),
     );
+    expect(deps.authority.acknowledge).toHaveBeenCalledOnce();
   });
 
   it("rejects secret-bearing provider approval payloads", async () => {
