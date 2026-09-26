@@ -25,15 +25,18 @@ g1_search_result_cache:
     previous_app_adapter_roundtrip: passed
     legacy_redis_search_cache_keys: 0
     legacy_redis_keys_are_not_active_operation_evidence: true
+    trace_propagation_and_worker_outcome_logging: implemented_locally_not_deployed
+    admin_scoped_request_fault_injection: implemented_locally_not_deployed
   not_verified:
-    beta_account_1_search_hit_and_miss: no_authorized_session_available
-    beta_account_2_search_hit_and_miss: no_authorized_session_available
+    beta_account_1_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
+    beta_account_2_search_hit_and_miss: browser_storage_state_and_production_browser_access_unavailable
     production_search_request_trace: not_observed
-    production_admin_cloudflare_tab: no_authenticated_browser_session_available
-    production_redis_operation_attribution: unavailable_without_safe_command_telemetry
+    production_admin_cloudflare_tab: browser_storage_state_and_production_browser_access_unavailable
+    production_redis_operation_attribution: caller_level_telemetry_not_accessible
   safe_failure_injection:
-    method: focused adapter tests with network failure; does not modify production binding
-    result: passed
+    method: request_scoped_admin_only_kv_get_failure_implemented_in_web_and_worker; worker_returns_503_before_kv_access
+    local_tests: passed
+    production_result: not_run_worker_change_not_deployed
     production_kv_binding_disabled_or_modified: false
   decision: do_not_mark_PRODUCTION_CUTOVER_VERIFIED
   blockers:
@@ -50,7 +53,7 @@ g2_a_jti_revocation:
   importer: apps/web/scripts/migrate-jti-revocations.ts
   redis_dry_run:
     mode: dry-run
-    scanned_active_revocations: 277
+    scanned_active_revocations: 275
     persistent_revocations: 0
     imported: 0
     identifiers_logged: false
@@ -58,20 +61,63 @@ g2_a_jti_revocation:
   production_code_restarted_to_new_jti_authority: false
   runtime_cutover: not_performed
   test_results:
-    unit_contract: 5_passed
+    unit_contract: 7_passed
     postgres_integration: 2_passed_on_smartspec_test
-    g1_cache_and_responses: 26_passed
+    latest_g1_responses_and_cache_tests: 47_passed
+    cloudflare_worker_typecheck: passed
+    cloudflare_worker_tests: 24_passed
+    g1_browser_production_specs: 4_listed_not_executed
+    g2_local_postgres_redis_client_and_runner_tests: 37_passed_on_smartspec_test
     focused_migration_tests_total: 72_passed_including_worker_routes
     runner_route_suite: 16_passed_when_run_independently
-    combined_runner_and_database_run: one_existing_2_second_wss_test_timeout;_rerun_independently_passed
-    focused_typescript: 1318_total_diagnostics_due_to_missing_project_alias_context_and_existing_baseline;_zero_diagnostics_in_new_ephemeral_store_service;_changed_route_files_have_existing_unrelated_diagnostics
-    full_web_typecheck: not_run_due_repository_ram_guard
+    rollback_mirror_order_and_fail_closed_contract: 2_passed
+    migrations_0345_to_0349: applied_in_order_in_disposable_test_schema_transaction_then_rolled_back
+    combined_runner_and_database_run: one_2_second_wss_test_timeout;_runner_suite_passed_16_when_rerun_independently
+    focused_typescript: not_repeated_after_current_changes
+    full_web_typecheck: failed_with_633_repository_diagnostics
+    g1_g2_edited_runtime_and_script_files: no_diagnostics_reported
+    schema_diagnostics: existing_cyclic_relation_errors_at_unrelated_declarations; baseline_head_comparison_not_run
+  production_preflight:
+    target_database: smartspec
+    postgres_version: 15.17
+    users_id_type_matches_new_fk: true
+    applied_migration_count: 305
+    latest_applied_matches_local_journal: true
+    latest_applied_migration_index: 328
+    latest_applied_migration_tag: 0344_runner_session_fencing
+    pending_migrations: [0345, 0346, 0347, 0348, 0349]
+    g2_tables_present: false
+    current_lock_waiters: 0
+    server_lock_timeout: "0"
+    server_statement_timeout: "0"
+    migrations_set_transaction_local_lock_timeout: 5_seconds
+    migrations_set_transaction_local_statement_timeout: 60_seconds
+    production_backup_restore_verified: false
+    migrations_applied: false
+  redis_state_dry_runs:
+    jti_active_revocations: 275
+    persistent_jti_revocations: 0
+    active_login_failure_counters: 0
+    active_login_lockouts: 0
+    pending_or_authorized_device_codes: 0
+    runner_device_and_user_pairing_keys: 0
+    worker_device_and_user_pairing_keys: 0
+    snapshot_is_not_a_maintenance_fence: true
+  recovery:
+    temporary_redis_rollback_mirror: implemented_redis_first_then_postgresql;_uses_TOKEN_REVOKE_REDIS_URL_when_configured;_fail_closed_on_mirror_read_write_errors
+    redis_only_rollback: allowed_only_if_bridge_was_continuously_enabled_and_reconciliation_passes
+    tested: unit_contract_order_and_fail_closed;_no_production_reconciliation_performed
+    action_on_failure: keep_auth_paused_reimport_from_redis_and_keep_pg_backed_revocation_code_if_bridge_was_not_continuous
   maintenance_requirements:
-    - apply migration 0345
+    - verify a restorable Production backup and current migration head before the pause
+    - apply migrations 0345-0349 under the approved migration transaction
     - pause every token issue and revoke path across all Web instances
-    - rerun importer dry-run; apply with JTI_REVOCATION_MAINTENANCE_CONFIRMED=1
-    - deploy PG-backed revocation code to all instances while auth remains paused
-    - prove sampled imported JTIs remain revoked, expiry works, and all instances read PostgreSQL
+    - rerun both JTI and login counter dry-runs; apply with AUTH_WRITERS_PAUSED=1 and their migration-specific confirmation
+    - verify no device authorization or pairing state remains before switching callers
+    - configure separate pairing keyring on every instance and enable temporary JTI rollback mirror
+    - deploy PG-backed auth code to all instances while auth remains paused
+    - prove JTI deny, expiry, fail-closed DB behavior, lockout preservation, device replay protection, pairing, and rollback reconciliation
+    - disable rollback mirror and verify no G2 Redis command before resume
     - resume authentication only after checks pass
 
 g2_b_device_authorization:
@@ -105,17 +151,21 @@ g2_d_ephemeral_authorization:
   storage: single_paired_row_with_hashed_lookup_codes_aes_256_gcm_encrypted_payload_and_expiry
   test_results:
     postgres_integration: 1_passed_on_smartspec_test_across_separate_clients
-    coverage: both_lookup_indexes_shared_state_expiry_cleanup
+    coverage: both_lookup_indexes_shared_state_expiry_cleanup_ciphertext_and_key_rotation
   production_database_migration_applied: false
   old_callers_closed_in_production: false
   deferred: voice_websocket_tickets_active_session_owner_and_pubsub_to_spec_237_242
+  separate_keyring_configured_in_inspected_environment: false
+  production_secret_manager_verified: false
 
 g2_overall:
   status: LOCAL_IMPLEMENTATION_COMPLETE_PRODUCTION_CUTOVER_PENDING
   production_cutover_performed: false
   redis_must_remain_enabled: true
-  required_migrations: [0345, 0346, 0347, 0348]
-  recovery: keep_auth_maintenance_paused_if_verification_fails_restore_last_known_good_web_code_retain_postgresql_revocations_and_replay_import_before_resuming
+  required_migrations: [0345, 0346, 0347, 0348, 0349]
+  production_preflight_complete: false
+  blockers: [restorable_backup_not_verified, separate_pairing_keyring_not_verified, maintenance_not_attested, Production_deploy_and_smoke_not_run]
+  recovery: keep_auth_maintenance_paused_reconcile_from_redis_with_continuous_mirror_and_never_drop_postgresql_revocations
 
 global:
   redis_retired: false

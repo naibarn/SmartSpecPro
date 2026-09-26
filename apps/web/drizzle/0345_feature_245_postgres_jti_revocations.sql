@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "revoked_token_jtis" (
   "jti_hash" varchar(64) PRIMARY KEY,
   "expires_at" timestamptz,

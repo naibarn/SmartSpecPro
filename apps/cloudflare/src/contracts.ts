@@ -100,6 +100,7 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
+  CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;
   SEARCH_RESULT_CACHE?: CloudflareKvBinding;
   HYPERDRIVE?: HyperdriveBinding;
   JOB_QUEUE?: CloudflareQueueBinding;

@@ -184,16 +184,33 @@ describe("Cloudflare local runtime contracts", () => {
       put: vi.fn(async (key: string, value: string) => { values.set(key, value); }),
     };
     const worker = createCloudflareWorker();
-    const env = { CLOUDFLARE_SEARCH_CACHE_TOKEN: "cache-secret", SEARCH_RESULT_CACHE: kv };
-    const call = (data: unknown) => worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
-      method: "POST", headers: { authorization: "Bearer cache-secret", "content-type": "application/json" }, body: JSON.stringify(data),
+    const env = { CLOUDFLARE_SEARCH_CACHE_TOKEN: "cache-secret", CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED: "true", SEARCH_RESULT_CACHE: kv };
+    const traceId = "traceG1Alpha2026_12345";
+    const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+    const call = (data: unknown, trace = false, fault = false) => worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
+      method: "POST", headers: { authorization: "Bearer cache-secret", "content-type": "application/json", ...(trace ? { "x-sah-trace-id": traceId } : {}), ...(fault ? { "x-sah-cache-test-fault": "kv-get" } : {}) }, body: JSON.stringify(data),
     }), env);
 
     expect((await worker.fetch(new Request("https://runtime.invalid/internal/cache/search", { method: "POST" }), env)).status).toBe(401);
     expect(await (await call({ operation: "probe" })).json()).toEqual({ ready: true });
     const entry = { snippets: [], citations: [], retrievedAt: "2026-09-26T00:00:00.000Z", queryHash: "a".repeat(64) };
-    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 900 })).status).toBe(200);
-    expect((await (await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) })).json()).entry).toEqual(entry);
+    expect((await (await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) }, true)).json()).entry).toBeNull();
+    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 900 }, true)).status).toBe(200);
+    expect((await (await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) }, true)).json()).entry).toEqual(entry);
+    const traceEvents = logs.mock.calls.map(([line]) => JSON.parse(String(line)));
+    expect(traceEvents).toEqual(expect.arrayContaining([
+      { component: "search_result_cache", traceId, operation: "put", outcome: "stored" },
+      { component: "search_result_cache", traceId, operation: "get", outcome: "miss" },
+      { component: "search_result_cache", traceId, operation: "get", outcome: "hit" },
+    ]));
+    expect(JSON.stringify(traceEvents)).not.toContain("tenant-1");
+    const readsBeforeFault = kv.get.mock.calls.length;
+    const faultResponse = await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) }, true, true);
+    expect(faultResponse.status).toBe(503);
+    expect(kv.get).toHaveBeenCalledTimes(readsBeforeFault);
+    expect(logs.mock.calls.map(([line]) => JSON.parse(String(line)))).toContainEqual({
+      component: "search_result_cache", traceId, operation: "get", outcome: "injected_failure",
+    });
     expect(kv.put).toHaveBeenCalledWith(expect.stringContaining(":tenant:tenant-1:"), JSON.stringify(entry), { expirationTtl: 900 });
     expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "bad", entry, ttlSeconds: 900 })).status).toBe(400);
     expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 59 })).status).toBe(400);
@@ -207,6 +224,7 @@ describe("Cloudflare local runtime contracts", () => {
       method: "POST", headers: { authorization: "Bearer cache-secret" }, body: " ".repeat(33 * 1024),
     }), env);
     expect(oversized.status).toBe(413);
+    logs.mockRestore();
   });
 
   it("deduplicates publication through the injected durable-registry contract and rejects oversized bodies", async () => {

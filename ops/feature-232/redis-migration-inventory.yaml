@@ -88,23 +88,23 @@ responsibility_groups:
     unknown_callers: true
 
   G2_auth_session_revocation:
-    status: g2a_to_g2d_local_implementation_tested_production_cutover_pending
+    status: g2a_to_g2d_local_implementation_tested_preflight_incomplete_cutover_not_started
     examples:
       - file: apps/web/server/_core/revocation.ts
         symbol: JTI revocation service
         semantics: shared token revocation decision; current Redis key TTL controls revocation lifetime
         target: PostgreSQL revoked_token_jtis; SHA-256 digest only; fail closed on database errors
-        migration_status: local_postgresql_unit_5_and_integration_2_passed_production_schema_absent_import_not_applied
+        migration_status: local_tests_passed_import_verifies_every_active_hash_prod_dry_run_275_cutover_pending
       - file: apps/web/server/_core/deviceAuthRoutes.ts
         symbol: device code store and account login failure counters
         semantics: one-time device authorization state and 15-minute threshold-five lockout counter; current memory fallback is per process
         target: PostgreSQL atomic state transitions and transactional counter/window updates
-        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_pending
+        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_pending_zero_keys_in_latest_redis_audit
       - file: apps/web/server/services/redisEphemeralKeyRegistry.ts
         symbol: setEphemeralJson/getEphemeralJson/setEphemeralText/getEphemeralText
         semantics: strict cross-instance state used by runner connect and worker connect pairing flows
         target: PostgreSQL single-row paired session with hashed code indexes, AES-256-GCM encrypted payload, and expiry; no KV authority
-        migration_status: callers_runnerControl_and_workerRuntime_moved_in_worktree_migration_0348_and_two_client_integration_passed_production_cutover_pending
+        migration_status: callers_runnerControl_and_workerRuntime_moved_in_worktree_migration_0348_and_key_rotation_integration_passed_prod_keyring_missing_and_cutover_pending
       - file: apps/web/server/routes/voiceGateway.ts
         symbol: voice session token and active session keys
         semantics: single-use websocket ticket, one active voice session per user, consent revoke cleanup
@@ -116,12 +116,32 @@ responsibility_groups:
       file: apps/web/server/services/loginFailureCounterStore.ts
       semantics: atomic threshold-five counter with sliding 15-minute expiry and clear-on-success
       target: PostgreSQL auth_login_failure_counters; normalized email digest only
-      migration_status: local_two-client_concurrency_integration_passed_production_migration_0347_pending
+      migration_status: local_two-client_concurrency_and_active_lockout_import_tested_production_dry_run_zero_migration_0347_and_0349_pending
       old_caller: deviceAuthRoutes.ts Redis counter path remains active only in currently deployed Production version
+      importer: apps/web/scripts/migrate-auth-login-failure-counters.ts
+      latest_redis_dry_run: zero_active_counters_zero_lockouts
     deferred_voice_dependencies:
       file: apps/web/server/routes/voiceGateway.ts
       symbols: websocket ticket, active voice session, consent-revocation Pub/Sub
       migration_status: explicitly_deferred_to_spec_237_242
+    production_preflight:
+      target_database: smartspec
+      postgres_version: 15.17
+      latest_migration: 0344_runner_session_fencing_local_journal_index_328_hash_match
+      pending_migrations: [0345, 0346, 0347, 0348, 0349]
+      users_id_type_matches_new_fk: true
+      g2_tables_absent: true
+      current_lock_waiters: 0
+      backup_verified: false
+      pairing_encryption_keyring_verified: false
+      maintenance_attested: false
+    latest_read_only_redis_audit:
+      jti_active_revocations: 275
+      login_failure_counters: 0
+      device_authorization_keys: 0
+      runner_pairing_keys: 0
+      worker_pairing_keys: 0
+      timestamp_utc: "2026-09-26T10:05:37Z"
 
   G3_rate_limit_quota_idempotency:
     status: partial_static_discovery
@@ -283,8 +303,8 @@ next_actions:
     action: apply migration 0345, pause token issue/revoke paths, import current Redis revocations using the guarded importer, deploy all Web instances, prove multi-instance and recovery behavior, then resume auth
     status: code_and_unit_tests_passed_277_active_redis_revocations_found_dry_run_only_prod_migration_and_maintenance_required
   - id: P232.G2B-G2D-auth-state
-    action: "Production cutover remains pending: apply 0345-0348, pause all auth flows, import active JTIs, drain device grants, deploy and verify cross-instance behavior; defer voice session/Redis PubSub to Spec 237/242"
-    status: local_implementation_and_focused_tests_passed_production_cutover_pending
+    action: "Production cutover remains pending: verify restorable backup, pause all auth writers, apply 0345-0349, import active JTIs and lockouts, drain device and pairing grants, configure separate keyring, deploy and verify all instances; defer voice session/Redis PubSub to Spec 237/242"
+    status: local_implementation_tests_passed_production_backup_keyring_maintenance_and_smokes_blocked
   - id: P232.G2-G6-direct-cutover
     action: complete caller/runtime inventory and execute direct cutover by dependency using ops/feature-232/direct-cutover-plan.md
     status: plan_recorded_inventory_partial_no_group_cutover_closed

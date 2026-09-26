@@ -23,13 +23,18 @@ async function getProvider(): Promise<string> {
   }
 }
 
-async function request(operation: Record<string, unknown>, fetcher: typeof fetch = fetch): Promise<any> {
+async function request(operation: Record<string, unknown>, fetcher: typeof fetch = fetch, traceId?: string, injectKvGetFailure = false): Promise<any> {
   const baseUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim().replace(/\/$/, "");
   const token = process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN?.trim();
   if (!baseUrl || !token) throw new Error("SEARCH_CACHE_NOT_CONFIGURED");
   const response = await fetcher(`${baseUrl}/internal/cache/search`, {
     method: "POST",
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+      ...(traceId && /^[A-Za-z0-9_-]{1,64}$/.test(traceId) ? { "x-sah-trace-id": traceId } : {}),
+      ...(injectKvGetFailure && process.env.CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED === "true" ? { "x-sah-cache-test-fault": "kv-get" } : {}),
+    },
     body: JSON.stringify(operation),
     signal: AbortSignal.timeout(2_000),
   });
@@ -46,25 +51,25 @@ export function createCloudflareSearchResultCacheStore(
   provider: () => Promise<string>,
   fetcher: typeof fetch = fetch,
 ): SearchResultCacheStore {
-  async function send(operation: Record<string, unknown>) {
-    return request(operation, fetcher);
+  async function send(operation: Record<string, unknown>, traceId?: string, injectKvGetFailure = false) {
+    return request(operation, fetcher, traceId, injectKvGetFailure);
   }
   return {
-  async get(key) {
+  async get(key, traceId, options) {
     if (await provider() !== "cloudflare_kv") return null;
     const match = /^search_cache:(tenant|user):(.+):([a-f0-9]{64})$/.exec(key);
     if (!match) return null;
     try {
-      const result = await send({ operation: "get", scope: match[1], id: encodeScopeId(match[2]), queryHash: match[3] });
+      const result = await send({ operation: "get", scope: match[1], id: encodeScopeId(match[2]), queryHash: match[3] }, traceId, options?.injectKvGetFailure === true);
       return result?.entry ? JSON.stringify(result.entry) : null;
     } catch { return null; }
   },
-  async setex(key, ttlSeconds, value) {
+  async setex(key, ttlSeconds, value, traceId) {
     if (await provider() !== "cloudflare_kv") return;
     const match = /^search_cache:(tenant|user):(.+):([a-f0-9]{64})$/.exec(key);
     if (!match) return;
     try {
-      await send({ operation: "put", scope: match[1], id: encodeScopeId(match[2]), queryHash: match[3], entry: JSON.parse(value), ttlSeconds });
+      await send({ operation: "put", scope: match[1], id: encodeScopeId(match[2]), queryHash: match[3], entry: JSON.parse(value), ttlSeconds }, traceId);
     } catch { /* Disposable cache must never fail the model request. */ }
   },
   };

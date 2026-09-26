@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "ephemeral_authorization_sessions" (
   "device_code_hash" varchar(64) PRIMARY KEY,
   "user_code_hash" varchar(64) UNIQUE,

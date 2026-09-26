@@ -88,6 +88,11 @@ export function createCloudflareWorker(
           return json({ error: "SEARCH_CACHE_BINDING_NOT_READY" }, 503);
         }
         try {
+          const traceHeader = request.headers.get("x-sah-trace-id") ?? "";
+          const traceId = /^[A-Za-z0-9_-]{1,64}$/.test(traceHeader) ? traceHeader : undefined;
+          const logCacheOperation = (operation: string, outcome: string) => {
+            if (traceId) console.log(JSON.stringify({ component: "search_result_cache", traceId, operation, outcome }));
+          };
           const body = await request.arrayBuffer();
           if (body.byteLength > MAX_SEARCH_CACHE_BODY_BYTES) return json({ error: "SEARCH_CACHE_REQUEST_TOO_LARGE" }, 413);
           let input: Record<string, unknown>;
@@ -107,18 +112,36 @@ export function createCloudflareWorker(
           }
           const key = searchCacheKey(input.scope as "tenant" | "user", input.id, input.queryHash);
           if (input.operation === "get") {
+            if (env.CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED === "true" && request.headers.get("x-sah-cache-test-fault") === "kv-get") {
+              logCacheOperation("get", "injected_failure");
+              return json({ error: "SEARCH_CACHE_FAULT_TEST" }, 503);
+            }
             const value = await env.SEARCH_RESULT_CACHE.get(key);
-            if (value === null) return json({ entry: null });
-            try { return json({ entry: JSON.parse(value) }); }
-            catch { return json({ entry: null }); }
+            if (value === null) {
+              logCacheOperation("get", "miss");
+              return json({ entry: null });
+            }
+            try {
+              const entry = JSON.parse(value);
+              logCacheOperation("get", "hit");
+              return json({ entry });
+            } catch {
+              logCacheOperation("get", "invalid_entry");
+              return json({ entry: null });
+            }
           }
           if (!isCachedSearchResult(input.entry) ||
               typeof input.ttlSeconds !== "number" || !Number.isInteger(input.ttlSeconds) || input.ttlSeconds < 60 || input.ttlSeconds > 3600) {
             return json({ error: "SEARCH_CACHE_REQUEST_INVALID" }, 400);
           }
           await env.SEARCH_RESULT_CACHE.put(key, JSON.stringify(input.entry), { expirationTtl: input.ttlSeconds });
+          logCacheOperation("put", "stored");
           return json({ stored: true });
         } catch {
+          const traceHeader = request.headers.get("x-sah-trace-id") ?? "";
+          if (/^[A-Za-z0-9_-]{1,64}$/.test(traceHeader)) {
+            console.log(JSON.stringify({ component: "search_result_cache", traceId: traceHeader, operation: "request", outcome: "unavailable" }));
+          }
           return json({ error: "SEARCH_CACHE_UNAVAILABLE" }, 503);
         }
       }

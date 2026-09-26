@@ -34,7 +34,7 @@ describe.skipIf(!enabled)("PostgreSQL login failure counter integration", () => 
     await Promise.all(clients.map((client) => client.end({ timeout: 5 })));
   });
 
-  it("does not lose concurrent failed-login increments across connections and applies expiry/reset", async () => {
+  it("does not lose concurrent failed-login increments across connections and applies expiry/reset/import", async () => {
     const instanceA = makeStore();
     const instanceB = makeStore();
     const counts = await Promise.all(Array.from({ length: 12 }, (_, i) =>
@@ -54,5 +54,12 @@ describe.skipIf(!enabled)("PostgreSQL login failure counter integration", () => 
     expect(stored.emailHash).not.toContain(email);
     await instanceA.clear(email);
     await expect(instanceB.isLocked(email)).resolves.toBe(false);
+
+    await instanceA.importActive([{ email, failureCount: 5, expiresAt: null }]);
+    await expect(instanceB.isLocked(email)).resolves.toBe(true);
+    const [persistent] = await drizzle(clients[0]).select({ expiresAt: authLoginFailureCounters.expiresAt })
+      .from(authLoginFailureCounters).where(eq(authLoginFailureCounters.emailHash, emailHash));
+    expect(persistent.expiresAt).toBeNull();
+    await instanceB.clear(email);
   });
 });

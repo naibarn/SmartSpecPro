@@ -1020,6 +1020,10 @@ export function registerResponsesRoutes(
             internalToken,
             deps,
             plannerResult,
+            process.env.CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED === "true" &&
+              req.get("x-sah-cache-test-fault") === "kv-get" &&
+              externalAuth?.mode === "session" &&
+              externalAuth.user?.role === "admin",
           );
         }
       } catch (err: any) {
@@ -1061,6 +1065,7 @@ async function proxyResponsesJson(
   internalToken: string,
   deps: any,
   plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
+  injectKvGetFailure = false,
 ) {
   const controller = new AbortController();
   req.on("aborted", () => controller.abort());
@@ -1103,9 +1108,9 @@ async function proxyResponsesJson(
     if (userPrompt && !requiresFreshData(userPrompt)) {
       try {
         const searchCache = getSearchCache();
-        const cached = await searchCache.get(userId, tenantId, userPrompt);
+        const cached = await searchCache.get(userId, tenantId, userPrompt, undefined, traceId, { injectKvGetFailure });
         if (cached) {
-          debugLog("responses", "Search cache hit", { userId, traceId });
+          debugLog("responses", "Search cache hit", { traceId, provider: "cloudflare_kv" });
           // Inject cached search results as context for the model
           // rather than returning directly (model still needs to synthesize)
           const cachedContext = cached.snippets
@@ -1120,9 +1125,11 @@ async function proxyResponsesJson(
               },
             ];
           }
+        } else {
+          debugLog("responses", "Search cache miss", { traceId, provider: "cloudflare_kv" });
         }
-      } catch (err: any) {
-        debugError("responses", "Search cache lookup failed", err?.message);
+      } catch {
+        debugError("responses", "Search cache lookup failed; treating as miss", { traceId, provider: "cloudflare_kv" });
       }
     }
 
@@ -1212,10 +1219,10 @@ async function proxyResponsesJson(
             retrievedAt: new Date().toISOString(),
             queryHash: normalizeSearchQuery(userPrompt),
           };
-          await searchCache.setTenantCache(tenantId, userPrompt, cacheEntry)
-            .catch((err: any) => debugError("responses", "Cache set (tenant) failed", err?.message));
-          await searchCache.setUserCache(userId, userPrompt, cacheEntry)
-            .catch((err: any) => debugError("responses", "Cache set (user) failed", err?.message));
+          await searchCache.setTenantCache(tenantId, userPrompt, cacheEntry, traceId)
+            .catch(() => debugError("responses", "Cache set (tenant) failed", { traceId, provider: "cloudflare_kv" }));
+          await searchCache.setUserCache(userId, userPrompt, cacheEntry, undefined, traceId)
+            .catch(() => debugError("responses", "Cache set (user) failed", { traceId, provider: "cloudflare_kv" }));
         }
       } catch (err: any) {
         debugError("responses", "Cache population failed", err?.message);

@@ -9,8 +9,8 @@
 
 import crypto from "crypto";
 export interface SearchResultCacheStore {
-  get(key: string): Promise<string | null>;
-  setex(key: string, ttlSeconds: number, value: string): Promise<void>;
+  get(key: string, traceId?: string, options?: { injectKvGetFailure?: boolean }): Promise<string | null>;
+  setex(key: string, ttlSeconds: number, value: string, traceId?: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,10 +102,12 @@ export class SearchResultCache {
   async getTenantCache(
     tenantId: number | string,
     query: string,
+    traceId?: string,
+    options?: { injectKvGetFailure?: boolean },
   ): Promise<CachedSearchResult | null> {
     const hash = normalizeSearchQuery(query);
     const key = `search_cache:tenant:${tenantId}:${hash}`;
-    const raw = await this.redis.get(key);
+    const raw = await this.redis.get(key, traceId, options);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as CachedSearchResult;
@@ -119,10 +121,11 @@ export class SearchResultCache {
     tenantId: number | string,
     query: string,
     result: CachedSearchResult,
+    traceId?: string,
   ): Promise<void> {
     const hash = normalizeSearchQuery(query);
     const key = `search_cache:tenant:${tenantId}:${hash}`;
-    await this.redis.setex(key, TENANT_CACHE_TTL_SECONDS, JSON.stringify(result));
+    await this.redis.setex(key, TENANT_CACHE_TTL_SECONDS, JSON.stringify(result), traceId);
   }
 
   /** Look up per-user cache. Returns null on miss. */
@@ -130,11 +133,13 @@ export class SearchResultCache {
     userId: number,
     query: string,
     context?: string,
+    traceId?: string,
+    options?: { injectKvGetFailure?: boolean },
   ): Promise<CachedSearchResult | null> {
     const queryWithContext = context ? `${query}|||${context}` : query;
     const hash = normalizeSearchQuery(queryWithContext);
     const key = `search_cache:user:${userId}:${hash}`;
-    const raw = await this.redis.get(key);
+    const raw = await this.redis.get(key, traceId, options);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as CachedSearchResult;
@@ -149,11 +154,12 @@ export class SearchResultCache {
     query: string,
     result: CachedSearchResult,
     context?: string,
+    traceId?: string,
   ): Promise<void> {
     const queryWithContext = context ? `${query}|||${context}` : query;
     const hash = normalizeSearchQuery(queryWithContext);
     const key = `search_cache:user:${userId}:${hash}`;
-    await this.redis.setex(key, USER_CACHE_TTL_SECONDS, JSON.stringify(result));
+    await this.redis.setex(key, USER_CACHE_TTL_SECONDS, JSON.stringify(result), traceId);
   }
 
   /** Check both tiers: user cache first, then tenant cache. */
@@ -162,12 +168,14 @@ export class SearchResultCache {
     tenantId: number | string,
     query: string,
     context?: string,
+    traceId?: string,
+    options?: { injectKvGetFailure?: boolean },
   ): Promise<CachedSearchResult | null> {
     // Tier 2: per-user (more specific)
-    const userResult = await this.getUserCache(userId, query, context);
+    const userResult = await this.getUserCache(userId, query, context, traceId, options);
     if (userResult) return userResult;
 
     // Tier 1: tenant-shared
-    return this.getTenantCache(tenantId, query);
+    return this.getTenantCache(tenantId, query, traceId, options);
   }
 }

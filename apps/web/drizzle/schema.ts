@@ -2154,7 +2154,7 @@ export const mcpToolSchemaCache = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -10701,7 +10701,7 @@ export const authLoginFailureCounters = pgTable(
   {
     emailHash: varchar("email_hash", { length: 64 }).primaryKey(),
     failureCount: integer("failure_count").notNull().default(0),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [index("auth_login_failure_counters_expiry_idx").on(t.expiresAt)],

@@ -80,4 +80,38 @@ describe("PostgreSQL JTI revocation contract", () => {
     expect(records[0][0].jtiHash).not.toContain(jti);
     expect(records[0][0].expiresAt).toBeInstanceOf(Date);
   });
+
+  it("writes the rollback mirror before PostgreSQL and keeps mirror failure fail-closed", async () => {
+    const events: string[] = [];
+    const store: JtiRevocationStore = {
+      async upsert() { events.push("postgres"); },
+      async hasActive() { return false; },
+    };
+    const mirror = {
+      async put() { events.push("redis"); },
+      async has() { return false; },
+    };
+    const service = createJtiRevocationService(store, Date.now, mirror);
+    await service.revokeJti("mirrored-jti", Date.now() + 60_000);
+    expect(events).toEqual(["redis", "postgres"]);
+
+    const failingStore: JtiRevocationStore = { ...store, async upsert() { events.push("should-not-write"); } };
+    const failedMirror = { ...mirror, async put() { throw new Error("redis unavailable"); } };
+    await expect(createJtiRevocationService(failingStore, Date.now, failedMirror)
+      .revokeJti("mirror-failure", Date.now() + 60_000)).rejects.toThrow("redis unavailable");
+    expect(events).not.toContain("should-not-write");
+  });
+
+  it("recognizes mirror-only revocations during recovery and fails closed if the mirror is unavailable", async () => {
+    const store: JtiRevocationStore = { async upsert() {}, async hasActive() { return false; } };
+    const bridge = createJtiRevocationService(store, Date.now, {
+      async put() {},
+      async has(jti) { return jti === "mirror-only"; },
+    });
+    await expect(bridge.isJtiRevoked("mirror-only")).resolves.toBe(true);
+    const failedBridge = createJtiRevocationService(store, Date.now, {
+      async put() {}, async has() { throw new Error("redis unavailable"); },
+    });
+    await expect(failedBridge.isJtiRevoked("unknown")).resolves.toBe(true);
+  });
 });

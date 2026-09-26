@@ -4,15 +4,15 @@ import { hashJti, importJtiRevocationRecords, type JtiRevocationRecord } from ".
 
 const APPLY = process.argv.includes("--apply");
 const PREFIX = process.env.TOKEN_REVOKE_PREFIX || "revoked:";
-const REDIS_URL = process.env.TOKEN_REVOKE_REDIS_URL || process.env.REDIS_URL;
+const REDIS_URL = process.env.TOKEN_REVOKE_REDIS_URL || process.env.REDIS_UPSTASH_URL || process.env.REDIS_CLOUD_URL || process.env.REDIS_URL;
 const BATCH_SIZE = 250;
 
 if (!REDIS_URL) throw new Error("Set REDIS_URL or TOKEN_REVOKE_REDIS_URL before running this migration");
 if (!PREFIX || /[*?\[\]\\]/.test(PREFIX)) {
   throw new Error("TOKEN_REVOKE_PREFIX must be a literal prefix without Redis glob characters");
 }
-if (APPLY && process.env.JTI_REVOCATION_MAINTENANCE_CONFIRMED !== "1") {
-  throw new Error("Apply requires JTI_REVOCATION_MAINTENANCE_CONFIRMED=1 after all token issue/revoke callers are paused");
+if (APPLY && (process.env.JTI_REVOCATION_MAINTENANCE_CONFIRMED !== "1" || process.env.AUTH_WRITERS_PAUSED !== "1")) {
+  throw new Error("Apply requires JTI_REVOCATION_MAINTENANCE_CONFIRMED=1 and AUTH_WRITERS_PAUSED=1 after every auth writer is paused");
 }
 
 const redis = createClient({ url: REDIS_URL });
@@ -45,6 +45,7 @@ async function main() {
       continue;
     }
     const expiresAt = ttlMs === -1 ? null : new Date(Date.now() + ttlMs);
+    if (expiresAt && expiresAt <= new Date()) { expiredOrMissing += 1; continue; }
     if (ttlMs === -1) persistent += 1;
     const jtiHash = hashJti(jti);
     const current = records.get(jtiHash);

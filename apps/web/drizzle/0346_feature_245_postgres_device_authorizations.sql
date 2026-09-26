@@ -1,3 +1,6 @@
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '60s';
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "oauth_device_authorizations" (
   "device_code_hash" varchar(64) PRIMARY KEY,
   "user_code_hash" varchar(64) NOT NULL UNIQUE,
