@@ -399,6 +399,16 @@ export default function InfrastructureSettingsPanel() {
     refetch: refetchRedis,
   } = trpc.infrastructure.getRedisConfig.useQuery();
 
+  const { data: searchCacheConfig, refetch: refetchSearchCache } = trpc.infrastructure.getSearchResultCacheConfig.useQuery();
+  const updateSearchCacheProvider = trpc.infrastructure.updateSearchResultCacheProvider.useMutation({
+    onSuccess: (data) => { toast.success(data.provider === "cloudflare_kv" ? "เปิดใช้ Cloudflare KV สำหรับ Search Cache แล้ว" : "ปิด Search Cache แล้ว"); refetchSearchCache(); },
+    onError: (err) => { toast.error(`เปลี่ยนผู้ให้บริการ Cache ไม่สำเร็จ: ${err.message}`); refetchSearchCache(); },
+  });
+  const probeSearchCache = trpc.infrastructure.probeSearchResultCache.useMutation({
+    onSuccess: () => toast.success("Worker endpoint และ KV binding พร้อมใช้งาน"),
+    onError: (err) => toast.error(`ตรวจสอบไม่ผ่าน: ${err.message}`),
+  });
+
   const {
     data: redisHealth,
     isLoading: redisHealthLoading,
@@ -1386,6 +1396,52 @@ export default function InfrastructureSettingsPanel() {
         </TabsContent>
 
         <TabsContent value="redis">
+      <DashboardCard className="mb-5 border-0 shadow-sm rounded-2xl overflow-hidden">
+        <div className="border-b bg-sky-50/70 p-5">
+          <h3 className="flex items-center gap-2 text-lg"><Cloud className="h-5 w-5 text-sky-600" />ย้าย Search Result Cache ไป Cloudflare KV</h3>
+          <p className="mt-1 text-sm text-muted-foreground">สวิตช์นี้กระทบเฉพาะ cache ผลค้นหาของ Responses API เท่านั้น ไม่ได้เปิด Queue และไม่ย้าย session, lock หรือ rate limit</p>
+        </div>
+        <div className="space-y-4 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4">
+            <div>
+              <p className="font-medium">สถานะ: {searchCacheConfig?.provider === "cloudflare_kv" ? "Cloudflare KV" : "ปิด cache ชั่วคราว"}</p>
+              <p className="text-sm text-muted-foreground">Worker URL: {searchCacheConfig?.endpointConfigured ? "ตั้งค่าแล้ว" : "ยังไม่ตั้งค่า"} · Token: {searchCacheConfig?.tokenConfigured ? "ตั้งค่าแล้ว (ซ่อนไว้)" : "ยังไม่ตั้งค่า"}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => probeSearchCache.mutate()} disabled={probeSearchCache.isPending}>
+                {probeSearchCache.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}ทดสอบ Worker/KV
+              </Button>
+              <Label htmlFor="search-cache-provider">ใช้ Cloudflare KV</Label>
+              <Switch id="search-cache-provider" checked={searchCacheConfig?.provider === "cloudflare_kv"}
+                disabled={!searchCacheConfig || updateSearchCacheProvider.isPending || (!searchCacheConfig.endpointConfigured || !searchCacheConfig.tokenConfigured) && searchCacheConfig.provider !== "cloudflare_kv"}
+                onCheckedChange={(checked) => updateSearchCacheProvider.mutate({ provider: checked ? "cloudflare_kv" : "disabled" })} />
+            </div>
+          </div>
+          <div className="rounded-lg bg-muted/40 p-4 text-sm">
+            <h4 className="mb-2 font-semibold">คู่มือตั้งค่า Cloudflare (ต้องทำในบัญชี/ระบบ deploy)</h4>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>สร้าง Workers KV namespace ชื่อที่ต้องการ เช่น <code>SEARCH_RESULT_CACHE</code></li>
+              <li>นำ namespace ID ไปผูกกับ Worker <code>smartspec-cloudflare-runtime</code> ด้วย binding name <code>SEARCH_RESULT_CACHE</code> ใน environment เป้าหมายทุกชุด ค่า ID ต้องมาจาก namespace จริง</li>
+              <li>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้ง secret ค่าเดียวกันให้ Web application พร้อม <code>CLOUDFLARE_RUNTIME_URL</code> เป็น URL หลักของ Worker (ไม่ต้องเติม path)</li>
+              <li>Deploy Worker และ Web application แล้วกด “ทดสอบ Worker/KV”; probe จะเขียน/อ่าน canary ที่หมดอายุใน 60 วินาที ต้องผ่านก่อนจึงเปิดสวิตช์ได้</li>
+              <li>เปิดสวิตช์เพื่อ cutover ได้ทันที ข้อมูล cache เดิมไม่ย้าย เริ่มเก็บใหม่ใน KV; ปิดสวิตช์เพื่อหยุดใช้ cache ระหว่างแก้ปัญหา</li>
+            </ol>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{`# สร้าง namespace แล้วบันทึก ID ไว้ใน deployment secret/config
+npx wrangler kv namespace create SEARCH_RESULT_CACHE
+
+# เพิ่ม binding ใน config ของ Worker environment (ใส่ ID จริงผ่านระบบ deploy)
+{ "binding": "SEARCH_RESULT_CACHE", "id": "<KV_NAMESPACE_ID>" }
+
+# ตั้ง token ใน environment ของ Worker; ตั้ง secret ชื่อเดียวกันใน Web app secret manager
+npx wrangler secret put CLOUDFLARE_SEARCH_CACHE_TOKEN
+# Web app environment:
+CLOUDFLARE_RUNTIME_URL=https://<worker-host>
+CLOUDFLARE_SEARCH_CACHE_TOKEN=<same-secret-value>`}</pre>
+            <p className="mt-2 text-muted-foreground">ทำซ้ำทั้ง namespace binding และ secret แยกตาม staging/production; อย่าใช้ namespace/token ข้าม environment การเปลี่ยนนี้ไม่ provision namespace ให้อัตโนมัติ ค่า token ไม่แสดงใน UI และหาก KV ใช้ไม่ได้ คำขอจะทำงานต่อโดยถือว่า cache miss</p>
+            <p className="text-muted-foreground">401 = token ไม่ตรง · 503 = Worker ยังไม่มี binding หรือ KV อ่าน/เขียนไม่ได้ · สวิตช์ปิด = ปิด Search Result Cache เท่านั้น</p>
+          </div>
+        </div>
+      </DashboardCard>
       {/* ============================================ */}
       {/* CARD 4: Cache / Redis Configuration          */}
       {/* ============================================ */}

@@ -20,6 +20,10 @@ process.env.LLM_GATEWAY_SERVICE_ACCOUNT_ID = "99";
 const { mockAuthorizeRequest } = vi.hoisted(() => ({
   mockAuthorizeRequest: vi.fn(),
 }));
+const { mockSearchCacheGet, mockSearchCacheSetex } = vi.hoisted(() => ({
+  mockSearchCacheGet: vi.fn().mockResolvedValue(null),
+  mockSearchCacheSetex: vi.fn().mockResolvedValue(undefined),
+}));
 const {
   mockAcquireDelegatedWorkerConcurrencySlot,
   mockBuildDelegatedWorkerOriginMetadata,
@@ -98,6 +102,9 @@ vi.mock("../../server/services/redis", () => ({
     del: vi.fn().mockResolvedValue(1),
   }),
   isRedisAvailable: () => false,
+}));
+vi.mock("../../server/services/cloudflareSearchResultCache", () => ({
+  cloudflareSearchResultCacheStore: { get: (...args: any[]) => mockSearchCacheGet(...args), setex: (...args: any[]) => mockSearchCacheSetex(...args) },
 }));
 
 // ── Mock credit service ─────────────────────────────────────
@@ -354,6 +361,8 @@ describe("/v1/responses endpoint", () => {
 
   beforeEach(() => {
     mockFetch.mockReset();
+    mockSearchCacheGet.mockReset().mockResolvedValue(null);
+    mockSearchCacheSetex.mockReset().mockResolvedValue(undefined);
     mockAuditLog.mockClear();
     mockBuildDelegatedWorkerOriginMetadata.mockReset();
     mockBuildDelegatedWorkerOriginMetadata.mockImplementation((_auth, _surface, extra) => extra ?? {});
@@ -1096,6 +1105,27 @@ describe("/v1/responses endpoint", () => {
   // === web_search Tracking ===
 
   describe("web_search tracking", () => {
+    it("scopes the tenant cache using the authenticated tenant rather than request body data", async () => {
+      const responseWithSearch = makeResponsesApiResponse({
+        output: [{ type: "web_search_call", results: [{ title: "Result", url: "https://example.com", snippet: "Text" }] }],
+      });
+      mockFetch.mockResolvedValue(makeFetchResponse(responseWithSearch));
+      const sendForTenant = async (tenantId: string) => {
+        mockAuthorizeRequest.mockResolvedValueOnce({ ok: true, mode: "api_key", sub: "42", userId: 42, tenantId, apiKeyId: "key-1", scopes: ["llm:chat"], rateLimit: 60, creditLimit: null, quotaHourly: null, quotaDaily: null, quotaWeekly: null, quotaMonthly: null });
+        return request(app).post("/v1/responses").send({ model: "gpt-5.4", input: [{ role: "user", content: "shared query" }], tools: [{ type: "web_search_preview" }] });
+      };
+      expect((await sendForTenant("tenant-alpha")).status).toBe(200);
+      expect((await sendForTenant("tenant-beta")).status).toBe(200);
+      expect(mockSearchCacheSetex.mock.calls.map(([key]) => key)).toEqual(expect.arrayContaining([
+        expect.stringMatching(/^search_cache:tenant:tenant-alpha:/),
+        expect.stringMatching(/^search_cache:tenant:tenant-beta:/),
+      ]));
+      expect(mockSearchCacheGet.mock.calls.map(([key]) => key)).toEqual(expect.arrayContaining([
+        expect.stringMatching(/^search_cache:tenant:tenant-alpha:/),
+        expect.stringMatching(/^search_cache:tenant:tenant-beta:/),
+      ]));
+    });
+
     it("counts web_search_call items for cost tracking", async () => {
       const responseWithSearch = makeResponsesApiResponse({
         output: [

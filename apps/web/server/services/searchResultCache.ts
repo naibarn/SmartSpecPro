@@ -8,7 +8,10 @@
  */
 
 import crypto from "crypto";
-import type { Redis } from "ioredis";
+export interface SearchResultCacheStore {
+  get(key: string): Promise<string | null>;
+  setex(key: string, ttlSeconds: number, value: string): Promise<void>;
+}
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -93,7 +96,7 @@ export function requiresFreshData(prompt: string): boolean {
 // ---------------------------------------------------------------------------
 
 export class SearchResultCache {
-  constructor(private redis: Redis) {}
+  constructor(private redis: SearchResultCacheStore) {}
 
   /** Look up tenant-shared cache. Returns null on miss. */
   async getTenantCache(
@@ -168,4 +171,3 @@ export class SearchResultCache {
     return this.getTenantCache(tenantId, query);
   }
 }
-

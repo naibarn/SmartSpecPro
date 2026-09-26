@@ -51,7 +51,7 @@ import {
   requiresFreshData,
   DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST,
 } from "../services/searchResultCache";
-import { getRedisClient } from "../services/redis";
+import { cloudflareSearchResultCacheStore } from "../services/cloudflareSearchResultCache";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import {
   findCatalogModel,
@@ -77,7 +77,7 @@ const SOCKET_TIMEOUT_MS = 600_000; // 10 min
 let _searchCacheInstance: SearchResultCache | null = null;
 function getSearchCache(): SearchResultCache {
   if (!_searchCacheInstance) {
-    _searchCacheInstance = new SearchResultCache(getRedisClient());
+    _searchCacheInstance = new SearchResultCache(cloudflareSearchResultCacheStore);
   }
   return _searchCacheInstance;
 }
@@ -1012,6 +1012,7 @@ export function registerResponsesRoutes(
             sanitizedBody,
             provider,
             userId,
+            tenantId,
             effectiveModelId,
             maxBudgetCredits,
             traceId,
@@ -1052,6 +1053,7 @@ async function proxyResponsesJson(
   body: Record<string, unknown>,
   provider: any,
   userId: number,
+  tenantId: string,
   requestedModelId: string,
   maxBudgetCredits: number,
   traceId: string,
@@ -1085,9 +1087,6 @@ async function proxyResponsesJson(
   let currentInput = body.input;
   let lastResponse: any = null;
   let budgetExceeded = false;
-  const tenantId = typeof (body as any)._tenantId === "string" && (body as any)._tenantId.trim().length > 0
-    ? String((body as any)._tenantId)
-    : "default";
   await enforceDelegatedWorkerSpendGuardrails({
     auth: req.auth,
     estimatedCredits: Math.max(1, Math.min(maxBudgetCredits, estimateNextRoundCredits(budget))),

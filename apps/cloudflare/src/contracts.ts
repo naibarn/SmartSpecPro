@@ -80,6 +80,11 @@ export type VectorIndexBinding = {
   deleteByIds(ids: readonly string[]): Promise<unknown>;
 };
 
+export type CloudflareKvBinding = {
+  get(key: string): Promise<string | null>;
+  put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void>;
+};
+
 export type VectorRecord = {
   id: string;
   values: readonly number[];
@@ -94,6 +99,8 @@ export type CloudflareEnvironment = {
   CLOUDFLARE_ACTIVATION?: string;
   CLOUDFLARE_ENVIRONMENT?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
+  CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
+  SEARCH_RESULT_CACHE?: CloudflareKvBinding;
   HYPERDRIVE?: HyperdriveBinding;
   JOB_QUEUE?: CloudflareQueueBinding;
   JOB_WORKFLOW?: CloudflareWorkflowBinding;

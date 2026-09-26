@@ -2,10 +2,10 @@
 spec_id: 245
 title: SmartAIHub Full-System Cloudflare Migration Master Plan
 subtitle: Compatibility Assessment, Pre-Migration Refactoring, Incremental Cutover, Disaster Recovery & Debian Retirement
-revision: 7.0
-status: PROVISIONAL / R7 HARDENED IMPLEMENTATION SPECIFICATION / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED
+revision: 8.0
+status: PROVISIONAL / R8 URGENT CUTOVER PRIORITY AMENDMENT / NOT IMPLEMENTED / NOT PRODUCTION CERTIFIED
 created: 2026-09-24
-updated: 2026-09-25
+updated: 2026-09-26
 merge_scope: 2026-09-23 Incremental Zero-Downtime Migration Plan + Spec 245 R1 + R3 twelve-pass audit + R4 fourteen-pass audit + R5 fifteen-pass audit + R6 fifteen-pass audit + R7 thirteen-pass audit
 numbering: PROVISIONAL 245; verify canonical SmartSpecPro registry, main branch, active PRs and worktrees before commit
 suggested_repository_path: specs/feature/245-full-system-cloudflare-migration-master-plan/spec.md
@@ -21,9 +21,9 @@ canonical_asset_store: Cloudflare R2
 implemented_baseline_rule: Specs <=213 are compatibility boundaries and MUST NOT be retroactively rewritten
 ---
 
-# Spec 245 — SmartAIHub Full-System Cloudflare Migration Master Plan (R7 Hardened)
+# Spec 245 — SmartAIHub Full-System Cloudflare Migration Master Plan (R8 Cutover Amendment)
 
-> **CURRENT NORMATIVE REVISION — R7:** Read §§101–117 first for the current thirteen-pass corrections, gate deltas and effective-requirement rules. Older R1–R6 material remains preserved for traceability. Historical statements that R2/R3/R4/R5/R6 is the “single normative” or latest revision are historical, not current. Full-system live status remains **unverified**, and the proposed 245 ID still needs authoritative Git registry validation.
+> **CURRENT NORMATIVE REVISION — R8:** Read §118 first for the urgent cutover decision, then §§101–117 for R7 compatibility, security, recovery and evidence requirements. R8 removes the fixed 14–30 day Redis retirement wait; it does not remove per-responsibility readiness, data-safety, security, or live cutover checks. Older R1–R7 material remains preserved for traceability. Full-system live status remains **unverified**, and the proposed 245 ID still needs authoritative Git registry validation.
 
 ## 0. Executive decision
 
@@ -1037,7 +1037,7 @@ A successful **real power-off test of the original mini server** is mandatory be
 | 09 | 1 low-risk BullMQ queue family → PG outbox + Queues | First real async workloads with stable worker_jobs | No missing/duplicate terminal effects + DLQ replay | Stop new dispatch, drain in-flight, resume legacy from PG authority |
 | 10 | Remaining BullMQ/Celery/Beat job families | Progressive removal of queue workers and Redis traffic | Each family individually certified | Per-family route/drain |
 | 11 | Managed PostgreSQL + Hyperdrive primary switch (**independent track within this spec**) | Managed HA + native Workers DB integration | CDC/cutover/failback data correctness | Tested provider-specific failback plan; no dual writers |
-| 12 | Redis retirement + package cleanup | Remove infrastructure and on-call burden | 100% reachability scan + 14–30 day observation | Preserve Redis snapshot and recovery runbook until exit gate |
+| 12 | Redis retirement + package cleanup | Remove infrastructure and on-call burden | 100% responsibility inventory + targeted cutover acceptance evidence; no fixed elapsed observation period | Preserve a recoverable snapshot/runbook until the new path is confirmed |
 
 > **WP11 is intentionally decoupled:** Cloudflare Workers can begin serving approved slices while existing PostgreSQL remains the database. The managed-PostgreSQL migration must not hold WP01–WP10 hostage. If the new provider is needed earlier for a particular slice, treat it as a separate gated prerequisite for **that** slice only.
 
@@ -1189,10 +1189,10 @@ Keep this work package independent from Redis retirement. If Redis is fully reti
 
 ### WP12 — Prove Redis is no longer on any live execution path
 
-- Require production evidence of zero Redis commands from SmartAIHub application identities over an agreed observation window, excluding explicitly documented unrelated services.
+- Prove there are no remaining active SmartAIHub Redis responsibilities through the complete inventory, call-site/runtime reachability checks, and targeted cutover evidence; a fixed elapsed observation window is not required.
 - Audit direct imports, transitive dependencies, cron, deployment manifests, worker images, Celery broker/result backend, auth revocation checks, pub/sub consumers, fallback flags, runbooks, disaster-recovery scripts and tests. Delete code only once the bounded rollback dependency has expired.
 - Freeze Redis production writes, snapshot safely, restrict credentials, retain restoration procedures per retention policy, then retire service and packages; remove unused secrets, network access and recurring cost.
-- Keep a rollback-compatible artifact and the documented DB fencing/idempotency semantics until the post-cutover safety window ends.
+- Retain a rollback-compatible artifact and the documented DB fencing/idempotency semantics for incident recovery; do not impose a fixed post-cutover delay before Redis retirement.
 
 ---
 
@@ -1349,7 +1349,7 @@ The independent verifier must exercise production-like conditions; unit tests al
 - Independent verifier: adversarial and end-to-end checks, no reliance solely on implementer report.
 - Business/support owner: customer communication criteria, payment/credit impact, rollback business acceptance.
 
-**Do not mark `REDIS_RETIREMENT_DONE` until** every in-scope Redis work package is independently verified, production telemetry confirms no remaining Redis dependency, rollback data hazards are resolved, and Redis retirement has passed its observation window. `CODE_COMPLETE`, `STAGING_PASS`, `SHADOW_PASS`, `CANARY_PASS`, `PRODUCTION_100%`, and `RETIRED` are deliberately distinct states.
+**Do not mark `REDIS_RETIREMENT_DONE` until** every in-scope Redis responsibility is migrated or explicitly classified out of scope, the new paths pass their targeted acceptance checks, production telemetry/configuration confirms no remaining application dependency, and rollback data hazards are resolved. There is no fixed 14–30 day waiting period. `CODE_COMPLETE`, `STAGING_PASS`, `SHADOW_PASS`, `CANARY_PASS`, `PRODUCTION_100%`, and `RETIRED` remain distinct states; post-cutover monitoring continues for defect discovery but does not delay the Redis retirement decision.
 
 ---
 
@@ -3921,7 +3921,7 @@ P245.0AP  Immutable economic quote/credit settlement parity
 
 **Audit date:** 2026-09-25 (Asia/Bangkok). **Baseline:** the complete Spec 245 R6 including R1/R2 integration and R3/R4/R5/R6 amendments. **Audit type:** design-document and publicly documented platform-contract review; **not** live SmartSpecPro implementation, cloud-account entitlement testing, Debian host inspection or production certification.
 
-**Effective precedence:** R7 §§101–117 supersede conflicting earlier wording. R6 §§83–100 supersede R5; R5 §§65–82 supersede R4; R4 §§48–64 supersede R3; R3 §§33–47 supersede R2; inherited R1/R2 requirements remain effective when compatible. Original merged-plan WP00–WP12 remain valid as operational work packages, not independent specs. A document audit PASS does not mean code or live deployment PASS.
+**Effective precedence:** R8 §118 supersedes R7 and earlier wording only on Redis-retirement timing and the acceptance of a planned maintenance pause; R7 §§101–117 otherwise supersede conflicting earlier wording. R6 §§83–100 supersede R5; R5 §§65–82 supersede R4; R4 §§48–64 supersede R3; R3 §§33–47 supersede R2; inherited R1/R2 requirements remain effective when compatible. Original merged-plan WP00–WP12 remain valid as operational work packages, not independent specs. A document audit PASS does not mean code or live deployment PASS.
 
 The thirteen rounds below are **new and distinct** from R3's 12, R4's 14, R5's 15 and R6's 15 lenses. A round is counted only where it identifies a traceable latent failure and adds a normative rule plus an acceptance fixture. Unresolved real-world unknowns remain BLOCKED pending P245.0 evidence.
 
@@ -4245,3 +4245,53 @@ Public platform documentation consulted 2026-09-25:
 - Hyperdrive transaction pooling and pool restart behavior: https://developers.cloudflare.com/hyperdrive/concepts/connection-pooling/
 
 **Audit result:** 13 distinct new design-audit passes recorded as R7-01–R7-13; all identified changes incorporated as normative specification clauses with scenarios A91–A103. This is `R7_SPEC_AUDIT_COMPLETE` only—not repository audit completion, running-code tests, source-of-truth DB reconciliation, paid-provider validation, production cutover, or Debian retirement. The currently live repo/worktree and 245 number reservation, Debian services/cron/files, current Cloudflare account/plan, authorized credentials, traffic baseline and managed PostgreSQL readiness remain empirical implementation gates. Earlier versions and individual specialist specs remain unmodified.
+
+---
+
+# 118. R8 — User-Directed Accelerated Cutover and Maintenance Window
+
+**Decision date:** 2026-09-26. This section records the product owner's direction for the current beta: two active users can pause work during migration; the priority is to move the platform workloads to Cloudflare promptly, then fix ordinary defects found on the new platform. This section supersedes only conflicting migration timing and availability assumptions. It does not claim that a Cloudflare account is configured, a deployment has happened, or that any workload is already migrated.
+
+## 118.1 No fixed Redis observation delay
+
+The fixed **14–30 day** production observation requirement for Redis retirement is removed. The exact requirements superseded are the WP12 row in §14A.1, the WP12 observation-window clauses in §§14A.3/14A.9, and the WP12 post-cutover safety-window delay. Other observation requirements for full Debian retirement, rare schedules, data recovery or DNS propagation remain separate and are not reclassified as Redis waiting periods. Redis may be retired as soon as:
+
+1. Every discovered Redis responsibility is migrated or explicitly proven out of scope.
+2. Each replacement path passes its targeted acceptance checks, including its tenant/auth/data-integrity invariants where applicable.
+3. The application no longer has a reachable Redis dependency for those responsibilities, and new-path health is confirmed after cutover.
+4. A recoverable snapshot/configuration and a concrete repair or forward-recovery procedure exist for data-bearing responsibilities.
+
+Production monitoring begins at cutover and remains active for finding and fixing defects. It is **not** a timer that delays the Redis retirement decision. Do not leave the old Redis service as a silent automatic fallback for an already migrated responsibility.
+
+## 118.2 Planned task pause is allowed
+
+The migration MAY use a controlled maintenance window instead of preserving uninterrupted task execution:
+
+1. Announce/enable maintenance mode and stop accepting new long-running jobs for the slice being moved.
+2. Pause that slice's schedulers, dispatchers and consumers; record the exact services and route generation stopped.
+3. The owner has confirmed there is no business-critical backlog to preserve. Still inspect canonical job state and reconcile any provider call with an unknown outcome before retrying or discarding it; this prevents duplicate paid work.
+4. Apply the Cloudflare configuration and cut over one responsibility group at a time. Do not run two active authorities for one lock, job family, schedule or financial side effect.
+5. Run targeted smoke/regression checks, confirm logs/health, then resume intake and consumers on the new path.
+
+A maintenance pause is an availability choice; it is not permission to discard canonical records, bypass authorization, duplicate external effects, or skip tenant/financial correctness checks. Existing data is retained unless a separate, explicit data-retention decision authorizes deletion.
+
+## 118.3 Keep gates that prevent irreversible harm
+
+Removing the elapsed-time gate does not remove the following pre-cutover checks:
+
+- complete responsibility inventory for each Redis consumer, including auth/revocation, rate limits, locks, realtime and job transports;
+- one authoritative writer/executor and the existing `worker_jobs` / PostgreSQL fencing contract for durable jobs;
+- fresh authorization and tenant-isolation checks; KV must not become authoritative for revocation or exact counters;
+- no blind retry of an external provider operation with an unknown completion result;
+- backup/snapshot and restoration or forward-recovery instructions before destroying data or credentials;
+- exact environment-specific Cloudflare binding/secret readiness and a tested service health check.
+
+These are event-based checks and can be completed quickly. If a check fails, pause only the affected responsibility, fix its prerequisite and keep progressing through independent migration work.
+
+## 118.4 Durable Objects are selective, not a platform prerequisite
+
+Do not provision Durable Objects just to replace Redis wholesale. Use KV for disposable/read-mostly cache; use PostgreSQL and the canonical job control plane for durable business authority; introduce DO only where the inventory proves a need for serialized per-entity coordination or realtime connection state. Before a DO lifecycle change, retain its namespace/class compatibility and forward-recovery safeguards from §52.
+
+## 118.5 Implementation handoff
+
+The execution plan SHALL now prioritize: (a) close the live inventory and Cloudflare target configuration gaps; (b) move the simplest safe Redis cache slice; (c) migrate the remaining Redis responsibilities and queue families using controlled pauses where useful; (d) move application/runtime and database dependencies required for full Cloudflare hosting; and (e) prove Debian can be retired. Do not block code or configuration progress on a calendar observation period. Record real blockers by affected slice and continue all independent work.

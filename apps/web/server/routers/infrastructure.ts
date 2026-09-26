@@ -39,6 +39,7 @@ import {
 } from "../services/scaleTier";
 import type { ScaleTierId, DeployMode, ApplyStepResult } from "../services/scaleTier";
 import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
+import { refreshSearchResultCacheProvider } from "../services/cloudflareSearchResultCache";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -549,6 +550,56 @@ export const infrastructureRouter = router({
 
     return result;
   }),
+
+  getSearchResultCacheConfig: adminProcedure.query(async () => {
+    const db = await getDb();
+    let provider = "disabled";
+    if (db) {
+      const [row] = await db.select({ value: systemSettings.value }).from(systemSettings)
+        .where(and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, "search_result_cache_provider"))).limit(1);
+      if (row?.value === "cloudflare_kv") provider = "cloudflare_kv";
+    }
+    return { provider, endpointConfigured: Boolean(process.env.CLOUDFLARE_RUNTIME_URL), tokenConfigured: Boolean(process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN) };
+  }),
+
+  probeSearchResultCache: rateLimitedAdminProcedure.mutation(async () => {
+    const baseUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim().replace(/\/$/, "");
+    const token = process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN?.trim();
+    if (!baseUrl || !token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "ตั้งค่า CLOUDFLARE_RUNTIME_URL และ CLOUDFLARE_SEARCH_CACHE_TOKEN ก่อน" });
+    try {
+      const response = await fetch(`${baseUrl}/internal/cache/search`, {
+        method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+        body: JSON.stringify({ operation: "probe" }), signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) throw new Error(`Worker ตอบ HTTP ${response.status}`);
+      const result = await response.json() as { ready?: boolean };
+      if (result.ready !== true) throw new Error("Worker ยังไม่พร้อมหรือไม่มี SEARCH_RESULT_CACHE binding");
+      return { ready: true };
+    } catch (error) {
+      throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error ? error.message : "ตรวจ Worker ไม่สำเร็จ" });
+    }
+  }),
+
+  updateSearchResultCacheProvider: rateLimitedAdminProcedure
+    .input(z.object({ provider: z.enum(["disabled", "cloudflare_kv"]) }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      if (input.provider === "cloudflare_kv") {
+        const baseUrl = process.env.CLOUDFLARE_RUNTIME_URL?.trim().replace(/\/$/, "");
+        const token = process.env.CLOUDFLARE_SEARCH_CACHE_TOKEN?.trim();
+        if (!baseUrl || !token) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Worker endpoint/token ยังตั้งค่าไม่ครบ" });
+        try {
+          const response = await fetch(`${baseUrl}/internal/cache/search`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify({ operation: "probe" }), signal: AbortSignal.timeout(5000) });
+          if (!response.ok || (await response.json() as { ready?: boolean }).ready !== true) throw new Error("Worker หรือ KV binding ยังไม่พร้อม");
+        } catch (error) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error ? error.message : "Cloudflare KV probe ไม่สำเร็จ" });
+        }
+      }
+      await upsertSetting(db, "search_result_cache_provider", input.provider, ctx.user?.id, false);
+      refreshSearchResultCacheProvider();
+      return { success: true, provider: input.provider };
+    }),
 
   updateRedisConfig: rateLimitedAdminProcedure
     .input(

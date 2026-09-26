@@ -1,0 +1,34 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/245-Full-System Cloudflare Migration Master Plan/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/245-Full-System Cloudflare Migration Master Plan/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm --workspace @smartspec/cloudflare-runtime test; npm --workspace @smartspec/web test -- server/__tests__/responsesRoutes.test.ts server/__tests__/searchResultCache.test.ts server/services/__tests__/cloudflareSearchResultCache.test.ts",
+  "sections": [
+    "section-01-inventory-and-cloudflare-foundation",
+    "section-02-search-cache-kv-and-admin-control",
+    "section-03-redis-responsibilities-and-durable-objects",
+    "section-04-database-runtime-and-debian-retirement"
+  ],
+  "sections_state": {
+    "section-01-inventory-and-cloudflare-foundation": {
+      "status": "partial",
+      "reason": "Complete target/runtime caller and process ownership inventory still needs authentic deployment evidence."
+    },
+    "section-02-search-cache-kv-and-admin-control": {
+      "status": "implemented_locally_target_probe_required",
+      "proof": "Cloudflare tests 24 passed; focused web tests 71 passed; target Worker/KV probe and browser evidence outstanding."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-26T04:04:39.104916+00:00"
+}

@@ -1,0 +1,215 @@
+# Preliminary repository-only discovery for Spec 232 / Spec 245.
+# This is not a production runtime inventory and grants no cutover approval.
+manifest_version: redis-migration-inventory-v0
+status: preliminary_static_scan
+source_of_truth: postgresql
+runtime_traffic_verified: false
+production_cutover_approved: false
+scan_boundary:
+  repositories: [apps/web/server, python-backend/app]
+  inspected: [redis_clients, direct_redis_imports, representative_call_sites, cloudflare_worker_bindings]
+  excluded: [tests, generated_files, retired_system_paths]
+  known_gaps:
+    - runtime Redis command/connection telemetry
+    - deployment process and scheduled-task to caller mapping
+    - complete symbol-level call-site inventory
+    - production keyspaces, TTLs, rates, memory and consumer traffic
+    - Cloudflare target account bindings and service capability probes
+
+execution_host_observation:
+  observed_at: 2026-09-26
+  environment_identity: unknown_local_host_not_production_certification
+  method: read_only_systemd_docker_and_redis_metadata
+  wrangler_cli_available: false
+  wrangler_auth_available: false
+  cloudflare_target_evidence_file_available: false
+  cloudflare_activation: disabled
+  services:
+    systemd:
+      smartspec_web: active
+      smartspec_backend: active
+      smartspec_infra: active
+      smartspec_node_worker: active
+      smartspec_node_worker_watchdog: active
+      redis_server: inactive
+    docker:
+      redis: healthy
+      celery_beat: healthy
+      celery_media: unhealthy
+      celery_presentation: unhealthy
+      postgres: healthy
+  redis_metadata:
+    db0_keys: 12182
+    db5_keys: 33
+    instantaneous_ops_per_sec: 13
+    db0_celery_list_length: 18
+    bullmq_queue_state_keys_present:
+      - capacity-assessment
+      - database-backup
+      - gdrive-session-cleanup
+      - memory-maintenance
+      - notification-digest
+      - notification-escalation
+      - notification-retention
+      - trash-auto-purge
+      - vertical_drama_character_prompt_jobs
+      - vertical_drama_draft_composition
+      - vertical_drama_draft_quality_qc
+      - vertical_drama_episode_stage_jobs
+      - vertical_drama_interactive_jobs
+      - vertical_drama_shot_prompt_jobs
+      - vertical_drama_shot_video_prompt_jobs
+      - vertical_drama_story_jobs
+      - video_intelligence_jobs
+    interpretation: >-
+      Redis and queue metadata are actively present on this host; counts are point-in-time
+      metadata, not production ownership proof or exact in-flight job counts. Do not stop
+      containers or delete keys until the host identity and canonical job reconciliation are verified.
+
+responsibility_groups:
+  G1_cache:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/searchResultCache.ts
+        symbol: SearchResultCache
+        semantics: tenant and user keyed search-result cache with 15m/60m TTL
+        target: Workers KV only after data classification; canonical search/provider path on miss
+        migration_status: owner_authorized_local_implementation_target_probe_required
+      - file: apps/web/server/services/groupsService.ts
+        symbol: getUserGroups
+        semantics: tenant/user scoped authorization-adjacent cache with invalidation
+        target: PostgreSQL fresh read or noncritical cache only after permission-staleness review
+        migration_status: excluded_from_first_kv_pilot
+      - file: apps/web/server/routers/adminOps.ts
+        symbol: admin operation statistics cache
+        semantics: admin-only cached projection
+        target: PostgreSQL/source recomputation on miss; classify payload and freshness first
+        migration_status: unverified
+    unknown_callers: true
+
+  G2_auth_session_revocation:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/_core/revocation.ts
+        symbol: Redis revocation client
+        semantics: token/session revocation decision
+        target: PostgreSQL HYPERDRIVE_FRESH; DO only for scoped coordination; KV non-authoritative hint only
+        migration_status: blocked_on_active_session_and_ttl_inventory
+      - file: apps/web/server/services/redisEphemeralKeyRegistry.ts
+        symbol: setEphemeralJson/getEphemeralJson/setEphemeralText/getEphemeralText
+        semantics: short-lived cross-instance ephemeral state; callers must be classified individually
+        target: PostgreSQL or DO for correctness-sensitive state; KV only for proven non-authoritative hints
+        migration_status: unverified
+    unknown_callers: true
+
+  G3_rate_limit_quota_idempotency:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/middleware/distributedRateLimit.ts
+        symbol: distributed rate limiter
+        semantics: Redis sorted-set sliding-window counter
+        target: Workers Rate Limiting for approximate abuse controls; DO for exact shared admission
+        migration_status: policy_and_route_inventory_required
+      - file: apps/web/server/services/apiKeyRateLimiter.ts
+        symbol: API key rate limiter
+        semantics: API key scoped counters and decisions
+        target: Workers Rate Limiting or DO by policy; PostgreSQL for billable quota
+        migration_status: policy_and_route_inventory_required
+      - file: apps/web/server/middleware/idempotencyMiddleware.ts
+        symbol: idempotency middleware
+        semantics: temporary request lock plus cached response
+        target: PostgreSQL canonical idempotency for business effects; KV is not an atomic lock substitute
+        migration_status: blocked_on_effect_and_idempotency_audit
+    unknown_callers: true
+
+  G4_locks_leases_semaphores:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/redisSemaphore.ts
+        symbol: acquireSemaphore/getSemaphoreCount
+        semantics: atomic Lua semaphore with TTL for cross-process concurrency
+        target: DO for per-entity serialization plus PostgreSQL fencing for durable writes
+        migration_status: blocked_on_resource_owner_and_fencing_inventory
+      - file: apps/web/server/routers/presentation.ts
+        symbol: presentation task lock/progress state
+        semantics: lock ownership and task progress
+        target: canonical worker_jobs lease/fencing and durable job state
+        migration_status: requires per-operation mapping
+      - file: python-backend/app/services/browser_pool.py
+        symbol: browser session semaphore
+        semantics: user/tenant concurrency limits
+        target: DO or canonical live-session lease design; not KV
+        migration_status: blocked_on_live_session_contract
+    unknown_callers: true
+
+  G5_pubsub_realtime:
+    status: partial_static_discovery
+    examples:
+      - file: apps/web/server/services/notificationWebhookService.ts
+        symbol: realtime queue/pub-sub callers
+        semantics: Redis-backed delivery and notifications
+        target: PostgreSQL outbox plus Queues for durable delivery; DO for WebSocket coordination
+        migration_status: requires producer_consumer_and_replay_inventory
+      - file: apps/web/server/routes/voiceGateway.ts
+        symbol: voice gateway Redis pub/sub
+        semantics: live cross-process event fan-out
+        target: DO WebSocket Hibernation with durable event sequence/replay where required
+        migration_status: blocked_on_channel_replay_and_session_tests
+    unknown_callers: true
+
+  G6_jobs_schedulers_and_job_state:
+    status: worktree_under_active_changes_static_scan_untrusted
+    examples:
+      - file: apps/web/server/jobs
+        symbol: BullMQ queue/worker/scheduler registrations
+        semantics: recurring and asynchronous application work
+        target: existing worker_jobs plus outbox and per-family Cloudflare Queue/Workflow/Runner transport
+        migration_status: do_not_promote_until_current_diff_and_live_family_ownership_reconcile
+      - file: apps/web/server/services/verticalDramaShotVideoPromptJobs.ts
+        symbol: Redis job records, owner pointers, sequence and lock keys
+        semantics: application job state and coordination
+        target: canonical worker_jobs state/lease/fencing where eligible
+        migration_status: family_specific_contract_and_recovery_proof_required
+      - file: python-backend/app/orchestrator/node_executors/flow_executors/dlq_executor.py
+        symbol: Redis Streams dead-letter state
+        semantics: retry/dead-letter records
+        target: canonical worker_jobs events/outbox/DLQ policy
+        migration_status: event_retention_and_replay_mapping_required
+    source_tree_note: job and transport files currently have extensive uncommitted changes; static call-site counts are not stable evidence
+    unknown_callers: true
+
+kv_pilot:
+  status: implementation_authorized_target_enable_blocked
+  candidate: apps/web/server/services/searchResultCache.ts
+  owner_decision:
+    beta_users: 2
+    cache_is_business_critical: false
+    maintenance_pause_allowed: true
+    fixed_redis_observation_window_days: none
+    decision_date: 2026-09-26
+  reasons:
+    - existing caller runs in the Node application, not the Cloudflare Worker binding context
+    - Worker environment contract has no KV namespace binding
+    - target-account evidence and deployment identity are absent in this checkout
+    - tenant/user key isolation and bounded TTL must be enforced in the new endpoint
+    - KV miss, expiry, and cross-location stale behavior are acceptable only because this cache is disposable
+  required_before_pilot:
+    - implement authenticated internal Worker endpoint and SEARCH_RESULT_CACHE binding contract
+    - implement Node client with cache miss/no-op on failure and no Redis fallback when Cloudflare KV is selected
+    - add Admin switch, readiness probe and complete endpoint/binding/secret deployment guide
+    - verify tenant/user key isolation, current 15m/60m TTLs, freshness bypass, and cache-loss behavior
+    - obtain real target binding/secret evidence before enabling in the target environment
+  cutover_mode: controlled_maintenance_pause_then_direct_kv_enable
+  data_migration: none_cache_is_disposable_start_cold
+  post_cutover_monitoring: immediate_bug_detection_not_a_retirement_timer
+
+next_actions:
+  - id: P232.0A
+    action: reconcile static source scan with production processes, schedules and Redis telemetry
+    status: blocked_on_production_host_identity_and_runtime_evidence
+  - id: P232.0B
+    action: reconcile current Feature 186 transport diffs, compatibility manifest and in-flight job families
+    status: blocked_on_dirty_worktree_review_and_runtime_evidence
+  - id: P232.3-cache-pilot
+    action: implement the authorized SearchResultCache KV slice; enable only after the real Worker binding/token probe passes
+    status: local_implementation_in_progress_target_deploy_blocked

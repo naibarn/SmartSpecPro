@@ -177,6 +177,37 @@ describe("Cloudflare local runtime contracts", () => {
     expect(send).toHaveBeenCalledWith(envelope);
   });
 
+  it("serves the isolated authenticated search KV contract without enabling jobs", async () => {
+    const values = new Map<string, string>();
+    const kv = {
+      get: vi.fn(async (key: string) => values.get(key) ?? null),
+      put: vi.fn(async (key: string, value: string) => { values.set(key, value); }),
+    };
+    const worker = createCloudflareWorker();
+    const env = { CLOUDFLARE_SEARCH_CACHE_TOKEN: "cache-secret", SEARCH_RESULT_CACHE: kv };
+    const call = (data: unknown) => worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
+      method: "POST", headers: { authorization: "Bearer cache-secret", "content-type": "application/json" }, body: JSON.stringify(data),
+    }), env);
+
+    expect((await worker.fetch(new Request("https://runtime.invalid/internal/cache/search", { method: "POST" }), env)).status).toBe(401);
+    expect(await (await call({ operation: "probe" })).json()).toEqual({ ready: true });
+    const entry = { snippets: [], citations: [], retrievedAt: "2026-09-26T00:00:00.000Z", queryHash: "a".repeat(64) };
+    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 900 })).status).toBe(200);
+    expect((await (await call({ operation: "get", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64) })).json()).entry).toEqual(entry);
+    expect(kv.put).toHaveBeenCalledWith(expect.stringContaining(":tenant:tenant-1:"), JSON.stringify(entry), { expirationTtl: 900 });
+    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "bad", entry, ttlSeconds: 900 })).status).toBe(400);
+    expect((await call({ operation: "put", scope: "tenant", id: "tenant-1", queryHash: "a".repeat(64), entry, ttlSeconds: 3601 })).status).toBe(400);
+    const unavailable = await worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
+      method: "POST", headers: { authorization: "Bearer cache-secret" }, body: JSON.stringify({ operation: "probe" }),
+    }), { ...env, SEARCH_RESULT_CACHE: { get: vi.fn().mockRejectedValue(new Error("offline")), put: vi.fn().mockRejectedValue(new Error("offline")) } });
+    expect(unavailable.status).toBe(503);
+    expect(unavailable.headers.get("cache-control")).toBe("no-store");
+    const oversized = await worker.fetch(new Request("https://runtime.invalid/internal/cache/search", {
+      method: "POST", headers: { authorization: "Bearer cache-secret" }, body: " ".repeat(33 * 1024),
+    }), env);
+    expect(oversized.status).toBe(413);
+  });
+
   it("deduplicates publication through the injected durable-registry contract and rejects oversized bodies", async () => {
     const send = vi.fn().mockResolvedValue(undefined);
     const seen = new Set<string>();
