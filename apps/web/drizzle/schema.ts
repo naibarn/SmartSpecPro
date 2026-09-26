@@ -10660,6 +10660,67 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
 });
 
 /**
+ * Cross-instance token revocations. Only a SHA-256 digest of the JTI is stored;
+ * NULL expiry preserves legacy Redis revocations that had no TTL.
+ */
+export const revokedTokenJtis = pgTable(
+  "revoked_token_jtis",
+  {
+    jtiHash: varchar("jti_hash", { length: 64 }).primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("revoked_token_jtis_expires_at_idx").on(t.expiresAt)],
+);
+
+/** OAuth device grant state; raw device/user codes are never persisted. */
+export const oauthDeviceAuthorizations = pgTable(
+  "oauth_device_authorizations",
+  {
+    deviceCodeHash: varchar("device_code_hash", { length: 64 }).primaryKey(),
+    userCodeHash: varchar("user_code_hash", { length: 64 }).notNull().unique(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    scopesJson: jsonb("scopes_json").$type<string[]>().notNull().default([]),
+    intervalSeconds: integer("interval_seconds").notNull().default(5),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    authorizedUserId: integer("authorized_user_id").references(() => users.id, { onDelete: "cascade" }),
+    authorizedOpenId: varchar("authorized_open_id", { length: 64 }),
+    authorizedAt: timestamp("authorized_at", { withTimezone: true }),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    index("oauth_device_authorizations_expiry_idx").on(t.expiresAt),
+    check("oauth_device_authorizations_status_check", sql`${t.status} IN ('pending', 'authorized', 'consumed')`),
+  ],
+);
+
+/** Sliding-window lockout counters keyed by a digest of normalized email. */
+export const authLoginFailureCounters = pgTable(
+  "auth_login_failure_counters",
+  {
+    emailHash: varchar("email_hash", { length: 64 }).primaryKey(),
+    failureCount: integer("failure_count").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("auth_login_failure_counters_expiry_idx").on(t.expiresAt)],
+);
+
+export const ephemeralAuthorizationSessions = pgTable(
+  "ephemeral_authorization_sessions",
+  {
+    deviceCodeHash: varchar("device_code_hash", { length: 64 }).primaryKey(),
+    userCodeHash: varchar("user_code_hash", { length: 64 }).unique(),
+    sessionJson: jsonb("session_json").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("ephemeral_authorization_sessions_expiry_idx").on(table.expiresAt)],
+);
+
+/**
  * Pending authenticated account-email changes. The raw verification token is
  * never persisted; only its SHA-256 digest is stored.
  */

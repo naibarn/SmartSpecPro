@@ -2304,6 +2304,34 @@
       "when": 1789824020748,
       "tag": "0344_runner_session_fencing",
       "breakpoints": true
+    },
+    {
+      "idx": 329,
+      "version": "7",
+      "when": 1789824020749,
+      "tag": "0345_feature_245_postgres_jti_revocations",
+      "breakpoints": true
+    },
+    {
+      "idx": 330,
+      "version": "7",
+      "when": 1789824020750,
+      "tag": "0346_feature_245_postgres_device_authorizations",
+      "breakpoints": true
+    },
+    {
+      "idx": 331,
+      "version": "7",
+      "when": 1789824020751,
+      "tag": "0347_feature_245_postgres_login_failure_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 332,
+      "version": "7",
+      "when": 1789824020752,
+      "tag": "0348_feature_245_ephemeral_authorization_sessions",
+      "breakpoints": true
     }
   ]
 }

@@ -71,13 +71,7 @@ import {
   syncWorkerLlmInventory,
   WorkerLocalLlmError,
 } from "../services/workerLocalLlmService";
-import {
-  getEphemeralJson,
-  getEphemeralText,
-  setEphemeralJson,
-  setEphemeralText,
-  RedisEphemeralKeyRegistryError,
-} from "../services/redisEphemeralKeyRegistry";
+import { EphemeralAuthorizationStoreError, ephemeralAuthorizationSessionStore } from "../services/ephemeralAuthorizationSessionStore";
 import {
   getWorkerAccessPermissionScopesForPreset,
   normalizeWorkerAccessPermissionScopes,
@@ -381,44 +375,30 @@ function browserSessionPayload(session: WorkerConnectSession) {
   };
 }
 
-function redisKeysForConnect(deviceCode: string, userCode?: string) {
-  return {
-    device: `worker-connect:device:${deviceCode}`,
-    user: userCode ? `worker-connect:user:${userCode}` : null,
-  };
-}
-
 async function saveWorkerConnectSession(
   session: WorkerConnectSession
 ): Promise<void> {
-  const keys = redisKeysForConnect(session.deviceCode, session.userCode);
   const ttl =
     session.status === "approved"
       ? WORKER_CONNECT_APPROVED_TTL_SECONDS
       : WORKER_CONNECT_TTL_SECONDS;
-  await setEphemeralJson(keys.device, session, ttl);
-  if (keys.user) await setEphemeralText(keys.user, session.deviceCode, ttl);
+  await ephemeralAuthorizationSessionStore.save(session, ttl);
 }
 
 async function getWorkerConnectSessionByDevice(
   deviceCode: string
 ): Promise<WorkerConnectSession | null> {
-  return getEphemeralJson<WorkerConnectSession>(
-    redisKeysForConnect(deviceCode).device
-  );
+  return ephemeralAuthorizationSessionStore.getByDeviceCode<WorkerConnectSession>(deviceCode);
 }
 
 async function getWorkerConnectSessionByUserCode(
   userCode: string
 ): Promise<WorkerConnectSession | null> {
-  const deviceCode = await getEphemeralText(
-    redisKeysForConnect("", userCode).user ?? ""
-  );
-  return deviceCode ? getWorkerConnectSessionByDevice(deviceCode) : null;
+  return ephemeralAuthorizationSessionStore.getByUserCode<WorkerConnectSession>(userCode);
 }
 
 function handleWorkerRouteError(error: unknown, res: Response): void {
-  if (error instanceof RedisEphemeralKeyRegistryError) {
+  if (error instanceof EphemeralAuthorizationStoreError) {
     sendApiError(
       res,
       503,

@@ -787,35 +787,67 @@ export default function InfrastructureSettingsPanel() {
       <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
-          <TabsTrigger value="app-runtime" className="flex items-center gap-1">
+          <TabsTrigger
+            value="app-runtime"
+            aria-label={copy.tabs.runtime}
+            className="flex items-center gap-1"
+          >
             <Globe className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.runtime}</span>
           </TabsTrigger>
-          <TabsTrigger value="mcp" className="flex items-center gap-1">
+          <TabsTrigger
+            value="mcp"
+            aria-label={copy.tabs.mcp}
+            className="flex items-center gap-1"
+          >
             <Shield className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.mcp}</span>
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="flex items-center gap-1">
+          <TabsTrigger
+            value="tasks"
+            aria-label={copy.tabs.tasks}
+            className="flex items-center gap-1"
+          >
             <Server className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.tasks}</span>
           </TabsTrigger>
-          <TabsTrigger value="queues" className="flex items-center gap-1">
+          <TabsTrigger
+            value="queues"
+            aria-label={copy.tabs.queues}
+            className="flex items-center gap-1"
+          >
             <Activity className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.queues}</span>
           </TabsTrigger>
-          <TabsTrigger value="redis" className="flex items-center gap-1">
+          <TabsTrigger
+            value="redis"
+            aria-label={copy.tabs.redis}
+            className="flex items-center gap-1"
+          >
             <Database className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.redis}</span>
           </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-1">
+          <TabsTrigger
+            value="monitoring"
+            aria-label={copy.tabs.monitoring}
+            className="flex items-center gap-1"
+          >
             <Shield className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.monitoring}</span>
           </TabsTrigger>
-          <TabsTrigger value="scale-tier" className="flex items-center gap-1">
+          <TabsTrigger
+            value="scale-tier"
+            aria-label={copy.tabs.scaleTier}
+            className="flex items-center gap-1"
+          >
             <Gauge className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.scaleTier}</span>
           </TabsTrigger>
-          <TabsTrigger value="cloudflare-runtime" className="flex items-center gap-1">
+          <TabsTrigger
+            value="cloudflare-runtime"
+            aria-label="Cloudflare"
+            className="flex items-center gap-1"
+          >
             <Cloud className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Cloudflare</span>
           </TabsTrigger>

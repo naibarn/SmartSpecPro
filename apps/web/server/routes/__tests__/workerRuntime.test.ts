@@ -61,6 +61,22 @@ vi.mock("../../services/libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
 }));
 
+vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
+  const byDevice = new Map<string, unknown>();
+  const byUser = new Map<string, unknown>();
+  class EphemeralAuthorizationStoreError extends Error {
+    readonly code = "ephemeral_authorization_store_unavailable";
+  }
+  return {
+    EphemeralAuthorizationStoreError,
+    ephemeralAuthorizationSessionStore: {
+      save: async (session: any) => { byDevice.set(session.deviceCode, session); if (session.userCode) byUser.set(session.userCode.toUpperCase(), session); },
+      getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
+      getByUserCode: async (code: string) => byUser.get(code.toUpperCase()) ?? null,
+    },
+  };
+});
+
 vi.mock("../../services/tenantFeatureFlagService", () => ({
   getTenantFeatureFlags: mockGetTenantFeatureFlags,
 }));

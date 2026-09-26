@@ -28,11 +28,7 @@ import {
   type RunnerGateway,
   type RunnerGatewayNode,
 } from "../services/runnerGateway";
-import {
-  RedisEphemeralKeyRegistryError,
-  getEphemeralJson,
-  setEphemeralJson,
-} from "../services/redisEphemeralKeyRegistry";
+import { EphemeralAuthorizationStoreError, ephemeralAuthorizationSessionStore } from "../services/ephemeralAuthorizationSessionStore";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
 import { auditLogger } from "../services/auditLogger";
 import {
@@ -989,14 +985,6 @@ function publicBaseUrl(req: Request): string {
   return `${proto}://${host}`;
 }
 
-function runnerConnectSessionKey(deviceCode: string): string {
-  return `runner:connect:device:${deviceCode}`;
-}
-
-function runnerConnectUserKey(userCode: string): string {
-  return `runner:connect:user:${userCode}`;
-}
-
 function randomRunnerUserCode(): string {
   return randomUUID()
     .replace(/[^A-Z0-9]/gi, "")
@@ -1011,26 +999,19 @@ async function saveRunnerConnectSession(
     1,
     Math.ceil((new Date(session.expiresAt).getTime() - Date.now()) / 1000)
   );
-  await setEphemeralJson(
-    runnerConnectSessionKey(session.deviceCode),
-    session,
-    ttl
-  );
-  await setEphemeralJson(runnerConnectUserKey(session.userCode), session, ttl);
+  await ephemeralAuthorizationSessionStore.save(session, ttl);
 }
 
 async function getRunnerConnectSessionByDevice(
   deviceCode: string
 ): Promise<RunnerConnectSession | null> {
-  return getEphemeralJson<RunnerConnectSession>(
-    runnerConnectSessionKey(deviceCode)
-  );
+  return ephemeralAuthorizationSessionStore.getByDeviceCode<RunnerConnectSession>(deviceCode);
 }
 
 async function getRunnerConnectSessionByUser(
   userCode: string
 ): Promise<RunnerConnectSession | null> {
-  return getEphemeralJson<RunnerConnectSession>(runnerConnectUserKey(userCode));
+  return ephemeralAuthorizationSessionStore.getByUserCode<RunnerConnectSession>(userCode);
 }
 
 function runnerConnectExpired(session: RunnerConnectSession): boolean {
@@ -1111,7 +1092,7 @@ function sendError(res: Response, error: unknown): void {
     res.status(error.statusCode).json({ error: error.code });
     return;
   }
-  if (error instanceof RedisEphemeralKeyRegistryError) {
+  if (error instanceof EphemeralAuthorizationStoreError) {
     res.status(503).json({ error: error.code });
     return;
   }

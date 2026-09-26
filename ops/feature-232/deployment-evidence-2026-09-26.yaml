@@ -1,0 +1,124 @@
+evidence_version: redis-cloudflare-migration-v1
+observed_at: 2026-09-26
+secrets_or_personal_data_recorded: false
+
+g1_search_result_cache:
+  status: VERIFICATION_INCOMPLETE
+  target:
+    worker: smartspec-cloudflare-runtime
+    worker_version_id: f6f0ba85-3d23-476e-b8af-55840609442d
+    hostname: https://runtime.smartaihub.app
+    kv_binding: SEARCH_RESULT_CACHE
+    kv_namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+    activation: disabled
+  production_evidence:
+    postgresql_provider: cloudflare_kv
+    web_service: active_after_restart
+    web_healthz_http: 200
+    worker_healthz_http: 200
+    authenticated_cache_probe_http: 200
+    authenticated_cache_probe_ready: true
+    synthetic_tenant_isolation: passed
+    synthetic_cross_tenant_read: empty
+    synthetic_entry_ttl_seconds: 60
+    unauthenticated_cache_probe_http: 401
+    previous_app_adapter_roundtrip: passed
+    legacy_redis_search_cache_keys: 0
+    legacy_redis_keys_are_not_active_operation_evidence: true
+  not_verified:
+    beta_account_1_search_hit_and_miss: no_authorized_session_available
+    beta_account_2_search_hit_and_miss: no_authorized_session_available
+    production_search_request_trace: not_observed
+    production_admin_cloudflare_tab: no_authenticated_browser_session_available
+    production_redis_operation_attribution: unavailable_without_safe_command_telemetry
+  safe_failure_injection:
+    method: focused adapter tests with network failure; does not modify production binding
+    result: passed
+    production_kv_binding_disabled_or_modified: false
+  decision: do_not_mark_PRODUCTION_CUTOVER_VERIFIED
+  blockers:
+    - run one authorized real Search miss and subsequent hit for each beta account
+    - capture sanitized Worker/application trace proving those Search calls used KV
+    - inspect the production Admin Cloudflare tab while authenticated
+    - attribute zero active Redis commands to the SearchResultCache call path
+
+g2_a_jti_revocation:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  persistence: SHA-256 digest of JTI and expiration only
+  database_migration: apps/web/drizzle/0345_feature_245_postgres_jti_revocations.sql
+  importer: apps/web/scripts/migrate-jti-revocations.ts
+  redis_dry_run:
+    mode: dry-run
+    scanned_active_revocations: 277
+    persistent_revocations: 0
+    imported: 0
+    identifiers_logged: false
+  production_database_table_present: false
+  production_code_restarted_to_new_jti_authority: false
+  runtime_cutover: not_performed
+  test_results:
+    unit_contract: 5_passed
+    postgres_integration: 2_passed_on_smartspec_test
+    g1_cache_and_responses: 26_passed
+    focused_migration_tests_total: 72_passed_including_worker_routes
+    runner_route_suite: 16_passed_when_run_independently
+    combined_runner_and_database_run: one_existing_2_second_wss_test_timeout;_rerun_independently_passed
+    focused_typescript: 1318_total_diagnostics_due_to_missing_project_alias_context_and_existing_baseline;_zero_diagnostics_in_new_ephemeral_store_service;_changed_route_files_have_existing_unrelated_diagnostics
+    full_web_typecheck: not_run_due_repository_ram_guard
+  maintenance_requirements:
+    - apply migration 0345
+    - pause every token issue and revoke path across all Web instances
+    - rerun importer dry-run; apply with JTI_REVOCATION_MAINTENANCE_CONFIRMED=1
+    - deploy PG-backed revocation code to all instances while auth remains paused
+    - prove sampled imported JTIs remain revoked, expiry works, and all instances read PostgreSQL
+    - resume authentication only after checks pass
+
+g2_b_device_authorization:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  migration: apps/web/drizzle/0346_feature_245_postgres_device_authorizations.sql
+  code_persistence: SHA-256 device and user code digests only
+  test_results:
+    postgres_integration: 2_passed_on_smartspec_test_across_separate_clients
+    coverage: atomic_authorize_consume_expiry_replay_and_hashed_at_rest
+  production_database_migration_applied: false
+  old_caller_closed_in_production: false
+  maintenance: pause issuance and drain old grants for up to 10 minutes; confirm legacy grant prefix empty before deploy
+
+g2_c_login_failure_counters:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  migration: apps/web/drizzle/0347_feature_245_postgres_login_failure_counters.sql
+  persistence: normalized-email SHA-256 digest, count, and 15-minute sliding expiry
+  test_results:
+    postgres_integration: 1_passed_on_smartspec_test
+    concurrent_increments: 12_requests_across_two_database_clients
+  production_database_migration_applied: false
+  old_caller_closed_in_production: false
+
+g2_d_ephemeral_authorization:
+  status: local_implementation_tested_production_cutover_pending
+  source_of_truth: postgresql
+  callers: runnerControl.ts_and_workerRuntime.ts
+  migration: apps/web/drizzle/0348_feature_245_ephemeral_authorization_sessions.sql
+  storage: single_paired_row_with_hashed_lookup_codes_aes_256_gcm_encrypted_payload_and_expiry
+  test_results:
+    postgres_integration: 1_passed_on_smartspec_test_across_separate_clients
+    coverage: both_lookup_indexes_shared_state_expiry_cleanup
+  production_database_migration_applied: false
+  old_callers_closed_in_production: false
+  deferred: voice_websocket_tickets_active_session_owner_and_pubsub_to_spec_237_242
+
+g2_overall:
+  status: LOCAL_IMPLEMENTATION_COMPLETE_PRODUCTION_CUTOVER_PENDING
+  production_cutover_performed: false
+  redis_must_remain_enabled: true
+  required_migrations: [0345, 0346, 0347, 0348]
+  recovery: keep_auth_maintenance_paused_if_verification_fails_restore_last_known_good_web_code_retain_postgresql_revocations_and_replay_import_before_resuming
+
+global:
+  redis_retired: false
+  cloudflare_job_runtime_activation: disabled
+  g2_b_to_d: local_implementation_and_focused_postgres_tests_passed_production_cutover_pending
+  g3_to_g6: not_cut_over

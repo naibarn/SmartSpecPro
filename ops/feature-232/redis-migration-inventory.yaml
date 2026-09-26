@@ -18,11 +18,11 @@ scan_boundary:
 
 execution_host_observation:
   observed_at: 2026-09-26
-  environment_identity: unknown_local_host_not_production_certification
+  environment_identity: production_web_service_host_verified_target_deploy_observed
   method: read_only_systemd_docker_and_redis_metadata
-  wrangler_cli_available: false
-  wrangler_auth_available: false
-  cloudflare_target_evidence_file_available: false
+  wrangler_cli_available: false # no repo/global binary; npx wrangler@4.141.0 was available
+  wrangler_auth_available: true # reused the existing Vectorize credential; never printed
+  cloudflare_target_evidence_file_available: true # sanitized deployment/probe evidence recorded below
   cloudflare_activation: disabled
   services:
     systemd:
@@ -73,8 +73,8 @@ responsibility_groups:
       - file: apps/web/server/services/searchResultCache.ts
         symbol: SearchResultCache
         semantics: tenant and user keyed search-result cache with 15m/60m TTL
-        target: Workers KV only after data classification; canonical search/provider path on miss
-        migration_status: owner_authorized_local_implementation_target_probe_required
+        target: Workers KV; canonical search/provider path on miss
+        migration_status: target_enabled_app_adapter_roundtrip_passed_beta_flow_and_redis_closure_pending
       - file: apps/web/server/services/groupsService.ts
         symbol: getUserGroups
         semantics: tenant/user scoped authorization-adjacent cache with invalidation
@@ -88,24 +88,40 @@ responsibility_groups:
     unknown_callers: true
 
   G2_auth_session_revocation:
-    status: partial_static_discovery
+    status: g2a_to_g2d_local_implementation_tested_production_cutover_pending
     examples:
       - file: apps/web/server/_core/revocation.ts
-        symbol: Redis revocation client
-        semantics: token/session revocation decision
-        target: PostgreSQL HYPERDRIVE_FRESH; DO only for scoped coordination; KV non-authoritative hint only
-        migration_status: blocked_on_active_session_and_ttl_inventory
+        symbol: JTI revocation service
+        semantics: shared token revocation decision; current Redis key TTL controls revocation lifetime
+        target: PostgreSQL revoked_token_jtis; SHA-256 digest only; fail closed on database errors
+        migration_status: local_postgresql_unit_5_and_integration_2_passed_production_schema_absent_import_not_applied
+      - file: apps/web/server/_core/deviceAuthRoutes.ts
+        symbol: device code store and account login failure counters
+        semantics: one-time device authorization state and 15-minute threshold-five lockout counter; current memory fallback is per process
+        target: PostgreSQL atomic state transitions and transactional counter/window updates
+        migration_status: local_postgresql_implementation_and_two_client_integration_passed_production_migration_0346_pending
       - file: apps/web/server/services/redisEphemeralKeyRegistry.ts
         symbol: setEphemeralJson/getEphemeralJson/setEphemeralText/getEphemeralText
-        semantics: short-lived cross-instance ephemeral state; callers must be classified individually
-        target: PostgreSQL or DO for correctness-sensitive state; KV only for proven non-authoritative hints
-        migration_status: unverified
+        semantics: strict cross-instance state used by runner connect and worker connect pairing flows
+        target: PostgreSQL single-row paired session with hashed code indexes, AES-256-GCM encrypted payload, and expiry; no KV authority
+        migration_status: callers_runnerControl_and_workerRuntime_moved_in_worktree_migration_0348_and_two_client_integration_passed_production_cutover_pending
       - file: apps/web/server/routes/voiceGateway.ts
         symbol: voice session token and active session keys
         semantics: single-use websocket ticket, one active voice session per user, consent revoke cleanup
         target: PostgreSQL one-time ticket/fresh consent plus per-user Durable Object WebSocket owner candidate under Spec 237/242 contract
         migration_status: do_candidate_confirmed_by_local_call_path_contract_review_required
     unknown_callers: true
+
+    login_failure_counter:
+      file: apps/web/server/services/loginFailureCounterStore.ts
+      semantics: atomic threshold-five counter with sliding 15-minute expiry and clear-on-success
+      target: PostgreSQL auth_login_failure_counters; normalized email digest only
+      migration_status: local_two-client_concurrency_integration_passed_production_migration_0347_pending
+      old_caller: deviceAuthRoutes.ts Redis counter path remains active only in currently deployed Production version
+    deferred_voice_dependencies:
+      file: apps/web/server/routes/voiceGateway.ts
+      symbols: websocket ticket, active voice session, consent-revocation Pub/Sub
+      migration_status: explicitly_deferred_to_spec_237_242
 
   G3_rate_limit_quota_idempotency:
     status: partial_static_discovery
@@ -169,7 +185,7 @@ responsibility_groups:
     unknown_callers: true
 
   G6_jobs_schedulers_and_job_state:
-    status: worktree_under_active_changes_static_scan_untrusted
+    status: partial_static_discovery_runtime_and_family_ownership_unverified
     examples:
       - file: apps/web/server/jobs
         symbol: BullMQ queue/worker/scheduler registrations
@@ -186,11 +202,18 @@ responsibility_groups:
         semantics: retry/dead-letter records
         target: canonical worker_jobs events/outbox/DLQ policy
         migration_status: event_retention_and_replay_mapping_required
-    source_tree_note: job and transport files currently have extensive uncommitted changes; static call-site counts are not stable evidence
+    source_tree_note: migration commits were present and the worktree was clean at task start; static call-site discovery still does not prove runtime ownership or exhaustive caller closure
+    local_cutover_blocker_observed: >-
+      Local Admin browser-test app startup logged schedule-occurrence definition-hash conflicts for
+      memory-archive-cleanup, library-trash-purge, notification-retention, notification-escalation,
+      notification-digest, memory-chunk-cleanup, memory-embedding-reconciliation, memory-eviction,
+      and worker-heartbeat-retention. This was a localhost/dev observation, not Production evidence.
+      Reconcile persisted worker_jobs schedule occurrence definition hashes against current schedule
+      contracts before moving these scheduler families; do not delete canonical rows or blind-retry.
     unknown_callers: true
 
 kv_pilot:
-  status: implementation_authorized_target_enable_blocked
+  status: target_enabled_production_verification_incomplete
   candidate: apps/web/server/services/searchResultCache.ts
   owner_decision:
     beta_users: 2
@@ -200,17 +223,49 @@ kv_pilot:
     decision_date: 2026-09-26
   reasons:
     - existing caller runs in the Node application, not the Cloudflare Worker binding context
-    - Worker environment contract has no KV namespace binding
-    - target-account evidence and deployment identity are absent in this checkout
-    - tenant/user key isolation and bounded TTL must be enforced in the new endpoint
+    - Cloudflare Worker endpoint and target KV namespace are now deployed with authenticated access
+    - tenant/user isolation and bounded TTL are enforced by the endpoint contract and covered by focused tests
     - KV miss, expiry, and cross-location stale behavior are acceptable only because this cache is disposable
   required_before_pilot:
-    - implement authenticated internal Worker endpoint and SEARCH_RESULT_CACHE binding contract
-    - implement Node client with cache miss/no-op on failure and no Redis fallback when Cloudflare KV is selected
-    - add Admin switch, readiness probe and complete endpoint/binding/secret deployment guide
-    - verify tenant/user key isolation, current 15m/60m TTLs, freshness bypass, and cache-loss behavior
-    - obtain real target binding/secret evidence before enabling in the target environment
-  cutover_mode: controlled_maintenance_pause_then_direct_kv_enable
+    - completed locally: authenticated internal Worker endpoint and SEARCH_RESULT_CACHE binding contract
+    - completed locally: Node cache miss/no-op behavior with no Redis fallback in Cloudflare KV mode
+    - completed locally: Admin switch, readiness probe and endpoint/binding/secret setup guide
+    - completed locally: tenant/user key isolation, TTL bounds, freshness-bypass and cache-loss focused tests
+    - completed locally: Browser Visual Test on mobile/tablet/desktop with mocked unconfigured target
+    - completed against target: namespace, Worker KV binding, dedicated secret, custom domain, deploy, health and authenticated KV probe
+    - completed against app adapter: PostgreSQL provider set to cloudflare_kv; ephemeral SearchResultCache write/read roundtrip passed through the deployed Worker
+    - still required for G1 closure: real search miss/hit for both beta users; sanitized production request traces; authenticated Production Admin UI review; and proof that the SearchResultCache request path issues no Redis commands
+    - current runtime evidence proves zero legacy SearchResultCache keys, not zero Redis commands; other Redis responsibility groups remain active
+  target_evidence:
+    observed_at: 2026-09-26
+    hostname: https://runtime.smartaihub.app
+    worker: smartspec-cloudflare-runtime
+    worker_version_id: f6f0ba85-3d23-476e-b8af-55840609442d
+    namespace_binding: SEARCH_RESULT_CACHE
+    namespace_id: df6d9bead8644d0f8f334f59b6bdfbeb
+    worker_secret_name: CLOUDFLARE_SEARCH_CACHE_TOKEN # secret value is not recorded
+    web_environment_keys: [CLOUDFLARE_RUNTIME_URL, CLOUDFLARE_SEARCH_CACHE_TOKEN] # values are not recorded
+    activation: disabled # queue/job runtime remains inactive
+    probes:
+      healthz_http: 200
+      authenticated_cache_probe_http: 200
+      authenticated_cache_probe_ready: true
+      readyz_http: 503 # expected while unrelated job/runtime bindings are absent
+    application:
+      provider_setting: cloudflare_kv
+      adapter_set_get_roundtrip: passed
+      synthetic_tenant_isolation: passed
+      synthetic_cross_tenant_read: empty
+      unauthenticated_probe_http: 401
+      legacy_search_cache_keys: 0
+      beta_responses_flow: pending
+      production_search_trace: not_observed
+      production_admin_ui: not_verified_no_authenticated_browser_session
+      active_redis_operation_attribution: unavailable
+      web_service_restart: passed
+      web_healthz: passed
+    rollback: set infrastructure.search_result_cache_provider=disabled in Admin; Worker secret/namespace can remain provisioned
+  cutover_mode: direct_enable_production_verification_incomplete
   data_migration: none_cache_is_disposable_start_cold
   post_cutover_monitoring: immediate_bug_detection_not_a_retirement_timer
 
@@ -219,8 +274,20 @@ next_actions:
     action: reconcile static source scan with production processes, schedules and Redis telemetry
     status: blocked_on_production_host_identity_and_runtime_evidence
   - id: P232.0B
-    action: reconcile current Feature 186 transport diffs, compatibility manifest and in-flight job families
-    status: blocked_on_dirty_worktree_review_and_runtime_evidence
+    action: reconcile Feature 186 transport, compatibility manifest and in-flight job families against active runtime owners
+    status: blocked_on_runtime_evidence_and_family_ownership
   - id: P232.3-cache-pilot
-    action: implement the authorized SearchResultCache KV slice; enable only after the real Worker binding/token probe passes
-    status: local_implementation_in_progress_target_deploy_blocked
+    action: run Search miss/hit with both authorized beta accounts, capture sanitized Production trace, review live Admin Cloudflare tab, and prove no Redis operation from SearchResultCache path
+    status: production_target_and_synthetic_isolation_passed_beta_account_trace_admin_and_command_attribution_pending
+  - id: P232.G2A-jti-revocation
+    action: apply migration 0345, pause token issue/revoke paths, import current Redis revocations using the guarded importer, deploy all Web instances, prove multi-instance and recovery behavior, then resume auth
+    status: code_and_unit_tests_passed_277_active_redis_revocations_found_dry_run_only_prod_migration_and_maintenance_required
+  - id: P232.G2B-G2D-auth-state
+    action: "Production cutover remains pending: apply 0345-0348, pause all auth flows, import active JTIs, drain device grants, deploy and verify cross-instance behavior; defer voice session/Redis PubSub to Spec 237/242"
+    status: local_implementation_and_focused_tests_passed_production_cutover_pending
+  - id: P232.G2-G6-direct-cutover
+    action: complete caller/runtime inventory and execute direct cutover by dependency using ops/feature-232/direct-cutover-plan.md
+    status: plan_recorded_inventory_partial_no_group_cutover_closed
+  - id: P232.G6-schedule-occurrence-conflicts
+    action: inspect local canonical worker_jobs schedule occurrence conflicts and reconcile definition/version ownership before scheduler cutover
+    status: local_runtime_conflicts_observed_cause_and_production_scope_unverified

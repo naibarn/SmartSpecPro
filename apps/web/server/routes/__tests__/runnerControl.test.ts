@@ -9,19 +9,27 @@ vi.mock("../../_core/authz", () => ({
   authorizeRequest: vi.fn(),
 }));
 
-vi.mock("../../services/redisEphemeralKeyRegistry", () => {
-  const values = new Map<string, string>();
-  class RedisEphemeralKeyRegistryError extends Error {
-    readonly code = "redis_ephemeral_store_unavailable";
+vi.mock("../../_core/revocation", () => {
+  const revoked = new Set<string>();
+  return {
+    isJtiRevoked: vi.fn(async (jti: string) => revoked.has(jti)),
+    revokeJti: vi.fn(async (jti: string) => { revoked.add(jti); }),
+    hashJti: (value: string) => value,
+  };
+});
+
+vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
+  const byDevice = new Map<string, unknown>();
+  const byUser = new Map<string, unknown>();
+  class EphemeralAuthorizationStoreError extends Error {
+    readonly code = "ephemeral_authorization_store_unavailable";
   }
   return {
-    RedisEphemeralKeyRegistryError,
-    setEphemeralJson: async (key: string, value: unknown) => {
-      values.set(key, JSON.stringify(value));
-    },
-    getEphemeralJson: async <T>(key: string): Promise<T | null> => {
-      const value = values.get(key);
-      return value ? (JSON.parse(value) as T) : null;
+    EphemeralAuthorizationStoreError,
+    ephemeralAuthorizationSessionStore: {
+      save: async (session: any) => { byDevice.set(session.deviceCode, session); byUser.set(String(session.userCode).toUpperCase(), session); },
+      getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
+      getByUserCode: async (code: string) => byUser.get(code.toUpperCase()) ?? null,
     },
   };
 });
