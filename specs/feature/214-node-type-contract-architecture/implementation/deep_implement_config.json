@@ -1,0 +1,78 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/feature/214-node-type-contract-architecture/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/feature/214-node-type-contract-architecture/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && JWT_SECRET=local-test-secret npm test -- --run shared/workflowNodeContracts.test.ts server/services/__tests__/workflowCompilerRuntimeContracts.test.ts server/services/__tests__/workflowBuilderCompiler.test.ts server/services/__tests__/workflowStudioCanonicalAdapter.test.ts shared/workflow214Coverage.test.ts server/routers/__tests__/workflowStudio.test.ts server/services/__tests__/workflowStudioContracts.test.ts server/services/__tests__/workflowStudioRuntime.test.ts server/services/__tests__/workflowDataBinding.test.ts shared/workflowBrowserSessionNodeTypes.test.ts",
+  "sections": [
+    "section-01-manifest-contract",
+    "section-02-registry-version-search",
+    "section-03-instance-projection-admission",
+    "section-04-spec215-compiler-consumption",
+    "section-05-studio-adapter-boundary",
+    "section-06-ai-builder-canonical-selection",
+    "section-07-extension-and-legacy-disposition",
+    "section-08-r20-coverage-and-integration"
+  ],
+  "sections_state": {
+    "section-01-manifest-contract": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-02-registry-version-search": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-03-instance-projection-admission": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-04-spec215-compiler-consumption": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-05-studio-adapter-boundary": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-06-ai-builder-canonical-selection": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-07-extension-and-legacy-disposition": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    },
+    "section-08-r20-coverage-and-integration": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped": "No commit created to preserve the pre-existing mixed worktree",
+      "review_status": "complete_after_11_convergence_rounds"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-09-26T00:47:14.669371+00:00"
+}

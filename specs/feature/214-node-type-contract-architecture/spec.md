@@ -1,15 +1,21 @@
-# Spec 214 — Canonical Node Type Contract Architecture v5
+# Spec 214 — Canonical Node Type Contract Architecture v6
 ## Future-Proof Node Taxonomy, Registry, Contracts, AI-Builder Discovery & Spec 212 Coverage
 
-**Status:** Proposed / Implementation Specification  
+**Status:** Proposed / Partial canonical contract slice present; runtime and corpus certification pending
 **Spec ID:** 214  
-**Revision:** 5  
-**Date:** 2026-09-20  
+**Revision:** 6 — Spec 229 Retrieval Broker alignment for data.retrieval and capability-neutral search
+**Date:** 2026-09-22
 **Suggested repository path:** `specs/feature/214-node-type-contract-architecture/spec.md`  
 **Primary purpose:** Define what a canonical Workflow Node Type is, which core Node Types SmartAIHub must provide, how they are discovered/validated/versioned, and how the catalog remains complete without duplication.  
 **Companion specs:** Spec 209 (Workflow Studio / AI Builder UX), Spec 212 (Marketplace + Capability Lab + continuous validation), Spec 215 (Workflow Compiler & Runtime Execution), Feature 195 (`worker_jobs` durable physical job control), Specs 199/200/206/208/211 and capability/runtime registries.
 
 ---
+
+## 0.1 Codebase alignment snapshot — 2026-09-22
+
+Current source evidence is limited to the canonical contract slice. `apps/web/server/services/workflowNodeContracts.ts` exposes manifest schema v4, 16 core node IDs, digest validation, exact lookup/search and `NodeInstance` validation. `workflowStudioCanonicalAdapter.ts`, `workflowBuilderCompiler.ts` and `routers/workflowStudio.ts` consume parts of this contract, with focused tests.
+
+This does not prove a complete Studio/runtime cutover or Spec 212 R20 certification. The existing Workflow Studio persistence migration (`0341_feature_209_workflow_studio.sql`) means production-data inventory, compatibility handling and rollback remain required before a destructive clean-slate cutover. Spec 229 retrieval-broker integration is a target boundary; no canonical Retrieval Broker V2 implementation was found in the current source tree.
 
 # 0. Executive Decision
 
@@ -78,7 +84,7 @@ No duplicate Workflow Definition, registry, resolver, queue or Runner control pl
 
 # 2. Spec 212 Is the Coverage Source of Truth
 
-Spec 212 Revision 16 contains **2,810 language-independent Use Case identities**, with required Thai and English localizations, producing **5,620 canonical prompt executions**.
+Spec 212 Revision 20 contains **2,930 language-independent Use Case identities**, with required Thai and English localizations, producing **5,860 canonical prompt executions**.
 
 Spec 214 SHALL NOT assume that a small demo node set is sufficient. Its taxonomy MUST be able to represent workflows generated for the entire Spec 212 corpus, including:
 
@@ -229,7 +235,7 @@ A proposed new core or extension Node Type MUST pass all mandatory checks below.
 
 If checks 1–6 or 8–10 fail, the proposal MUST NOT become a new Node Type.
 
-Because there are no persisted production workflows requiring compatibility at the time of this revision, **legacy implementation names receive no admission privilege**. Existing code is evidence of required semantics, not a contract that must be preserved.
+Legacy implementation names receive no canonical admission privilege. Existing code and persisted Workflow Studio data remain migration evidence; a production-data inventory and rollback plan are required before removing or rewriting old identifiers.
 
 ---
 
@@ -908,7 +914,7 @@ A verifier MUST emit evidence/score/status through a typed contract. The runtime
 
 # 28. Clean-Slate Review of the 112 Implemented `nodeType` Names
 
-The 112 implemented names from the pre-canonical codebase are **reference evidence only**. There are no persisted workflows requiring those IDs to remain valid.
+The 112 implemented names from the pre-canonical codebase are **reference evidence only**. The repository contains persisted Workflow Studio structures, so whether any deployed workflow still uses those IDs must be established by inventory rather than assumed away.
 
 The audit found that preserving all 112 as Node Types would encode several different architectural concepts into one registry:
 
@@ -979,16 +985,16 @@ This reconciliation is normative for Spec 212 validation.
 
 ---
 
-# 30. Spec 212 Coverage Gate — All 2,810 Use Cases
+# 30. Spec 212 Coverage Gate — All 2,930 Use Cases
 
 A taxonomy is not complete merely because its schemas look elegant.
 
 Release SHALL run the full current Spec 212 corpus:
 
 ```text
-2,810 semantic use cases
+2,930 semantic use cases
 × required TH + EN prompts
-= 5,620 canonical AI Builder generations
+= 5,860 canonical AI Builder generations
 ```
 
 For every generated workflow:
@@ -1381,7 +1387,7 @@ Spec 214 MUST NOT turn runtime policies, bindings, instrumentation or graph scop
 
 # 41. Clean-Slate Implementation Cutover
 
-There are implemented node classes but no persisted workflows requiring semantic compatibility.
+There are implemented node classes and persisted Workflow Studio structures. Semantic compatibility and migration must therefore be decided by deployment inventory before the canonical cutover.
 
 Implementation SHALL therefore favor a **single canonical cutover** over compatibility layers:
 
@@ -1521,7 +1527,7 @@ Spec 214 v4 is complete when:
 - [ ] provider/product/protocol names do not fragment the core taxonomy;
 - [ ] AI Builder cannot invent or select system-only control-plane primitives as Node Types;
 - [ ] all 16 types compile through Spec 215 conformance tests;
-- [ ] Spec 212 can run 5,620 TH/EN canonical generations and attribute gaps correctly;
+- [ ] Spec 212 can run 5,860 TH/EN canonical generations and attribute gaps correctly;
 - [ ] extension types are rejected when an existing type + binding/profile/composition is sufficient.
 
 ---
@@ -1606,8 +1612,8 @@ Spec 214 is done when SmartAIHub can represent every supported Spec 212 workflow
 | 18 | Binding identity | Added `NodeResolutionContract` + `NodeBindingRef`. |
 | 19 | Execution contract duplication | Removed side-effect/streaming duplicate sources of truth. |
 | 20 | Extension governance | Strengthened admission test so plugin/provider operations remain capabilities. |
-| 21 | Clean-slate compatibility | Removed old alias/migration requirement because no workflows exist. |
-| 22 | Spec 212 coverage | Retained full 2,810-case / 5,620-prompt regression requirement. |
+| 21 | Compatibility boundary | Kept old IDs non-canonical while requiring deployment inventory and rollback evidence before cutover. |
+| 22 | Spec 212 coverage | Retained the current R20 2,930-case / 5,860-prompt regression requirement. |
 | 23 | AI Builder safety | Blocked system-only/control-plane primitives from normal node selection. |
 | 24 | Cross-spec ownership | Moved interface/bindings/scopes/policies/instrumentation ownership to Spec 215. |
 | 25 | Manual invocation | Removed the need for a synthetic manual trigger; direct invocation starts from WorkflowInterface. |
@@ -1809,53 +1815,108 @@ new presets whose semantic ID is an old type
 
 The goal is to reuse implementations behind adapters, not to reintroduce the old taxonomy.
 
-# 49. Revision 5 — Mini App Interaction Projection Metadata
+---
 
-Revision 5 adds presentation metadata required by Spec 209 Mini App generation without turning presentation into hidden execution semantics.
+# 70. Revision 5 — Spec 225/226 Device-Independent Access Alignment
 
-A NodeTypeManifest MAY expose declarative Mini App hints:
+**Status of this spec:** not yet implemented at the time of this amendment; therefore this requirement is incorporated directly before implementation.
 
-```ts
-interface MiniAppNodePresentationHints {
-  exposureDefault?: "hidden" | "progress" | "interaction" | "result";
-  progressStageKey?: string;
-  progressLabelKey?: string;
-  consumerOverrideEligible?: boolean;
-  preferredInteractionRenderer?: string;
-}
+Spec 214 SHALL remain device/UI neutral. Node Type contracts MUST NOT encode `web`, `desktop`, `mobile`, `tablet`, `telegram`, or any specific control surface as execution semantics.
+
+Human-facing node contracts such as `human.input`, `human.approval` and interaction-capable nodes SHALL describe required **interaction capabilities**, not a client implementation. Examples:
+
+```text
+interaction.text
+interaction.choice
+interaction.file_upload
+interaction.image_capture
+interaction.video_capture
+interaction.voice
+interaction.preview
+interaction.approval
+interaction.remote_handoff
 ```
 
-These fields are advisory presentation metadata only. They MUST NOT alter node ports, effects, security requirements, authority or runtime behavior.
+Spec 225 chooses an eligible user control surface. Spec 226 bridges those interactions into the already-implemented baseline.
+
+`automation.computer_use` remains one canonical Node Type and continues to resolve through Spec 208; a mobile client MUST NOT create a `mobile.browser_use` or `mobile.computer_use` Node Type.
+
+Acceptance additions:
+
+- Node manifests are control-surface independent;
+- human interaction requirements are machine-readable capabilities;
+- workflows authored once can be initiated from Web/PWA/mobile/tablet where the required interaction contract is satisfiable;
+- lack of a mobile UI for an authoring feature does not change workflow execution semantics.
+
+
+## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
+
+All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
+
+The shared request MUST carry at least:
+
+```text
+request_id
+principal / tenant / project / environment
+purpose
+query_class
+query_text or structured selector
+source_classes
+required_visibility / ACL scope
+language hints
+exact identifiers if present
+maximum evidence budget
+freshness requirement
+consumer spec / run / workflow references
+```
+
+The normalized response MUST carry at least:
+
+```text
+retrieval_trace_id
+provider/profile/version
+query plan
+EvidenceRef[]
+source identity + source revision/digest
+ACL/provenance/freshness state
+retrieval/rerank scores as non-authoritative evidence
+quality-gate result
+partial/degraded indicators
+```
+
+`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
+
 
 ---
 
-# 50. Human Interaction Projection Contract
+# Revision 6 — Canonical Retrieval Node Alignment
 
-`human.approval` and `human.input` SHALL expose enough typed metadata for Spec 209 to project safe Mini App interactions.
+This revision aligns `data.retrieval` with Spec 229 while preserving Spec 214 ownership of Node Type semantics.
 
-For approval this includes at least decision schema, subject/title keys, actor/role requirement, quorum/expiry semantics and safe material-operation summary fields.
+`data.retrieval` SHALL remain provider-neutral. Its manifest MAY declare retrieval intent such as:
 
-For human input this includes response JSON Schema, allowed actor/role, expiry/handoff behavior and presentation hints.
+```text
+DOCUMENT_RAG
+EXACT_IDENTIFIER
+SEMANTIC_ENTITY
+SKILL_DISCOVERY
+CAPABILITY_DISCOVERY
+SIMILAR_CASE
+HYBRID_SEARCH
+```
 
-Spec 209 MAY choose the visual component, but Spec 214 remains authoritative for semantic interaction contracts.
+but MUST NOT encode `pgvector`, `Vectorize`, `AI Search`, embedding model, reranker or provider credentials as semantic Node Type identity.
 
----
+Runtime bindings SHALL resolve through Spec 215 into Spec 229 Retrieval Broker. Search providers/profiles remain runtime/configuration concerns.
 
-# 51. Artifact / Result Projection Contract
+A `data.retrieval` output MUST expose normalized provenance/evidence references and degradation state. A high similarity score is not an authorization decision and cannot satisfy a human approval, policy rule or verifier requirement by itself.
 
-`data.artifact` and typed Workflow outputs SHALL identify media/content type and safe renderer hints without embedding arbitrary executable UI.
+Skill discovery remains `data.retrieval`/capability behavior; **no `skill.vector_search`, `skill.retrieval` or provider-specific Node Type SHALL be introduced.**
 
-Approved renderers MAY include image/video/audio/file preview, structured object/table/report, timeline and downloadable/savable artifact actions.
+Required conformance tests:
 
-Renderer hints MUST NOT grant additional artifact access; authorization remains runtime policy.
-
----
-
-# 52. Revision 5 Acceptance Criteria
-
-- [ ] Mini App presentation hints are optional and non-semantic.
-- [ ] Human approval/input contracts are sufficient for typed consumer interaction generation.
-- [ ] Artifact/result types can select approved safe renderers.
-- [ ] No Mini App-specific Node Type is introduced.
-- [ ] A presentation change cannot silently change workflow execution semantics.
-
+1. Vector provider changes do not mutate WorkflowDefinition semantics.
+2. Exact Spec/Skill IDs take the deterministic exact lane when supplied.
+3. ACL-denied evidence is never emitted to the node output.
+4. `SKILL_DISCOVERY` returns candidate references, not executable authority.
+5. degraded/insufficient retrieval is visible and never silently reported as grounded success.

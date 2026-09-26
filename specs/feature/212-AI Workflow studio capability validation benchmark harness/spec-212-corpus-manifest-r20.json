@@ -6,7 +6,10 @@
   "use_case_identity_revision": 20,
   "use_case_count": 2930,
   "canonical_prompt_executions": 5860,
-  "required_locales": ["th", "en"],
+  "required_locales": [
+    "th",
+    "en"
+  ],
   "first_id": "UC-0001",
   "last_id": "UC-2930",
   "parent_spec_revision": 19,
@@ -48,16 +51,24 @@
       "sha256": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942"
     },
     "spec-212-current-contract-profile-r20.json": {
-      "sha256": "dd1458ed04ce1077f268c586464332c85642bcd6f19d09fdce438b6c39527121"
+      "sha256": "dba55de456d2165eba6d30a5519895634fba37154ff635993338e0cc60b222d8"
     },
     "spec-214-spec212-coverage-manifest-r20.json": {
-      "sha256": "c674ae2edf8a0c97a63ac7b31864ea5916a89852d4984d7c554f5007f9ab511d"
+      "sha256": "6d556bcd964119c4ca68ce95b307508b111be8082bdd9519175ef55ec1cc502b"
     },
     "specs/feature/214-node-type-contract-architecture/spec.md": {
-      "sha256": "91538fcb54fd37f2918521068317d11669dbcc9afefb11284ebb151ced050ef8"
+      "sha256": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798"
     },
     "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md": {
-      "sha256": "1b9c3ebcba98ca7245c7cd21ff97691415f067dbee3d176623930fbb821efd08"
+      "sha256": "5a8ec1cffde8d1e2ad6c0dbd9ef5497b4c7894ed84dd34c04abde2cd2b64f73a"
+    },
+    "spec-212-use-case-identity-r20.json": {
+      "sha256": "4f63bd2fad805cae00f3f934b419e5714369a4ce2c2536d3045c991de6e10aa3",
+      "records": 2930
+    },
+    "spec-214-112-nodeType-clean-slate-disposition.json": {
+      "sha256": "aec43fb0f8a4e27e1aee75b04c66238bc9d98e4e22d85e6e71db9c5812ab6bd7",
+      "records": 112
     }
   }
 }

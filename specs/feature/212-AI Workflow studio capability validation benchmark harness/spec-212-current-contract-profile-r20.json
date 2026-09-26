@@ -13,7 +13,7 @@
     "node_contract_spec": "specs/feature/214-node-type-contract-architecture/spec.md",
     "runtime_spec": "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md",
     "node_coverage_manifest": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-spec212-coverage-manifest-r20.json",
-    "implemented_node_disposition": null,
+    "implemented_node_disposition": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-112-nodeType-clean-slate-disposition.json",
     "workflow_studio_spec": "specs/feature/209-ai-workflow-studio-miniapp-marketplace/spec.md"
   },
   "identity": {
@@ -83,7 +83,7 @@
   },
   "node_taxonomy": {
     "spec": 214,
-    "revision": 5,
+    "revision": 6,
     "canonical_core_type_count": 16,
     "clean_slate": true,
     "preserve_precanonical_112_ids": false,
@@ -150,8 +150,10 @@
     ],
     "canonical_prompt_executions": 5860,
     "node_type_coverage_manifest": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-spec212-coverage-manifest-r20.json",
-    "implemented_node_disposition": null,
-    "multiple_valid_graphs_allowed": true
+    "implemented_node_disposition": "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec-214-112-nodeType-clean-slate-disposition.json",
+    "multiple_valid_graphs_allowed": true,
+    "node_disposition_entries": 112,
+    "spec_214_revision": 6
   },
   "mini_app_productization": {
     "revision": 19,

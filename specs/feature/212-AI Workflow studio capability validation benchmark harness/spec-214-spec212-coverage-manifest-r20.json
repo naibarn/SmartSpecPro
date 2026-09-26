@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "spec_214_revision": 5,
+  "spec_214_revision": 6,
   "spec_215_revision": 3,
   "spec_212_revision": 20,
   "corpus": {
@@ -13,7 +13,10 @@
     "first_id": "UC-0001",
     "last_id": "UC-2930",
     "category_count": 262,
-    "corpus_identity_revision": 20
+    "corpus_identity_revision": 20,
+    "identity_index": "spec-212-use-case-identity-r20.json",
+    "identity_revision": 20,
+    "record_hash_algorithm": "sha256-canonical-json-v1"
   },
   "canonical_core_node_types": [
     "core.trigger",
@@ -1152,5 +1155,12 @@
       "Spec 221 skill engineering",
       "Spec 222 agentic context and harness security"
     ]
+  },
+  "current_profile_must_match_manifest": {
+    "spec_214_revision": 6,
+    "canonical_core_node_type_count": 16,
+    "use_case_count": 2930,
+    "canonical_prompt_executions": 5860,
+    "implemented_node_disposition": "spec-214-112-nodeType-clean-slate-disposition.json"
   }
 }
