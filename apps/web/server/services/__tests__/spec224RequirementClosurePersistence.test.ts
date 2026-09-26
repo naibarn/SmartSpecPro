@@ -6,9 +6,13 @@ import {
 } from "../spec224DevelopmentRunContracts";
 import {
   buildBlockerLedgerEntry,
+  buildSourceChangeInventory,
   compileRequirementClosureGraph,
+  digestSourceManifest,
 } from "../spec224RequirementClosureContracts";
+import { deriveSpec224RequirementId } from "../spec224SpecBaseline";
 import { createRequirementClosurePersistenceService } from "../spec224RequirementClosurePersistence";
+import { makeReadyClosureFixture } from "./spec224ClosureReadyFixture";
 import type {
   DevelopmentRunPersistenceAdapter,
   DevelopmentRunStoreRecord,
@@ -24,30 +28,44 @@ const baseRun = buildDevelopmentRun({
   contextPackHash: "a".repeat(64),
   workspaceId: "workspace:run-224-closure",
 });
+baseRun.evidenceRefs.push("evidence:blocker-closure");
 
 function graphInput() {
+  const sourceArtifactDigest = "c".repeat(64);
+  const digest = "b".repeat(64);
+  const requirementText =
+    "Persist the closure graph without a second event store.";
+  const requirementId = deriveSpec224RequirementId({
+    specId: "224",
+    revision: "21",
+    sourceArtifactDigest,
+    sourceDigest: digest,
+    line: 1,
+    text: requirementText,
+  });
   return {
     baseline: {
       specId: "224",
       revision: "21",
-      digest: "b".repeat(64),
+      sourceArtifactDigest,
+      digest,
       baselineId: "baseline:224-r21",
       authorityRef: "authority:platform-engineering",
       scopeEnvelopeRef: "scope:224-r21",
     },
     requirements: [
       {
-        id: "REQ-1",
-        sourceRef: "spec:224#1",
-        text: "Persist the closure graph without a second event store.",
+        id: requirementId,
+        sourceRef: "spec:224@21#L1",
+        text: requirementText,
       },
     ],
-    planSections: [{ id: "section:closure", requirementIds: ["REQ-1"] }],
+    planSections: [{ id: "section:closure", requirementIds: [requirementId] }],
     workPackages: [
       {
         id: "wp:closure",
         planSectionId: "section:closure",
-        requirementIds: ["REQ-1"],
+        requirementIds: [requirementId],
         dependsOn: [],
       },
     ],
@@ -150,13 +168,122 @@ describe("Spec 224 persisted requirement closure projection", () => {
     expect(evidence.payload).toMatchObject({
       action: "closure_graph_attached",
       graphDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
-      requirementIds: ["REQ-1"],
+      requirementIds: [graphInput().requirements[0]!.id],
     });
     expect(JSON.stringify(evidence.payload)).not.toContain(
       "Persist the closure graph"
     );
     expect(reloaded.graph.baseline.baselineId).toBe("baseline:224-r21");
     expect(reloaded.revision).toBe(1);
+  });
+
+  it("invalidates requirement and WorkPackage evidence when the candidate manifest changes", async () => {
+    const ready = makeReadyClosureFixture(
+      compileRequirementClosureGraph(graphInput()),
+      { baseRevision: baseRun.baseRevision, prefix: "closure-invalidation" }
+    );
+    const previousInventory = ready.graph.sourceInventory!;
+    const addedFile = {
+      path: "apps/web/new-source.ts",
+      digest: "e".repeat(64),
+    };
+    const candidateFiles = [...previousInventory.candidateFiles, addedFile];
+    const nextInventory = buildSourceChangeInventory({
+      baseline: ready.graph.baseline,
+      baselineRevision: previousInventory.baselineRevision,
+      candidateRevision: "git:closure-invalidation-next",
+      baselineManifestDigest: previousInventory.baselineManifestDigest,
+      candidateManifestDigest: digestSourceManifest(candidateFiles),
+      scannerRef: "scanner:spec224-test-fixture",
+      manifestEvidenceRef: "evidence:closure-invalidation-next-manifest",
+      coverage: {
+        ...previousInventory.coverage,
+        candidateRevision: "git:closure-invalidation-next",
+        attestationEvidenceRef: "evidence:closure-invalidation-next-manifest",
+      },
+      specArtifactPath: previousInventory.specArtifactPath,
+      baselineFiles: previousInventory.baselineFiles,
+      candidateFiles,
+      scannedAt: "2026-09-26T00:00:00.000Z",
+      changes: [
+        {
+          path: addedFile.path,
+          beforeDigest: null,
+          afterDigest: addedFile.digest,
+          requirementIds: [],
+          derivedRequirementIds: [],
+          evidenceRef: "evidence:closure-invalidation-new-file",
+        },
+      ],
+      requirementIds: ready.graph.requirements.map(item => item.id),
+      derivedRequirements: ready.graph.derivedRequirements,
+    });
+    const recompiled = compileRequirementClosureGraph({
+      baseline: ready.graph.baseline,
+      requirements: ready.graph.requirements.map(({ id, sourceRef, text }) => ({
+        id,
+        sourceRef,
+        text,
+      })),
+      planSections: ready.graph.planSections,
+      workPackages: ready.graph.workPackages,
+      derivedRequirements: ready.graph.derivedRequirements,
+      sourceInventory: nextInventory,
+    });
+    const changedGraph = {
+      ...recompiled,
+      requirements: recompiled.requirements.map(requirement => {
+        const previous = ready.graph.requirements.find(
+          item => item.id === requirement.id
+        )!;
+        return {
+          ...requirement,
+          state: previous.state,
+          evidenceRefs: previous.evidenceRefs,
+          evidence: previous.evidence,
+        };
+      }),
+      workPackages: recompiled.workPackages.map(workPackage => {
+        const previous = ready.graph.workPackages.find(
+          item => item.id === workPackage.id
+        )!;
+        return {
+          ...workPackage,
+          status: previous.status,
+          evidenceRefs: previous.evidenceRefs,
+          evidence: previous.evidence,
+        };
+      }),
+    };
+    const run = {
+      ...baseRun,
+      evidenceRefs: [
+        ...new Set([
+          ...baseRun.evidenceRefs,
+          ...ready.evidenceRefs,
+          "evidence:closure-invalidation-next-manifest",
+          "evidence:closure-invalidation-new-file",
+        ]),
+      ],
+    };
+    const adapter = memoryAdapter({ run, revision: 0, events: [] });
+    const service = createRequirementClosurePersistenceService(adapter);
+    const attached = await service.attachGraph(
+      attachmentInput({ graph: changedGraph })
+    );
+
+    expect(attached.graph.requirements[0]?.state).toBe(
+      "IMPLEMENTED_UNVERIFIED"
+    );
+    expect(attached.graph.workPackages[0]?.status).toBe(
+      "IMPLEMENTED_UNVERIFIED"
+    );
+    expect(attached.event?.payload.invalidatedEvidenceRefs).toEqual(
+      expect.arrayContaining([
+        ready.graph.requirements[0]!.evidenceRefs[0]!,
+        ready.graph.workPackages[0]!.evidenceRefs[0]!,
+      ])
+    );
   });
 
   it("enforces scope, revision fencing, and idempotency conflicts", async () => {
@@ -200,7 +327,7 @@ describe("Spec 224 persisted requirement closure projection", () => {
     const blocker = buildBlockerLedgerEntry({
       blockerId: "blocker:closure",
       runId: baseRun.runId,
-      requirementRefs: ["REQ-1"],
+      requirementRefs: [graphInput().requirements[0]!.id],
       classification: "IMPLEMENTATION_DEFECT",
       severity: "high",
     });
@@ -249,22 +376,31 @@ describe("Spec 224 persisted requirement closure projection", () => {
   });
 
   it("keeps Final Verify closed for a persisted open blocker and passes after close", async () => {
-    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
-    const service = createRequirementClosurePersistenceService(adapter);
-    const graph = compileRequirementClosureGraph(graphInput());
-    const verified = {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-1"],
-      })),
+    const ready = makeReadyClosureFixture(
+      compileRequirementClosureGraph(graphInput()),
+      { baseRevision: baseRun.baseRevision, prefix: "closure-persistence" }
+    );
+    const finalVerifyRun = {
+      ...baseRun,
+      evidenceRefs: [
+        ...new Set([
+          ...baseRun.evidenceRefs,
+          ...ready.evidenceRefs,
+          "evidence:final-blocker",
+        ]),
+      ],
     };
-    await service.attachGraph(attachmentInput({ graph: verified }));
+    const adapter = memoryAdapter({
+      run: finalVerifyRun,
+      revision: 0,
+      events: [],
+    });
+    const service = createRequirementClosurePersistenceService(adapter);
+    await service.attachGraph(attachmentInput({ graph: ready.graph }));
     const blocker = buildBlockerLedgerEntry({
       blockerId: "blocker:final-verify",
       runId: baseRun.runId,
-      requirementRefs: ["REQ-1"],
+      requirementRefs: [graphInput().requirements[0]!.id],
       classification: "TEST_FAILURE",
       severity: "medium",
     });

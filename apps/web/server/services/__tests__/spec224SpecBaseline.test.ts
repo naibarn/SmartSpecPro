@@ -44,7 +44,7 @@ describe("Spec 224 deterministic SpecBaseline", () => {
     expect(Object.isFrozen(first.requirements)).toBe(true);
   });
 
-  it("normalizes CRLF and surrounding whitespace before hashing", () => {
+  it("keeps exact artifact identity separate from canonical Markdown normalization", () => {
     const crlf = buildSpec224SpecBaseline({
       ...input,
       sourceMarkdown: `\r\n${source.replace(/\n/g, "\r\n")}   \r\n`,
@@ -52,8 +52,27 @@ describe("Spec 224 deterministic SpecBaseline", () => {
     const normalized = buildSpec224SpecBaseline(input);
 
     expect(crlf.sourceDigest).toBe(normalized.sourceDigest);
-    expect(crlf.sections).toEqual(normalized.sections);
-    expect(crlf.requirements).toEqual(normalized.requirements);
+    expect(crlf.sourceArtifactDigest).not.toBe(normalized.sourceArtifactDigest);
+    expect(
+      crlf.sections.map(({ line, level, title }) => ({ line, level, title }))
+    ).toEqual(
+      normalized.sections.map(({ line, level, title }) => ({
+        line,
+        level,
+        title,
+      }))
+    );
+    expect(
+      crlf.requirements.map(({ sourceRef, text }) => ({ sourceRef, text }))
+    ).toEqual(
+      normalized.requirements.map(({ sourceRef, text }) => ({
+        sourceRef,
+        text,
+      }))
+    );
+    expect(crlf.requirements.map(item => item.id)).not.toEqual(
+      normalized.requirements.map(item => item.id)
+    );
   });
 
   it("changes the digest and baseline when canonical source changes", () => {
@@ -66,6 +85,23 @@ describe("Spec 224 deterministic SpecBaseline", () => {
     expect(changed.sourceDigest).not.toBe(baseline.sourceDigest);
     expect(changed.baselineId).not.toBe(baseline.baselineId);
     expect(changed.requirements[1]?.id).not.toBe(baseline.requirements[1]?.id);
+  });
+
+  it("binds stable requirement identities to the exact revision and source artifact", () => {
+    const baseline = buildSpec224SpecBaseline(input);
+    const nextRevision = buildSpec224SpecBaseline({
+      ...input,
+      revision: "22",
+    });
+
+    expect(nextRevision.sourceDigest).toBe(baseline.sourceDigest);
+    expect(nextRevision.sourceArtifactDigest).toBe(
+      baseline.sourceArtifactDigest
+    );
+    expect(nextRevision.requirements.map(item => item.id)).not.toEqual(
+      baseline.requirements.map(item => item.id)
+    );
+    expect(nextRevision.baselineId).not.toBe(baseline.baselineId);
   });
 
   it("retains duplicate explicit statements as separate line-addressed requirements", () => {

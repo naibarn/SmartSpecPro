@@ -8,12 +8,19 @@ import {
   buildBlockerLedgerEntry,
   compileRequirementClosureGraph,
 } from "../spec224RequirementClosureContracts";
+import { deriveSpec224RequirementId } from "../spec224SpecBaseline";
 import { createRequirementClosurePersistenceService } from "../spec224RequirementClosurePersistence";
 import { createSpec224FinalVerifyService } from "../spec224FinalVerify";
+import { makeReadyClosureFixture } from "./spec224ClosureReadyFixture";
 import type {
   DevelopmentRunPersistenceAdapter,
   DevelopmentRunStoreRecord,
 } from "../spec224DevelopmentRunPersistence";
+
+const readyFinalFixture = makeReadyClosureFixture(
+  compileRequirementClosureGraph(graphInput()),
+  { baseRevision: "git:finalverify224", prefix: "final-verify" }
+);
 
 const baseRun: DevelopmentRun = {
   ...buildDevelopmentRun({
@@ -26,34 +33,51 @@ const baseRun: DevelopmentRun = {
     contextPackHash: "a".repeat(64),
     workspaceId: "workspace:run-224-final-verify",
   }),
+  evidenceRefs: [
+    ...readyFinalFixture.evidenceRefs,
+    "evidence:blocker-final-verify",
+  ],
   state: "FINAL_VERIFY",
 };
 
 function graphInput() {
+  const sourceArtifactDigest = "c".repeat(64);
+  const digest = "b".repeat(64);
+  const requirementText =
+    "Final verification only completes after persisted closure.";
+  const requirementId = deriveSpec224RequirementId({
+    specId: "224",
+    revision: "22",
+    sourceArtifactDigest,
+    sourceDigest: digest,
+    line: 1,
+    text: requirementText,
+  });
   return {
     baseline: {
       specId: "224",
       revision: "22",
-      digest: "b".repeat(64),
+      sourceArtifactDigest,
+      digest,
       baselineId: "baseline:224-r22",
       authorityRef: "authority:platform-engineering",
       scopeEnvelopeRef: "scope:224-r22",
     },
     requirements: [
       {
-        id: "REQ-224-FINAL",
-        sourceRef: "spec:224#final-verify",
-        text: "Final verification only completes after persisted closure.",
+        id: requirementId,
+        sourceRef: "spec:224@22#L1",
+        text: requirementText,
       },
     ],
     planSections: [
-      { id: "section:final-verify", requirementIds: ["REQ-224-FINAL"] },
+      { id: "section:final-verify", requirementIds: [requirementId] },
     ],
     workPackages: [
       {
         id: "wp:final-verify",
         planSectionId: "section:final-verify",
-        requirementIds: ["REQ-224-FINAL"],
+        requirementIds: [requirementId],
         dependsOn: [],
       },
     ],
@@ -171,15 +195,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
 
   it("returns repair required without completing when a persisted blocker remains open", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
-    const graph = compileRequirementClosureGraph(graphInput());
-    await attachGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-224-final"],
-      })),
-    });
+    await attachGraph(adapter, readyFinalFixture.graph);
     const closure = createRequirementClosurePersistenceService(adapter);
     await closure.upsertBlocker({
       runId: baseRun.runId,
@@ -191,7 +207,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
       blocker: buildBlockerLedgerEntry({
         blockerId: "blocker:final-verify",
         runId: baseRun.runId,
-        requirementRefs: ["REQ-224-FINAL"],
+        requirementRefs: [graphInput().requirements[0]!.id],
         classification: "TEST_FAILURE",
         severity: "high",
       }),
@@ -211,22 +227,37 @@ describe("Spec 224 independent persisted Final Verify", () => {
     expect(adapter.read().run.state).toBe("FINAL_VERIFY");
   });
 
+  it("rejects persisted closure evidence that is no longer bound to DevelopmentRun evidence", async () => {
+    const attachedAdapter = memoryAdapter({
+      run: baseRun,
+      revision: 0,
+      events: [],
+    });
+    await attachGraph(attachedAdapter, readyFinalFixture.graph);
+    const corrupted = attachedAdapter.read();
+    corrupted.run.evidenceRefs = ["evidence:final-224-r22"];
+    const adapter = memoryAdapter(corrupted);
+
+    const result =
+      await createSpec224FinalVerifyService(adapter).verify(verifyInput());
+
+    expect(result).toMatchObject({
+      status: "FAIL",
+      outcome: "REPAIR_REQUIRED",
+      closureErrorCode: "SOURCE_INVENTORY_UNBOUND",
+      run: { state: "FINAL_VERIFY" },
+    });
+    expect(adapter.read().run.state).toBe("FINAL_VERIFY");
+  });
+
   it("completes once after persisted evidence and blocker closure", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
-    const graph = compileRequirementClosureGraph(graphInput());
-    await attachGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-224-final"],
-      })),
-    });
+    await attachGraph(adapter, readyFinalFixture.graph);
     const closure = createRequirementClosurePersistenceService(adapter);
     const blocker = buildBlockerLedgerEntry({
       blockerId: "blocker:final-verify",
       runId: baseRun.runId,
-      requirementRefs: ["REQ-224-FINAL"],
+      requirementRefs: [graphInput().requirements[0]!.id],
       classification: "TEST_FAILURE",
       severity: "high",
     });
@@ -282,15 +313,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
 
   it("rejects stale revision and another tenant or actor", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
-    const graph = compileRequirementClosureGraph(graphInput());
-    await attachGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-224-final"],
-      })),
-    });
+    await attachGraph(adapter, readyFinalFixture.graph);
     const service = createSpec224FinalVerifyService(adapter);
 
     await expect(
@@ -306,15 +329,7 @@ describe("Spec 224 independent persisted Final Verify", () => {
 
   it("rejects a stale deterministic provenance tuple before completing", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
-    const graph = compileRequirementClosureGraph(graphInput());
-    await attachGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-224-final"],
-      })),
-    });
+    await attachGraph(adapter, readyFinalFixture.graph);
 
     await expect(
       createSpec224FinalVerifyService(adapter).verify(

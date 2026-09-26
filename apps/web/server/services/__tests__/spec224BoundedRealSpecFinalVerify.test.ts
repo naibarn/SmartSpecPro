@@ -11,6 +11,7 @@ import {
   buildSpec224SpecBaseline,
   toRequirementClosureInput,
 } from "../spec224SpecBaseline";
+import { makeReadyClosureFixture } from "./spec224ClosureReadyFixture";
 
 const SPEC_PATH = resolve(
   process.cwd(),
@@ -44,6 +45,7 @@ describe("Spec 224 bounded real-Spec Final Verify", () => {
       baseline: {
         specId: baseline.specId,
         revision: baseline.revision,
+        sourceArtifactDigest: baseline.sourceArtifactDigest,
         digest: baseline.sourceDigest,
         baselineId: baseline.baselineId,
         authorityRef: baseline.authorityRef,
@@ -65,14 +67,10 @@ describe("Spec 224 bounded real-Spec Final Verify", () => {
         },
       ],
     });
-    const verified = {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: [`evidence:real-spec-${requirement.id}`],
-      })),
-    };
+    const verified = makeReadyClosureFixture(graph, {
+      baseRevision: "git:real-spec-baseline",
+      prefix: "bounded-real-spec",
+    }).graph;
 
     expect(assertFinalVerifyReady({ ...verified, blockers: [] })).toBe(true);
     expect(() =>
@@ -83,6 +81,7 @@ describe("Spec 224 bounded real-Spec Final Verify", () => {
             ...verified.requirements[0]!,
             state: "IMPLEMENTED_UNVERIFIED",
             evidenceRefs: [],
+            evidence: [],
           },
           ...verified.requirements.slice(1),
         ],

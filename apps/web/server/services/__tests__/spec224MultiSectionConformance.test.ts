@@ -85,6 +85,7 @@ describe("Spec 224 multi-section baseline conformance", () => {
       baseline: {
         specId: baseline.specId,
         revision: baseline.revision,
+        sourceArtifactDigest: baseline.sourceArtifactDigest,
         digest: baseline.sourceDigest,
         baselineId: baseline.baselineId,
         authorityRef: baseline.authorityRef,

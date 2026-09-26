@@ -9,7 +9,9 @@ import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import {
   assertFinalVerifyReady,
+  assertRequirementClosureEvidenceBoundToRun,
   Spec224ClosureError,
+  validateRequirementClosureGraph,
   type RequirementClosureGraph,
 } from "./spec224RequirementClosureContracts";
 import {
@@ -162,7 +164,7 @@ function persistedClosureGraph(run: DevelopmentRun): RequirementClosureGraph {
     graphDigest?: unknown;
   };
   if (
-    projection.projectionVersion !== "spec-224-closure-projection-v1" ||
+    projection.projectionVersion !== "spec-224-closure-projection-v2" ||
     !projection.graph ||
     typeof projection.graph !== "object" ||
     Array.isArray(projection.graph) ||
@@ -170,7 +172,30 @@ function persistedClosureGraph(run: DevelopmentRun): RequirementClosureGraph {
   ) {
     throw new Error("CLOSURE_GRAPH_INVALID");
   }
-  return projection.graph as RequirementClosureGraph;
+  const graph = validateRequirementClosureGraph(
+    projection.graph as RequirementClosureGraph
+  );
+  if (graph.blockers.some(blocker => blocker.runId !== run.runId)) {
+    throw new Error("CLOSURE_GRAPH_INVALID");
+  }
+  const canonicalize = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonicalize);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>)
+          .sort(([left], [right]) => left.localeCompare(right))
+          .map(([key, child]) => [key, canonicalize(child)])
+      );
+    }
+    return value;
+  };
+  const actualDigest = createHash("sha256")
+    .update(JSON.stringify(canonicalize(graph)), "utf8")
+    .digest("hex");
+  if (actualDigest !== projection.graphDigest) {
+    throw new Error("CLOSURE_GRAPH_DIGEST_MISMATCH");
+  }
+  return graph;
 }
 
 function finalVerifyProvenanceErrorCode(
@@ -492,7 +517,9 @@ export function createDevelopmentRunService(
               if (provenanceErrorCode) {
                 closureErrorCode = provenanceErrorCode;
               } else {
-                assertFinalVerifyReady(persistedClosureGraph(record.run));
+                const graph = persistedClosureGraph(record.run);
+                assertRequirementClosureEvidenceBoundToRun(graph, record.run);
+                assertFinalVerifyReady(graph);
               }
             } catch (error) {
               if (error instanceof Spec224ClosureError) {

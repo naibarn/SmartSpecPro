@@ -12,7 +12,9 @@ import {
   buildBlockerLedgerEntry,
   compileRequirementClosureGraph,
 } from "../spec224RequirementClosureContracts";
+import { deriveSpec224RequirementId } from "../spec224SpecBaseline";
 import { createRequirementClosurePersistenceService } from "../spec224RequirementClosurePersistence";
+import { makeReadyClosureFixture } from "./spec224ClosureReadyFixture";
 
 const baseRun = buildDevelopmentRun({
   runId: "run-224-persisted",
@@ -24,6 +26,7 @@ const baseRun = buildDevelopmentRun({
   contextPackHash: "a".repeat(64),
   workspaceId: "workspace:run-224-persisted",
 });
+baseRun.evidenceRefs.push("evidence:req-final-gate");
 
 function memoryAdapter(
   initial?: DevelopmentRunStoreRecord,
@@ -100,44 +103,72 @@ function memoryAdapter(
 
 describe("Spec 224 durable DevelopmentRun persistence", () => {
   function finalVerifyRun() {
+    const ready = finalVerifyReadyFixture();
     return {
       ...baseRun,
+      evidenceRefs: [
+        ...new Set([
+          ...baseRun.evidenceRefs,
+          ...ready.evidenceRefs,
+          "evidence:req-final-gate",
+          "evidence:blocker-final-gate",
+        ]),
+      ],
       state: "FINAL_VERIFY" as const,
       workerJobId: "worker-job-final-verify",
     };
   }
 
   function finalVerifyGraph() {
+    const sourceArtifactDigest = "c".repeat(64);
+    const digest = "b".repeat(64);
+    const text = "Final Verify uses persisted closure state.";
+    const requirementId = deriveSpec224RequirementId({
+      specId: "224",
+      revision: "1",
+      sourceArtifactDigest,
+      sourceDigest: digest,
+      line: 1,
+      text,
+    });
     return compileRequirementClosureGraph({
       baseline: {
         specId: "224",
         revision: "1",
-        digest: "b".repeat(64),
+        sourceArtifactDigest,
+        digest,
         baselineId: "baseline:224-r1",
         authorityRef: "authority:platform-engineering",
         scopeEnvelopeRef: "scope:224-r1",
       },
       requirements: [
         {
-          id: "REQ-224-FINAL-GATE",
-          sourceRef: "spec:224#final-gate",
-          text: "Final Verify uses persisted closure state.",
+          id: requirementId,
+          sourceRef: "spec:224@1#L1",
+          text,
         },
       ],
       planSections: [
         {
           id: "section:final-gate",
-          requirementIds: ["REQ-224-FINAL-GATE"],
+          requirementIds: [requirementId],
         },
       ],
       workPackages: [
         {
           id: "wp:final-gate",
           planSectionId: "section:final-gate",
-          requirementIds: ["REQ-224-FINAL-GATE"],
+          requirementIds: [requirementId],
           dependsOn: [],
         },
       ],
+    });
+  }
+
+  function finalVerifyReadyFixture() {
+    return makeReadyClosureFixture(finalVerifyGraph(), {
+      baseRevision: baseRun.baseRevision,
+      prefix: "development-run-final",
     });
   }
 
@@ -333,15 +364,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         output: { evidenceRefs: ["evidence:final-worker-result"] },
       }
     );
-    const graph = finalVerifyGraph();
-    await attachFinalVerifyGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-final-gate"],
-      })),
-    });
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
     const closure = createRequirementClosurePersistenceService(adapter);
     await closure.upsertBlocker({
       runId: run.runId,
@@ -353,7 +376,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
       blocker: buildBlockerLedgerEntry({
         blockerId: "blocker:final-gate",
         runId: run.runId,
-        requirementRefs: ["REQ-224-FINAL-GATE"],
+        requirementRefs: [finalVerifyGraph().requirements[0]!.id],
         classification: "TEST_FAILURE",
         severity: "high",
       }),
@@ -383,15 +406,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         resultRef: "result:final-worker",
       }
     );
-    const graph = finalVerifyGraph();
-    await attachFinalVerifyGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-final-gate"],
-      })),
-    });
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
     const service = createDevelopmentRunService(adapter);
     const result = await service.reconcile({
@@ -429,15 +444,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         },
       }
     );
-    const graph = finalVerifyGraph();
-    await attachFinalVerifyGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-final-gate"],
-      })),
-    });
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
     const service = createDevelopmentRunService(adapter);
     const result = await service.reconcile({
@@ -480,15 +487,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         },
       }
     );
-    const graph = finalVerifyGraph();
-    await attachFinalVerifyGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-final-gate"],
-      })),
-    });
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
     const result = await createDevelopmentRunService(adapter).reconcile({
       runId: run.runId,
@@ -517,15 +516,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         },
       }
     );
-    const graph = finalVerifyGraph();
-    await attachFinalVerifyGraph(adapter, {
-      ...graph,
-      requirements: graph.requirements.map(requirement => ({
-        ...requirement,
-        state: "VERIFIED_PASS" as const,
-        evidenceRefs: ["evidence:req-final-gate"],
-      })),
-    });
+    await attachFinalVerifyGraph(adapter, finalVerifyReadyFixture().graph);
 
     const service = createDevelopmentRunService(adapter);
     const result = await service.reconcile({
