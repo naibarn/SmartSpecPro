@@ -679,9 +679,13 @@ defaultJobExecutorRegistry.register({
     const { getVerticalDramaStoryJobStatus } =
       await import("./verticalDramaStoryJobs");
     await reporter.assertActive(lease);
-    await runVerticalDramaStoryJob(
-      input.jobId,
-      runVerticalDramaStoryJobExecutor
+    await withLeaseHeartbeat(
+      lease,
+      reporter,
+      () => runVerticalDramaStoryJob(
+        input.jobId,
+        runVerticalDramaStoryJobExecutor,
+      ),
     );
     const domainInput = context.input as any;
     const record = await getVerticalDramaStoryJobStatus(input.jobId, {
