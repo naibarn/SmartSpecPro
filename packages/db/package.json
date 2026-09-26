@@ -8,6 +8,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@smartspec/shared": "*"
+    "@smartspec/shared": "workspace:*"
   }
 }
