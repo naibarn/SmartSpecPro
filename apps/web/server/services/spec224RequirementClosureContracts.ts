@@ -114,6 +114,36 @@ export type WorkPackageRecord = {
   admissionGaps: string[];
 };
 
+export type DeferredTestCategory =
+  | "UNIT"
+  | "INTEGRATION"
+  | "E2E"
+  | "PERFORMANCE"
+  | "SECURITY"
+  | "MIGRATION"
+  | "MANUAL"
+  | "OTHER";
+
+/** A versioned deferral record, never a passing-test or verification record. */
+export type DeferredTestObligation = {
+  obligationId: string;
+  version: number;
+  runId: string;
+  requirementId: string;
+  workPackageId: string;
+  specId: string;
+  specRevision: string;
+  sourceArtifactDigest: string;
+  specDigest: string;
+  category: DeferredTestCategory;
+  testTarget: string;
+  reason: string;
+  requiredEnvironment: string;
+  createdAt: string;
+  invalidatedAt: string | null;
+  invalidationReason: string | null;
+};
+
 export type DerivedRequirementRecord = {
   id: string;
   originFindingId: string;
@@ -170,11 +200,7 @@ export type SourceChangeInventory = {
 };
 
 export type BlockerStatus =
-  | "OPEN"
-  | "INVESTIGATING"
-  | "REPAIR"
-  | "VERIFY"
-  | "CLOSED";
+  "OPEN" | "INVESTIGATING" | "REPAIR" | "VERIFY" | "CLOSED";
 
 export type BlockerLedgerEntry = {
   blockerId: string;
@@ -213,6 +239,8 @@ export type RequirementClosureGraph = {
   blockers: BlockerLedgerEntry[];
   sourceInventory: SourceChangeInventory | null;
   admissionGaps: string[];
+  /** Optional only for older closure-v2 records; absent must remain absent in their digest projection. */
+  deferredTestObligations?: DeferredTestObligation[];
 };
 
 export class Spec224ClosureError extends Error {
@@ -1599,6 +1627,9 @@ export function validateRequirementClosureGraph(
     normalized.requirements.map(requirement => [requirement.id, requirement])
   );
   const normalizedRequirementSet = new Set(normalizedRequirements.keys());
+  const normalizedWorkPackages = new Map(
+    normalized.workPackages.map(workPackage => [workPackage.id, workPackage])
+  );
   const requirements = graph.requirements.map(requirement => {
     const canonical = normalizedRequirements.get(requirement.id);
     if (!canonical || !allowedStates.has(requirement.state)) {
@@ -1711,9 +1742,6 @@ export function validateRequirementClosureGraph(
   if (requirements.length !== normalized.requirements.length) {
     throw new Spec224ClosureError("CLOSURE_REQUIREMENTS_MISMATCH");
   }
-  const normalizedWorkPackages = new Map(
-    normalized.workPackages.map(workPackage => [workPackage.id, workPackage])
-  );
   const workPackages = graph.workPackages.map(workPackage => {
     const canonical = normalizedWorkPackages.get(workPackage.id);
     if (!canonical) throw new Spec224ClosureError("WORK_PACKAGE_INVALID");
@@ -1844,7 +1872,169 @@ export function validateRequirementClosureGraph(
         : []
     ),
   ];
-  return { ...normalized, requirements, workPackages, blockers, admissionGaps };
+  const deferredTestObligations =
+    graph.deferredTestObligations === undefined
+      ? undefined
+      : validateDeferredTestObligations(
+          graph.deferredTestObligations,
+          graph.baseline,
+          normalizedRequirements,
+          normalizedWorkPackages
+        );
+  return {
+    ...normalized,
+    requirements,
+    workPackages,
+    blockers,
+    admissionGaps,
+    ...(deferredTestObligations === undefined
+      ? {}
+      : { deferredTestObligations }),
+  };
+}
+
+function validateDeferredTestObligations(
+  input: DeferredTestObligation[],
+  baseline: RequirementClosureGraph["baseline"],
+  requirements: Map<string, RequirementRecord>,
+  workPackages: Map<string, WorkPackageRecord>
+): DeferredTestObligation[] {
+  const categories = new Set<DeferredTestCategory>([
+    "UNIT",
+    "INTEGRATION",
+    "E2E",
+    "PERFORMANCE",
+    "SECURITY",
+    "MIGRATION",
+    "MANUAL",
+    "OTHER",
+  ]);
+  if (!Array.isArray(input) || input.length > 5000) {
+    throw new Spec224ClosureError("DEFERRED_TEST_OBLIGATIONS_INVALID");
+  }
+  const obligations = input.map(obligation => {
+    const obligationId = id(
+      obligation.obligationId,
+      "DEFERRED_TEST_OBLIGATION_ID_INVALID"
+    );
+    const requirementId = id(
+      obligation.requirementId,
+      "DEFERRED_TEST_REQUIREMENT_INVALID"
+    );
+    const workPackageId = id(
+      obligation.workPackageId,
+      "DEFERRED_TEST_WORK_PACKAGE_INVALID"
+    );
+    const invalidatedAt =
+      obligation.invalidatedAt === null
+        ? null
+        : timestamp(
+            obligation.invalidatedAt,
+            "DEFERRED_TEST_INVALIDATION_INVALID"
+          );
+    const invalidationReason =
+      obligation.invalidationReason === null
+        ? null
+        : text(
+            obligation.invalidationReason,
+            "DEFERRED_TEST_INVALIDATION_INVALID",
+            1000
+          );
+    if ((invalidatedAt === null) !== (invalidationReason === null)) {
+      throw new Spec224ClosureError("DEFERRED_TEST_INVALIDATION_INVALID");
+    }
+    const requirement = requirements.get(requirementId);
+    const workPackage = workPackages.get(workPackageId);
+    if (
+      invalidatedAt === null &&
+      (!requirement ||
+        !workPackage ||
+        !requirement.workPackageIds.includes(workPackageId) ||
+        !workPackage.requirementIds.includes(requirementId))
+    ) {
+      throw new Spec224ClosureError(
+        "DEFERRED_TEST_REQUIREMENT_PACKAGE_MISMATCH"
+      );
+    }
+    if (
+      !ID.test(obligation.specId) ||
+      !ID.test(obligation.specRevision) ||
+      !HASH.test(obligation.sourceArtifactDigest) ||
+      !HASH.test(obligation.specDigest) ||
+      (invalidatedAt === null &&
+        (obligation.specId !== baseline.specId ||
+          obligation.specRevision !== baseline.revision ||
+          obligation.sourceArtifactDigest !== baseline.sourceArtifactDigest ||
+          obligation.specDigest !== baseline.digest))
+    ) {
+      throw new Spec224ClosureError("DEFERRED_TEST_BASELINE_MISMATCH");
+    }
+    if (
+      !Number.isSafeInteger(obligation.version) ||
+      obligation.version < 1 ||
+      !categories.has(obligation.category)
+    ) {
+      throw new Spec224ClosureError("DEFERRED_TEST_OBLIGATION_INVALID");
+    }
+    return {
+      obligationId,
+      version: obligation.version,
+      runId: id(obligation.runId, "DEFERRED_TEST_RUN_INVALID"),
+      requirementId,
+      workPackageId,
+      specId: obligation.specId,
+      specRevision: obligation.specRevision,
+      sourceArtifactDigest: obligation.sourceArtifactDigest,
+      specDigest: obligation.specDigest,
+      category: obligation.category,
+      testTarget: text(
+        obligation.testTarget,
+        "DEFERRED_TEST_TARGET_INVALID",
+        512
+      ),
+      reason: text(obligation.reason, "DEFERRED_TEST_REASON_INVALID", 1000),
+      requiredEnvironment: text(
+        obligation.requiredEnvironment,
+        "DEFERRED_TEST_ENVIRONMENT_INVALID",
+        500
+      ),
+      createdAt: timestamp(
+        obligation.createdAt,
+        "DEFERRED_TEST_CREATED_AT_INVALID"
+      ),
+      invalidatedAt,
+      invalidationReason,
+    };
+  });
+  const ids = new Set<string>();
+  const byObligation = new Map<string, DeferredTestObligation[]>();
+  for (const obligation of obligations) {
+    const versionKey = `${obligation.obligationId}:${obligation.version}`;
+    if (ids.has(versionKey)) {
+      throw new Spec224ClosureError("DEFERRED_TEST_VERSION_DUPLICATE");
+    }
+    ids.add(versionKey);
+    byObligation.set(obligation.obligationId, [
+      ...(byObligation.get(obligation.obligationId) ?? []),
+      obligation,
+    ]);
+  }
+  for (const versions of byObligation.values()) {
+    versions.sort((left, right) => left.version - right.version);
+    if (
+      versions.some((obligation, index) => obligation.version !== index + 1) ||
+      versions
+        .slice(0, -1)
+        .some(obligation => obligation.invalidatedAt === null)
+    ) {
+      throw new Spec224ClosureError("DEFERRED_TEST_VERSION_HISTORY_INVALID");
+    }
+  }
+  return obligations.sort(
+    (left, right) =>
+      left.obligationId.localeCompare(right.obligationId) ||
+      left.version - right.version
+  );
 }
 
 function validateBlockerLedgerEntry(

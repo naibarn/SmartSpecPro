@@ -18,7 +18,7 @@ import {
 import { createRequirementClosurePersistenceService } from "./spec224RequirementClosurePersistence";
 
 export const SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION =
-  "spec-226-development-control-v2" as const;
+  "spec-226-development-control-v3" as const;
 
 export type Spec226DevelopmentRunScope = {
   tenantId: string;

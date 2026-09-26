@@ -320,6 +320,224 @@ describe("Spec 224 persisted requirement closure projection", () => {
     ).rejects.toThrow("RUN_IDEMPOTENCY_CONFLICT");
   });
 
+  it("persists deferred test obligations as versioned non-passing run evidence", async () => {
+    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    const service = createRequirementClosurePersistenceService(adapter);
+    const graph = compileRequirementClosureGraph(graphInput());
+    const requirementId = graph.requirements[0]!.id;
+    await service.attachGraph(attachmentInput({ graph }));
+    const obligation = {
+      runId: baseRun.runId,
+      tenantId: baseRun.tenantId,
+      actorId: baseRun.actorId,
+      expectedRevision: 1,
+      expectedFencingVersion: 0,
+      idempotencyKey: "deferred-test:obligation-1:v1",
+      obligationId: "obligation:closure-integration",
+      requirementId,
+      workPackageId: "wp:closure",
+      category: "INTEGRATION" as const,
+      testTarget: "spec224 closure persistence adapter integration",
+      reason:
+        "Isolated PostgreSQL certification belongs to the validation campaign.",
+      requiredEnvironment: "isolated-postgresql-15",
+    };
+
+    const recorded = await service.recordDeferredTestObligation(obligation);
+    const duplicate = await service.recordDeferredTestObligation(obligation);
+    expect(recorded.graph.deferredTestObligations).toMatchObject([
+      {
+        obligationId: "obligation:closure-integration",
+        version: 1,
+        runId: baseRun.runId,
+        requirementId,
+        workPackageId: "wp:closure",
+        specRevision: graph.baseline.revision,
+        sourceArtifactDigest: graph.baseline.sourceArtifactDigest,
+        specDigest: graph.baseline.digest,
+        category: "INTEGRATION",
+        invalidatedAt: null,
+        invalidationReason: null,
+      },
+    ]);
+    expect(duplicate).toMatchObject({ accepted: false, revision: 2 });
+    expect(recorded.graph.requirements[0]?.evidenceRefs).toEqual([]);
+    expect(adapter.read().events.at(-1)).toMatchObject({
+      type: "DEFERRED_TEST_OBLIGATION_RECORDED",
+      payload: {
+        action: "deferred_test_obligation_recorded",
+        deferredTestObligationId: "obligation:closure-integration",
+        deferredTestObligationVersion: 1,
+        requirementIds: [requirementId],
+      },
+    });
+    expect(JSON.stringify(adapter.read().events.at(-1)?.payload)).not.toContain(
+      obligation.testTarget
+    );
+
+    const invalidated = await service.invalidateDeferredTestObligation({
+      runId: baseRun.runId,
+      tenantId: baseRun.tenantId,
+      actorId: baseRun.actorId,
+      expectedRevision: 2,
+      expectedFencingVersion: 0,
+      idempotencyKey: "deferred-test:obligation-1:invalidate-v1",
+      obligationId: obligation.obligationId,
+      expectedVersion: 1,
+      reason: "Validation environment was reprovisioned.",
+    });
+    const replacement = await service.recordDeferredTestObligation({
+      ...obligation,
+      expectedRevision: 3,
+      idempotencyKey: "deferred-test:obligation-1:v2",
+      testTarget:
+        "spec224 closure persistence adapter integration after reprovision",
+    });
+    expect(invalidated.graph.deferredTestObligations?.[0]).toMatchObject({
+      version: 1,
+      invalidationReason: "Validation environment was reprovisioned.",
+    });
+    expect(invalidated.event?.type).toBe(
+      "DEFERRED_TEST_OBLIGATION_INVALIDATED"
+    );
+    expect(replacement.graph.deferredTestObligations).toHaveLength(2);
+    expect(replacement.graph.deferredTestObligations?.[1]).toMatchObject({
+      obligationId: obligation.obligationId,
+      version: 2,
+      invalidatedAt: null,
+      invalidationReason: null,
+    });
+  });
+
+  it("preserves deferred history and invalidates the active version when the Spec baseline changes", async () => {
+    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    const service = createRequirementClosurePersistenceService(adapter);
+    const originalGraph = compileRequirementClosureGraph(graphInput());
+    await service.attachGraph(attachmentInput({ graph: originalGraph }));
+    await service.recordDeferredTestObligation({
+      runId: baseRun.runId,
+      tenantId: baseRun.tenantId,
+      actorId: baseRun.actorId,
+      expectedRevision: 1,
+      expectedFencingVersion: 0,
+      idempotencyKey: "deferred-test:baseline-change:v1",
+      obligationId: "obligation:baseline-change",
+      requirementId: originalGraph.requirements[0]!.id,
+      workPackageId: "wp:closure",
+      category: "UNIT",
+      testTarget: "closure baseline binding",
+      reason: "The baseline is intentionally revised in this contract case.",
+      requiredEnvironment: "node-test-runtime",
+    });
+
+    const revisedInput = graphInput();
+    const revisedBaseline = {
+      ...revisedInput.baseline,
+      revision: "22",
+    };
+    const revisedRequirementText = revisedInput.requirements[0]!.text;
+    const revisedRequirementId = deriveSpec224RequirementId({
+      specId: revisedBaseline.specId,
+      revision: revisedBaseline.revision,
+      sourceArtifactDigest: revisedBaseline.sourceArtifactDigest,
+      sourceDigest: revisedBaseline.digest,
+      line: 1,
+      text: revisedRequirementText,
+    });
+    const revisedGraph = compileRequirementClosureGraph({
+      ...revisedInput,
+      baseline: revisedBaseline,
+      requirements: [
+        {
+          id: revisedRequirementId,
+          sourceRef: "spec:224@22#L1",
+          text: revisedRequirementText,
+        },
+      ],
+      planSections: [
+        { id: "section:closure", requirementIds: [revisedRequirementId] },
+      ],
+      workPackages: [
+        {
+          id: "wp:closure",
+          planSectionId: "section:closure",
+          requirementIds: [revisedRequirementId],
+          dependsOn: [],
+        },
+      ],
+    });
+    const attached = await service.attachGraph(
+      attachmentInput({
+        expectedRevision: 2,
+        idempotencyKey: "closure:attach:baseline-22",
+        graph: revisedGraph,
+      })
+    );
+
+    expect(attached.graph.deferredTestObligations).toMatchObject([
+      {
+        obligationId: "obligation:baseline-change",
+        version: 1,
+        specRevision: "21",
+        invalidationReason: "SPEC_BASELINE_CHANGED",
+      },
+    ]);
+    expect(attached.event?.payload.invalidatedDeferredTestObligations).toEqual([
+      {
+        obligationId: "obligation:baseline-change",
+        version: 1,
+        reason: "SPEC_BASELINE_CHANGED",
+      },
+    ]);
+    expect(attached.graph.baseline.revision).toBe("22");
+  });
+
+  it("keeps absent optional deferred fields absent for legacy closure-v2 projections", async () => {
+    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    const attached =
+      await createRequirementClosurePersistenceService(adapter).attachGraph(
+        attachmentInput()
+      );
+
+    expect(
+      Object.prototype.hasOwnProperty.call(
+        attached.graph,
+        "deferredTestObligations"
+      )
+    ).toBe(false);
+  });
+
+  it("rejects deferred obligations bound to another WorkPackage or tenant", async () => {
+    const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
+    const service = createRequirementClosurePersistenceService(adapter);
+    const graph = compileRequirementClosureGraph(graphInput());
+    await service.attachGraph(attachmentInput({ graph }));
+    const input = {
+      runId: baseRun.runId,
+      tenantId: baseRun.tenantId,
+      actorId: baseRun.actorId,
+      expectedRevision: 1,
+      expectedFencingVersion: 0,
+      idempotencyKey: "deferred-test:wrong-binding",
+      obligationId: "obligation:wrong-binding",
+      requirementId: graph.requirements[0]!.id,
+      workPackageId: "wp:not-the-owner",
+      category: "UNIT" as const,
+      testTarget: "apps/web/server/test.ts",
+      reason: "The linked package does not own this requirement.",
+      requiredEnvironment: "local-node",
+    };
+    await expect(service.recordDeferredTestObligation(input)).rejects.toThrow(
+      "DEFERRED_TEST_REQUIREMENT_PACKAGE_MISMATCH"
+    );
+    await expect(
+      service.recordDeferredTestObligation({
+        ...input,
+        tenantId: "tenant-other",
+      })
+    ).rejects.toThrow("RUN_NOT_FOUND");
+  });
+
   it("closes a blocker with verification evidence and reopens it with a new ledger epoch", async () => {
     const adapter = memoryAdapter({ run: baseRun, revision: 0, events: [] });
     const service = createRequirementClosurePersistenceService(adapter);
