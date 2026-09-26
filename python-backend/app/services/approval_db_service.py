@@ -7,9 +7,11 @@ It complements the in-memory ApprovalService for production use cases.
 """
 
 import structlog
-from datetime import datetime, timedelta
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,6 +44,154 @@ class ApprovalDBService:
         """
         self.db = db_session
         self._logger = logger.bind(service="approval_db")
+
+    @staticmethod
+    def _record_spec224_decision_intent(
+        request: ApprovalRequest,
+        decision: str,
+        actor_id: Optional[int],
+        decided_at: datetime,
+    ) -> None:
+        """Persist a versioned, replayable delivery intent on its authority row."""
+        raw_extra_data = getattr(request, "extra_data", None)
+        extra_data = raw_extra_data if isinstance(raw_extra_data, dict) else {}
+        correlation = extra_data.get("spec224ExternalAgentResume")
+        if not isinstance(correlation, dict):
+            return
+        required = ("jobId", "tenantId", "operationKey", "providerRequestId")
+        if any(not isinstance(correlation.get(key), str) or not correlation[key] for key in required):
+            return
+        if correlation["jobId"] != request.execution_id or correlation["tenantId"] != request.tenant_id:
+            return
+
+        correlation = dict(correlation)
+        if "requesterId" not in correlation and isinstance(getattr(request, "requester_id", None), int):
+            correlation["requesterId"] = request.requester_id
+
+        decided_at = decided_at.replace(tzinfo=timezone.utc) if decided_at.tzinfo is None else decided_at
+        decided_at_text = decided_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+        decision_epoch = 1
+        delivery_id = str(uuid5(NAMESPACE_URL, f"smartaihub:spec224:approval:{request.id}:{decision_epoch}"))
+        event = {
+            "schemaVersion": "spec224.approval-decision.v1",
+            "deliveryId": delivery_id,
+            "decisionEpoch": decision_epoch,
+            "approvalRequestId": request.id,
+            "tenantId": request.tenant_id,
+            "jobId": request.execution_id,
+            "operationId": correlation["operationKey"],
+            "decision": decision,
+            "actorId": actor_id,
+            "decidedAt": decided_at_text,
+            "correlation": correlation,
+        }
+        canonical = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        extra_data = dict(extra_data)
+        extra_data["spec224ExternalAgentResume"] = correlation
+        extra_data["spec224DecisionDeliveryV1"] = {
+            "event": event,
+            "canonicalPayload": canonical,
+            "payloadDigest": digest,
+            "state": "pending",
+            "receipt": None,
+            "updatedAt": decided_at_text,
+        }
+        request.extra_data = extra_data
+
+    @staticmethod
+    def _read_spec224_delivery(request: ApprovalRequest) -> Optional[dict]:
+        extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
+        delivery = extra_data.get("spec224DecisionDeliveryV1")
+        if not isinstance(delivery, dict):
+            return None
+        event = delivery.get("event")
+        digest = delivery.get("payloadDigest")
+        canonical = delivery.get("canonicalPayload")
+        if not isinstance(event, dict) or not isinstance(digest, str) or not isinstance(canonical, str):
+            return None
+        try:
+            decoded = json.loads(canonical)
+        except (TypeError, ValueError):
+            return None
+        if decoded != event or hashlib.sha256(canonical.encode("utf-8")).hexdigest() != digest:
+            return None
+        return delivery
+
+    async def get_spec224_decision_delivery(
+        self, request_id: str, tenant_id: str, job_id: str, operation_id: str
+    ) -> Optional[dict]:
+        request = await self.get_request(request_id, tenant_id=tenant_id)
+        if not request or request.execution_id != job_id:
+            return None
+        delivery = self._read_spec224_delivery(request)
+        if not delivery:
+            return None
+        event = delivery["event"]
+        if (
+            event.get("tenantId") != tenant_id
+            or event.get("jobId") != job_id
+            or event.get("operationId") != operation_id
+            or event.get("decision") != request.status.value
+        ):
+            return None
+        return delivery
+
+    async def acknowledge_spec224_decision_delivery(
+        self,
+        request_id: str,
+        tenant_id: str,
+        job_id: str,
+        operation_id: str,
+        delivery_id: str,
+        payload_digest: str,
+        receipt: dict,
+    ) -> bool:
+        stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
+        if tenant_id:
+            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
+        result = await self.db.execute(stmt)
+        request = result.scalar_one_or_none()
+        if not request or request.execution_id != job_id:
+            return False
+        delivery = self._read_spec224_delivery(request)
+        if not delivery:
+            return False
+        event = delivery["event"]
+        if (
+            event.get("tenantId") != tenant_id
+            or event.get("jobId") != job_id
+            or event.get("operationId") != operation_id
+            or event.get("deliveryId") != delivery_id
+            or event.get("decision") != request.status.value
+            or delivery.get("payloadDigest") != payload_digest
+        ):
+            return False
+        if delivery.get("state") == "acknowledged":
+            previous_receipt = delivery.get("receipt")
+            return (
+                isinstance(previous_receipt, dict)
+                and previous_receipt.get("deliveryId") == delivery_id
+                and previous_receipt.get("payloadDigest") == payload_digest
+            )
+        delivery = dict(delivery)
+        delivery["state"] = "acknowledged"
+        delivery["receipt"] = receipt
+        delivery["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        extra_data = dict(request.extra_data or {})
+        extra_data["spec224DecisionDeliveryV1"] = delivery
+        request.extra_data = extra_data
+        await self.db.commit()
+        return True
+
+    async def _get_request_for_update(
+        self, request_id: str, tenant_id: Optional[str] = None
+    ) -> Optional[ApprovalRequest]:
+        stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
+        if tenant_id:
+            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
+        result = await self.db.execute(stmt.with_for_update())
+        return result.scalar_one_or_none()
 
     async def create_request(
         self,
@@ -151,11 +301,7 @@ class ApprovalDBService:
         Returns:
             ApprovalRequest instance or None if not found
         """
-        stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
-        if tenant_id:
-            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
-        result = await self.db.execute(stmt)
-        request = result.scalar_one_or_none()
+        request = await self._get_request_for_update(request_id, tenant_id)
 
         if request:
             # Check for expiration
@@ -164,15 +310,23 @@ class ApprovalDBService:
                 and request.expires_at
                 and datetime.utcnow() > request.expires_at
             ):
-                request.status = ApprovalStatus.EXPIRED
-                request.resolved_at = datetime.utcnow()
-                await self.db.commit()
+                request = await self._get_request_for_update(request_id, tenant_id)
+                if (
+                    request
+                    and request.status == ApprovalStatus.PENDING
+                    and request.expires_at
+                    and datetime.utcnow() > request.expires_at
+                ):
+                    request.status = ApprovalStatus.EXPIRED
+                    request.resolved_at = datetime.utcnow()
+                    self._record_spec224_decision_intent(request, "expired", None, request.resolved_at)
+                    await self.db.commit()
 
-                self._logger.info(
-                    "approval_request_expired",
-                    request_id=request_id,
-                    expires_at=request.expires_at.isoformat(),
-                )
+                    self._logger.info(
+                        "approval_request_expired",
+                        request_id=request_id,
+                        expires_at=request.expires_at.isoformat(),
+                    )
 
         return request
 
@@ -196,9 +350,12 @@ class ApprovalDBService:
         result = await self.db.execute(stmt)
         request = result.scalar_one_or_none()
         if request and request.status == ApprovalStatus.PENDING and request.expires_at and datetime.utcnow() > request.expires_at:
-            request.status = ApprovalStatus.EXPIRED
-            request.resolved_at = datetime.utcnow()
-            await self.db.commit()
+            request = await self._get_request_for_update(request.id, tenant_id)
+            if request and request.status == ApprovalStatus.PENDING and request.expires_at and datetime.utcnow() > request.expires_at:
+                request.status = ApprovalStatus.EXPIRED
+                request.resolved_at = datetime.utcnow()
+                self._record_spec224_decision_intent(request, "expired", None, request.resolved_at)
+                await self.db.commit()
         return request
 
     async def list_pending_requests(
@@ -322,10 +479,7 @@ class ApprovalDBService:
                 )
 
         # Fetch the request with tenant validation
-        if tenant_id:
-            request = await self.get_request(request_id, tenant_id=tenant_id)
-        else:
-            request = await self.get_request(request_id)
+        request = await self._get_request_for_update(request_id, tenant_id)
         if not request:
             raise ValueError(f"Approval request {request_id} not found")
 
@@ -359,6 +513,9 @@ class ApprovalDBService:
             if request.current_approvals >= request.required_approvers:
                 request.status = ApprovalStatus.APPROVED
                 request.resolved_at = datetime.utcnow()
+
+        if request.status in (ApprovalStatus.APPROVED, ApprovalStatus.REJECTED):
+            self._record_spec224_decision_intent(request, decision, approver_id, request.resolved_at or datetime.utcnow())
 
         await self.db.commit()
         await self.db.refresh(response)
@@ -400,6 +557,7 @@ class ApprovalDBService:
                     ),
                 )
             )
+            .with_for_update(skip_locked=True)
         )
 
         result = await self.db.execute(stmt)
@@ -409,6 +567,7 @@ class ApprovalDBService:
         for request in expired_requests:
             request.status = ApprovalStatus.EXPIRED
             request.resolved_at = datetime.utcnow()
+            self._record_spec224_decision_intent(request, "expired", None, request.resolved_at)
             count += 1
 
         if count > 0:
@@ -745,7 +904,7 @@ class ApprovalDBService:
         Returns:
             Updated ApprovalRequest or None if not found
         """
-        request = await self.get_request(request_id, tenant_id=tenant_id)
+        request = await self._get_request_for_update(request_id, tenant_id)
         if not request:
             return None
 
@@ -776,6 +935,7 @@ class ApprovalDBService:
 
         request.status = ApprovalStatus.CANCELLED
         request.resolved_at = datetime.utcnow()
+        self._record_spec224_decision_intent(request, "cancelled", cancelled_by, request.resolved_at)
 
         await self.db.commit()
 

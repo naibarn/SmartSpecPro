@@ -6,7 +6,7 @@ Full functional tests will be added when service is fully refactored.
 """
 
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 
@@ -68,6 +68,98 @@ def test_approval_db_service_has_required_methods():
     assert hasattr(ApprovalDBService, 'create_request')
     assert hasattr(ApprovalDBService, 'get_request')
     assert hasattr(ApprovalDBService, 'list_pending_requests')
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_spec224_cancellation_persists_versioned_delivery_intent():
+    from app.services.approval_db_service import ApprovalDBService
+
+    request = SimpleNamespace(
+        id="approval-224",
+        execution_id="job-224",
+        tenant_id="tenant-224",
+        requester_id=41,
+        status=ApprovalStatus.PENDING,
+        resolved_at=None,
+        extra_data={
+            "spec224ExternalAgentResume": {
+                "jobId": "job-224",
+                "tenantId": "tenant-224",
+                "operationKey": "op-224",
+                "providerRequestId": "provider-request-224",
+            }
+        },
+    )
+    db = AsyncMock()
+    db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=request))
+
+    cancelled = await ApprovalDBService(db).cancel_request(
+        "approval-224", cancelled_by=41, tenant_id="tenant-224", reason="owner cancelled"
+    )
+
+    assert cancelled is request
+    assert request.status is ApprovalStatus.CANCELLED
+    delivery = request.extra_data["spec224DecisionDeliveryV1"]
+    assert delivery["state"] == "pending"
+    assert delivery["event"]["schemaVersion"] == "spec224.approval-decision.v1"
+    assert delivery["event"]["decision"] == "cancelled"
+    assert delivery["event"]["actorId"] == 41
+    assert db.commit.await_count == 1
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_spec224_cancellation_intent_fails_closed_on_tenant_mismatch():
+    from app.services.approval_db_service import ApprovalDBService
+
+    db = AsyncMock()
+    db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=None))
+
+    cancelled = await ApprovalDBService(db).cancel_request(
+        "approval-224", cancelled_by=41, tenant_id="other-tenant"
+    )
+
+    assert cancelled is None
+    db.commit.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_spec224_decision_ack_is_idempotent_for_same_delivery_digest():
+    from datetime import datetime, timezone
+
+    from app.services.approval_db_service import ApprovalDBService
+
+    request = SimpleNamespace(
+        id="approval-224",
+        execution_id="job-224",
+        tenant_id="tenant-224",
+        requester_id=41,
+        status=ApprovalStatus.APPROVED,
+        resolved_at=datetime.now(timezone.utc),
+        extra_data={
+            "spec224ExternalAgentResume": {
+                "jobId": "job-224",
+                "tenantId": "tenant-224",
+                "operationKey": "op-224",
+                "providerRequestId": "provider-request-224",
+            }
+        },
+    )
+    ApprovalDBService._record_spec224_decision_intent(request, "approved", 52, request.resolved_at)
+    delivery = request.extra_data["spec224DecisionDeliveryV1"]
+    receipt = {"deliveryId": delivery["event"]["deliveryId"], "payloadDigest": delivery["payloadDigest"], "result": "resumed"}
+    db = AsyncMock()
+    db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=request))
+    service = ApprovalDBService(db)
+
+    for _ in range(2):
+        assert await service.acknowledge_spec224_decision_delivery(
+            "approval-224", "tenant-224", "job-224", "op-224",
+            receipt["deliveryId"], delivery["payloadDigest"], receipt,
+        )
+    assert db.commit.await_count == 1
     assert hasattr(ApprovalDBService, 'submit_decision')
     assert hasattr(ApprovalDBService, 'cleanup_expired_requests')
 
@@ -83,9 +175,11 @@ async def test_cancel_request_revalidates_requester_and_tenant():
         status=ApprovalStatus.PENDING,
         resolved_at=None,
     )
-    db = SimpleNamespace(commit=AsyncMock())
+    db = SimpleNamespace(
+        execute=AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=Mock(return_value=request))),
+        commit=AsyncMock(),
+    )
     service = ApprovalDBService(db)
-    service.get_request = AsyncMock(return_value=request)
 
     unauthorized = await service.cancel_request("approval-1", cancelled_by=8, tenant_id="tenant-1")
     assert unauthorized is None
