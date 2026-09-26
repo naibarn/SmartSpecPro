@@ -30,6 +30,9 @@ export type Spec224SpecBaseline = Readonly<{
   revision: string;
   authorityRef: string;
   scopeEnvelopeRef: string;
+  /** Hash of the exact UTF-8 source string before line-ending/whitespace normalization. */
+  sourceArtifactDigest: string;
+  /** Hash of the canonical normalized Markdown used for deterministic enumeration. */
   sourceDigest: string;
   baselineId: string;
   canonicalMarkdown: string;
@@ -82,13 +85,40 @@ function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
+export function deriveSpec224RequirementId(input: {
+  specId: string;
+  revision: string;
+  sourceArtifactDigest: string;
+  sourceDigest: string;
+  line: number;
+  text: string;
+}): string {
+  return `req:${sha256(
+    [
+      input.specId,
+      input.revision,
+      input.sourceArtifactDigest,
+      input.sourceDigest,
+      input.line,
+      input.text,
+    ].join("\n")
+  ).slice(0, 40)}`;
+}
+
 function stableId(
   prefix: string,
   specId: string,
+  revision: string,
+  sourceArtifactDigest: string,
+  sourceDigest: string,
   line: number,
   value: string
 ): string {
-  return `${prefix}:${specId}:${line}:${sha256(value).slice(0, 20)}`;
+  return `${prefix}:${sha256(
+    [specId, revision, sourceArtifactDigest, sourceDigest, line, value].join(
+      "\n"
+    )
+  ).slice(0, 40)}`;
 }
 
 export function normalizeSpec224Markdown(sourceMarkdown: unknown): string {
@@ -109,6 +139,9 @@ export function normalizeSpec224Markdown(sourceMarkdown: unknown): string {
 
 function enumerateSections(
   specId: string,
+  revision: string,
+  sourceArtifactDigest: string,
+  sourceDigest: string,
   canonicalMarkdown: string
 ): readonly Spec224BaselineSection[] {
   const sections: Spec224BaselineSection[] = [];
@@ -119,7 +152,15 @@ function enumerateSections(
     const title = match[2]!.trim().replace(/\s+/g, " ");
     sections.push(
       Object.freeze({
-        id: stableId("section", specId, index + 1, `${level}\n${title}`),
+        id: stableId(
+          "section",
+          specId,
+          revision,
+          sourceArtifactDigest,
+          sourceDigest,
+          index + 1,
+          `${level}\n${title}`
+        ),
         line: index + 1,
         level,
         title,
@@ -132,6 +173,8 @@ function enumerateSections(
 function enumerateRequirements(
   specId: string,
   revision: string,
+  sourceArtifactDigest: string,
+  sourceDigest: string,
   canonicalMarkdown: string
 ): readonly Spec224BaselineRequirement[] {
   const lines = canonicalMarkdown.split("\n");
@@ -195,7 +238,14 @@ function enumerateRequirements(
         : `spec:${specId}@${revision}#L${startLine}-L${endLine}`;
     requirements.push(
       Object.freeze({
-        id: stableId("req", specId, startLine, text),
+        id: deriveSpec224RequirementId({
+          specId,
+          revision,
+          sourceArtifactDigest,
+          sourceDigest,
+          line: startLine,
+          text,
+        }),
         sourceRef,
         text,
       })
@@ -219,9 +269,12 @@ export function buildSpec224SpecBaseline(input: {
     input.scopeEnvelopeRef,
     "SCOPE_ENVELOPE_REF_INVALID"
   );
+  const sourceArtifactDigest = sha256(input.sourceMarkdown);
   const canonicalMarkdown = normalizeSpec224Markdown(input.sourceMarkdown);
   const sourceDigest = sha256(canonicalMarkdown);
-  const baselineId = `baseline:${specId}:${revision}:${sourceDigest.slice(0, 24)}`;
+  const baselineId = `baseline:${sha256(
+    [specId, revision, sourceArtifactDigest, sourceDigest].join("\n")
+  ).slice(0, 40)}`;
 
   return Object.freeze({
     contractVersion: "spec-224-baseline-v1",
@@ -229,11 +282,24 @@ export function buildSpec224SpecBaseline(input: {
     revision,
     authorityRef,
     scopeEnvelopeRef,
+    sourceArtifactDigest,
     sourceDigest,
     baselineId,
     canonicalMarkdown,
-    sections: enumerateSections(specId, canonicalMarkdown),
-    requirements: enumerateRequirements(specId, revision, canonicalMarkdown),
+    sections: enumerateSections(
+      specId,
+      revision,
+      sourceArtifactDigest,
+      sourceDigest,
+      canonicalMarkdown
+    ),
+    requirements: enumerateRequirements(
+      specId,
+      revision,
+      sourceArtifactDigest,
+      sourceDigest,
+      canonicalMarkdown
+    ),
   });
 }
 

@@ -121,6 +121,27 @@ function developmentStateLabel(state: string): string {
   return stateLabel(state).toLowerCase();
 }
 
+function isTerminalDevelopmentRun(state: string): boolean {
+  return ["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(state);
+}
+
+function needsDevelopmentAttention(run: {
+  state: string;
+  nextSafeAction: { command: string };
+  closure: { blockers: Array<{ status: string }> } | null;
+}): boolean {
+  return (
+    run.nextSafeAction.command === "WAIT_FOR_HUMAN_DECISION" ||
+    [
+      "WAITING_HUMAN_DECISION",
+      "PAUSED_POLICY",
+      "BLOCKED_RECOVERABLE",
+      "RECOVERY_EXHAUSTED_PENDING_DECISION",
+    ].includes(run.state) ||
+    Boolean(run.closure?.blockers.some(blocker => blocker.status !== "CLOSED"))
+  );
+}
+
 function nextSafeActionLabel(action: {
   command: string;
   phase?: string;
@@ -203,6 +224,7 @@ export function UniversalControlPlanePanel({
   const [expandedRunners, setExpandedRunners] = useState<Set<string>>(
     new Set()
   );
+  const trpcUtils = trpc.useUtils();
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
@@ -322,6 +344,13 @@ export function UniversalControlPlanePanel({
     connection => connection.status === "connected"
   );
   const developmentRuns = developmentRunsQuery.data ?? [];
+  const activeDevelopmentRuns = developmentRuns.filter(
+    run =>
+      !isTerminalDevelopmentRun(run.state) && !needsDevelopmentAttention(run)
+  );
+  const developmentAttentionInbox = developmentRuns.filter(
+    needsDevelopmentAttention
+  );
   useEffect(() => {
     const incoming = (taskGroupsQuery.data?.groups ?? []) as TaskGroupView[];
     setTaskGroups(previous => {
@@ -398,12 +427,32 @@ export function UniversalControlPlanePanel({
     action: "pause" | "cancel"
   ) {
     try {
+      const fresh = await trpcUtils.spec226DevelopmentControl.get.fetch({
+        runId: run.runId,
+      });
+      if (
+        fresh.bridgeVersion !== run.bridgeVersion ||
+        fresh.revision !== run.revision ||
+        fresh.fencingVersion !== run.fencingVersion ||
+        fresh.decisionEpoch !== run.decisionEpoch ||
+        !fresh.actions[action]
+      ) {
+        toast.error("DevelopmentRun เปลี่ยนแปลงแล้ว กรุณาตรวจสอบสถานะล่าสุด");
+        await Promise.all([
+          developmentRunsQuery.refetch(),
+          ...(expandedDevelopmentRunId === run.runId
+            ? [developmentRunQuery.refetch(), developmentEventsQuery.refetch()]
+            : []),
+        ]);
+        return;
+      }
       await developmentCommandMutation.mutateAsync({
         runId: run.runId,
         action,
-        expectedRevision: run.revision,
-        expectedFencingVersion: run.fencingVersion,
-        idempotencyKey: `spec226-ui:${run.runId}:${action}:${run.revision}:${run.fencingVersion}`,
+        expectedRevision: fresh.revision,
+        expectedFencingVersion: fresh.fencingVersion,
+        expectedDecisionEpoch: fresh.decisionEpoch,
+        idempotencyKey: `spec226-ui:${run.runId}:${action}:${fresh.revision}:${fresh.fencingVersion}:${fresh.decisionEpoch}`,
       });
       toast.success(
         action === "pause"
@@ -718,10 +767,64 @@ export function UniversalControlPlanePanel({
               </p>
             </section>
             <span className="text-xs text-slate-500">
-              {developmentRuns.length} run
-              {developmentRuns.length === 1 ? "" : "s"}
+              {activeDevelopmentRuns.length} active ·{" "}
+              {developmentAttentionInbox.length} needs attention
             </span>
           </header>
+          <section
+            className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3"
+            aria-labelledby="development-attention-heading"
+          >
+            <header className="flex items-center justify-between gap-2">
+              <h4
+                id="development-attention-heading"
+                className="text-xs font-semibold text-amber-950"
+              >
+                Needs Attention / Decision Inbox
+              </h4>
+              <Badge
+                variant="outline"
+                className="border-amber-300 text-amber-900"
+              >
+                {developmentAttentionInbox.length}
+              </Badge>
+            </header>
+            {developmentAttentionInbox.length ? (
+              <ul
+                className="mt-2 space-y-1"
+                aria-label="DevelopmentRun decisions"
+              >
+                {developmentAttentionInbox.map(run => (
+                  <li key={`attention-${run.runId}`}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-2 text-left text-xs text-amber-950 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => setExpandedDevelopmentRunId(run.runId)}
+                    >
+                      <span className="min-w-0 truncate">{run.runId}</span>
+                      <span className="shrink-0">
+                        {developmentStateLabel(run.state)}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-amber-900">
+                No persisted decision or recovery attention is currently
+                advertised.
+              </p>
+            )}
+          </section>
+          <section className="mt-3" aria-label="Active DevelopmentRuns">
+            <h4 className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+              Active runs
+            </h4>
+            <p className="mt-1 text-xs text-slate-500">
+              {activeDevelopmentRuns.length} active · terminal runs remain below
+              for history
+            </p>
+          </section>
           <ul className="mt-2 space-y-2" aria-label="Development runs">
             {developmentRuns.length === 0 ? (
               <li>
@@ -835,10 +938,248 @@ export function UniversalControlPlanePanel({
                             empty="Loading DevelopmentRun details..."
                           />
                         ) : detail ? (
-                          <p className="text-xs text-slate-600">
-                            Canonical event sequence {detail.eventSequence} ·
-                            Worker job {detail.workerJobId ?? "not admitted"}
-                          </p>
+                          <section aria-label="Selected DevelopmentRun details">
+                            <p className="text-xs text-slate-600">
+                              Canonical event sequence {detail.eventSequence} ·
+                              Worker job {detail.workerJobId ?? "not admitted"}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Source{" "}
+                              {detail.closure?.baseline.revision ??
+                                "closure baseline unavailable"}
+                              {detail.closure
+                                ? ` · SHA-256 ${detail.closure.baseline.digest}`
+                                : ""}
+                              {` · decision epoch ${detail.decisionEpoch}`}
+                            </p>
+                            {detail.closure ? (
+                              <section
+                                className="mt-3"
+                                aria-label="PlanSection and WorkPackage progress"
+                              >
+                                <h4 className="text-xs font-semibold text-slate-800">
+                                  Plan and package progress
+                                </h4>
+                                <ul className="mt-2 space-y-2">
+                                  {detail.closure.planSections.map(section => {
+                                    const packages =
+                                      detail.closure!.workPackages.filter(
+                                        workPackage =>
+                                          workPackage.planSectionId ===
+                                          section.id
+                                      );
+                                    return (
+                                      <li
+                                        key={section.id}
+                                        className="rounded-lg border border-slate-200 p-2"
+                                      >
+                                        <p className="text-xs font-medium text-slate-800">
+                                          {section.id} ·{" "}
+                                          {section.requirementIds.length}{" "}
+                                          requirements
+                                        </p>
+                                        <ul className="mt-1 space-y-1 pl-2">
+                                          {packages.map(workPackage => {
+                                            const requirements =
+                                              detail.closure!.requirements.filter(
+                                                requirement =>
+                                                  workPackage.requirementIds.includes(
+                                                    requirement.id
+                                                  )
+                                              );
+                                            const completed =
+                                              requirements.filter(requirement =>
+                                                [
+                                                  "VERIFIED_PASS",
+                                                  "WAIVED_BY_AUTHORIZED_DECISION",
+                                                  "NOT_APPLICABLE_WITH_EVIDENCE",
+                                                ].includes(requirement.state)
+                                              ).length;
+                                            return (
+                                              <li
+                                                key={workPackage.id}
+                                                className="text-xs text-slate-600"
+                                              >
+                                                <span className="font-medium text-slate-800">
+                                                  {workPackage.id}
+                                                </span>
+                                                {` · ${completed}/${requirements.length} requirements closed · depends on ${workPackage.dependsOn.join(", ") || "none"}`}
+                                                <ul className="mt-1 space-y-1 pl-2">
+                                                  {requirements.map(
+                                                    requirement => (
+                                                      <li key={requirement.id}>
+                                                        {requirement.id} ·{" "}
+                                                        {developmentStateLabel(
+                                                          requirement.state
+                                                        )}
+                                                      </li>
+                                                    )
+                                                  )}
+                                                </ul>
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              </section>
+                            ) : (
+                              <p className="mt-3 text-xs text-slate-500">
+                                No persisted requirement-closure graph is
+                                attached to this run.
+                              </p>
+                            )}
+                            <section
+                              className="mt-3"
+                              aria-label="Blockers and evidence"
+                            >
+                              <h4 className="text-xs font-semibold text-slate-800">
+                                Blockers and evidence
+                              </h4>
+                              {detail.closure?.blockers.length ? (
+                                <ul className="mt-1 space-y-1">
+                                  {detail.closure.blockers.map(blocker => (
+                                    <li
+                                      key={blocker.blockerId}
+                                      className="text-xs text-amber-900"
+                                    >
+                                      {blocker.blockerId} · {blocker.status} ·{" "}
+                                      {blocker.severity} ·{" "}
+                                      {blocker.classification}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  No persisted blockers in the closure ledger.
+                                </p>
+                              )}
+                              {detail.evidenceRefs.length ? (
+                                <ul
+                                  className="mt-1 space-y-1"
+                                  aria-label="Evidence references"
+                                >
+                                  {detail.evidenceRefs.map(reference => (
+                                    <li
+                                      key={reference}
+                                      className="break-all text-xs text-slate-600"
+                                    >
+                                      {reference}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-1 text-xs text-slate-500">
+                                  No evidence references recorded.
+                                </p>
+                              )}
+                            </section>
+                            <section
+                              className="mt-3"
+                              aria-label="Deferred test obligations"
+                            >
+                              <h4 className="text-xs font-semibold text-slate-800">
+                                Deferred test obligations
+                              </h4>
+                              <p className="mt-1 text-xs text-slate-500">
+                                Tracked deferrals are not passing test evidence.
+                              </p>
+                              {(
+                                detail.closure?.deferredTestObligations ?? []
+                              ).filter(item => item.invalidatedAt === null)
+                                .length ? (
+                                <ul className="mt-2 space-y-2">
+                                  {(
+                                    detail.closure?.deferredTestObligations ??
+                                    []
+                                  )
+                                    .filter(item => item.invalidatedAt === null)
+                                    .map(item => (
+                                      <li
+                                        key={`${item.obligationId}:${item.version}`}
+                                        className="rounded-lg border border-border bg-card p-2"
+                                      >
+                                        <p className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-foreground">
+                                          <span>
+                                            {item.obligationId} · v
+                                            {item.version}
+                                          </span>
+                                          <Badge variant="outline">
+                                            DEFERRED
+                                          </Badge>
+                                        </p>
+                                        <p className="mt-1 break-all text-xs text-muted-foreground">
+                                          {item.category} · {item.testTarget}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                          Requirement {item.requirementId} ·
+                                          WorkPackage {item.workPackageId}
+                                        </p>
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                          Reason: {item.reason}
+                                        </p>
+                                        <p className="mt-1 break-words text-xs text-muted-foreground">
+                                          Required environment:{" "}
+                                          {item.requiredEnvironment}
+                                        </p>
+                                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                                          Spec {item.specId}@{item.specRevision}{" "}
+                                          · source SHA-256{" "}
+                                          {item.sourceArtifactDigest}
+                                        </p>
+                                        <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                                          Spec SHA-256 {item.specDigest}
+                                        </p>
+                                      </li>
+                                    ))}
+                                </ul>
+                              ) : (
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  No current deferred test obligations are
+                                  recorded.
+                                </p>
+                              )}
+                              {(
+                                detail.closure?.deferredTestObligations ?? []
+                              ).some(item => item.invalidatedAt !== null) ? (
+                                <details className="mt-2 rounded-lg border border-border p-2">
+                                  <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                                    Invalidated history
+                                  </summary>
+                                  <ul className="mt-2 space-y-2">
+                                    {(
+                                      detail.closure?.deferredTestObligations ??
+                                      []
+                                    )
+                                      .filter(
+                                        item => item.invalidatedAt !== null
+                                      )
+                                      .map(item => (
+                                        <li
+                                          key={`${item.obligationId}:${item.version}`}
+                                          className="rounded-lg bg-muted/60 p-2 text-xs text-muted-foreground"
+                                        >
+                                          <p className="font-medium">
+                                            {item.obligationId} · v
+                                            {item.version} · INVALIDATED
+                                          </p>
+                                          <p>{item.invalidationReason}</p>
+                                          <time
+                                            dateTime={
+                                              item.invalidatedAt ?? undefined
+                                            }
+                                          >
+                                            {item.invalidatedAt}
+                                          </time>
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </details>
+                              ) : null}
+                            </section>
+                          </section>
                         ) : null}
                         {developmentEventsQuery.error ? (
                           <p className="mt-2 text-xs text-rose-700">
@@ -849,9 +1190,12 @@ export function UniversalControlPlanePanel({
                             className="mt-2 space-y-1 text-xs text-slate-600"
                             aria-label={`${run.runId} event history`}
                           >
-                            {events.slice(-5).map(event => (
+                            {events.slice(-10).map(event => (
                               <li key={event.eventId}>
-                                #{event.sequence} · {stateLabel(event.type)}
+                                <time dateTime={event.occurredAt}>
+                                  {new Date(event.occurredAt).toLocaleString()}
+                                </time>
+                                {` · #${event.sequence} · ${stateLabel(event.type)}`}
                               </li>
                             ))}
                           </ol>
@@ -880,12 +1224,15 @@ export function UniversalControlPlanePanel({
                             </Badge>
                           </section>
                           <p className="mt-2 text-xs text-slate-600">
-                            สถานะนี้อ่านจาก Runner, approval authority และ economic hold ที่บันทึกจริง
-                            เท่านั้น ไม่มี local readiness flag
+                            สถานะนี้อ่านจาก Runner, approval authority และ
+                            economic hold ที่บันทึกจริง เท่านั้น ไม่มี local
+                            readiness flag
                           </p>
                           {authorizationStatusQuery.data?.reasons?.length ? (
                             <p className="mt-1 text-xs text-amber-800">
-                              {authorizationStatusQuery.data.reasons.join(" · ")}
+                              {authorizationStatusQuery.data.reasons.join(
+                                " · "
+                              )}
                             </p>
                           ) : null}
                           <section className="mt-3 grid gap-2 sm:grid-cols-[1fr_130px]">
@@ -925,13 +1272,23 @@ export function UniversalControlPlanePanel({
                                     runner.trustState === "trusted"
                                 )
                               }
-                              onClick={() => void requestCodexApproval(run.runId)}
+                              onClick={() =>
+                                void requestCodexApproval(run.runId)
+                              }
                             >
                               Request owner approval
                             </Button>
-                            {authorizationStatusQuery.data?.references?.approvalRef ? (
-                              <Button asChild type="button" size="sm" variant="ghost">
-                                <Link href="/admin/approvals">Open approval queue</Link>
+                            {authorizationStatusQuery.data?.references
+                              ?.approvalRef ? (
+                              <Button
+                                asChild
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                              >
+                                <Link href="/admin/approvals">
+                                  Open approval queue
+                                </Link>
                               </Button>
                             ) : null}
                             <Button
@@ -940,7 +1297,8 @@ export function UniversalControlPlanePanel({
                               variant="outline"
                               disabled={
                                 reserveAuthorizationBudgetMutation.isPending ||
-                                authorizationStatusQuery.data?.status !== "BUDGET_REQUIRED"
+                                authorizationStatusQuery.data?.status !==
+                                  "BUDGET_REQUIRED"
                               }
                               onClick={() => void reserveCodexBudget(run.runId)}
                             >
@@ -951,9 +1309,12 @@ export function UniversalControlPlanePanel({
                               size="sm"
                               disabled={
                                 bindAuthorizationMutation.isPending ||
-                                authorizationStatusQuery.data?.status !== "READY_FOR_LIVE"
+                                authorizationStatusQuery.data?.status !==
+                                  "READY_FOR_LIVE"
                               }
-                              onClick={() => void bindCodexAuthorization(run.runId)}
+                              onClick={() =>
+                                void bindCodexAuthorization(run.runId)
+                              }
                             >
                               Bind verified policy
                             </Button>
@@ -965,14 +1326,17 @@ export function UniversalControlPlanePanel({
                                 variant="ghost"
                                 className="text-rose-700 hover:text-rose-800"
                                 disabled={revokeAuthorizationMutation.isPending}
-                                onClick={() => void revokeCodexAuthorization(run.runId)}
+                                onClick={() =>
+                                  void revokeCodexAuthorization(run.runId)
+                                }
                               >
                                 Revoke
                               </Button>
                             ) : null}
                           </section>
                           <p className="mt-2 text-[11px] text-slate-500">
-                            การกด Bind ยังไม่เริ่ม provider execution; จะส่งเพียง policy binding เข้า canonical worker job
+                            การกด Bind ยังไม่เริ่ม provider execution;
+                            จะส่งเพียง policy binding เข้า canonical worker job
                           </p>
                         </section>
                       </section>

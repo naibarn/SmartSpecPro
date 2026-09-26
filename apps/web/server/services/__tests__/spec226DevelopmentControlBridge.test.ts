@@ -9,6 +9,9 @@ import type {
   DevelopmentRunPersistenceAdapter,
   DevelopmentRunStoreRecord,
 } from "../spec224DevelopmentRunPersistence";
+import { compileRequirementClosureGraph } from "../spec224RequirementClosureContracts";
+import { deriveSpec224RequirementId } from "../spec224SpecBaseline";
+import { createRequirementClosurePersistenceService } from "../spec224RequirementClosurePersistence";
 import { createSpec226DevelopmentControlBridge } from "../spec226DevelopmentControlBridge";
 
 function runAtPlanning(): DevelopmentRun {
@@ -86,6 +89,94 @@ function memoryAdapter(initial: DevelopmentRunStoreRecord) {
 }
 
 describe("Spec 226 DevelopmentRun control bridge", () => {
+  it("projects persisted deferred obligations from canonical closure state", async () => {
+    const run = runAtPlanning();
+    const memory = memoryAdapter({ run, revision: 0, events: [] });
+    const closures = createRequirementClosurePersistenceService(memory.adapter);
+    const sourceArtifactDigest = "c".repeat(64);
+    const specDigest = "b".repeat(64);
+    const requirementText = "The bridge MUST expose deferred test provenance.";
+    const requirementId = deriveSpec224RequirementId({
+      specId: "224",
+      revision: "21",
+      sourceArtifactDigest,
+      sourceDigest: specDigest,
+      line: 1,
+      text: requirementText,
+    });
+    const graph = compileRequirementClosureGraph({
+      baseline: {
+        specId: "224",
+        revision: "21",
+        sourceArtifactDigest,
+        digest: specDigest,
+        baselineId: "baseline:224-r21",
+        authorityRef: "authority:platform-engineering",
+        scopeEnvelopeRef: "scope:224-r21",
+      },
+      requirements: [
+        {
+          id: requirementId,
+          sourceRef: "spec:224@21#L1",
+          text: requirementText,
+        },
+      ],
+      planSections: [
+        { id: "section:deferred", requirementIds: [requirementId] },
+      ],
+      workPackages: [
+        {
+          id: "wp:deferred",
+          planSectionId: "section:deferred",
+          requirementIds: [requirementId],
+          dependsOn: [],
+        },
+      ],
+    });
+    await closures.attachGraph({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 0,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "bridge:closure:attach",
+      graph,
+    });
+    await closures.recordDeferredTestObligation({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      expectedRevision: 1,
+      expectedFencingVersion: run.fencingVersion,
+      idempotencyKey: "bridge:deferred:v1",
+      obligationId: "obligation:bridge",
+      requirementId,
+      workPackageId: "wp:deferred",
+      category: "INTEGRATION",
+      testTarget: "Spec 226 canonical read projection",
+      reason: "The complete bridge suite is deferred.",
+      requiredEnvironment: "node-test-runtime",
+    });
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memory.adapter,
+      listRuns: async () => [memory.read().run],
+    });
+
+    const view = await bridge.get({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+    });
+    expect(view.closure?.deferredTestObligations).toMatchObject([
+      {
+        obligationId: "obligation:bridge",
+        version: 1,
+        invalidatedAt: null,
+      },
+    ]);
+    expect(view.evidenceRefs).not.toContain("obligation:bridge");
+  });
+
   it("projects only the owner-scoped canonical run and replays events by cursor", async () => {
     const memory = memoryAdapter({
       run: runAtPlanning(),
@@ -103,8 +194,20 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
       expectedRevision: 0,
       expectedFencingVersion: 0,
+      expectedDecisionEpoch: 0,
       idempotencyKey: "control:pause:1",
       action: "pause",
+    });
+
+    const listed = await bridge.list({
+      tenantId: "tenant-acme",
+      actorId: 42,
+      limit: 10,
+    });
+    expect(listed[0]).toMatchObject({
+      bridgeVersion: "spec-226-development-control-v3",
+      decisionEpoch: 0,
+      closure: null,
     });
 
     await expect(
@@ -155,6 +258,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
       expectedRevision: 0,
       expectedFencingVersion: 0,
+      expectedDecisionEpoch: 0,
       idempotencyKey: "control:pause:1",
       action: "pause" as const,
     };
@@ -183,6 +287,7 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         ...command,
         expectedRevision: 1,
         expectedFencingVersion: 9,
+        expectedDecisionEpoch: 0,
         idempotencyKey: "control:cancel:fence",
         action: "cancel",
       })
@@ -206,6 +311,8 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
       actorId: 42,
     });
     expect(view.actions).toEqual({ pause: true, cancel: true });
+    expect(view.decisionEpoch).toBe(0);
+    expect(view.closure).toBeNull();
     await expect(
       bridge.command({
         runId: "run-226-control",
@@ -213,6 +320,19 @@ describe("Spec 226 DevelopmentRun control bridge", () => {
         actorId: 42,
         expectedRevision: 0,
         expectedFencingVersion: 0,
+        expectedDecisionEpoch: 1,
+        idempotencyKey: "control:pause:stale-epoch",
+        action: "pause",
+      })
+    ).rejects.toThrow("RUN_DECISION_EPOCH_STALE");
+    await expect(
+      bridge.command({
+        runId: "run-226-control",
+        tenantId: "tenant-acme",
+        actorId: 42,
+        expectedRevision: 0,
+        expectedFencingVersion: 0,
+        expectedDecisionEpoch: 0,
         idempotencyKey: "control:resume:forbidden",
         action: "resume" as never,
       })
