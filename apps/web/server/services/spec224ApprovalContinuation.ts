@@ -56,7 +56,7 @@ type ApprovalAuthority = {
   }): Promise<{ id: string; status: "pending"; tenantId?: string | null; executionId?: string | null }>;
   get(approvalRef: string, scope: ApprovalLookupScope): Promise<ApprovalRecord | null>;
   acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; leaseOwner: string; leaseEpoch: number; receipt: Record<string, unknown> }): Promise<void>;
-  claimPending?(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]>;
+  claimPending?(input: { workerId: string; limit: number; leaseSeconds?: number }): Promise<Spec224ApprovalDeliveryClaim[]>;
 };
 
 export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
@@ -277,14 +277,14 @@ export function createSpec224ExternalApprovalAuthority() {
       );
       if (!response.ok) throw new Error("SPEC224_APPROVAL_ACK_REJECTED");
     },
-    async claimPending(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]> {
+    async claimPending(input: { workerId: string; limit: number; leaseSeconds?: number }): Promise<Spec224ApprovalDeliveryClaim[]> {
       const runtime = await getAppRuntimeConfig();
       const token = getCachedPreferredInternalToken();
       if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
       const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-external/decision-deliveries/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-internal-token": token },
-        body: JSON.stringify({ workerId: input.workerId, limit: input.limit, leaseSeconds: 60 }),
+        body: JSON.stringify({ workerId: input.workerId, limit: input.limit, leaseSeconds: input.leaseSeconds ?? 60 }),
       });
       if (!response.ok) throw new Error("SPEC224_APPROVAL_CLAIM_REJECTED");
       const body = await response.json().catch(() => ({})) as { claims?: unknown };
@@ -601,16 +601,18 @@ export function createSpec224ApprovalContinuation(
 
 export function createSpec224ApprovalDecisionReconciler(
   deps: Spec224ApprovalContinuationDeps,
-  options: { workerId: string; limit?: number },
+  options: { workerId: string; limit?: number; leaseSeconds?: number },
 ) {
   assertText(options.workerId, "worker_id");
   const limit = options.limit ?? 25;
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error("SPEC224_APPROVAL_CLAIM_LIMIT_INVALID");
+  const leaseSeconds = options.leaseSeconds ?? 60;
+  if (!Number.isSafeInteger(leaseSeconds) || leaseSeconds < 5 || leaseSeconds > 300) throw new Error("SPEC224_APPROVAL_CLAIM_LEASE_INVALID");
   if (!deps.authority.claimPending) throw new Error("SPEC224_APPROVAL_CLAIM_UNAVAILABLE");
   const continuation = createSpec224ApprovalContinuation(deps);
 
   return async function reconcilePendingDecisions() {
-    const claims = await deps.authority.claimPending!({ workerId: options.workerId, limit });
+    const claims = await deps.authority.claimPending!({ workerId: options.workerId, limit, leaseSeconds });
     const result = { claimed: claims.length, resumed: 0, failed: 0, duplicate: 0, operatorReview: 0, ignored: 0, errors: 0 };
     for (const claim of claims) {
       try {
