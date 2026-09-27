@@ -7,9 +7,14 @@ import {
   economicReconciliations,
 } from "../../drizzle/schema";
 import { getDb } from "../db";
-import { protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { admitEconomicIntent } from "../services/economicControlPlaneTypes";
+import {
+  EconomicProvisioningError,
+  provisionEconomicBudget,
+  provisionEconomicLedgerAccount,
+} from "../services/economicProvisioningService";
 
 const previewSchema = z.object({
   jobId: z.string().min(1).max(36),
@@ -22,6 +27,31 @@ const previewSchema = z.object({
     currency: z.string().length(3),
   }),
 });
+
+const provisionAccountSchema = z.object({
+  ownerType: z.enum(["tenant", "user"]),
+  accountType: z.string().trim().min(2).max(32),
+  currency: z.string().trim().length(3),
+  idempotencyKey: z.string().trim().min(8).max(128),
+});
+
+const provisionBudgetSchema = z.object({
+  scopeType: z.enum(["tenant", "user", "worker_job"]),
+  scopeRef: z.string().trim().min(1).max(160).optional(),
+  currency: z.string().trim().length(3),
+  limitMinorUnits: z.number().int().nonnegative().safe(),
+  idempotencyKey: z.string().trim().min(8).max(128),
+});
+
+function mapProvisioningError(error: unknown): never {
+  if (error instanceof EconomicProvisioningError) {
+    throw new TRPCError({
+      code: error.code === "ECONOMIC_PROVISIONING_FORBIDDEN" ? "FORBIDDEN" : "BAD_REQUEST",
+      message: error.code,
+    });
+  }
+  throw error;
+}
 
 function requireEconomicTenant(ctx: {
   tenantId: unknown;
@@ -85,6 +115,30 @@ export function previewEconomicAdmission(
 }
 
 export const economicControlPlaneRouter = router({
+  provisionLedgerAccount: adminProcedure
+    .input(provisionAccountSchema)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireEconomicTenant(ctx);
+      try {
+        return await provisionEconomicLedgerAccount(getDb(), {
+          authorization: { tenantId, actorId: ctx.user.id, role: ctx.user.role },
+          ...input,
+        });
+      } catch (error) { return mapProvisioningError(error); }
+    }),
+
+  provisionBudget: adminProcedure
+    .input(provisionBudgetSchema)
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireEconomicTenant(ctx);
+      try {
+        return await provisionEconomicBudget(getDb(), {
+          authorization: { tenantId, actorId: ctx.user.id, role: ctx.user.role },
+          ...input,
+        });
+      } catch (error) { return mapProvisioningError(error); }
+    }),
+
   preview: protectedProcedure.input(previewSchema).query(({ ctx, input }) => {
     const tenantId = requireEconomicTenant(ctx);
     const freeze = emergencyFreezeByTenant.get(tenantId);

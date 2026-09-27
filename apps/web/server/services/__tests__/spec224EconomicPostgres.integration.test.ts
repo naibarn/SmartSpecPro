@@ -217,6 +217,72 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
     expect(auditEvents.every((event: any) => event.actorId === String(userId))).toBe(true);
   });
 
+  it("provisions an owned zero-balance account and scoped budget idempotently with audit events", async () => {
+    const { economicControlPlaneRouter } = await import("../../routers/economicControlPlane");
+    const caller = economicControlPlaneRouter.createCaller({
+      req: {} as any,
+      res: {} as any,
+      user: { id: userId, role: "admin", currentTenantId: tenantId } as any,
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      tenantId,
+      publicUrl: null,
+    });
+    const accountInput = {
+      ownerType: "user" as const,
+      accountType: "user_credit",
+      currency: "usd",
+      idempotencyKey: `account-${scopeId}`,
+    };
+    const account = await caller.provisionLedgerAccount(accountInput);
+    const accountReplay = await caller.provisionLedgerAccount(accountInput);
+    expect(account.status).toBe("open");
+    expect(account.ownerRef).toBe(`user:${userId}`);
+    expect(account.balanceMinorUnits).toBe(0);
+    expect(accountReplay.accountId).toBe(account.accountId);
+    expect(accountReplay.replayed).toBe(true);
+
+    const budgetInput = {
+      scopeType: "tenant" as const,
+      currency: "usd",
+      limitMinorUnits: 25_000,
+      idempotencyKey: `budget-${scopeId}`,
+    };
+    const budget = await caller.provisionBudget(budgetInput);
+    const budgetReplay = await caller.provisionBudget(budgetInput);
+    expect(budget.scopeRef).toBe(tenantId);
+    expect(budget.limitMinorUnits).toBe(25_000);
+    expect(budget.heldMinorUnits).toBe(0);
+    expect(budget.capturedMinorUnits).toBe(0);
+    expect(budgetReplay.budgetId).toBe(budget.budgetId);
+    expect(budgetReplay.replayed).toBe(true);
+    await expect(caller.provisionBudget({ ...budgetInput, limitMinorUnits: 30_000 }))
+      .rejects.toMatchObject({ message: "ECONOMIC_PROVISIONING_BUDGET_SCOPE_CONFLICT" });
+    const nonAdmin = economicControlPlaneRouter.createCaller({
+      req: {} as any,
+      res: {} as any,
+      user: { id: userId, role: "user", currentTenantId: tenantId } as any,
+      userToken: null,
+      privateVaultToken: null,
+      protectedSurfaceToken: null,
+      tenantId,
+      publicUrl: null,
+    });
+    await expect(nonAdmin.provisionBudget({ ...budgetInput, idempotencyKey: `denied-${scopeId}` }))
+      .rejects.toMatchObject({ code: "FORBIDDEN" });
+
+    const events = await db.select().from(economicSchema.economicEvents).where(
+      eq(economicSchema.economicEvents.tenantId, tenantId),
+    );
+    const accountEvents = events.filter((event: any) => event.idempotencyKey.includes(`account-${scopeId}`));
+    const budgetEvents = events.filter((event: any) => event.idempotencyKey.includes(`budget-${scopeId}`));
+    expect(accountEvents).toHaveLength(1);
+    expect(accountEvents[0].payloadJson.resourceId).toBe(account.accountId);
+    expect(budgetEvents).toHaveLength(1);
+    expect(budgetEvents[0].payloadJson.resourceId).toBe(budget.budgetId);
+  });
+
   it("captures a verified receipt atomically and replays duplicate settlement", async () => {
     const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-capture`, limitMinorUnits: 1_000 });
     const job = await createAttempt();
