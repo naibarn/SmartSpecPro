@@ -2065,6 +2065,11 @@ export async function assembleGitTreeAttestedSourceBundle(input: {
   specDigest: string;
 }): Promise<{ bundle: SourceBundleManifest; sourceManifestDigest: string }> {
   if (input.sourceManifest.sourceRevision.toLowerCase() !== input.sourceRevision.toLowerCase()) throw new Error("SPEC224_BUNDLE_SOURCE_REVISION_MISMATCH");
+  const [repositoryStat, sourceStat] = await Promise.all([lstat(input.repositoryRoot).catch(() => null), lstat(input.sourceRoot).catch(() => null)]);
+  if (!repositoryStat?.isDirectory() || repositoryStat.isSymbolicLink() || !sourceStat?.isDirectory() || sourceStat.isSymbolicLink()) throw new Error("SPEC224_BUNDLE_SOURCE_ROOT_INVALID");
+  const [repositoryRealPath, sourceRealPath] = await Promise.all([realpath(input.repositoryRoot), realpath(input.sourceRoot)]);
+  const expectedSourceRoot = resolve(repositoryRealPath, input.sourceManifest.treePath === "." ? "." : input.sourceManifest.treePath);
+  if (sourceRealPath !== expectedSourceRoot) throw new Error("SPEC224_BUNDLE_SOURCE_ROOT_MISMATCH");
   await attestGitTreeSourceManifest({ repositoryRoot: input.repositoryRoot, manifest: input.sourceManifest });
   const closure = await discoverSourceClosure({ ...input.closure, sourceRoot: input.sourceRoot });
   if (!closure.closureComplete) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");

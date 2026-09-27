@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import {
+  cp,
   chmod,
   mkdtemp,
   mkdir,
@@ -159,6 +160,31 @@ describe("Spec 224 immutable Git-tree snapshot", () => {
         },
       })
     ).rejects.toThrow("SPEC224_BUNDLE_SOURCE_TREE_FILE_MISMATCH:main.ts");
+  });
+
+  it("rejects a byte-identical source root outside the attested repository", async () => {
+    const { root, manifest } = await makeGitSource();
+    const foreignRoot = await mkdtemp(join(tmpdir(), "spec224-foreign-source-"));
+    temporaryRoots.push(foreignRoot);
+    await cp(join(root, "source"), join(foreignRoot, "source"), { recursive: true });
+    const destination = join(root, "..", `foreign-root-bundle-${Date.now()}`);
+    temporaryRoots.push(destination);
+
+    await expect(assembleGitTreeAttestedSourceBundle({
+      repositoryRoot: root,
+      sourceRoot: join(foreignRoot, "source"),
+      destination,
+      sourceManifest: manifest,
+      sourceRevision: manifest.sourceRevision,
+      specDigest: "a".repeat(64),
+      closure: {
+        entryPaths: ["main.ts"],
+        dependencyArtifacts: ["pnpm-lock.yaml"],
+        workspaceManifestPaths: ["package.json"],
+        profileId: "spec224-source-only-test",
+        runtimeIdentity: { node: "22.22.0", packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      },
+    })).rejects.toThrow("SPEC224_BUNDLE_SOURCE_ROOT_MISMATCH");
   });
 
   it("rejects an executable-bit change from the attested Git tree", async () => {
