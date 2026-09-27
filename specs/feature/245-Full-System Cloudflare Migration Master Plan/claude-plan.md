@@ -99,3 +99,13 @@ Current local verifier result: `localContractReady=true`. Current target verifie
 ## 8. Completion report
 
 Report exact changed paths, focused checks and boundaries, active/migrated/unmigrated responsibilities, target blockers and next slice. Do not run repository typecheck. Do not use the absence of a calendar observation period to skip high-risk correctness checks.
+
+## 9. Spec 232 G2 recovery crosswalk — planning update (2026-09-27)
+
+Spec 232 now has a bounded G2 Auth/revocation recovery plan at [`Spec 232 G2 recovery plan`](../232-Zero-Downtime%20RedisBullMQ%20to%20Cloudflare%20Migration%20%26%20Runtime%20Hardening/claude-plan.md), with six ordered sections and a matching TDD matrix. This preserves the ownership boundary in §1 and executes the G2 recovery dependency in Wave 4; Spec 245 remains the coordinating migration plan.
+
+The Spec 232 recovery work is deliberately PostgreSQL-backed. Its target/writer inventory, encrypted backup plus isolated restore, complete writer fence, fresh snapshots, guarded JTI/login reconciliation, device/pairing disposition, keyring/security validation, and staged reopen evidence are prerequisites for declaring the **immediate G2 recovery** complete. None moves G2 authority to Durable Objects, retires Redis, or certifies the full Spec 245 migration. Any Durable Objects promotion requires a separate future wave with its own consistency, lifecycle, restore, cross-region, authority-transfer, rollback, and live-provider gates.
+
+Implementation crosswalk (2026-09-27): repository work has since completed across the six Spec 232 sections, including guarded JTI/login reconciliation paths, focused synthetic keyring validation, section reviews, and local tests. The implementation evidence is recorded in the Spec 232 section files. PostgreSQL integration tests and every target-specific/operational gate remain unproven, so the reopen decision is still `BLOCKED_SAFE`.
+
+Status boundary: this crosswalk does not refresh the dated Production observations in `ops/feature-232/g1-g2-production-readiness-runbook.md`, certify current runtime state, authorize guarded imports, change secrets, unmask/start services, deploy, or reopen traffic. Treat the runbook's current explicit gates and timestamps as governing evidence; obtain fresh target-specific evidence and owner approval before acting. Spec 245's existing R8 plan/TDD/research/sections and unrelated G1/G3–G6/deployment blockers remain intact.
