@@ -1,6 +1,8 @@
 """P-RECOVERY grant contract against a disposable PostgreSQL database."""
 
 import os
+import hashlib
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
@@ -20,10 +22,19 @@ def _database_url() -> str:
 
 
 def _scope() -> dict:
+    source_commit = "a" * 40
+    source_files = [{"path": "python-backend/app/services/approval_db_service.py", "sha256": "c" * 64}]
+    source_manifest = {
+        "files": source_files,
+        "schemaVersion": "spec224.source-manifest.v1",
+        "sourceCommit": source_commit,
+    }
     return {
-        "sourceCommit": "a" * 40,
-        "sourceSha256": "b" * 64,
-        "sourceFiles": [{"path": "python-backend/app/services/approval_db_service.py", "sha256": "c" * 64}],
+        "sourceCommit": source_commit,
+        "sourceSha256": hashlib.sha256(json.dumps(
+            source_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")).hexdigest(),
+        "sourceFiles": source_files,
         "workpackageId": "WP-RECOVERY-04",
         "allowedWriteSet": ["python-backend/app/services/approval_db_service.py"],
         "allowedOperations": ["modify_owned_paths", "run_focused_tests"],
@@ -36,7 +47,10 @@ def _scope() -> dict:
 
 @pytest.mark.asyncio
 async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactional():
+    from app.models.approval import ApprovalRequest, ApprovalResponse, ApprovalStatus
+    from app.models.audit_log import AuditLog
     from app.services.approval_db_service import ApprovalDBService
+    from sqlalchemy import select
 
     engine = create_async_engine(_database_url(), pool_pre_ping=True)
     sessions = async_sessionmaker(engine, expire_on_commit=False)
@@ -64,6 +78,11 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
 
         async with sessions() as session:
             service = ApprovalDBService(session)
+            forged_manifest = {**scope, "sourceSha256": "f" * 64}
+            with pytest.raises(ValueError, match="SOURCE_MANIFEST_DIGEST_MISMATCH"):
+                await service.issue_spec224_recovery_grant(
+                    tenant_id=tenant_id, owner_id=owner_id, idempotency_key=f"forged-{suffix}", scope=forged_manifest
+                )
             with pytest.raises(PermissionError, match="TENANT_OWNER_REQUIRED"):
                 await service.issue_spec224_recovery_grant(
                     tenant_id=tenant_id, owner_id=other_id, idempotency_key=f"grant-{suffix}", scope=scope
@@ -77,19 +96,124 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 tenant_id=tenant_id, owner_id=owner_id, idempotency_key=f"grant-{suffix}", scope=scope
             ) == grant
             assert await service.validate_spec224_recovery_grant(
-                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256="b" * 64,
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+            request = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
+
+            request.status = ApprovalStatus.REJECTED
+            await session.commit()
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+            request.status = ApprovalStatus.APPROVED
+            await session.commit()
+
+            request.revoked_at = datetime.utcnow()
+            await session.commit()
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+            request.revoked_at = None
+            await session.commit()
+
+            response = (await session.execute(select(ApprovalResponse).where(
+                ApprovalResponse.request_id == grant_id,
+                ApprovalResponse.approver_id == owner_id,
+                ApprovalResponse.decision == "approved",
+            ))).scalar_one()
+            await session.delete(response)
+            await session.commit()
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+            session.add(ApprovalResponse(
+                id=str(uuid.uuid4()), request_id=grant_id, approver_id=owner_id,
+                decision="approved", comment="restore fixture evidence", created_at=datetime.utcnow(),
+            ))
+            await session.commit()
+
+            audit = (await session.execute(select(AuditLog).where(
+                AuditLog.resource_id == grant_id,
+                AuditLog.action == "spec224.recovery_grant.issued",
+            ))).scalar_one()
+            await session.delete(audit)
+            await session.commit()
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+            session.add(AuditLog(
+                user_id=str(owner_id), user_role="tenant_owner", action="spec224.recovery_grant.issued",
+                resource_type="spec224_recovery_grant", resource_id=grant_id,
+                details={"tenantId": tenant_id, "scopeDigest": grant["scopeDigest"], "eventDigest": grant["auditEvents"][0]["eventDigest"]},
+            ))
+            await session.commit()
+            assert await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                environment_scope="isolated-non-production",
+            )
+
+            for invalid_scope in (
+                {"tenant_id": str(uuid.uuid4())},
+                {"source_sha256": "e" * 64},
+                {"workpackage_id": "WP-OTHER-01"},
+                {"operation": "deploy_production"},
+                {"runtime_scope": "node-control-plane"},
+                {"environment_scope": "production"},
+            ):
+                arguments = {
+                    "grant_id": grant_id, "tenant_id": tenant_id, "source_commit": "a" * 40,
+                    "source_sha256": scope["sourceSha256"], "workpackage_id": "WP-RECOVERY-04",
+                    "operation": "modify_owned_paths",
+                    "path": "python-backend/app/services/approval_db_service.py",
+                    "runtime_scope": "python-approval", "environment_scope": "isolated-non-production",
+                }
+                arguments.update(invalid_scope)
+                assert not await service.validate_spec224_recovery_grant(**arguments)
+
+            import app.services.approval_db_service as approval_db_module
+            real_datetime = approval_db_module.datetime
+
+            class ExpiredClock(real_datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return real_datetime.now(tz) + timedelta(days=2)
+
+            approval_db_module.datetime = ExpiredClock
+            try:
+                assert not await service.validate_spec224_recovery_grant(
+                    grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
+                    workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
+                    path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
+                    environment_scope="isolated-non-production",
+                )
+            finally:
+                approval_db_module.datetime = real_datetime
+
+            assert not await service.validate_spec224_recovery_grant(
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="d" * 40, source_sha256=scope["sourceSha256"],
                 workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
                 path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",
             )
             assert not await service.validate_spec224_recovery_grant(
-                grant_id=grant_id, tenant_id=tenant_id, source_commit="d" * 40, source_sha256="b" * 64,
-                workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
-                path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
-                environment_scope="isolated-non-production",
-            )
-            assert not await service.validate_spec224_recovery_grant(
-                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256="b" * 64,
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
                 workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
                 path="apps/web/server/services/spec224AuthorizationService.ts", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",
@@ -99,7 +223,7 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
             )
             assert revoked["state"] == "revoked"
             assert not await service.validate_spec224_recovery_grant(
-                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256="b" * 64,
+                grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40, source_sha256=scope["sourceSha256"],
                 workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
                 path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",

@@ -100,6 +100,16 @@ class ApprovalDBService:
         normalized_sources.sort(key=lambda entry: entry["path"])
         if len({entry["path"] for entry in normalized_sources}) != len(normalized_sources):
             raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_PATH_DUPLICATE")
+        source_manifest = {
+            "files": normalized_sources,
+            "schemaVersion": "spec224.source-manifest.v1",
+            "sourceCommit": commit,
+        }
+        expected_source_digest = hashlib.sha256(json.dumps(
+            source_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")).hexdigest()
+        if source_digest != expected_source_digest:
+            raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_MANIFEST_DIGEST_MISMATCH")
         normalized_write_set = sorted({safe_path(path) for path in write_set})
         if len(normalized_write_set) != len(write_set):
             raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_PATH_DUPLICATE")
@@ -266,6 +276,18 @@ class ApprovalDBService:
         grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
         if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1" or grant.get("state") != "active":
             return False
+        if (
+            request.status != ApprovalStatus.APPROVED
+            or request.revoked_at is not None
+            or request.request_type != ApprovalType.SECURITY_SENSITIVE
+            or request.requester_type != "user"
+            or request.requester_id != grant.get("ownerId")
+            or request.action_digest != grant.get("scopeDigest")
+            or (request.payload or {}).get("kind") != "spec224_recovery_grant"
+            or (request.payload or {}).get("scopeDigest") != grant.get("scopeDigest")
+            or request.current_approvals < request.required_approvers
+        ):
+            return False
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id))
         if tenant_result.scalar_one_or_none() != grant.get("ownerId"):
             return False
@@ -273,6 +295,28 @@ class ApprovalDBService:
         if owner_result.scalar_one_or_none() is not False:
             return False
         if not self._recovery_grant_audit_valid(grant):
+            return False
+        issued_event = grant["auditEvents"][0]
+        approval_result = await self.db.execute(select(ApprovalResponse.id).where(
+            ApprovalResponse.request_id == grant_id,
+            ApprovalResponse.approver_id == grant.get("ownerId"),
+            ApprovalResponse.decision == "approved",
+        ).limit(1))
+        if approval_result.scalar_one_or_none() is None:
+            return False
+        audit_result = await self.db.execute(select(AuditLog.details).where(
+            AuditLog.user_id == str(grant.get("ownerId")),
+            AuditLog.action == "spec224.recovery_grant.issued",
+            AuditLog.resource_type == "spec224_recovery_grant",
+            AuditLog.resource_id == grant_id,
+        ).limit(1))
+        audit_details = audit_result.scalar_one_or_none()
+        if (
+            not isinstance(audit_details, dict)
+            or audit_details.get("tenantId") != tenant_id
+            or audit_details.get("scopeDigest") != grant.get("scopeDigest")
+            or audit_details.get("eventDigest") != issued_event.get("eventDigest")
+        ):
             return False
         scope = grant.get("scope")
         if not isinstance(scope, dict):
