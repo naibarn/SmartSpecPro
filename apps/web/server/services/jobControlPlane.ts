@@ -663,7 +663,10 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .select({ id: runnerCapabilitySnapshots.id })
                   .from(runnerCapabilitySnapshots)
                   .where(and(
-                    eq(runnerCapabilitySnapshots.id, input.capabilitySnapshotId),
+                    eq(
+                      sql<string>`${runnerCapabilitySnapshots.snapshotJson}->>'capabilitySnapshotId'`,
+                      input.capabilitySnapshotId,
+                    ),
                     eq(runnerCapabilitySnapshots.runnerId, input.runnerId),
                     eq(runnerCapabilitySnapshots.tenantId, input.tenantId),
                     eq(runnerCapabilitySnapshots.revision, input.capabilitySnapshotRevision),

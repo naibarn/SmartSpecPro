@@ -137,6 +137,91 @@ class ApprovalDBService:
             return None
         return delivery
 
+    async def claim_spec224_decision_deliveries(
+        self,
+        worker_id: str,
+        limit: int = 25,
+        lease_seconds: int = 60,
+        now: Optional[datetime] = None,
+    ) -> list[dict]:
+        """Claim persisted Spec 224 decisions for the existing Node reconciler.
+
+        ApprovalRequest remains the decision authority. The lease is delivery
+        coordination metadata only; the worker job and its event stream remain
+        the execution authority.
+        """
+        worker_id = worker_id.strip()
+        if not worker_id or len(worker_id) > 160 or not 1 <= limit <= 100 or not 5 <= lease_seconds <= 300:
+            raise ValueError("SPEC224_DECISION_CLAIM_INVALID")
+
+        now = now or datetime.now(timezone.utc)
+        now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
+        now_text = now.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        lease_expires = now + timedelta(seconds=lease_seconds)
+        lease_expires_text = lease_expires.isoformat(timespec="milliseconds").replace("+00:00", "Z")
+        delivery_json = ApprovalRequest.extra_data["spec224DecisionDeliveryV1"]
+        lease_expiry_json = delivery_json["leaseExpiresAt"].as_string()
+        stmt = (
+            select(ApprovalRequest)
+            .where(
+                ApprovalRequest.status.in_((ApprovalStatus.APPROVED, ApprovalStatus.REJECTED, ApprovalStatus.EXPIRED, ApprovalStatus.CANCELLED)),
+                delivery_json["state"].as_string() == "pending",
+                or_(
+                    delivery_json["leaseExpiresAt"].is_(None),
+                    lease_expiry_json <= now_text,
+                ),
+            )
+            .order_by(ApprovalRequest.resolved_at.asc(), ApprovalRequest.created_at.asc(), ApprovalRequest.id.asc())
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+        result = await self.db.execute(stmt)
+        requests = result.scalars().all()
+        claims: list[dict] = []
+        for request in requests:
+            delivery = self._read_spec224_delivery(request)
+            if not delivery:
+                continue
+            event = delivery["event"]
+            if (
+                event.get("approvalRequestId") != request.id
+                or event.get("tenantId") != request.tenant_id
+                or event.get("jobId") != request.execution_id
+                or event.get("decision") != request.status.value
+                or not isinstance(event.get("operationId"), str)
+            ):
+                continue
+            prior_epoch = delivery.get("leaseEpoch", 0)
+            if not isinstance(prior_epoch, int) or prior_epoch < 0:
+                continue
+            lease_epoch = prior_epoch + 1
+            updated = dict(delivery)
+            updated.update({
+                "leaseOwner": worker_id,
+                "leaseEpoch": lease_epoch,
+                "leaseExpiresAt": lease_expires_text,
+                "leaseClaimedAt": now_text,
+            })
+            extra_data = dict(request.extra_data or {})
+            extra_data["spec224DecisionDeliveryV1"] = updated
+            request.extra_data = extra_data
+            claims.append({
+                "approvalRef": request.id,
+                "tenantId": request.tenant_id,
+                "jobId": request.execution_id,
+                "operationId": event["operationId"],
+                "deliveryId": event["deliveryId"],
+                "payloadDigest": delivery["payloadDigest"],
+                "leaseOwner": worker_id,
+                "leaseEpoch": lease_epoch,
+                "leaseExpiresAt": lease_expires_text,
+            })
+        if claims:
+            await self.db.commit()
+        else:
+            await self.db.rollback()
+        return claims
+
     async def acknowledge_spec224_decision_delivery(
         self,
         request_id: str,
@@ -146,16 +231,17 @@ class ApprovalDBService:
         delivery_id: str,
         payload_digest: str,
         receipt: dict,
+        lease_owner: str,
+        lease_epoch: int,
+        now: Optional[datetime] = None,
     ) -> bool:
-        stmt = select(ApprovalRequest).where(ApprovalRequest.id == request_id)
-        if tenant_id:
-            stmt = stmt.where(ApprovalRequest.tenant_id == tenant_id)
-        result = await self.db.execute(stmt)
-        request = result.scalar_one_or_none()
+        request = await self._get_request_for_update(request_id, tenant_id)
         if not request or request.execution_id != job_id:
+            await self.db.rollback()
             return False
         delivery = self._read_spec224_delivery(request)
         if not delivery:
+            await self.db.rollback()
             return False
         event = delivery["event"]
         if (
@@ -166,18 +252,36 @@ class ApprovalDBService:
             or event.get("decision") != request.status.value
             or delivery.get("payloadDigest") != payload_digest
         ):
+            await self.db.rollback()
             return False
         if delivery.get("state") == "acknowledged":
             previous_receipt = delivery.get("receipt")
-            return (
+            matched = (
                 isinstance(previous_receipt, dict)
                 and previous_receipt.get("deliveryId") == delivery_id
                 and previous_receipt.get("payloadDigest") == payload_digest
             )
+            await self.db.rollback()
+            return matched
+        now = now or datetime.now(timezone.utc)
+        now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
+        lease_expiry = delivery.get("leaseExpiresAt")
+        try:
+            parsed_expiry = datetime.fromisoformat(str(lease_expiry).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            await self.db.rollback()
+            return False
+        if (
+            delivery.get("leaseOwner") != lease_owner
+            or delivery.get("leaseEpoch") != lease_epoch
+            or parsed_expiry <= now
+        ):
+            await self.db.rollback()
+            return False
         delivery = dict(delivery)
         delivery["state"] = "acknowledged"
         delivery["receipt"] = receipt
-        delivery["updatedAt"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        delivery["updatedAt"] = now.isoformat().replace("+00:00", "Z")
         extra_data = dict(request.extra_data or {})
         extra_data["spec224DecisionDeliveryV1"] = delivery
         request.extra_data = extra_data

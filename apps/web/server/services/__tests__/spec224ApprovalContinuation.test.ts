@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 
 import {
   createSpec224ApprovalContinuation,
+  createSpec224ApprovalDecisionReconciler,
   type Spec224ExternalApprovalCorrelation,
 } from "../spec224ApprovalContinuation";
 
@@ -34,6 +35,7 @@ function makeDeps() {
       }),
       get: vi.fn(),
       acknowledge: vi.fn().mockResolvedValue(undefined),
+      claimPending: vi.fn().mockResolvedValue([]),
     },
     controlPlane: {
       requestComputerUseApproval: vi.fn().mockResolvedValue("requested"),
@@ -59,7 +61,14 @@ function delivery(decision: "approved" | "rejected" | "expired" | "cancelled" = 
     correlation,
   };
   const canonicalPayload = JSON.stringify(event);
-  return { event, canonicalPayload, payloadDigest: createHash("sha256").update(canonicalPayload).digest("hex") };
+  return {
+    event,
+    canonicalPayload,
+    payloadDigest: createHash("sha256").update(canonicalPayload).digest("hex"),
+    leaseOwner: "reconciler-1",
+    leaseEpoch: 1,
+    leaseExpiresAt: "2026-09-26T00:01:00.000Z",
+  };
 }
 
 describe("Spec 224 external-agent approval continuation", () => {
@@ -115,7 +124,7 @@ describe("Spec 224 external-agent approval continuation", () => {
     const service = createSpec224ApprovalContinuation(deps);
 
     await expect(
-      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey }),
+      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey, leaseOwner: "reconciler-1", leaseEpoch: 1 }),
     ).resolves.toBe("resumed");
     expect(deps.controlPlane.resolveComputerUseApproval).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -133,6 +142,63 @@ describe("Spec 224 external-agent approval continuation", () => {
         payloadDigest: delivery().payloadDigest,
       }),
     );
+    expect(deps.authority.acknowledge).toHaveBeenCalledWith(expect.objectContaining({ leaseOwner: "reconciler-1", leaseEpoch: 1 }));
+  });
+
+  it("does not resume when the durable decision lease is stale", async () => {
+    const deps = makeDeps();
+    deps.authority.get.mockResolvedValue({
+      id: "approval-224",
+      status: "approved",
+      tenantId: correlation.tenantId,
+      executionId: correlation.jobId,
+      approverId: 207,
+      decisionDelivery: delivery(),
+      payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+    });
+    const service = createSpec224ApprovalContinuation(deps);
+    await expect(service.resolve({
+      approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId,
+      operationId: correlation.operationKey, leaseOwner: "stale-worker", leaseEpoch: 1,
+    })).resolves.toBe("ignored");
+    expect(deps.controlPlane.resolveComputerUseApproval).not.toHaveBeenCalled();
+    expect(deps.authority.acknowledge).not.toHaveBeenCalled();
+  });
+
+  it("reconciles a claimed durable decision through the canonical continuation and ACK", async () => {
+    const deps = makeDeps();
+    const claim = {
+      approvalRef: "approval-224",
+      tenantId: correlation.tenantId,
+      jobId: correlation.jobId,
+      operationId: correlation.operationKey,
+      deliveryId: "delivery-224-1",
+      payloadDigest: delivery().payloadDigest,
+      leaseOwner: "reconciler-1",
+      leaseEpoch: 3,
+      leaseExpiresAt: "2026-09-27T03:00:00.000Z",
+    };
+    deps.authority.claimPending.mockResolvedValue([claim]);
+    deps.authority.get.mockResolvedValue({
+      id: "approval-224",
+      status: "approved",
+      tenantId: correlation.tenantId,
+      executionId: correlation.jobId,
+      approverId: 207,
+      decisionDelivery: { ...delivery(), leaseOwner: claim.leaseOwner, leaseEpoch: claim.leaseEpoch },
+      payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+    });
+    const reconcile = createSpec224ApprovalDecisionReconciler(deps, { workerId: "reconciler-1", limit: 10 });
+
+    await expect(reconcile()).resolves.toMatchObject({ claimed: 1, resumed: 1, errors: 0 });
+    expect(deps.authority.get).toHaveBeenCalledWith("approval-224", {
+      tenantId: correlation.tenantId,
+      jobId: correlation.jobId,
+      operationId: correlation.operationKey,
+    });
+    expect(deps.authority.acknowledge).toHaveBeenCalledWith(expect.objectContaining({
+      leaseOwner: "reconciler-1", leaseEpoch: 3, deliveryId: claim.deliveryId,
+    }));
   });
 
   it("does not resume forged or cross-tenant approval records", async () => {
@@ -174,7 +240,7 @@ describe("Spec 224 external-agent approval continuation", () => {
     });
 
     await expect(
-      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey }),
+      service.resolve({ approvalRef: "approval-224", tenantId: correlation.tenantId, jobId: correlation.jobId, operationId: correlation.operationKey, leaseOwner: "reconciler-1", leaseEpoch: 1 }),
     ).resolves.toBe("operator_review");
     expect(deps.controlPlane.failExternalWait).toHaveBeenCalledWith(
       correlation.jobId,

@@ -3,6 +3,7 @@
 import asyncio
 import os
 import uuid
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 import pytest
@@ -113,15 +114,46 @@ async def test_postgres_approval_decision_delivery_and_recovery():
 
             delivery_id = delivery["event"]["deliveryId"]
             digest = delivery["payloadDigest"]
-            receipt = {"deliveryId": delivery_id, "payloadDigest": digest, "accepted": True}
-            assert await service.acknowledge_spec224_decision_delivery(
-                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, digest, receipt
+            claim_time = datetime(2026, 9, 27, 2, 0, tzinfo=timezone.utc)
+            claim = (await service.claim_spec224_decision_deliveries(
+                "reconciler-1", now=claim_time
+            ))[0]
+            assert claim["approvalRef"] == request_id
+            assert claim["deliveryId"] == delivery_id
+            assert claim["leaseEpoch"] == 1
+            assert await service.claim_spec224_decision_deliveries(
+                "reconciler-2", now=claim_time + timedelta(seconds=5)
+            ) == []
+
+            receipt = {
+                "deliveryId": delivery_id,
+                "payloadDigest": digest,
+                "result": "resumed",
+                "acknowledgedAt": claim_time.isoformat(),
+            }
+            assert not await service.acknowledge_spec224_decision_delivery(
+                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id,
+                digest, receipt, "forged-worker", 1, claim_time + timedelta(seconds=1)
+            )
+            reclaimed = (await service.claim_spec224_decision_deliveries(
+                "reconciler-2", now=claim_time + timedelta(seconds=61)
+            ))[0]
+            assert reclaimed["leaseEpoch"] == 2
+            assert not await service.acknowledge_spec224_decision_delivery(
+                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id,
+                digest, receipt, "reconciler-1", 1, claim_time + timedelta(seconds=62)
             )
             assert await service.acknowledge_spec224_decision_delivery(
-                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, digest, receipt
+                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, digest,
+                receipt, "reconciler-2", 2, claim_time + timedelta(seconds=62)
+            )
+            assert await service.acknowledge_spec224_decision_delivery(
+                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, digest,
+                receipt, "reconciler-1", 1, claim_time + timedelta(seconds=63)
             )
             assert not await service.acknowledge_spec224_decision_delivery(
-                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, "0" * 64, receipt
+                request_id, tenant_id, job_id, f"operation-{suffix}", delivery_id, "0" * 64,
+                receipt, "reconciler-2", 2, claim_time + timedelta(seconds=63)
             )
 
         # A new session models process restart and reads only persisted state.

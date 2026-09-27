@@ -28,7 +28,14 @@ type ApprovalRecord = {
   requesterId?: number | null;
   approverId?: number | null;
   payload: Record<string, unknown>;
-  decisionDelivery?: { event: Record<string, unknown>; canonicalPayload: string; payloadDigest: string };
+  decisionDelivery?: {
+    event: Record<string, unknown>;
+    canonicalPayload: string;
+    payloadDigest: string;
+    leaseOwner?: string;
+    leaseEpoch?: number;
+    leaseExpiresAt?: string;
+  };
 };
 
 type ApprovalLookupScope = { tenantId: string; jobId: string; operationId: string };
@@ -46,7 +53,17 @@ type ApprovalAuthority = {
     timeoutMinutes: number;
   }): Promise<{ id: string; status: "pending"; tenantId?: string | null; executionId?: string | null }>;
   get(approvalRef: string, scope: ApprovalLookupScope): Promise<ApprovalRecord | null>;
-  acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; receipt: Record<string, unknown> }): Promise<void>;
+  acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; leaseOwner: string; leaseEpoch: number; receipt: Record<string, unknown> }): Promise<void>;
+  claimPending?(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]>;
+};
+
+export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
+  approvalRef: string;
+  deliveryId: string;
+  payloadDigest: string;
+  leaseOwner: string;
+  leaseEpoch: number;
+  leaseExpiresAt: string;
 };
 
 type ControlPlane = Pick<
@@ -231,10 +248,17 @@ export function createSpec224ExternalApprovalAuthority() {
         executionId: scope.jobId,
         approverId: typeof event.actorId === "number" ? event.actorId : null,
         payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
-        decisionDelivery: { event, canonicalPayload: delivery.canonicalPayload, payloadDigest: delivery.payloadDigest },
+        decisionDelivery: {
+          event,
+          canonicalPayload: delivery.canonicalPayload,
+          payloadDigest: delivery.payloadDigest,
+          leaseOwner: typeof delivery.leaseOwner === "string" ? delivery.leaseOwner : undefined,
+          leaseEpoch: Number.isSafeInteger(delivery.leaseEpoch) ? Number(delivery.leaseEpoch) : undefined,
+          leaseExpiresAt: typeof delivery.leaseExpiresAt === "string" ? delivery.leaseExpiresAt : undefined,
+        },
       };
     },
-    async acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; receipt: Record<string, unknown> }) {
+    async acknowledge(input: ApprovalLookupScope & { approvalRef: string; deliveryId: string; payloadDigest: string; leaseOwner: string; leaseEpoch: number; receipt: Record<string, unknown> }) {
       const runtime = await getAppRuntimeConfig();
       const token = getCachedPreferredInternalToken();
       if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
@@ -247,6 +271,28 @@ export function createSpec224ExternalApprovalAuthority() {
         },
       );
       if (!response.ok) throw new Error("SPEC224_APPROVAL_ACK_REJECTED");
+    },
+    async claimPending(input: { workerId: string; limit: number }): Promise<Spec224ApprovalDeliveryClaim[]> {
+      const runtime = await getAppRuntimeConfig();
+      const token = getCachedPreferredInternalToken();
+      if (!token) throw new Error("SPEC224_APPROVAL_INTERNAL_TOKEN_REQUIRED");
+      const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/internal/spec224-external/decision-deliveries/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-internal-token": token },
+        body: JSON.stringify({ workerId: input.workerId, limit: input.limit, leaseSeconds: 60 }),
+      });
+      if (!response.ok) throw new Error("SPEC224_APPROVAL_CLAIM_REJECTED");
+      const body = await response.json().catch(() => ({})) as { claims?: unknown };
+      if (!Array.isArray(body.claims)) throw new Error("SPEC224_APPROVAL_CLAIM_INVALID");
+      return body.claims.map(value => {
+        if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("SPEC224_APPROVAL_CLAIM_INVALID");
+        const claim = value as Record<string, unknown>;
+        for (const field of ["approvalRef", "tenantId", "jobId", "operationId", "deliveryId", "payloadDigest", "leaseOwner", "leaseExpiresAt"])
+          assertText(claim[field], field);
+        if (!/^[a-f0-9]{64}$/.test(String(claim.payloadDigest)) || !Number.isSafeInteger(claim.leaseEpoch) || Number(claim.leaseEpoch) < 1)
+          throw new Error("SPEC224_APPROVAL_CLAIM_INVALID");
+        return claim as Spec224ApprovalDeliveryClaim;
+      });
     },
   } satisfies ApprovalAuthority;
 }
@@ -312,7 +358,7 @@ export function createSpec224ApprovalContinuation(
       return { approvalRef: created.id, status: "pending" };
     },
 
-    async resolve(input: { approvalRef: string; tenantId: string; jobId: string; operationId: string }): Promise<Spec224ApprovalContinuationResult> {
+    async resolve(input: { approvalRef: string; tenantId: string; jobId: string; operationId: string; leaseOwner?: string; leaseEpoch?: number }): Promise<Spec224ApprovalContinuationResult> {
       assertText(input.approvalRef, "approval_ref");
       assertText(input.tenantId, "tenant_id");
       assertText(input.jobId, "job_id");
@@ -344,8 +390,14 @@ export function createSpec224ApprovalContinuation(
       const event = delivery?.event;
       if (!delivery || !event || typeof event.deliveryId !== "string" || typeof event.decisionEpoch !== "number")
         return "operator_review";
+      if (
+        !input.leaseOwner || !Number.isSafeInteger(input.leaseEpoch) || Number(input.leaseEpoch) < 1
+        || delivery.leaseOwner !== input.leaseOwner || delivery.leaseEpoch !== input.leaseEpoch
+      ) return "ignored";
       const deliveryId = event.deliveryId;
       const payloadDigest = delivery.payloadDigest;
+      const eventCorrelation = parseSpec224ExternalApprovalPayload(event.correlation);
+      if (!eventCorrelation || !sameCorrelation(correlation, eventCorrelation)) return "operator_review";
       let result: Spec224ApprovalContinuationResult;
       if (record.status === "expired" || record.status === "cancelled") {
         const terminalDelivery = {
@@ -435,10 +487,51 @@ export function createSpec224ApprovalContinuation(
       if (!await deps.controlPlane.recordSpec224ApprovalDelivery(receiptInput))
         throw new Error("SPEC224_APPROVAL_DELIVERY_RECEIPT_CONFLICT");
       const receipt = { deliveryId, payloadDigest, result, acknowledgedAt: now().toISOString() };
-      await deps.authority.acknowledge({ ...input, deliveryId, payloadDigest, receipt });
+      await deps.authority.acknowledge({
+        approvalRef: input.approvalRef,
+        tenantId: input.tenantId,
+        jobId: input.jobId,
+        operationId: input.operationId,
+        leaseOwner: input.leaseOwner,
+        leaseEpoch: input.leaseEpoch,
+        deliveryId,
+        payloadDigest,
+        receipt,
+      });
       if (!await deps.controlPlane.recordSpec224ApprovalDelivery({ ...receiptInput, acknowledged: true }))
         throw new Error("SPEC224_APPROVAL_ACK_RECEIPT_CONFLICT");
       return result;
     },
+  };
+}
+
+export function createSpec224ApprovalDecisionReconciler(
+  deps: Spec224ApprovalContinuationDeps,
+  options: { workerId: string; limit?: number },
+) {
+  assertText(options.workerId, "worker_id");
+  const limit = options.limit ?? 25;
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error("SPEC224_APPROVAL_CLAIM_LIMIT_INVALID");
+  if (!deps.authority.claimPending) throw new Error("SPEC224_APPROVAL_CLAIM_UNAVAILABLE");
+  const continuation = createSpec224ApprovalContinuation(deps);
+
+  return async function reconcilePendingDecisions() {
+    const claims = await deps.authority.claimPending!({ workerId: options.workerId, limit });
+    const result = { claimed: claims.length, resumed: 0, failed: 0, duplicate: 0, operatorReview: 0, ignored: 0, errors: 0 };
+    for (const claim of claims) {
+      try {
+        const disposition = await continuation.resolve(claim);
+        if (disposition === "resumed") result.resumed += 1;
+        else if (disposition === "failed") result.failed += 1;
+        else if (disposition === "duplicate") result.duplicate += 1;
+        else if (disposition === "operator_review") result.operatorReview += 1;
+        else if (disposition === "ignored") result.ignored += 1;
+      } catch {
+        // Leave the durable authority intent pending; the next existing
+        // Feature 186 reconciliation pass may reclaim it after lease expiry.
+        result.errors += 1;
+      }
+    }
+    return result;
   };
 }
