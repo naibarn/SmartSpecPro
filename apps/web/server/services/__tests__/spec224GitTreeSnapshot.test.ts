@@ -17,6 +17,7 @@ import {
   assembleGitTreeAttestedSourceBundle,
   calculateGitTreeSourceManifestDigest,
   createGitTreeSourceManifest,
+  createGitTreeSourceManifestFromPaths,
   type GitTreeSourceManifest,
 } from "../spec224SourceBundle";
 import {
@@ -63,7 +64,8 @@ async function makeGitSource() {
     "lockfileVersion: '9.0'\nsettings: {}\nimporters:\n  .: {}\npackages: {}\n"
   );
   await chmod(join(root, "source", "bin", "run.sh"), 0o755);
-  await execFileAsync("git", ["-C", root, "add", "source"]);
+  await symlink("source/main.ts", join(root, "unrelated-alias"));
+  await execFileAsync("git", ["-C", root, "add", "source", "unrelated-alias"]);
   await execFileAsync("git", ["-C", root, "commit", "-m", "snapshot fixture"]);
   const manifest: GitTreeSourceManifest = await createGitTreeSourceManifest({
     repositoryRoot: root,
@@ -85,20 +87,25 @@ afterEach(cleanup);
 
 describe("Spec 224 immutable Git-tree snapshot", () => {
   it("seals a dependency-closed bundle against an exact Git-tree attestation", async () => {
-    const { root, manifest } = await makeGitSource();
+    const { root, manifest: subtreeManifest } = await makeGitSource();
+    const manifest = await createGitTreeSourceManifestFromPaths({
+      repositoryRoot: root,
+      sourceRevision: subtreeManifest.sourceRevision,
+      paths: ["source/main.ts", "source/package.json", "source/pnpm-lock.yaml"],
+    });
     const destination = join(root, "..", `attested-bundle-${Date.now()}`);
     temporaryRoots.push(destination);
     const result = await assembleGitTreeAttestedSourceBundle({
       repositoryRoot: root,
-      sourceRoot: join(root, "source"),
+      sourceRoot: root,
       destination,
       sourceManifest: manifest,
       sourceRevision: manifest.sourceRevision,
       specDigest: "a".repeat(64),
       closure: {
-        entryPaths: ["main.ts"],
-        dependencyArtifacts: ["pnpm-lock.yaml"],
-        workspaceManifestPaths: ["package.json"],
+        entryPaths: ["source/main.ts"],
+        dependencyArtifacts: ["source/pnpm-lock.yaml"],
+        workspaceManifestPaths: ["source/package.json"],
         profileId: "spec224-source-only-test",
         runtimeIdentity: {
           node: "22.22.0",
@@ -109,14 +116,16 @@ describe("Spec 224 immutable Git-tree snapshot", () => {
     });
     expect(result.sourceManifestDigest).toBe(manifest.manifestDigest);
     expect(result.bundle.sourceTreeAttestation).toEqual({
+      schemaVersion: "spec224.git-tree-source-attestation.v2",
+      scopeMode: "exact-path-set",
       treePath: manifest.treePath,
       manifestDigest: manifest.manifestDigest,
     });
     expect(result.bundle.files).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ path: "main.ts", mode: 0o644 }),
-        expect.objectContaining({ path: "package.json", mode: 0o644 }),
-        expect.objectContaining({ path: "pnpm-lock.yaml", mode: 0o644 }),
+        expect.objectContaining({ path: "source/main.ts", mode: 0o644 }),
+        expect.objectContaining({ path: "source/package.json", mode: 0o644 }),
+        expect.objectContaining({ path: "source/pnpm-lock.yaml", mode: 0o644 }),
       ])
     );
   });
