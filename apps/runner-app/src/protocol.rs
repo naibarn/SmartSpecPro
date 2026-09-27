@@ -98,13 +98,11 @@ impl RunnerJobCommand {
             return Err("RUNNER_COMMAND_TYPE_INVALID".into());
         }
         if self.command_type == "cancel"
-            && self
+            && !self
                 .payload
                 .get("targetCommandId")
                 .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .is_none()
+                .is_some_and(|value| valid_command_id(value) && value != self.command_id)
         {
             return Err("RUNNER_CANCEL_TARGET_REQUIRED".into());
         }
@@ -169,6 +167,15 @@ impl RunnerJobCommand {
         }
         Ok(())
     }
+}
+
+fn valid_command_id(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    (1..=160).contains(&bytes.len())
+        && bytes[0].is_ascii_alphanumeric()
+        && bytes[1..]
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(*byte, b'_' | b'.' | b':' | b'-'))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -437,6 +444,16 @@ mod tests {
         };
         assert!(command.validate().is_ok());
         command.payload = serde_json::json!({});
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_CANCEL_TARGET_REQUIRED"
+        );
+        command.payload = serde_json::json!({"targetCommandId": "cancel-1"});
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "RUNNER_CANCEL_TARGET_REQUIRED"
+        );
+        command.payload = serde_json::json!({"targetCommandId": "bad target"});
         assert_eq!(
             command.validate().unwrap_err(),
             "RUNNER_CANCEL_TARGET_REQUIRED"

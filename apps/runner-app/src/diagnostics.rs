@@ -590,13 +590,49 @@ fn run_live_control_loop(
             None,
         )?;
         if command.command_type == "cancel" {
-            if command.execution_kind == "external_agent_task" {
-                if let Some(target_command_id) = cancellation_target_command_id(&command) {
-                    if let Some(mut active) = external_processes.remove(target_command_id) {
-                        let _ = active.process.cancel();
+            let disposition = if command.execution_kind != "external_agent_task" {
+                (
+                    RunnerJobReceiptEventType::CommandRejected,
+                    "rejected",
+                    Some("RUNNER_CANCEL_EXECUTION_KIND_UNSUPPORTED"),
+                )
+            } else if let Some(target_command_id) = cancellation_target_command_id(&command) {
+                let matching_target = external_processes
+                    .get(target_command_id)
+                    .is_some_and(|active| cancellation_target_matches(&command, &active.command));
+                if !matching_target {
+                    (
+                        RunnerJobReceiptEventType::CommandRejected,
+                        "rejected",
+                        Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
+                    )
+                } else if let Some(mut active) = external_processes.remove(target_command_id) {
+                    match active.process.cancel() {
+                        Ok(()) => (
+                            RunnerJobReceiptEventType::CancelAcknowledged,
+                            "cancelled",
+                            None,
+                        ),
+                        Err(_) => (
+                            RunnerJobReceiptEventType::UnknownOutcome,
+                            "unknown",
+                            Some("RUNNER_CANCEL_OUTCOME_UNKNOWN"),
+                        ),
                     }
+                } else {
+                    (
+                        RunnerJobReceiptEventType::CommandRejected,
+                        "rejected",
+                        Some("RUNNER_CANCEL_TARGET_UNKNOWN_OR_MISMATCHED"),
+                    )
                 }
-            }
+            } else {
+                (
+                    RunnerJobReceiptEventType::CommandRejected,
+                    "rejected",
+                    Some("RUNNER_CANCEL_TARGET_REQUIRED"),
+                )
+            };
             send_runner_receipt(
                 endpoint,
                 transport,
@@ -605,9 +641,9 @@ fn run_live_control_loop(
                 &command,
                 &mut receipt_sequences,
                 &mut receipt_journal,
-                RunnerJobReceiptEventType::CancelAcknowledged,
-                "cancelled",
-                None,
+                disposition.0,
+                disposition.1,
+                disposition.2,
                 None,
             )?;
             continue;
@@ -764,6 +800,29 @@ fn cancellation_target_command_id(command: &RunnerJobCommand) -> Option<&str> {
         .get("targetCommandId")
         .and_then(serde_json::Value::as_str)
         .filter(|value| !value.trim().is_empty())
+}
+
+fn cancellation_target_matches(cancel: &RunnerJobCommand, target: &RunnerJobCommand) -> bool {
+    cancel.command_type == "cancel"
+        && target.command_type == "execute"
+        && cancel.command_id != target.command_id
+        && cancel
+            .payload
+            .get("targetCommandId")
+            .and_then(serde_json::Value::as_str)
+            == Some(target.command_id.as_str())
+        && cancel.job_id == target.job_id
+        && cancel.attempt == target.attempt
+        && cancel.lease_id == target.lease_id
+        && cancel.fencing_token == target.fencing_token
+        && cancel.tenant_id == target.tenant_id
+        && cancel.runner_id == target.runner_id
+        && cancel.runner_session_id == target.runner_session_id
+        && cancel.capability_snapshot_id == target.capability_snapshot_id
+        && cancel.capability_snapshot_revision == target.capability_snapshot_revision
+        && cancel.control_plane_origin == target.control_plane_origin
+        && cancel.execution_kind == target.execution_kind
+        && cancel.adapter_id == target.adapter_id
 }
 
 fn poll_external_agents(
@@ -1761,8 +1820,8 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::{
-        build_keepalive_envelope, cancellation_target_command_id, capability_snapshot,
-        delivery_transport_label, keepalive_due, parse_refresh_interval,
+        build_keepalive_envelope, cancellation_target_command_id, cancellation_target_matches,
+        capability_snapshot, delivery_transport_label, keepalive_due, parse_refresh_interval,
         persist_and_send_runner_receipt, replay_pending_runner_receipts, runner_receipt_payload,
         semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
     };
@@ -1807,6 +1866,55 @@ mod lifecycle_tests {
             payload: json!({"targetCommandId": "execute-1"}),
         };
         assert_eq!(cancellation_target_command_id(&command), Some("execute-1"));
+    }
+
+    #[test]
+    fn cancellation_rejects_targets_from_another_binding() {
+        let mut cancel = RunnerJobCommand {
+            command_id: "cancel-1".into(),
+            command_type: "cancel".into(),
+            contract_version: crate::protocol::RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: None,
+            project_ref: None,
+            workspace_ref: None,
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "http://localhost:3000".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "cancel:job-1:1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "input-1".into(),
+            payload: json!({"targetCommandId": "execute-1"}),
+        };
+        let mut target = RunnerJobCommand {
+            command_id: "execute-1".into(),
+            command_type: "execute".into(),
+            payload: json!({}),
+            ..cancel.clone()
+        };
+        target.command_type = "execute".into();
+        assert!(cancellation_target_matches(&cancel, &target));
+        target.tenant_id = "tenant-other".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.tenant_id = cancel.tenant_id.clone();
+        target.runner_session_id = "session-other".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
+        target.runner_session_id = cancel.runner_session_id.clone();
+        target.fencing_token += 1;
+        assert!(!cancellation_target_matches(&cancel, &target));
+        cancel.command_id = "execute-1".into();
+        assert!(!cancellation_target_matches(&cancel, &target));
     }
 
     #[test]
