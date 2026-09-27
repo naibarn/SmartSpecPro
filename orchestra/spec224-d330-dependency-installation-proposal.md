@@ -42,8 +42,22 @@ External artifacts still missing for complete closure include the actual package
 - TypeScript typecheck: `SKIPPED_POLICY` under repository `AGENTS.md`.
 - No Spec 224 text or Specs 1–213 were edited. No branch was merged or cherry-picked.
 
+## Follow-up — existing workspace baseline
+
+After the initial Source-branch check, a separate Cloudflare integration branch was found to contain commit `aa452503b59e707e2ac7023e1a69753b7362cd4d` (`build: add isolated Spec 224 pnpm baseline`). That commit changes the root package manager/configuration, uses `workspace:*` for several internal packages, and updates the root pnpm lockfile. It is not an ancestor of the requested Source branch HEAD, so it is an available integration candidate rather than an integrated fix.
+
+Validation was run in a new detached clean worktree at that exact commit:
+
+```sh
+npx --yes pnpm@10.4.1 install --frozen-lockfile
+```
+
+Result: PASS. pnpm reported all 14 workspace projects, lockfile up to date, and installed 1,625 packages. Root `preinstall` passed. pnpm skipped dependency build scripts for its reported package list, so this proves frozen dependency resolution/linking, not lifecycle-script closure or successful native/postinstall builds. `git diff --check` passed and the validation worktree remains clean.
+
+The existing commit is concrete evidence that the workspace-level manifest/lock changes have been prepared and validated in the Cloudflare workstream. It does not authorize moving that commit onto the Source branch; no merge or cherry-pick was performed.
+
 ## Gate status
 
 - P-SOURCE: `BLOCKED` for full external dependency closure; local discovery and fail-closed behavior are verified.
 - P-RECOVERY: `BLOCKED` for production/release recovery claims; the local Recovery tests pass, but they do not constitute runtime or production evidence.
-- Dependency installation reproducibility: `BLOCKED` until owners authorize and resolve the root manifest/lock/configuration contract.
+- Dependency installation reproducibility on Source HEAD: `BLOCKED`; the separate Cloudflare baseline is `VERIFIED` for frozen resolution/linking, pending an explicitly authorized integration path and any required lifecycle-build validation.
