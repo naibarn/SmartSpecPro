@@ -328,6 +328,41 @@ describe("Spec 224 external-agent approval continuation", () => {
     );
   });
 
+  it("reconciles an ACK already committed by Python without repeating cancellation side effects", async () => {
+    const deps = makeDeps();
+    const cancelled = delivery("cancelled");
+    const receipt = {
+      deliveryId: cancelled.event.deliveryId,
+      payloadDigest: cancelled.payloadDigest,
+      result: "cancel_requested",
+      acknowledgedAt: "2026-09-27T00:00:00.000Z",
+    };
+    deps.authority.get.mockResolvedValue({
+      id: "approval-224", status: "cancelled", tenantId: correlation.tenantId,
+      executionId: correlation.jobId, requesterId: correlation.requesterId,
+      decisionDelivery: {
+        ...cancelled, state: "acknowledged", receipt,
+        leaseOwner: "reconciler-1", leaseEpoch: 2,
+      },
+      payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+    });
+    const service = createSpec224ApprovalContinuation(deps);
+
+    await expect(service.resolve({
+      approvalRef: "approval-224", tenantId: correlation.tenantId,
+      jobId: correlation.jobId, operationId: correlation.operationKey,
+      leaseOwner: "reconciler-1", leaseEpoch: 2,
+    })).resolves.toBe("duplicate");
+    expect(deps.controlPlane.requestCancel).not.toHaveBeenCalled();
+    expect(deps.controlPlane.recordSpec224ApprovalDelivery).toHaveBeenCalledWith(expect.objectContaining({
+      decision: "cancelled", result: "cancel_requested", acknowledged: true,
+      deliveryId: receipt.deliveryId, payloadDigest: receipt.payloadDigest,
+    }));
+    expect(deps.authority.acknowledge).toHaveBeenCalledWith(expect.objectContaining({
+      leaseOwner: "reconciler-1", leaseEpoch: 2, receipt,
+    }));
+  });
+
   it("rejects secret-bearing provider approval payloads", async () => {
     const deps = makeDeps();
     const service = createSpec224ApprovalContinuation(deps);

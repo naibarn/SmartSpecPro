@@ -100,8 +100,14 @@ async def main():
                 request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="D3.49 test owner cancellation"
             )
             delivery = service._read_spec224_delivery(cancelled)
+            duplicate = await service.cancel_request(
+                request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="D3.49 duplicate cancellation"
+            )
+            duplicate_delivery = service._read_spec224_delivery(duplicate) if duplicate else None
+            if not delivery or not duplicate_delivery or delivery["event"]["deliveryId"] != duplicate_delivery["event"]["deliveryId"] or delivery["payloadDigest"] != duplicate_delivery["payloadDigest"]:
+                raise RuntimeError("SPEC224_CANCELLATION_REPLAY_NOT_IDEMPOTENT")
             print(json.dumps({"approvalRequestId": request.id, "status": cancelled.status.value,
-                              "deliveryId": delivery["event"]["deliveryId"]}))
+                              "deliveryId": delivery["event"]["deliveryId"], "duplicateStable": True}))
     finally:
         await engine.dispose()
 
@@ -802,8 +808,9 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         );
         const resultLine = pythonResult.stdout.trim().split(/\r?\n/).reverse().find(line => line.startsWith("{"));
         if (!resultLine) throw new Error(`SPEC224_PYTHON_CANCELLATION_RESULT_MISSING:${pythonResult.stderr}`);
-        const approvalResult = JSON.parse(resultLine) as { approvalRequestId: string; status: string; deliveryId: string };
+        const approvalResult = JSON.parse(resultLine) as { approvalRequestId: string; status: string; deliveryId: string; duplicateStable?: boolean };
         expect(approvalResult.status).toBe("cancelled");
+        expect(approvalResult.duplicateStable).toBe(true);
         createdApprovalIds.push(approvalResult.approvalRequestId);
 
         const authority = runtime.createSpec224ExternalApprovalAuthority();

@@ -1,4 +1,4 @@
-import type { JobControlPlane } from "./jobControlPlane";
+import type { JobControlPlane, Spec224ApprovalDeliveryReceiptInput } from "./jobControlPlane";
 import { getAppRuntimeConfig, getCachedPreferredInternalToken } from "./appRuntimeConfig";
 import { createHash } from "node:crypto";
 
@@ -32,6 +32,8 @@ type ApprovalRecord = {
     event: Record<string, unknown>;
     canonicalPayload: string;
     payloadDigest: string;
+    state?: "pending" | "acknowledged";
+    receipt?: Record<string, unknown> | null;
     leaseOwner?: string;
     leaseEpoch?: number;
     leaseExpiresAt?: string;
@@ -202,7 +204,7 @@ export function createSpec224ExternalApprovalAuthority() {
       const body = await response.json().catch(() => ({})) as {
         status?: string;
         correlation?: Record<string, unknown>;
-        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string } | null;
+        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string; state?: string; receipt?: Record<string, unknown> | null } | null;
       };
       const delivery = body.delivery;
       if (!delivery?.event || typeof delivery.canonicalPayload !== "string" || typeof delivery.payloadDigest !== "string") {
@@ -253,6 +255,8 @@ export function createSpec224ExternalApprovalAuthority() {
           event,
           canonicalPayload: delivery.canonicalPayload,
           payloadDigest: delivery.payloadDigest,
+          state: delivery.state === "acknowledged" ? "acknowledged" : "pending",
+          receipt: delivery.receipt ?? null,
           leaseOwner: typeof delivery.leaseOwner === "string" ? delivery.leaseOwner : undefined,
           leaseEpoch: Number.isSafeInteger(delivery.leaseEpoch) ? Number(delivery.leaseEpoch) : undefined,
           leaseExpiresAt: typeof delivery.leaseExpiresAt === "string" ? delivery.leaseExpiresAt : undefined,
@@ -399,6 +403,49 @@ export function createSpec224ApprovalContinuation(
       const payloadDigest = delivery.payloadDigest;
       const eventCorrelation = parseSpec224ExternalApprovalPayload(event.correlation);
       if (!eventCorrelation || !sameCorrelation(correlation, eventCorrelation)) return "operator_review";
+      if (delivery.state === "acknowledged") {
+        const priorReceipt = delivery.receipt;
+        const priorResult = priorReceipt?.result;
+        if (
+          !priorReceipt
+          || priorReceipt.deliveryId !== deliveryId
+          || priorReceipt.payloadDigest !== payloadDigest
+          || typeof priorReceipt.acknowledgedAt !== "string"
+          || !["resumed", "failed", "duplicate", "operator_review", "cancel_requested"].includes(String(priorResult))
+        ) return "operator_review";
+        const recoveredReceipt = {
+          deliveryId,
+          payloadDigest,
+          result: priorResult as Spec224ApprovalDeliveryReceiptInput["result"],
+          acknowledgedAt: priorReceipt.acknowledgedAt,
+        };
+        const receiptInput = {
+          jobId: correlation.jobId,
+          tenantId: correlation.tenantId,
+          approvalRequestId: record.id,
+          operationId: correlation.operationKey,
+          decision: record.status,
+          deliveryId,
+          decisionEpoch: event.decisionEpoch,
+          payloadDigest,
+          result: recoveredReceipt.result,
+          acknowledged: true,
+        } as const;
+        if (!await deps.controlPlane.recordSpec224ApprovalDelivery(receiptInput))
+          throw new Error("SPEC224_APPROVAL_ACK_RECOVERY_CONFLICT");
+        await deps.authority.acknowledge({
+          approvalRef: input.approvalRef,
+          tenantId: input.tenantId,
+          jobId: input.jobId,
+          operationId: input.operationId,
+          leaseOwner: input.leaseOwner,
+          leaseEpoch: input.leaseEpoch,
+          deliveryId,
+          payloadDigest,
+          receipt: recoveredReceipt,
+        });
+        return "duplicate";
+      }
       let result: Spec224ApprovalContinuationResult;
       if (record.status === "cancelled") {
         if (event.decision !== "cancelled" || event.actorId !== correlation.requesterId)
