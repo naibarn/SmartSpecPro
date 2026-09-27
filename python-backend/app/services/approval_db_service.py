@@ -9,6 +9,7 @@ It complements the in-memory ApprovalService for production use cases.
 import structlog
 import hashlib
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
 from uuid import NAMESPACE_URL, uuid4, uuid5
@@ -22,6 +23,8 @@ from app.models.approval import (
     ApprovalType,
 )
 from app.models.user import User, Role
+from app.models.tenant import Tenant
+from app.models.audit_log import AuditLog
 
 logger = structlog.get_logger(__name__)
 
@@ -44,6 +47,249 @@ class ApprovalDBService:
         """
         self.db = db_session
         self._logger = logger.bind(service="approval_db")
+
+    @staticmethod
+    def _recovery_grant_scope(value: dict) -> dict:
+        """Normalize the exact, non-production P-RECOVERY scope before persistence."""
+        if not isinstance(value, dict):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SCOPE_INVALID")
+        commit = value.get("sourceCommit")
+        source_digest = value.get("sourceSha256")
+        workpackage = value.get("workpackageId")
+        runtime = value.get("runtimeScope")
+        environment = value.get("environmentScope")
+        if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40,64}", commit):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_COMMIT_INVALID")
+        if not isinstance(source_digest, str) or not re.fullmatch(r"[0-9a-f]{64}", source_digest):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_DIGEST_INVALID")
+        if not isinstance(workpackage, str) or not re.fullmatch(r"WP-[A-Z0-9-]{3,80}", workpackage):
+            raise ValueError("SPEC224_RECOVERY_GRANT_WORKPACKAGE_INVALID")
+        if runtime not in {"python-approval", "node-control-plane", "local-test-runner"}:
+            raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_INVALID")
+        if environment != "isolated-non-production":
+            raise ValueError("SPEC224_RECOVERY_GRANT_ENVIRONMENT_INVALID")
+
+        source_files = value.get("sourceFiles")
+        write_set = value.get("allowedWriteSet")
+        operations = value.get("allowedOperations")
+        forbidden = value.get("forbiddenOperations")
+        if not isinstance(source_files, list) or not source_files or len(source_files) > 500:
+            raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_FILES_INVALID")
+        if not isinstance(write_set, list) or not write_set or len(write_set) > 200:
+            raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_SET_INVALID")
+        if not isinstance(operations, list) or not operations or len(operations) > 20:
+            raise ValueError("SPEC224_RECOVERY_GRANT_OPERATIONS_INVALID")
+        required_forbidden = {"production", "paid_provider", "cloudflare_migration", "shared_worktree"}
+        if not isinstance(forbidden, list) or not required_forbidden.issubset(set(forbidden)):
+            raise ValueError("SPEC224_RECOVERY_GRANT_FORBIDDEN_SCOPE_INCOMPLETE")
+
+        def safe_path(path: object) -> str:
+            if not isinstance(path, str) or not path or len(path) > 500 or path.startswith(("/", "\\")):
+                raise ValueError("SPEC224_RECOVERY_GRANT_PATH_INVALID")
+            if "\\" in path or any(part in {"", ".", ".."} for part in path.split("/")) or any(ch in path for ch in "*?[]"):
+                raise ValueError("SPEC224_RECOVERY_GRANT_PATH_INVALID")
+            if path == ".env" or path.endswith("/.env") or ".pem" in path.lower() or "secret" in path.lower():
+                raise ValueError("SPEC224_RECOVERY_GRANT_SENSITIVE_PATH_FORBIDDEN")
+            return path
+
+        normalized_sources: list[dict] = []
+        for entry in source_files:
+            if not isinstance(entry, dict) or not re.fullmatch(r"[0-9a-f]{64}", str(entry.get("sha256", ""))):
+                raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_FILE_HASH_INVALID")
+            normalized_sources.append({"path": safe_path(entry.get("path")), "sha256": entry["sha256"]})
+        normalized_sources.sort(key=lambda entry: entry["path"])
+        if len({entry["path"] for entry in normalized_sources}) != len(normalized_sources):
+            raise ValueError("SPEC224_RECOVERY_GRANT_SOURCE_PATH_DUPLICATE")
+        normalized_write_set = sorted({safe_path(path) for path in write_set})
+        if len(normalized_write_set) != len(write_set):
+            raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_PATH_DUPLICATE")
+        if not set(normalized_write_set).issubset({entry["path"] for entry in normalized_sources}):
+            raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_SET_OUTSIDE_SOURCE")
+        allowed_operations = sorted(set(operations))
+        if len(allowed_operations) != len(operations) or any(op not in {"read_source", "modify_owned_paths", "run_focused_tests", "commit_owned_changes"} for op in allowed_operations):
+            raise ValueError("SPEC224_RECOVERY_GRANT_OPERATION_INVALID")
+
+        expires_at = value.get("expiresAt")
+        try:
+            expiry = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("SPEC224_RECOVERY_GRANT_EXPIRY_INVALID") from exc
+        if expiry.tzinfo is None:
+            raise ValueError("SPEC224_RECOVERY_GRANT_EXPIRY_INVALID")
+        now = datetime.now(timezone.utc)
+        expiry = expiry.astimezone(timezone.utc)
+        if expiry <= now or expiry > now + timedelta(days=14):
+            raise ValueError("SPEC224_RECOVERY_GRANT_EXPIRY_OUT_OF_RANGE")
+        return {
+            "sourceCommit": commit,
+            "sourceSha256": source_digest,
+            "sourceFiles": normalized_sources,
+            "workpackageId": workpackage,
+            "allowedWriteSet": normalized_write_set,
+            "allowedOperations": allowed_operations,
+            "forbiddenOperations": sorted(required_forbidden),
+            "runtimeScope": runtime,
+            "environmentScope": environment,
+            "expiresAt": expiry.isoformat().replace("+00:00", "Z"),
+        }
+
+    @staticmethod
+    def _recovery_grant_audit_valid(grant: dict) -> bool:
+        events = grant.get("auditEvents")
+        if not isinstance(events, list) or not events:
+            return False
+        previous = None
+        for stored in events:
+            if not isinstance(stored, dict):
+                return False
+            event = {key: value for key, value in stored.items() if key != "eventDigest"}
+            canonical = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+            digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+            if stored.get("eventDigest") != digest or event.get("previousEventDigest") != previous:
+                return False
+            previous = digest
+        return True
+
+    async def issue_spec224_recovery_grant(
+        self, *, tenant_id: str, owner_id: int, idempotency_key: str, scope: dict,
+    ) -> dict:
+        """Issue a scoped grant only as an authenticated tenant-owner action.
+
+        The grant, ApprovalRequest/ApprovalResponse and AuditLog are committed in
+        one transaction. No service or client-supplied approval reference is trusted.
+        """
+        if not tenant_id or len(tenant_id) > 36 or not isinstance(idempotency_key, str) or not re.fullmatch(r"[A-Za-z0-9._:-]{8,160}", idempotency_key):
+            raise ValueError("SPEC224_RECOVERY_GRANT_REQUEST_INVALID")
+        normalized = self._recovery_grant_scope(scope)
+        canonical_scope = json.dumps(normalized, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        scope_digest = hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest()
+        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
+        if tenant_result.scalar_one_or_none() != owner_id:
+            raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
+        user_result = await self.db.execute(select(User.isDisabled).where(User.id == owner_id))
+        disabled = user_result.scalar_one_or_none()
+        if disabled is None or disabled:
+            raise PermissionError("SPEC224_RECOVERY_GRANT_OWNER_INACTIVE")
+
+        grant_id = str(uuid5(NAMESPACE_URL, f"smartaihub:spec224:recovery-grant:{tenant_id}:{owner_id}:{idempotency_key}"))
+        existing = await self.db.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id).with_for_update())
+        prior = existing.scalar_one_or_none()
+        if prior:
+            grant = (prior.extra_data or {}).get("spec224RecoveryGrantV1")
+            if not isinstance(grant, dict) or grant.get("scopeDigest") != scope_digest:
+                raise ValueError("SPEC224_RECOVERY_GRANT_IDEMPOTENCY_CONFLICT")
+            return grant
+
+        now = datetime.now(timezone.utc)
+        event = {
+            "eventType": "issued", "grantId": grant_id, "version": 1,
+            "tenantId": tenant_id, "ownerId": owner_id, "scopeDigest": scope_digest,
+            "sourceCommit": normalized["sourceCommit"], "sourceSha256": normalized["sourceSha256"],
+            "issuedAt": now.isoformat().replace("+00:00", "Z"), "previousEventDigest": None,
+        }
+        event_text = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        grant = {
+            "schemaVersion": "spec224.recovery-grant.v1", "grantId": grant_id, "version": 1,
+            "tenantId": tenant_id, "ownerId": owner_id, "state": "active",
+            "scope": normalized, "scopeDigest": scope_digest,
+            "issuedAt": event["issuedAt"], "revocation": None,
+            "auditEvents": [{**event, "eventDigest": hashlib.sha256(event_text.encode("utf-8")).hexdigest()}],
+        }
+        request = ApprovalRequest(
+            id=grant_id, request_type=ApprovalType.SECURITY_SENSITIVE,
+            title=f"P-RECOVERY scoped grant {normalized['workpackageId']}",
+            description="Authenticated tenant-owner issuance of an exact non-production recovery grant.",
+            tenant_id=tenant_id, requester_id=owner_id, requester_type="user",
+            status=ApprovalStatus.APPROVED, payload={"kind": "spec224_recovery_grant", "scopeDigest": scope_digest},
+            extra_data={"spec224RecoveryGrantV1": grant}, action_digest=scope_digest,
+            correlation_key=f"spec224-recovery-grant:{tenant_id}:{idempotency_key}"[:255],
+            risk_level="critical", required_approvers=1, current_approvals=1,
+            created_at=now.replace(tzinfo=None), resolved_at=now.replace(tzinfo=None),
+        )
+        self.db.add(request)
+        self.db.add(ApprovalResponse(
+            id=str(uuid4()), request_id=grant_id, approver_id=owner_id,
+            decision="approved", comment="Authenticated tenant-owner P-RECOVERY grant issuance.",
+            created_at=now.replace(tzinfo=None),
+        ))
+        self.db.add(AuditLog(
+            user_id=str(owner_id), user_role="tenant_owner", action="spec224.recovery_grant.issued",
+            resource_type="spec224_recovery_grant", resource_id=grant_id,
+            details={"tenantId": tenant_id, "scopeDigest": scope_digest, "eventDigest": grant["auditEvents"][0]["eventDigest"]},
+        ))
+        await self.db.commit()
+        return grant
+
+    async def revoke_spec224_recovery_grant(
+        self, *, grant_id: str, tenant_id: str, owner_id: int, reason: str,
+    ) -> dict:
+        if not reason or len(reason.strip()) < 4 or len(reason) > 500:
+            raise ValueError("SPEC224_RECOVERY_GRANT_REVOCATION_REASON_INVALID")
+        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
+        if tenant_result.scalar_one_or_none() != owner_id:
+            raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
+        ).with_for_update())
+        request = result.scalar_one_or_none()
+        grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
+        if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1":
+            raise ValueError("SPEC224_RECOVERY_GRANT_NOT_FOUND")
+        if grant.get("state") == "revoked":
+            return grant
+        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        revocation = {"actorId": owner_id, "reason": reason.strip(), "revokedAt": now}
+        event = {"eventType": "revoked", "grantId": grant_id, "version": int(grant.get("version", 0)) + 1,
+                 "tenantId": tenant_id, "ownerId": owner_id, "scopeDigest": grant["scopeDigest"],
+                 "previousEventDigest": grant["auditEvents"][-1].get("eventDigest"), **revocation}
+        event_text = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        grant = {**grant, "version": event["version"], "state": "revoked", "revocation": revocation,
+                 "auditEvents": [*grant.get("auditEvents", []), {**event, "eventDigest": hashlib.sha256(event_text.encode("utf-8")).hexdigest()}]}
+        request.extra_data = {**(request.extra_data or {}), "spec224RecoveryGrantV1": grant}
+        request.revoked_at = datetime.utcnow()
+        self.db.add(AuditLog(
+            user_id=str(owner_id), user_role="tenant_owner", action="spec224.recovery_grant.revoked",
+            resource_type="spec224_recovery_grant", resource_id=grant_id,
+            details={"tenantId": tenant_id, "scopeDigest": grant["scopeDigest"], "eventDigest": grant["auditEvents"][-1]["eventDigest"]},
+        ))
+        await self.db.commit()
+        return grant
+
+    async def validate_spec224_recovery_grant(
+        self, *, grant_id: str, tenant_id: str, source_commit: str, source_sha256: str,
+        workpackage_id: str, operation: str, path: str, runtime_scope: str, environment_scope: str,
+    ) -> bool:
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
+        ))
+        request = result.scalar_one_or_none()
+        grant = (request.extra_data or {}).get("spec224RecoveryGrantV1") if request else None
+        if not isinstance(grant, dict) or grant.get("schemaVersion") != "spec224.recovery-grant.v1" or grant.get("state") != "active":
+            return False
+        tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id))
+        if tenant_result.scalar_one_or_none() != grant.get("ownerId"):
+            return False
+        owner_result = await self.db.execute(select(User.isDisabled).where(User.id == grant.get("ownerId")))
+        if owner_result.scalar_one_or_none() is not False:
+            return False
+        if not self._recovery_grant_audit_valid(grant):
+            return False
+        scope = grant.get("scope")
+        if not isinstance(scope, dict):
+            return False
+        try:
+            expires = datetime.fromisoformat(str(scope["expiresAt"]).replace("Z", "+00:00"))
+        except (KeyError, ValueError):
+            return False
+        if expires <= datetime.now(timezone.utc):
+            return False
+        if (scope.get("sourceCommit") != source_commit or scope.get("sourceSha256") != source_sha256
+            or scope.get("workpackageId") != workpackage_id or scope.get("runtimeScope") != runtime_scope
+            or scope.get("environmentScope") != environment_scope or operation not in scope.get("allowedOperations", [])
+            or operation in scope.get("forbiddenOperations", []) or path not in scope.get("allowedWriteSet", [])):
+            return False
+        canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        return hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() == grant.get("scopeDigest")
 
     @staticmethod
     def _record_spec224_decision_intent(
