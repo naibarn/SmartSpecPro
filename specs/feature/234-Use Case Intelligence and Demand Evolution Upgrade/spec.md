@@ -1,14 +1,16 @@
 ---
 spec_id: 234
 title: SmartAIHub Use Case Intelligence and Demand Evolution Upgrade
-revision: 3.0
-status: R3 SECOND TEN-PASS REVIEWED DESIGN — live schema/production certification pending
+revision: "3.1 — Creator Use Case Amendment (proposed)"
+status: R3.1 CREATOR AMENDMENT PROPOSED — live schema/production certification pending
 created: 2026-09-23
 reviewed: 2026-09-24
+creator_amendment_date: 2026-09-27
+previous_revision: "3.0"
 suggested_repository_path: specs/feature/234-use-case-intelligence-demand-evolution-upgrade/spec.md
-baseline: Spec 212 design/corpus baseline; preserve any verified deployed contracts and original R20/corpus lineage, but do not infer runtime import or certification from the repository documents
+baseline: Spec 212 IMPLEMENTED; preserve deployed contracts and original R20/corpus lineage
 owners: Use Case Intelligence / Marketplace / Capability Lab / Product Intelligence
-companions: ["Spec 212 design/corpus baseline pending runtime verification", "Spec 233", "Spec 220", "Spec 229", "Spec 228", "Spec 221", "Spec 209", "Spec 214", "Spec 215", "Spec 226"]
+companions: ["Spec 212 IMPLEMENTED", "Spec 233", "Spec 220", "Spec 229", "Spec 228", "Spec 221", "Spec 209", "Spec 214", "Spec 215", "Spec 226"]
 optional_downstream_integrations: ["Spec 235"]
 implementation_strategy: additive-adapter-shadow-canary
 risk_class: medium-high
@@ -16,13 +18,13 @@ risk_class: medium-high
 
 # Spec 234 — SmartAIHub Use Case Intelligence & Demand Evolution Upgrade
 
-**Revision:** R3 second ten-pass hardening; source-alignment corrections supersede conflicting R1/R2 status wording.
+**Revision:** R2 ten-pass hardening; R2 normative corrections supersede conflicting R1 details.
 
-**Scope:** Extend the Spec 212 Use Case/Marketplace/Capability Lab design and any runtime contracts that are proven present with privacy-governed user-demand clustering, reuse-first solution matching, approved new use-case admission, and capability-release re-evaluation. **This is not a revision of Spec 212 or a request to reimplement any verified deployed contract; the first implementation step must fail closed if the expected Spec 212 runtime owner is absent.**
+**Scope:** Extend the *already implemented* Spec 212 Use Case/Marketplace/Capability Lab with privacy-governed user-demand clustering, reuse-first solution matching, approved new use-case admission, and capability-release re-evaluation. **This is not a revision of Spec 212 or a request to reimplement it.**
 
 ## 0. Baseline freeze / non-negotiable rules
 
-- Spec 212's R20 corpus and design contracts are available as a historical baseline in this checkout, but a deployed API, database schema, stable `use_case_id` registry, imported corpus, benchmark evidence and publication workflow are **not proven by those documents alone**. Preserve each contract only after its current source/migration/deployment owner is verified; otherwise keep this upgrade in design/adapter-only state and do not mint IDs.
+- Spec 212 is **IMPLEMENTED**. Preserve its deployed API, database schema, stable `use_case_id` identities, 2,930-case R20 design corpus (verify actual imported count at runtime), bilingual identity rules, benchmark evidence, existing variants and publication workflow. Do not assume that a spec corpus count proves production import completeness.
 - Before coding, inspect the actual deployed Spec 212 schema/services/registry/corpus digest, existing dedup/capability-validation and admin UI. Reuse current admission/publication APIs; create versioned adapters only for truly missing contracts. Any incompatible migration requires an independently approved expand/migrate/contract plan.
 - Spec 233 owns private Project Memory, Need/Gap Registry and Product Evolution approval. Spec 234 owns **the upgrade boundary** that turns eligible, approved Need/Gap candidates into Spec 212-compatible Use Case/Variant actions. Spec 212 remains the authority for final Use Case identity, validation, certification, Marketplace publication and variant lineage.
 - Spec 229 is the only Retrieval Broker. Spec 220 is authorization/privacy authority. Specs 209/214/215 own authoring/node/compiler/runtime. Spec 234 shall not create a parallel retrieval engine, canonical use-case table, compiler, execution queue or product backlog.
@@ -153,7 +155,7 @@ The numbering `234` is provisional until checking the live main branch, authorit
 
 # Revision 2 — Ten-Pass Production Hardening (Normative)
 
-**Date:** 2026-09-24. **Precedence:** R3 supersedes any conflicting R1/R2 contract, status, admission, eligibility or integration statement. This is an additive upgrade around the Spec 212 design/corpus baseline, not a revision of Spec 212. Runtime behavior is not assumed merely from a design document; the Spec 212 owner must be discovered and verified before any write path. Spec 235 is an optional downstream consumer, never a build-time or schema prerequisite for P234.0–P234.5.
+**Date:** 2026-09-24. **Precedence:** R2 supersedes any conflicting R1 contract, status, admission, eligibility or integration statement. This is an additive upgrade to implemented Spec 212, not a revision of Spec 212. Implemented behavior is not assumed merely from a design document. Spec 235 is an optional downstream consumer, never a build-time or schema prerequisite for P234.0–P234.5.
 
 ## R2.1 Ownership, dependency DAG and deployed-contract discovery [Audit 01]
 
@@ -246,7 +248,7 @@ Maintain a versioned conformance test for the 233 eligible-projection event, 212
 
 # Revision 3 — Second Ten-Pass Systems & Future-Extensibility Hardening (Normative)
 
-**Revision intent:** R3 preserves the verified portion of the Spec 212 design/corpus baseline and all R2 guarantees while closing additional gaps discovered by a second independent 10-pass review. Where R3 conflicts with R2, R3 controls only the new/clarified Spec 234 behavior; it never rewrites Spec 212.
+**Revision intent:** R3 preserves the implemented Spec 212 baseline and all R2 guarantees while closing additional gaps discovered by a second independent 10-pass review. Where R3 conflicts with R2, R3 controls only the new/clarified Spec 234 behavior; it never rewrites Spec 212.
 
 ## R3.1 Source lifecycle, invalidation and reconstructability [Audit 01]
 
@@ -306,7 +308,7 @@ Export/import of eligible catalog intelligence SHALL use versioned schemas, stab
 
 R3 implementation progresses through: (P234.0) deployed-contract inventory; (P234.1) read-only shadow matching; (P234.2) private/project recommendations; (P234.3) eligible demand clustering; (P234.4) bounded Spec 212 admission bridge; (P234.5) capability-impact re-evaluation; (P234.6) outcome feedback. Each phase has an independent feature flag/kill switch and rollback that removes Spec 234 effects without deleting canonical Spec 212 entities already validly published.
 
-Mandatory R3 certification adds: source deletion/rehydration; concurrent duplicate admission; normalizer/embedding version drift; prompt-injection corpus; rare-demand suppression; dependency cycle/fan-out storm; dead-letter replay; feedback-selection bias; specialized verifier denial; rollback after partial admission; plus all R2 tests. Failure of Spec 233, 229, 234 analytics or optional 235 MUST NOT corrupt or disable any verified Spec 212 Marketplace surface. Production enablement requires runtime evidence from the deployed contracts; document review alone is insufficient.
+Mandatory R3 certification adds: source deletion/rehydration; concurrent duplicate admission; normalizer/embedding version drift; prompt-injection corpus; rare-demand suppression; dependency cycle/fan-out storm; dead-letter replay; feedback-selection bias; specialized verifier denial; rollback after partial admission; plus all R2 tests. Failure of Spec 233, 229, 234 analytics or optional 235 MUST NOT corrupt or disable the implemented Spec 212 Marketplace. Production enablement requires runtime evidence from the deployed contracts; document review alone is insufficient.
 
 ## R3 consolidated invariants
 
@@ -320,3 +322,48 @@ Mandatory R3 certification adds: source deletion/rehydration; concurrent duplica
 8. Retrieval/model/taxonomy changes are versioned and shadow-certified before affecting authoritative decisions.
 9. Feedback improves evaluation but never self-promotes catalog or development work.
 10. Spec 235 remains optional downstream; Spec 234 can operate safely without it.
+---
+
+# R3.11 Creator Use Case and Skill Admission Amendment — Spec 234 R3.1 (2026-09-27)
+
+**Status:** Proposed additive creator-category coverage; existing implemented Spec 212 registry/IDs/corpus are frozen and remain the sole source of truth. Proposed Spec 251 owns Creator product composition, Spec 215 owns execution, 216 owns Studio and Mini App projection, 221/248 own Skill governance and distribution, 240 owns UI and 247 owns Speech. This amendment expands **demand resolution, eligibility evidence and certification fixtures**, not the canonical Use Case database or a competing marketplace.
+
+## R3.11.1 Creator category and stable admission process
+
+Introduce proposed category `CREATOR_MEDIA_WORKSPACE` and subcategories `AUTHORIZED_MEDIA_INTAKE`, `VIDEO_LOCALIZATION`, `VOICEOVER_AND_DUBBING`, `ARTICLE_AND_SHORT_SCRIPT`, `THUMBNAIL_VARIANTS`, `LONG_TO_SHORT_REPURPOSING`, `STICK_FIGURE_ANIMATION`, `CREATOR_WORKSPACE_EDIT`, and `MULTI_LOCALE_EXPORT`. These are candidate category keys subject to reconciliation with current deployed Spec 212. Do not reserve a guessed `UC-2931` or promise that the historical 2,930-case planning corpus was imported in full. At M0 inspect current stable IDs, variants, row schema, aliases, publication policy and fixtures; map each candidate to `MATCH_EXISTING`, `VARIANT_OF_EXISTING`, `RELATED_ONLY` or a reviewed `NEW_CANDIDATE` under the existing Spec 234 admission workflow. Proven equivalence/reuse wins over new use-case inflation. Scope creator-specific private needs to Project until separate explicit privacy eligibility and owner approval allow wider aggregation.
+
+| Candidate scenario | Required scope / capability probes | Variant or novelty signal |
+|---|---|---|
+| Upload owned video and create Thai/English subtitles | Source rights + ASR+translation+SRT/VTT, editor review | Source asset type/target locale; prefer existing media caption UC |
+| Translate one video to two different eligible locales | Translation glossary and per-locale cert; independent budget | Multi-locale batch variant |
+| Turn a licensed webinar into a short script and article | Evidence retrieval + editing + source citation | Repurposing variant of existing script/article UC |
+| Correct subtitle through Chat and Visual Editor | Current revision fence, same authorized Project and diff preview | Cross-surface interactive variant |
+| Generate licensed thumbnail variants | Reference-image rights, image provider entitlement, QA | Image generation/thumbnail variant |
+| Make portrait clips from 16:9 source | EDL/reframe/caption safe zones, final policy QA | Video editor/Shorts variant |
+| Produce standard synthetic voiceover | Certified locale voice, usage and copyright evidence | TTS/voiceover variant |
+| Dub in a recognizable source speaker likeness | Separate revocable consent, speaker-safe review and policy | Restricted high-risk variant, OFF until independent approval |
+| Convert approved text into simple animation | Script/storyboard/TTS/render; character-rights provenance | P2 composed workflow, not a duplicate global agent |
+| Download a public link with no download rights | Policy-denied intake and own-file fallback | Negative/security fixture, never a success promise |
+
+## R3.11.2 Product coverage oracle and certification
+
+The coverage matcher MUST inspect **actual** deployable capabilities, Skills and account-specific locale entitlement, not README feature claims or Spec-only mentions. An existing Skill that can technically transcribe audio is not enough to classify a complete dubbing job as `SUPPORTED` unless subtitle editor, TTS voice eligibility, alignment, render, rights proof and published end-to-end test receipts also exist. Return `COMPOSABLE`, `PARTIAL`, `PLANNED`, `UNSUPPORTED` or `UNKNOWN` with missing prerequisites as appropriate. Spec 251's P0/P1/P2 capability matrix can be ingested as evidence references; its proposed release flags are not proof a capability is running.
+
+The user must be able to browse approved creator templates through the existing Spec 212 Marketplace with truthful `supported_source_kinds[]`, `supported_locale_feature_tuples[]`, mobile/desktop flags, model/provider region, expected cost and external entitlement requirements. Reuse existing payout/credit systems and licensed creator IP review. Imported OpenCreator descriptions are competitive reference material, **not** licensed bundled SmartAIHub Skills or automatic attribution of rights.
+
+## R3.11.3 Acceptance fixtures and corpus delta
+
+| Case | Assertion |
+|---|---|
+| C234-C01 | Historical UC identity/count unaffected; candidate mapping uses verified current registry |
+| C234-C02 | Similar video-caption request maps to existing case/variant, not duplicate ID |
+| C234-C03 | Unsupported Thai TTS never yields `SUPPORTED` for Thai dubbed export |
+| C234-C04 | Source rights failure prevents public auto-video-download success recommendation |
+| C234-C05 | Approved public template exposes no original customer's private media or prompt |
+| C234-C06 | Creation source stored private in Spec 233 never becomes cross-tenant demand signal automatically |
+| C234-C07 | Skill dependency revoked after listing causes clear capability degradation and review |
+| C234-C08 | P2 Animation/Avatar features remain visibly planned, not certified by planning corpus alone |
+| C234-C09 | Reuse-first classifier recognizes Thai-English mixed-language paraphrases without losing rights/consent constraints |
+| C234-C10 | A newly published creator variant carries owner approval, lineage and independent end-to-end evidence |
+
+This is an **admission proposal**. The registry/owner must allocate real category IDs and append rows through currently deployed Spec 212 services only after collision and access checks; this document never authorizes direct overwrite or renumbering of older rows.

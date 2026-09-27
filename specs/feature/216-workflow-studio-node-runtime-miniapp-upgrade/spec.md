@@ -2,24 +2,18 @@
 ## Node Contract Alignment, Runtime Separation, Flow-to-Mini-App Productization & Public Monetization
 
 **Status:** Proposed / Implementation Upgrade Specification  
+**Creator integration revision:** R4 — proposed 2026-09-27, see appended normative amendment  
 **Spec ID:** 216  
-**Revision:** 3 — AI Builder discovery through canonical Retrieval Broker without UI/provider coupling
-**Date:** 2026-09-22
+**Date:** 2026-09-20  
 **Target repository path:** `specs/feature/216-workflow-studio-node-runtime-miniapp-upgrade/spec.md`  
 **Implementation baseline:** Spec 209 — already implemented / partially implemented Workflow Studio  
-**Canonical product validation:** Spec 212 Revision 20 / R20
-**Canonical Node Type contract:** Spec 214 Revision 6+
-**Canonical compiler/runtime contract:** Spec 215 Revision 4+
+**Canonical product validation:** Spec 212 Revision 20  
+**Canonical Node Type contract:** Spec 214 Revision 6  
+**Canonical compiler/runtime contract:** Spec 215 Revision 4 (proposed; runtime integration unverified)  
 **Economic authority:** Spec 207  
 **Durable physical job authority:** Feature 195 / `worker_jobs`  
 
 ---
-
-## 0.1 Codebase alignment snapshot — 2026-09-22
-
-The current `workflowStudio` tRPC router exposes node-type discovery, draft/version persistence, run/control procedures and marketplace/entitlement queries. Migration `0341_feature_209_workflow_studio.sql` defines persisted definitions, versions, apps, runs, events and checkpoints. `workflowStudioCanonicalAdapter.ts` and `workflowBuilderCompiler.ts` provide partial canonical wiring, while legacy graph translation and existing Studio persistence/run paths remain.
-
-The source tree does not prove a complete Spec 216 cutover, Mini App publication/economics integration, durable Spec 215 execution or R20 certification. The section below is therefore an upgrade target and migration plan, not a claim that persisted production workflows are absent.
 
 # 0. Executive Decision
 
@@ -27,7 +21,7 @@ Spec 209 SHALL be treated as the **implemented baseline**, not rewritten retroac
 
 Spec 216 SHALL be the normative implementation-upgrade program that transforms the existing Workflow Studio into the architecture required by Specs 212/214/215 and the Flow-to-Mini-App monetization model.
 
-The upgrade SHALL reuse useful Spec 209 code and UX. Any breaking schema/refactor change requires deployment data inventory, an explicit compatibility/migration decision and rollback evidence because the repository contains persisted Workflow Studio structures.
+The upgrade SHALL reuse useful Spec 209 code and UX. Whether deployed workflows require backward-compatible workflow data migration has not been established; perform a read-only inventory and define a rollback path before any breaking schema/refactor cutover.
 
 The system MUST NOT create a second Workflow Studio, second workflow format, second Mini App runtime, second job queue, second Capability Registry, or second credit ledger.
 
@@ -840,19 +834,20 @@ During/after run:
 
 # 36. API Surface
 
-Current Workflow Studio transport is tRPC. The procedures below are the current
-Studio procedures; future Mini App REST/SDK projections are logical transport
-designs, not existing routes:
+Illustrative canonical product APIs:
 
 ```text
-workflowStudio.generateDraft / editDraft
-workflowStudio.createDraft / saveDraft
-workflowStudio.publishVersion / publishApp
-workflowStudio.run / getRun / controlRun
-workflowStudio.marketplace / marketplaceDetail / dependencyCheck / entitlement
-
-Future Mini App publication, presentation and public-API operations remain
-logical Spec 216 design until a matching source route is implemented.
+POST   /workflows/{workflowId}/mini-apps:generate
+POST   /mini-apps/{miniAppId}:preview
+PATCH  /mini-apps/{miniAppId}/presentation
+POST   /mini-apps/{miniAppId}:submit-public-review
+POST   /admin/mini-app-publication-requests/{requestId}:approve
+POST   /admin/mini-app-publication-requests/{requestId}:request-changes
+POST   /admin/mini-app-publication-requests/{requestId}:reject
+POST   /mini-apps/{miniAppId}:publish
+POST   /mini-apps/{miniAppId}:quote-run
+POST   /mini-apps/{miniAppId}:run
+POST   /mini-apps/{miniAppId}:suspend
 ```
 
 Exact endpoint naming MAY follow existing SmartAIHub API conventions, but all operations MUST resolve to canonical services and identities.
@@ -1068,7 +1063,7 @@ Spec 216 is complete when the already-implemented Workflow Studio can be evolved
 
 ---
 
-# 49. Device-Independent Mini App and Mobile Surface Amendment
+# 37. Device-Independent Mini App and Mobile Surface Amendment
 
 **Implementation timing:** Spec 216 is an upgrade program not yet implemented at the time of this amendment; the requirements below are normative for the first implementation.
 
@@ -1107,63 +1102,51 @@ Publication preflight SHALL additionally validate:
 - no secrets in client schema or push payload;
 - upload size/background-upload policy;
 - graceful fallback when a client lacks a required capture capability.
-
-
-## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
-
-All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
-
-The shared request MUST carry at least:
-
-```text
-request_id
-principal / tenant / project / environment
-purpose
-query_class
-query_text or structured selector
-source_classes
-required_visibility / ACL scope
-language hints
-exact identifiers if present
-maximum evidence budget
-freshness requirement
-consumer spec / run / workflow references
-```
-
-The normalized response MUST carry at least:
-
-```text
-retrieval_trace_id
-provider/profile/version
-query plan
-EvidenceRef[]
-source identity + source revision/digest
-ACL/provenance/freshness state
-retrieval/rerank scores as non-authoritative evidence
-quality-gate result
-partial/degraded indicators
-```
-
-`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
-
-
 ---
 
-# Revision 3 — AI Builder / Studio Retrieval Discovery Alignment
+# Creator Integration Amendment — Spec 216 R4 (2026-09-27)
 
-AI Builder and Workflow Studio MAY search Node descriptions, Skills, capabilities, templates, Help and workflow examples, but all production semantic/document search SHALL use Spec 229 Retrieval Broker.
+**Status:** Proposed normative creator-surface upgrade to the existing Spec 216 incremental Workflow Studio program; actual branch and deployed-contract reconciliation required. Original Spec 209 remains the implemented UI baseline and frozen Specs 1–214 are NOT retroactively changed. Spec 215 owns runtime, 240 owns declarative UI generation and host action binding, 251 owns the Creator Workspace product domain, 217 owns white-label Product Shells, and 234 owns admission of new creator Use Cases through implemented Spec 212. No second Studio/Mini App runtime is permitted.
 
-The Studio SHALL consume normalized discovery results and MUST NOT embed provider-specific Vectorize/AI Search logic in the browser/client.
+## R4.1 A Creator Workspace is a Studio preset plus domain product, not a parallel builder
 
-When a user asks the AI Builder to "find a Skill" or "use an existing capability", the Builder SHALL prefer:
+Provide template cards in the existing Workflow Studio for `VIDEO_LOCALIZATION`, `AUTHORIZED_MEDIA_IMPORT`, `ARTICLE_FROM_SOURCES`, `SHORT_VIDEO_SCRIPT`, `THUMBNAIL_VARIANTS`, `VIDEO_TO_VERTICAL`, `VOICEOVER` and future `STICK_FIGURE_ANIMATION`. A card resolves an approved versioned Spec 251 recipe, pinned Spec 215 WorkflowDefinition, registered Spec 214 capability bindings, authorized Data/Media input schema, shared Spec 240 UI blueprint or deterministic fallback, and creator release/entitlement requirements. It can be invoked from Creator Dashboard, general Chat (only with explicit Project and user entitlement), ordinary Mini App or a white-label Product. Reuse existing Studio forms/canvas/job views; never fork an undocumented `creator_workflows` execution engine.
 
-```text
-exact identity / pinned dependency
-→ authorized candidate discovery via Spec 229
-→ canonical Skill/capability revalidation
-→ bind versioned reference
-```
+Each recipe must expose: target audience/platform; source rights checklist; eligible input formats and consent; estimated per-stage and per-variant cost; enabled locale/voice capability tuples; target aspect ratios; revision compare; approved fast-start defaults; manual-only/degraded paths; and explicit publication status. Avoid marketing support for every external site or all target languages when the current account cannot certify them.
 
-rather than copying retrieved Skill implementation text into the WorkflowDefinition.
+## R4.2 Shared Chat + Visual workspace integration with Spec 240
 
-Search ranking is advisory. Final graph validity remains governed by Spec 214 manifests, Spec 215 compilation, Spec 220 policy and Spec 221 Skill state.
+Spec 216 composes the Creator UI with `Source Bin`, `Guided Recipe`, `Transcript/Subtitle Table`, `Preview`, `Media Timeline Link`, `Versions & Compare`, `Jobs`, `Approval`, `Exports` and an **optional scoped Mini Chat**. Creator controls consume one revisioned domain contract from Spec 251, not independent local copies. The Chat or generated UI returns a typed `CreatorEditProposal`, an impact/diff preview and a trusted `Apply` action; it cannot mutate the canonical timeline, published Mini App definition or wallet directly. On stale revision or disconnected collaboration, show three-way rebase/conflict instead of last-write-wins. Spec 240 is responsible for design-time UI generation and runtime dynamic result surfaces, not Spec 216; creator-pinned UI layouts render deterministically by default without another LLM charge.
+
+A standard guided flow MUST remain fully usable without Chat or a custom JSX/React frontend: upload/choose source → inspect/legal consent → configure language/style/voice/budget → preview graph and cost → run → correct draft → inspect version/QA → export. Chat shortcuts may jump into exactly the same step and selection context. Users must be able to export a draft if unrelated publishing certification is blocked and existing safety/legal policy permits storage/export. No dependency on automatic browser-use for core video translation.
+
+## R4.3 Creator Mini App contract and marketplace boundary
+
+A Creator template may become a private/team/published Mini App through the **existing** Spec 216 projection. Published definition pins `creatorRecipeVersion`, `workflowDefinitionRef`, allowed source kinds, provider/locale policy, UI manifest/action allowlist, export preset catalog, source-rights disclosure, billing/refund display and skill dependency lock. Per-run user Project/Library assets and grants are NEVER baked into a published app or visible to its publisher. A new feature that expands input sources, paid capabilities, data scope, publisher action rights or external egress requires a newly reviewed published version—not a stealth per-run GenUI patch. Reuse Spec 217 entitlement and Spec 207 economic/revenue allocation; Spec 234 handles any new use-case identities/variant approvals.
+
+## R4.4 Device-independent creator controls
+
+Full Visual Timeline/complex authoring may be Web/Desktop only, while PWA/Mobile/Tablet must offer Project choice, camera/video/file intake where allowed, resumable upload feedback where supported, recipe parameter presets, segment subtitle correction, voice/locale/rights approval, job alerts, safe revision comparison and final export link. Share/referrer links never bypass current server authorization or reveal another tenant's source URL and metadata. Disconnected devices reconnect to the same workspace revision using a new host-bound action token; no permanently valid mobile approval link.
+
+## R4.5 Implementation sequence and release gates
+
+- **B216-0 Contract inventory:** inspect deployed Spec 209 components, actual 214 registry, latest 215/240/251, current Mini App schema and current Spec 212 Marketplace admission APIs. Do not begin with a replacement UI.
+- **B216-1 P0 guided translator:** reusable Creator template with local/Library authorized intake, visible rights, one independently certified locale route, transcript correction, SRT/VTT, voice where certified and immutable export.
+- **B216-2 Shared state:** Chat-Visual typed edit intents, revision compare, cost-diff quote, approval and stale-write handling via Spec 240/251.
+- **B216-3 Monetization and reuse:** pin clean creator blueprint to existing Mini App publication and Spec 217 Product without embedding private customer data.
+- **B216-4 Additional tools:** article, short script, thumbnail and vertical variants, each certified independently with Spec 234 use-case coverage.
+
+| Case | Must hold |
+|---|---|
+| C216-01 | End-to-end guided Creator recipe works without any Chat interaction |
+| C216-02 | Chat edit and Visual edit commit to exactly one authoritative creator revision |
+| C216-03 | Source and data access remains user-scoped inside a public Mini App |
+| C216-04 | Published UI can't add new data source or payable operation through GenUI |
+| C216-05 | Normal deterministic preview does not invoke a billable UI model |
+| C216-06 | Mobile can correct subtitle and approve a queued job while desktop offline |
+| C216-07 | Unsupported locale, URL platform or voice is clearly disabled, not silently routed |
+| C216-08 | Mini App version upgrades preserve old paid-run evidence and revenue receipts |
+| C216-09 | All creator template nodes map only to existing frozen Spec 214 taxonomy |
+| C216-10 | Invalid trusted action token or stale revision never modifies production work |
+
+**Release proof:** Real end-to-end UI fixture, Spec 215 execution receipt, Spec 240 surface/action conformance, Spec 247 locale/account evidence, source rights check, Spec 207 billing reconciliation, cross-device recovery and exact artifact-hash QA. Document review alone is not evidence that Spec 216 or 251 was implemented.

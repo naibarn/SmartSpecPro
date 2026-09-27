@@ -1,11 +1,13 @@
 ---
 spec_id: 232
 title: SmartAIHub Zero-Downtime Redis/BullMQ to Cloudflare Migration & Runtime Hardening
-revision: 2.0
-status: PROPOSED — implementation-ready contract; production certification pending
+revision: 2.1
+status: PROPOSED — R2.1 clarified specialist contract; live repo admission/production certification pending
 created: 2026-09-23
 suggested_repository_path: specs/feature/232-zero-downtime-redis-bullmq-cloudflare-migration/spec.md
 primary_owners: Platform Infrastructure / Job Control Plane / Security / SRE
+parent_migration_program: Spec 245 Full-System Cloudflare Migration
+legacy_source_slug: spec-231-zero-downtime-redis-bullmq-cloudflare-migration-r1
 implementation_strategy: incremental-expand-migrate-contract
 risk_class: high
 canonical_dependencies: ["Feature 186", "Feature 187", "Feature 195", "Spec 207", "Spec 213", "Spec 218", "Spec 219", "Spec 220", "Spec 224", "Spec 226", "Spec 228", "Spec 229", "Spec 230", "Spec 231 (LLM Routing; companion, distinct)"]
@@ -21,6 +23,8 @@ canonical_dependencies: ["Feature 186", "Feature 187", "Feature 195", "Spec 207"
 > **Canonical numbering / collision resolution:** The user assigned **Spec 232** to this Redis/BullMQ migration because **Spec 231 is the independent Unified LLM Routing & Inference Orchestration spec**. These documents have different ownership, paths, acceptance matrices and work-package prefixes. Registry/main-branch and open-PR checks must still verify that 232 is not independently allocated before commit. If a fresh conflict exists, STOP and report; never overwrite either spec. Alias prior `spec-231-zero-downtime-redis-bullmq-cloudflare-migration-r1` to this document by **slug and source digest**; a bare `231` must resolve only to LLM Routing after reconciliation.
 
 ---
+
+> **CURRENT R2.1 / 2026-09-27 — specialist migration contract.** The historical file `spec-231-zero-downtime-redis-bullmq-cloudflare-migration-r1.md` has already been superseded by the dedicated **Spec 232 R2**. Do not create another independent migration Spec 231. **Spec 245** owns the full Cloudflare migration program and promotion order, while **Spec 232** owns the G1–G6 Redis/BullMQ-to-Cloudflare migration and its job-family cutover receipts. Original Specs 1–214 and active Spec 224 are not rewritten. Production promotion remains evidence-gated.
 
 ## 0. Executive decision and non-negotiable outcome
 
@@ -739,3 +743,34 @@ An independent verifier SHALL read actual deployment build SHA, migration manife
 - [Cloudflare Durable Objects best practices](https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/) — SQLite-backed persistence, per-entity sharding, `await` interleaving and hibernation.
 - [Cloudflare Workers KV consistency](https://developers.cloudflare.com/kv/concepts/how-kv-works/) — cross-location eventual consistency; not authorization authority.
 - [Cloudflare Hyperdrive feature support](https://developers.cloudflare.com/hyperdrive/reference/supported-databases-and-features/) — session advisory locks and LISTEN/NOTIFY unsupported; transaction pooling.
+
+---
+
+## 32. R2.1 explicit specialist ownership under Spec 245
+
+The September 23 legacy Redis migration file with frontmatter `spec_id: 231` is the **prior revision of this SAME migration topic**, not a second live Spec. R2 (and this R2.1) is its successor under **232**. Preserve legacy source digest and any historic `P231.*` prefix in archival evidence; new implementation tickets must use `P232.*` or a canonical R2 workpackage ID only after a title/digest-qualified mapping. In newly authored material, bare Spec 231 means the independent LLM-routing domain.
+
+**Separation:** 245 owns service-wide infrastructure dependency ordering, global DR, readiness, Debian-retirement and final program acceptance. 232 owns the six independently promotable Redis/BullMQ groups, their concrete replacement adapters, legacy caller inventory, per-job-family execution-ownership leases/fences and retirement proof. Feature 186/195 owns canonical job record, events, outbox and physical dispatch contract. Spec 231 inference policy never delegates model choice to 232.
+
+Do not assume 245 wave approval authorizes a 232 family cutover, or that a 232 green group establishes a ready-to-retire Debian host. A group may remain legacy while certified groups are live on Cloudflare; status must distinguish planned, shadow-only, canary, promoted, draining, retired and rolled-back.
+
+## 33. R2.1 cutover handoff and reconciliation receipt
+
+Each specialist promotion MUST publish an existing-authority-bound receipt or append-only evidence reference with at least `{spec_uid:'SAH-REDIS-CLOUDFLARE-232', source_commit, migration_group, job_family_or_route, tenant_cohort, from_executor, to_executor, ownership_epoch, canary_manifest_hash, policy_version, observed_error_budget, rollback_plan_ref, status, reviewer, completed_at}`. This is **not** a new universal worker-job table. For G6, use the existing canonical job identifier and PG lease fencing to serialize the exact family transfer. Include old delayed/repeat schedule reconciliation and Celery/Celery Beat callers as confirmed by runtime inventory.
+
+Spec 245 consumes group status, scope and evidence hash through its migration program board; it must not mutate 232's per-family fences or infer G6 readiness from a G1 cache pass. Unknown or stale evidence is `NOT_CERTIFIED`, never `PASS`.
+
+## 34. R2.1 safety and rollback boundaries
+
+- **G1 cache:** a KV `MISS -> HIT` must be observed on the user-facing caller path, not inferred solely from Worker health; verify per-tenant namespace, error budget, Redis caller telemetry and safe fault injection before a production cutover.
+- **G2 auth:** PostgreSQL remains fresh authority; revoked sessions and cross-tenant grants remain denied during partial Worker/DO/KV outage.
+- **G3 quotas:** DB-backed economic enforcement is distinct from approximate request-rate throttling; idempotency and tenant fencing precede paid side effects.
+- **G4 locks/G5 realtime:** enforce serialized ownership and event replay without a second global job source; if a DO session moves, stale subscribers cannot execute effects.
+- **G6 background jobs:** at-least-once delivery, PG claim+lease+fence, outbox/inbox reconciliation, delayed jobs and unambiguous cancellation/drain. Never declare a production worker family migrated from an isolated mock test.
+- **Rollback:** new admissions transfer only after a recorded fence; old in-flight owners finish or are explicitly reconciled. Never dual-own the same job family or silently fail over to Redis when it was retired.
+
+## 35. R2.1 acceptance gates `R232-01`–`R232-10`
+
+`R232-01` source-verified legacy-231 → 232 alias and release-path uniqueness; `R232-02` 245 dependency register consumes 232 receipts without forging specialist approval; `R232-03` G1 web caller traces show isolated miss/hit; `R232-04` G2 stale JWT/revocation remains denied; `R232-05` G3 exact quota denies second concurrent expensive action; `R232-06` G4 stale lock epoch cannot mutate canonical state; `R232-07` G5 replay after DO disconnect is ACL-safe; `R232-08` G6 replay/delayed/Celery+Beat inventory and unique settlement pass; `R232-09` canary rollback prevents dual executor ownership; `R232-10` no production Redis retirement without complete caller inventory and 245 final program gate.
+
+**These are proposed executable tests, not passed production evidence.** No migration DDL, deployment, secret rotation or billing action is authorized by this document alone.

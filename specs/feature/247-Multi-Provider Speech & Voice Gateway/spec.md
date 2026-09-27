@@ -2,13 +2,15 @@
 
 **Project:** SmartAIHub / SmartSpecPro  
 **Status:** Proposed — design-reviewed; M0 repository-contract reconciliation, provider probes, Thai benchmarks and production evidence remain required  
-**Version:** 1.8 — eighth 10-pass reconciliation revision (80 cumulative document-review passes) | **Date:** 2026-09-25 (Asia/Bangkok)  
+**Version:** 1.10 — Speech Facade & Realtime/Creator cross-spec clarification (v1.9 Creator and v1.8 R01–R80 retained) | **Amendment date:** 2026-09-27 (Asia/Bangkok)
 **Scope:** Cloudflare Workers AI · OpenAI · Google Gemini · xAI Grok · optional CrispASR  
 **Deployment:** Current Debian Linux → hybrid → Cloudflare Workers; external/local inference remains independent
 
 > **Numbering guard:** Spec 247 is proposed based on the latest discussed Spec 246; confirm against the canonical SmartSpecPro spec registry before assigning permanently. If occupied, allocate the next available identifier without modifying existing specs.
 >
 > **Implementation boundary:** Original Specs 1–213, including 213, must not be retroactively edited; use additive compatibility extensions and backlog items. Spec 224 is in active implementation and must not be rewritten. Other cross-spec requirements are additive and gated by their owners.
+
+> **CURRENT v1.10 / 2026-09-27 — integration boundary.** The existing v1.9 Creator amendment remains intact. **247** owns normalized speech capability, ASR/TTS/diarization/alignment and immutable transcript/audio artifacts. **237** owns real-time user/session/turn lifecycle; **231** owns general LLM/model routing; **251** (proposed companion) owns video-localization product orchestration and editor UX. Provider documentation does not certify a Thai locale/account/region or production TTS quality. See v1.10 annex.
 
 ## 0. Executive decision
 
@@ -251,7 +253,7 @@ Provider availability/config, per-feature certification badges (`documented`, `p
 
 ### 7.5 Marketplace / Workflow
 
-Define reusable `Speech.Transcribe`, `Speech.Stream`, `Speech.Synthesize`, `Speech.Diarize`, `Speech.Align`, `Audio.Understand` nodes or extensions only if current Spec 214 catalog lacks exact equivalents. Existing Spec 215 runtime owns execution semantics; the Spec 212 marketplace/use-case design baseline, if its runtime owner is verified, gets a **separate additive update**, not modification to the original spec. Mini App creator must declare what audio is captured, whether it leaves the region and the maximum billable cost.
+Define reusable `Speech.Transcribe`, `Speech.Stream`, `Speech.Synthesize`, `Speech.Diarize`, `Speech.Align`, `Audio.Understand` nodes or extensions only if current Spec 214 catalog lacks exact equivalents. Existing Spec 215 runtime owns execution semantics; Spec 212 implemented marketplace gets **separate additive update**, not modification to original spec. Mini App creator must declare what audio is captured, whether it leaves the region and the maximum billable cost.
 
 ## 8. Debian deployment (now)
 
@@ -993,3 +995,84 @@ This pass compares the **v1.7 actual clauses** against the operational release p
 ---
 
 **Final architecture principle (unchanged):** SmartAIHub owns *who may process which audio, under which budget and retention policy, and where the result belongs*. Providers own inference only. Debian and Cloudflare are deployment locations of the same contract, not separate products.
+---
+
+# 25. Creator Localization Interoperability Amendment — Spec 247 v1.9 (2026-09-27)
+
+**Status:** Proposed integration extension to Spec 247 v1.8. Prior R01–R80 provider truthfulness, 10-pass review requirements, Thai holdout, privacy, budget/consent, canonical transcript lineage and real-account certification remain in force. This amendment does NOT transform the Speech Gateway into a second video editor or translation orchestrator; proposed Spec 251 owns cross-stage localization and Spec 215 owns execution. No production provider capability or Thai TTS certification is asserted by this document.
+
+## 25.1 Facade composition boundary and capability tuples
+
+Expose stable, explicit operations to the Creator domain: `speech.transcribe.batch`, `speech.transcribe.stream` where independently eligible, `speech.align` where native or approved composition, `speech.diarize`, `speech.synthesize`, `speech.quality_evaluate` and authorized source-audio inspection. **Text translation, glossary versioning, bilingual composition, voiceover/video assembly and final video export belong to Spec 251 + existing AI Gateway/Video Editor** and SHALL invoke the Speech facade rather than bypass it. Legacy API names may remain through versioned adapters only after inventory of actually deployed contracts. Source/target language support must be checked independently for ASR, translation model, TTS, alignment and dubbing-quality policy per `(provider, exact endpoint, model revision, account, region, locale, input format, option combination)`.
+
+```ts
+interface CreatorSpeechRequestV1 {
+  schemaVersion:'creator.speech.v1'; tenantId:string; projectId:string;
+  sourceAssetRevisionRef:string; mediaClockManifestRef:string;
+  operation:'ASR'|'DIARIZE'|'ALIGN'|'SYNTHESIZE'|'AUDIO_QA';
+  inputTranscriptRevisionRef?:string; targetLocale?:string;
+  segmentRangeRefs?:string[]; voiceProfileRef?:string;
+  consentPolicyRef:string; processingProfileRef:string;
+  requiredCapabilityTupleRefs:string[]; maxAuthorizedCostRef:string;
+  outputArtifactPolicyRef:string; idempotencyKey:string;
+}
+interface CreatorSpeechResultV1 {
+  operation:string; sourceClockMapVersion:string;
+  providerAttemptRefs:string[]; outputArtifactRefs:string[];
+  transcriptRevisionRef?:string; segmentTimebaseEvidenceRef?:string;
+  supportedPrecision:'NATIVE_WORD'|'VERIFIED_ALIGNMENT'|'SEGMENT_ONLY'|'UNKNOWN';
+  speakerEvidenceRef?:string; contentHash:string;
+  currentCertificationRef:string; warnings:string[];
+}
+```
+
+No client or agent may label segment-only or inferred offsets as word-level evidence. Preserve provider-native word offsets only where actually emitted; separate ASR confidence, diarization confidence, human-reviewed correction and model self-assessment. Any transformation of text after ASR invalidates affected word timing until independently verified realignment. The v1.8 rational clock/PTS, chunk overlap, resampling and subtitle SRT/VTT roundtrip requirements remain mandatory.
+
+## 25.2 Consent-bound synthetic voice and segment re-synthesis
+
+A voice profile is never a portable authorization token. The façade must recheck the current purpose-specific speaker/likeness consent, actor grant, age/identity policy when applicable, allowed locale/provider/region, retention and per-request budget at every new upload/synthesis attempt. For unconsented or unknown source voices, offer explicitly labeled standard synthetic voices or allow authorized human narration; never silently clone a speaker from a source video. Persist voice profile version, provider/model, parameter values, style/emotion request (only where truly supported), source segment timing, consent receipt and generated waveform hash. Consent revocation blocks future synthesis, closes signed reads where revocable and triggers existing retention/deletion actions; previously delivered bytes cannot be falsely claimed recalled.
+
+Segment-level re-synthesis takes immutable revised target-text span, exact source/target timestamp anchors, style/voice parameters, validated cost and previous approved audio references. If the new synthesized audio duration differs materially, mark synchronization as `NEEDS_ALIGNMENT` and rerender/technical QA after a verified duration-fit or user-reviewed edit. Do not stretch every segment to a target duration without audible-quality measurement, and do not infer video lip-sync support from TTS output. Multiple parallel target locales require independent provider/voice eligibility and failure states; unsupported TTS does not prevent a separately certified subtitles-only export.
+
+## 25.3 Translation/subtitle/voice provenance interface with Spec 251
+
+Preserve the immutable v1.8 lineage `raw_provider_output → normalized_verbatim → edited_revision → translated_revision → subtitle_export` with source media/timebase anchors and author/review evidence. For Creator use, publish versioned typed artifact refs and invalidation notifications so correcting source text or glossary propagates to affected locale branches while untouched source/target segments remain reusable. `translated_revision` may be produced by the existing Spec 231 AI Gateway or explicitly certified translation capability; it is a derived artifact, not a hidden mutation to ASR output. Subtitle-aware translation must preserve named entities/numerals/critical cautions, not merely hit a generic fluency metric. Thai word segmentation and bidirectional script wrapping are display decisions with preserved original Unicode offsets; never store guessed word-timestamps as source evidence.
+
+A cross-provider fallback occurs only where region/account/privacy/quality **and separately authorized budget** permit it. An ambiguous accepted attempt must not create a second unapproved paid send, and shadow benchmarking must not transmit a real customer's private audio to another billed provider by default. Large-media streaming must be performed on an approved executor/transfer path rather than buffering a multi-hour video inside a Cloudflare Worker request. Existing Spec 247 M0–M5 acceptance, finality/cost reconciliation and quality holdout govern all creator routes.
+
+## 25.4 Product-certification matrix and human workflow
+
+P0 requires at least one exact independently certified batch ASR+translation pipeline for the target locale, source clock integrity, editor correction, SRT/VTT roundtrip, render audio/video sync and cost receipts. Dubbing is a separately deployable feature that requires an eligible TTS tuple, current speaker/voice purpose grant where needed, human quality review for designated high-impact outputs and per-variant publish re-certification. The UI must truthfully show `SUBTITLES_ONLY`, `DUBBING_AVAILABLE`, `DUBBING_DEGRADED`, or `NOT_CERTIFIED` at the exact variant level. A marketing claim that 101 target languages are supported is prohibited absent qualifying account- and workflow-level evidence for all claimed combinations.
+
+| Case | Required result |
+|---|---|
+| C247-C01 | ASR word timestamps absent, SRT segments present | Precision remains `SEGMENT_ONLY`, not `NATIVE_WORD` |
+| C247-C02 | Correct Thai transcript one segment | Affected target word alignment invalidated until rechecked |
+| C247-C03 | Voice-sample upload without purpose-specific consent | Reject and do not retain provider object |
+| C247-C04 | Thai subtitles certified, Thai TTS not certified | Permit labeled subtitles-only; block dubbed export |
+| C247-C05 | TTS retry after accepted-but-unknown callback | No double customer charge and bounded upstream reconciliation |
+| C247-C06 | Native TTS voice supports pace but not emotion | Hide/disable emotion control rather than silently ignore it |
+| C247-C07 | Source has VFR/edit list and overlapping speakers | Timebase test/drift threshold and explicit uncertainty |
+| C247-C08 | Locale fallback requires new unapproved processing region | Block external transfer |
+| C247-C09 | Audio synthesis exceeds authorized estimate | Pause for quote and approval; no silent billed rerun |
+| C247-C10 | Different-language dub alters a material warning | Escalate to locale-specific QC/Spec 227 publication review |
+| C247-C11 | Concurrent voice and subtitle edits | Bind to consistent revision IDs or reject stale composition |
+| C247-C12 | Source deleted with delayed callback | Deletion epoch blocks derivative resurrection |
+
+**Release:** Real provider/account probes and independent locale holdout, actual Spec 215/251 contract mapping, Voice consent reviews, SRT/VTT/audio roundtrip, leak/SSRF/billing tests, authorized staging canary and rollback. No model provider or locale is production-certified merely by adding this text.
+
+---
+
+## 26. v1.10 Speech Facade ownership and typed session/product interfaces
+
+**Do not create a second Speech Gateway** inside 237, 251, an LLM Router or a Mini App. 247 owns validated tuples `(provider, model_revision, operation, transport, locale, region, account, feature_set)`, audio decoding/normalization, `transcribe.*`, `speech.*`, optional diarization/alignment and immutable media/transcript derived artifacts. 237 owns per-session user consent, media turn/interrupt and reconnect; 251 owns visual editor/localization product sequencing and deliverable QA; 231 owns general LLM routing for transcript translation/reasoning when approved. 239 may expose a Personal Agent *caller* profile, never a shadow speech model catalog.
+
+**Consume current 247 artifact revisions:** product-level localization must bind `(source_media_ref, source_digest, clock_map_revision, verbatim_transcript_revision, edited_transcript_revision?, translated_revision?, alignment_revision?, voice_profile_license_ref?, locale, provider_attempt_receipts[], artifact_acl_epoch)`. A 251 locale render may be independently invalidated/rebuilt when the approved transcript changes; untouched locales and source media remain immutable. Derived subtitle, audio and caption versions cannot silently overwrite the source transcript. Word-level timing must come from native evidence or a separately certified alignment pass—not interpolation mislabeled as ground truth.
+
+**Per-session boundary:** 247 may emit provisional/final transcripts and TTS chunks with attempt/version trace; 237 decides which events are eligible for live UI and which finalized utterance is allowed to cause a Tool action. A provider switch requires a new observed capture epoch and visible loss marker when bytes are lost. Captured microphone data, transcripts and third-party captions remain untrusted input, not authorization or system instructions.
+
+## 27. v1.10 certification and release cases `R247-01`–`R247-12`
+
+`R247-01` 231 LLM route does not claim 247 TTS locale support; `R247-02` 237 old capture-epoch transcript cannot trigger an action; `R247-03` 251 retranslate one locale without losing original timing/ACL; `R247-04` segment edit invalidates only affected alignment and derived speech; `R247-05` unsupported Thai voice tuple is excluded even if provider text LLM is certified; `R247-06` voice-clone/likeness proof is revoked and generation stops before provider egress; `R247-07` translation reversal/correction preserves source provenance; `R247-08` subtitle SRT/VTT round-trip and VFR offset tolerance; `R247-09` external agent may access only authorized media artifacts, not an implied voice grant; `R247-10` frontend realtime disconnect reports actual observed loss; `R247-11` worker retry/late callback does not double settle provider cost; `R247-12` 245 infrastructure canary does not silently re-route audio to an unapproved region.
+
+For each case record `NOT_RUN | PASS | FAIL | BLOCKED` with actual deployed commit, provider/account tuple, synthetic versus live fixture, tenant/project, observed receipts, evaluator and dated approval. No claim of Thai production readiness follows from this document update.

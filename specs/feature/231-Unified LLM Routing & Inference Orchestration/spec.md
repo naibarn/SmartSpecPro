@@ -1,16 +1,20 @@
 # Spec 231 — Unified LLM Routing & Inference Orchestration
 
-**Status:** R4 audit-complete design candidate; repository numbering reconciliation and production certification remain open  
-**Working Spec ID:** 231 (LLM Routing; the earlier Redis/BullMQ migration draft used the same working number and is now represented by the separate proposed Spec 232 document; authoritative registry verification remains open)  
-**Revision:** 4 — R3 retained in full; 15 more independent audit passes; normative Sections 69–88  
-**Date:** 2026-09-23  
-**Input baseline:** Spec 231 R2 (24 previous passes), Spec 229 R3 and cross-session Cloudflare migration Spec 231 R1  
+**Status:** R6 owner-directed identity and integration design; Git registry/production verification pending  
+**Working Spec ID:** 231 (owner-directed LLM Routing); old Redis/BullMQ `231` has existing successor **232 R2/R2.1**  
+**Revision:** 6 — R5 retained in full; §§98–101 settle topic ownership and cross-spec implementation boundaries  
+**Date:** 2026-09-27  
+**Input baseline:** Spec 231 R5 Meta, Spec 232 R2 Redis migration, Spec 245 R7 full migration and current 237/239/247/248/250 design candidates  
 **Precedence:** R4 Sections 69–88 supersede conflicting R3/R2 details; R3 Sections 50–68 and R2 Sections 28–49 remain normative where compatible.  
 **Important:** A completed spec audit is **not** an implementation, an integration-test result, a production certification or proof that the spec number is reserved in Git.
 
-> **Implementation stop condition:** The working-tree documents now distinguish LLM routing (`spec_id=231`, `spec_slug=llm-routing-inference`) from Redis/BullMQ migration (`spec_id=232`, `spec_slug=zero-downtime-redis-migration`). Do not treat that local distinction as a globally reserved registry number: verify the authoritative registry, main branch, open PRs and worktrees before merge. Unqualified historical references remain rejected; see Section 51.
+> **Current repository gate:** The owner directed 231=LLM Routing and the already prepared 232=Redis/BullMQ migration; verify those assignments in live Git registry/main/branches/PRs/worktrees before commit. An actual contrary assignment remains a STOP. Older R3–R5 collision warnings are historical; see §98.
 
 ---
+
+> **CURRENT R6 / 2026-09-27 — owner-directed number allocation, Git reservation PENDING.** For this implementation bundle **Spec 231 exclusively means LLM Routing & Inference Orchestration**. The unrelated Redis/BullMQ work already has a full **Spec 232 R2**; the full Cloudflare migration program is **Spec 245 R7**. Any earlier R3–R5 language claiming both documents still require an unknown second number is HISTORICAL and is superseded by R6 §98. Before committing, verify the actual SmartSpecPro registry, main, PRs, worktrees and untracked specs. A verified conflicting registry assignment is a STOP, not permission to overwrite. No production certification is claimed.
+
+**Use this file for inference-model/provider routing; do not run Redis cutover steps from it.** Meta *model API* belongs here; Meta *personal hosted agent* belongs to 239; speech ASR/TTS belongs to 247; realtime session ownership belongs to 237.
 
 ## 0. Executive Decision
 
@@ -1174,7 +1178,7 @@ This revision draws normative provider facts from first-party documentation avai
 
 | Pass | Independent audit lens | Material gap / failure scenario | R3 amendment | State |
 |---:|---|---|---|---|
-| 25 | Cross-session spec registry | Historical drafts for the LLM Router and zero-downtime Redis migration both used Spec 231; a repository commit could overwrite the other | Section 51: the local migration draft is now represented as proposed Spec 232, but canonical-registry compare-and-swap plus full dependency/filename remap remain required before merge | AMENDED |
+| 25 | Cross-session spec registry | LLM Router and zero-downtime Redis migration both claim Spec 231; a repository commit could overwrite the other | Section 51: explicit collision fence, canonical-registry compare-and-swap, full dependency/filename remap before merge | AMENDED |
 | 26 | Cloudflare endpoint compatibility | Dynamic Routes are called through the compatible Chat Completions route and cannot be assumed available on native Responses/REST | Section 52: explicit execution-surface routing and capability parity test matrix | AMENDED |
 | 27 | Streaming guardrail enforcement | Cloudflare Guardrails streaming response handling differs by endpoint; presumed blocking could actually fail open or disable streaming | Section 53: per-surface safety-mode certification with explicit buffer-or-reject behavior | AMENDED |
 | 28 | Raw-content logging & classification | Metadata-only gateway logs and Cloudflare log classification have different content-processing requirements | Section 54: independent opt-ins and zero-content default for private requests | AMENDED |
@@ -1869,3 +1873,107 @@ These tests are additional to R2's 30 and R3's 38 prescribed cases; the counts d
 - Cloudflare spend estimation and rule limits: https://developers.cloudflare.com/ai-gateway/features/spend-limits/
 - Cloudflare custom providers/HTTPS configuration: https://developers.cloudflare.com/ai-gateway/configuration/custom-providers/
 - Companion: Spec 229 R3 `SAH-RETRIEVAL-2`, Spec 220 security authority, Spec 222 learning/replay, Spec 224 durable lifecycle, Spec 230 engineering context, and the *independent* zero-downtime Redis/BullMQ migration document provisionally also numbered 231.
+
+
+---
+# R5 ADDITIVE AMENDMENT — Meta Muse Spark Inference Provider (2026-09-26)
+
+**Warning / repository stop condition:** the Library has *two unrelated documents claiming Spec 231* (LLM routing and Redis migration). This amendment belongs to the **LLM Routing owner**, not to whichever numeric path is occupied in the live registry. Before merge, reconcile repo/main/branches/open PRs/worktrees and create a separate compatibility patch if necessary. This full source copy is a design candidate only. Sections 89–97 supersede earlier Meta-specific routing examples; earlier cross-provider policies are preserved.
+
+## 89. META_SPARK family registry and protocol matrix
+
+`META_MODEL_API` is a hosted inference provider with `https://api.meta.ai/v1` Standard model profiles `muse-spark-1.3`, `muse-spark-1.2`, `muse-spark-1.1`; Contributor `muse-spark-1.3-contributor`, `muse-spark-1.2-contributor` are **separate security products**, default excluded from ordinary tenants. All published versions share the published 1,048,576-token context upper bound subject to actual account/endpoint tests and reserved output/tools budgets. Do not confuse Muse Spark model API with a consumer Muse Personal Agent or Muse Code subscription. Muse Image and SAM are image/segmentation operations under Media Studio, not text-model route substitutes; Muse Voice Transcribe is Spec 247 speech provider.
+
+| Protocol | Canonical path | Use / hard rule |
+|---|---|---|
+| `META_RESPONSES` | `POST /v1/responses` | First-party tools, image/video/file modalities and managed response state only after explicit capability test and data-retention approval; bound `previous_response_id` to tenant/project/user/credential |
+| `META_CHAT_COMPLETIONS` | `POST /v1/chat/completions` | Initial interoperable text+vision/tool-calling profile; never assume Responses-specific video or server state here |
+| `META_MESSAGES` | `POST /v1/messages` | Anthropic Messages-compatible bridge; separately certify streamed/parallel tool semantics and stop reasons |
+| `META_ASSET_UPLOAD` | Provider Files API only when operation requires it | Separate upload consent, TTL, ownership, deletion and egress accounting; no unscoped cross-project file IDs |
+| `META_GROUNDING` | Provider-native search grounding tool | Record current-search provenance, separately meter published per-query charges; not a replacement for private Spec 229 RAG |
+
+## 90. Capability conformance contract
+
+Probe separately: non-streaming and streamed text; tool arguments/delta and parallel ordering; tool result correlation and replay; native reasoning state; JSON schema strictness; SDK error envelope; prompt cache accounting; token counting; context/output limits; image understanding; PDF/Files consent; video-by-protocol; server-managed response isolation; cancellation, timeout and opaque provider response receipts. Treat `documented` as discovery only; model/version/API tuple must pass offline fixture, shadow and canary gates. `muse-spark-1.3` supports documented higher reasoning levels (including Standard-only `max`); do not pass unsupported levels to lower-tier variants. The adapter is allowed to request no external tools and no server-side state in v1 while Chat Completions is certified first.
+
+## 91. Policy and data-use hard filters
+
+The policy-first router MUST select security/privacy/region and operation eligibility **before cost ranking**. For any private source code, sensitive data, project RAG or customer media, deny Contributor unless a separately reviewed use case genuinely permits it, with zero private retrieval and explicit data training consent. Standard's public non-training representation does not itself establish zero retention, Thailand account entitlements or all data-processor terms. Store immutable egress policy and active credential type in `InferencePlan`. `StrictModelLock` and provider-switch consent still apply; never silently fail over a locked private job into Contributor or an unrestricted external provider.
+
+## 92. Pricing, cache and provider/team quotas
+
+Price must be dynamic with provider source URL, checked date, billing tier and currency. As documented 2026-09-26, Standard text costs input USD 1.25/M, cached input 0.15/M, output 4.25/M; Contributor 0.10/M, 0.002/M and 0.20/M respectively. Search grounding is a separate USD 2.50/1,000 queries when invoked. These are published values, not contractual guaranteed prices; expose a quote/version and reconcile provider usage. Team-level published Standard 3,000 RPM / 4M TPM, Contributor 100 RPM / 3M TPM; all keys on the same Meta team share budgets. Client/tenant budget control remains in SmartAIHub canonical ledger. `x-ratelimit-*` headers and 429/Retry-After drive rate feedback and bounded backoff with jitter; do not broadcast one tenant's quota telemetry to another tenant. Cache key includes provider, model revision, prompt prefix, tenant context, privacy tier and prompt/cache schema. Dynamic routing is disabled for privacy-incompatible candidates.
+
+## 93. Gateway deployment and fallback
+
+Cloudflare AI Gateway custom provider may front compatible HTTPS calls if native feature-preservation, authorization, headers and logging are tested. Direct/native Meta Responses must remain available if generic gateway translation loses reasoning/tool/multimodal semantics. Worker runtime holds no user keys in clients, no long-running stream in CPU-bound action and no provider-owned durable canonical job. Preserve direct execution alternative from current Debian and trusted Runner. Gateway cached responses are allowed only within an identical approved privacy/ACL/revision namespace and never for live personal context without strict freshness. Strip raw prompt/response from shared gateway logs by default.
+
+## 94. Canonical normalized response and trace
+
+`InferenceAttempt` records `tenant_id, project_id, principal_id, provider_surface, model_id, protocol, effective_data_tier, consent_revision, credential_ref, request_digest, request_class, policy_hash, input_tokens, cached_tokens, output_tokens, grounding_queries, cost_quote_revision, provider_request_id, latency_ms, finish_reason, tool_call_digest, error_class`. Tool observations always flow through existing Tool/Approval/MCP policy and `worker_jobs` where durable. Preserve provider-native result in access-controlled diagnostics only if permitted. Never treat a model tool-call suggestion as authorized actual execution.
+
+## 95. Provider operational SLO, escalation and degraded UX
+
+Build separate health/circuit-breaker by endpoint and tier. If Spark Standard unavailable: failover only to tenant-approved, policy-equivalent certified models; if no candidate exists, return explicit degraded text or queue approved durable work. If file/video/structured tool capability unavailable, do not silently convert to ordinary text and claim success. If grounding is disabled, remove web citations from generated model content unless backed by independent evidence. Admin UI shows provider/tier/route/cost and last verified capability timestamp; Mini Chat shows reason when requested model is unavailable.
+
+## 96. Acceptance suite `231-META` and release evidence
+
+- MR01: Chat Completions simple call via own Meta Standard key succeeds or marks `ENTITLEMENT_BLOCKED` with sanitized status; synthetic provider fixture always covered.
+- MR02: Responses parallel tool-call deltas exactly once with approval; malformed/out-of-order events fail safe.
+- MR03: Mixed PDF/video with endpoint-specific unsupported capability yields `INELIGIBLE`, not modality loss.
+- MR04: Contributor denied if any private context/RAG requested, including on failover.
+- MR05: Cached-token and search-query meters reconcile in quote and ledger with duplicate webhook/retry.
+- MR06: Meta team 429 causes bounded fairness/backpressure and safe alternate provider only when approved.
+- MR07: Response/session/file IDs from one tenant cannot be read by another tenant/user/project.
+- MR08: Kill Meta route mid-stream: no silent second-provider continuation after first response byte; preserve canonical UNKNOWN/partial state.
+- MR09: Gateway custom-provider behavior compared to direct Meta API for tools and multimodal; incompatible gateway path excluded by route profile.
+- MR10: Realtime model catalog drift or billing changes cannot auto-promote without new versioned probe and owner review.
+
+## 97. References and precedence
+
+Meta: https://dev.meta.ai/docs/overview ; https://dev.meta.ai/docs/models ; https://dev.meta.ai/docs/pricing-rate-limits ; https://dev.meta.ai/docs/coding-agents ; https://dev.meta.ai/docs/image-understanding ; https://dev.meta.ai/docs/tool-calling . Existing Spec 220 owns AuthZ/Privacy, 229 owns Retrieval, 222 owns historical evaluator signals, 224 owns development finality, 237/247 own realtime speech. This amendment neither rewrites original historical Specs 1–213 nor changes Cloudflare migration authority.
+
+---
+
+## 98. R6 canonical identity and collision-resolution decision (2026-09-27)
+
+**Owner decision:** `spec_id=231`, `spec_slug=llm-routing-inference` and logical UID `SAH-LLM-ROUTING-231` name only this LLM-routing domain. The competing September 23 `spec-231-zero-downtime-redis-bullmq-cloudflare-migration-r1.md` is an obsolete **historical source**; the actual independent successor is existing **Spec 232 R2** (updated R2.1 in this bundle). Its logical UID is `SAH-REDIS-CLOUDFLARE-232`. The higher-level platform migration owner is **Spec 245**. No speculative new number or duplicate Redis migration Spec is authorized.
+
+**Precedence:** This section supersedes only the R3–R5 *unresolved numbering assumption*, not their test, safety, budget, routing or provider requirements. In old artifacts a bare `231` is ambiguous and **must not** be auto-rewritten. Migrate each historical edge only with verified `{spec_uid, source_slug, source_digest, original_workpackage_id}`: inference edges retain 231; Redis-migration edges resolve to 232. Original audit prose is retained verbatim as provenance. A parser consuming this **R6 release** resolves new bare 231 references to inference; a parser importing **historical** ambiguous records rejects them until a title-/digest-qualified mapping exists.
+
+**Repository gate:** Check registry, main, PRs, worktrees and generated references; verify 231 is reserved for inference and 232 for Redis migration. If live Git contradicts the owner-directed allocation, STOP before modifying paths, journal, migration names or live references. Add CI uniqueness and title/UID consistency tests; an owner's instruction is not proof of Git state.
+
+## 99. R6 normative routing ownership / interface map
+
+| Request or capability | Owner | This spec's permissible action |
+|---|---|---|
+| General chat, tool-capable LLM, reasoning effort, model/policy failover | **231** | Build policy-admitted `InferencePlan` and selection evidence; use existing gateway/ledger |
+| Authorization, consent, locality, egress, tenant model allowlist | **220** | Consume fresh decisions; never weaken a denied route |
+| Retrieval/vector/RAG evidence | **229** | Consume authorized retrieval refs; never rebuild retrieval or permission checks |
+| User/agent live turn, WebRTC, barge-in, camera/screen | **237** | Return eligible LLM candidate; never own session media or replay |
+| Audio transcription, TTS, diarization, subtitles | **247** | May supply independent LLM translation/reasoning; do not reimplement Speech Facade |
+| External hosted personal agent connector / foreign task | **239** | Only route provider Model API when separately eligible; no hosted-agent impersonation |
+| Redis/queue transport and job-family transfer | **232** | Preserve stable inference adapter under infrastructure migration |
+| Cloudflare full-system cutover | **245** | Provide independent inference-route canary and rollback evidence |
+| Stable MCP Skills distribution | **248** | Eligible capabilities may be selected as authorized tools; no Skill wire parsing |
+| Development execution reliability | **250**, subordinate to 224 | Supply route evidence under approved development WorkPackage |
+
+Meta Model API (`muse-spark-*`) is a version- and account-probed **model provider** in 231; `Meta Muse Personal Agent` is a distinct 239 interoperability target; `Muse Code` is a Spec 200 external harness profile, and speech voice transports belong to 237/247. An account's entitlement to one does not establish any of the others.
+
+## 100. R6 independently releasable inference promotion
+
+1. Inventory the currently deployed gateway, router, SDK, model aliases, existing streams/tools, tenant allowlists and settlement API; produce `router-compatibility-manifest.json` with source commit and endpoint snapshots. Do not infer production behavior from any Spec alone.
+2. Keep the existing deterministic/static fallback profile serving; enable a new provider/model only after documented API schema, actual account probe, consent/data-residency approval, price snapshot and relevant benchmark qualification.
+3. Route with fresh 220 policy first; select candidates only from qualified `(provider, model_version, endpoint, region, feature, locale, account)` tuples; fail closed on unknown pricing or policy for paid/regulated actions.
+4. Run **read-only shadow** on policy/route decisions, sanitized fixtures or explicitly approved independent paid runs. Do not double-submit real customer prompts or Tool effects to compare routers without separate consent and cost reserve.
+5. Canary per tenant/feature/model with old/new route receipts, stream/tool-call parity and guarded economic settlement. Rollback is a new routing-policy epoch; in-flight non-idempotent provider/tool attempts are reconciled rather than replayed blindly.
+6. Coordinate network rollout through 245 and applicable 232 migration windows, but **do not** jointly gate, deploy or roll back the inference policy with Redis, RAG/Vectorize or full Cloudflare cutover.
+
+## 101. R6 integration acceptance `R231-01`–`R231-12`
+
+- `R231-01` canonical 231/232/245 registry uniqueness and historical alias fixture; `R231-02` ambiguous old bare-231 import fails closed; `R231-03` independent route vs Redis cutover flags.
+- `R231-04` denied tenant/region/provider never enters model candidate set; `R231-05` model alias/API version drift quarantines the tuple; `R231-06` streaming partial Tool output never becomes authorized effect.
+- `R231-07` Meta model entitlement does not unlock Meta Personal Agent; `R231-08` 237 realtime media/session state is not forked by LLM failover; `R231-09` 247 STT/TTS unqualified locale cannot be inferred from a related LLM model.
+- `R231-10` approved test shadow creates no duplicate billable provider execution; `R231-11` uncertain upstream acceptance + route rollback does not double-charge or duplicate an external side effect; `R231-12` fallback remains functional during unrelated Spec 232/245 canary failure.
+
+**Release status:** Design rules and proposed acceptance fixtures only. `R231-01`–`R231-12` are `NOT_RUN` until repository fixtures, account receipts and a reviewer prove execution. The historical R5 §§89–97 Meta-specific requirements still apply.

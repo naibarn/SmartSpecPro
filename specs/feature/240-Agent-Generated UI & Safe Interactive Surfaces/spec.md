@@ -1,8 +1,9 @@
 ---
 title: Spec 240 (PROVISIONAL) — SmartAIHub Agent-Generated UI & Safe Interactive Surfaces
-version: 0.6 — fifteen additional cross-spec audit passes; Spec 241 memory governance integration; R0.5 Mini Chat and R0.4 direct Mini App Builder retained
-status: R0.6 15-PASS DOCUMENT AUDIT + NORMATIVE CORRECTIONS; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED
-review_date: 2026-09-24
+version: "0.7 — Creator Shared-Revision UI Extension (original R0.6 retained)"
+status: R0.7 CREATOR UI INTEGRATION PROPOSED; NUMBER UNVERIFIED; NOT IMPLEMENTED; NOT PRODUCTION-CERTIFIED
+review_date: 2026-09-27
+previous_version: "0.6 (original source preserved below)"
 proposed_path: specs/feature/240-agent-generated-ui/spec.md
 numbering_rule: Check the canonical SmartSpecPro spec registry, branches and open worktrees before reserving 240. Reallocate if already occupied.
 implementation_baseline: Preserve code built through Spec 213; P213 certification and Spec 224 gates must be checked in the actual repository. No retroactive rewrites or implicit migration authorization.
@@ -13,7 +14,7 @@ standards: A2UI v0.9.1 current production (v1.0 candidate separate); MCP Apps ex
 > **LATEST NORMATIVE STATUS (R0.6, 24 September 2026).** Sections **73–94** contain 15 *additional* independently scoped architectural document-review passes and override specifically identified earlier ambiguities. In particular, Spec **241 R1.2** governs memory sharing controls and auto-project resolution; Spec **233** retains Project Memory authority. Feature 196/Specs 216/217/220/229 and canonical jobs/billing remain unchanged owners. **Status: design reviewed; repository/production not verified.**
 
 
-> **HISTORICAL R0.5 NORMATIVE STATUS (24 September 2026; superseded on conflicts by R0.6 §§73–94).** Sections **56–72** supersede earlier language where conflicting, particularly any implication that Mini Chat already exists in R0.4, that a publisher's permission is an end-user grant, that topical system prompts alone enforce access, or that additions should rewrite the Spec 212 design/corpus baseline. The 12 passes below are **document/design reviews with corrected requirements**, not executable code certification. Embedded Mini Chat is **optional** per Mini App, direct-launch capable without the general Chat UI, and uses Feature 196 / Specs 220/229/231/233 / 225/226 instead of a separate agent, retrieval, memory, job, approval or billing authority.
+> **HISTORICAL R0.5 NORMATIVE STATUS (24 September 2026; superseded on conflicts by R0.6 §§73–94).** Sections **56–72** supersede earlier language where conflicting, particularly any implication that Mini Chat already exists in R0.4, that a publisher's permission is an end-user grant, that topical system prompts alone enforce access, or that additions should rewrite implemented Spec 212. The 12 passes below are **document/design reviews with corrected requirements**, not executable code certification. Embedded Mini Chat is **optional** per Mini App, direct-launch capable without the general Chat UI, and uses Feature 196 / Specs 220/229/231/233 / 225/226 instead of a separate agent, retrieval, memory, job, approval or billing authority.
 
 # 0. Executive Decision
 
@@ -553,7 +554,7 @@ Event provenance SHOULD correlate `tenantId`, `productId`, `miniAppId`, pinned M
 | Spec 220 | Enforce per-host product origin, principal/row/field access, effective action intersection and authorized projection | Trust any client/model/publisher declaration as a live permission |
 | Specs 225/226 | Adopt shared UI host/action manifest across Chat, Mini App, mobile and product surfaces; preserve approval chrome | Install a parallel approval or mobile action gateway |
 | Spec 207 | Reuse existing per-run usage and optional UI-planning/refresh accounting, with attribution | Charge twice for a rerender or treat template save as execution revenue |
-| Spec 212 (additive candidate admission) | Append validated Mini App-native and cross-host generated UI use cases after checking the actual canonical row schema/latest UC ID | Renumber existing historical cases |
+| Spec 212 (post-implementation addendum) | Append validated Mini App-native and cross-host generated UI use cases after checking actual canonical row schema/latest UC ID | Renumber existing implemented cases |
 | Specs 199/239 | Negotiate imported result/UI types and isolate external MCP Apps through verified profiles | Assume a foreign agent/MCP widget has platform Product Admin rights |
 
 Implementation must inspect the live repository/registry for file version conflicts and existing reusable components before changing earlier in-progress specs. This R0.2 document is an **updated design artifact** only: neither a production certification nor permission to mutate the current Spec 224 worktree or pending Spec 213 security gates.
@@ -745,7 +746,7 @@ Set operational **measured** budgets for p50/p95 first useful render, streaming 
 | `GUI-C8` | Spec 217/219/232 + infra | Branded origin/CSP, release compatibility, safe Cloudflare rollout with existing PG/R2/Vectorize authorities and zero-downtime fallback |
 | `GUI-C9` | Spec 240 QA/SRE + independent reviewer | 24 regression cases in §43, threat-model adversarial evidence, rollback drill and documented independent release sign-off |
 
-**Critical sequencing:** Implement `GUI-C1` for **Chat AND direct Mini App** in a non-writing pilot before adding paid/mutating actions. Implement `GUI-C3/C4` and staged UI safety before enabling `GUI-C6` write use cases. Spec 224 remains in-progress and P213 live-certification gates stay independent; no retrospective edits to historical Spec ≤213 design inputs, unauthorized migrations, credential reads or implicit launch of unapproved external agents. Verify canonical registry before reserving Spec 240 or selecting any Spec 212 UC IDs. Prepare explicit migration/rollout PRs rather than treating this design file as an applied repository change.
+**Critical sequencing:** Implement `GUI-C1` for **Chat AND direct Mini App** in a non-writing pilot before adding paid/mutating actions. Implement `GUI-C3/C4` and staged UI safety before enabling `GUI-C6` write use cases. Spec 224 remains in-progress and P213 live-certification gates stay independent; no retrospective edits to implemented Spec ≤213, unauthorized migrations, credential reads or implicit launch of unapproved external agents. Verify canonical registry before reserving Spec 240 or selecting any Spec 212 UC IDs. Prepare explicit migration/rollout PRs rather than treating this design file as an applied repository change.
 
 # 43. Additional 24 named tests: cross-host, anti-deception and lifecycle [Pass 12]
 
@@ -802,7 +803,7 @@ Verified against public upstream specification pages on **2026-09-24**; the foll
 
 # 46. R0.4 NORMATIVE CLARIFICATION — Spec 240 directly builds Mini App UI, not merely renders its results
 
-**Precedence:** This section and Sections 47–55 supersede any earlier wording implying that Mini App Builder must independently generate a second UI after using Spec 240. These sections do not modify the Spec 212 design/corpus baseline, the canonical Spec 214/215 execution contracts, or the in-progress Spec 224. Implementing them requires live repository/registry audit and appropriate additive adapters.
+**Precedence:** This section and Sections 47–55 supersede any earlier wording implying that Mini App Builder must independently generate a second UI after using Spec 240. These sections do not modify the already implemented Spec 212, the canonical Spec 214/215 execution contracts, or the in-progress Spec 224. Implementing them requires live repository/registry audit and appropriate additive adapters.
 
 ## 46.1 Explicit product requirement
 
@@ -979,7 +980,7 @@ The implementation of Spec 240 is **incomplete for Mini App development** unless
 | 11 | Protocols/component supply chain | A2UI/MCP Apps/AG-UI imports lack Mini Chat-specific containment and failure mode | §67: adapter boundaries, sandbox, no authority translation, signed component compatibility | CLOSED IN DESIGN |
 | 12 | Cross-spec rollout/use cases/certification | No named end-to-end tests for chat ACL and publication; obsolete Spec 212 addendum path | §§68–72: 36 named tests, rollout/owner matrix, independent evidence and Spec 234 intake | CLOSED IN DESIGN |
 
-**Normative precedence:** The newest applicable numbered section wins on a genuine conflict; unchanged earlier requirements remain mandatory. In particular, §68 replaces earlier suggestions to patch/append a new normative revision directly onto the Spec 212 design/corpus baseline. The optional Mini Chat MUST NOT be assumed to exist merely because Product Shell previously mentioned an `assistant` native module. In this R0.5 document, “works without Chat” means **no dependency on opening or initializing the general SmartAIHub Chat shell**; an enabled Mini App may still have its own server-authorized `conversationRef` and reuse the existing headless Feature 196 agent entry point.
+**Normative precedence:** The newest applicable numbered section wins on a genuine conflict; unchanged earlier requirements remain mandatory. In particular, §68 replaces earlier suggestions to patch/append a new normative revision directly onto the **already implemented** Spec 212. The optional Mini Chat MUST NOT be assumed to exist merely because Product Shell previously mentioned an `assistant` native module. In this R0.5 document, “works without Chat” means **no dependency on opening or initializing the general SmartAIHub Chat shell**; an enabled Mini App may still have its own server-authorized `conversationRef` and reuse the existing headless Feature 196 agent entry point.
 
 # 57. Pass 01 — Mini Chat is a first-class optional Component and Builder feature
 
@@ -1180,12 +1181,12 @@ There is no implicit `ALL_TENANT`, `ALL_PRODUCT`, `ADMIN`, `ALL_USERS` or `ALL_P
 | Model/provider selection and egress budgets | **Spec 231** | Policy-first, disclosure and cost attribution |
 | UX/cross-device/attention/deep-links and existing command bridge | **Spec 225 / Spec 226** | Rehydrate/fence and use trusted host approvals; check latest actual bridge revision |
 | Credits/usage/creator accounting | **Spec 207** | One ledger, one economic lineage per effect |
-| Test/use-case catalog and semantic identity | **Spec 212 design/corpus baseline + independent Spec 234** | Do **not** edit/retrofit historical Spec 212; verify the live owner before proposing new bilingual candidates through Spec 234 admission/dedup pipeline |
+| Test/use-case catalog and semantic identity | **Implemented Spec 212 + independent Spec 234** | Do **not** edit/retrofit historical Spec 212; propose new bilingual candidates through Spec 234 admission/dedup pipeline after inspecting live corpus |
 | Optional foreign agent and MCP app protocol | **Specs 199/200/206/239** | Negotiated and independently approved foreign surfaces; no new credential issuer |
 
-**Correction of older §§17/29/42:** Earlier language suggested a “Spec 212 post-implementation addendum”. The later corrected project design treats Spec 212 as a **design/corpus baseline pending source and deployment verification** and specifies **Spec 234** as the independent additive Use Case/Demand admission bridge. The 200-case monitoring proposal covers `UC-2931…UC-3130` in a **design catalog**, not proof of reserved IDs in the live registry. Proposed Spec 240 GenUI/Mini Chat candidate IDs `UC-3131…` MUST remain provisional until actual canonical repo, PRs, imports and any other planned use-case packs are checked; reuse an existing semantic Use Case with a new Chat/UI **Solution Variant** when appropriate. Never silently renumber old identities.
+**Correction of older §§17/29/42:** Earlier language suggested a “Spec 212 post-implementation addendum”. The later corrected project design identifies Spec 212 as **implemented** and specifies **Spec 234** as the independent additive Use Case/Demand admission bridge. The 200-case monitoring proposal covers `UC-2931…UC-3130` in a **design catalog**, not proof of reserved IDs in the live registry. Proposed Spec 240 GenUI/Mini Chat candidate IDs `UC-3131…` MUST remain provisional until actual canonical repo, PRs, imports and any other planned use-case packs are checked; reuse an existing semantic Use Case with a new Chat/UI **Solution Variant** when appropriate. Never silently renumber old identities.
 
-**Implementation constraints:** Respect immutable historical Specs 1–213 design inputs and ongoing Spec 224. Validate actual repo and deployed contract versions at start; add safe adapter/feature flags rather than rewriting published specs, shared DB tables or half-finished development work. Mini Chat read-only pilot must work inside a Mini App **without launching general Chat**; Feature 196 may still orchestrate via its existing headless API. The Mini App must remain functional when Mini Chat is disabled or fails.
+**Implementation constraints:** Respect the user's implemented-through-213 baseline and ongoing Spec 224. Validate actual repo and deployed contract versions at start; add safe adapter/feature flags rather than rewriting published specs, shared DB tables or half-finished development work. Mini Chat read-only pilot must work inside a Mini App **without launching general Chat**; Feature 196 may still orchestrate via its existing headless API. The Mini App must remain functional when Mini Chat is disabled or fails.
 
 # 69. Thirty-six named Mini Chat acceptance/conformance tests — blocking matrix
 
@@ -1279,7 +1280,7 @@ After each of the 12 passes, the identified gap is **closed in this written spec
 | §60/§63 authorization and stream safety | §§81–82: snapshot-to-tool causal fencing, proof-of-effect, stream release gate and reconciliation | Prevent outdated previews or stream fragments becoming proof of current authority |
 | §57 Builder/consumer Chat UI | §80: separate authoring instruction domain from published viewer runtime; fixture and prompt isolation | Prevent user chat from modifying a live Mini App or creator's secrets |
 | §64 Product Assistant cross-app opt-in | §83: bilateral *versioned* source/destination grants plus viewer and project consent; no copy on partial approval | Prevent Product Shell or tenant branding from widening reach |
-| Historical §17, §29 and §42 references to modifying Spec 212 directly | §89 and §93: candidate admission through Spec 234, then the source-verified Spec 212 interface; provisional IDs only | Respect the corrected Spec 233–235 pack and the verified corpus, if present |
+| Historical §17, §29 and §42 references to modifying Spec 212 directly | §89 and §93: after-implementation candidate admission through Spec 234, then actual Spec 212 interface; provisional IDs only | Respect the corrected Spec 233–235 pack and existing implemented corpus |
 
 # 74. R0.6 audit ledger — fifteen new passes and applied corrections
 
@@ -1430,7 +1431,7 @@ If a certified future Spec 242 Cloudflare Agents/Sandbox adapter hosts session c
 
 # 89. Pass 15 — Use Case/Spec ownership, release certification and rollback
 
-The Spec 212 design/corpus baseline is preserved, but its runtime owner and canonical corpus must be verified before use. The corrected Spec 233–235 architecture pack routes new canonical needs and semantic dedup through independent **Spec 234**; any previous R0.2/R0.3 suggestion to append directly to historical Spec 212 is NOT an implementation instruction. Before assigning IDs, query the **actual** live Spec 212 canonical corpus and all pending additions (including the proposed Spec 238 UC-2931…UC-3130 monitoring pack). Generate bilingual Thai/English candidate records and reuse original semantic identity with `GENERATED_UI`/`EMBEDDED_MINI_CHAT` Solution Variants wherever the user task is unchanged. Only genuinely new task identity receives the next free ID and must pass Spec 234 admission and the source-verified Spec 212 contract. Never blindly assume UC-3131 is free.
+Spec 212 is already implemented. The corrected Spec 233–235 architecture pack routes new canonical needs and semantic dedup through independent **Spec 234**; any previous R0.2/R0.3 suggestion to append directly to historical Spec 212 is NOT an implementation instruction. Before assigning IDs, query the **actual** live Spec 212 canonical corpus and all pending additions (including the proposed Spec 238 UC-2931…UC-3130 monitoring pack). Generate bilingual Thai/English candidate records and reuse original semantic identity with `GENERATED_UI`/`EMBEDDED_MINI_CHAT` Solution Variants wherever the user task is unchanged. Only genuinely new task identity receives the next free ID and must pass Spec 234 admission and the implemented Spec 212 contract. Never blindly assume UC-3131 is free.
 
 **Release owner matrix:** Spec 240 owns UI schema, compiler, `mini-chat` registry, presentation and UI-state projection; Spec 216 owns generated UI in Builder, Mini App release, opted-in chat configuration; Spec 217 owns Product Shell, composition, branding and per-module sharing intent; Feature 196 owns agent-turn orchestration; Spec 241 owns project auto-resolution and cross-scope Memory governance; Spec 233 owns canonical Project Memory; Spec 229 owns retrieval; Spec 220 owns current per-recipient authorization and provider egress; Spec 231 routes approved models; Spec 207 owns economics; Specs 225/226 own mobile, trusted approval and current semantic command projection; Feature 195/Spec 215 own existing durable/logical execution; Specs 199/206/239 optionally mediate external agent/UI; Specs 236/237 govern live-media products if enabled. No write-capable release may be declared complete from a UI-only demo.
 
@@ -1552,7 +1553,7 @@ Retain all earlier `MA-GUI-01…18`, `GUI-R3-01…24`, `GUI-R4-B01…10` and `MC
 | `R6-W4` Draft and approved actions | Canonical Spec 226/220/207/225 command+quote+approval+receipt binding | No write on stale target; `mini_chat_actions_v2` OFF leaves canonical workflow/jobs untouched |
 | `R6-W5` Memory, sharing and device continuity | Separate `mini_chat_memory_v2`, `product_chat_share_v2`, `mini_chat_cross_device_v2` toggles with explicit opt-in | Revoke/share/delete/participant tests; turn off optional feature without disabling normal Mini App UI |
 | `R6-W6` Optional protocols and live media | MCP Apps/A2UI/AG-UI/live controls only after certified boundary and host security tests | Sandbox negative test and media consent; external adapter OFF does not block native app |
-| `R6-W7` Spec 234 case intake and independent certification | Semantic dedup/new bilingual candidates; conformance evidence for relevant new and historical cases; independent rollback witness | Existing Spec 212 baseline unchanged, actual IDs allocated only by its source-verified admission path |
+| `R6-W7` Spec 234 case intake and independent certification | Semantic dedup/new bilingual candidates; conformance evidence for relevant new and historical cases; independent rollback witness | Existing implemented Spec 212 unchanged, actual IDs allocated only by its registered admission path |
 
 No component may be promoted from `DOCUMENT REVIEWED` to `IMPLEMENTED` because a Markdown file passes lint. Release requires repository/test evidence, environment-specific negative tests, real quota/cost measurements, security review of RAG/provider egress and MCP sandbox (if enabled), accessibility inspection, and explicit independent approval. A defect in Spec 241 auto-resolution must degrade to manual selector, not disable previously working authorized Mini App forms.
 
@@ -1565,3 +1566,76 @@ Recommended new release states: `DOCUMENT_REVIEWED`, `IMPLEMENTATION_PENDING`, `
 # 94. R0.6 review summary and explicit remaining verification
 
 All fifteen newly identified design questions have an explicit governing requirement and acceptance oracle in Sections 75–93; the document still cannot prove that all implementation defects or unknown attack classes are eliminated. The original R0.5 36-case Mini Chat suite and prior R0.4 Builder/release tests remain intact; R0.6 adds 45 named cases and an explicit Spec 241 policy boundary. This review did **not** inspect live SmartSpecPro branches/worktrees, production database migrations, actual tenant data, current SDK entitlements or running Cloudflare services. Official external protocol versions listed earlier remain **as-of their earlier verification**, not revalidated by this document-only review. The first engineering work package MUST verify actual deployed versions, schema, runtime and registry before implementing any suggested logical contract or reserved UC ID.
+---
+
+# 95. Creator Workspace Shared-Revision UI Extension — Spec 240 R0.7 (2026-09-27)
+
+**Status:** Proposed additive UI contract; latest prior document R0.6 Sections 73–94 retain authority outside this narrow creator integration. Nothing below overrides Spec 220 authorization, Spec 225 trusted human attention, Spec 226 action bridge, Spec 241 Memory governance, Spec 216 published Mini App policy, or proposed Spec 251 Creator domain revision authority. Preserve frozen Specs 1–214 and active Spec 224 unchanged.
+
+## 95.1 One creator data revision; multiple host projections
+
+The Creator product needs the same typed view of a single authorized `CreatorWorkspaceRevision` in general Chat, optional Mini Chat, guided Creator Workspace, existing Video Editor integration, Web, Desktop and permitted mobile/tablet control surfaces. Spec 240 SHALL render **versioned host projections** of a domain read model and never maintain an independent source of truth for transcript, captions, timeline, source rights, Project membership, billing or render jobs. Workspace selections such as current segment/locale/playhead/selected thumbnail are ephemeral client view state; they are not a permission grant and need not be sent to the model unless explicitly disclosed as task context. Each host issues new server-authorized action bindings and checks ACL at action time, including on cross-host handoff.
+
+```ts
+interface CreatorGeneratedSurfaceBindingV1 {
+  schemaVersion:'creator.surface.v1';
+  workspaceRef:string; creatorRevisionId:string; creatorRevisionNumber:number;
+  selectedLocale?:string; selectedSegmentRefs?:string[];
+  projectBindingRef:string; snapshotDigest:string; sourceEvidenceRefs:string[];
+  componentAllowlistVersion:string; publishedMiniAppPolicyRef?:string;
+  actionBindingRefs:string[]; presenterFallbackRef:string;
+}
+interface CreatorSurfaceRevisionEventV1 {
+  workspaceRef:string; epoch:string; sequence:number;
+  domainRevisionId:string; domainRevisionNumber:number;
+  eventClass:'REVISION_COMMITTED'|'STAGE_UPDATED'|'ARTIFACT_AVAILABLE'|'ACTION_REVOKED'|'REVIEW_REQUIRED'|'DELETION_RESTRICTED';
+  payloadRef:string; displaySafeDigest:string;
+}
+```
+
+The authorized event transport MUST support snapshot-then-replay with epoch/sequence deduplication, bounded delivery/backpressure and explicit gap resynchronization. Do not assume provider realtime conversations can be losslessly resumed. Reconnect fetches an authorized current snapshot and re-mints host action bindings. A device still showing an old revision must refuse stale `Apply`, visually identify the newer committed revision and present compare/rebase options. Text fallback remains functional when generated UI/A2UI/MCP Apps cannot render.
+
+## 95.2 Creator component slots and generated content boundary
+
+Add **presentation-level**, allowlisted creator component schemas (do NOT register execution Node Types):
+
+| Slot | Required safe behavior |
+|---|---|
+| `CreatorSourcePicker` | Authorized Library/Project file selection, inspected rights warnings, no arbitrary signed R2 links |
+| `CreatorRecipeConfigurator` | Validated typed options, certified locale/provider capabilities, up-to-date cost quote |
+| `CreatorTranscriptEditor` | Source vs corrected text separation, segment IDs/clock refs, accessible row controls |
+| `CreatorLocalizationCompare` | Source/target side-by-side subtitle or audio metadata; no fabricated word confidence |
+| `CreatorVoiceApprovalCard` | Voice likeness/purpose proof, provider/locale availability and user review |
+| `CreatorMediaPreview` | Authorized media references and error states; never embed private third-party URLs into exportable templates |
+| `CreatorRevisionDiff` | Text/media/voice/style changes with explicit downstream invalidation, budget delta and new revision |
+| `CreatorRenderQueue` | Existing job status/event projections; no separate queue authority |
+| `CreatorExportPanel` | Immutable export hashes, formats, locale/ratio variants, policy certification and expiry |
+
+Unknown components, insufficient authorization, missing dataset/capability, unsupported language direction or source rights rejection MUST degrade to accessible typed text/form controls and show the actionable reason. Model-generated layout can change presentation only inside a published UI policy allowlist; it cannot enable new import providers, reveal source bytes, expand tenant access, mint approvals, charge a wallet, bypass human voice consent or auto-publish content. Any request to add a new source/action or upgrade a published Mini App requires a reviewed new Definition/release through Spec 216/217.
+
+## 95.3 Chat/Visual edit-intent contract and safe apply
+
+Free-text creator instructions are mapped by the existing Feature 196 Agent to Spec 251's typed `CreatorEditProposal` with `baseRevisionId`, segment/shot/locale targets, action-specific diff, invalidation graph, exact expected cost increase and approval requirements. The model MAY propose but cannot commit. A trusted `Apply` button or separately approved agent action calls the existing Spec 226 command gateway using a short-lived host-bound ActionBinding. Server rechecks principal, tenant, Project, current rights/consent epoch and revision fence; a conflict produces a truthful UI rebase/merge view, not hidden last-write-wins. Following successful commit, events refresh both Chat context and visual panels without assuming the original prompt remains current. Billing/re-render happens via Spec 215/251/207, NOT as a widget callback side effect.
+
+A normal UI-only change like changing an open tab or filtering the transcript requires no model call and no billable action. A presentation-only generation refresh cannot automatically rerun media production. Offline locally typed corrections are drafts; on reconnect they need an explicit compare/merge or current revision apply. Never keep active privileged authorizations in persisted UI snapshots.
+
+## 95.4 Creator privacy, localization and quality gates
+
+A creator session is always scoped to an **authorized exact** Project and current user. Mini Chat is opt-in and stays within approved Creator/Project sources; retrieved subtitles, video metadata and translated text remain untrusted data against prompt injection. A public Creator Mini App does not disclose one user's draft/transcripts to another user, its creator or tenant admin without a separately valid entitlement. Redact credentials, signed URLs, raw provider object IDs and sensitive audio from ordinary UI event telemetry. Source-deletion/revocation hides projected assets immediately and invalidates all dependent action tokens. WCAG-accessible transcript keyboard navigation, mobile segment correction, Thai script line wrapping, mixed Thai/English subtitles and safe-zone preview must have independent fixtures; unknown speech confidences must be labeled unknown.
+
+| Case | Required result |
+|---|---|
+| C240-01 | Chat proposes subtitle correction and Visual shows same pending diff; neither silently commits |
+| C240-02 | Visual correction while Chat holds prior revision returns version conflict and safe rebase |
+| C240-03 | Generated layout changes but result is cached | No rerun or duplicate provider/model charge |
+| C240-04 | Two users run one public Creator Mini App | No cross-user asset or transcript leak |
+| C240-05 | Mobile reconnect after missed events | Snapshot+replay yields exact current revision without duplicate action |
+| C240-06 | Project permission revoked while an editor is open | No new media reads/actions and safe restricted view |
+| C240-07 | Unknown component on phone | Deterministic accessible fallback preserves authorized actions only |
+| C240-08 | Model creates HTML/script disguised as subtitle | Render as untrusted text, no execution/action expansion |
+| C240-09 | Published app tries to add a private source through runtime UI | Reject unless new authorized release permits it |
+| C240-10 | Long subtitle list and high-frequency progress | Virtualized/bounded view; correct ordered state without giant LLM context |
+| C240-11 | UI shows locale undocumented in real account | Disabled with honest status; no assumed 101-language parity |
+| C240-12 | Consent/asset deletion reaches connected UI | Revoked action tokens, no cached stale private previews |
+
+**Promotion:** These are design gates; actual Spec 240 R0.7 adoption needs source/schema review and tests on the canonical current branch, not just a document update.

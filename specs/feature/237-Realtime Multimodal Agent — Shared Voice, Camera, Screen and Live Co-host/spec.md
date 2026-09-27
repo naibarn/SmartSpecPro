@@ -1,11 +1,11 @@
 ---
 spec_id: 237
 title: SmartAIHub Realtime Multimodal Agent — Shared Voice, Camera, Screen and Live Co-host
-revision: 3.3
+revision: 3.5
 status: PROPOSED — additive integration, not a new Agent Runtime
 created: 2026-09-23
-reviewed: 2026-09-25
-revision_note: R3.3 second independent ten-pass Muse realtime hardening; appended R3.3 normative amendment supersedes older Meta-only ambiguity
+reviewed: 2026-09-27
+revision_note: R3.5 owner-boundary reconciliation with Specs 231/239/247/248/250; R3.4/R3.3 retained
 suggested_repository_path: specs/feature/237-realtime-multimodal-agent/spec.md
 numbering: provisional until SmartSpecPro canonical registry/main/PR/worktree check
 risk_class: high
@@ -17,6 +17,8 @@ companion_specs: ["236 Live Commerce and Project Library Broadcast", "195/186 wo
 # Spec 237 — Realtime Multimodal Agent: Shared Voice, Camera, Screen & Live Co-host
 
 > **Design thesis:** Voice is a transport and interaction modality of SmartAIHub's existing Feature 196 Agent, not a parallel AI product. The same trusted Agent can have a private full-duplex WebRTC conversation with a user inspecting a room on camera, call approved tools to search products or create an early design, and act as a *review-gated* off-camera voice co-host for a Spec 236 Project-based live-commerce show. `worker_jobs` remains canonical for durable Tool/media tasks, not raw real-time audio/video frames.
+
+> **CURRENT R3.5 / 2026-09-27 — boundary clarification.** This spec owns live session, consent, turn/interrupt, camera/screen, co-host and reconnect behavior. It consumes **Spec 247** speech ASR/TTS capabilities and **Spec 231** LLM routing decisions without duplicating either service. Hosted third-party personal agent interop belongs to **Spec 239**; its claimed availability does not prove a provider supports direct WebRTC/media handoff. R3.4 remains preserved below; see new R3.5 annex.
 
 ## 0. Architectural and operational invariants
 
@@ -651,3 +653,51 @@ D13–D32 are proposed case IDs, **not** a claim that executed tests passed. Cer
 Ten new checks completed at the **document/design level**: P237-11, P237-12, P237-13, P237-14, P237-15, P237-16, P237-17, P237-18, P237-19, P237-20. No claim of code implementation or account-backed certification. All ten gap findings are addressed by corresponding normative language and executable *planned* tests; unresolved operational evidence remains an explicit release blocker.
 
 **Cross-spec invariants:** `external_identity` and callback validation are owned by Spec 239; Spec 247 owns Meta ASR protocol/event normalization; Spec 237 owns session/media composition; Feature 196 owns Agent goals and authorization; Spec 236 owns public broadcast commit; `worker_jobs`, existing approval and ledger remain canonical. Existing Specs 1–213 and in-flight Spec 224 must not be modified in place. Reconcile canonical repository registry and verify vendor docs on implementation day.
+
+
+---
+# R3.4 NORMATIVE AMENDMENT — Meta ASR Session Composition and Muse Code/Personal-Agent Boundaries (2026-09-26)
+
+**Precedence:** Sections 60–65 supplement the existing R3.3 Muse hardening. All Feature 196/220 and original Spec 237 voice/camera/screen approval and session fences remain authoritative. Actual device access and Meta regional speech entitlement remain to be proven.
+
+## 60. Meta voice adapter integration without new voice runtime
+
+Enable provider `META_MUSE_VOICE_TRANSCRIBE` only through the existing Spec 247 speech facade, behind `streaming_asr.meta_muse` feature flag, product-surface entitlement, capture/egress consent and latest language+transport certification. Audio journey: `client microphone or approved WebRTC device -> existing Session Gateway -> Spec 247 server-controlled Meta WebSocket -> normalized final turn -> Feature 196 intent/retrieval/approval -> independently certified LLM -> independently certified TTS -> approved playback`. STT is not a speech-to-speech model. Preserve text-only response and live subtitle options. No provider receives arbitrary raw tenant RAG or live camera feed through this pipeline unless each transfer separately authorized.
+
+## 61. Native turn and interrupt state
+
+R3.4 adopts Spec 247 R1.9 `session_epoch + stream_generation + turnId` events. UI displays interim transcripts as provisional, then replaces them on `speechComplete`. `speechEnd` may close a turn before final text arrives, and turns may overlap. On interruption, the session owner stops forwarding microphone frames immediately, discards stale future generation callbacks and independently interrupts TTS/playback; pending approved side effects require fresh consent if context changes. Do not treat a provider speaker label as identified human; use anonymous session-scoped labels. Late final ASR after approval expiration must not awaken an old tool or public broadcast action.
+
+## 62. Session owner, device movement and regional flags
+
+Web, mobile, desktop and optional authorized wearable share the existing single active capture owner and fencing token. Windows Muse Code voice input being unavailable does not prevent native SmartAIHub mic capture through the supported browser/mobile client. Meta wearable capture remains unavailable until an actual official SDK/device entitlement and real hardware tests pass, independent of Muse subscription visibility in Thailand. Require separate mic recording, external provider transfer, camera capture and persistence/project-memory opt-ins and visible source/mic indicators. On phone-to-desktop takeover, increment stream generation, notify the previous owner and revalidate project/tenant scope; never backfill frames captured without consent.
+
+## 63. Unified UX and cost receipts
+
+A single Realtime Agent UI can list certified `Meta STT + selected LLM + selected TTS` provider composition; show language/dialect profile, effective retention/egress policy, current device owner, provenance/price per component and 'text-only fallback'. The Muse Code monthly subscription **does not** fund this general API ASR/LLM/TTS chain. User privacy labels, limits and cost estimate must not collapse three independent provider bills into an implied single Meta plan. Preserve system-owned session and source timeline across provider switching.
+
+## 64. Joint release and chaos gates
+
+Test unauthorized audio forwarding after participant withdrawal, WebSocket auth handshake and reconnect, overlapping turns, loss of final event, provider 1013, device transfer while transcription partial, prompt-injection transcript, low-quality Thai threshold, expired R2 URL, delayed billing receipt, TTS interruption and wrong-tenant external-agent callback. Each case must record `session_epoch`, exact event chronology, current approval policy, R2 lifecycle and ledger reconciliation. Public live commerce additionally tests pre-air human approval under Spec 236. Rollback disables only `streaming_asr.meta_muse` then drains current streams; never blocks other certified speech providers or destroys canonical session history.
+
+## 65. Cross-spec boundaries and official references
+
+Spec 239 R2.4 owns Meta identity/entitlement/Personal Agent ingress; Spec 247 R1.9 owns Meta STT and event protocol; Spec 231 router owner owns separately selected Meta Spark LLM; existing Media Studio owns image/SAM; Feature 196 owns tools; Spec 224 keeps durable development finality. References: https://dev.meta.ai/docs/speech-to-text ; https://dev.meta.ai/docs/muse-code ; https://dev.meta.ai/docs/muse-code/subscriptions . No new standalone agent runtime or personal-memory clone.
+
+---
+
+## 66. R3.5 typed handoff: Realtime Session ↔ Speech ↔ Inference
+
+237 is the **session authority** for microphone/camera/screen consent, device handoff, streaming-turn ordering, interrupt/barge-in, visible gap and live public-cohost policy. Normalize only **session envelopes** `{tenant_ref, project_scope_ref, session_id, capture_epoch, turn_id, consent_version, audio_format_ref, provider_session_ref?, gap_ranges[], policy_ref, schema_version}`. This envelope is an interface projection to existing Feature 196 / Session Gateway, not an additional persisted authority. The speech payload and its provider metadata are produced through 247 Speech Facade; model inference requests and their hard policy filters use 231. An LLM endpoint advertising voice does not automatically qualify its STT/TTS path; certify the specific 247 speech tuple and 237 transport.
+
+**Finality:** interim speech text cannot cause irreversible Tool actions. A provider switch or disconnected WebRTC session starts a new observed epoch; if audio bytes were lost, emit an explicit user-visible gap and avoid fictitious seamless replay. Long-running speech-derived media jobs use `worker_jobs`; live frame/PCM packets never do.
+
+## 67. R3.5 external-agent and publishing handoff
+
+An external hosted personal-agent caller (239) is not automatically the actual microphone principal; bind both authenticated client identity and explicit end-user per-session grants. Publish an external realtime bridge only after a provider-specific media/session protocol, region, recording consent and approval handshake pass. Muse Model API, Meta Muse Personal Agent, Hermes Bot and Grok Bot are distinct surfaces; working MCP or a text-task API is not evidence of live-media ingress. Public co-host speech remains review-gated and must yield the preapproved signed speech artifact consumed by 236.
+
+## 68. R3.5 contract / chaos tests `R237-01`–`R237-10`
+
+`R237-01` session owner is unique after reconnect; `R237-02` stale capture epoch fails; `R237-03` unsupported ASR locale fails visibly; `R237-04` partial transcript cannot approve a Tool; `R237-05` switch of LLM route preserves authorized context without inventing prior media; `R237-06` transient provider disconnect emits exact gap; `R237-07` revoked screen consent blocks next frame; `R237-08` external-agent text connector cannot assume WebRTC access; `R237-09` public co-host audio cannot bypass review; `R237-10` streaming billing and session cancellation reconcile independently.
+
+**Gate:** integrate with 247 v1.10 and 231 R6 via versioned existing adapters. Do not claim browser, iOS, Android, WebRTC or provider-account certification from document review alone.

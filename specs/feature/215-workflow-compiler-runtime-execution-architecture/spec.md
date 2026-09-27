@@ -3,25 +3,19 @@
 
 **Status:** Proposed / Implementation Specification  
 **Spec ID:** 215  
-**Revision:** 4 — Spec 229 Retrieval Broker runtime binding and retrieval evidence finality
-**Date:** 2026-09-22  
+**Revision:** 4 — Creator Media Workflow Integration (R3 retained as historical source; R4 appended; proposed)
+**Date:** 2026-09-20  
 **Suggested repository path:** `specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md`  
 **Primary purpose:** Own canonical workflow compilation and runtime execution for Node Types defined by Spec 214.  
 **Companion specs:** Spec 209, Spec 212, Spec 214, Feature 195, Specs 199/200/206/207/208/211.
 
 ---
 
-## 0.1 Codebase alignment snapshot — 2026-09-22
-
-`apps/web/server/services/workflowCompilerRuntimeContracts.ts` currently provides the partial WorkflowDefinition v2, typed bindings/scopes/policies/instrumentation, deterministic Spec 215 plan v3, logical run/node-attempt types and a Feature 195 job-definition handoff. `workflowStudioRuntime.ts` and the Workflow Studio router consume related slices, but persistence and run control still include the existing Studio path; durable scheduling, leases, checkpoints, provider adapters and full R20 execution certification are not proven by these contracts.
-
-The physical handoff remains the existing `JobDefinition`/Feature 195 shape (`feature-186-v1`), not a second queue or a new settlement ledger. Persisted Workflow Studio data exists through migration `0341_feature_209_workflow_studio.sql`; migration and rollback gates must not be replaced by a clean-slate assumption.
-
 # 0. Executive Decision
 
 Spec 215 SHALL be the canonical owner of **Workflow Definition execution structure, compilation and runtime execution semantics**.
 
-Revision 2 defined the clean semantic contract aligned with the Spec 214 manifest schema v4. The current repository does not prove that deployed persisted workflows are absent, so compatibility inventory and rollback remain implementation gates for the 112 pre-canonical `nodeType` names.
+This contract defines canonical execution semantics aligned with the Spec 214 manifest contract. The repository does not establish whether deployed user workflows require compatibility with the 112 pre-canonical `nodeType` names. A read-only production inventory and rollback plan are required before any destructive clean-slate cutover; until then, preserve existing persisted data and fail closed on unsupported legacy shapes.
 
 ```text
 Spec 209 AI Builder / Workflow Studio
@@ -1129,7 +1123,7 @@ approval policy/quorum
 
 Material changes invalidate approval and require re-approval.
 
-Quorum/four-eyes independence rules must be enforceable for Spec 212 Revision 20 cases.
+Quorum/four-eyes independence rules must be enforceable for Spec 212 Revision 16 cases.
 
 ---
 
@@ -1834,7 +1828,7 @@ Minimum release gates:
 
 # 68. Clean-Slate Runtime Cutover
 
-There are existing implementation branches and persisted Workflow Studio structures. Whether deployed data requires old graph semantics must be determined by data inventory before cutover.
+There are existing implementation branches. The presence or absence of deployed workflows requiring old graph semantics has not been established; determine it through a read-only production inventory before cutover and retain a rollback path.
 
 Implementation SHOULD therefore replace rather than normalize the old taxonomy:
 
@@ -1977,164 +1971,108 @@ result-view      -> reject as node; Studio/UI + WorkflowInterface output
 
 The full list is defined by Spec 214 Appendix A and its machine-readable disposition artifact.
 
-# 74. Revision 3 — Mini App Runtime Context
+---
 
-Mini App invocation SHALL reuse the normal Spec 215 run path. A Mini App is an activation surface, not a distinct runtime.
+# 70. Revision 3 — Cross-Device Runtime, Attention and Human Interaction Alignment
+
+**Implementation timing:** Spec 215 had not been implemented when this amendment was added; these requirements are part of the implementation baseline.
+
+Spec 215 SHALL compile human interaction nodes into canonical durable interaction tasks independent of delivery surface.
+
+```text
+human.input / human.approval / long wait
+        ↓
+canonical runtime suspension/checkpoint
+        ↓
+Attention Event
+        ↓
+Spec 225 eligible control surface
+        ↓
+validated response
+        ↓
+resume same workflow run
+```
+
+The workflow runtime MUST NOT remain alive merely to wait for a phone response. Waiting state is persisted through the canonical durable runtime/job/checkpoint architecture.
+
+Required additions:
+
+1. compiled human tasks include response schema, actor scope, expiry, source version and stale-response rules;
+2. runtime emits normalized attention events without knowing whether delivery is iOS, Android, PWA, Web, email or messaging channel;
+3. duplicate responses are idempotent;
+4. stale/superseded approvals are rejected;
+5. `CaptureBundle` asset references from Spec 225 may bind into normal typed workflow inputs;
+6. mobile-origin workflows use the same WorkflowDefinition and compiler as desktop-origin workflows;
+7. Computer Use nodes continue through Spec 208 and may suspend for Spec 225 human handoff without creating a second browser runtime;
+8. notification delivery failure does not change workflow execution finality.
+
+Release gate additions:
+
+- cross-device suspend/resume test;
+- duplicate/stale mobile approval test;
+- capture-bundle binding test;
+- phone-offline while cloud workflow continues test;
+- notification outage isolation test.
+---
+
+# Creator Integration Amendment — Spec 215 R4 (2026-09-27)
+
+**Status:** Proposed normative addition pending actual repository contract reconciliation and Spec 215 owner approval. This section takes precedence over earlier 215 text **only for creator-media execution profiles**; all original clauses continue to apply. Spec 214 R6 retains sole Node Type taxonomy authority; currently active Spec 224 is unchanged. A Spec 251 document was not found in this checkout, so its proposed Creator product/revision contract and ownership are unverified placeholders; do not enable a binding or claim cross-spec conformance until the authoritative Spec 251 artifact and owner approval are located. Spec 215 retains canonical compilation, execution and logical WorkflowRun authority. No schema, infrastructure migration or production cutover is authorized by this addendum.
+
+## R4.1 Creator workflows are compiled recipes, not new Node Types
+
+Compiler SHALL accept a versioned, typed `CreatorRecipeProfile` binding (consumer contract owned by proposed Spec 251) through existing `WorkflowInterface`, `WorkflowBindings`, `PolicyAttachments` and artifact contracts, not an extra `creator.*` typeId. Use frozen Spec 214's `core.trigger`, `data.transform`, `ai.model`, `ai.agent`, `core.capability`, `data.retrieval`, `flow.subflow`, `flow.router`, `flow.join`, `flow.loop`, `human.input`, `human.approval`, `flow.wait`, `automation.computer_use`, `data.artifact` and `quality.verifier`. Speech, translation, authorized import, FFprobe, FFmpeg, caption composition and export are registered capabilities bound through the existing registry; when an exact capability is absent, discovery/M0 must either bind to an existing permitted Skill/Tool or declare that stage unavailable. Never invent legacy node aliases or regenerate the 16-type registry for a creator use case.
 
 ```ts
-interface MiniAppRunContext {
-  miniAppId: string;
-  miniAppVersion: string;
-  listingId?: string;
-  workflowId: string;
-  workflowVersionId: string;
-  consumerPrincipalId: string;
-  quoteId?: string;
-  reservationId?: string;
-  publicationSnapshotHash: string;
+interface CreatorRecipeProfileV1 {
+  schemaVersion:'creator.recipe.v1';
+  recipeRef:string; recipeVersion:string;
+  tenantId:string; projectId:string; sourceAssetRevisionRefs:string[];
+  targetLocaleProfiles: Array<{locale:string; speechProfileRef?:string; requiredFeatureTupleRefs:string[]}>;
+  exportPresetRefs:string[]; stageBudgetPolicyRef:string;
+  rightsPolicyRef:string; approvalPolicyRef:string;
+  invalidationPolicyVersion:string; mediaClockManifestRef:string;
+}
+interface CreatorStageKey {
+  workflowRunId:string; revisionId:string; stageSemanticId:string;
+  sourceDigest:string; targetLocale?:string; segmentRangeDigest?:string;
+  pinnedCapabilityVersion:string; policySnapshotHash:string;
 }
 ```
 
-The context SHALL be attached to WorkflowRun attribution but MUST NOT change pinned workflow semantics.
+The logical stage key permits deterministic caching/reuse only after checking current consent, ACL, provenance and result retention; a content hash match is never sufficient authorization. Cache reuse across tenants and other users is disabled by default. A new workspace UI projection MUST NOT launch another billable WorkflowRun if the requested immutable execution result already exists and is still authorized.
 
----
+## R4.2 Deterministic partial invalidation / artifact lineage
 
-# 75. Mini App Pre-Run Economic Gate
+The compiled `ExecutionPlan` SHALL annotate stage data dependencies with source-media revision, source-clock version, source transcript/correction revision, glossary, locale, voice consent and speech-profile revision, subtitle style, EDL/shot selection and export preset revision. Stage output MUST carry `inputFingerprint`, `outputArtifactRefs[]`, `producerNodeRunRef`, `providerAttemptRefs[]`, semantic status and provenance. Spec 251's validated `CreatorEditProposal` enters 215 via a standard versioned fork/rerun request on the existing WorkflowRun; 215 revalidates current policy and computes the transitive affected stage graph. Only affected variants/segments rerun where evidence allows it. If dependency coverage is incomplete, compiler conservatively reruns the affected branch and returns a revised price quote before paid work. Do not invent a second invalidation database.
 
-For a paid Mini App run, Spec 215 SHALL accept material execution only when the required Spec 207 quote/authorization/reservation context is valid according to policy.
+Minimal invalidation examples: changing a subtitle font rerenders caption composites and final video QC but does not rerun ASR/TTS; correcting one transcript span invalidates dependent translations, affected target-locale audio and render; a new target-language voice must not invalidate the source transcript or other locales; changing a crop rechecks translated caption safe zones and context/warning visibility. Preserve immutable ancestors, current revision fence, and lineage to all exported bytes. A manually corrected subtitle invalidates any claim of still-valid word alignment for edited spans until verified realignment.
 
-Spec 215 does not calculate creator revenue or maintain balances. It records the immutable run attribution/finality/usage evidence required by Spec 207 settlement.
+## R4.3 Fan-out, join, approval, economics and fallback
 
-Live policy, entitlement and economic authorization MUST be revalidated where required before material side effects.
+Use canonical graph fan-out by eligible locale/aspect ratio and `flow.join` for required output joins. Do not block export of certified English subtitles solely because Thai dubbing is unavailable, unless the user explicitly requested all-or-nothing delivery. A failed branch reports `DEGRADED` or `FAILED` with per-branch artifacts, cost and reasons; it must not fabricate success. Each target-locale branch is authorized separately for language model/provider region, voice consent, TTS feature tuple, storage retention and cost. Fan-out concurrency is bounded by tenant quotas, voice provider rate limits, job placement capacity and available credits. Quoted fallback charges require separate prior approval when exceeding the original policy/budget.
 
----
+Existing `worker_jobs` owns long-media ingest, transcription, segment audio, render and retry/lease fencing. 215 tracks logical suspension/checkpoints; approved long-running FFmpeg work is dispatched to an eligible registered Runner/persistent executor rather than running inside a short-lived Cloudflare Worker request. Never poll the browser as the durable job clock or keep an active compute session only to wait for a phone approval. Spec 225/226 delivers human attention and trusted response into the same pending run. Cancel/rollback drains already accepted external attempts and reconciles usage under Spec 207; provider acceptance ambiguity is not permission to double-charge.
 
-# 76. Consumer Run Projection
+## R4.4 Compiler diagnostics and strict preflight
 
-Spec 215 SHALL expose a safe run-event projection usable by Spec 209 Mini Apps.
+Before `RUN`, validate: current tenant/Project grants and source rights; feature availability and certification per exact locale/region/account; artifact schema compatibility; reproducible media PTS/timebase; target-safe thumbnail/subtitle render constraints; deduplicated source/transcript identifiers; budget quote and max expansion; executable placement; `human.input` and `human.approval` requirements; stage-key manifest integrity; and contract version of Spec 251 creator recipe. If a required stage is unsupported, report the exact missing capability and offer allowed fallback/manual correction. Never silently route a private source to an unapproved region/provider or resolve an unverified provider with the same model-family name.
 
-```text
-QUEUED
-STARTED
-PROGRESS_STAGE
-WAITING_FOR_APPROVAL
-WAITING_FOR_HUMAN_INPUT
-ARTIFACT_AVAILABLE
-COMPLETED
-FAILED
-CANCELLED
-RECONCILING_UNKNOWN_OUTCOME
-```
+## R4.5 Required additional execution acceptance cases
 
-The consumer projection MUST be derived from canonical WorkflowRun/NodeRun state and SHALL NOT create a second Mini App status store. Internal traces/tool arguments/secrets remain hidden unless the principal has explicit debug authority.
+| Case | Setup | Must hold |
+|---|---|---|
+| C215-01 | Compile translator/dubbing recipe | Exactly 16 frozen typeIds; no creator-specific type registered |
+| C215-02 | Source asset revoked after compile before dispatch | Block egress and future work |
+| C215-03 | Change only subtitle style | No ASR/LLM/TTS billable rerun |
+| C215-04 | Correct one overlapping-audio span | Explicit manual/verified alignment and bounded branch invalidation |
+| C215-05 | Fan-out three locales, one uncertified speech tuple | Two authorized branches continue; failed tuple honestly degraded |
+| C215-06 | Duplicate external callback and worker lease takeover | Exactly one logical commit per stage and customer settlement |
+| C215-07 | Browser closed while render running | Run completes or retries independent of browser |
+| C215-08 | Approved voice profile expires midrun | Dispatch fence blocks further synth and invalidates affected deliverable |
+| C215-09 | New UI projection of finished run | No repeat paid provider calls |
+| C215-10 | Mixed 16:9/9:16 renders | Separate QC/hash-bound outputs and deterministic reuse of shared stages |
+| C215-11 | Old revision edit races with current revision | No stale mutation; return conflict and impact preview |
+| C215-12 | Forced rollback during provider timeout | No job lost, no double bill, uncertain cost remains reconcilable |
 
----
-
-# 77. Secure Human Interaction Resume
-
-Approval and mid-run input actions exposed through a Mini App SHALL use canonical Spec 215 human-task state and secure scoped action tokens.
-
-A Mini App UI response MUST NOT directly modify NodeRun state. It submits an authenticated decision/input payload; Spec 215 validates actor, schema, expiry, exact task identity and policy before resuming the WorkflowRun.
-
----
-
-# 78. Mini App Finality and Settlement Evidence
-
-WorkflowRun finality SHALL distinguish success, failure, cancellation and unknown/reconciliation states sufficiently for Spec 207 to settle or release reservations correctly.
-
-Runtime evidence SHALL include references to:
-
-```text
-miniAppId / miniAppVersion
-workflowId / workflowVersion
-workflowRunId
-quote/reservation where applicable
-actual usage/cost attribution
-finality
-side-effect reconciliation state
-refund/release-relevant reason class
-```
-
-Spec 215 SHALL NOT emit a successful Mini App fee settlement signal while a material external outcome remains unknown.
-
----
-
-# 79. Revision 3 Acceptance Criteria — Mini App Runtime
-
-- [ ] Mini App uses the canonical WorkflowRun path.
-- [ ] MiniAppRunContext is attribution metadata, not alternate execution semantics.
-- [ ] Required Spec 207 authorization is checked before material paid execution.
-- [ ] Consumer progress derives from canonical run state.
-- [ ] Human approval/input resume uses authenticated canonical tasks.
-- [ ] Consumer visibility cannot expose internal traces/secrets by default.
-- [ ] Run finality provides sufficient settlement/release evidence.
-- [ ] Unknown external outcomes cannot be reported as successful paid completion.
-- [ ] There is no Mini-App-only queue, scheduler or state machine.
-
-
-
-## Shared Retrieval Contract Family — `SAH-RETRIEVAL-2`
-
-All production consumers in Specs 214–230 that require semantic/document/entity search SHALL use the canonical Spec 229 Retrieval Broker contract rather than provider-specific search APIs.
-
-The shared request MUST carry at least:
-
-```text
-request_id
-principal / tenant / project / environment
-purpose
-query_class
-query_text or structured selector
-source_classes
-required_visibility / ACL scope
-language hints
-exact identifiers if present
-maximum evidence budget
-freshness requirement
-consumer spec / run / workflow references
-```
-
-The normalized response MUST carry at least:
-
-```text
-retrieval_trace_id
-provider/profile/version
-query plan
-EvidenceRef[]
-source identity + source revision/digest
-ACL/provenance/freshness state
-retrieval/rerank scores as non-authoritative evidence
-quality-gate result
-partial/degraded indicators
-```
-
-`EvidenceRef` SHALL be a reference to authorized canonical content; retrieved text/vector similarity SHALL NOT become lifecycle state, authorization, approval, identity or source-of-truth data.
-
-
----
-
-# Revision 4 — Retrieval Runtime Binding and Evidence Contract
-
-For every `data.retrieval` execution, Spec 215 SHALL invoke Spec 229 Retrieval Broker V2 or an explicitly certified local/offline test adapter. Runtime code SHALL NOT call Vectorize, AI Search, pgvector or a provider-specific hybrid ranker directly.
-
-Canonical runtime path:
-
-```text
-WorkflowRun / NodeRun(data.retrieval)
-   ↓
-Spec 220 authorization/scope
-   ↓
-Spec 229 Retrieval Broker
-   ↓
-normalized RetrievalEvidence
-   ↓
-NodeRun output + provenance
-```
-
-`NodeAttempt` evidence SHALL persist the retrieval trace/profile/version and source references needed for reproducibility without copying private retrieved content unnecessarily.
-
-Retry/resume MUST revalidate authorization and freshness when policy requires. Cached/stale evidence MUST NOT bypass revocation, tenant ACL changes or source deletion.
-
-For Skill discovery, Workflow runtime returns **Skill candidate refs/evidence only**. Invocation remains a separate capability/Skill-resolution step governed by Spec 221/220 and the caller's authority.
-
-Unknown/degraded provider outcome must be represented explicitly; a retrieval provider outage SHALL NOT be converted into an empty-success result when the workflow requires grounded evidence.
+**Release condition:** Actual 214 R6 manifest compatibility, 215 compiler/runner conformance fixtures, 247 capability and account proofs, Spec 251 domain proposal reconciliation, migration safety and owner approval. All above are test requirements, NOT executed test results.
