@@ -830,7 +830,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         `;
         expect(approvalReconcile, `persisted=${JSON.stringify(approvalAfterReconcile)} events=${JSON.stringify(approvalEventsAfterReconcile)}`).toMatchObject({ claimed: 1, errors: 0, operatorReview: 0 });
         const cancellationStatus = await runtime.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
-        expect(cancellationStatus?.status).toBe("running");
+        expect(cancellationStatus?.status).toBe("waiting_external");
         const [cancelRequestEvent] = await sql`
           SELECT COUNT(*)::int AS count FROM worker_job_events
           WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'CANCEL_REQUESTED'
