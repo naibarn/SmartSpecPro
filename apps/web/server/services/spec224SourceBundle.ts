@@ -12,7 +12,7 @@ export type SourceInputKind = "entry" | "dependency-artifact" | "runtime-config"
 export type SourceDependencyEdge = { from: string; specifier: string; to: string | null; kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input"; status: "resolved-local" | "external-package" | "unresolved" };
 export type SourceBundleFile = { path: string; sha256: string; sizeBytes: number; mode: number; provenance: SourceInputKind[] };
 export type SourcePackageIdentity = { name: string; version: string | null; manifestPath: string; origin: "workspace" };
-export type SourceExternalPackageIdentity = { name: string; version: string; packageManager: "npm" | "pnpm" | "uv"; lockfilePath: string; integrity: string[]; source: string | null; dependencies: string[] };
+export type SourceExternalPackageIdentity = { name: string; version: string; packageManager: "npm" | "pnpm" | "uv"; lockfilePath: string; integrity: string[]; source: string | null; dependencies: string[]; artifactBytesCaptured: false; artifactIntegrityVerified: false; installationHooks: "declared-present" | "unknown-without-artifact" };
 export type SourceBundleManifest = {
   schemaVersion: "spec224.source-bundle.v2";
   discoveryMode: "static-plus-explicit-profile-v1";
@@ -261,7 +261,7 @@ function parseUvLockPackages(source: string, lockfilePath: string): SourceExtern
     const integrity = [...new Set([...block.matchAll(/hash\s*=\s*["'](sha256:[a-f0-9]{64})["']/gi)].map(match => match[1].toLowerCase()))].sort();
     const dependencySection = block.match(/^dependencies\s*=\s*\[([\s\S]*?)^\s*\]/m)?.[1] ?? "";
     const dependencies = [...new Set([...dependencySection.matchAll(/name\s*=\s*["']([^"']+)["']/g)].map(match => normalizePackageName(match[1])))].sort();
-    identities.push({ name: normalizePackageName(name), version, packageManager: "uv", lockfilePath, integrity, source, dependencies });
+    identities.push({ name: normalizePackageName(name), version, packageManager: "uv", lockfilePath, integrity, source, dependencies, artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "unknown-without-artifact" });
   }
   return identities;
 }
@@ -284,7 +284,7 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
               .sort()
           : [];
       const dependencies = ["dependencies", "optionalDependencies"].flatMap(key => Object.keys((value[key] && typeof value[key] === "object" ? value[key] : {}) as Record<string, unknown>)).map(normalizePackageName);
-      result.push({ name: normalizePackageName(name), version: value.version, packageManager: "npm", lockfilePath, integrity, source: typeof value.resolved === "string" ? value.resolved : null, dependencies: [...new Set(dependencies)].sort() });
+      result.push({ name: normalizePackageName(name), version: value.version, packageManager: "npm", lockfilePath, integrity, source: typeof value.resolved === "string" ? value.resolved : null, dependencies: [...new Set(dependencies)].sort(), artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: value.hasInstallScript === true ? "declared-present" : "unknown-without-artifact" });
     }
     return result;
   }
@@ -309,7 +309,7 @@ function parseNodeLockPackages(source: string, lockfilePath: string): SourceExte
     const integrityValue = resolution.integrity ?? value.integrity;
     const integrity = typeof integrityValue === "string" ? [integrityValue] : [];
     const dependencies = ["dependencies", "optionalDependencies"].flatMap(dependencyKey => Object.keys((value[dependencyKey] && typeof value[dependencyKey] === "object" ? value[dependencyKey] : {}) as Record<string, unknown>)).map(normalizePackageName);
-    result.push({ name: normalizePackageName(name), version, packageManager: "pnpm", lockfilePath, integrity, source: typeof resolution.tarball === "string" ? resolution.tarball : null, dependencies: [...new Set(dependencies)].sort() });
+    result.push({ name: normalizePackageName(name), version, packageManager: "pnpm", lockfilePath, integrity, source: typeof resolution.tarball === "string" ? resolution.tarball : null, dependencies: [...new Set(dependencies)].sort(), artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: value.requiresBuild === true ? "declared-present" : "unknown-without-artifact" });
   }
   return result;
 }
@@ -701,7 +701,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const dependencyEdges = [...closure.dependencyEdges];
   const packageIdentities = [...closure.packageIdentities];
   if (new Set(packageIdentities.map(item => item.name)).size !== packageIdentities.length || packageIdentities.some(item => !item.name.trim() || !fileSet.has(safeRelative(sourceRoot, item.manifestPath)) || !item.manifestPath.endsWith("package.json"))) throw new Error("SPEC224_BUNDLE_PACKAGE_IDENTITY_INVALID");
-  if (closure.externalPackageIdentities.some(item => !item.name.trim() || !item.version.trim() || !fileSet.has(safeRelative(sourceRoot, item.lockfilePath)) || item.integrity.some(hash => !/^(?:sha256:[a-f0-9]{64}|sha(?:256|384|512)-[A-Za-z0-9+/=]+)$/i.test(hash)))) throw new Error("SPEC224_BUNDLE_EXTERNAL_PACKAGE_IDENTITY_INVALID");
+  if (closure.externalPackageIdentities.some(item => !item.name.trim() || !item.version.trim() || !fileSet.has(safeRelative(sourceRoot, item.lockfilePath)) || item.artifactBytesCaptured !== false || item.artifactIntegrityVerified !== false || !["declared-present", "unknown-without-artifact"].includes(item.installationHooks) || item.integrity.some(hash => !/^(?:sha256:[a-f0-9]{64}|sha(?:256|384|512)-[A-Za-z0-9+/=]+)$/i.test(hash)))) throw new Error("SPEC224_BUNDLE_EXTERNAL_PACKAGE_IDENTITY_INVALID");
   if (dependencyEdges.some(edge => edge.status === "resolved-local" && (!edge.to || !fileSet.has(safeRelative(sourceRoot, edge.to))))) throw new Error("SPEC224_BUNDLE_EDGE_TARGET_MISSING");
   if (dependencyEdges.some(edge => (edge.from.startsWith("<profile:") ? false : !fileSet.has(safeRelative(sourceRoot, edge.from))))) throw new Error("SPEC224_BUNDLE_EDGE_SOURCE_MISSING");
   await mkdir(destination, { recursive: false, mode: 0o700 });

@@ -164,12 +164,14 @@ describe("Spec 224 source bundle tooling", () => {
     await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "sample-pkg": "1.0.0" } }));
     await writeFile(
       join(root, "package-lock.json"),
-      JSON.stringify({ lockfileVersion: 3, packages: { "": { name: "fixture", dependencies: { "sample-pkg": "1.0.0" } }, "node_modules/sample-pkg": { version: "1.0.0", resolved: "https://registry.npmjs.org/sample-pkg/-/sample-pkg-1.0.0.tgz", integrity, dependencies: { "transitive-pkg": "^2.0.0" } }, "node_modules/transitive-pkg": { version: "2.1.0", resolved: "https://registry.npmjs.org/transitive-pkg/-/transitive-pkg-2.1.0.tgz", integrity: "sha512-cHJvZw==" } } })
+      JSON.stringify({ lockfileVersion: 3, packages: { "": { name: "fixture", dependencies: { "sample-pkg": "1.0.0" } }, "node_modules/sample-pkg": { version: "1.0.0", resolved: "https://registry.npmjs.org/sample-pkg/-/sample-pkg-1.0.0.tgz", integrity, hasInstallScript: true, dependencies: { "transitive-pkg": "^2.0.0" } }, "node_modules/transitive-pkg": { version: "2.1.0", resolved: "https://registry.npmjs.org/transitive-pkg/-/transitive-pkg-2.1.0.tgz", integrity: "sha512-cHJvZw==" } } })
     );
     const closure = await discoverSourceClosure({ sourceRoot: root, entryPaths: ["src/main.ts"], dependencyArtifacts: ["package-lock.json"], profileInputs: [{ path: "package.json", kind: "runtime-config" }], profileId: "npm-lock-test", runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8" } });
     expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({ name: "sample-pkg", version: "1.0.0", packageManager: "npm", lockfilePath: "package-lock.json", integrity: [integrity] }));
     expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({ name: "transitive-pkg", version: "2.1.0" }));
     expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")?.dependencies).toEqual(["transitive-pkg"]);
+    expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "declared-present" });
+    expect(closure.externalPackageIdentities.find(item => item.name === "transitive-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "unknown-without-artifact" });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toEqual([]);
   });
