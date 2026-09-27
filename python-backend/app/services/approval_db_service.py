@@ -462,6 +462,26 @@ class ApprovalDBService:
             ValueError: If request not found or not in PENDING status
             PermissionError: If the user is not authorized to approve this request
         """
+        # Serialize decisions on the authority row before checking a retry. A
+        # matching response is a safe replay; a different decision by the same
+        # actor is a conflict and must never create a second response.
+        request = await self._get_request_for_update(request_id, tenant_id)
+        if not request:
+            raise ValueError(f"Approval request {request_id} not found")
+        prior_result = await self.db.execute(
+            select(ApprovalResponse).where(
+                and_(
+                    ApprovalResponse.request_id == request_id,
+                    ApprovalResponse.approver_id == approver_id,
+                )
+            )
+        )
+        prior_response = prior_result.scalar_one_or_none()
+        if prior_response:
+            if prior_response.decision == decision:
+                return prior_response
+            raise ValueError("Conflicting decision replay for approval request")
+
         # Validate that the approver is authorized before processing
         if not skip_auth_check:
             can_approve = await self.can_user_approve(
@@ -477,11 +497,6 @@ class ApprovalDBService:
                 raise PermissionError(
                     f"User {approver_id} is not authorized to approve request {request_id}"
                 )
-
-        # Fetch the request with tenant validation
-        request = await self._get_request_for_update(request_id, tenant_id)
-        if not request:
-            raise ValueError(f"Approval request {request_id} not found")
 
         if request.status != ApprovalStatus.PENDING:
             raise ValueError(
@@ -726,12 +741,14 @@ class ApprovalDBService:
         Returns:
             True if the user is an admin or domain_admin
         """
-        stmt = select(User).where(User.id == user_id)
+        # Select only the authorization field. The Python User model includes
+        # optional legacy columns that are not present in every supported
+        # SmartSpec schema baseline; loading the full entity makes an otherwise
+        # valid approval decision fail with UndefinedColumnError.
+        stmt = select(User.role).where(User.id == user_id)
         result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
-        if not user:
-            return False
-        return user.role in (Role.admin, Role.domain_admin)
+        role = result.scalar_one_or_none()
+        return role in (Role.admin, Role.domain_admin)
 
     async def can_user_approve(
         self,

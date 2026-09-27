@@ -1,5 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import {
+  economicLedgerAccounts,
   economicJournalEntries,
   economicJournalLines,
   type InsertEconomicJournalEntryRow,
@@ -35,7 +36,11 @@ export type EconomicLedgerErrorCode =
   | "LEDGER_CURRENCY_MISMATCH"
   | "LEDGER_TENANT_MISMATCH"
   | "LEDGER_LINE_INVALID"
-  | "LEDGER_IDEMPOTENCY_INVALID";
+  | "LEDGER_IDEMPOTENCY_INVALID"
+  | "LEDGER_ACCOUNT_NOT_FOUND"
+  | "LEDGER_ACCOUNT_SCOPE_MISMATCH"
+  | "LEDGER_ACCOUNT_CURRENCY_MISMATCH"
+  | "LEDGER_ACCOUNT_CLOSED";
 
 export class EconomicLedgerError extends Error {
   readonly code: EconomicLedgerErrorCode;
@@ -108,6 +113,29 @@ export async function recordJournalEntry(
     throw new EconomicLedgerError("LEDGER_IDEMPOTENCY_INVALID");
   }
   const summary = assertBalancedJournalLines(input.lines);
+  const accountIds = [...new Set(input.lines.map(line => line.accountId))];
+  const accountResult = await (tx as any)
+    .select({
+      id: economicLedgerAccounts.id,
+      tenantId: economicLedgerAccounts.tenantId,
+      currency: economicLedgerAccounts.currency,
+      status: economicLedgerAccounts.status,
+    })
+    .from(economicLedgerAccounts)
+    .where(inArray(economicLedgerAccounts.id, accountIds));
+  const accounts = new Map<string, { tenantId: string; currency: string; status: string }>(
+    accountResult.map((account: { id: string; tenantId: string; currency: string; status: string }) => [
+      account.id,
+      account,
+    ]),
+  );
+  for (const accountId of accountIds) {
+    const account = accounts.get(accountId);
+    if (!account) throw new EconomicLedgerError("LEDGER_ACCOUNT_NOT_FOUND");
+    if (account.tenantId !== input.tenantId) throw new EconomicLedgerError("LEDGER_ACCOUNT_SCOPE_MISMATCH");
+    if (account.currency.trim().toUpperCase() !== summary.currency) throw new EconomicLedgerError("LEDGER_ACCOUNT_CURRENCY_MISMATCH");
+    if (account.status !== "open") throw new EconomicLedgerError("LEDGER_ACCOUNT_CLOSED");
+  }
   const existing = await (tx as any)
     .select()
     .from(economicJournalEntries)

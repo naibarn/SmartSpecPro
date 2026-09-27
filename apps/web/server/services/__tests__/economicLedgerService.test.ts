@@ -5,6 +5,7 @@ import {
   recordJournalEntry,
   type EconomicJournalLineInput,
 } from "../economicLedgerService";
+import { economicLedgerAccounts } from "../../../drizzle/schema";
 
 const balancedLines: EconomicJournalLineInput[] = [
   {
@@ -72,7 +73,14 @@ describe("economicLedgerService", () => {
     const lineInsertValues = vi.fn(async () => []);
     const tx = {
       select: vi.fn(() => ({
-        from: vi.fn(() => ({ where: vi.fn(() => ({ limit })) })),
+        from: vi.fn((table: unknown) => ({
+          where: vi.fn(() => table === economicLedgerAccounts
+            ? Promise.resolve([
+                { id: "account-debit", tenantId: "tenant-1", currency: "USD", status: "open" },
+                { id: "account-credit", tenantId: "tenant-1", currency: "USD", status: "open" },
+              ])
+            : { limit }),
+        })),
       })),
       insert: vi
         .fn()

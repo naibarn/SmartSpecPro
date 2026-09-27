@@ -625,6 +625,8 @@ export function createSpec224AuthorizationService() {
         tenantId: input.context.tenantId,
         holdId: input.budgetReservationRef,
         idempotencyKey: `spec224:revoke:${input.runId}:${input.budgetReservationRef}`.slice(0, 128),
+        actorId: String(input.context.actorId),
+        policyVersion: "spec224-authorization-binding-v1",
         journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,
         journalLines: [
           { accountId: creditAccount, tenantId: input.context.tenantId, currency: budget.currency, debitMinorUnits: budget.amountMinorUnits, creditMinorUnits: 0 },
