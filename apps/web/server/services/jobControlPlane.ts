@@ -4609,6 +4609,65 @@ export function createJobControlPlane(
         const initialJob = await repo.findJob(input.jobId);
         if (!initialJob || initialJob.tenantId !== input.tenantId)
           return "ignored";
+        const eventType = `RUNNER_${input.eventType}`.slice(0, 100);
+        const eventKey = boundedEventKey(
+          "runner-receipt",
+          input.commandId,
+          input.eventId
+        );
+        const receiptPayload = {
+          ...(input.payload ?? {}),
+          commandId: input.commandId,
+          eventId: input.eventId,
+          sequence: input.sequence,
+          runnerId: input.runnerId,
+          runnerSessionId: input.runnerSessionId,
+        };
+        // A Runner may replay an exact receipt after settlement when the ACK
+        // was lost. The original event and its continuation intent were
+        // committed atomically, so acknowledge only an exact persisted match
+        // before requiring the now-cleared externalWait projection.
+        const earlyPriorReceipt = await repo.findEventByIdempotency(
+          input.jobId,
+          eventKey
+        );
+        if (
+          earlyPriorReceipt &&
+          earlyPriorReceipt.eventType === eventType &&
+          isDeepStrictEqual(earlyPriorReceipt.payloadJson, receiptPayload)
+        )
+          return "duplicate";
+        if (
+          earlyPriorReceipt &&
+          ["succeeded", "failed", "cancelled", "expired"].includes(
+            initialJob.status
+          )
+        ) {
+          const conflictingPayloadDigest = createHash("sha256")
+            .update(JSON.stringify({ eventType, receiptPayload }), "utf8")
+            .digest("hex");
+          await repo.insertEvent({
+            workerJobId: input.jobId,
+            eventType: "RUNNER_RECEIPT_CONFLICT",
+            eventIdempotencyKey: boundedEventKey(
+              "runner-receipt-conflict",
+              input.commandId,
+              input.eventId,
+              conflictingPayloadDigest
+            ),
+            payloadJson: {
+              schemaVersion: "runner-receipt-conflict.v1",
+              tenantId: input.tenantId,
+              actorId: initialJob.requestedByUserId,
+              commandId: input.commandId,
+              receiptEventId: input.eventId,
+              acceptedEventType: earlyPriorReceipt.eventType,
+              conflictingEventType: eventType,
+              conflictingPayloadDigest,
+            },
+          });
+          return "ignored";
+        }
         const initialProgress =
           initialJob.progressJson &&
           typeof initialJob.progressJson === "object" &&
@@ -4676,20 +4735,6 @@ export function createJobControlPlane(
           )
             return "ignored";
         }
-        const eventType = `RUNNER_${input.eventType}`.slice(0, 100);
-        const eventKey = boundedEventKey(
-          "runner-receipt",
-          input.commandId,
-          input.eventId
-        );
-        const receiptPayload = {
-          ...(input.payload ?? {}),
-          commandId: input.commandId,
-          eventId: input.eventId,
-          sequence: input.sequence,
-          runnerId: input.runnerId,
-          runnerSessionId: input.runnerSessionId,
-        };
         const spec224Input =
           job.inputJson && typeof job.inputJson === "object"
             ? (job.inputJson as Record<string, unknown>).spec224Run

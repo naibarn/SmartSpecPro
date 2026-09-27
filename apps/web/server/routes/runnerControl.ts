@@ -186,10 +186,29 @@ function runnerRequestShape(req: IncomingMessage) {
 
 function sendRunnerSocket(
   ws: WebSocket,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  callback?: (error?: Error) => void
 ): void {
-  if (ws.readyState === 1) ws.send(JSON.stringify(payload));
+  if (ws.readyState === 1) ws.send(JSON.stringify(payload), callback);
+  else callback?.(new Error("runner_websocket_not_open"));
 }
+
+function sendRunnerSocketAndWait(
+  ws: WebSocket,
+  payload: Record<string, unknown>
+): Promise<void> {
+  return new Promise((resolve, reject) =>
+    sendRunnerSocket(ws, payload, error => (error ? reject(error) : resolve()))
+  );
+}
+
+type RunnerReceiptTestHooks = {
+  afterReceiptPersisted?: (
+    receiptEventId: string,
+    ws: WebSocket
+  ) => Promise<void>;
+  afterAckWritten?: (receiptEventId: string) => Promise<void>;
+};
 
 /**
  * Receipt senders wait synchronously for this acknowledgement before they can
@@ -341,8 +360,11 @@ export function handleRunnerUpgrade(
   req: IncomingMessage,
   socket: Duplex,
   head: Buffer,
-  gateway: RunnerGateway = defaultRunnerGateway
+  gateway: RunnerGateway = defaultRunnerGateway,
+  testHooks?: RunnerReceiptTestHooks
 ): void {
+  if (testHooks && process.env.NODE_ENV !== "test")
+    throw new Error("runner receipt test hooks require NODE_ENV=test");
   const url = new URL(
     req.url ?? "/",
     `http://${req.headers.host ?? "localhost"}`
@@ -357,7 +379,7 @@ export function handleRunnerUpgrade(
   }
   const runnerId = decodeURIComponent(match[1]);
   getRunnerWss().handleUpgrade(req, socket, head, ws => {
-    void handleRunnerSocket(ws, req, runnerId, gateway);
+    void handleRunnerSocket(ws, req, runnerId, gateway, testHooks);
   });
 }
 
@@ -365,7 +387,8 @@ async function handleRunnerSocket(
   ws: WebSocket,
   req: IncomingMessage,
   runnerId: string,
-  gateway: RunnerGateway
+  gateway: RunnerGateway,
+  testHooks?: RunnerReceiptTestHooks
 ): Promise<void> {
   let controlPlaneOrigin: string;
   try {
@@ -425,7 +448,13 @@ async function handleRunnerSocket(
       activeRunnerChannels.delete(runnerId);
   });
   ws.on("message", raw => {
-    void handleRunnerSocketMessage(ws, socketAuthContext, raw, gateway);
+    void handleRunnerSocketMessage(
+      ws,
+      socketAuthContext,
+      raw,
+      gateway,
+      testHooks
+    );
   });
   sendRunnerSocket(ws, {
     ackState: "accepted",
@@ -473,15 +502,15 @@ function runnerCapabilityEligibility(
       externalAgentAdapters: (snapshot?.toolInventory ?? [])
         .filter(
           tool =>
-          (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
-          tool.trustState === "ready" &&
+            (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
+            tool.trustState === "ready" &&
             (tool.availabilityState === "available" ||
               tool.availabilityState === "busy") &&
             (tool.authState === "authenticated" ||
               tool.authState === "not_required") &&
-          tool.healthState === "healthy" &&
-          tool.installState === "installed" &&
-          tool.configurationState === "configured"
+            tool.healthState === "healthy" &&
+            tool.installState === "installed" &&
+            tool.configurationState === "configured"
         )
         .map(tool => tool.adapterId as string),
       authorizationEvidenceRef:
@@ -623,7 +652,8 @@ export async function handleRunnerSocketMessage(
   ws: WebSocket,
   socketAuthContext: RunnerSocketAuthContext,
   raw: Buffer | ArrayBuffer | Buffer[],
-  gateway: RunnerGateway
+  gateway: RunnerGateway,
+  testHooks?: RunnerReceiptTestHooks
 ): Promise<void> {
   const message = Buffer.isBuffer(raw)
     ? raw
@@ -743,14 +773,14 @@ export async function handleRunnerSocketMessage(
       const { persistenceDisposition: normalizedDisposition } =
         await acceptRunnerJobReceiptDurably(state, receipt, () =>
           controlPlane.recordRunnerReceipt({
-          jobId: receipt.jobId,
-          commandId: receipt.commandId,
-          eventId: receipt.eventId,
-          eventType: receipt.eventType,
-          sequence: receipt.sequence,
-          runnerId: receipt.runnerId,
-          runnerSessionId: receipt.runnerSessionId,
-          tenantId: auth.tenantId,
+            jobId: receipt.jobId,
+            commandId: receipt.commandId,
+            eventId: receipt.eventId,
+            eventType: receipt.eventType,
+            sequence: receipt.sequence,
+            runnerId: receipt.runnerId,
+            runnerSessionId: receipt.runnerSessionId,
+            tenantId: auth.tenantId,
             payload: {
               status: receipt.status,
               ...(receipt.resultRef ? { resultRef: receipt.resultRef } : {}),
@@ -769,6 +799,14 @@ export async function handleRunnerSocketMessage(
       const durableReceiptAccepted =
         normalizedDisposition === "recorded" ||
         normalizedDisposition === "duplicate";
+      // The test-only hook is deliberately after recordRunnerReceipt resolves:
+      // that promise returns only after the receipt/continuation intent commit.
+      if (
+        normalizedDisposition === "recorded" &&
+        receipt.eventType === "EXECUTION_COMPLETED"
+      ) {
+        await testHooks?.afterReceiptPersisted?.(receipt.eventId, ws);
+      }
       if (durableReceiptAccepted) {
         channel.receiptStates.set(receipt.commandId, state);
         const receiptJobStatus = await controlPlane.getStatus(receipt.jobId, {
@@ -855,11 +893,17 @@ export async function handleRunnerSocketMessage(
           );
         }
       }
-      sendRunnerSocket(ws, {
+      await sendRunnerSocketAndWait(ws, {
         ackState: durableReceiptAccepted ? "applied" : "rejected",
         receiptEventId: receipt.eventId,
         sequence: receipt.sequence,
       });
+      if (
+        durableReceiptAccepted &&
+        receipt.eventType === "EXECUTION_COMPLETED"
+      ) {
+        await testHooks?.afterAckWritten?.(receipt.eventId);
+      }
       return;
     }
     throw new Error("runner_event_type_not_supported");

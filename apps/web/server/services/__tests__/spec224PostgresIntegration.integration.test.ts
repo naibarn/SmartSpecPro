@@ -421,6 +421,23 @@ describeDbSuite("Spec 224 — PostgreSQL control-plane certification", () => {
         `external-agent:${manifest.taskId}:${manifest.planId}:1`
       )
     ).toBe(true);
+    expect(await controlPlane.recordRunnerReceipt(receipt)).toBe("duplicate");
+    expect(
+      await controlPlane.recordRunnerReceipt({
+        ...receipt,
+        payload: {
+          ...receipt.payload,
+          evidenceRef: `sha256:${"c".repeat(64)}`,
+        },
+      })
+    ).toBe("ignored");
+    const conflictingReceipt = await sql`
+      SELECT COUNT(*)::int AS count
+      FROM worker_job_events
+      WHERE "workerJobId" = ${created.jobId}
+        AND "eventType" = 'RUNNER_RECEIPT_CONFLICT'
+    `;
+    expect(conflictingReceipt[0]?.count).toBe(1);
 
     const terminal = await readStatusFromFreshProcess(created.jobId);
     expect(terminal).toMatchObject({ status: "succeeded", attempt: 1 });

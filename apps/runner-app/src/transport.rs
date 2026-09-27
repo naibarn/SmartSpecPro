@@ -1,9 +1,14 @@
 use std::collections::VecDeque;
 use std::net::{TcpStream, ToSocketAddrs};
+#[cfg(debug_assertions)]
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use crate::device_proof::{canonical_json_bytes, endpoint_path, DeviceProofSigner};
 use crate::protocol::{AckState, Envelope};
+
+#[cfg(debug_assertions)]
+static CERTIFICATION_ACK_DROPPED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransportMode {
@@ -321,6 +326,30 @@ impl ControlTransport for NativeControlTransport {
                 return Err(error);
             }
         };
+        // Debug-only lost-ACK injection for deterministic loopback
+        // certification. This cannot be enabled in release builds.
+        #[cfg(debug_assertions)]
+        if event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.job.receipt")
+            && event
+                .payload
+                .get("receipt")
+                .and_then(|receipt| receipt.get("eventType"))
+                .and_then(serde_json::Value::as_str)
+                == Some("EXECUTION_COMPLETED")
+            && std::env::var("SAH_RUNNER_CERTIFICATION_ADAPTER").as_deref() == Ok("deterministic")
+            && std::env::var("SAH_RUNNER_TEST_DROP_RECEIPT_ACK_ONCE").as_deref() == Ok("true")
+            && (endpoint.starts_with("ws://127.0.0.1:")
+                || endpoint.starts_with("ws://localhost:")
+                || endpoint.starts_with("ws://[::1]:"))
+            && !CERTIFICATION_ACK_DROPPED.swap(true, Ordering::SeqCst)
+        {
+            self.wss_socket = None;
+            return Err(TransportError::Unavailable);
+        }
         self.wss_socket = Some(socket);
         Ok(ack)
     }

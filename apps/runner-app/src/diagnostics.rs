@@ -1,7 +1,7 @@
 use crate::adapters::{
-    apply_probe, build_browser_authorization_grant, execute_browser_candidate,
-    build_external_agent_authorization_ref,
-    probe_browser_candidate, probe_candidate, AdapterProbeResult, BrowserAuthorizationGrant,
+    apply_probe, build_browser_authorization_grant, build_external_agent_authorization_ref,
+    execute_browser_candidate, probe_browser_candidate, probe_candidate, AdapterProbeResult,
+    BrowserAuthorizationGrant,
 };
 use crate::config::RunnerConfig;
 use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
@@ -9,6 +9,7 @@ use crate::device_proof::DeviceProofSigner;
 use crate::device_proof::{canonical_json_bytes, endpoint_path};
 use crate::discovery::{scan_environment, CapabilityDimension, ToolCandidate, TrustState};
 use crate::external_agent::{start_external_agent, ExternalAgentProcess, ExternalAgentResult};
+use crate::journal::RunnerReceiptJournal;
 use crate::protocol::{
     AckState, Envelope, NodeKind, RunnerJobCommand, RunnerJobReceipt, RunnerJobReceiptEventType,
 };
@@ -154,15 +155,14 @@ pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String,
                         if matches!(adapter_id, "codex.v1" | "claude.v1")
                             && tool.trust_state == TrustState::Ready
                         {
-                            tool.authorization_evidence_ref = Some(
-                                build_external_agent_authorization_ref(
+                            tool.authorization_evidence_ref =
+                                Some(build_external_agent_authorization_ref(
                                     &config.runner_id,
                                     session_id,
                                     tenant_id,
                                     adapter_id,
                                     snapshot_expiry_ms(),
-                                ),
-                            );
+                                ));
                         }
                     }
                 }
@@ -438,9 +438,13 @@ fn run_live_control_loop(
         .filter_map(|tool| {
             let adapter = tool.get("adapterId").and_then(serde_json::Value::as_str)?;
             let ready = tool.get("trustState").and_then(serde_json::Value::as_str) == Some("ready")
-                && tool.get("availabilityState").and_then(serde_json::Value::as_str)
+                && tool
+                    .get("availabilityState")
+                    .and_then(serde_json::Value::as_str)
                     .is_some_and(|state| matches!(state, "available" | "busy"))
-                && tool.get("authState").and_then(serde_json::Value::as_str)
+                && tool
+                    .get("authState")
+                    .and_then(serde_json::Value::as_str)
                     .is_some_and(|state| matches!(state, "authenticated" | "not_required"));
             if ready && matches!(adapter, "codex.v1" | "claude.v1") {
                 Some(adapter.to_string())
@@ -467,15 +471,14 @@ fn run_live_control_loop(
     channel.bind_external_agent_authorization_refs(external_agent_authorization_refs);
     let mut receipt_sequences = std::collections::HashMap::<String, u64>::new();
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
+    let mut receipt_journal =
+        RunnerReceiptJournal::open(PathBuf::from(&config.data_root).as_path())?;
+    replay_pending_runner_receipts(endpoint, transport, &mut receipt_journal)?;
     let mut last_keepalive = std::time::Instant::now();
     loop {
         if keepalive_due(last_keepalive.elapsed(), CONTROL_CHANNEL_KEEPALIVE_INTERVAL) {
-            let keepalive = build_keepalive_envelope(
-                channel,
-                node_kind,
-                &config.runner_id,
-                revision,
-            )?;
+            let keepalive =
+                build_keepalive_envelope(channel, node_kind, &config.runner_id, revision)?;
             match transport.send_wss(&endpoint.wss_url, &keepalive) {
                 Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
                     last_keepalive = std::time::Instant::now();
@@ -491,6 +494,7 @@ fn run_live_control_loop(
             node_kind,
             &mut receipt_sequences,
             &mut external_processes,
+            &mut receipt_journal,
         )?;
         let incoming = match transport.receive_server_message() {
             Ok(incoming) => incoming,
@@ -526,6 +530,7 @@ fn run_live_control_loop(
                 node_kind,
                 &command,
                 &mut receipt_sequences,
+                &mut receipt_journal,
                 RunnerJobReceiptEventType::CommandRejected,
                 "rejected",
                 Some("RUNNER_COMMAND_OUT_OF_ORDER"),
@@ -546,6 +551,7 @@ fn run_live_control_loop(
                     node_kind,
                     &command,
                     &mut receipt_sequences,
+                    &mut receipt_journal,
                     RunnerJobReceiptEventType::CommandRejected,
                     "rejected",
                     Some(&error),
@@ -564,6 +570,7 @@ fn run_live_control_loop(
             node_kind,
             &command,
             &mut receipt_sequences,
+            &mut receipt_journal,
             RunnerJobReceiptEventType::CommandReceived,
             "received",
             None,
@@ -576,6 +583,7 @@ fn run_live_control_loop(
             node_kind,
             &command,
             &mut receipt_sequences,
+            &mut receipt_journal,
             RunnerJobReceiptEventType::CommandAccepted,
             "accepted",
             None,
@@ -594,6 +602,7 @@ fn run_live_control_loop(
                 node_kind,
                 &command,
                 &mut receipt_sequences,
+                &mut receipt_journal,
                 RunnerJobReceiptEventType::CancelAcknowledged,
                 "cancelled",
                 None,
@@ -608,6 +617,7 @@ fn run_live_control_loop(
             node_kind,
             &command,
             &mut receipt_sequences,
+            &mut receipt_journal,
             RunnerJobReceiptEventType::ExecutionStarted,
             "running",
             None,
@@ -639,6 +649,7 @@ fn run_live_control_loop(
                         node_kind,
                         &command,
                         &mut receipt_sequences,
+                        &mut receipt_journal,
                         RunnerJobReceiptEventType::ExecutionFailed,
                         "failed",
                         None,
@@ -675,6 +686,7 @@ fn run_live_control_loop(
                     node_kind,
                     &command,
                     &mut receipt_sequences,
+                    &mut receipt_journal,
                     RunnerJobReceiptEventType::EvidenceCreated,
                     "evidence",
                     None,
@@ -687,6 +699,7 @@ fn run_live_control_loop(
                     node_kind,
                     &command,
                     &mut receipt_sequences,
+                    &mut receipt_journal,
                     RunnerJobReceiptEventType::ExecutionCompleted,
                     "completed",
                     None,
@@ -701,6 +714,7 @@ fn run_live_control_loop(
                     node_kind,
                     &command,
                     &mut receipt_sequences,
+                    &mut receipt_journal,
                     RunnerJobReceiptEventType::ExecutionFailed,
                     "failed",
                     Some(&error),
@@ -746,6 +760,7 @@ fn poll_external_agents(
     node_kind: NodeKind,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
     processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
+    receipt_journal: &mut RunnerReceiptJournal,
 ) -> Result<(), String> {
     let command_ids = processes.keys().cloned().collect::<Vec<_>>();
     for command_id in command_ids {
@@ -755,7 +770,9 @@ fn poll_external_agents(
         let Some(outcome) = outcome else { continue };
         match outcome {
             Ok(Some(result)) => {
-                let active = processes.remove(&command_id).expect("active process exists");
+                let active = processes
+                    .remove(&command_id)
+                    .expect("active process exists");
                 send_external_receipt(
                     endpoint,
                     transport,
@@ -763,6 +780,7 @@ fn poll_external_agents(
                     node_kind,
                     &active.command,
                     receipt_sequences,
+                    receipt_journal,
                     RunnerJobReceiptEventType::ExecutionCompleted,
                     "completed",
                     Some(&result),
@@ -771,7 +789,9 @@ fn poll_external_agents(
             }
             Ok(None) => {}
             Err(error) => {
-                let active = processes.remove(&command_id).expect("active process exists");
+                let active = processes
+                    .remove(&command_id)
+                    .expect("active process exists");
                 send_external_receipt(
                     endpoint,
                     transport,
@@ -779,6 +799,7 @@ fn poll_external_agents(
                     node_kind,
                     &active.command,
                     receipt_sequences,
+                    receipt_journal,
                     RunnerJobReceiptEventType::ExecutionFailed,
                     "failed",
                     None,
@@ -797,6 +818,7 @@ fn send_external_receipt(
     node_kind: NodeKind,
     command: &RunnerJobCommand,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    receipt_journal: &mut RunnerReceiptJournal,
     event_type: RunnerJobReceiptEventType,
     status: &str,
     result: Option<&ExternalAgentResult>,
@@ -835,11 +857,7 @@ fn send_external_receipt(
         })),
     };
     let envelope = channel.build_receipt(node_kind, command, receipt)?;
-    match transport.send_wss(&endpoint.wss_url, &envelope) {
-        Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => Ok(()),
-        Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
-        Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
-    }
+    persist_and_send_runner_receipt(endpoint, transport, receipt_journal, envelope)
 }
 
 fn send_runner_receipt(
@@ -849,6 +867,7 @@ fn send_runner_receipt(
     node_kind: NodeKind,
     command: &RunnerJobCommand,
     receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    receipt_journal: &mut RunnerReceiptJournal,
     event_type: RunnerJobReceiptEventType,
     status: &str,
     error_summary: Option<&str>,
@@ -887,11 +906,42 @@ fn send_runner_receipt(
         )),
     };
     let envelope = channel.build_receipt(node_kind, command, receipt)?;
+    persist_and_send_runner_receipt(endpoint, transport, receipt_journal, envelope)
+}
+
+fn persist_and_send_runner_receipt<T: ControlTransport>(
+    endpoint: &ControlEndpoint,
+    transport: &mut T,
+    receipt_journal: &mut RunnerReceiptJournal,
+    envelope: Envelope,
+) -> Result<(), String> {
+    let idempotency_key = envelope.idempotency_key.clone();
+    receipt_journal.enqueue(&envelope)?;
     match transport.send_wss(&endpoint.wss_url, &envelope) {
-        Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => Ok(()),
+        Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
+            receipt_journal.acknowledge(&idempotency_key)
+        }
         Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
         Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
     }
+}
+
+fn replay_pending_runner_receipts<T: ControlTransport>(
+    endpoint: &ControlEndpoint,
+    transport: &mut T,
+    receipt_journal: &mut RunnerReceiptJournal,
+) -> Result<(), String> {
+    for envelope in receipt_journal.pending()? {
+        let idempotency_key = envelope.idempotency_key.clone();
+        match transport.send_wss(&endpoint.wss_url, &envelope) {
+            Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
+                receipt_journal.acknowledge(&idempotency_key)?;
+            }
+            Ok(other) => return Err(format!("RUNNER_RECEIPT_REPLAY_REJECTED_{other:?}")),
+            Err(error) => return Err(format!("RUNNER_RECEIPT_REPLAY_DELIVERY_{error:?}")),
+        }
+    }
+    Ok(())
 }
 
 fn runner_receipt_payload(
@@ -1699,14 +1749,18 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 mod lifecycle_tests {
     use super::{
         build_keepalive_envelope, capability_snapshot, delivery_transport_label, keepalive_due,
-        parse_refresh_interval, runner_receipt_payload, semantic_receipt_payload,
-        snapshot_evidence, update_ack_statuses,
+        parse_refresh_interval, persist_and_send_runner_receipt, replay_pending_runner_receipts,
+        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
     };
     use crate::config::{RunnerConfig, RunnerProfile};
     use crate::discovery::scan_known_tools;
-    use crate::protocol::{NodeKind, RunnerJobCommand, RunnerJobReceiptEventType};
-    use crate::transport::TransportMode;
+    use crate::journal::RunnerReceiptJournal;
+    use crate::protocol::{
+        AckState, Envelope, NodeKind, RunnerJobCommand, RunnerJobReceiptEventType,
+    };
+    use crate::transport::{ControlEndpoint, ControlTransport, TransportError, TransportMode};
     use serde_json::json;
+    use std::collections::VecDeque;
     use std::time::Duration;
 
     #[test]
@@ -1862,5 +1916,72 @@ mod lifecycle_tests {
             semantic_receipt_payload(&command, &RunnerJobReceiptEventType::ExecutionStarted)
                 .is_none()
         );
+    }
+
+    struct ReceiptTransport {
+        outcomes: VecDeque<Result<AckState, TransportError>>,
+        received: Vec<serde_json::Value>,
+    }
+
+    impl ControlTransport for ReceiptTransport {
+        fn send_wss(&mut self, _: &str, event: &Envelope) -> Result<AckState, TransportError> {
+            self.received.push(serde_json::to_value(event).unwrap());
+            self.outcomes
+                .pop_front()
+                .unwrap_or(Err(TransportError::Unavailable))
+        }
+
+        fn send_https(
+            &mut self,
+            endpoint: &str,
+            event: &Envelope,
+        ) -> Result<AckState, TransportError> {
+            self.send_wss(endpoint, event)
+        }
+    }
+
+    #[test]
+    fn persisted_receipt_replays_after_transport_loss_and_clears_only_after_duplicate_ack() {
+        let root = tempfile::tempdir().unwrap();
+        let endpoint =
+            ControlEndpoint::from_control_url("http://127.0.0.1:31111/api/runners").unwrap();
+        let mut envelope = Envelope::new(
+            crate::protocol::NodeKind::LocalDevice,
+            "runner-replay-test",
+            Some("job-replay-test"),
+            None,
+            Some("lease-replay-test"),
+            json!({ "type": "runner.job.receipt", "receipt": { "eventId": "event-stable" } }),
+        );
+        envelope.correlation_id = "command-stable".into();
+        envelope.sequence = 7;
+        envelope.idempotency_key = "command-stable:7".into();
+
+        let mut outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut disconnected = ReceiptTransport {
+            outcomes: VecDeque::from([Err(TransportError::Unavailable)]),
+            received: Vec::new(),
+        };
+        assert!(persist_and_send_runner_receipt(
+            &endpoint,
+            &mut disconnected,
+            &mut outbox,
+            envelope.clone(),
+        )
+        .is_err());
+        drop(outbox);
+
+        let mut restarted_outbox = RunnerReceiptJournal::open(root.path()).unwrap();
+        let mut reconnected = ReceiptTransport {
+            outcomes: VecDeque::from([Ok(AckState::Duplicate)]),
+            received: Vec::new(),
+        };
+        replay_pending_runner_receipts(&endpoint, &mut reconnected, &mut restarted_outbox).unwrap();
+        assert_eq!(reconnected.received.len(), 1);
+        assert_eq!(
+            reconnected.received[0],
+            serde_json::to_value(&envelope).unwrap()
+        );
+        assert!(restarted_outbox.pending().unwrap().is_empty());
     }
 }
