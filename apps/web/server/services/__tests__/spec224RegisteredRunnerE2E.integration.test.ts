@@ -260,6 +260,71 @@ async function stopPythonApprovalServer(): Promise<void> {
   pythonApprovalServer = null;
 }
 
+async function runApprovalReconcilerProcess(input: {
+  workerId: string;
+  leaseSeconds: number;
+  killAfterPythonAck?: boolean;
+}): Promise<{ exitCode: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string }> {
+  const script = `
+    const { createSpec224ExternalApprovalAuthority, createSpec224ApprovalDecisionReconciler } = await import("./server/services/spec224ApprovalContinuation.ts");
+    const { createJobControlPlane } = await import("./server/services/jobControlPlane.ts");
+    const authority = createSpec224ExternalApprovalAuthority();
+    if (process.env.SPEC224_TEST_KILL_AFTER_PYTHON_ACK === "true") {
+      const acknowledge = authority.acknowledge.bind(authority);
+      authority.acknowledge = async input => {
+        await acknowledge(input);
+        process.stdout.write("SPEC224_PYTHON_ACK_DURABLE\\n");
+        await new Promise(resolve => setTimeout(resolve, 30000));
+      };
+    }
+    const reconcile = createSpec224ApprovalDecisionReconciler(
+      { authority, controlPlane: createJobControlPlane() },
+      { workerId: process.env.SPEC224_TEST_WORKER_ID, limit: 10, leaseSeconds: Number(process.env.SPEC224_TEST_LEASE_SECONDS) },
+    );
+    const result = await reconcile();
+    process.stdout.write("SPEC224_RECONCILE_RESULT:" + JSON.stringify(result) + "\\n");
+  `;
+  const child = spawn(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", script], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      SPEC224_TEST_WORKER_ID: input.workerId,
+      SPEC224_TEST_LEASE_SECONDS: String(input.leaseSeconds),
+      SPEC224_TEST_KILL_AFTER_PYTHON_ACK: input.killAfterPythonAck ? "true" : "false",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return await new Promise((resolve, reject) => {
+    let stdout = "";
+    let stderr = "";
+    let killedAfterAck = false;
+    const timeout = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("SPEC224_APPROVAL_RECONCILER_PROCESS_TIMEOUT"));
+    }, 30_000);
+    child.stdout.on("data", chunk => {
+      stdout += String(chunk);
+      if (input.killAfterPythonAck && !killedAfterAck && stdout.includes("SPEC224_PYTHON_ACK_DURABLE")) {
+        killedAfterAck = true;
+        child.kill("SIGKILL");
+      }
+    });
+    child.stderr.on("data", chunk => { stderr += String(chunk).slice(-4000); });
+    child.once("error", error => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("exit", (exitCode, signal) => {
+      clearTimeout(timeout);
+      if (input.killAfterPythonAck && !killedAfterAck) {
+        reject(new Error(`SPEC224_ACK_FAILPOINT_NOT_REACHED:${stderr.slice(-1000)}`));
+        return;
+      }
+      resolve({ exitCode, signal, stdout, stderr });
+    });
+  });
+}
+
 async function loadRuntime() {
   const [
     runnerGateway,
@@ -820,11 +885,32 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
           operationId: String(correlation.operationKey),
         });
         expect(approvalPreflight?.status).toBe("cancelled");
-        const reconcileApproval = runtime.createSpec224ApprovalDecisionReconciler(
-          { authority, controlPlane: runtime.createJobControlPlane() },
-          { workerId: `spec224-d349-${scope.tenantId}`, limit: 10 },
-        );
-        const approvalReconcile = await reconcileApproval();
+        const crashedReconciler = await runApprovalReconcilerProcess({
+          workerId: `spec224-d349-${scope.tenantId}`,
+          leaseSeconds: 5,
+          killAfterPythonAck: true,
+        });
+        expect(crashedReconciler.signal).toBe("SIGKILL");
+        expect(crashedReconciler.stdout).toContain("SPEC224_PYTHON_ACK_DURABLE");
+        const afterLostAck = await sql`
+          SELECT extra_data->'spec224DecisionDeliveryV1'->>'state' AS state
+          FROM approval_requests WHERE id = ${approvalResult.approvalRequestId}
+        `;
+        expect(afterLostAck[0]?.state).toBe("acknowledged");
+        const [beforeRecoveryAckEvent] = await sql`
+          SELECT COUNT(*)::int AS count FROM worker_job_events
+          WHERE "workerJobId" = ${created.jobId} AND "eventType" = 'APPROVAL_DELIVERY_ACKNOWLEDGED'
+        `;
+        expect(beforeRecoveryAckEvent.count).toBe(0);
+        await new Promise(resolve => setTimeout(resolve, 5_200));
+        const recoveredReconciler = await runApprovalReconcilerProcess({
+          workerId: `spec224-d349-restart-${scope.tenantId}`,
+          leaseSeconds: 5,
+        });
+        expect(recoveredReconciler.exitCode, recoveredReconciler.stderr).toBe(0);
+        const recoveredResultMatch = recoveredReconciler.stdout.match(/SPEC224_RECONCILE_RESULT:(\{[^\n]+\})/);
+        expect(recoveredResultMatch?.[1]).toBeTruthy();
+        const approvalReconcile = JSON.parse(recoveredResultMatch![1]) as Record<string, number>;
         const approvalAfterReconcile = await sql`
           SELECT extra_data->'spec224DecisionDeliveryV1'->>'state' AS state,
                  extra_data->'spec224DecisionDeliveryV1'->'receipt'->>'result' AS result
@@ -835,7 +921,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
             AND "eventType" IN ('CANCEL_REQUESTED', 'APPROVAL_DELIVERY_RECONCILED', 'APPROVAL_DELIVERY_ACKNOWLEDGED')
           ORDER BY sequence
         `;
-        expect(approvalReconcile, `persisted=${JSON.stringify(approvalAfterReconcile)} events=${JSON.stringify(approvalEventsAfterReconcile)}`).toMatchObject({ claimed: 1, errors: 0, operatorReview: 0 });
+        expect(approvalReconcile, `persisted=${JSON.stringify(approvalAfterReconcile)} events=${JSON.stringify(approvalEventsAfterReconcile)}`).toMatchObject({ claimed: 1, duplicate: 1, errors: 0, operatorReview: 0 });
         const cancellationStatus = await runtime.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
         expect(cancellationStatus?.status).toBe("waiting_external");
         const [cancelRequestEvent] = await sql`
@@ -903,12 +989,13 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       if (crashMode === "approval-cancellation") {
         const [approvalEvents] = await sql`
           SELECT COUNT(*) FILTER (WHERE "eventType" = 'APPROVAL_DELIVERY_ACKNOWLEDGED')::int AS acks,
+                 COUNT(*) FILTER (WHERE "eventType" = 'APPROVAL_DELIVERY_RECONCILED')::int AS reconciled,
                  COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_CANCEL_INTENT')::int AS intents,
                  COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_CANCEL_ACKNOWLEDGED')::int AS receipts,
                  COUNT(*) FILTER (WHERE "eventType" = 'CANCELLED')::int AS terminal
           FROM worker_job_events WHERE "workerJobId" = ${created.jobId}
         `;
-        expect(approvalEvents).toEqual({ acks: 1, intents: 1, receipts: 1, terminal: 1 });
+        expect(approvalEvents).toEqual({ acks: 1, reconciled: 1, intents: 1, receipts: 1, terminal: 1 });
       }
       const developmentContinuation = await runtime.reconcileSpec224RunnerContinuations({ limit: 100 });
       expect(developmentContinuation.reviewRequired).toBe(0);
