@@ -1,13 +1,24 @@
-CREATE TYPE "public"."billing_period" AS ENUM('monthly', 'quarterly', 'semi_annual', 'yearly');--> statement-breakpoint
-CREATE TYPE "public"."package_type" AS ENUM('one_time', 'subscription');--> statement-breakpoint
--- Keep every existing tenant-id foreign key valid while the legacy serial
--- identity is converted to the canonical string identity. Casting integer
--- values to text preserves the original tenant identifiers exactly; restoring
--- the foreign keys in the same migration fails closed if any orphan exists.
+-- Upgrade path for databases where 0001 was already recorded before its fresh
+-- install FK conversion was repaired. Preserve values and the existing FK
+-- definitions; invalid/orphaned references abort this transaction.
 DO $$
 DECLARE
   tenant_fk record;
 BEGIN
+  IF to_regclass('public.tenants') IS NULL THEN
+    RAISE EXCEPTION 'Cannot align tenant foreign keys: public.tenants is missing';
+  END IF;
+
+  IF (
+    SELECT format_type(attribute.atttypid, attribute.atttypmod)
+    FROM pg_attribute AS attribute
+    WHERE attribute.attrelid = 'public.tenants'::regclass
+      AND attribute.attname = 'id'
+      AND NOT attribute.attisdropped
+  ) <> 'character varying(36)' THEN
+    RAISE EXCEPTION 'Cannot align tenant foreign keys: tenants.id is not varchar(36)';
+  END IF;
+
   IF EXISTS (
     SELECT 1
     FROM pg_constraint AS fk
@@ -22,7 +33,7 @@ BEGIN
       AND parent_column.attname = 'id'
       AND (cardinality(fk.conkey) <> 1 OR cardinality(fk.confkey) <> 1)
   ) THEN
-    RAISE EXCEPTION 'Cannot safely convert tenants.id: composite tenant foreign key requires an explicit migration';
+    RAISE EXCEPTION 'Cannot safely align tenant foreign keys: composite tenant foreign key requires an explicit migration';
   END IF;
 
   CREATE TEMP TABLE _spec224_tenant_id_fks ON COMMIT DROP AS
@@ -31,7 +42,8 @@ BEGIN
     child_table.relname AS child_table,
     fk.conname AS constraint_name,
     child_column.attname AS child_column,
-    pg_get_constraintdef(fk.oid) AS constraint_definition
+    pg_get_constraintdef(fk.oid) AS constraint_definition,
+    format_type(parent_column.atttypid, parent_column.atttypmod) AS parent_type
   FROM pg_constraint AS fk
   JOIN pg_class AS child_table ON child_table.oid = fk.conrelid
   JOIN pg_namespace AS child_schema ON child_schema.oid = child_table.relnamespace
@@ -46,7 +58,9 @@ BEGIN
   WHERE fk.contype = 'f'
     AND parent_schema.nspname = 'public'
     AND parent_table.relname = 'tenants'
-    AND parent_column.attname = 'id';
+    AND parent_column.attname = 'id'
+    AND (child_column.atttypid <> parent_column.atttypid
+      OR child_column.atttypmod <> parent_column.atttypmod);
 
   FOR tenant_fk IN SELECT * FROM _spec224_tenant_id_fks LOOP
     EXECUTE format(
@@ -55,24 +69,14 @@ BEGIN
       tenant_fk.child_table,
       tenant_fk.constraint_name
     );
-  END LOOP;
-
-  FOR tenant_fk IN SELECT DISTINCT child_schema, child_table, child_column
-    FROM _spec224_tenant_id_fks
-  LOOP
     EXECUTE format(
-      'ALTER TABLE %I.%I ALTER COLUMN %I TYPE varchar(36) USING %I::text',
+      'ALTER TABLE %I.%I ALTER COLUMN %I TYPE %s USING %I::text',
       tenant_fk.child_schema,
       tenant_fk.child_table,
       tenant_fk.child_column,
+      tenant_fk.parent_type,
       tenant_fk.child_column
     );
-  END LOOP;
-
-  ALTER TABLE "tenants" ALTER COLUMN "id" DROP DEFAULT;
-  ALTER TABLE "tenants" ALTER COLUMN "id" TYPE varchar(36) USING "id"::text;
-
-  FOR tenant_fk IN SELECT * FROM _spec224_tenant_id_fks LOOP
     EXECUTE format(
       'ALTER TABLE %I.%I ADD CONSTRAINT %I %s',
       tenant_fk.child_schema,
@@ -81,12 +85,4 @@ BEGIN
       tenant_fk.constraint_definition
     );
   END LOOP;
-END $$;--> statement-breakpoint
-ALTER TABLE "credit_packages" ADD COLUMN "packageType" "package_type" DEFAULT 'one_time' NOT NULL;--> statement-breakpoint
-ALTER TABLE "credit_packages" ADD COLUMN "billingPeriod" "billing_period";--> statement-breakpoint
-ALTER TABLE "credit_packages" ADD COLUMN "discountPercent" integer DEFAULT 0;--> statement-breakpoint
-ALTER TABLE "credit_packages" ADD COLUMN "stripeProductId" varchar(128);--> statement-breakpoint
-ALTER TABLE "credit_packages" ADD COLUMN "stripePriceIds" json;--> statement-breakpoint
-ALTER TABLE "tenants" ADD COLUMN "status" varchar(20) DEFAULT 'ACTIVE' NOT NULL;--> statement-breakpoint
-ALTER TABLE "tenants" ADD COLUMN "plan" varchar(20) DEFAULT 'FREE' NOT NULL;--> statement-breakpoint
-ALTER TABLE "tenants" ADD COLUMN "created_at" timestamp DEFAULT now() NOT NULL;
+END $$;

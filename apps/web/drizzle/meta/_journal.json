@@ -2360,6 +2360,20 @@
       "when": 1790450000000,
       "tag": "0352_spec245_delegated_worker_fencing_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 337,
+      "version": "7",
+      "when": 1790469267733,
+      "tag": "0353_tenant_id_foreign_key_alignment",
+      "breakpoints": true
+    },
+    {
+      "idx": 338,
+      "version": "7",
+      "when": 1790469268733,
+      "tag": "0354_feature_207_economic_control_plane_admission",
+      "breakpoints": true
     }
   ]
 }

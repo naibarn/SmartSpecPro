@@ -1,7 +1,18 @@
-CREATE TYPE "public"."reminder_priority" AS ENUM('low', 'normal', 'high', 'critical');--> statement-breakpoint
-ALTER TABLE "scheduled_messages" ADD COLUMN "isSimpleReminder" boolean DEFAULT false NOT NULL;--> statement-breakpoint
-ALTER TABLE "scheduled_messages" ADD COLUMN "priority" "reminder_priority" DEFAULT 'normal' NOT NULL;--> statement-breakpoint
-ALTER TABLE "user_notifications" ADD COLUMN "priority" "reminder_priority" DEFAULT 'normal' NOT NULL;--> statement-breakpoint
+DO $$
+BEGIN
+  IF to_regtype('public.reminder_priority') IS NULL THEN
+    CREATE TYPE "public"."reminder_priority" AS ENUM('low', 'normal', 'high', 'critical');
+  ELSIF (
+    SELECT array_agg(enumlabel::text ORDER BY enumsortorder)
+    FROM pg_enum
+    WHERE enumtypid = 'public.reminder_priority'::regtype
+  ) IS DISTINCT FROM ARRAY['low', 'normal', 'high', 'critical']::text[] THEN
+    RAISE EXCEPTION 'Existing reminder_priority enum does not match the expected labels';
+  END IF;
+END $$;--> statement-breakpoint
+ALTER TABLE "scheduled_messages" ADD COLUMN IF NOT EXISTS "isSimpleReminder" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "scheduled_messages" ADD COLUMN IF NOT EXISTS "priority" "reminder_priority" DEFAULT 'normal' NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_notifications" ADD COLUMN IF NOT EXISTS "priority" "reminder_priority" DEFAULT 'normal' NOT NULL;--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "telegramChatId" varchar(64);--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "telegramUsername" varchar(64);--> statement-breakpoint
 ALTER TABLE "users" ADD COLUMN "telegramVerified" boolean DEFAULT false NOT NULL;--> statement-breakpoint
