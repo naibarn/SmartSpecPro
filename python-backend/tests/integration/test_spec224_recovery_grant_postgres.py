@@ -133,3 +133,123 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
             if other_id:
                 await connection.execute(text('DELETE FROM users WHERE id = :id'), {"id": other_id})
         await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
+    from app.models.approval import ApprovalType
+    from app.services.approval_db_service import ApprovalDBService
+
+    engine = create_async_engine(_database_url(), pool_pre_ping=True)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    job_id = str(uuid.uuid4())
+    requester_id = None
+    request_id = None
+    operation_key = f"spec224-operation-{suffix}"
+    correlation = {
+        "jobId": job_id,
+        "tenantId": tenant_id,
+        "requesterId": 1,
+        "operationKey": operation_key,
+        "providerRequestId": f"command-{suffix}",
+    }
+    try:
+        async with engine.begin() as connection:
+            user = await connection.execute(text(
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+            ), {"open_id": f"spec224-cancel-{suffix}"})
+            requester_id = user.scalar_one()
+            await connection.execute(text(
+                'INSERT INTO tenants (id, slug, name, "ownerId") VALUES (:id, :slug, :name, :owner)'
+            ), {"id": tenant_id, "slug": f"spec224-cancel-{suffix}", "name": "Spec224 Cancel Test", "owner": requester_id})
+        correlation["requesterId"] = requester_id
+
+        async with sessions() as session:
+            service = ApprovalDBService(session)
+            request = await service.create_request(
+                request_type=ApprovalType.CODE_EXECUTION,
+                title="Spec224 idempotent cancellation test",
+                tenant_id=tenant_id,
+                requester_id=requester_id,
+                requester_type="user",
+                execution_id=job_id,
+                extra_data={"spec224ExternalAgentResume": correlation},
+                correlation_key=f"spec224-cancel:{suffix}",
+                risk_level="high",
+            )
+            request_id = request.id
+            first = await service.cancel_request(
+                request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="test cancellation"
+            )
+            assert first is not None
+            first_delivery = service._read_spec224_delivery(first)
+            replay = await service.cancel_request(
+                request.id, cancelled_by=requester_id, tenant_id=tenant_id, reason="duplicate test cancellation"
+            )
+            replay_delivery = service._read_spec224_delivery(replay) if replay else None
+            assert replay is not None and replay.status.value == "cancelled"
+            assert first_delivery["event"]["deliveryId"] == replay_delivery["event"]["deliveryId"]
+            assert first_delivery["payloadDigest"] == replay_delivery["payloadDigest"]
+            assert await service.cancel_request(
+                request.id, cancelled_by=requester_id + 1, tenant_id=tenant_id, reason="wrong actor"
+            ) is None
+
+            claim_time = datetime.now(timezone.utc)
+            first_claims = await service.claim_spec224_decision_deliveries(
+                "cancel-worker-1", now=claim_time
+            )
+            assert len(first_claims) == 1
+            first_claim = first_claims[0]
+            receipt = {
+                "deliveryId": first_claim["deliveryId"],
+                "payloadDigest": first_claim["payloadDigest"],
+                "result": "cancel_requested",
+                "acknowledgedAt": (claim_time + timedelta(seconds=1)).isoformat().replace("+00:00", "Z"),
+            }
+            assert await service.acknowledge_spec224_decision_delivery(
+                request.id, tenant_id, job_id, operation_key,
+                first_claim["deliveryId"], first_claim["payloadDigest"], receipt,
+                first_claim["leaseOwner"], first_claim["leaseEpoch"],
+                now=claim_time + timedelta(seconds=1),
+            )
+
+            # Simulate process loss after Python committed ACK but before Node
+            # recorded its own acknowledged event; a new worker reclaims the
+            # persisted receipt only after the delivery lease expires.
+            restart_time = claim_time + timedelta(seconds=61)
+            replay_claims = await service.claim_spec224_decision_deliveries(
+                "cancel-worker-2", now=restart_time
+            )
+            assert len(replay_claims) == 1
+            replay_claim = replay_claims[0]
+            persisted_delivery = await service.get_spec224_decision_delivery(
+                request.id, tenant_id, job_id, operation_key
+            )
+            assert persisted_delivery["state"] == "acknowledged"
+            assert persisted_delivery["receipt"] == receipt
+            assert await service.acknowledge_spec224_decision_delivery(
+                request.id, tenant_id, job_id, operation_key,
+                replay_claim["deliveryId"], replay_claim["payloadDigest"], receipt,
+                replay_claim["leaseOwner"], replay_claim["leaseEpoch"],
+                now=restart_time + timedelta(seconds=1),
+            )
+
+        async with sessions() as session:
+            from app.models.approval import ApprovalRequest
+            from sqlalchemy import select
+
+            persisted = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == request_id))).scalar_one()
+            delivery = persisted.extra_data["spec224DecisionDeliveryV1"]
+            assert delivery["event"]["decision"] == "cancelled"
+            assert delivery["state"] == "acknowledged"
+    finally:
+        async with engine.begin() as connection:
+            if request_id:
+                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": request_id})
+            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+            if requester_id:
+                await connection.execute(text('DELETE FROM users WHERE id = :id'), {"id": requester_id})
+        await engine.dispose()
