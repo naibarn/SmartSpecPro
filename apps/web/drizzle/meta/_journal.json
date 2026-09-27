@@ -2339,6 +2339,27 @@
       "when": 1789824020753,
       "tag": "0349_feature_245_preserve_persistent_login_lockouts",
       "breakpoints": true
+    },
+    {
+      "idx": 334,
+      "version": "7",
+      "when": 1790440469579,
+      "tag": "0350_spec245_postgres_api_key_quota_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 335,
+      "version": "7",
+      "when": 1790442748749,
+      "tag": "0351_spec245_postgres_delegated_worker_leases",
+      "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1790450000000,
+      "tag": "0352_spec245_delegated_worker_fencing_tokens",
+      "breakpoints": true
     }
   ]
 }
