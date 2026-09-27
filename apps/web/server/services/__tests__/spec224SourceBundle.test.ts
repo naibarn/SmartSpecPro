@@ -817,6 +817,22 @@ describe("Spec 224 source bundle tooling", () => {
     expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:selected-runtime@1.0.0" }));
   });
 
+  it("fails closed when a Rust profile has no verified Cargo dependency graph", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), "use serde::Serialize;\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n');
+    await writeFile(join(root, "Cargo.lock"), 'version = 4\n[[package]]\nname = "serde"\nversion = "1.0.0"\n');
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cargo-profile",
+      runtimeIdentity: { packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(closure.closureComplete).toBe(false);
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<cargo-dependency-graph-unresolved>" }));
+  });
+
   it("resolves npm multi-version transitive dependencies by install locator and rejects cross-version artifact bytes", async () => {
     const root = await sourceFixture();
     const pkgA = Buffer.from("pkg-a 1.0.0 tarball");

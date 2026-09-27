@@ -107,6 +107,7 @@ export type SourceBundleManifest = {
   runtimeIdentity: {
     node?: string;
     python?: string;
+    cargo?: string;
     packageManager?: string;
     platform?: string;
   };
@@ -144,6 +145,7 @@ export type SourceClosureInput = {
   runtimeIdentity?: {
     node?: string;
     python?: string;
+    cargo?: string;
     packageManager?: string;
     platform?: string;
     /** Explicit interpreter tags and PEP 508 values; missing values fail closed when required. */
@@ -177,6 +179,7 @@ export type SourceClosureResult = {
   runtimeIdentity: {
     node?: string;
     python?: string;
+    cargo?: string;
     packageManager?: string;
     platform?: string;
     pythonCompatibility?: SourcePythonCompatibility;
@@ -1792,6 +1795,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   for (const path of Object.keys(selectedManifestScripts)) {
     if (!consumedScriptSelections.has(path)) unresolved.push({ from: path, specifier: "<script-selection-manifest-not-in-profile>" });
   }
+  const hasRust = [...seen].some(path => path.endsWith(".rs"));
+  if (hasRust) {
+    if (![...seen].some(path => path.endsWith("Cargo.toml"))) unresolved.push({ from: "<profile>", specifier: "<cargo-manifest-not-in-profile>" });
+    if (![...seen].some(path => path.endsWith("Cargo.lock"))) unresolved.push({ from: "<profile>", specifier: "<cargo-lockfile-not-in-profile>" });
+    unresolved.push({ from: "<profile>", specifier: "<cargo-dependency-graph-unresolved>" });
+  }
   const hasJavaScript = filesHaveExtension(seen, [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
   const hasPython = filesHaveExtension(seen, [".py"]);
   if (hasJavaScript) {
@@ -1967,7 +1976,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   if (!input.profileId?.trim()) unresolved.push({ from: "<profile>", specifier: "<profile-id-missing>" });
-  if (!input.runtimeIdentity?.packageManager?.trim() || (!input.runtimeIdentity.node?.trim() && !input.runtimeIdentity.python?.trim()))
+  if (!input.runtimeIdentity?.packageManager?.trim() || (!input.runtimeIdentity.node?.trim() && !input.runtimeIdentity.python?.trim() && !input.runtimeIdentity.cargo?.trim()))
     unresolved.push({
       from: "<profile>",
       specifier: "<runtime-identity-incomplete>",
@@ -2007,7 +2016,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const sourceRoot = resolve(input.sourceRoot);
   const destination = resolve(input.destination);
   const closure = input.closure;
-  if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
+  if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim() && !closure.runtimeIdentity.cargo?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
   if (input.sourceTreeAttestation && ((input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v2") || !input.sourceTreeAttestation.treePath.trim() || !/^[a-f0-9]{64}$/i.test(input.sourceTreeAttestation.manifestDigest) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.scopeMode !== undefined) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v2" && input.sourceTreeAttestation.scopeMode !== "exact-path-set"))) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_ATTESTATION_INVALID");
   if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "profile-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
