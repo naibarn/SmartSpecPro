@@ -15,7 +15,7 @@ export type SourceDependencyEdge = {
   specifier: string;
   to: string | null;
   kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input";
-  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "external-package" | "unresolved";
+  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "profile-dependency-excluded" | "external-package" | "unresolved";
 };
 export type SourceBundleFile = {
   path: string;
@@ -113,6 +113,10 @@ export type SourceBundleManifest = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  /** Per-manifest dependencies included by an exact execution profile. */
+  selectedManifestDependencies?: Record<string, string[]>;
+  /** Per-manifest scripts whose command/runtime edges belong to this profile. */
+  selectedManifestScripts?: Record<string, string[]>;
   requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
@@ -150,6 +154,10 @@ export type SourceClosureInput = {
   /** Selected uv dependency groups and project/package extras for this exact Python profile. */
   selectedPythonDependencyGroups?: string[];
   selectedPythonExtras?: string[];
+  /** Narrow manifest roots; statically imported packages remain mandatory. */
+  selectedManifestDependencies?: Record<string, string[]>;
+  /** Inspect only these script commands; unknown selected names fail closed. */
+  selectedManifestScripts?: Record<string, string[]>;
   /** Original artifacts staged in sourceRoot; each binding must exactly match its lock entry. */
   externalArtifacts?: SourceExternalArtifactBinding[];
   /** Optional roots for absolute in-repository imports such as Python `app.*`. */
@@ -176,6 +184,8 @@ export type SourceClosureResult = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  selectedManifestDependencies?: Record<string, string[]>;
+  selectedManifestScripts?: Record<string, string[]>;
   requiredExternalPackages: string[];
   packageIdentities: SourcePackageIdentity[];
   externalPackageIdentities: SourceExternalPackageIdentity[];
@@ -1307,6 +1317,27 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
+  const normalizeManifestSelection = (selection: Record<string, string[]> | undefined, kind: string) => {
+    const normalized: Record<string, string[]> = {};
+    for (const [rawPath, rawNames] of Object.entries(selection ?? {})) {
+      const path = safeRelative(sourceRoot, rawPath);
+      if (!path.endsWith("package.json") || !Array.isArray(rawNames) || rawNames.some(name => typeof name !== "string" || !name.trim())) {
+        unresolved.push({ from: rawPath, specifier: `<invalid-${kind}-selection>` });
+        continue;
+      }
+      const names = rawNames.map(name => kind === "dependency" ? normalizePackageName(name) : name.trim());
+      if (new Set(names).size !== names.length) {
+        unresolved.push({ from: path, specifier: `<duplicate-${kind}-selection>` });
+        continue;
+      }
+      normalized[path] = names.sort(compareText);
+    }
+    return normalized;
+  };
+  const selectedManifestDependencies = normalizeManifestSelection(input.selectedManifestDependencies, "dependency");
+  const selectedManifestScripts = normalizeManifestSelection(input.selectedManifestScripts, "script");
+  const consumedDependencySelections = new Set<string>();
+  const consumedScriptSelections = new Set<string>();
   const workspacePackages: WorkspacePackage[] = [];
   for (const manifestPath of input.workspaceManifestPaths ?? []) {
     const safePath = safeRelative(sourceRoot, manifestPath);
@@ -1461,10 +1492,21 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         }
         const dependencies = ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"].flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
         const manifestDependencyNames = new Set(dependencies.map(({ entry: [name] }) => normalizePackageName(name)));
+        const selectedDependencies = selectedManifestDependencies[filePath];
+        if (selectedDependencies) {
+          consumedDependencySelections.add(filePath);
+          for (const selected of selectedDependencies) {
+            if (!manifestDependencyNames.has(selected)) unresolved.push({ from: filePath, specifier: `<selected-dependency-not-declared:${selected}>` });
+          }
+        }
         for (const {
           entry: [name, range],
           optional,
         } of dependencies) {
+          if (selectedDependencies && !selectedDependencies.includes(normalizePackageName(name))) {
+            dependencyEdges.push({ from: filePath, specifier: `${name}@${String(range)}`, to: null, kind: "declared-package-dependency", status: "profile-dependency-excluded" });
+            continue;
+          }
           if (optional) declaredOptionalNames.add(normalizePackageName(name));
           if (optional && !selectedOptionalNames.has(normalizePackageName(name))) {
             dependencyEdges.push({
@@ -1548,6 +1590,13 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           }
         }
         const scripts = (manifest.scripts && typeof manifest.scripts === "object" ? manifest.scripts : {}) as Record<string, unknown>;
+        const selectedScripts = selectedManifestScripts[filePath];
+        if (selectedScripts) {
+          consumedScriptSelections.add(filePath);
+          for (const selected of selectedScripts) {
+            if (!Object.hasOwn(scripts, selected)) unresolved.push({ from: filePath, specifier: `<selected-script-not-declared:${selected}>` });
+          }
+        }
         for (const lifecycle of ["preinstall", "install", "postinstall", "prepare", "prepublish", "prepublishOnly", "preshrink", "publish", "postpublish"]) {
           if (typeof scripts[lifecycle] === "string")
             unresolved.push({
@@ -1556,6 +1605,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             });
         }
         for (const [scriptName, command] of Object.entries(scripts)) {
+          if (selectedScripts && !selectedScripts.includes(scriptName)) continue;
           if (typeof command !== "string") continue;
           for (const executable of unresolvedCommandDependencies(command, manifestDependencyNames))
             unresolved.push({
@@ -1735,6 +1785,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         });
       }
     }
+  }
+  for (const path of Object.keys(selectedManifestDependencies)) {
+    if (!consumedDependencySelections.has(path)) unresolved.push({ from: path, specifier: "<dependency-selection-manifest-not-in-profile>" });
+  }
+  for (const path of Object.keys(selectedManifestScripts)) {
+    if (!consumedScriptSelections.has(path)) unresolved.push({ from: path, specifier: "<script-selection-manifest-not-in-profile>" });
   }
   const hasJavaScript = filesHaveExtension(seen, [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]);
   const hasPython = filesHaveExtension(seen, [".py"]);
@@ -1940,6 +1996,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     selectedOptionalDependencies,
     selectedPythonDependencyGroups,
     selectedPythonExtras,
+    ...(Object.keys(selectedManifestDependencies).length ? { selectedManifestDependencies } : {}),
+    ...(Object.keys(selectedManifestScripts).length ? { selectedManifestScripts } : {}),
     requiredExternalPackages: [...requiredExternalSet].sort(),
     closureComplete: unresolved.length === 0 && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
@@ -1951,7 +2009,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const closure = input.closure;
   if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
   if (input.sourceTreeAttestation && ((input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v2") || !input.sourceTreeAttestation.treePath.trim() || !/^[a-f0-9]{64}$/i.test(input.sourceTreeAttestation.manifestDigest) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.scopeMode !== undefined) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v2" && input.sourceTreeAttestation.scopeMode !== "exact-path-set"))) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_ATTESTATION_INVALID");
-  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "profile-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`))) throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
   const files = [...new Set(closure.files.map(file => safeRelative(sourceRoot, file)))].sort();
@@ -2012,6 +2070,8 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
     selectedPythonDependencyGroups: [...closure.selectedPythonDependencyGroups].sort(),
     selectedPythonExtras: [...closure.selectedPythonExtras].sort(),
+    ...(closure.selectedManifestDependencies ? { selectedManifestDependencies: closure.selectedManifestDependencies } : {}),
+    ...(closure.selectedManifestScripts ? { selectedManifestScripts: closure.selectedManifestScripts } : {}),
     requiredExternalPackages: [...closure.requiredExternalPackages].sort(),
     packageIdentities: packageIdentities.sort((a, b) => compareText(a.name, b.name)),
     externalPackageIdentities: [...closure.externalPackageIdentities].sort((a, b) => compareText(a.name, b.name) || compareText(a.version, b.version) || compareText(a.lockfilePath, b.lockfilePath)),

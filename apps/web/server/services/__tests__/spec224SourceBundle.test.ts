@@ -747,6 +747,76 @@ describe("Spec 224 source bundle tooling", () => {
     );
   });
 
+  it("binds exact manifest dependency and script selections into a scoped profile bundle", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import { value } from "selected-runtime"; export { value };\n');
+    await mkdir(join(root, "scripts"), { recursive: true });
+    await writeFile(join(root, "scripts/test-profile.mjs"), "console.log('focused profile');\n");
+    const artifact = Buffer.from("selected-runtime-tarball");
+    const integrity = `sha512-${createHash("sha512").update(artifact).digest("base64")}`;
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "artifacts/selected-runtime.tgz"), artifact);
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "fixture",
+      dependencies: { "selected-runtime": "1.0.0", "unused-runtime": "2.0.0" },
+      scripts: { "test:profile": "node scripts/test-profile.mjs", "build:unselected": "vite build" },
+    }));
+    await writeFile(join(root, "package-lock.json"), JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        "": { dependencies: { "selected-runtime": "1.0.0", "unused-runtime": "2.0.0" } },
+        "node_modules/selected-runtime": { version: "1.0.0", resolved: "https://registry.npmjs.org/selected-runtime/-/selected-runtime-1.0.0.tgz", integrity },
+        "node_modules/unused-runtime": { version: "2.0.0", resolved: "https://registry.npmjs.org/unused-runtime/-/unused-runtime-2.0.0.tgz", integrity: `sha512-${createHash("sha512").update("unused").digest("base64")}` },
+      },
+    }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["package-lock.json"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "focused-runtime-profile",
+      runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" },
+      selectedManifestDependencies: { "package.json": ["selected-runtime"] },
+      selectedManifestScripts: { "package.json": ["test:profile"] },
+      externalArtifacts: [{ name: "selected-runtime", version: "1.0.0", locator: "package-lock.json#node_modules/selected-runtime", packageManager: "npm", lockfilePath: "package-lock.json", path: "artifacts/selected-runtime.tgz", source: "https://registry.npmjs.org/selected-runtime/-/selected-runtime-1.0.0.tgz", kind: "npm-tarball", platform: "linux-x64" }],
+    });
+
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(["package-lock.json#node_modules/selected-runtime"]);
+    expect(closure.files).toContain("scripts/test-profile.mjs");
+    expect(closure.files).not.toContain("scripts/build-unselected.mjs");
+    expect(closure.selectedManifestDependencies).toEqual({ "package.json": ["selected-runtime"] });
+    expect(closure.selectedManifestScripts).toEqual({ "package.json": ["test:profile"] });
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({ specifier: "unused-runtime@2.0.0", status: "profile-dependency-excluded" }));
+
+    const bundle = await assembleReadOnlySourceBundle({
+      sourceRoot: root,
+      destination: join(root, "..", "scoped-profile-bundle"),
+      closure,
+      sourceRevision: "f".repeat(40),
+      specDigest,
+      dependencyArtifacts: ["package-lock.json"],
+    });
+    expect(bundle.selectedManifestDependencies).toEqual({ "package.json": ["selected-runtime"] });
+    expect(bundle.selectedManifestScripts).toEqual({ "package.json": ["test:profile"] });
+    expect(await verifyReadOnlySourceBundle(join(root, "..", "scoped-profile-bundle"))).toMatchObject({ valid: true, integrityOnly: true });
+
+    const invalidSelection = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["package-lock.json"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "focused-runtime-profile-invalid-selection",
+      runtimeIdentity: { node: process.version, packageManager: "npm@10.9.8", platform: "linux-x64" },
+      selectedManifestDependencies: { "package.json": ["not-declared"] },
+      selectedManifestScripts: { "package.json": ["unknown-script"] },
+    });
+    expect(invalidSelection.closureComplete).toBe(false);
+    expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<selected-script-not-declared:unknown-script>" }));
+    expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<selected-dependency-not-declared:not-declared>" }));
+    expect(invalidSelection.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:selected-runtime@1.0.0" }));
+  });
+
   it("resolves npm multi-version transitive dependencies by install locator and rejects cross-version artifact bytes", async () => {
     const root = await sourceFixture();
     const pkgA = Buffer.from("pkg-a 1.0.0 tarball");
