@@ -150,7 +150,8 @@ export function validateRunnerJobCommand(
   if (
     raw.commandType === "cancel" &&
     (typeof raw.payload.targetCommandId !== "string" ||
-      !ID.test(raw.payload.targetCommandId.trim()))
+      !ID.test(raw.payload.targetCommandId) ||
+      raw.payload.targetCommandId === raw.commandId)
   )
     throw new Error("RUNNER_CANCEL_TARGET_REQUIRED");
   return structuredClone({ ...raw, controlPlaneOrigin });
