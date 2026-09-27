@@ -1,10 +1,18 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { chmod, lstat, mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { assembleReadOnlySourceBundle, discoverSourceClosure, verifyReadOnlySourceBundle } from "../spec224SourceBundle";
+import {
+  attestGitTreeSourceManifest,
+  calculateGitTreeSourceManifestDigest,
+  type GitTreeSourceManifest,
+  assembleReadOnlySourceBundle,
+  discoverSourceClosure,
+  verifyReadOnlySourceBundle,
+} from "../spec224SourceBundle";
 
 const temporaryRoots: string[] = [];
 const specDigest = "a".repeat(64);
@@ -31,6 +39,58 @@ async function sourceFixture() {
   await writeFile(join(root, "src/dep.ts"), "export const value = 42;\n");
   await writeFile(join(root, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
   return root;
+}
+
+async function git(repositoryRoot: string, args: string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    execFile("git", ["-C", repositoryRoot, ...args], { encoding: "buffer" }, (error, stdout, stderr) => {
+      if (error) reject(new Error(stderr.toString("utf8").trim() || error.message));
+      else resolve(stdout);
+    });
+  });
+}
+
+async function gitTreeFixture() {
+  const repositoryRoot = await mkdtemp(join(tmpdir(), "spec224-git-tree-attestation-"));
+  temporaryRoots.push(repositoryRoot);
+  await git(repositoryRoot, ["init"]);
+  await git(repositoryRoot, ["config", "user.email", "spec224@example.invalid"]);
+  await git(repositoryRoot, ["config", "user.name", "Spec 224 Test"]);
+  await mkdir(join(repositoryRoot, "source/bin"), { recursive: true });
+  await mkdir(join(repositoryRoot, "source/src"), { recursive: true });
+  await writeFile(join(repositoryRoot, "source/bin/run.sh"), "#!/bin/sh\necho source-attestation\n");
+  await chmod(join(repositoryRoot, "source/bin/run.sh"), 0o755);
+  await writeFile(join(repositoryRoot, "source/src/main.ts"), "export const sourceAttestation = true;\n");
+  await git(repositoryRoot, ["add", "source"]);
+  await git(repositoryRoot, ["commit", "-m", "source fixture"]);
+  const sourceRevision = (await git(repositoryRoot, ["rev-parse", "HEAD"])).toString("utf8").trim();
+  return { repositoryRoot, sourceRevision };
+}
+
+async function gitTreeManifest(repositoryRoot: string, sourceRevision: string): Promise<GitTreeSourceManifest> {
+  const files = await Promise.all(
+    ["bin/run.sh", "src/main.ts"].map(async path => {
+      const absolute = join(repositoryRoot, "source", path);
+      const bytes = await readFile(absolute);
+      const stat = await lstat(absolute);
+      return {
+        path,
+        sha256: createHash("sha256").update(bytes).digest("hex"),
+        sizeBytes: bytes.byteLength,
+        mode: stat.mode & 0o111 ? 0o755 : 0o644,
+      };
+    })
+  );
+  const base = {
+    schemaVersion: "spec224.git-tree-source-attestation.v1" as const,
+    sourceRevision,
+    treePath: "source",
+    files,
+  };
+  return {
+    ...base,
+    manifestDigest: calculateGitTreeSourceManifestDigest(base),
+  };
 }
 
 async function makeBundle(sourceRoot: string, destination: string) {
@@ -850,5 +910,68 @@ describe("Spec 224 source bundle tooling", () => {
     const incompatible = await discoverSourceClosure({ ...common, runtimeIdentity: { ...common.runtimeIdentity, pythonCompatibility: { compatibleWheelTags: ["cp312-cp312-manylinux_x86_64"], markerEnvironment: { python_full_version: "3.12.8", python_version: "3.12" } } }, externalArtifacts: [{ ...binding, path: "artifacts/locked.whl" }] });
     expect(incompatible.closureComplete).toBe(false);
     expect(incompatible.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:wheel-fixture@1.0.0" }));
+  });
+
+  it("attests a complete manifest against immutable Git tree blobs at an exact commit", async () => {
+    const { repositoryRoot, sourceRevision } = await gitTreeFixture();
+    const manifest = await gitTreeManifest(repositoryRoot, sourceRevision);
+
+    await expect(attestGitTreeSourceManifest({ repositoryRoot, manifest })).resolves.toMatchObject({
+      valid: true,
+      sourceRevision,
+      treePath: "source",
+    });
+  });
+
+  it("fails closed for Git tree manifest digest, path, file-set, blob, and mode mismatches", async () => {
+    const { repositoryRoot, sourceRevision } = await gitTreeFixture();
+    const manifest = await gitTreeManifest(repositoryRoot, sourceRevision);
+    const invalid = (change: (value: GitTreeSourceManifest) => void) => {
+      const value = structuredClone(manifest);
+      change(value);
+      return attestGitTreeSourceManifest({ repositoryRoot, manifest: value });
+    };
+
+    await expect(invalid(value => { value.manifestDigest = "0".repeat(64); })).rejects.toThrow("SPEC224_GIT_TREE_MANIFEST_DIGEST_MISMATCH");
+    await expect(invalid(value => { value.files.pop(); value.manifestDigest = calculateGitTreeSourceManifestDigest(value); })).rejects.toThrow("SPEC224_GIT_TREE_FILE_SET_MISMATCH");
+    await expect(invalid(value => { value.files.push({ ...value.files[0], path: "zz-extra.ts" }); value.manifestDigest = calculateGitTreeSourceManifestDigest(value); })).rejects.toThrow("SPEC224_GIT_TREE_FILE_SET_MISMATCH");
+    await expect(invalid(value => { value.files[0].sha256 = "f".repeat(64); value.manifestDigest = calculateGitTreeSourceManifestDigest(value); })).rejects.toThrow("SPEC224_GIT_TREE_BLOB_DIGEST_MISMATCH");
+    await expect(invalid(value => { value.files[0].mode = 0o644; value.manifestDigest = calculateGitTreeSourceManifestDigest(value); })).rejects.toThrow("SPEC224_GIT_TREE_MODE_MISMATCH");
+    await expect(invalid(value => { value.files[0].path = "../outside.ts"; value.manifestDigest = calculateGitTreeSourceManifestDigest(value); })).rejects.toThrow("SPEC224_GIT_TREE_PATH_INVALID");
+  });
+
+  it("rejects a wrong repository root, missing tree path, and unsupported Git symlink or submodule entries", async () => {
+    const { repositoryRoot, sourceRevision } = await gitTreeFixture();
+    const manifest = await gitTreeManifest(repositoryRoot, sourceRevision);
+    await expect(attestGitTreeSourceManifest({ repositoryRoot: join(repositoryRoot, "source"), manifest })).rejects.toThrow("SPEC224_GIT_TREE_REPOSITORY_ROOT_MISMATCH");
+
+    const missingTree = structuredClone(manifest);
+    missingTree.treePath = "missing";
+    missingTree.manifestDigest = calculateGitTreeSourceManifestDigest(missingTree);
+    await expect(attestGitTreeSourceManifest({ repositoryRoot, manifest: missingTree })).rejects.toThrow("SPEC224_GIT_TREE_PATH_NOT_FOUND");
+
+    const wrongRevision = structuredClone(manifest);
+    wrongRevision.sourceRevision = "f".repeat(40);
+    wrongRevision.manifestDigest = calculateGitTreeSourceManifestDigest(wrongRevision);
+    await expect(attestGitTreeSourceManifest({ repositoryRoot, manifest: wrongRevision })).rejects.toThrow("SPEC224_GIT_TREE_SOURCE_REVISION_INVALID");
+
+    await symlink("src/main.ts", join(repositoryRoot, "source/link.ts"));
+    await git(repositoryRoot, ["add", "source/link.ts"]);
+    await git(repositoryRoot, ["commit", "-m", "symlink fixture"]);
+    const symlinkCommit = (await git(repositoryRoot, ["rev-parse", "HEAD"])).toString("utf8").trim();
+    const symlinkManifest = await gitTreeManifest(repositoryRoot, symlinkCommit);
+    symlinkManifest.manifestDigest = calculateGitTreeSourceManifestDigest(symlinkManifest);
+    await expect(attestGitTreeSourceManifest({ repositoryRoot, manifest: symlinkManifest })).rejects.toThrow("SPEC224_GIT_TREE_SYMLINK_UNSUPPORTED");
+
+    await git(repositoryRoot, ["rm", "--cached", "source/link.ts"]);
+    const tree = (await git(repositoryRoot, ["write-tree"])).toString("utf8").trim();
+    await git(repositoryRoot, ["update-index", "--add", "--cacheinfo", `160000,${symlinkCommit},source/submodule`]);
+    const submoduleTree = (await git(repositoryRoot, ["write-tree"])).toString("utf8").trim();
+    const submoduleCommit = (await git(repositoryRoot, ["commit-tree", submoduleTree, "-p", symlinkCommit, "-m", "submodule fixture"])).toString("utf8").trim();
+    await git(repositoryRoot, ["update-ref", "HEAD", submoduleCommit]);
+    expect(tree).not.toBe(submoduleTree);
+    const submoduleManifest = await gitTreeManifest(repositoryRoot, submoduleCommit);
+    submoduleManifest.manifestDigest = calculateGitTreeSourceManifestDigest(submoduleManifest);
+    await expect(attestGitTreeSourceManifest({ repositoryRoot, manifest: submoduleManifest })).rejects.toThrow("SPEC224_GIT_TREE_SUBMODULE_UNSUPPORTED");
   });
 });

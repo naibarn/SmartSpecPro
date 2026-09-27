@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { chmod, lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import yaml from "js-yaml";
 
@@ -22,6 +23,22 @@ export type SourceBundleFile = {
   sizeBytes: number;
   mode: number;
   provenance: SourceInputKind[];
+};
+export type GitTreeSourceFile = Pick<SourceBundleFile, "path" | "sha256" | "sizeBytes" | "mode">;
+export type GitTreeSourceManifest = {
+  schemaVersion: "spec224.git-tree-source-attestation.v1";
+  sourceRevision: string;
+  /** Relative subtree in the immutable repository tree; `.` means the repository root. */
+  treePath: string;
+  files: GitTreeSourceFile[];
+  manifestDigest: string;
+};
+export type GitTreeSourceAttestation = {
+  valid: true;
+  sourceRevision: string;
+  treePath: string;
+  manifestDigest: string;
+  fileCount: number;
 };
 export type SourcePackageIdentity = {
   name: string;
@@ -436,6 +453,163 @@ function canonicalJson(value: unknown): string {
     return `{${sorted.map(([key, child]) => `${JSON.stringify(key)}:${canonicalJson(child)}`).join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function gitTreeRelativePath(input: string, allowRoot = false): string {
+  if (allowRoot && input === ".") return ".";
+  if (!input || isAbsolute(input) || input.includes("\\") || input.includes("\0")) throw new Error("SPEC224_GIT_TREE_PATH_INVALID");
+  const parts = input.split("/");
+  if (parts.some(part => !part || part === "." || part === "..")) throw new Error("SPEC224_GIT_TREE_PATH_INVALID");
+  return parts.join("/");
+}
+
+function gitTreeManifestBase(manifest: Omit<GitTreeSourceManifest, "manifestDigest"> | GitTreeSourceManifest): Omit<GitTreeSourceManifest, "manifestDigest"> {
+  return {
+    schemaVersion: manifest.schemaVersion,
+    sourceRevision: manifest.sourceRevision,
+    treePath: manifest.treePath,
+    files: manifest.files.map(file => ({
+      path: file.path,
+      sha256: file.sha256,
+      sizeBytes: file.sizeBytes,
+      mode: file.mode,
+    })),
+  };
+}
+
+/** Canonical digest for a complete, exact Git-tree source manifest. */
+export function calculateGitTreeSourceManifestDigest(manifest: Omit<GitTreeSourceManifest, "manifestDigest"> | GitTreeSourceManifest): string {
+  return sha256(canonicalJson(gitTreeManifestBase(manifest)));
+}
+
+function assertGitTreeManifest(manifest: GitTreeSourceManifest): void {
+  if (manifest.schemaVersion !== "spec224.git-tree-source-attestation.v1" || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(manifest.sourceRevision) || !/^[a-f0-9]{64}$/i.test(manifest.manifestDigest))
+    throw new Error("SPEC224_GIT_TREE_MANIFEST_INVALID");
+  gitTreeRelativePath(manifest.treePath, true);
+  if (!Array.isArray(manifest.files) || !manifest.files.length)
+    throw new Error("SPEC224_GIT_TREE_MANIFEST_FILES_INVALID");
+  let previousPath = "";
+  for (const file of manifest.files) {
+    const path = gitTreeRelativePath(file.path);
+    if (path <= previousPath || !/^[a-f0-9]{64}$/i.test(file.sha256) || !Number.isSafeInteger(file.sizeBytes) || file.sizeBytes < 0 || !Number.isInteger(file.mode) || ![0o644, 0o755].includes(file.mode))
+      throw new Error("SPEC224_GIT_TREE_MANIFEST_FILES_INVALID");
+    previousPath = path;
+  }
+  if (calculateGitTreeSourceManifestDigest(manifest) !== manifest.manifestDigest)
+    throw new Error("SPEC224_GIT_TREE_MANIFEST_DIGEST_MISMATCH");
+}
+
+async function runGit(repositoryRoot: string, args: string[]): Promise<Buffer> {
+  const environment = { ...process.env };
+  delete environment.GIT_DIR;
+  delete environment.GIT_WORK_TREE;
+  delete environment.GIT_COMMON_DIR;
+  return new Promise((resolveCommand, rejectCommand) => {
+    execFile("git", ["--no-replace-objects", "-C", repositoryRoot, ...args], {
+      encoding: "buffer",
+      maxBuffer: 64 * 1024 * 1024,
+      env: environment,
+    }, (error, stdout) => {
+      if (error) rejectCommand(error);
+      else resolveCommand(stdout);
+    });
+  });
+}
+
+async function gitText(repositoryRoot: string, args: string[], errorCode: string): Promise<string> {
+  try {
+    return (await runGit(repositoryRoot, args)).toString("utf8").trim();
+  } catch {
+    throw new Error(errorCode);
+  }
+}
+
+type GitTreeEntry = { mode: string; type: string; objectId: string; path: string };
+
+function parseGitTreeEntries(bytes: Buffer, treePath: string): GitTreeEntry[] {
+  const prefix = treePath === "." ? "" : `${treePath}/`;
+  const entries: GitTreeEntry[] = [];
+  let offset = 0;
+  while (offset < bytes.byteLength) {
+    const terminator = bytes.indexOf(0, offset);
+    if (terminator < 0) throw new Error("SPEC224_GIT_TREE_ENTRY_INVALID");
+    const rawItem = bytes.subarray(offset, terminator);
+    offset = terminator + 1;
+    if (!rawItem.byteLength) continue;
+    const item = rawItem.toString("utf8");
+    if (!Buffer.from(item, "utf8").equals(rawItem)) throw new Error("SPEC224_GIT_TREE_PATH_INVALID");
+    const match = item.match(/^(\d+)\s+(\S+)\s+([a-f0-9]{40}(?:[a-f0-9]{24})?)\t(.+)$/i);
+    if (!match) throw new Error("SPEC224_GIT_TREE_ENTRY_INVALID");
+    const [, mode, type, objectId, absolutePath] = match;
+    if (!absolutePath.startsWith(prefix)) throw new Error("SPEC224_GIT_TREE_ENTRY_INVALID");
+    const path = gitTreeRelativePath(absolutePath.slice(prefix.length));
+    if (mode === "120000") throw new Error("SPEC224_GIT_TREE_SYMLINK_UNSUPPORTED");
+    if (mode === "160000" || type === "commit") throw new Error("SPEC224_GIT_TREE_SUBMODULE_UNSUPPORTED");
+    if (mode !== "100644" && mode !== "100755") throw new Error("SPEC224_GIT_TREE_MODE_UNSUPPORTED");
+    if (type !== "blob") throw new Error("SPEC224_GIT_TREE_ENTRY_UNSUPPORTED");
+    entries.push({ mode, type, objectId, path });
+  }
+  return entries.sort((a, b) => compareText(a.path, b.path));
+}
+
+/**
+ * Attests a complete manifest against immutable Git blobs reachable from one
+ * exact commit. It never reads the working tree, follows symlinks, or trusts a
+ * caller-supplied Git ref. This is source identity evidence only; it does not
+ * establish dependency closure, owner approval, or runtime admission.
+ */
+export async function attestGitTreeSourceManifest(input: { repositoryRoot: string; manifest: GitTreeSourceManifest }): Promise<GitTreeSourceAttestation> {
+  const manifest = input.manifest;
+  assertGitTreeManifest(manifest);
+  let repositoryRoot: string;
+  try {
+    const stat = await lstat(input.repositoryRoot);
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("invalid root");
+    repositoryRoot = await realpath(input.repositoryRoot);
+  } catch {
+    throw new Error("SPEC224_GIT_TREE_REPOSITORY_ROOT_INVALID");
+  }
+  const actualRepositoryRoot = await gitText(repositoryRoot, ["rev-parse", "--show-toplevel"], "SPEC224_GIT_TREE_REPOSITORY_ROOT_INVALID");
+  let resolvedRepositoryRoot: string;
+  try {
+    resolvedRepositoryRoot = await realpath(actualRepositoryRoot);
+  } catch {
+    throw new Error("SPEC224_GIT_TREE_REPOSITORY_ROOT_INVALID");
+  }
+  if (resolvedRepositoryRoot !== repositoryRoot) throw new Error("SPEC224_GIT_TREE_REPOSITORY_ROOT_MISMATCH");
+  const sourceRevision = await gitText(repositoryRoot, ["rev-parse", "--verify", `${manifest.sourceRevision}^{commit}`], "SPEC224_GIT_TREE_SOURCE_REVISION_INVALID");
+  if (sourceRevision !== manifest.sourceRevision.toLowerCase()) throw new Error("SPEC224_GIT_TREE_SOURCE_REVISION_MISMATCH");
+  const treeReference = manifest.treePath === "." ? `${sourceRevision}^{tree}` : `${sourceRevision}:${manifest.treePath}`;
+  const treeObjectId = await gitText(repositoryRoot, ["rev-parse", "--verify", treeReference], "SPEC224_GIT_TREE_PATH_NOT_FOUND");
+  const treeType = await gitText(repositoryRoot, ["cat-file", "-t", treeObjectId], "SPEC224_GIT_TREE_PATH_NOT_FOUND");
+  if (treeType !== "tree") throw new Error("SPEC224_GIT_TREE_PATH_NOT_FOUND");
+  let entries: GitTreeEntry[];
+  try {
+    entries = parseGitTreeEntries(await runGit(repositoryRoot, ["ls-tree", "-rz", "--full-tree", sourceRevision, "--", manifest.treePath]), manifest.treePath);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("SPEC224_GIT_TREE_")) throw error;
+    throw new Error("SPEC224_GIT_TREE_READ_FAILED");
+  }
+  const expectedPaths = manifest.files.map(file => file.path);
+  if (entries.length !== expectedPaths.length || entries.some((entry, index) => entry.path !== expectedPaths[index]))
+    throw new Error("SPEC224_GIT_TREE_FILE_SET_MISMATCH");
+  for (const [index, entry] of entries.entries()) {
+    const expected = manifest.files[index];
+    const bytes = await runGit(repositoryRoot, ["cat-file", "blob", entry.objectId]).catch(() => {
+      throw new Error("SPEC224_GIT_TREE_BLOB_READ_FAILED");
+    });
+    if (sha256(bytes) !== expected.sha256 || bytes.byteLength !== expected.sizeBytes)
+      throw new Error("SPEC224_GIT_TREE_BLOB_DIGEST_MISMATCH");
+    if (Number.parseInt(entry.mode, 8) !== 0o100000 + expected.mode)
+      throw new Error("SPEC224_GIT_TREE_MODE_MISMATCH");
+  }
+  return {
+    valid: true,
+    sourceRevision,
+    treePath: manifest.treePath,
+    manifestDigest: manifest.manifestDigest,
+    fileCount: entries.length,
+  };
 }
 
 function filesHaveExtension(files: Set<string>, extensions: string[]): boolean {
