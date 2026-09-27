@@ -3,24 +3,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getWorkerAccessPermissionScopesForPreset } from "../../../shared/workerAccessKeys";
 
 const mockGetDb = vi.fn();
+const mockAcquirePostgresSemaphore = vi.hoisted(() => vi.fn());
 
 vi.mock("../../db", () => ({
   getDb: mockGetDb,
 }));
 
-vi.mock("../redis", () => ({
-  getRedisClient: vi.fn(() => {
-    throw new Error("Redis should not be used in delegated worker platform service unit tests");
-  }),
-  isRedisAvailable: vi.fn(() => false),
+vi.mock("../postgresDelegatedWorkerSemaphore", () => ({
+  acquirePostgresSemaphore: mockAcquirePostgresSemaphore,
 }));
 
 describe("delegatedWorkerPlatformService", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
     mockGetDb.mockReset();
-    const { resetDelegatedWorkerConcurrencyForTests } = await import("../delegatedWorkerPlatformService");
-    resetDelegatedWorkerConcurrencyForTests();
+    mockAcquirePostgresSemaphore.mockReset();
   });
 
   it("enforces default model allowlists for delegated workers", async () => {
@@ -204,6 +201,20 @@ describe("delegatedWorkerPlatformService", () => {
       scopeProfile: "worker_gateway_hybrid_executor" as const,
     };
 
+    let active = 0;
+    mockAcquirePostgresSemaphore.mockImplementation(async (input: { maxSlots: number }) => {
+      if (active >= input.maxSlots) return null;
+      active++;
+      let released = false;
+      return {
+        async release() {
+          if (released) return;
+          released = true;
+          active--;
+        },
+      };
+    });
+
     const first = await acquireDelegatedWorkerConcurrencySlot({
       auth,
       actionClass: "compute",
@@ -247,6 +258,19 @@ describe("delegatedWorkerPlatformService", () => {
       runtimeType: "openclaw_gateway",
       scopeProfile: "worker_gateway_hybrid_executor" as const,
     };
+
+    let active = 0;
+    mockAcquirePostgresSemaphore.mockImplementation(async () => {
+      active++;
+      let released = false;
+      return {
+        async release() {
+          if (released) return;
+          released = true;
+          active--;
+        },
+      };
+    });
 
     const first = await acquireDelegatedWorkerConcurrencySlot({
       auth,
