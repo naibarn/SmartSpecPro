@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /home/dev/projects/SmartSpecPro-spec224-d346-independent/apps/web
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  17:18:03
+   Duration  26.52s (transform 2.18s, setup 222ms, import 27ms, tests 26.18s, environment 0ms)
+
