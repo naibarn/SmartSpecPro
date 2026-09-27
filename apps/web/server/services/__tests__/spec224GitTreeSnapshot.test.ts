@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
   chmod,
@@ -17,6 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   assembleGitTreeAttestedSourceBundle,
   calculateGitTreeSourceManifestDigest,
+  createGitTreeSourceManifest,
   type GitTreeSourceManifest,
 } from "../spec224SourceBundle";
 import {
@@ -65,38 +65,11 @@ async function makeGitSource() {
   await chmod(join(root, "source", "bin", "run.sh"), 0o755);
   await execFileAsync("git", ["-C", root, "add", "source"]);
   await execFileAsync("git", ["-C", root, "commit", "-m", "snapshot fixture"]);
-  const { stdout } = await execFileAsync("git", [
-    "-C",
-    root,
-    "rev-parse",
-    "HEAD",
-  ]);
-  const sourceRevision = stdout.trim();
-  const files = await Promise.all(
-    ["bin/run.sh", "main.ts", "package.json", "pnpm-lock.yaml"].map(
-      async path => {
-        const absolute = join(root, "source", path);
-        const bytes = await readFile(absolute);
-        const mode = path.endsWith(".sh") ? 0o755 : 0o644;
-        return {
-          path,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-          sizeBytes: bytes.byteLength,
-          mode,
-        };
-      }
-    )
-  );
-  const base = {
-    schemaVersion: "spec224.git-tree-source-attestation.v1" as const,
-    sourceRevision,
+  const manifest: GitTreeSourceManifest = await createGitTreeSourceManifest({
+    repositoryRoot: root,
+    sourceRevision: "HEAD",
     treePath: "source",
-    files,
-  };
-  const manifest: GitTreeSourceManifest = {
-    ...base,
-    manifestDigest: calculateGitTreeSourceManifestDigest(base),
-  };
+  });
   return { root, manifest };
 }
 
@@ -177,6 +150,28 @@ describe("Spec 224 immutable Git-tree snapshot", () => {
         },
       })
     ).rejects.toThrow("SPEC224_BUNDLE_SOURCE_TREE_FILE_MISMATCH:main.ts");
+  });
+
+  it("rejects an executable-bit change from the attested Git tree", async () => {
+    const { root, manifest } = await makeGitSource();
+    const destination = join(root, "..", `mode-mismatch-bundle-${Date.now()}`);
+    temporaryRoots.push(destination);
+    await chmod(join(root, "source", "main.ts"), 0o755);
+    await expect(assembleGitTreeAttestedSourceBundle({
+      repositoryRoot: root,
+      sourceRoot: join(root, "source"),
+      destination,
+      sourceManifest: manifest,
+      sourceRevision: manifest.sourceRevision,
+      specDigest: "a".repeat(64),
+      closure: {
+        entryPaths: ["main.ts"],
+        dependencyArtifacts: ["pnpm-lock.yaml"],
+        workspaceManifestPaths: ["package.json"],
+        profileId: "spec224-source-only-test",
+        runtimeIdentity: { node: "22.22.0", packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      },
+    })).rejects.toThrow("SPEC224_BUNDLE_SOURCE_TREE_MODE_MISMATCH:main.ts");
   });
 
   it("materializes committed blob bytes and modes, not later working-tree edits", async () => {

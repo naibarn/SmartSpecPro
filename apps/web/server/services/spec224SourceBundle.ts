@@ -483,6 +483,41 @@ export function calculateGitTreeSourceManifestDigest(manifest: Omit<GitTreeSourc
   return sha256(canonicalJson(gitTreeManifestBase(manifest)));
 }
 
+/** Creates a complete source manifest from one immutable Git tree revision. */
+export async function createGitTreeSourceManifest(input: { repositoryRoot: string; sourceRevision: string; treePath: string }): Promise<GitTreeSourceManifest> {
+  const treePath = gitTreeRelativePath(input.treePath, true);
+  const sourceRevision = await gitText(input.repositoryRoot, ["rev-parse", "--verify", `${input.sourceRevision}^{commit}`], "SPEC224_GIT_TREE_SOURCE_REVISION_INVALID");
+  let entries: GitTreeEntry[];
+  try {
+    entries = parseGitTreeEntries(await runGit(input.repositoryRoot, ["ls-tree", "-rz", "--full-tree", sourceRevision, "--", treePath]), treePath);
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("SPEC224_GIT_TREE_")) throw error;
+    throw new Error("SPEC224_GIT_TREE_READ_FAILED");
+  }
+  if (!entries.length) throw new Error("SPEC224_GIT_TREE_MANIFEST_FILES_INVALID");
+  const files: GitTreeSourceFile[] = [];
+  for (const entry of entries) {
+    const bytes = await runGit(input.repositoryRoot, ["cat-file", "blob", entry.objectId]).catch(() => {
+      throw new Error("SPEC224_GIT_TREE_BLOB_READ_FAILED");
+    });
+    files.push({
+      path: entry.path,
+      sha256: sha256(bytes),
+      sizeBytes: bytes.byteLength,
+      mode: Number.parseInt(entry.mode, 8) & 0o777,
+    });
+  }
+  const base = {
+    schemaVersion: "spec224.git-tree-source-attestation.v1" as const,
+    sourceRevision,
+    treePath,
+    files,
+  };
+  const manifest = { ...base, manifestDigest: calculateGitTreeSourceManifestDigest(base) };
+  await attestGitTreeSourceManifest({ repositoryRoot: input.repositoryRoot, manifest });
+  return manifest;
+}
+
 function assertGitTreeManifest(manifest: GitTreeSourceManifest): void {
   if (manifest.schemaVersion !== "spec224.git-tree-source-attestation.v1" || !/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(manifest.sourceRevision) || !/^[a-f0-9]{64}$/i.test(manifest.manifestDigest))
     throw new Error("SPEC224_GIT_TREE_MANIFEST_INVALID");
@@ -1881,6 +1916,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.mode !== after.mode || bytes.byteLength !== after.size) throw new Error("SPEC224_BUNDLE_SOURCE_CHANGED_DURING_ASSEMBLY");
     const sourceTreeMode = input.sourceTreeFileModes?.get(filePath);
     if (sourceTreeMode !== undefined && sourceTreeMode !== 0o644 && sourceTreeMode !== 0o755) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_MODE_INVALID");
+    if (sourceTreeMode !== undefined && (before.mode & 0o111 ? 0o755 : 0o644) !== sourceTreeMode) throw new Error(`SPEC224_BUNDLE_SOURCE_TREE_MODE_MISMATCH:${filePath}`);
     content.push({ path: filePath, bytes, mode: sourceTreeMode ?? (before.mode & 0o777) });
   }
   const fileSet = new Set(files);
