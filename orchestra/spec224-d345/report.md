@@ -47,6 +47,12 @@ All cases asserted stable receipt/command correlation, persisted operation ID, e
 - `git diff --check`: PASS.
 - TypeScript typecheck: `SKIPPED_POLICY` per repository instruction.
 
+## Independent verification
+
+- Independent reviewer: read-only clean-context review of exact implementation commit `6aa34bc0b8b9c51ef986afdbcdbb1ba8b30434f6` — **PASS** for source transaction/ACK ordering, durable spool/replay, terminal duplicate handling, conflicting receipt audit, test-only failpoint isolation, and child-process SIGKILL design; no concrete defect found.
+- Reviewer independently reran focused Rust checks: **5/5 passed**.
+- Reviewer-side PostgreSQL/WSS rerun: **BLOCKED** because that isolated reviewer environment did not receive the disposable `DATABASE_URL`; no credentials were accessed. The four PostgreSQL/WSS crash runs reported above are the Lead's actual test evidence against this exact code tree before its implementation commit.
+
 ## Findings and limits
 
 - Confirmed defect: Runner completion receipts were previously sent from volatile process memory and were lost when WSS delivery/ACK failed or the Runner restarted. Added the durable local receipt spool and reconnect replay.
