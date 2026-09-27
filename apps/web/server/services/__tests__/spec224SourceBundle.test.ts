@@ -291,6 +291,25 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.closureComplete).toBe(false);
   });
 
+  it("treats __future__ imports as a Python built-in instead of an external package", async () => {
+    const root = await sourceFixture();
+    await mkdir(join(root, "python"), { recursive: true });
+    await writeFile(join(root, "python/main.py"), "from __future__ import annotations\nimport json\nvalue: str = \\\"ok\\\"\n");
+    await writeFile(join(root, "requirements.txt"), "");
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["python/main.py"],
+      dependencyArtifacts: ["requirements.txt"],
+      profileId: "python-future-builtin-test",
+      runtimeIdentity: { python: "3.12", packageManager: "pip" },
+    });
+
+    expect(closure.externalImports).not.toContain("__future__");
+    expect(closure.requiredExternalPackages).not.toContain("__future__");
+    expect(closure.closureComplete).toBe(true);
+  });
+
   it("records pyproject and uv lock package versions and integrity without claiming source completeness", async () => {
     const root = await sourceFixture();
     const digest = "a".repeat(64);
