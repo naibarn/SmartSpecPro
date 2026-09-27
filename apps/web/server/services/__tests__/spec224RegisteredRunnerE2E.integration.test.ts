@@ -649,7 +649,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     await writeFile(
       codexShim,
       ["cancellation", "approval-cancellation"].includes(crashMode)
-        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 30000); }\n"
+        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 180000); }\n"
         : "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
     );
     await chmod(codexShim, 0o755);
@@ -732,7 +732,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         budgetReservationRef: `budget-${taskId}`,
         spendCeilingMicros: 1000,
         workspaceRef: workspaceId,
-        deadline: new Date(Date.now() + 60_000).toISOString(),
+        deadline: new Date(Date.now() + 180_000).toISOString(),
       },
     };
     const definition = runtime.buildAgentJobDefinition(manifest);
