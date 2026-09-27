@@ -81,18 +81,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile --filter @smartspec/smartaihub-companion-extension...
       - name: Build and verify dashboard package
-        run: npm run package:web-dashboard --workspace @smartspec/marketplace-extension
+        run: pnpm --filter @smartspec/smartaihub-companion-extension run package:web-dashboard
       - name: Upload extension dashboard package
         uses: actions/upload-artifact@v4
         with:
           name: marketplace-extension-dashboard-package
-          path: apps/web/client/public/releases/smartaihub-marketplace-capture-extension-*.zip
+          path: apps/web/client/public/releases/smartaihub-companion-extension-*.zip
 
   smartspecweb:
     runs-on: ubuntu-latest
@@ -162,19 +167,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
       - name: Install desktop runtime dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev espeak ffmpeg
       - name: Install npm dependencies
-        run: npm install --legacy-peer-deps
+        run: pnpm install --frozen-lockfile
       - name: Run targeted Local AI tests
         run: |
-          npm run --workspace=@smartspec/web test -- \
+          pnpm --filter @smartspec/web run test -- \
             client/src/features/local-ai/adapters/browserLocalRuntime.test.ts \
             client/src/features/local-ai/voice/chatMicProvider.test.ts \
             client/src/features/local-ai/voice/localVoiceRuntime.test.ts \
@@ -182,7 +192,7 @@ jobs:
             client/src/features/local-ai/voice/localVoiceReadback.test.ts \
             server/services/__tests__/voiceActionResolver.test.ts
       - name: Build SmartSpecWeb local AI surfaces
-        run: npm run --workspace=@smartspec/web build
+        run: pnpm --filter @smartspec/web run build
       - name: Cargo check Tauri local AI runtime
         working-directory: apps/tauri-shell/src-tauri
         run: cargo check
@@ -196,13 +206,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
       - uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
       - name: Install dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
       - name: Turbo build + typecheck
-        run: npx turbo run build typecheck
+        run: pnpm exec turbo run build typecheck
 
   coverage_summary:
     runs-on: ubuntu-latest
@@ -253,9 +268,7 @@ jobs:
           python3 scripts/ci/tool_status_badge.py --in _cov/tool_status_snapshot.json --out _cov/badges/tool-status.json
           python3 scripts/ci/control_plane_runtime_badges.py --in _cov/control-plane/control_plane_policy_snapshot.json --outdir _cov/badges
           cat _cov/coverage_summary.md >> $GITHUB_STEP_SUMMARY
-          echo "
----
-Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSITORY" >> $GITHUB_STEP_SUMMARY
+          printf '%s\n' '---' "Badge tip: run python3 scripts/ci/update_readme_badges.py --repo $GITHUB_REPOSITORY" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload aggregated coverage summary + badges
         uses: actions/upload-artifact@v4

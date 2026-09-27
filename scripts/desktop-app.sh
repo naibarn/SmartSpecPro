@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DESKTOP_WORKSPACE="apps/tauri-shell"
-WEB_WORKSPACE="apps/web"
+DESKTOP_WORKSPACE="@smartspec/tauri-shell"
+WEB_WORKSPACE="@smartspec/web"
 WEB_URL="${SMARTSPEC_DESKTOP_WEB_URL:-http://localhost:3000}"
 BACKEND_HEALTH_URL="${SMARTSPEC_DESKTOP_BACKEND_HEALTH_URL:-http://localhost:8000/health}"
 PUBLIC_WEB_URL="${SMARTSPEC_DESKTOP_PUBLIC_URL:-${SMARTAIHUB_DESKTOP_PUBLIC_URL:-${VITE_SMARTAIHUB_WEB_URL:-${VITE_SMARTSPEC_WEB_URL:-${APP_PUBLIC_URL:-${PUBLIC_URL:-https://smartaihub.app}}}}}}"
@@ -24,6 +24,16 @@ warn() {
 fail() {
     echo "[desktop] ERROR: $1" >&2
     exit 1
+}
+
+run_pnpm() {
+    if command -v pnpm >/dev/null 2>&1; then
+        pnpm "$@"
+    elif command -v corepack >/dev/null 2>&1; then
+        corepack pnpm "$@"
+    else
+        fail "pnpm 10.4.1 (or Corepack) is required."
+    fi
 }
 
 usage() {
@@ -53,12 +63,14 @@ trap cleanup EXIT INT TERM
 
 ensure_desktop_prereqs() {
     command -v node >/dev/null 2>&1 || fail "Node.js is required."
-    command -v npm >/dev/null 2>&1 || fail "npm is required."
     command -v cargo >/dev/null 2>&1 || fail "Rust/Cargo is required."
+    if ! command -v pnpm >/dev/null 2>&1 && ! command -v corepack >/dev/null 2>&1; then
+        fail "pnpm 10.4.1 (or Corepack) is required."
+    fi
 
-    if [ ! -x "$ROOT/node_modules/.bin/tauri" ]; then
-        log "Installing npm dependencies at repo root..."
-        (cd "$ROOT" && npm install)
+    if [ ! -x "$ROOT/apps/tauri-shell/node_modules/.bin/tauri" ]; then
+        log "Installing pnpm workspace dependencies from the frozen lockfile..."
+        (cd "$ROOT" && run_pnpm install --frozen-lockfile)
     fi
 }
 
@@ -96,7 +108,7 @@ ensure_web_dev_server() {
     log "Starting SmartSpec Web dev server at $WEB_URL..."
     (
         cd "$ROOT"
-        npm --workspace "$WEB_WORKSPACE" run dev
+        run_pnpm --filter "$WEB_WORKSPACE" run dev
     ) &
     WEB_PID=$!
 
@@ -118,7 +130,7 @@ cmd_dev() {
     log "Launching Tauri desktop shell..."
     (
         cd "$ROOT"
-        npm --workspace "$DESKTOP_WORKSPACE" run tauri:dev
+        run_pnpm --filter "$DESKTOP_WORKSPACE" run tauri:dev
     )
 }
 
@@ -141,7 +153,7 @@ cmd_info() {
 
     (
         cd "$ROOT"
-        npm --workspace "$DESKTOP_WORKSPACE" run tauri info
+        run_pnpm --filter "$DESKTOP_WORKSPACE" exec tauri info
     )
 }
 

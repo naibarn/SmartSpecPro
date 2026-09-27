@@ -21,7 +21,7 @@ fi
 
 if [ -f package-lock.json ]; then
   if [ "$PKG" = "apps/web" ]; then
-    npm ci --legacy-peer-deps
+    npm ci --legacy-peer-deps --workspaces=false
   else
     npm ci
   fi

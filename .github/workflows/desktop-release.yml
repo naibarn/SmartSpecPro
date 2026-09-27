@@ -80,11 +80,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22.22.3"
-          cache: "npm"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
@@ -140,7 +145,7 @@ jobs:
           ffprobe -version
 
       - name: Install npm dependencies
-        run: npm install --legacy-peer-deps
+        run: pnpm install --frozen-lockfile
 
       - name: Set desktop bundle version
         run: node scripts/set-desktop-version.mjs --version "${{ github.event.inputs.tag || github.ref_name }}"
