@@ -64,5 +64,6 @@ async function main() {
 main().catch(async () => {
   console.error("JTI revocation transfer failed; no raw token identifiers or connection details were logged");
   try { if (redis.isOpen) await redis.quit(); } catch {}
+  try { await getDb().$client.end({ timeout: 5 }); } catch {}
   process.exitCode = 1;
 });
