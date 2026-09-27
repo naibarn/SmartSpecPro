@@ -2,9 +2,9 @@
 
 Goal: recover persisted terminal Runner receipts into canonical DevelopmentRun state after process interruption without duplicate side effects.
 Scope/risk: medium/high.
-Current stage: REVIEW
-Resume from: REVIEW
-Stop reason: implementation complete; focused verification passed; broader certification remains deferred
+Current stage: FINAL_VERIFY
+Resume from: FINAL_VERIFY
+Stop reason: implementation committed and focused verification passed; independent/full certification remains deferred
 Mandatory stages: PLANNING, TDD_DESIGN, IMPLEMENT, VERIFY, DEBUG_FIX, REVIEW, FINAL_VERIFY
 
 Stage ledger:
@@ -28,10 +28,11 @@ Stage ledger:
     status: COMPLETE
     exit_evidence: Fixed persisted receipt-type mismatch and concurrent settlement deadlock found by PostgreSQL tests.
   - stage: REVIEW
-    status: IN_PROGRESS
-    next_action: Review scoped diff and finalize D3.43 commit.
+    status: COMPLETE
+    exit_evidence: Scoped diff reviewed, `git diff --cached --check` passed, and implementation commit d345807d9 contains only D3.43 files.
   - stage: FINAL_VERIFY
     status: PENDING
+    next_action: Later consolidated campaign: independently verify exact commit d345807d9, WebSocket ACK behavior, full crash/restart matrix, and broader tenant/session/fencing negatives.
 
 Gap ledger:
   - gap_id: GAP-1
