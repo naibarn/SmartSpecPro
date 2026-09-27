@@ -47,6 +47,20 @@ All cases asserted stable receipt/command correlation, persisted operation ID, e
 - `git diff --check`: PASS.
 - TypeScript typecheck: `SKIPPED_POLICY` per repository instruction.
 
+Focused commands (the disposable runtime URL is intentionally redacted):
+
+```sh
+SPEC224_BASELINE_DATABASE_URL=<isolated-migration-role-url> pnpm --filter @smartspec/web exec drizzle-kit migrate --config drizzle.spec224-baseline.config.ts
+NODE_ENV=test RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=<isolated-non-superuser-runtime-url> JWT_SECRET=<disposable-test-secret> SPEC224_RUNNER_CRASH_CASE={disconnect-before-ack|lost-ack-resend|sigkill-after-persist|sigkill-after-ack} FEATURE_186_HARD_CUTOVER=true pnpm --filter @smartspec/web exec vitest run server/services/__tests__/spec224RegisteredRunnerE2E.integration.test.ts
+NODE_ENV=test RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=<isolated-non-superuser-runtime-url> JWT_SECRET=<disposable-test-secret> FEATURE_186_HARD_CUTOVER=true pnpm --filter @smartspec/web exec vitest run server/services/__tests__/spec224RunnerContinuationPostgres.integration.test.ts
+NODE_ENV=test JWT_SECRET=<disposable-test-secret> pnpm --filter @smartspec/web exec vitest run server/services/__tests__/jobControlPlane.test.ts -t 'fences external-agent receipts to the persisted attempt, lease and fence|persists a stable Spec 224 continuation intent with a terminal Runner receipt'
+NODE_ENV=test RUN_DB_INTEGRATION_TESTS=true DATABASE_URL=<isolated-non-superuser-runtime-url> JWT_SECRET=<disposable-test-secret> FEATURE_186_HARD_CUTOVER=true pnpm --filter @smartspec/web exec vitest run server/services/__tests__/spec224PostgresIntegration.integration.test.ts -t 'persists outbox, survives a fresh process, fences receipts, and settles once'
+cargo build --locked --offline --bin smartaihub-runner
+cargo test --locked --offline journal::tests -- --nocapture
+cargo test --locked --offline persisted_receipt_replays_after_transport_loss -- --nocapture
+rustfmt --edition 2021 --check src/journal.rs src/diagnostics.rs src/transport.rs
+```
+
 ## Independent verification
 
 - Independent reviewer: read-only clean-context review of exact implementation commit `6aa34bc0b8b9c51ef986afdbcdbb1ba8b30434f6` — **PASS** for source transaction/ACK ordering, durable spool/replay, terminal duplicate handling, conflicting receipt audit, test-only failpoint isolation, and child-process SIGKILL design; no concrete defect found.
