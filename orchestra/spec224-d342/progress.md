@@ -7,5 +7,7 @@
 - Test command: `JWT_SECRET=spec224-d342-test-jwt-secret-32-chars-minimum pnpm exec vitest run server/services/__tests__/runnerJobCommandContracts.test.ts server/services/__tests__/jobControlPlane.test.ts server/routes/__tests__/runnerControl.test.ts server/services/__tests__/externalAgentRunnerDispatcher.test.ts server/services/__tests__/spec224DevelopmentRunIntegration.test.ts` from `apps/web`.
 - Result: 5 files / 84 tests passed; exit code 0.
 - `git diff --check`: PASS. TypeScript typecheck: SKIPPED_POLICY.
+- Implementation commit: `ffc4638d2` (`fix(runner): gate receipt ack on durable persistence`).
+- Post-commit verification: branch HEAD matches the implementation commit; scoped worktree clean before this checkpoint update.
 - Loop policy: max 3 repair attempts; no external/provider/production action.
 - Remaining proof: PostgreSQL concurrency/restart, actual registered Runner, interrupted semantic-handshake recovery, and live/provider admission remain deferred/blocked.

@@ -4,6 +4,8 @@
 
 Implemented the bounded receipt durability slice on isolated branch `codex/spec224-d342-runner-prep`, based on D3.41 checkpoint commit `3664d26d402b20d2ae777047b917bddede8bd6c4`. The slice uses existing `worker_jobs` and `worker_job_events`; it adds no queue, ledger, approval authority, schema, or migration. Status: `IMPLEMENTED_UNVERIFIED`.
 
+Implementation commit: `ffc4638d2` (`fix(runner): gate receipt ack on durable persistence`).
+
 ## Runner contract/adapter changes
 
 - Receipt ACK now follows canonical persistence. A failed DB write leaves the per-channel cursor unchanged so the Runner can retry.

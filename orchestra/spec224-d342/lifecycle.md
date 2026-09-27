@@ -35,8 +35,8 @@ Stage ledger:
     status: COMPLETE
     exit_evidence: Conductor performed a separate diff/source review; no subagent runtime was available.
   - stage: FINAL_VERIFY
-    status: IN_PROGRESS
-    next_action: Capture final hashes, commit scoped paths, verify clean worktree.
+    status: COMPLETE
+    exit_evidence: Implementation commit ffc4638d2; focused 84/84 pass; diff check pass; post-commit scoped worktree clean.
 
 Gap ledger:
   - gap_id: GAP-1
@@ -59,4 +59,4 @@ Completion invariants:
   no_open_must_do_gap: true
   no_stale_required_gate: true
   review_converged: true
-  final_verify_fresh: false
+  final_verify_fresh: true
