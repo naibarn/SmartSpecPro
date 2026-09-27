@@ -68,7 +68,7 @@ export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
 
 type ControlPlane = Pick<
   JobControlPlane,
-  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "recordSpec224ApprovalDelivery"
+  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "requestCancel" | "recordSpec224ApprovalDelivery"
 >;
 
 export type Spec224ApprovalContinuationDeps = {
@@ -86,7 +86,8 @@ export type Spec224ApprovalContinuationResult =
   | "failed"
   | "duplicate"
   | "ignored"
-  | "operator_review";
+  | "operator_review"
+  | "cancel_requested";
 
 function assertText(value: unknown, field: string): asserts value is string {
   if (typeof value !== "string" || !value.trim() || value.length > 255)
@@ -399,7 +400,20 @@ export function createSpec224ApprovalContinuation(
       const eventCorrelation = parseSpec224ExternalApprovalPayload(event.correlation);
       if (!eventCorrelation || !sameCorrelation(correlation, eventCorrelation)) return "operator_review";
       let result: Spec224ApprovalContinuationResult;
-      if (record.status === "expired" || record.status === "cancelled") {
+      if (record.status === "cancelled") {
+        if (event.decision !== "cancelled" || event.actorId !== correlation.requesterId)
+          return "operator_review";
+        const runnerCancellationPending = await deps.controlPlane.requestCancel(
+          correlation.jobId,
+          "approval_request_cancelled",
+          deliveryId,
+          correlation.requesterId,
+          { tenantId: correlation.tenantId, requestedByUserId: correlation.requesterId },
+        );
+        if (!runnerCancellationPending)
+          return "operator_review";
+        result = "cancel_requested";
+      } else if (record.status === "expired") {
         const terminalDelivery = {
           jobId: correlation.jobId,
           tenantId: correlation.tenantId,
@@ -413,7 +427,7 @@ export function createSpec224ApprovalContinuation(
         };
         const failed = await deps.controlPlane.failExternalWait(
           correlation.jobId,
-          record.status === "expired" ? "SPEC224_APPROVAL_EXPIRED" : "SPEC224_APPROVAL_CANCELLED",
+          "SPEC224_APPROVAL_EXPIRED",
           true,
           now(),
           correlation.operationKey,

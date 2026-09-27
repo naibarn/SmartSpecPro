@@ -1140,6 +1140,124 @@ describe("job control plane", () => {
     ).toHaveLength(1);
   });
 
+  it("keeps an external cancellation pending until its exact dispatched Runner ACK is persisted", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    state.jobs.get(created.jobId).inputJson = {
+      spec224Run: { runId: "run-cancel-1", tenantId: definition.tenantId, actorId: definition.requestedByUserId },
+    };
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-operation-1",
+      resumeAfter: "9999-12-31T00:00:00.000Z",
+      metadata: {
+        commandId: "execute-1", runnerId: "runner-a", runnerSessionId: "session-a",
+        leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+        commandTemplate: {
+          commandId: "execute-1", commandType: "execute", tenantId: definition.tenantId,
+          leaseId: "lease-a", fenceVersion: lease!.fencingVersion, runnerId: "runner-a",
+          runnerSessionId: "session-a", capabilitySnapshotId: "capability-semantic-a",
+          capabilitySnapshotRevision: "revision-a", controlPlaneOrigin: "https://control.example",
+          executionKind: "external_agent_task", adapterId: "codex.v1", deadline: "9999-12-31T00:00:00.000Z",
+          authEvidenceRef: "grant-ref", inputRef: "input-ref",
+        },
+      },
+    });
+
+    await expect(controlPlane.requestCancel(created.jobId, "owner_cancelled")).resolves.toBe(true);
+    const pendingJob = state.jobs.get(created.jobId);
+    const intent = state.events.find(event => event.eventType === "RUNNER_CANCEL_INTENT")!;
+    expect(pendingJob.status).toBe("waiting_external");
+    expect(pendingJob.fencingVersion).toBe(lease!.fencingVersion);
+    expect((intent.payloadJson as any).command.leaseId).toBe("lease-a");
+    await expect(controlPlane.reconcileCancellationRequest(created.jobId)).resolves.toBe("pending");
+
+    const intentPayload = intent.payloadJson as any;
+    state.events.push({
+      workerJobId: created.jobId, eventType: "RUNNER_CANCEL_DISPATCHED",
+      eventIdempotencyKey: `runner-cancel:${intentPayload.operationId}:dispatched`, payloadJson: {},
+    } as any);
+    const receiptBase = {
+      jobId: created.jobId, commandId: intentPayload.command.commandId,
+      runnerId: "runner-a", runnerSessionId: "session-a", tenantId: definition.tenantId,
+      payload: {
+        cancellationOperationId: intentPayload.operationId,
+        targetCommandId: "execute-1", attempt: 1, leaseId: "lease-a",
+        fenceVersion: lease!.fencingVersion, capabilitySnapshotId: "capability-semantic-a",
+        capabilitySnapshotRevision: "revision-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt({
+      ...receiptBase, eventId: "cancel-event-1", eventType: "COMMAND_RECEIVED", sequence: 1,
+      payload: { ...receiptBase.payload, status: "received" },
+    })).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt({
+      ...receiptBase, eventId: "cancel-event-2", eventType: "COMMAND_ACCEPTED", sequence: 2,
+      payload: { ...receiptBase.payload, status: "accepted" },
+    })).resolves.toBe("recorded");
+    const receipt = {
+      ...receiptBase, eventId: "cancel-event-3", eventType: "CANCEL_ACKNOWLEDGED", sequence: 3,
+      payload: { ...receiptBase.payload, status: "cancelled" },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("duplicate");
+    expect(state.jobs.get(created.jobId).status).toBe("cancelled");
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(1);
+    expect(state.events.filter(event => event.eventType === "RUNNER_CANCEL_ACKNOWLEDGED")).toHaveLength(1);
+    expect(state.events.filter(event => event.eventType === "SPEC224_CONTINUATION_PENDING")).toHaveLength(1);
+  });
+
+  it("fails closed to operator review when a cancellation receipt reports an unknown outcome", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, idempotencyKey: undefined });
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "runner-a", adapter: "test" });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "runner-operation-unknown",
+      resumeAfter: "9999-12-31T00:00:00.000Z",
+      metadata: {
+        commandId: "execute-unknown", runnerId: "runner-a", runnerSessionId: "session-a",
+        leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+        commandTemplate: {
+          commandId: "execute-unknown", commandType: "execute", tenantId: definition.tenantId,
+          leaseId: "lease-a", fenceVersion: lease!.fencingVersion, runnerId: "runner-a",
+          runnerSessionId: "session-a", capabilitySnapshotId: "capability-semantic-a",
+          capabilitySnapshotRevision: "revision-a", controlPlaneOrigin: "https://control.example",
+          executionKind: "external_agent_task", adapterId: "codex.v1", deadline: "9999-12-31T00:00:00.000Z",
+          authEvidenceRef: "grant-ref", inputRef: "input-ref",
+        },
+      },
+    });
+    await controlPlane.requestCancel(created.jobId, "owner_cancelled");
+    const intent = state.events.find(event => event.eventType === "RUNNER_CANCEL_INTENT")!;
+    const intentPayload = intent.payloadJson as any;
+    state.events.push({
+      workerJobId: created.jobId, eventType: "RUNNER_CANCEL_DISPATCHED",
+      eventIdempotencyKey: `runner-cancel:${intentPayload.operationId}:dispatched`, payloadJson: {},
+    } as any);
+    const receipt = {
+      jobId: created.jobId, commandId: intentPayload.command.commandId,
+      eventId: "cancel-unknown-1", eventType: "UNKNOWN_OUTCOME", sequence: 1,
+      runnerId: "runner-a", runnerSessionId: "session-a", tenantId: definition.tenantId,
+      payload: {
+        status: "unknown", cancellationOperationId: intentPayload.operationId,
+        targetCommandId: "execute-unknown", leaseId: "lease-a", fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "capability-semantic-a", capabilitySnapshotRevision: "revision-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("recorded");
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe("duplicate");
+    expect(state.jobs.get(created.jobId).status).toBe("failed");
+    expect(state.jobs.get(created.jobId).operatorReviewRequired).toBe(true);
+    expect(state.events.filter(event => event.eventType === "CANCELLED")).toHaveLength(0);
+    expect(state.events.filter(event => event.eventType === "RUNNER_CANCELLATION_REVIEW_REQUIRED")).toHaveLength(1);
+  });
+
   it("treats an already-recorded cancellation request as an idempotent cancel", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

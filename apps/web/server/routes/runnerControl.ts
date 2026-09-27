@@ -597,6 +597,23 @@ export async function dispatchRunnerJobCommand(
       409,
       "Runner command lease fence is stale"
     );
+  if (command.commandType === "cancel") {
+    const externalWait = jobStatus.progress?.externalWait;
+    const metadata = externalWait?.metadata ?? {};
+    const cancelMismatch = !jobStatus.errorMessage?.startsWith("cancel_requested:") ? "RUNNER_CANCEL_INTENT_MISSING"
+      : externalWait?.operationKey === undefined ? "RUNNER_CANCEL_EXTERNAL_WAIT_MISSING"
+        : metadata.commandId !== command.payload.targetCommandId ? "RUNNER_CANCEL_TARGET_STALE"
+          : metadata.runnerId !== command.runnerId || metadata.runnerSessionId !== command.runnerSessionId ? "RUNNER_CANCEL_SESSION_STALE"
+            : metadata.capabilitySnapshotId !== command.capabilitySnapshotId || metadata.capabilitySnapshotRevision !== command.capabilitySnapshotRevision ? "RUNNER_CANCEL_CAPABILITY_STALE"
+              : command.payload.cancellationOperationId !== command.idempotencyKey.replace("spec224-cancel:", "") ? "RUNNER_CANCEL_OPERATION_MISMATCH"
+                : null;
+    if (cancelMismatch)
+      throw new RunnerAuthError(
+        cancelMismatch,
+        409,
+        "Runner cancellation no longer matches the canonical job intent"
+      );
+  }
   const fingerprint = JSON.stringify(command);
   const sent = channel.sentCommands.get(command.commandId);
   if (sent) {
@@ -887,7 +904,9 @@ export async function handleRunnerSocketMessage(
           await controlPlane.failExternalWait(
             receipt.jobId,
             receipt.errorCode ?? receipt.eventType,
-            receipt.eventType === "UNKNOWN_OUTCOME",
+            receipt.eventType === "UNKNOWN_OUTCOME" ||
+              (receipt.payload?.cancellationOperationId !== undefined &&
+                receipt.eventType === "COMMAND_REJECTED"),
             new Date(),
             operationKey
           );

@@ -42,6 +42,7 @@ import {
   type AuthenticatedJobCallback,
 } from "./jobControlPlaneTypes";
 import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionWorker";
+import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
@@ -2034,7 +2035,7 @@ export type Spec224ApprovalDeliveryReceiptInput = {
   deliveryId: string;
   decisionEpoch: number;
   payloadDigest: string;
-  result: "resumed" | "failed" | "duplicate" | "operator_review";
+  result: "resumed" | "failed" | "duplicate" | "operator_review" | "cancel_requested";
   acknowledged?: boolean;
 };
 
@@ -3468,19 +3469,55 @@ export function createJobControlPlane(
       actionId?: string,
       actorId?: number,
       scope?: JobMutationScope
-    ): Promise<void> {
+    ): Promise<boolean> {
       if (actionId !== undefined) validateActionId(actionId);
       const safeReason = sanitizeJobErrorMessage(
         reason,
         2000,
         "cancelled_by_request"
       );
-      await repository.transaction(async repo => {
+      return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         assertJobMutationScope(job, scope);
+        if (!job)
+          throw new JobControlPlaneError("JOB_NOT_FOUND", "Job was not found");
         const keyPrefix = actionId
           ? `operator:${actionId}`
-          : `cancel:${jobId}:${job?.attempt ?? 0}`;
+          : `cancel:${jobId}:${job.attempt}`;
+        const requestEventKey = `cancel:${jobId}:${job.attempt}:requested`;
+        const previousRequest = await repo.findEventByIdempotency(
+          jobId,
+          requestEventKey
+        );
+        if (previousRequest)
+          return previousRequest.payloadJson?.runnerCancellationRequired === true;
+
+        const progress =
+          job.progressJson && typeof job.progressJson === "object" && !Array.isArray(job.progressJson)
+            ? job.progressJson as Record<string, unknown>
+            : {};
+        const externalWait =
+          progress.externalWait && typeof progress.externalWait === "object" && !Array.isArray(progress.externalWait)
+            ? progress.externalWait as Record<string, unknown>
+            : {};
+        const metadata =
+          externalWait.metadata && typeof externalWait.metadata === "object" && !Array.isArray(externalWait.metadata)
+            ? externalWait.metadata as Record<string, unknown>
+            : {};
+        const commandTemplate =
+          metadata.commandTemplate && typeof metadata.commandTemplate === "object" && !Array.isArray(metadata.commandTemplate)
+            ? metadata.commandTemplate as Record<string, unknown>
+            : null;
+        const operationKey = typeof externalWait.operationKey === "string" ? externalWait.operationKey : null;
+        let cancellation: ReturnType<typeof buildRunnerCancellationCommand> | null = null;
+        if (commandTemplate && operationKey && ["running", "waiting_external"].includes(job.status)) {
+          cancellation = buildRunnerCancellationCommand({ job, operationKey, template: commandTemplate });
+        }
+        if (operationKey && ["running", "waiting_external"].includes(job.status) && !cancellation)
+          throw new JobControlPlaneError(
+            "RUNNER_CANCEL_BINDING_REQUIRED",
+            "An external operation cannot be cancelled without its persisted Runner command binding"
+          );
         if (actionId && job) {
           const existingAction = await repo.findAction(actionId);
           if (
@@ -3494,12 +3531,9 @@ export function createJobControlPlane(
               "Action key was already used for another command or target"
             );
           }
-          if (existingAction) return;
+          if (existingAction) return cancellation !== null;
         }
-        if (await repo.findEventByIdempotency(jobId, `${keyPrefix}:requested`))
-          return;
         if (
-          !job ||
           ["succeeded", "failed", "cancelled", "expired"].includes(job.status)
         ) {
           throw new JobControlPlaneError(
@@ -3519,7 +3553,7 @@ export function createJobControlPlane(
             job,
           }))
         )
-          return;
+          return false;
         const updated = await repo.updateJob({
           jobId,
           expectedStatus: job.status,
@@ -3528,8 +3562,7 @@ export function createJobControlPlane(
           expectedAttempt: job.attempt,
           values: {
             statusReason: `cancel_requested:${safeReason}`,
-            leaseOwnerToken: null,
-            leaseExpiresAt: null,
+            ...(cancellation ? {} : { leaseOwnerToken: null, leaseExpiresAt: null }),
           },
         });
         if (!updated)
@@ -3550,19 +3583,63 @@ export function createJobControlPlane(
               targetStatus: job.status,
             },
           });
+        const attempt = await repo.findAttempt(jobId, job.attempt);
         await repo.insertEvent({
           workerJobId: jobId,
           eventType: "CANCEL_REQUESTED",
-          attemptId: (await repo.findAttempt(jobId, job.attempt))?.id,
-          eventIdempotencyKey: `${keyPrefix}:requested`,
-          payloadJson: { reason: safeReason.slice(0, 500), actionId, actorId },
+          attemptId: attempt?.id,
+          eventIdempotencyKey: requestEventKey,
+          payloadJson: {
+            reason: safeReason.slice(0, 500),
+            actionId,
+            actorId,
+            runnerCancellationRequired: cancellation !== null,
+            ...(cancellation ? {
+              cancellationOperationId: cancellation.operationId,
+              targetCommandId: cancellation.command.payload.targetCommandId,
+            } : {}),
+          },
         });
+        if (cancellation) {
+          await repo.insertEvent({
+            workerJobId: jobId,
+            eventType: "RUNNER_CANCEL_INTENT",
+            attemptId: attempt?.id,
+            eventIdempotencyKey: `runner-cancel:${cancellation.operationId}:intent`,
+            payloadJson: {
+              schemaVersion: "runner-cancellation.v1",
+              operationId: cancellation.operationId,
+              tenantId: job.tenantId,
+              workerJobId: job.id,
+              attempt: job.attempt,
+              fencingVersion: job.fencingVersion,
+              originalOperationKey: operationKey,
+              cancellationRequestEventKey: requestEventKey,
+              targetCommandId: cancellation.command.payload.targetCommandId,
+              command: cancellation.command as unknown as Record<string, unknown>,
+              actorId,
+            },
+          });
+          await repo.insertOutbox({
+            workerJobId: jobId,
+            attemptId: attempt?.id ?? null,
+            envelopeVersion: "runner-cancel-v1",
+            envelopeJson: {
+              kind: "runner.cancel.v1",
+              operationId: cancellation.operationId,
+              command: cancellation.command as unknown as Record<string, unknown>,
+            },
+            dedupeKey: `runner-cancel:${cancellation.operationId}`,
+            nextAttemptAt: new Date(),
+          });
+        }
         if (actionId)
           await finishOperatorAction(repo, actionId, {
             accepted: true,
             phase: "requested",
             jobId,
           });
+        return cancellation !== null;
       });
     },
 
@@ -3646,7 +3723,7 @@ export function createJobControlPlane(
 
     async reconcileCancellationRequest(
       jobId: string
-    ): Promise<"finalized" | "ignored"> {
+    ): Promise<"finalized" | "pending" | "ignored"> {
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (!job || job.status === "cancelled") return "ignored";
@@ -3654,6 +3731,12 @@ export function createJobControlPlane(
           return "ignored";
         if (["succeeded", "failed", "expired"].includes(job.status))
           return "ignored";
+        const requestEvent = await repo.findEventByIdempotency(
+          jobId,
+          `cancel:${jobId}:${job.attempt}:requested`
+        );
+        if (requestEvent?.payloadJson?.runnerCancellationRequired === true)
+          return "pending";
         const reason =
           job.statusReason.slice("cancel_requested:".length).slice(0, 2000) ||
           "cancelled_by_request";
@@ -3704,7 +3787,10 @@ export function createJobControlPlane(
       scope?: JobMutationScope
     ): Promise<void> {
       try {
-        await this.requestCancel(jobId, reason, actionId, actorId, scope);
+        const runnerCancellationRequired = await this.requestCancel(
+          jobId, reason, actionId, actorId, scope
+        );
+        if (runnerCancellationRequired) return;
       } catch (error) {
         if (
           !(error instanceof JobControlPlaneError) ||
@@ -4623,6 +4709,22 @@ export function createJobControlPlane(
           runnerId: input.runnerId,
           runnerSessionId: input.runnerSessionId,
         };
+        const rejectCancellationReceipt = async (reason: string) => {
+          await repo.insertEvent({
+            workerJobId: input.jobId,
+            eventType: "RUNNER_CANCEL_RECEIPT_REJECTED",
+            eventIdempotencyKey: boundedEventKey("runner-cancel-receipt-rejected", input.commandId, input.eventId, reason),
+            payloadJson: {
+              schemaVersion: "runner-cancellation-rejection.v1",
+              tenantId: input.tenantId,
+              commandId: input.commandId,
+              receiptEventId: input.eventId,
+              eventType: input.eventType,
+              reason,
+            },
+          });
+          return "ignored" as const;
+        };
         // A Runner may replay an exact receipt after settlement when the ACK
         // was lost. The original event and its continuation intent were
         // committed atomically, so acknowledge only an exact persisted match
@@ -4667,6 +4769,224 @@ export function createJobControlPlane(
             },
           });
           return "ignored";
+        }
+        const cancellationOperationId = input.payload?.cancellationOperationId;
+        const targetCommandId = input.payload?.targetCommandId;
+        if (
+          (typeof cancellationOperationId === "string" && typeof targetCommandId === "string") ||
+          ["CANCEL_ACKNOWLEDGED", "UNKNOWN_OUTCOME", "COMMAND_REJECTED"].includes(input.eventType)
+        ) {
+          if (input.eventType === "CANCEL_ACKNOWLEDGED" && (typeof cancellationOperationId !== "string" || typeof targetCommandId !== "string"))
+            return rejectCancellationReceipt("cancellation_correlation_missing");
+          if (typeof cancellationOperationId === "string" && typeof targetCommandId === "string") {
+            const intentKey = `runner-cancel:${cancellationOperationId}:intent`;
+            const intent = await repo.findEventByIdempotency(input.jobId, intentKey);
+            const intentPayload = intent?.payloadJson;
+            const command = intentPayload?.command as Record<string, any> | undefined;
+            const intentAttempt = intentPayload?.attempt;
+            const intentFence = intentPayload?.fencingVersion;
+            const operationKey = intentPayload?.originalOperationKey;
+            if (
+              intent?.eventType !== "RUNNER_CANCEL_INTENT" ||
+              intentPayload?.operationId !== cancellationOperationId ||
+              intentPayload?.tenantId !== input.tenantId ||
+              intentPayload?.workerJobId !== input.jobId ||
+              intentAttempt !== initialJob.attempt ||
+              intentFence !== initialJob.fencingVersion ||
+              command?.commandId !== input.commandId ||
+              command?.runnerId !== input.runnerId ||
+              command?.runnerSessionId !== input.runnerSessionId ||
+              command?.payload?.targetCommandId !== targetCommandId ||
+              command?.payload?.cancellationOperationId !== cancellationOperationId ||
+              typeof operationKey !== "string" ||
+              input.eventType === "CANCEL_ACKNOWLEDGED" && input.payload?.status !== "cancelled"
+            ) return rejectCancellationReceipt("cancel_intent_or_binding_mismatch");
+            await repo.lockRunnerReceiptStream(input.jobId, operationKey);
+            const job = await repo.findJob(input.jobId);
+            if (!job || job.tenantId !== input.tenantId || job.attempt !== intentAttempt || job.fencingVersion !== intentFence)
+              return rejectCancellationReceipt("canonical_job_fence_mismatch");
+            const progress = job.progressJson && typeof job.progressJson === "object"
+              ? job.progressJson as { externalWait?: { operationKey?: unknown; metadata?: Record<string, unknown> } }
+              : {};
+            const metadata = progress.externalWait?.metadata ?? {};
+            if (
+              progress.externalWait?.operationKey !== operationKey ||
+              metadata.commandId !== targetCommandId ||
+              metadata.runnerId !== input.runnerId ||
+              metadata.runnerSessionId !== input.runnerSessionId ||
+              metadata.capabilitySnapshotId !== command.capabilitySnapshotId ||
+              metadata.capabilitySnapshotRevision !== command.capabilitySnapshotRevision
+            ) return rejectCancellationReceipt("original_execution_binding_mismatch");
+            const requestEventKey = intentPayload?.cancellationRequestEventKey;
+            const requestEvent = typeof requestEventKey === "string"
+              ? await repo.findEventByIdempotency(input.jobId, requestEventKey)
+              : null;
+            const dispatch = await repo.findEventByIdempotency(
+              input.jobId,
+              `runner-cancel:${cancellationOperationId}:dispatched`
+            );
+            if (
+              requestEvent?.payloadJson?.runnerCancellationRequired !== true ||
+              requestEvent.payloadJson.cancellationOperationId !== cancellationOperationId ||
+              dispatch && dispatch.eventType !== "RUNNER_CANCEL_DISPATCHED" ||
+              !job.statusReason?.startsWith("cancel_requested:")
+            ) return rejectCancellationReceipt("request_or_dispatch_state_mismatch");
+            // A fast Runner may return its receipt before the outbox publisher
+            // commits the HTTP-accepted dispatch event. The authenticated
+            // receipt is itself durable proof that delivery occurred; close
+            // that narrow response/commit race under the same operation lock.
+            if (!dispatch) await repo.insertEvent({
+              workerJobId: job.id,
+              eventType: "RUNNER_CANCEL_DISPATCHED",
+              attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+              eventIdempotencyKey: `runner-cancel:${cancellationOperationId}:dispatched`,
+              payloadJson: { schemaVersion: "runner-cancellation-delivery.v1", operationId: cancellationOperationId, commandId: input.commandId, targetCommandId, runnerId: input.runnerId, runnerSessionId: input.runnerSessionId, dispatchStatus: "receipt_confirmed" },
+            });
+            const prior = await repo.findEventByIdempotency(input.jobId, eventKey);
+            if (prior) {
+              if (prior.eventType === eventType && isDeepStrictEqual(prior.payloadJson, receiptPayload)) return "duplicate";
+              await repo.insertEvent({
+                workerJobId: job.id,
+                eventType: "RUNNER_RECEIPT_CONFLICT",
+                attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+                eventIdempotencyKey: boundedEventKey("runner-cancel-conflict", input.commandId, input.eventId),
+                payloadJson: { schemaVersion: "runner-cancel-conflict.v1", tenantId: input.tenantId, commandId: input.commandId, eventId: input.eventId, acceptedEventType: prior.eventType, conflictingEventType: eventType },
+              });
+              return "ignored";
+            }
+            const persistCancellationReceipt = async () => repo.insertEvent({
+              workerJobId: job.id,
+              eventType,
+              attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+              eventIdempotencyKey: eventKey,
+              payloadJson: receiptPayload,
+            });
+            if (input.eventType !== "CANCEL_ACKNOWLEDGED") {
+              if (["UNKNOWN_OUTCOME", "COMMAND_REJECTED"].includes(input.eventType)) {
+                const reviewReason = input.eventType === "UNKNOWN_OUTCOME"
+                  ? "runner_cancellation_outcome_unknown"
+                  : "runner_cancellation_not_confirmed";
+                const reviewUpdate = await repo.updateJob({
+                  jobId: job.id,
+                  expectedStatus: job.status,
+                  expectedTenantId: input.tenantId,
+                  expectedAttempt: job.attempt,
+                  expectedFencingVersion: job.fencingVersion,
+                  values: {
+                    status: "failed",
+                    statusReason: "runner_cancellation_review_required",
+                    failureReason: reviewReason,
+                    errorCode: "RUNNER_CANCELLATION_REVIEW_REQUIRED",
+                    errorMessage: reviewReason,
+                    operatorReviewRequired: true,
+                    finishedAt: new Date(),
+                    leaseOwnerToken: null,
+                    leaseExpiresAt: null,
+                  },
+                });
+                if (!reviewUpdate) return rejectCancellationReceipt("review_state_compare_and_swap_failed");
+                await persistCancellationReceipt();
+                const failedAttempt = await repo.findAttempt(job.id, job.attempt);
+                if (failedAttempt) await repo.updateAttempt({
+                  attemptId: failedAttempt.id,
+                  values: { finishedAt: new Date(), terminalClass: "failed", recoveryReason: reviewReason },
+                });
+                await repo.cancelUnpublishedOutbox({
+                  jobId: job.id,
+                  reason: "failed:runner_cancellation_review_required",
+                  cancelledAt: new Date(),
+                });
+                await repo.insertEvent({
+                  workerJobId: job.id,
+                  eventType: "RUNNER_CANCELLATION_REVIEW_REQUIRED",
+                  attemptId: failedAttempt?.id,
+                  eventIdempotencyKey: `runner-cancel:${cancellationOperationId}:operator-review`,
+                  payloadJson: {
+                    schemaVersion: "runner-cancellation-review.v1",
+                    operationId: cancellationOperationId,
+                    targetCommandId,
+                    commandId: input.commandId,
+                    receiptEventId: input.eventId,
+                    reason: reviewReason,
+                  },
+                });
+              } else await persistCancellationReceipt();
+              return "recorded";
+            }
+            const updated = await repo.updateJob({
+              jobId: job.id,
+              expectedStatus: job.status,
+              expectedTenantId: input.tenantId,
+              expectedAttempt: job.attempt,
+              expectedFencingVersion: job.fencingVersion,
+              values: { status: "cancelled", statusReason: "cancelled:runner_acknowledged", leaseOwnerToken: null, leaseExpiresAt: null, finishedAt: new Date() },
+            });
+            if (!updated) return rejectCancellationReceipt("cancel_state_compare_and_swap_failed");
+            await persistCancellationReceipt();
+            await repo.cancelUnpublishedOutbox({ jobId: job.id, reason: "cancelled:runner_acknowledged", cancelledAt: new Date() });
+            const attempt = await repo.findAttempt(job.id, job.attempt);
+            if (attempt) await repo.updateAttempt({ attemptId: attempt.id, values: { finishedAt: new Date(), terminalClass: "cancelled", recoveryReason: "runner_acknowledged" } });
+            await repo.insertEvent({
+              workerJobId: job.id,
+              eventType: "CANCELLED",
+              attemptId: attempt?.id,
+              eventIdempotencyKey: `runner-cancel:${cancellationOperationId}:settled`,
+              payloadJson: { reason: "runner_acknowledged", cancellationOperationId, targetCommandId, receiptEventId: input.eventId, runnerId: input.runnerId, runnerSessionId: input.runnerSessionId },
+            });
+            const runInput = job.inputJson && typeof job.inputJson === "object"
+              ? (job.inputJson as Record<string, unknown>).spec224Run
+              : undefined;
+            const runProjection = job.progressJson && typeof job.progressJson === "object"
+              ? (job.progressJson as Record<string, unknown>).spec224
+              : undefined;
+            const runBinding = runProjection && typeof runProjection === "object"
+              ? runProjection as Record<string, unknown>
+              : runInput && typeof runInput === "object" ? runInput as Record<string, unknown> : null;
+            const runId = typeof runBinding?.runId === "string" ? runBinding.runId : null;
+            if (runId) {
+              if (
+                runBinding?.tenantId !== input.tenantId || runBinding.actorId !== job.requestedByUserId ||
+                (runProjection && (runBinding.workerJobId !== job.id || !Number.isSafeInteger(runBinding.projectionVersion) || !Number.isSafeInteger(runBinding.fencingVersion)))
+              ) throw new JobControlPlaneError("SPEC224_CONTINUATION_BINDING_INVALID", "Cancellation receipt does not match the persisted DevelopmentRun binding");
+              const continuationOperationId = createHash("sha256").update([
+                "spec224-runner-continuation-v1", runId, job.id, job.attempt, input.commandId, input.eventId,
+              ].join("\0"), "utf8").digest("hex");
+              await repo.insertEvent({
+                workerJobId: job.id,
+                eventType: "SPEC224_CONTINUATION_PENDING",
+                attemptId: attempt?.id,
+                eventIdempotencyKey: boundedEventKey("spec224-continuation", continuationOperationId),
+                payloadJson: {
+                  schemaVersion: "spec224.runner-continuation.v1",
+                  operationId: continuationOperationId,
+                  runId,
+                  tenantId: input.tenantId,
+                  actorId: job.requestedByUserId,
+                  workerJobId: job.id,
+                  attempt: job.attempt,
+                  workerJobFencingVersion: job.fencingVersion,
+                  developmentRunRevision: typeof runBinding.projectionVersion === "number" ? runBinding.projectionVersion : null,
+                  developmentRunFencingVersion: typeof runBinding.fencingVersion === "number" ? runBinding.fencingVersion : null,
+                  receiptEventId: input.eventId,
+                  receiptEventType: eventType,
+                  receiptSequence: input.sequence,
+                  resultRef: null,
+                  errorCode: null,
+                  commandId: input.commandId,
+                  operationKey,
+                  runnerId: input.runnerId,
+                  runnerSessionId: input.runnerSessionId,
+                  capabilitySnapshotId: command.capabilitySnapshotId,
+                  capabilitySnapshotRevision: command.capabilitySnapshotRevision,
+                  leaseId: command.leaseId,
+                  leaseFenceVersion: command.fencingToken,
+                  policyBinding: metadata.policyBinding ?? null,
+                  state: "PENDING",
+                },
+              });
+            }
+            return "recorded";
+          }
         }
         const initialProgress =
           initialJob.progressJson &&
@@ -4768,6 +5088,7 @@ export function createJobControlPlane(
               "EXECUTION_FAILED",
               "COMMAND_REJECTED",
               "UNKNOWN_OUTCOME",
+              "CANCEL_ACKNOWLEDGED",
             ].includes(input.eventType)
           )
             return;

@@ -368,6 +368,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         "lost-ack-resend",
         "sigkill-after-persist",
         "sigkill-after-ack",
+        "cancellation",
       ].includes(crashMode)
     )
       throw new Error("Unsupported SPEC224_RUNNER_CRASH_CASE");
@@ -460,12 +461,15 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     await mkdir(path.join(dataRoot, "workspaces", workspaceId), {
       recursive: true,
     });
+    const workspaceCancelMarker = path.join(dataRoot, "workspaces", workspaceId, "codex-cancel-execution-started");
     const shimDir = path.join(dataRoot, "bin");
     await mkdir(shimDir, { recursive: true });
     const codexShim = path.join(shimDir, "codex");
     await writeFile(
       codexShim,
-      "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
+      crashMode === "cancellation"
+        ? "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { require('fs').writeFileSync('codex-cancel-execution-started', 'started'); setTimeout(() => console.log('late deterministic result'), 30000); }\n"
+        : "#!/usr/bin/env node\nif (process.argv.includes('--version')) { console.log('codex-certification-shim 0.1.0'); } else { console.log('deterministic runner result'); }\n"
     );
     await chmod(codexShim, 0o755);
 
@@ -632,9 +636,77 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       /SPEC224_WORKER_RESULT:(\[[^\n]*\])/
     );
     expect(workerResult?.[1]).toBeTruthy();
-    expect(JSON.parse(workerResult![1])).toEqual([
+    expect(JSON.parse(workerResult![1]), `worker stderr=${worker.stderr}; stdout=${worker.stdout}`).toEqual([
       { jobId: created.jobId, state: "deferred" },
     ]);
+    if (crashMode === "cancellation") {
+      await waitFor(async () => {
+        try { return await readFile(workspaceCancelMarker, "utf8"); } catch { return null; }
+      }, 10_000).catch(async error => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        const events = await sql`SELECT "eventType", "payloadJson"->>'errorCode' AS "errorCode" FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY sequence`;
+        throw new Error(`${String(error)} status=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })} events=${JSON.stringify(events)} runner=${runnerOutput.join(" ").slice(-2000)} warnings=${runnerWarnings.join(" ").slice(-2000)}`);
+      });
+      const cancellationRequested = await runtime.createJobControlPlane().requestCancel(
+        created.jobId,
+        "spec224_cancellation_e2e",
+        undefined,
+        scope.userId,
+        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+      );
+      expect(cancellationRequested).toBe(true);
+      await expect(runtime.createJobControlPlane().requestCancel(
+        created.jobId,
+        "spec224_cancellation_e2e",
+        undefined,
+        scope.userId,
+        { tenantId: scope.tenantId, requestedByUserId: scope.userId },
+      )).resolves.toBe(true);
+      const [cancelOutbox] = await sql`
+        SELECT id FROM worker_job_outbox
+        WHERE "workerJobId" = ${created.jobId} AND "dedupeKey" LIKE 'runner-cancel:%'
+      `;
+      expect(cancelOutbox?.id).toBeTruthy();
+      const cancelPublication = await runtime.publishJobOutboxRow(
+        cancelOutbox.id,
+        new runtime.PostgresPullJobTransportAdapter(),
+        new Date(),
+        async command => {
+          const response = await fetch(`${origin}/api/internal/runners/${encodeURIComponent(runnerId)}/job-command`, {
+            method: "POST",
+            headers: { "content-type": "application/json", "x-internal-token": internalToken },
+            body: JSON.stringify(command),
+          });
+          const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+          if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : "RUNNER_CANCEL_DISPATCH_FAILED");
+          return body as Awaited<ReturnType<typeof runtime.dispatchRunnerJobCommand>>;
+        },
+      );
+      const [cancelDeliveryDiagnostic] = await sql`SELECT "failedReason", "publishAttempts", "quarantinedAt" FROM worker_job_outbox WHERE id = ${cancelOutbox.id}`;
+      expect(cancelPublication.state, JSON.stringify(cancelDeliveryDiagnostic)).toBe("published");
+      await waitFor(async () => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        return status?.status === "cancelled" ? status : null;
+      }, 10_000).catch(async error => {
+        const status = await runtime!.createJobControlPlane().getStatus(created.jobId, { tenantId: scope.tenantId });
+        const events = await sql`SELECT "eventType", "payloadJson"->>'errorCode' AS "errorCode", "payloadJson"->>'status' AS "receiptStatus", "payloadJson"->>'reason' AS reason FROM worker_job_events WHERE "workerJobId" = ${created.jobId} ORDER BY sequence`;
+        throw new Error(`${String(error)} status=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })} events=${JSON.stringify(events)} runner=${runnerOutput.join(" ").slice(-2000)} warnings=${runnerWarnings.join(" ").slice(-3000)}`);
+      });
+      const [cancelEvidence] = await sql`
+        SELECT j.status,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_INTENT')::int AS intents,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_DISPATCHED')::int AS dispatches,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_CANCEL_ACKNOWLEDGED')::int AS receipts,
+          COUNT(*) FILTER (WHERE e."eventType" = 'CANCELLED')::int AS settlements,
+          COUNT(*) FILTER (WHERE e."eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS executions
+        FROM worker_jobs j LEFT JOIN worker_job_events e ON e."workerJobId" = j.id
+        WHERE j.id = ${created.jobId} GROUP BY j.status
+      `;
+      expect(cancelEvidence).toEqual({ status: "cancelled", intents: 1, dispatches: 1, receipts: 1, settlements: 1, executions: 0 });
+      const developmentContinuation = await runtime.reconcileSpec224RunnerContinuations({ limit: 100 });
+      expect(developmentContinuation.reviewRequired).toBe(0);
+      return;
+    }
     let crashEvidence: Record<string, unknown> | null = null;
     let continuationReconciledBeforeFinal = false;
     if (

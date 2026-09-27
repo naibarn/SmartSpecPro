@@ -1029,6 +1029,14 @@ fn runner_receipt_payload(
     payload["fenceVersion"] = json!(command.fencing_token);
     payload["capabilitySnapshotId"] = json!(command.capability_snapshot_id);
     payload["capabilitySnapshotRevision"] = json!(command.capability_snapshot_revision);
+    if command.command_type == "cancel" {
+        if let Some(operation_id) = command.payload.get("cancellationOperationId") {
+            payload["cancellationOperationId"] = operation_id.clone();
+        }
+        if let Some(target_command_id) = command.payload.get("targetCommandId") {
+            payload["targetCommandId"] = target_command_id.clone();
+        }
+    }
     if let Some(observation) = observation {
         payload["observation"] = observation;
     }
@@ -2070,6 +2078,18 @@ mod lifecycle_tests {
             semantic_receipt_payload(&command, &RunnerJobReceiptEventType::ExecutionStarted)
                 .is_none()
         );
+        let mut cancel_command = command.clone();
+        cancel_command.command_type = "cancel".into();
+        cancel_command.payload = json!({
+            "cancellationOperationId": "spec224-cancel-op-1",
+            "targetCommandId": "execute-1",
+        });
+        let cancel_payload = runner_receipt_payload(&cancel_command, None, None);
+        assert_eq!(
+            cancel_payload["cancellationOperationId"],
+            "spec224-cancel-op-1"
+        );
+        assert_eq!(cancel_payload["targetCommandId"], "execute-1");
     }
 
     struct ReceiptTransport {

@@ -40,6 +40,7 @@ function makeDeps() {
     controlPlane: {
       requestComputerUseApproval: vi.fn().mockResolvedValue("requested"),
       resolveComputerUseApproval: vi.fn().mockResolvedValue("resumed"),
+      requestCancel: vi.fn().mockResolvedValue(true),
       failExternalWait: vi.fn().mockResolvedValue("failed"),
       recordSpec224ApprovalDelivery: vi.fn().mockResolvedValue(true),
     },
@@ -56,7 +57,7 @@ function delivery(decision: "approved" | "rejected" | "expired" | "cancelled" = 
     jobId: correlation.jobId,
     operationId: correlation.operationKey,
     decision,
-    actorId: decision === "expired" ? null : 207,
+    actorId: decision === "expired" ? null : decision === "cancelled" ? correlation.requesterId : 207,
     decidedAt: "2026-09-26T00:00:00Z",
     correlation,
   };
@@ -256,6 +257,30 @@ describe("Spec 224 external-agent approval continuation", () => {
         result: "operator_review",
       }),
     );
+    expect(deps.authority.acknowledge).toHaveBeenCalledOnce();
+  });
+
+  it("delivers an authenticated Python cancellation decision into the canonical Runner cancel intent", async () => {
+    const deps = makeDeps();
+    const cancelledDelivery = delivery("cancelled");
+    deps.authority.get.mockResolvedValue({
+      id: "approval-224", status: "cancelled", tenantId: correlation.tenantId,
+      executionId: correlation.jobId, requesterId: correlation.requesterId,
+      decisionDelivery: cancelledDelivery,
+      payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+    });
+    const service = createSpec224ApprovalContinuation(deps);
+    await expect(service.resolve({
+      approvalRef: "approval-224", tenantId: correlation.tenantId,
+      jobId: correlation.jobId, operationId: correlation.operationKey,
+      leaseOwner: "reconciler-1", leaseEpoch: 1,
+    })).resolves.toBe("cancel_requested");
+    expect(deps.controlPlane.requestCancel).toHaveBeenCalledWith(
+      correlation.jobId, "approval_request_cancelled", "delivery-224-1",
+      correlation.requesterId,
+      { tenantId: correlation.tenantId, requestedByUserId: correlation.requesterId },
+    );
+    expect(deps.controlPlane.failExternalWait).not.toHaveBeenCalled();
     expect(deps.authority.acknowledge).toHaveBeenCalledOnce();
   });
 
