@@ -880,13 +880,11 @@ fn send_runner_receipt(
                 .cloned()
                 .unwrap_or_else(|| json!({})),
         ),
-        payload: semantic_payload.and_then(|mut payload| {
-            if let Some(observation) = evidence.and_then(|value| value.semantic_observation.clone())
-            {
-                payload["observation"] = observation;
-            }
-            Some(payload)
-        }),
+        payload: Some(runner_receipt_payload(
+            command,
+            semantic_payload,
+            evidence.and_then(|value| value.semantic_observation.clone()),
+        )),
     };
     let envelope = channel.build_receipt(node_kind, command, receipt)?;
     match transport.send_wss(&endpoint.wss_url, &envelope) {
@@ -894,6 +892,25 @@ fn send_runner_receipt(
         Ok(other) => Err(format!("RUNNER_RECEIPT_REJECTED_{other:?}")),
         Err(error) => Err(format!("RUNNER_RECEIPT_DELIVERY_{error:?}")),
     }
+}
+
+fn runner_receipt_payload(
+    command: &RunnerJobCommand,
+    mut payload: Option<serde_json::Value>,
+    observation: Option<serde_json::Value>,
+) -> serde_json::Value {
+    let mut payload = payload.take().unwrap_or_else(|| json!({}));
+    payload["executionKind"] = json!(command.execution_kind);
+    payload["adapterId"] = json!(command.adapter_id);
+    payload["attempt"] = json!(command.attempt);
+    payload["leaseId"] = json!(command.lease_id);
+    payload["fenceVersion"] = json!(command.fencing_token);
+    payload["capabilitySnapshotId"] = json!(command.capability_snapshot_id);
+    payload["capabilitySnapshotRevision"] = json!(command.capability_snapshot_revision);
+    if let Some(observation) = observation {
+        payload["observation"] = observation;
+    }
+    payload
 }
 
 /// Echoes only the bounded semantic-verification contract. Raw command input
@@ -1682,7 +1699,8 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 mod lifecycle_tests {
     use super::{
         build_keepalive_envelope, capability_snapshot, delivery_transport_label, keepalive_due,
-        parse_refresh_interval, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+        parse_refresh_interval, runner_receipt_payload, semantic_receipt_payload,
+        snapshot_evidence, update_ack_statuses,
     };
     use crate::config::{RunnerConfig, RunnerProfile};
     use crate::discovery::scan_known_tools;
@@ -1830,6 +1848,16 @@ mod lifecycle_tests {
             "spec208-independent-v1"
         );
         assert!(payload.get("secret").is_none());
+        let bound_payload = runner_receipt_payload(&command, Some(payload), None);
+        assert_eq!(bound_payload["attempt"], 1);
+        assert_eq!(bound_payload["leaseId"], "lease-1");
+        assert_eq!(bound_payload["fenceVersion"], 1);
+        assert_eq!(bound_payload["capabilitySnapshotId"], "capability-1");
+        assert_eq!(bound_payload["capabilitySnapshotRevision"], "revision-1");
+        assert_eq!(
+            bound_payload["verification"]["verifier"],
+            "spec208-independent-v1"
+        );
         assert!(
             semantic_receipt_payload(&command, &RunnerJobReceiptEventType::ExecutionStarted)
                 .is_none()

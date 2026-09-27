@@ -119,7 +119,7 @@ async function createPendingReceiptFixture(
   `;
   await sql`
     INSERT INTO runner_capability_snapshots ("id", "runnerId", "tenantId", "revision", "idempotencyKey", "observedAt", "expiresAt", "snapshotJson")
-    VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${snapshotRevision}, ${`d343-${snapshotId}`}, NOW(), ${expiresAt}, ${JSON.stringify({ capabilitySnapshotId: snapshotId, capabilities: ["workspace.read"] })}::jsonb)
+    VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${snapshotRevision}, ${`d343-${snapshotId}`}, NOW(), ${expiresAt}, ${sql.json({ capabilitySnapshotId: snapshotId, capabilities: ["workspace.read"] })})
   `;
 
   const [
@@ -408,9 +408,10 @@ suite("Spec 224 durable Runner continuation — PostgreSQL", () => {
       "application_name",
       `d343-crash-${fixture.jobId}`
     );
+    const lockIdentity = `runner-receipt:${fixture.jobId}:${fixture.operationKey}`;
     let child: ReturnType<typeof spawn> | undefined;
     try {
-      await heldLock`SELECT pg_advisory_lock(hashtext(${fixture.jobId}))`;
+      await heldLock`SELECT pg_advisory_lock(hashtextextended(${lockIdentity}, 0))`;
       const childScript = `
         const { createJobControlPlane } = await import("./server/services/jobControlPlane.ts");
         await createJobControlPlane().recordRunnerReceipt(${JSON.stringify(fixture.receipt)});
@@ -444,7 +445,7 @@ suite("Spec 224 durable Runner continuation — PostgreSQL", () => {
       child.kill("SIGKILL");
       await new Promise<void>(resolve => child?.once("exit", () => resolve()));
     } finally {
-      await heldLock`SELECT pg_advisory_unlock(hashtext(${fixture.jobId}))`;
+      await heldLock`SELECT pg_advisory_unlock(hashtextextended(${lockIdentity}, 0))`;
       await heldLock.release();
     }
     const [persisted] = await sql`

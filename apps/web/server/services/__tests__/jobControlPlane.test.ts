@@ -21,6 +21,7 @@ function makeRepository() {
   const actions: any[] = [];
   const callbacks: any[] = [];
   const transitions: string[] = [];
+  const runnerReceiptLocks: Array<{ jobId: string; operationKey: string }> = [];
   const repository: JobControlPlaneRepository = {
     transaction: async work =>
       work({
@@ -77,7 +78,9 @@ function makeRepository() {
             event =>
               event.workerJobId === jobId && event.eventIdempotencyKey === key
           ) ?? null,
-        lockRunnerReceiptStream: async () => {},
+        lockRunnerReceiptStream: async (jobId, operationKey) => {
+          runnerReceiptLocks.push({ jobId, operationKey });
+        },
         findLatestRunnerReceipt: async (jobId, commandId) => {
           const prior = events
             .filter(
@@ -246,6 +249,7 @@ function makeRepository() {
     actions,
     callbacks,
     transitions,
+    runnerReceiptLocks,
   };
 }
 
@@ -2254,6 +2258,10 @@ describe("job control plane", () => {
     await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
       "recorded"
     );
+    expect(state.runnerReceiptLocks.at(-1)).toEqual({
+      jobId: created.jobId,
+      operationKey: "external-agent:run-d343:plan-1:1",
+    });
     await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
       "duplicate"
     );

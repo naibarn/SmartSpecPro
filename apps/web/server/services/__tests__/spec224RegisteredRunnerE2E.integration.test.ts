@@ -47,6 +47,8 @@ const createdTenants: string[] = [];
 const createdUsers: number[] = [];
 let runnerProcess: ChildProcess | null = null;
 let runnerOutput: string[] = [];
+let runnerWarnings: string[] = [];
+let originalConsoleWarn: typeof console.warn | null = null;
 let server: Server | null = null;
 let dataRoot = "";
 let runtime: Awaited<ReturnType<typeof loadRuntime>> | null = null;
@@ -63,6 +65,9 @@ async function loadRuntime() {
     jobExecutor,
     jobOutboxPublisher,
     jobTransportAdapters,
+    developmentRunContracts,
+    developmentRunPersistence,
+    continuationReconciler,
   ] = await Promise.all([
     import("../runnerGateway"),
     import("../../routes/runnerControl"),
@@ -74,6 +79,9 @@ async function loadRuntime() {
     import("../jobExecutor"),
     import("../jobOutboxPublisher"),
     import("../jobTransportAdapters"),
+    import("../spec224DevelopmentRunContracts"),
+    import("../spec224DevelopmentRunPersistence"),
+    import("../spec224RunnerContinuationReconciler"),
   ]);
   return {
     defaultRunnerGateway: runnerGateway.defaultRunnerGateway,
@@ -88,6 +96,9 @@ async function loadRuntime() {
     ...jobExecutor,
     ...jobOutboxPublisher,
     ...jobTransportAdapters,
+    ...developmentRunContracts,
+    ...developmentRunPersistence,
+    ...continuationReconciler,
     dispatchRunnerJobCommand: controlRoutes.dispatchRunnerJobCommand,
   };
 }
@@ -135,18 +146,28 @@ async function createScope(): Promise<{ tenantId: string; userId: number }> {
 
 async function deleteJobRows(jobId: string): Promise<void> {
   const references = await sql`
-    SELECT DISTINCT kcu.table_name AS "tableName", kcu.column_name AS "columnName"
-    FROM information_schema.table_constraints tc
-    JOIN information_schema.key_column_usage kcu
-      ON kcu.constraint_name = tc.constraint_name AND kcu.constraint_schema = tc.constraint_schema
-    JOIN information_schema.constraint_column_usage ccu
-      ON ccu.constraint_name = tc.constraint_name AND ccu.constraint_schema = tc.constraint_schema
-    WHERE tc.constraint_type = 'FOREIGN KEY' AND ccu.table_schema = 'public' AND ccu.table_name = 'worker_jobs'
+    SELECT child_ns.nspname AS "schemaName",
+      child_rel.relname AS "tableName",
+      child_col.attname AS "columnName"
+    FROM pg_constraint constraint_row
+    JOIN pg_class child_rel ON child_rel.oid = constraint_row.conrelid
+    JOIN pg_namespace child_ns ON child_ns.oid = child_rel.relnamespace
+    JOIN LATERAL unnest(constraint_row.conkey) WITH ORDINALITY child_key(attnum, position) ON true
+    JOIN LATERAL unnest(constraint_row.confkey) WITH ORDINALITY parent_key(attnum, position)
+      ON parent_key.position = child_key.position
+    JOIN pg_attribute child_col
+      ON child_col.attrelid = child_rel.oid AND child_col.attnum = child_key.attnum
+    JOIN pg_class parent_rel ON parent_rel.oid = constraint_row.confrelid
+    JOIN pg_namespace parent_ns ON parent_ns.oid = parent_rel.relnamespace
+    WHERE constraint_row.contype = 'f'
+      AND child_ns.nspname = 'public'
+      AND parent_ns.nspname = 'public'
+      AND parent_rel.relname = 'worker_jobs'
   `;
   for (const reference of references) {
     if (reference.tableName === "worker_jobs") continue;
     await sql.unsafe(
-      `DELETE FROM "${reference.tableName}" WHERE "${reference.columnName}" = $1`,
+      `DELETE FROM "${reference.schemaName}"."${reference.tableName}" WHERE "${reference.columnName}" = $1`,
       [jobId]
     );
   }
@@ -226,6 +247,12 @@ async function startRunner(input: {
 
 suite("Spec 224 — actual registered Rust Runner E2E", () => {
   it("reconnects a registered Runner, dispatches the canonical external task, and settles PostgreSQL once", async () => {
+    runnerWarnings = [];
+    originalConsoleWarn ??= console.warn;
+    console.warn = (...args: unknown[]) => {
+      runnerWarnings.push(args.map(value => String(value)).join(" "));
+      originalConsoleWarn?.(...args);
+    };
     runtime = await loadRuntime();
     const scope = await createScope();
     (globalThis as { __spec224Tenant?: string }).__spec224Tenant =
@@ -364,6 +391,17 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
     )?.authorizationEvidenceRef;
     if (!authEvidence)
       throw new Error("Runner did not publish Codex authorization evidence");
+    const [snapshotIdentity] = await sql`
+      SELECT id, "snapshotJson"->>'capabilitySnapshotId' AS "semanticId"
+      FROM runner_capability_snapshots
+      WHERE "runnerId" = ${runnerId}
+        AND "tenantId" = ${scope.tenantId}
+        AND revision = ${secondSnapshot.currentSnapshot?.revision}
+    `;
+    expect(snapshotIdentity?.semanticId).toBe(
+      secondSnapshot.currentSnapshot?.capabilitySnapshotId
+    );
+    expect(snapshotIdentity?.id).not.toBe(snapshotIdentity?.semanticId);
     const taskId = id("task-spec224");
     const manifest = {
       taskId,
@@ -395,9 +433,40 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
       },
     };
     const definition = runtime.buildAgentJobDefinition(manifest);
-    const created = await runtime.createJobControlPlane().create(definition);
+    const runId = crypto.randomUUID();
+    const run = runtime.buildDevelopmentRun({
+      runId,
+      tenantId: scope.tenantId,
+      actorId: scope.userId,
+      goal: "Registered Rust Runner WebSocket ACK continuation test",
+      repositoryRef: "repo:spec224-runner-e2e",
+      baseRevision: "git:spec224-runner-e2e-base",
+      contextPackHash: "b".repeat(64),
+      workspaceId: `workspace:${workspaceId}`,
+    });
+    const canonicalJobId = crypto.randomUUID();
+    const boundRun = runtime.bindWorkerJob(run, canonicalJobId);
+    const created = await runtime.createJobControlPlane().create(
+      {
+        ...definition,
+        input: {
+          ...definition.input,
+          spec224Run: { ...boundRun, projectionVersion: 0 },
+        },
+      },
+      { canonicalJobId }
+    );
     expect(created.created).toBe(true);
     createdJobs.push(created.jobId);
+    await runtime
+      .createDevelopmentRunService(
+        runtime.defaultDevelopmentRunPersistenceAdapter
+      )
+      .initialize({
+        run: boundRun,
+        eventIdempotencyKey: `run-created:${canonicalJobId}`,
+        scope: { tenantId: scope.tenantId, actorId: scope.userId },
+      });
 
     const [outbox] = await sql`
       SELECT id
@@ -468,10 +537,59 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
         ORDER BY "sequence" ASC
       `;
       throw new Error(
-        `${error instanceof Error ? error.message : String(error)}; finalStatus=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })}; events=${JSON.stringify(events.map(event => ({ eventType: event.eventType, payload: event.payloadJson })))}`
+        `${error instanceof Error ? error.message : String(error)}; finalStatus=${JSON.stringify({ status: status?.status, errorCode: status?.errorCode, operatorReviewRequired: status?.operatorReviewRequired })}; events=${JSON.stringify(events.map(event => ({ eventType: event.eventType, payload: event.payloadJson })))}; runnerOutput=${runnerOutput.join("").slice(-6000)}; runnerWarnings=${runnerWarnings.join(" | ").slice(-6000)}`
       );
     }
     expect(terminal.status).toBe("succeeded");
+    expect(runnerProcess?.exitCode).toBeNull();
+    const [receiptAndIntent] = await sql`
+      SELECT
+        COUNT(*) FILTER (WHERE "eventType" = 'RUNNER_EXECUTION_COMPLETED')::int AS receipts,
+        COUNT(*) FILTER (WHERE "eventType" = 'SPEC224_CONTINUATION_PENDING')::int AS intents,
+        COUNT(*) FILTER (WHERE "eventType" = 'COMPLETED')::int AS settlements
+      FROM worker_job_events WHERE "workerJobId" = ${created.jobId}
+    `;
+    expect(receiptAndIntent).toEqual({
+      receipts: 1,
+      intents: 1,
+      settlements: 1,
+    });
+    const continuation = await runtime.reconcileSpec224RunnerContinuations({
+      limit: 100,
+    });
+    if (continuation.reviewRequired > 0) {
+      const [diagnostic] = await sql`
+        SELECT e."payloadJson" AS review,
+          j."progressJson"->'spec224' AS projection,
+          j."fencingVersion" AS "jobFence",
+          a."leaseGeneration" AS "attemptFence",
+          a.id AS "attemptId"
+        FROM worker_job_events e
+        JOIN worker_jobs j ON j.id = e."workerJobId"
+        LEFT JOIN worker_job_attempts a ON a."workerJobId" = j.id AND a.attempt = j.attempt
+        WHERE e."workerJobId" = ${created.jobId}
+          AND e."eventType" = 'SPEC224_CONTINUATION_REVIEW_REQUIRED'
+        ORDER BY e.sequence DESC LIMIT 1
+      `;
+      throw new Error(
+        `Runner continuation requires review: ${JSON.stringify({ continuation, diagnostic })}`
+      );
+    }
+    expect(continuation).toMatchObject({ reconciled: 1, reviewRequired: 0 });
+    const projectedRun = await runtime
+      .createDevelopmentRunService(
+        runtime.defaultDevelopmentRunPersistenceAdapter
+      )
+      .get({ runId, tenantId: scope.tenantId, actorId: scope.userId });
+    expect(projectedRun.run.state).toBe("PLANNING");
+    const continuationReplay =
+      await runtime.reconcileSpec224RunnerContinuations({
+        limit: 100,
+      });
+    expect(continuationReplay).toMatchObject({
+      reconciled: 0,
+      reviewRequired: 0,
+    });
     const evidence = await sql`
       SELECT j.status, COUNT(e.id)::int AS "eventCount",
              COUNT(*) FILTER (WHERE e."eventType" = 'COMPLETED')::int AS "completedEvents"
@@ -487,6 +605,7 @@ suite("Spec 224 — actual registered Rust Runner E2E", () => {
 });
 
 afterAll(async () => {
+  if (originalConsoleWarn) console.warn = originalConsoleWarn;
   await stopRunner();
   if (server)
     await new Promise<void>(resolve => server!.close(() => resolve()));

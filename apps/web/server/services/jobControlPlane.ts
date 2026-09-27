@@ -122,8 +122,8 @@ export type TxRepo = {
     eventType: string;
     payloadJson?: Record<string, unknown>;
   } | null>;
-  /** Serialize a Runner command's receipt stream in the canonical job DB. */
-  lockRunnerReceiptStream(jobId: string, commandId: string): Promise<void>;
+  /** Serialize Runner receipt and settlement work for one external operation. */
+  lockRunnerReceiptStream(jobId: string, operationKey: string): Promise<void>;
   findLatestRunnerReceipt(
     jobId: string,
     commandId: string
@@ -761,10 +761,10 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .limit(1);
                 return row ?? null;
               },
-              async lockRunnerReceiptStream(jobId, commandId) {
+              async lockRunnerReceiptStream(jobId, operationKey) {
                 await query.execute(sql`
                   SELECT pg_advisory_xact_lock(
-                    hashtextextended(${`runner-receipt:${jobId}:${commandId}`}, 0)
+                    hashtextextended(${`runner-receipt:${jobId}:${operationKey}`}, 0)
                   )
                 `);
               },
@@ -4606,7 +4606,23 @@ export function createJobControlPlane(
       if (input.payload)
         validateBoundedPayload(input.payload, "runner.receipt.payload");
       return repository.transaction(async repo => {
-        await repo.lockRunnerReceiptStream(input.jobId, input.commandId);
+        const initialJob = await repo.findJob(input.jobId);
+        if (!initialJob || initialJob.tenantId !== input.tenantId)
+          return "ignored";
+        const initialProgress =
+          initialJob.progressJson &&
+          typeof initialJob.progressJson === "object" &&
+          !Array.isArray(initialJob.progressJson)
+            ? (initialJob.progressJson as {
+                externalWait?: { operationKey?: unknown };
+              })
+            : {};
+        const lockOperationKey = initialProgress.externalWait?.operationKey;
+        if (typeof lockOperationKey !== "string") return "ignored";
+        await repo.lockRunnerReceiptStream(input.jobId, lockOperationKey);
+        // Re-read after obtaining the operation lock. If the job moved to a
+        // different external operation while this transaction waited, never
+        // process its receipt under the stale operation's fencing lock.
         const job = await repo.findJob(input.jobId);
         if (!job) return "ignored";
         const progress =
@@ -4625,6 +4641,7 @@ export function createJobControlPlane(
         const currentCommandId = progress.externalWait?.metadata?.commandId;
         if (
           typeof operationKey !== "string" ||
+          operationKey !== lockOperationKey ||
           (typeof currentCommandId === "string"
             ? currentCommandId !== input.commandId
             : operationKey !== `runner-command:${input.commandId}`)

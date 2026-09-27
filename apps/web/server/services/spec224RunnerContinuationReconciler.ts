@@ -36,6 +36,8 @@ type ContinuationIntent = {
   receiptEventType: string;
   commandId: string;
   operationKey: string;
+  leaseId: string | null;
+  leaseFenceVersion: number | null;
   runnerId: string;
   runnerSessionId: string;
   capabilitySnapshotId: string;
@@ -60,6 +62,9 @@ function parseIntent(value: unknown): ContinuationIntent | null {
     typeof row.receiptEventType !== "string" ||
     typeof row.commandId !== "string" ||
     typeof row.operationKey !== "string" ||
+    (row.leaseId !== null && typeof row.leaseId !== "string") ||
+    (row.leaseFenceVersion !== null &&
+      !Number.isSafeInteger(row.leaseFenceVersion)) ||
     typeof row.runnerId !== "string" ||
     typeof row.runnerSessionId !== "string" ||
     typeof row.capabilitySnapshotId !== "string" ||
@@ -258,7 +263,10 @@ export async function reconcileSpec224RunnerContinuations(
       .from(runnerCapabilitySnapshots)
       .where(
         and(
-          eq(runnerCapabilitySnapshots.id, intent.capabilitySnapshotId),
+          eq(
+            sql<string>`${runnerCapabilitySnapshots.snapshotJson}->>'capabilitySnapshotId'`,
+            intent.capabilitySnapshotId
+          ),
           eq(runnerCapabilitySnapshots.runnerId, intent.runnerId),
           eq(runnerCapabilitySnapshots.tenantId, intent.tenantId)
         )
