@@ -411,7 +411,7 @@ class ApprovalDBService:
             select(ApprovalRequest)
             .where(
                 ApprovalRequest.status.in_((ApprovalStatus.APPROVED, ApprovalStatus.REJECTED, ApprovalStatus.EXPIRED, ApprovalStatus.CANCELLED)),
-                delivery_json["state"].as_string() == "pending",
+                delivery_json["state"].as_string().in_(("pending", "acknowledged")),
                 or_(
                     delivery_json["leaseExpiresAt"].is_(None),
                     lease_expiry_json <= now_text,
@@ -500,15 +500,6 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
-        if delivery.get("state") == "acknowledged":
-            previous_receipt = delivery.get("receipt")
-            matched = (
-                isinstance(previous_receipt, dict)
-                and previous_receipt.get("deliveryId") == delivery_id
-                and previous_receipt.get("payloadDigest") == payload_digest
-            )
-            await self.db.rollback()
-            return matched
         now = now or datetime.now(timezone.utc)
         now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
         lease_expiry = delivery.get("leaseExpiresAt")
@@ -524,6 +515,16 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
+        if delivery.get("state") == "acknowledged":
+            previous_receipt = delivery.get("receipt")
+            matched = (
+                isinstance(previous_receipt, dict)
+                and previous_receipt.get("deliveryId") == delivery_id
+                and previous_receipt.get("payloadDigest") == payload_digest
+                and previous_receipt == receipt
+            )
+            await self.db.rollback()
+            return matched
         delivery = dict(delivery)
         delivery["state"] = "acknowledged"
         delivery["receipt"] = receipt
@@ -1274,6 +1275,19 @@ class ApprovalDBService:
         request = await self._get_request_for_update(request_id, tenant_id)
         if not request:
             return None
+
+        if request.status == ApprovalStatus.CANCELLED and request.requester_id == cancelled_by:
+            delivery = self._read_spec224_delivery(request)
+            event = delivery.get("event") if delivery else None
+            if (
+                (tenant_id is None or request.tenant_id == tenant_id)
+                and isinstance(event, dict)
+                and event.get("decision") == "cancelled"
+                and event.get("actorId") == cancelled_by
+            ):
+                # A repeated caller cancellation is an idempotent replay only
+                # when the persisted Spec 224 intent proves the same actor.
+                return request
 
         if request.status != ApprovalStatus.PENDING:
             self._logger.warning(
