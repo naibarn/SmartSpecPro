@@ -81,6 +81,33 @@ class ApprovalRequestCreate(BaseModel):
     timeout_minutes: int = Field(60, ge=5, le=10080)  # 5 min to 1 week
 
 
+class Spec224RecoveryGrantIssue(BaseModel):
+    idempotency_key: str = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    scope: dict
+
+    class Config:
+        populate_by_name = True
+
+
+class Spec224RecoveryGrantRevoke(BaseModel):
+    reason: str = Field(..., min_length=4, max_length=500)
+
+
+class Spec224RecoveryGrantValidation(BaseModel):
+    grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
+    tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
+    source_commit: str = Field(..., alias="sourceCommit", min_length=40, max_length=64)
+    source_sha256: str = Field(..., alias="sourceSha256", min_length=64, max_length=64)
+    workpackage_id: str = Field(..., alias="workpackageId", min_length=6, max_length=84)
+    operation: str = Field(..., min_length=1, max_length=64)
+    path: str = Field(..., min_length=1, max_length=500)
+    runtime_scope: str = Field(..., alias="runtimeScope", min_length=1, max_length=64)
+    environment_scope: str = Field(..., alias="environmentScope", min_length=1, max_length=64)
+
+    class Config:
+        populate_by_name = True
+
+
 class ApprovalRequestResponse(BaseModel):
     """Response model for approval request."""
     id: str
@@ -923,7 +950,7 @@ async def acknowledge_spec224_external_agent_decision(
         set(data.receipt) - {"deliveryId", "payloadDigest", "result", "acknowledgedAt"}
         or data.receipt.get("deliveryId") != data.delivery_id
         or data.receipt.get("payloadDigest") != data.payload_digest
-        or data.receipt.get("result") not in {"resumed", "failed", "duplicate", "operator_review"}
+        or data.receipt.get("result") not in {"resumed", "failed", "duplicate", "operator_review", "cancel_requested"}
         or not isinstance(data.receipt.get("acknowledgedAt"), str)
     ):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SPEC224_DECISION_RECEIPT_MISMATCH")
@@ -1189,6 +1216,78 @@ async def cancel_approval_request(
             detail="Approval request changed before cancellation could be persisted",
         )
     return cancelled
+
+
+@router.post("/spec224/recovery-grants")
+async def issue_spec224_recovery_grant(
+    data: Spec224RecoveryGrantIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Issue a P-RECOVERY grant only through the authenticated tenant owner's action."""
+    if not tenant_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tenant scope required")
+    try:
+        grant = await ApprovalDBService(db).issue_spec224_recovery_grant(
+            tenant_id=tenant_id,
+            owner_id=current_user.id,
+            idempotency_key=data.idempotency_key,
+            scope=data.scope,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        code = str(exc)
+        http_status = status.HTTP_409_CONFLICT if "IDEMPOTENCY_CONFLICT" in code else status.HTTP_422_UNPROCESSABLE_ENTITY
+        raise HTTPException(status_code=http_status, detail=code) from exc
+    return {"grant": grant}
+
+
+@router.post("/spec224/recovery-grants/{grant_id}/revoke")
+async def revoke_spec224_recovery_grant(
+    grant_id: str,
+    data: Spec224RecoveryGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: Optional[str] = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not tenant_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tenant scope required")
+    try:
+        grant = await ApprovalDBService(db).revoke_spec224_recovery_grant(
+            grant_id=grant_id,
+            tenant_id=tenant_id,
+            owner_id=current_user.id,
+            reason=data.reason,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if "NOT_FOUND" in str(exc) else status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return {"grant": grant}
+
+
+@router.post("/internal/spec224-recovery-grants/validate")
+async def validate_spec224_recovery_grant(
+    data: Spec224RecoveryGrantValidation,
+    x_internal_token: Optional[str] = Header(default=None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Internal fail-closed revalidation immediately before a protected operation."""
+    _assert_spec224_gateway_token(x_internal_token)
+    valid = await ApprovalDBService(db).validate_spec224_recovery_grant(
+        grant_id=data.grant_id,
+        tenant_id=data.tenant_id,
+        source_commit=data.source_commit,
+        source_sha256=data.source_sha256,
+        workpackage_id=data.workpackage_id,
+        operation=data.operation,
+        path=data.path,
+        runtime_scope=data.runtime_scope,
+        environment_scope=data.environment_scope,
+    )
+    return {"valid": valid}
 
 
 @router.get("/requests/{request_id}/responses", response_model=List[ApprovalResponseModel])

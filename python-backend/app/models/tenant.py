@@ -55,7 +55,9 @@ class Tenant(Base):
     plan = Column(SQLEnum(TenantPlan), default=TenantPlan.FREE, nullable=False)
     
     # Owner information
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    # SmartSpecWeb's canonical column is camel-cased; keep Python callers on
+    # owner_id while mapping the actual persisted identifier.
+    owner_id = Column("ownerId", Integer, ForeignKey("users.id"), key="owner_id", nullable=True)
     owner_email = Column(String(255), nullable=True)
     
     # Settings (JSON)
