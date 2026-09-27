@@ -1,12 +1,21 @@
 import { createHash } from "node:crypto";
+import { builtinModules } from "node:module";
 import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import yaml from "js-yaml";
+import ts from "typescript";
 
 const BUNDLE_MANIFEST = ".spec224-source-bundle.json";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py"];
 const PYTHON_TOP_LEVEL = new Set(["os", "sys", "typing", "pathlib", "json", "re", "hashlib", "datetime", "logging", "asyncio", "subprocess", "importlib"]);
-const NODE_BUILTINS = new Set(["assert", "buffer", "child_process", "crypto", "events", "fs", "http", "https", "module", "os", "path", "process", "stream", "url", "util", "zlib"]);
+const NODE_BUILTINS = new Set([
+  ...builtinModules.flatMap(item => [item, item.replace(/^node:/, "")]),
+  "node:test", "test", "node:test/reporters", "test/reporters",
+]);
+
+function isNodeBuiltin(specifier: string): boolean {
+  return NODE_BUILTINS.has(specifier) || NODE_BUILTINS.has(specifier.replace(/^node:/, ""));
+}
 
 export type SourceInputKind = "entry" | "dependency-artifact" | "runtime-config" | "test-fixture" | "generated-artifact" | "executable" | "hook" | "workspace-manifest" | "source-import";
 export type SourceDependencyEdge = {
@@ -14,7 +23,7 @@ export type SourceDependencyEdge = {
   specifier: string;
   to: string | null;
   kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input";
-  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "external-package" | "unresolved";
+  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "external-package" | "runtime-builtin" | "unresolved";
 };
 export type SourceBundleFile = {
   path: string;
@@ -117,6 +126,10 @@ export type SourceClosureInput = {
   }>;
   /** Workspace package manifests whose exports and local dependencies are in scope. */
   workspaceManifestPaths?: string[];
+  /** Package scripts selected by this runtime/build profile; omitted preserves conservative all-script discovery. */
+  selectedPackageScripts?: Array<{ manifestPath: string; scripts: string[] }>;
+  /** Include devDependencies in the profile; defaults to true for conservative source analysis. */
+  includeDevelopmentDependencies?: boolean;
   profileId?: string;
   runtimeIdentity?: {
     node?: string;
@@ -516,11 +529,13 @@ function importsIn(
 ): {
   local: string[];
   external: string[];
+  builtins: string[];
   dynamic: string[];
   unresolved: string[];
 } {
   const local = new Set<string>();
   const external = new Set<string>();
+  const builtins = new Set<string>();
   const dynamic = new Set<string>();
   const unresolved = new Set<string>();
   const isPython = filePath.endsWith(".py");
@@ -535,24 +550,42 @@ function importsIn(
     for (const match of source.matchAll(/\b(?:importlib\.import_module|__import__)\s*\(\s*["']([^"']+)["']/g)) dynamic.add(match[1]);
     if (/\b(?:importlib\.import_module|__import__)\s*\(\s*[^"'\s]/.test(source)) unresolved.add("<dynamic-python-import>");
   } else {
-    if (/\b(?:eval\s*\(|new\s+Function\s*\()/.test(source)) unresolved.add("<dynamic-code-evaluation>");
-    const staticImport = /(?:\bimport\s+(?:[^"'()]*?\s+from\s+)?|\bexport\s+[^"']*?\s+from\s+|\brequire\s*\(\s*)["']([^"']+)["']/g;
-    for (const match of source.matchAll(staticImport)) {
-      const specifier = match[1];
+    const scriptKind = /\.tsx$/i.test(filePath) ? ts.ScriptKind.TSX : /\.jsx$/i.test(filePath) ? ts.ScriptKind.JSX : /\.(?:mjs|cjs|js)$/i.test(filePath) ? ts.ScriptKind.JS : ts.ScriptKind.TS;
+    const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKind);
+    const addStatic = (specifier: string) => {
       if (specifier.startsWith(".") || specifier.startsWith("/")) local.add(specifier);
-      else if (!specifier.startsWith("node:") && !NODE_BUILTINS.has(specifier.split("/")[0])) external.add(specifier);
-    }
-    const dynamicLiterals = [...[...source.matchAll(/\bimport\s*\(\s*(["'])([^"']+)\1\s*\)/g)].map(match => match[2]), ...[...source.matchAll(/\bimport\s*\(\s*`([^$`]+)`\s*\)/g)].map(match => match[1])];
-    for (const specifier of dynamicLiterals) {
+      else if (isNodeBuiltin(specifier)) builtins.add(specifier);
+      else external.add(specifier);
+    };
+    const addDynamic = (specifier: string) => {
       dynamic.add(specifier);
-      if (specifier.startsWith(".") || specifier.startsWith("/")) local.delete(specifier);
-      else if (!specifier.startsWith("node:") && !NODE_BUILTINS.has(specifier.split("/")[0])) external.delete(specifier);
-    }
-    if (/\bimport\s*\(\s*(?!["']|`[^$`]*`)/.test(source) || /\brequire\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-javascript-import>");
+    };
+    const isLiteral = (node: ts.Expression): node is ts.StringLiteral | ts.NoSubstitutionTemplateLiteral =>
+      ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
+    const visit = (node: ts.Node) => {
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && isLiteral(node.moduleSpecifier)) {
+        addStatic(node.moduleSpecifier.text);
+      } else if (ts.isCallExpression(node)) {
+        if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+          if (node.arguments.length === 1 && isLiteral(node.arguments[0])) addDynamic(node.arguments[0].text);
+          else unresolved.add("<dynamic-javascript-import>");
+        } else if (ts.isIdentifier(node.expression) && node.expression.text === "require") {
+          if (node.arguments.length === 1 && isLiteral(node.arguments[0])) addStatic(node.arguments[0].text);
+          else unresolved.add("<dynamic-javascript-import>");
+        } else if (ts.isIdentifier(node.expression) && node.expression.text === "eval") {
+          unresolved.add("<dynamic-code-evaluation>");
+        }
+      } else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Function") {
+        unresolved.add("<dynamic-code-evaluation>");
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
   }
   return {
     local: [...local],
     external: [...external],
+    builtins: [...builtins],
     dynamic: [...dynamic],
     unresolved: [...unresolved],
   };
@@ -855,11 +888,23 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
     }
     return { packages: result, importers };
   }
-  const lock = yaml.load(source) as { packages?: Record<string, Record<string, unknown>>; importers?: Record<string, Record<string, unknown>> } | undefined;
+  const lock = yaml.load(source) as {
+    packages?: Record<string, Record<string, unknown>>;
+    snapshots?: Record<string, Record<string, unknown>>;
+    importers?: Record<string, Record<string, unknown>>;
+  } | undefined;
+  const packageEntries = lock?.packages ?? {};
+  const snapshotEntries = lock?.snapshots ?? {};
+  const hasSeparateSnapshots = Object.keys(snapshotEntries).length > 0;
+  const packageLocatorFor = (locator: string) => {
+    const peerContextStart = locator.indexOf("(");
+    return peerContextStart < 0 ? locator : locator.slice(0, peerContextStart);
+  };
+  const packageMetadataFor = (locator: string) => packageEntries[packageLocatorFor(locator)] ?? packageEntries[`/${packageLocatorFor(locator)}`] ?? {};
   const result: SourceExternalPackageIdentity[] = [];
-  for (const [rawKey, value] of Object.entries(lock?.packages ?? {})) {
+  for (const [rawKey, snapshot] of Object.entries(hasSeparateSnapshots ? snapshotEntries : packageEntries)) {
     const locator = rawKey.replace(/^\//, "");
-    let key = locator.replace(/\([^)]*\)$/, "");
+    let key = packageLocatorFor(locator);
     let name: string;
     let version: string;
     if (key.startsWith("@")) {
@@ -873,8 +918,10 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
       name = key.slice(0, versionAt);
       version = key.slice(versionAt + 1);
     }
-    const resolution = (value.resolution && typeof value.resolution === "object" ? value.resolution : {}) as Record<string, unknown>;
-    const integrityValue = resolution.integrity ?? value.integrity;
+    const metadata = hasSeparateSnapshots ? packageMetadataFor(locator) : snapshot;
+    const value = hasSeparateSnapshots ? snapshot : metadata;
+    const resolution = (metadata.resolution && typeof metadata.resolution === "object" ? metadata.resolution : {}) as Record<string, unknown>;
+    const integrityValue = resolution.integrity ?? metadata.integrity;
     const integrity = typeof integrityValue === "string" ? [integrityValue] : [];
     const dependencies = Object.keys((value.dependencies && typeof value.dependencies === "object" ? value.dependencies : {}) as Record<string, unknown>).map(normalizePackageName);
     const optionalDependencies = Object.keys((value.optionalDependencies && typeof value.optionalDependencies === "object" ? value.optionalDependencies : {}) as Record<string, unknown>).map(normalizePackageName);
@@ -904,22 +951,58 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
       cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
     });
   }
-  const resolvePnpmLocator = (name: string, value: unknown): string | null => {
+  const resolvePnpmLocator = (rawName: string, value: unknown): string | null => {
     const version = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Record<string, unknown>).version === "string" ? (value as Record<string, unknown>).version as string : null;
     if (!version) return null;
     // pnpm importer resolutions may carry the full peer-qualified package
     // locator (name@version(peer@...)); dependency entries usually carry only
     // a version. Preserve the full locator when present so peer variants do
     // not collapse into an ambiguous name/version match.
-    const expected = (version.startsWith(`${name}@`) ? version : `${name}@${version}`).replace(/^\//, "");
-    const matches = result.filter(item => item.locator === packageLocatorId(lockfilePath, expected));
+    const valueString = version.replace(/^\//, "");
+    // Importer resolutions normally contain only a version, which may itself
+    // contain peer package names (and therefore `@`). Treat it as a complete
+    // locator only when the prefix is a package name followed by its version.
+    const locatorCandidate = valueString.replace(/^\//, "");
+    let nesting = 0;
+    let versionDelimiter = -1;
+    for (let index = 0; index < locatorCandidate.length; index += 1) {
+      if (locatorCandidate[index] === "(") nesting += 1;
+      else if (locatorCandidate[index] === ")") nesting = Math.max(0, nesting - 1);
+      else if (locatorCandidate[index] === "@" && nesting === 0 && index > 0) {
+        versionDelimiter = index;
+        break;
+      }
+    }
+    // `name@version` can also be pnpm's encoding for an npm alias. An `@`
+    // inside a peer context (version@peer@x) is not a package delimiter.
+    const targetName = versionDelimiter > 0 ? locatorCandidate.slice(0, versionDelimiter) : rawName;
+    const qualifiedVersion = versionDelimiter > 0 ? locatorCandidate.slice(versionDelimiter + 1) : valueString;
+    const normalizedName = normalizePackageName(targetName);
+    const plainVersion = qualifiedVersion.split("(", 1)[0].replace(/^\//, "");
+    const peerQualified = qualifiedVersion.includes("(");
+    const matches = result.filter(item => {
+      if (item.name !== normalizedName || item.version !== plainVersion) return false;
+      if (!peerQualified) return true;
+      const locator = item.locator.slice(`${lockfilePath}#`.length);
+      return locator === `${targetName}@${qualifiedVersion}` || locator === `${normalizedName}@${qualifiedVersion}`;
+    });
     return matches.length === 1 ? matches[0].locator : null;
   };
   for (const identity of result) {
     const rawLocator = identity.locator.slice(`${lockfilePath}#`.length);
-    const packageEntry = lock?.packages?.[rawLocator] ?? lock?.packages?.[`/${rawLocator}`] ?? {};
-    for (const name of identity.dependencies) identity.dependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.dependencies as Record<string, unknown> | undefined)?.[name]);
-    for (const name of identity.optionalDependencies) identity.optionalDependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.optionalDependencies as Record<string, unknown> | undefined)?.[name]);
+      const packageEntry = hasSeparateSnapshots
+        ? snapshotEntries[rawLocator] ?? snapshotEntries[`/${rawLocator}`] ?? {}
+        : packageEntries[rawLocator] ?? packageEntries[`/${rawLocator}`] ?? {};
+    const dependencies = (packageEntry.dependencies && typeof packageEntry.dependencies === "object" ? packageEntry.dependencies : {}) as Record<string, unknown>;
+    const optionalDependencies = (packageEntry.optionalDependencies && typeof packageEntry.optionalDependencies === "object" ? packageEntry.optionalDependencies : {}) as Record<string, unknown>;
+    for (const name of identity.dependencies) {
+      const entry = Object.entries(dependencies).find(([rawName]) => normalizePackageName(rawName) === name);
+      identity.dependencyLocators[name] = entry ? resolvePnpmLocator(entry[0], entry[1]) : null;
+    }
+    for (const name of identity.optionalDependencies) {
+      const entry = Object.entries(optionalDependencies).find(([rawName]) => normalizePackageName(rawName) === name);
+      identity.optionalDependencyLocators[name] = entry ? resolvePnpmLocator(entry[0], entry[1]) : null;
+    }
   }
   const importers: Record<string, Record<string, string | null>> = {};
   for (const [importerPath, value] of Object.entries(lock?.importers ?? {})) {
@@ -1197,7 +1280,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
               specifier: "<hook-inputs-not-declared-in-profile>",
             });
         }
-        const dependencies = ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"].flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
+        const dependencySections = ["dependencies", "optionalDependencies", "peerDependencies", ...(input.includeDevelopmentDependencies !== false ? ["devDependencies"] : [])];
+        const dependencies = dependencySections.flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
         const manifestDependencyNames = new Set(dependencies.map(({ entry: [name] }) => normalizePackageName(name)));
         for (const {
           entry: [name, range],
@@ -1293,7 +1377,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
               specifier: `<lifecycle-script-not-authorized:${lifecycle}>`,
             });
         }
-        for (const [scriptName, command] of Object.entries(scripts)) {
+        const selectedScriptNames = input.selectedPackageScripts
+          ? input.selectedPackageScripts.find(item => item.manifestPath === filePath)?.scripts ?? []
+          : undefined;
+        const scriptEntries = Object.entries(scripts).filter(([scriptName]) => selectedScriptNames === undefined || selectedScriptNames.includes(scriptName));
+        for (const [scriptName, command] of scriptEntries) {
           if (typeof command !== "string") continue;
           for (const executable of unresolvedCommandDependencies(command, manifestDependencyNames))
             unresolved.push({
@@ -1349,10 +1437,26 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       : {
           local: [] as string[],
           external: [] as string[],
+          builtins: [] as string[],
           dynamic: [] as string[],
           unresolved: [] as string[],
         };
+    for (const specifier of imports.builtins) {
+      dependencyEdges.push({ from: filePath, specifier, to: null, kind: "static-import", status: "runtime-builtin" });
+    }
     for (const name of imports.external) {
+      const aliasedSource = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots);
+      if (aliasedSource) {
+        dependencyEdges.push({
+          from: filePath,
+          specifier: name,
+          to: aliasedSource,
+          kind: "static-import",
+          status: "resolved-local",
+        });
+        queue.push({ path: aliasedSource, kind: "source-import" });
+        continue;
+      }
       const local = workspacePackages.find(item => name === item.name || name.startsWith(`${item.name}/`));
       if (local) {
         const subpath = name === local.name ? "." : `./${name.slice(local.name.length + 1)}`;
@@ -1396,18 +1500,21 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       });
     }
     for (const specifier of imports.dynamic) {
-      if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
-        const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
-        if (resolved) {
-          dependencyEdges.push({
-            from: filePath,
-            specifier,
-            to: resolved,
-            kind: "dynamic-import",
-            status: "resolved-local",
-          });
-          queue.push({ path: resolved, kind: "source-import" });
-        } else {
+      if (isNodeBuiltin(specifier)) {
+        dependencyEdges.push({ from: filePath, specifier, to: null, kind: "dynamic-import", status: "runtime-builtin" });
+        continue;
+      }
+      const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
+      if (resolved) {
+        dependencyEdges.push({
+          from: filePath,
+          specifier,
+          to: resolved,
+          kind: "dynamic-import",
+          status: "resolved-local",
+        });
+        queue.push({ path: resolved, kind: "source-import" });
+      } else if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
           unresolved.push({ from: filePath, specifier });
           dependencyEdges.push({
             from: filePath,
@@ -1416,7 +1523,6 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             kind: "dynamic-import",
             status: "unresolved",
           });
-        }
       } else {
         const local = workspacePackages.find(item => specifier === item.name || specifier.startsWith(`${item.name}/`));
         if (local) {
@@ -1688,7 +1794,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const destination = resolve(input.destination);
   const closure = input.closure;
   if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
-  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "runtime-builtin")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`))) throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
   const files = [...new Set(closure.files.map(file => safeRelative(sourceRoot, file)))].sort();

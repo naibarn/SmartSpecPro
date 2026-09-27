@@ -89,6 +89,104 @@ describe("Spec 224 source bundle tooling", () => {
     ).rejects.toThrow("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   });
 
+  it("resolves dynamic in-repository TypeScript aliases without treating them as registry packages", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), '// Lazy imports mentioned in docs are not runtime edges: await import("phantom-package");\nconst note = "require(\\\"also-phantom\\\")";\nimport type { Channel } from "@shared/channelTypes";\nexport const load = (): Promise<unknown> => import("@shared/channelTypes");\nexport type { Channel };\n');
+    await mkdir(join(root, "shared"), { recursive: true });
+    await writeFile(join(root, "shared/channelTypes.ts"), "export type Channel = string;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture" }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      moduleRoots: [{ prefix: "@shared", root: "shared", language: "javascript" }],
+      profileId: "dynamic-alias-fixture",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.files).toContain("shared/channelTypes.ts");
+    expect(closure.externalImports).not.toContain("@shared/channelTypes");
+    expect(closure.externalImports).not.toContain("phantom-package");
+    expect(closure.externalImports).not.toContain("also-phantom");
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      specifier: "@shared/channelTypes",
+      to: "shared/channelTypes.ts",
+      kind: "dynamic-import",
+      status: "resolved-local",
+    }));
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      specifier: "@shared/channelTypes",
+      to: "shared/channelTypes.ts",
+      kind: "static-import",
+      status: "resolved-local",
+    }));
+  });
+
+  it("records Node builtin modules as runtime edges rather than npm dependencies", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import { readFile } from "node:fs/promises";\nimport { spawn } from "child_process";\nexport { readFile, spawn };\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture" }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "node-builtin-runtime-edges",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.externalImports).toEqual([]);
+    expect(closure.dependencyEdges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ specifier: "node:fs/promises", status: "runtime-builtin" }),
+      expect.objectContaining({ specifier: "child_process", status: "runtime-builtin" }),
+    ]));
+  });
+
+  it("limits script-reference discovery to scripts selected by the execution profile", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), "export const ready = true;\n");
+    await mkdir(join(root, "scripts"), { recursive: true });
+    await writeFile(join(root, "scripts/dev-only.ts"), "import 'dev-only-package';\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "fixture",
+      scripts: { start: "node src/main.ts", test: "node scripts/dev-only.ts" },
+    }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      selectedPackageScripts: [{ manifestPath: "package.json", scripts: ["start"] }],
+      profileId: "selected-runtime-script-only",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.files).not.toContain("scripts/dev-only.ts");
+    expect(closure.externalImports).toEqual([]);
+    expect(closure.unresolvedImports).toEqual([]);
+  });
+
+  it("can model a production install without rooting development-only manifest dependencies", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), "export const ready = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", devDependencies: { "test-only-package": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    devDependencies:\n      test-only-package:\n        specifier: 1.0.0\n        version: 1.0.0\npackages:\n  test-only-package@1.0.0:\n    resolution:\n      integrity: sha512-YWJjZA==\nsnapshots:\n  test-only-package@1.0.0: {}\n`);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      includeDevelopmentDependencies: false,
+      profileId: "production-dependencies-only",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.requiredExternalPackages).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+  });
+
   it("assembles repeatable read-only bundles and detects post-seal mutation", async () => {
     const root = await sourceFixture();
     const first = await makeBundle(root, join(root, "..", "bundle-one"));
@@ -753,6 +851,52 @@ describe("Spec 224 source bundle tooling", () => {
     const bundlePath = join(root, "..", "pnpm-peer-variant-bundle");
     await assembleReadOnlySourceBundle({ sourceRoot: root, destination: bundlePath, closure, sourceRevision: "f".repeat(40), specDigest, dependencyArtifacts: ["pnpm-lock.yaml"] });
     expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
+  });
+
+  it("resolves pnpm v9 package metadata separately from snapshot dependency edges", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import "root-lib";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "root-lib": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      root-lib:\n        specifier: 1.0.0\n        version: 1.0.0\npackages:\n  root-lib@1.0.0:\n    resolution:\n      integrity: sha512-YWJjZA==\n  transitive-lib@2.0.0:\n    resolution:\n      integrity: sha512-ZGVmZA==\nsnapshots:\n  root-lib@1.0.0:\n    dependencies:\n      transitive-lib: 2.0.0\n  transitive-lib@2.0.0: {}\n`);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-v9-package-snapshot-split",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([
+      "pnpm-lock.yaml#root-lib@1.0.0",
+      "pnpm-lock.yaml#transitive-lib@2.0.0",
+    ]));
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("external-package-lock-entry-missing") }));
+    expect(closure.unresolvedImports.filter(item => item.specifier.startsWith("UNVERIFIED_ARTIFACT:"))).toHaveLength(2);
+  });
+
+  it("resolves scoped pnpm v9 importer entries with peer-qualified versions", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import "@scope/root-lib";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "@scope/root-lib": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      '@scope/root-lib':\n        specifier: ^1.0.0\n        version: 1.0.0(peer@2.0.0)\npackages:\n  '@scope/root-lib@1.0.0':\n    resolution:\n      integrity: sha512-YWJjZA==\n  peer@2.0.0:\n    resolution:\n      integrity: sha512-ZGVmZA==\n  actual-lib@3.0.0:\n    resolution:\n      integrity: sha512-YWJjZA==\nsnapshots:\n  '@scope/root-lib@1.0.0(peer@2.0.0)':\n    dependencies:\n      peer: 2.0.0\n      aliased-lib: actual-lib@3.0.0\n  peer@2.0.0: {}\n  actual-lib@3.0.0: {}\n`);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-v9-scoped-peer-importer",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([
+      "pnpm-lock.yaml#@scope/root-lib@1.0.0(peer@2.0.0)",
+      "pnpm-lock.yaml#peer@2.0.0",
+      "pnpm-lock.yaml#actual-lib@3.0.0",
+    ]));
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("external-package-lock-entry-missing") }));
   });
 
   it("selects the uv resolution fork by version and environment marker, then seals only the compatible wheel", async () => {

@@ -17,6 +17,7 @@
     "start": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=8192' tsx server/_core/index.ts",
     "start:feature-186-node-worker": "NODE_ENV=production NODE_OPTIONS='--max-old-space-size=4096' tsx server/jobs/postgresNodeJobWorker.ts",
     "check": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
+    "spec224:source-profile-report": "node --import tsx scripts/spec224-source-profile-report.ts --profile apps/web/scripts/spec224-source-closure-web.profile.json --repo-root ../..",
     "check:mcp146": "node scripts/check-mcp146-types.mjs",
     "security:mcp146": "node scripts/mcp-secret-scan.mjs",
     "mcp:smoke": "node scripts/mcp-v2-protocol-smoke.mjs",
