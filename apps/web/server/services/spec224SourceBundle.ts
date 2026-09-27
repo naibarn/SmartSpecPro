@@ -101,6 +101,7 @@ export type SourceBundleManifest = {
   admissionEligible: false;
   sourceRevision: string;
   specDigest: string;
+  sourceTreeAttestation?: { treePath: string; manifestDigest: string };
   profileId: string;
   runtimeIdentity: {
     node?: string;
@@ -1857,11 +1858,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   };
 }
 
-export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; destination: string; closure: SourceClosureResult; sourceRevision: string; specDigest: string; dependencyArtifacts: string[] }): Promise<SourceBundleManifest> {
+export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; destination: string; closure: SourceClosureResult; sourceRevision: string; specDigest: string; dependencyArtifacts: string[]; sourceTreeAttestation?: { treePath: string; manifestDigest: string }; sourceTreeFileModes?: ReadonlyMap<string, number> }): Promise<SourceBundleManifest> {
   const sourceRoot = resolve(input.sourceRoot);
   const destination = resolve(input.destination);
   const closure = input.closure;
   if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
+  if (input.sourceTreeAttestation && (!input.sourceTreeAttestation.treePath.trim() || !/^[a-f0-9]{64}$/i.test(input.sourceTreeAttestation.manifestDigest))) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_ATTESTATION_INVALID");
   if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`))) throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
@@ -1877,7 +1879,9 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     const bytes = await readFile(sourcePath);
     const after = await lstat(sourcePath);
     if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.mode !== after.mode || bytes.byteLength !== after.size) throw new Error("SPEC224_BUNDLE_SOURCE_CHANGED_DURING_ASSEMBLY");
-    content.push({ path: filePath, bytes, mode: before.mode & 0o777 });
+    const sourceTreeMode = input.sourceTreeFileModes?.get(filePath);
+    if (sourceTreeMode !== undefined && sourceTreeMode !== 0o644 && sourceTreeMode !== 0o755) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_MODE_INVALID");
+    content.push({ path: filePath, bytes, mode: sourceTreeMode ?? (before.mode & 0o777) });
   }
   const fileSet = new Set(files);
   const provenanceEntries = Object.entries(closure.provenance);
@@ -1914,6 +1918,7 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     admissionEligible: false as const,
     sourceRevision: input.sourceRevision,
     specDigest: input.specDigest,
+    ...(input.sourceTreeAttestation ? { sourceTreeAttestation: input.sourceTreeAttestation } : {}),
     profileId: closure.profileId,
     runtimeIdentity: closure.runtimeIdentity,
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
@@ -1955,6 +1960,51 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   }
   for (const directory of [...directories].sort((a, b) => b.length - a.length)) await chmod(directory, 0o555);
   return manifest;
+}
+
+/**
+ * Binds a dependency-closed bundle to one exact Git tree and rejects files
+ * whose bytes or origin do not match that tree or a verified locked artifact.
+ * This is integrity evidence only, not runtime admission or isolation proof.
+ */
+export async function assembleGitTreeAttestedSourceBundle(input: {
+  repositoryRoot: string;
+  sourceRoot: string;
+  destination: string;
+  sourceManifest: GitTreeSourceManifest;
+  sourceRevision: string;
+  closure: Omit<SourceClosureInput, "sourceRoot">;
+  specDigest: string;
+}): Promise<{ bundle: SourceBundleManifest; sourceManifestDigest: string }> {
+  if (input.sourceManifest.sourceRevision.toLowerCase() !== input.sourceRevision.toLowerCase()) throw new Error("SPEC224_BUNDLE_SOURCE_REVISION_MISMATCH");
+  await attestGitTreeSourceManifest({ repositoryRoot: input.repositoryRoot, manifest: input.sourceManifest });
+  const closure = await discoverSourceClosure({ ...input.closure, sourceRoot: input.sourceRoot });
+  if (!closure.closureComplete) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  const bundle = await assembleReadOnlySourceBundle({
+    sourceRoot: input.sourceRoot,
+    destination: input.destination,
+    closure,
+    sourceRevision: input.sourceRevision,
+    specDigest: input.specDigest,
+    dependencyArtifacts: input.closure.dependencyArtifacts,
+    sourceTreeAttestation: { treePath: input.sourceManifest.treePath, manifestDigest: input.sourceManifest.manifestDigest },
+    sourceTreeFileModes: new Map(input.sourceManifest.files.map(file => [file.path, file.mode])),
+  });
+  const sourceFiles = new Map(input.sourceManifest.files.map(file => [file.path, file]));
+  const verifiedArtifacts = new Map(closure.externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT" && item.artifactPath && item.artifactSha256).map(item => [item.artifactPath!, item]));
+  for (const file of bundle.files) {
+    const source = sourceFiles.get(file.path);
+    if (source) {
+      if (source.sha256 !== file.sha256 || source.sizeBytes !== file.sizeBytes || source.mode !== file.mode) throw new Error(`SPEC224_BUNDLE_SOURCE_TREE_FILE_MISMATCH:${file.path}`);
+      continue;
+    }
+    const artifact = verifiedArtifacts.get(file.path);
+    if (!artifact || artifact.artifactSha256 !== file.sha256) throw new Error(`SPEC224_BUNDLE_FILE_OUTSIDE_ATTESTED_INPUTS:${file.path}`);
+  }
+  const verified = await verifyReadOnlySourceBundle(input.destination);
+  if (!verified.valid) throw new Error("SPEC224_BUNDLE_POST_ASSEMBLY_INTEGRITY_FAILED");
+  await attestGitTreeSourceManifest({ repositoryRoot: input.repositoryRoot, manifest: input.sourceManifest });
+  return { bundle, sourceManifestDigest: input.sourceManifest.manifestDigest };
 }
 
 /** Content-integrity check only; it does not attest owner approval or runtime isolation. */
