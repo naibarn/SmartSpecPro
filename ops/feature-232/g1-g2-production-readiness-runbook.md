@@ -106,9 +106,17 @@ Run `ops/feature-232/g2-production-preflight.sql` using a read-only Production d
 
 Local migration review: 0345 creates JTI digest/expiry table; 0346 creates one-time device authorization with FK to `users.id`; 0347 creates login counters with TTL; 0348 creates hashed lookup indexes and encrypted paired auth state; 0349 permits a null expiry for a persistent legacy lockout. Each transaction uses local 5-second lock and 60-second statement limits. Local disposable schema transaction was rolled back; this does not replace target revalidation.
 
+### 2.1.1 Target and writer inventory gate
+
+Before backup capture, record credential-free Production PostgreSQL and token-Redis fingerprints, environment, migration head, application revision and collection time through approved read-only controls. Inventory every serving Web/Backend replica; Cloudflare/tunnel/proxy/load-balancer route; direct-origin path; systemd/container supervisor/watchdog; job, scheduler, cleanup process; and external/manual auth writer. For each G2 family (JTI, login lockout, device authorization, Runner pairing, Worker pairing), list readers, writers, owner, revision, exact fence control, and independent verification evidence. Classify non-G2 Redis users separately and keep them out of the G2 stop list.
+
+An aggregate statement such as “all instances covered” is insufficient without per-instance and per-writer evidence. Do not infer targets or served revisions from local `.env`, a hostname alone, or a dated report. Keep evidence private; include no credentials, raw JTIs/Redis keys, user/device/pairing identifiers, or secret bytes. Unknown origins, replicas, writers, controls, or target identity keep the gate `BLOCKED_SAFE`. This inventory is read-only; it does not authorize starting or changing a service.
+
 ### 2.2 Backup/restore evidence
 
 The backup owner must create/identify an approved encrypted Production backup and restore it to a new isolated, access-controlled database with equivalent PostgreSQL major version/extensions. Do not restore over Production or developer `smartspec_test`; do not copy regulated Production data into an unapproved environment. Record backup ID/time, source DB identity (redacted), restore target identity, restore duration/result, migration journal head, row-count/reconciliation checks and operator. Keep files and connection strings out of logs.
+
+The selected method (SQL dump, filesystem backup, or continuous archiving/PITR) must document its consistency assumptions, recovery point, integrity check, encryption/key-version reference, private destination, access/retention/deletion owner, and repeatable restore procedure. Artifact existence or a successful dump command is not a pass: prove the artifact restores in an isolated target with no Production credentials/routes, public ingress, workers, schedulers, webhooks, messaging, or paid-provider egress. Capture schema/migration hashes and sanitized aggregate comparisons. A temporary/tmpfs or unencrypted artifact is a historical restore drill only and does not satisfy the durable backup gate.
 
 For a PostgreSQL custom-format dump, the controlled drill should follow this shape with secret connection strings already injected by the approved secret manager (never shell history or chat):
 
