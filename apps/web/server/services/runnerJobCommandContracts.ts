@@ -147,6 +147,12 @@ export function validateRunnerJobCommand(
   )
     throw new Error("RUNNER_COMMAND_PAYLOAD_INVALID");
   safePayload(raw.payload);
+  if (
+    raw.commandType === "cancel" &&
+    (typeof raw.payload.targetCommandId !== "string" ||
+      !ID.test(raw.payload.targetCommandId.trim()))
+  )
+    throw new Error("RUNNER_CANCEL_TARGET_REQUIRED");
   return structuredClone({ ...raw, controlPlaneOrigin });
 }
 

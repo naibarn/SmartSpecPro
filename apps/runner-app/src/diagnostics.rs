@@ -591,8 +591,10 @@ fn run_live_control_loop(
         )?;
         if command.command_type == "cancel" {
             if command.execution_kind == "external_agent_task" {
-                if let Some(mut active) = external_processes.remove(&command.command_id) {
-                    let _ = active.process.cancel();
+                if let Some(target_command_id) = cancellation_target_command_id(&command) {
+                    if let Some(mut active) = external_processes.remove(target_command_id) {
+                        let _ = active.process.cancel();
+                    }
                 }
             }
             send_runner_receipt(
@@ -751,6 +753,17 @@ fn build_keepalive_envelope(
 struct ActiveExternalAgent {
     command: RunnerJobCommand,
     process: ExternalAgentProcess,
+}
+
+fn cancellation_target_command_id(command: &RunnerJobCommand) -> Option<&str> {
+    if command.command_type != "cancel" {
+        return None;
+    }
+    command
+        .payload
+        .get("targetCommandId")
+        .and_then(serde_json::Value::as_str)
+        .filter(|value| !value.trim().is_empty())
 }
 
 fn poll_external_agents(
@@ -1748,9 +1761,10 @@ fn civil_from_days(days_since_unix_epoch: i64) -> (i64, i64, i64) {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::{
-        build_keepalive_envelope, capability_snapshot, delivery_transport_label, keepalive_due,
-        parse_refresh_interval, persist_and_send_runner_receipt, replay_pending_runner_receipts,
-        runner_receipt_payload, semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
+        build_keepalive_envelope, cancellation_target_command_id, capability_snapshot,
+        delivery_transport_label, keepalive_due, parse_refresh_interval,
+        persist_and_send_runner_receipt, replay_pending_runner_receipts, runner_receipt_payload,
+        semantic_receipt_payload, snapshot_evidence, update_ack_statuses,
     };
     use crate::config::{RunnerConfig, RunnerProfile};
     use crate::discovery::scan_known_tools;
@@ -1762,6 +1776,38 @@ mod lifecycle_tests {
     use serde_json::json;
     use std::collections::VecDeque;
     use std::time::Duration;
+
+    #[test]
+    fn cancellation_targets_the_original_execution_command() {
+        let command = RunnerJobCommand {
+            command_id: "cancel-1".into(),
+            command_type: "cancel".into(),
+            contract_version: crate::protocol::RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: None,
+            project_ref: None,
+            workspace_ref: None,
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "http://localhost:3000".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "cancel:job-1:1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "input-1".into(),
+            payload: json!({"targetCommandId": "execute-1"}),
+        };
+        assert_eq!(cancellation_target_command_id(&command), Some("execute-1"));
+    }
 
     #[test]
     fn refresh_interval_is_bounded_and_defaults_safely() {

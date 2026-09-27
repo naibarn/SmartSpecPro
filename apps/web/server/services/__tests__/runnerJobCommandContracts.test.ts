@@ -72,6 +72,21 @@ describe("Runner Job Command/Receipt contract", () => {
     ).toThrow("RUNNER_COMMAND_SECRET_FIELD");
   });
 
+  it("requires cancel commands to correlate to the original execute command", () => {
+    const cancel = {
+      ...command(),
+      commandId: "cancel-p213-1",
+      commandType: "cancel" as const,
+      payload: { targetCommandId: "command-p213-1" },
+    };
+    expect(validateRunnerJobCommand(cancel).payload).toEqual({
+      targetCommandId: "command-p213-1",
+    });
+    expect(() =>
+      validateRunnerJobCommand({ ...cancel, payload: {} })
+    ).toThrow("RUNNER_CANCEL_TARGET_REQUIRED");
+  });
+
   it("accepts a policy-bound external-agent command without weakening browser validation", () => {
     const external = {
       ...command(),
