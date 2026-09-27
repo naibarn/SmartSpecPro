@@ -49,6 +49,7 @@ export type CanonicalDevelopmentJobSnapshot = {
   errorCode?: string | null;
   errorMessage?: string | null;
   attempt?: number;
+  operatorReviewRequired?: boolean;
 };
 
 export type DevelopmentRunPersistenceTx = {
@@ -449,6 +450,10 @@ export function createDevelopmentRunService(
       runId: string;
       tenantId: string;
       actorId: number;
+      expectedRevision?: number;
+      expectedFencingVersion?: number;
+      expectedWorkerJobId?: string;
+      expectedAttempt?: number;
     }): Promise<DevelopmentRunReconcileResult> {
       const scope = scopeFor(input);
       return adapter.transaction(async tx => {
@@ -481,6 +486,32 @@ export function createDevelopmentRunService(
             run: record.run,
             revision: record.revision,
             reason: "worker_job_already_reconciled",
+          };
+        }
+        if (
+          (input.expectedRevision !== undefined &&
+            record.revision !== input.expectedRevision) ||
+          (input.expectedFencingVersion !== undefined &&
+            record.run.fencingVersion !== input.expectedFencingVersion) ||
+          (input.expectedWorkerJobId !== undefined &&
+            record.run.workerJobId !== input.expectedWorkerJobId)
+        ) {
+          return {
+            action: "WAIT",
+            run: record.run,
+            revision: record.revision,
+            reason: "continuation_binding_stale",
+          };
+        }
+        if (
+          input.expectedAttempt !== undefined &&
+          job.attempt !== input.expectedAttempt
+        ) {
+          return {
+            action: "WAIT",
+            run: record.run,
+            revision: record.revision,
+            reason: "continuation_attempt_stale",
           };
         }
 
@@ -625,6 +656,27 @@ export function createDevelopmentRunService(
             run: cancelled.run,
             revision: cancelled.revision,
             reason: "worker_job_cancelled",
+          };
+        }
+
+        if (job.operatorReviewRequired || job.errorCode === "UNKNOWN_OUTCOME") {
+          const decision = await applyTransition(tx, record, scope, {
+            idempotencyKey: `reconcile:${record.run.workerJobId}:${job.attempt ?? 0}:unknown-outcome-review`,
+            nextState: "WAITING_HUMAN_DECISION",
+            eventType: "DECISION_REQUIRED",
+            payload: {
+              source: "worker_job",
+              reason: "external_outcome_unknown",
+              workerJobId: record.run.workerJobId,
+              status: job.status,
+              errorCode: job.errorCode ?? "UNKNOWN_OUTCOME",
+            },
+          });
+          return {
+            action: "WAIT",
+            run: decision.run,
+            revision: decision.revision,
+            reason: "external_outcome_unknown_requires_review",
           };
         }
 
@@ -856,6 +908,7 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
                 errorCode: workerJobs.errorCode,
                 errorMessage: workerJobs.errorMessage,
                 attempt: workerJobs.attempt,
+                operatorReviewRequired: workerJobs.operatorReviewRequired,
               })
               .from(workerJobs)
               .where(

@@ -664,7 +664,7 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .from(runnerNodes)
                   .where(
                     and(
-                    eq(runnerNodes.runnerId, input.runnerId),
+                      eq(runnerNodes.runnerId, input.runnerId),
                       eq(runnerNodes.tenantId, input.tenantId)
                     )
                   )
@@ -685,12 +685,12 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .from(runnerCapabilitySnapshots)
                   .where(
                     and(
-                    eq(
-                      sql<string>`${runnerCapabilitySnapshots.snapshotJson}->>'capabilitySnapshotId'`,
+                      eq(
+                        sql<string>`${runnerCapabilitySnapshots.snapshotJson}->>'capabilitySnapshotId'`,
                         input.capabilitySnapshotId
-                    ),
-                    eq(runnerCapabilitySnapshots.runnerId, input.runnerId),
-                    eq(runnerCapabilitySnapshots.tenantId, input.tenantId),
+                      ),
+                      eq(runnerCapabilitySnapshots.runnerId, input.runnerId),
+                      eq(runnerCapabilitySnapshots.tenantId, input.tenantId),
                       eq(
                         runnerCapabilitySnapshots.revision,
                         input.capabilitySnapshotRevision
@@ -4471,6 +4471,8 @@ export function createJobControlPlane(
         "external_wait_timeout"
       );
       return repository.transaction(async repo => {
+        if (operationKey)
+          await repo.lockRunnerReceiptStream(jobId, operationKey);
         const job = await repo.findJob(jobId);
         if (!job || job.status !== "waiting_external") return "ignored";
         if (
@@ -4665,21 +4667,216 @@ export function createJobControlPlane(
         );
         const receiptPayload = {
           ...(input.payload ?? {}),
+          commandId: input.commandId,
+          eventId: input.eventId,
+          sequence: input.sequence,
+          runnerId: input.runnerId,
+          runnerSessionId: input.runnerSessionId,
+        };
+        const spec224Input =
+          job.inputJson && typeof job.inputJson === "object"
+            ? (job.inputJson as Record<string, unknown>).spec224Run
+            : undefined;
+        const spec224Projection =
+          job.progressJson && typeof job.progressJson === "object"
+            ? (job.progressJson as Record<string, unknown>).spec224
+            : undefined;
+        const spec224 =
+          spec224Projection && typeof spec224Projection === "object"
+            ? (spec224Projection as Record<string, unknown>)
+            : spec224Input && typeof spec224Input === "object"
+              ? (spec224Input as Record<string, unknown>)
+              : null;
+        const spec224RunId =
+          spec224 && typeof spec224.runId === "string" ? spec224.runId : null;
+        const validSpec224Binding = Boolean(
+          spec224RunId &&
+          spec224?.tenantId === input.tenantId &&
+          spec224?.actorId === job.requestedByUserId &&
+          (!spec224Projection ||
+            (spec224.workerJobId === job.id &&
+              Number.isSafeInteger(spec224.projectionVersion) &&
+              Number.isSafeInteger(spec224.fencingVersion)))
+        );
+        const ensureSpec224ContinuationIntent = async () => {
+          if (!spec224RunId) return;
+          if (
+            ![
+              "EXECUTION_COMPLETED",
+              "EXECUTION_FAILED",
+              "COMMAND_REJECTED",
+              "UNKNOWN_OUTCOME",
+            ].includes(input.eventType)
+          )
+            return;
+          if (!validSpec224Binding)
+            throw new JobControlPlaneError(
+              "SPEC224_CONTINUATION_BINDING_INVALID",
+              "Runner receipt does not match the persisted DevelopmentRun binding"
+            );
+          const capabilitySnapshotId = metadata.capabilitySnapshotId;
+          const capabilitySnapshotRevision =
+            metadata.capabilitySnapshotRevision;
+          if (
+            typeof metadata.runnerId !== "string" ||
+            typeof metadata.runnerSessionId !== "string" ||
+            metadata.runnerId !== input.runnerId ||
+            metadata.runnerSessionId !== input.runnerSessionId ||
+            typeof capabilitySnapshotId !== "string" ||
+            typeof capabilitySnapshotRevision !== "string"
+          )
+            throw new JobControlPlaneError(
+              "SPEC224_RUNNER_CAPABILITY_BINDING_MISSING",
+              "Runner receipt has no persisted capability and session binding"
+            );
+          if (
+            input.payload?.capabilitySnapshotId !== undefined &&
+            input.payload.capabilitySnapshotId !== capabilitySnapshotId
+          )
+            throw new JobControlPlaneError(
+              "SPEC224_RUNNER_CAPABILITY_MISMATCH",
+              "Runner receipt capability snapshot differs from the persisted binding"
+            );
+          if (
+            input.payload?.capabilitySnapshotRevision !== undefined &&
+            input.payload.capabilitySnapshotRevision !==
+              capabilitySnapshotRevision
+          )
+            throw new JobControlPlaneError(
+              "SPEC224_RUNNER_CAPABILITY_MISMATCH",
+              "Runner receipt capability revision differs from the persisted binding"
+            );
+          const operationId = createHash("sha256")
+            .update(
+              [
+                "spec224-runner-continuation-v1",
+                spec224RunId,
+                job.id,
+                job.attempt,
+                input.commandId,
+                input.eventId,
+              ].join("\0"),
+              "utf8"
+            )
+            .digest("hex");
+          const continuationKey = boundedEventKey(
+            "spec224-continuation",
+            operationId
+          );
+          const existingIntent = await repo.findEventByIdempotency(
+            job.id,
+            continuationKey
+          );
+          const intentPayload = {
+            schemaVersion: "spec224.runner-continuation.v1",
+            operationId,
+            runId: spec224RunId,
+            tenantId: input.tenantId,
+            actorId: job.requestedByUserId,
+            workerJobId: job.id,
+            attempt: job.attempt,
+            workerJobFencingVersion: job.fencingVersion,
+            developmentRunRevision:
+              typeof spec224?.projectionVersion === "number"
+                ? spec224.projectionVersion
+                : null,
+            developmentRunFencingVersion:
+              typeof spec224?.fencingVersion === "number"
+                ? spec224.fencingVersion
+                : null,
+            receiptEventId: input.eventId,
+            receiptEventType: eventType,
+            receiptSequence: input.sequence,
+            resultRef:
+              typeof input.payload?.resultRef === "string"
+                ? input.payload.resultRef
+                : null,
+            errorCode:
+              typeof input.payload?.errorCode === "string"
+                ? input.payload.errorCode
+                : null,
             commandId: input.commandId,
-            eventId: input.eventId,
-            sequence: input.sequence,
+            operationKey,
             runnerId: input.runnerId,
             runnerSessionId: input.runnerSessionId,
+            capabilitySnapshotId,
+            capabilitySnapshotRevision,
+            leaseId: metadata.leaseId ?? null,
+            leaseFenceVersion: metadata.fenceVersion ?? null,
+            policyBinding: metadata.policyBinding ?? null,
+            state: "PENDING",
+          };
+          if (existingIntent) {
+            const persistedIntent = existingIntent.payloadJson ?? {};
+            if (
+              existingIntent.eventType !== "SPEC224_CONTINUATION_PENDING" ||
+              persistedIntent.schemaVersion !== intentPayload.schemaVersion ||
+              persistedIntent.operationId !== operationId ||
+              persistedIntent.runId !== spec224RunId ||
+              persistedIntent.tenantId !== input.tenantId ||
+              persistedIntent.workerJobId !== job.id ||
+              persistedIntent.attempt !== job.attempt ||
+              persistedIntent.receiptEventId !== input.eventId ||
+              persistedIntent.commandId !== input.commandId ||
+              persistedIntent.runnerSessionId !== input.runnerSessionId ||
+              persistedIntent.capabilitySnapshotId !== capabilitySnapshotId ||
+              persistedIntent.capabilitySnapshotRevision !==
+                capabilitySnapshotRevision
+            )
+              throw new JobControlPlaneError(
+                "SPEC224_CONTINUATION_IDEMPOTENCY_CONFLICT",
+                "Runner continuation identity conflicts with persisted intent"
+              );
+            return;
+          }
+          await repo.insertEvent({
+            workerJobId: job.id,
+            eventType: "SPEC224_CONTINUATION_PENDING",
+            attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+            eventIdempotencyKey: continuationKey,
+            payloadJson: intentPayload,
+          });
         };
         const priorReceipt = await repo.findEventByIdempotency(
           input.jobId,
           eventKey
         );
         if (priorReceipt) {
-          return priorReceipt.eventType === eventType &&
+          if (
+            priorReceipt.eventType === eventType &&
             isDeepStrictEqual(priorReceipt.payloadJson, receiptPayload)
-            ? "duplicate"
-            : "ignored";
+          ) {
+            await ensureSpec224ContinuationIntent();
+            return "duplicate";
+          }
+          if (spec224RunId) {
+            const conflictingPayloadDigest = createHash("sha256")
+              .update(JSON.stringify({ eventType, receiptPayload }), "utf8")
+              .digest("hex");
+            await repo.insertEvent({
+              workerJobId: job.id,
+              eventType: "RUNNER_RECEIPT_CONFLICT",
+              attemptId: (await repo.findAttempt(job.id, job.attempt))?.id,
+              eventIdempotencyKey: boundedEventKey(
+                "runner-receipt-conflict",
+                input.commandId,
+                input.eventId,
+                conflictingPayloadDigest
+              ),
+              payloadJson: {
+                schemaVersion: "spec224.runner-receipt-conflict.v1",
+                runId: spec224RunId,
+                commandId: input.commandId,
+                receiptEventId: input.eventId,
+                acceptedEventType: priorReceipt.eventType,
+                conflictingEventType: eventType,
+                conflictingPayloadDigest,
+                tenantId: input.tenantId,
+                actorId: job.requestedByUserId,
+              },
+            });
+          }
+          return "ignored";
         }
         const latestReceipt = await repo.findLatestRunnerReceipt(
           input.jobId,
@@ -4700,6 +4897,7 @@ export function createJobControlPlane(
           eventIdempotencyKey: eventKey,
           payloadJson: receiptPayload,
         });
+        await ensureSpec224ContinuationIntent();
         return "recorded";
       });
     },
@@ -4992,7 +5190,7 @@ export function createJobControlPlane(
         const priorDecision = await repo.findEventByIdempotency(
           input.jobId,
           eventKey
-          );
+        );
         if (priorDecision) {
           if (
             input.payloadDigest &&
@@ -5048,13 +5246,13 @@ export function createJobControlPlane(
         if (
           input.schemaVersion &&
           (!repo.assertRunnerAuthorizationBinding ||
-          !(await repo.assertRunnerAuthorizationBinding({
-            tenantId: input.tenantId,
-            runnerId: input.runnerId,
-            runnerSessionId: input.runnerSessionId,
-            capabilitySnapshotId: input.capabilitySnapshotId!,
-            capabilitySnapshotRevision: input.capabilitySnapshotRevision!,
-            now,
+            !(await repo.assertRunnerAuthorizationBinding({
+              tenantId: input.tenantId,
+              runnerId: input.runnerId,
+              runnerSessionId: input.runnerSessionId,
+              capabilitySnapshotId: input.capabilitySnapshotId!,
+              capabilitySnapshotRevision: input.capabilitySnapshotRevision!,
+              now,
             })))
         )
           return "ignored";
@@ -5106,12 +5304,12 @@ export function createJobControlPlane(
               resolvedAt: now.toISOString(),
               ...(input.deliveryId
                 ? {
-                schemaVersion: input.schemaVersion,
-                deliveryId: input.deliveryId,
-                decisionEpoch: input.decisionEpoch,
-                payloadDigest: input.payloadDigest,
-                operationId: input.operationKey,
-                result: "failed",
+                    schemaVersion: input.schemaVersion,
+                    deliveryId: input.deliveryId,
+                    decisionEpoch: input.decisionEpoch,
+                    payloadDigest: input.payloadDigest,
+                    operationId: input.operationKey,
+                    result: "failed",
                   }
                 : {}),
             },
@@ -5219,12 +5417,12 @@ export function createJobControlPlane(
             resolvedAt: now.toISOString(),
             ...(input.deliveryId
               ? {
-              schemaVersion: input.schemaVersion,
-              deliveryId: input.deliveryId,
-              decisionEpoch: input.decisionEpoch,
-              payloadDigest: input.payloadDigest,
-              operationId: input.operationKey,
-              result: "resumed",
+                  schemaVersion: input.schemaVersion,
+                  deliveryId: input.deliveryId,
+                  decisionEpoch: input.decisionEpoch,
+                  payloadDigest: input.payloadDigest,
+                  operationId: input.operationKey,
+                  result: "resumed",
                 }
               : {}),
           },
@@ -5666,6 +5864,9 @@ export function createJobControlPlane(
       )
         return false;
       return repository.transaction(async repo => {
+        // Serialize receipt-route and restart-reconciler settlement for the
+        // same operation before either path locks the job row or event stream.
+        await repo.lockRunnerReceiptStream(jobId, operationKey);
         const job = await repo.findJob(jobId);
         if (!job) return false;
         const externalWait =

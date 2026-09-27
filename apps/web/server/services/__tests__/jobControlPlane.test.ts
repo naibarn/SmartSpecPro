@@ -71,6 +71,7 @@ function makeRepository() {
           attempts.find(
             item => item.workerJobId === jobId && item.attempt === attempt
           ) ?? null,
+        assertRunnerAuthorizationBinding: async () => true,
         findEventByIdempotency: async (jobId, key) =>
           events.find(
             event =>
@@ -2032,6 +2033,8 @@ describe("job control plane", () => {
         executionKind: "external_agent_task",
         runnerId: "runner-a",
         runnerSessionId: "session-a",
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
         leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
         fenceVersion: lease!.fencingVersion,
       },
@@ -2184,6 +2187,103 @@ describe("job control plane", () => {
         },
       })
     ).resolves.toBe("ignored");
+  });
+
+  it("persists a stable Spec 224 continuation intent with a terminal Runner receipt", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: undefined,
+      input: {
+        spec224Run: {
+          runId: "run-d343",
+          tenantId: definition.tenantId,
+          actorId: 1,
+        },
+      },
+    });
+    const job = state.jobs.get(created.jobId);
+    const lease = await controlPlane.claim({
+      jobId: created.jobId,
+      runnerId: "runner-a",
+      adapter: "test",
+    });
+    await controlPlane.start(lease!);
+    await controlPlane.waitForExternal(lease!, {
+      operationKey: "external-agent:run-d343:plan-1:1",
+      resumeAfter: "2099-01-01T00:00:00.000Z",
+      metadata: {
+        commandId: "command-d343",
+        executionKind: "external_agent_task",
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+      },
+    });
+    job.progressJson.spec224 = {
+      runId: "run-d343",
+      tenantId: definition.tenantId,
+      actorId: 1,
+      workerJobId: created.jobId,
+      projectionVersion: 4,
+      fencingVersion: lease!.fencingVersion,
+    };
+
+    const receipt = {
+      jobId: created.jobId,
+      commandId: "command-d343",
+      eventId: "receipt-d343",
+      eventType: "EXECUTION_COMPLETED",
+      sequence: 1,
+      runnerId: "runner-a",
+      runnerSessionId: "session-a",
+      tenantId: definition.tenantId,
+      payload: {
+        attempt: job.attempt,
+        leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+        fenceVersion: lease!.fencingVersion,
+        capabilitySnapshotId: "snapshot-a",
+        capabilitySnapshotRevision: "snapshot-rev-a",
+      },
+    };
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
+      "recorded"
+    );
+    await expect(controlPlane.recordRunnerReceipt(receipt)).resolves.toBe(
+      "duplicate"
+    );
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        ...receipt,
+        payload: {
+          ...receipt.payload,
+          resultRef: "altered-result:receipt-d343",
+        },
+      })
+    ).resolves.toBe("ignored");
+    const intents = state.events.filter(
+      event => event.eventType === "SPEC224_CONTINUATION_PENDING"
+    );
+    expect(intents).toHaveLength(1);
+    expect(intents[0]?.payloadJson).toMatchObject({
+      schemaVersion: "spec224.runner-continuation.v1",
+      runId: "run-d343",
+      workerJobId: created.jobId,
+      receiptEventId: "receipt-d343",
+      runnerSessionId: "session-a",
+      capabilitySnapshotId: "snapshot-a",
+    });
+    expect(intents[0]?.eventIdempotencyKey).toContain("spec224-continuation");
+    expect(
+      state.events.filter(
+        event => event.eventType === "RUNNER_RECEIPT_CONFLICT"
+      )
+    ).toHaveLength(1);
   });
 
   it("does not terminalize on FAIL, REOBSERVE, or INCONCLUSIVE verification", async () => {
