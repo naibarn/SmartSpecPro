@@ -41,4 +41,14 @@ The live Rust Runner WebSocket path was not separately failure-injected for disc
 - `apps/runner-app/src/diagnostics.rs`
 - `orchestra/spec224-d344/report.md`
 
-Next: run exact-candidate independent review after commit; retain separate live admission and WebSocket crash-injection obligations.
+## Independent verification on exact candidate
+
+Reviewer used clean worktree `/home/dev/projects/SmartSpecPro-spec224-d344-review` at `eda2fc0a64f1070de28c04f976ac12b070bebaa6`. Reviewer source inspection found no defect in the changed-file diff and independently confirmed lock-key consistency, receipt+intent transaction boundary, ACK ordering, lease/fence checks, semantic capability identity, Rust receipt bindings, and fail-closed auth/duplicate paths.
+
+The reviewer initially found Vitest missing; the review worktree was provisioned using the committed frozen workspace lockfile (`pnpm 10.4.1`, offline). PostgreSQL 15.17 was recreated as disposable, and `spec224_runtime` was verified non-superuser. After generating the ignored schema artifact and Rust binary from checked-in sources, the reviewer independently reran:
+
+- Focused Vitest/PostgreSQL suite: exit 0, 4 files, 89/89 tests passed.
+- Actual registered Rust Runner WebSocket E2E: exit 0, 1/1 test passed (22.7s).
+- Reviewer worktree had no tracked changes.
+
+Independent verification is PASS for the executed local scope. It does not cover dedicated WSS fault injection for disconnect-before-ACK, lost-ACK resend, SIGKILL after persist-before-ACK, or SIGKILL after ACK-before-continuation. These remain deferred. No production, live-provider, P-SOURCE/P-RECOVERY, or WP-RUNNER-06 certification is claimed.
