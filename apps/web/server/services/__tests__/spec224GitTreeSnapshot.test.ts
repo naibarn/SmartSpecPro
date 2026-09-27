@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  mkdtemp,
+  mkdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -174,5 +182,34 @@ describe("Spec 224 immutable Git-tree snapshot", () => {
         destination,
       })
     ).rejects.toThrow("SPEC224_GIT_SNAPSHOT_DESTINATION_EXISTS");
+  });
+
+  it("rejects a symlink substituted for a snapshot file without following its target", async () => {
+    const { root, manifest } = await makeGitSource();
+    const destination = join(root, "..", `snapshot-symlink-${Date.now()}`);
+    const outside = join(root, "..", `snapshot-outside-${Date.now()}`);
+    temporaryRoots.push(destination, outside);
+    await materializeAttestedGitTreeSnapshot({
+      repositoryRoot: root,
+      manifest,
+      destination,
+    });
+    await writeFile(outside, "outside sentinel\n");
+    await chmod(destination, 0o755);
+    await rm(join(destination, "main.ts"));
+    await symlink(outside, join(destination, "main.ts"));
+    await chmod(destination, 0o555);
+
+    expect(
+      await verifyAttestedGitTreeSnapshot(destination, {
+        sourceRevision: manifest.sourceRevision,
+        sourceManifestDigest: manifest.manifestDigest,
+      })
+    ).toMatchObject({
+      valid: false,
+      integrityOnly: true,
+      reason: "SPEC224_GIT_SNAPSHOT_SYMLINK_REJECTED",
+    });
+    expect(await readFile(outside, "utf8")).toBe("outside sentinel\n");
   });
 });
