@@ -5,6 +5,7 @@
 - Worktree: `/home/dev/projects/SmartSpecPro-spec224-d345-crash-window`
 - Branch: `codex/spec224-d345-crash-window`
 - Base: `099f76919367608383ad276884e9601f3a8c65ee` (D3.44 checkpoint)
+- Implementation/test commit: `6aa34bc0b8b9c51ef986afdbcdbb1ba8b30434f6`
 - Scope: non-production PostgreSQL 15.17, registered local Rust Runner, deterministic local adapter. No live provider, production database, deployment, or Cloudflare migration files.
 - Fresh baseline replay used `apps/web/drizzle.spec224-baseline.config.ts` and Drizzle's canonical `migrate` command.
 - Database: dedicated `spec224_crash_test`, loopback-only host port `55445`, dedicated Docker network and volume. Migration and runtime roles were both verified `rolsuper=false`; runtime role had only the test grants needed by the integration fixture. Runtime credentials were local test-only and are not recorded here.
