@@ -1,4 +1,5 @@
 import { LOGIN_FAILURE_THRESHOLD, type LoginFailureCounterImport } from "./loginFailureCounterStore";
+import { assertLiteralRedisPrefix } from "./redisKeyPrefix";
 
 export interface LegacyLoginCounterRedisReader {
   scanIterator(options: { MATCH: string; COUNT: number }): AsyncIterable<string>;
@@ -21,6 +22,7 @@ export async function collectActiveLoginFailureCounters(
   prefix: string,
   now: () => number = Date.now,
 ): Promise<LoginFailureCounterScan> {
+  assertLiteralRedisPrefix(prefix, "Login failure counter prefix");
   const records: LoginFailureCounterImport[] = [];
   let scannedKeys = 0;
   let expiredOrMissing = 0;

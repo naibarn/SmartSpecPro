@@ -1,4 +1,5 @@
 import { hashJti, type JtiRevocationRecord } from "../_core/revocation";
+import { assertLiteralRedisPrefix } from "./redisKeyPrefix";
 
 export interface LegacyJtiRedisReader {
   scanIterator(options: { MATCH: string; COUNT: number }): AsyncIterable<string>;
@@ -15,12 +16,39 @@ export type JtiRevocationScan = {
   invalidIdentifiers: number;
 };
 
+export function assertJtiRevocationScanIsSafeToApply(snapshot: JtiRevocationScan): void {
+  if (snapshot.invalidIdentifiers > 0 || snapshot.ignoredNonRevocationValues > 0) {
+    throw new Error("JTI revocation snapshot contains invalid or non-revocation values; apply is blocked");
+  }
+}
+
+export function assertJtiRevocationScansMatchForApply(before: JtiRevocationScan, after: JtiRevocationScan): void {
+  const expirySamplingToleranceMs = 1_000;
+  const initialRecords = new Map(before.records.map((record) => [record.jtiHash, record.expiresAt]));
+  const finalRecords = new Map(after.records.map((record) => [record.jtiHash, record.expiresAt]));
+  if (initialRecords.size !== finalRecords.size) {
+    throw new Error("JTI revocation snapshot changed during apply preflight; apply is blocked");
+  }
+  for (const [jtiHash, initialExpiry] of initialRecords) {
+    if (!finalRecords.has(jtiHash)) {
+      throw new Error("JTI revocation snapshot changed during apply preflight; apply is blocked");
+    }
+    const finalExpiry = finalRecords.get(jtiHash)!;
+    const permanenceChanged = (initialExpiry === null) !== (finalExpiry === null);
+    const expiryShift = initialExpiry && finalExpiry ? Math.abs(initialExpiry.getTime() - finalExpiry.getTime()) : 0;
+    if (permanenceChanged || expiryShift > expirySamplingToleranceMs) {
+      throw new Error("JTI revocation snapshot changed during apply preflight; apply is blocked");
+    }
+  }
+}
+
 /** Take a fresh snapshot. Re-run after all writers are fenced; never reuse a prior dry-run. */
 export async function collectActiveJtiRevocations(
   redis: LegacyJtiRedisReader,
   prefix: string,
   now: () => number = Date.now,
 ): Promise<JtiRevocationScan> {
+  assertLiteralRedisPrefix(prefix, "JTI revocation prefix");
   const recordsByHash = new Map<string, JtiRevocationRecord>();
   let scannedKeys = 0;
   let persistentRevocations = 0;
