@@ -68,7 +68,7 @@ export type Spec224ApprovalDeliveryClaim = ApprovalLookupScope & {
 
 type ControlPlane = Pick<
   JobControlPlane,
-  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "requestCancel" | "recordSpec224ApprovalDelivery"
+  "requestComputerUseApproval" | "resolveComputerUseApproval" | "failExternalWait" | "requestCancel" | "recordSpec224ApprovalDelivery" | "getStatus"
 >;
 
 export type Spec224ApprovalContinuationDeps = {
@@ -403,6 +403,39 @@ export function createSpec224ApprovalContinuation(
       if (record.status === "cancelled") {
         if (event.decision !== "cancelled" || event.actorId !== correlation.requesterId)
           return "operator_review";
+        const canonical = await deps.controlPlane.getStatus(correlation.jobId, {
+          tenantId: correlation.tenantId,
+          requestedByUserId: correlation.requesterId,
+        });
+        const progress = canonical?.progress && typeof canonical.progress === "object" && !Array.isArray(canonical.progress)
+          ? canonical.progress as Record<string, unknown>
+          : {};
+        const externalWait = progress.externalWait && typeof progress.externalWait === "object" && !Array.isArray(progress.externalWait)
+          ? progress.externalWait as Record<string, unknown>
+          : {};
+        const metadata = externalWait.metadata && typeof externalWait.metadata === "object" && !Array.isArray(externalWait.metadata)
+          ? externalWait.metadata as Record<string, unknown>
+          : {};
+        const fence = canonical?.lease?.fencingVersion;
+        if (
+          !canonical || !["running", "waiting_external"].includes(canonical.status)
+          || fence !== correlation.fencingVersion
+          || externalWait.operationKey !== correlation.operationKey
+          || metadata.runnerId !== correlation.runnerId
+          || metadata.runnerSessionId !== correlation.runnerSessionId
+          || metadata.capabilitySnapshotId !== correlation.capabilitySnapshotId
+          || metadata.capabilitySnapshotRevision !== correlation.capabilitySnapshotRevision
+          || metadata.commandId !== correlation.providerRequestId
+        ) {
+          const failed = await deps.controlPlane.failExternalWait(
+            correlation.jobId,
+            "SPEC224_APPROVAL_CANCELLATION_BINDING_STALE",
+            true,
+            now(),
+            correlation.operationKey,
+          );
+          return failed === "failed" ? "operator_review" : "ignored";
+        }
         const runnerCancellationPending = await deps.controlPlane.requestCancel(
           correlation.jobId,
           "approval_request_cancelled",

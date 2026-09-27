@@ -41,6 +41,22 @@ function makeDeps() {
       requestComputerUseApproval: vi.fn().mockResolvedValue("requested"),
       resolveComputerUseApproval: vi.fn().mockResolvedValue("resumed"),
       requestCancel: vi.fn().mockResolvedValue(true),
+      getStatus: vi.fn().mockResolvedValue({
+        status: "running",
+        lease: { fencingVersion: correlation.fencingVersion },
+        progress: {
+          externalWait: {
+            operationKey: correlation.operationKey,
+            metadata: {
+              runnerId: correlation.runnerId,
+              runnerSessionId: correlation.runnerSessionId,
+              capabilitySnapshotId: correlation.capabilitySnapshotId,
+              capabilitySnapshotRevision: correlation.capabilitySnapshotRevision,
+              commandId: correlation.providerRequestId,
+            },
+          },
+        },
+      }),
       failExternalWait: vi.fn().mockResolvedValue("failed"),
       recordSpec224ApprovalDelivery: vi.fn().mockResolvedValue(true),
     },
@@ -280,8 +296,36 @@ describe("Spec 224 external-agent approval continuation", () => {
       correlation.requesterId,
       { tenantId: correlation.tenantId, requestedByUserId: correlation.requesterId },
     );
+    expect(deps.controlPlane.getStatus).toHaveBeenCalledWith(correlation.jobId, {
+      tenantId: correlation.tenantId,
+      requestedByUserId: correlation.requesterId,
+    });
     expect(deps.controlPlane.failExternalWait).not.toHaveBeenCalled();
     expect(deps.authority.acknowledge).toHaveBeenCalledOnce();
+  });
+
+  it("fails closed to operator review when the persisted cancellation binding is stale", async () => {
+    const deps = makeDeps();
+    deps.authority.get.mockResolvedValue({
+      id: "approval-224", status: "cancelled", tenantId: correlation.tenantId,
+      executionId: correlation.jobId, requesterId: correlation.requesterId,
+      decisionDelivery: delivery("cancelled"),
+      payload: { kind: "spec224_external_agent_approval", spec224ExternalAgentResume: correlation },
+    });
+    deps.controlPlane.getStatus.mockResolvedValue({
+      status: "running", lease: { fencingVersion: correlation.fencingVersion + 1 }, progress: {},
+    });
+    const service = createSpec224ApprovalContinuation(deps);
+    await expect(service.resolve({
+      approvalRef: "approval-224", tenantId: correlation.tenantId,
+      jobId: correlation.jobId, operationId: correlation.operationKey,
+      leaseOwner: "reconciler-1", leaseEpoch: 1,
+    })).resolves.toBe("operator_review");
+    expect(deps.controlPlane.requestCancel).not.toHaveBeenCalled();
+    expect(deps.controlPlane.failExternalWait).toHaveBeenCalledWith(
+      correlation.jobId, "SPEC224_APPROVAL_CANCELLATION_BINDING_STALE", true,
+      expect.any(Date), correlation.operationKey,
+    );
   });
 
   it("rejects secret-bearing provider approval payloads", async () => {
