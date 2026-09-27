@@ -28,7 +28,10 @@ import {
   type RunnerGateway,
   type RunnerGatewayNode,
 } from "../services/runnerGateway";
-import { EphemeralAuthorizationStoreError, ephemeralAuthorizationSessionStore } from "../services/ephemeralAuthorizationSessionStore";
+import {
+  EphemeralAuthorizationStoreError,
+  ephemeralAuthorizationSessionStore,
+} from "../services/ephemeralAuthorizationSessionStore";
 import { enforceJsonBodyMaxBytes, rateLimit } from "../_core/limits";
 import { auditLogger } from "../services/auditLogger";
 import {
@@ -50,7 +53,7 @@ import {
   type RunnerProtocolEnvelope,
 } from "../services/runnerContracts";
 import {
-  acceptRunnerJobReceipt,
+  acceptRunnerJobReceiptDurably,
   assertRunnerExecutionEligibility,
   shouldDeferRunnerExecutionCompletion,
   validateRunnerJobCommand,
@@ -129,18 +132,20 @@ function requestControlPlaneOrigin(req: IncomingMessage): string {
  */
 export function validateRunnerCommandControlPlaneOrigin(
   commandOrigin: unknown,
-  configuredOrigin: unknown = getCachedRunnerControlPlaneOrigin(),
+  configuredOrigin: unknown = getCachedRunnerControlPlaneOrigin()
 ): string {
   try {
     const normalizedCommandOrigin = normalizeControlPlaneOrigin(commandOrigin);
-    const normalizedConfiguredOrigin = normalizeControlPlaneOrigin(configuredOrigin);
-    if (normalizedCommandOrigin !== normalizedConfiguredOrigin) throw new Error("origin mismatch");
+    const normalizedConfiguredOrigin =
+      normalizeControlPlaneOrigin(configuredOrigin);
+    if (normalizedCommandOrigin !== normalizedConfiguredOrigin)
+      throw new Error("origin mismatch");
     return normalizedCommandOrigin;
   } catch {
     throw new RunnerAuthError(
       "RUNNER_CONTROL_PLANE_MISMATCH",
       409,
-      "Runner command control-plane origin does not match the configured public origin",
+      "Runner command control-plane origin does not match the configured public origin"
     );
   }
 }
@@ -440,7 +445,8 @@ function runnerCapabilityEligibility(
     tool =>
       tool.adapterId === command.adapterId &&
       (command.executionKind !== "external_agent_task" ||
-        (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1"))
+        tool.adapterId === "codex.v1" ||
+        tool.adapterId === "claude.v1")
   );
   return {
     runner: {
@@ -465,11 +471,14 @@ function runnerCapabilityEligibility(
         browser.probeState === "ready" &&
         manifest?.supports.structuredObservation === true,
       externalAgentAdapters: (snapshot?.toolInventory ?? [])
-        .filter(tool =>
+        .filter(
+          tool =>
           (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
           tool.trustState === "ready" &&
-          (tool.availabilityState === "available" || tool.availabilityState === "busy") &&
-          (tool.authState === "authenticated" || tool.authState === "not_required") &&
+            (tool.availabilityState === "available" ||
+              tool.availabilityState === "busy") &&
+            (tool.authState === "authenticated" ||
+              tool.authState === "not_required") &&
           tool.healthState === "healthy" &&
           tool.installState === "installed" &&
           tool.configurationState === "configured"
@@ -730,11 +739,10 @@ export async function handleRunnerSocketMessage(
         lastSequence: 0,
         terminal: false,
       };
-      const disposition = acceptRunnerJobReceipt(state, receipt);
-      channel.receiptStates.set(receipt.commandId, state);
-      if (disposition === "accepted") {
-        const controlPlane = createJobControlPlane();
-        const normalizedDisposition = await controlPlane.recordRunnerReceipt({
+      const controlPlane = createJobControlPlane();
+      const { persistenceDisposition: normalizedDisposition } =
+        await acceptRunnerJobReceiptDurably(state, receipt, () =>
+          controlPlane.recordRunnerReceipt({
           jobId: receipt.jobId,
           commandId: receipt.commandId,
           eventId: receipt.eventId,
@@ -743,20 +751,26 @@ export async function handleRunnerSocketMessage(
           runnerId: receipt.runnerId,
           runnerSessionId: receipt.runnerSessionId,
           tenantId: auth.tenantId,
-          payload: {
-            status: receipt.status,
-            ...(receipt.resultRef ? { resultRef: receipt.resultRef } : {}),
-            ...(receipt.evidenceRefs
-              ? { evidenceRefs: receipt.evidenceRefs }
-              : {}),
-            ...(receipt.errorCode ? { errorCode: receipt.errorCode } : {}),
-            ...(receipt.errorSummary
-              ? { errorSummary: receipt.errorSummary }
-              : {}),
-            ...(receipt.correlation ?? {}),
-            ...(receipt.payload ?? {}),
-          },
-        });
+            payload: {
+              status: receipt.status,
+              ...(receipt.resultRef ? { resultRef: receipt.resultRef } : {}),
+              ...(receipt.evidenceRefs
+                ? { evidenceRefs: receipt.evidenceRefs }
+                : {}),
+              ...(receipt.errorCode ? { errorCode: receipt.errorCode } : {}),
+              ...(receipt.errorSummary
+                ? { errorSummary: receipt.errorSummary }
+                : {}),
+              ...(receipt.correlation ?? {}),
+              ...(receipt.payload ?? {}),
+            },
+          })
+        );
+      const durableReceiptAccepted =
+        normalizedDisposition === "recorded" ||
+        normalizedDisposition === "duplicate";
+      if (durableReceiptAccepted) {
+        channel.receiptStates.set(receipt.commandId, state);
         const receiptJobStatus = await controlPlane.getStatus(receipt.jobId, {
           tenantId: auth.tenantId,
         });
@@ -766,7 +780,7 @@ export async function handleRunnerSocketMessage(
             ? receiptJobStatus.progress.externalWait.operationKey
             : `runner-command:${receipt.commandId}`;
         if (
-          normalizedDisposition === "recorded" &&
+          durableReceiptAccepted &&
           receipt.eventType === "EXECUTION_COMPLETED"
         ) {
           const semanticStage = receipt.payload?.stage;
@@ -779,7 +793,7 @@ export async function handleRunnerSocketMessage(
             receiptEventId: receipt.eventId,
             sequence: receipt.sequence,
           };
-          if (isSemanticHandshake) {
+          if (isSemanticHandshake && normalizedDisposition === "recorded") {
             await sendRunnerReceiptAckBeforeProcessing({
               ws,
               ack,
@@ -827,7 +841,7 @@ export async function handleRunnerSocketMessage(
             );
           }
         } else if (
-          normalizedDisposition === "recorded" &&
+          durableReceiptAccepted &&
           ["EXECUTION_FAILED", "COMMAND_REJECTED", "UNKNOWN_OUTCOME"].includes(
             receipt.eventType
           )
@@ -842,10 +856,7 @@ export async function handleRunnerSocketMessage(
         }
       }
       sendRunnerSocket(ws, {
-        ackState:
-          disposition === "accepted" || disposition === "duplicate"
-            ? "applied"
-            : "rejected",
+        ackState: durableReceiptAccepted ? "applied" : "rejected",
         receiptEventId: receipt.eventId,
         sequence: receipt.sequence,
       });
@@ -1005,13 +1016,17 @@ async function saveRunnerConnectSession(
 async function getRunnerConnectSessionByDevice(
   deviceCode: string
 ): Promise<RunnerConnectSession | null> {
-  return ephemeralAuthorizationSessionStore.getByDeviceCode<RunnerConnectSession>(deviceCode);
+  return ephemeralAuthorizationSessionStore.getByDeviceCode<RunnerConnectSession>(
+    deviceCode
+  );
 }
 
 async function getRunnerConnectSessionByUser(
   userCode: string
 ): Promise<RunnerConnectSession | null> {
-  return ephemeralAuthorizationSessionStore.getByUserCode<RunnerConnectSession>(userCode);
+  return ephemeralAuthorizationSessionStore.getByUserCode<RunnerConnectSession>(
+    userCode
+  );
 }
 
 function runnerConnectExpired(session: RunnerConnectSession): boolean {

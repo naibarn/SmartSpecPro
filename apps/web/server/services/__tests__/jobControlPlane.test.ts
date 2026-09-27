@@ -76,6 +76,33 @@ function makeRepository() {
             event =>
               event.workerJobId === jobId && event.eventIdempotencyKey === key
           ) ?? null,
+        lockRunnerReceiptStream: async () => {},
+        findLatestRunnerReceipt: async (jobId, commandId) => {
+          const prior = events
+            .filter(
+              event =>
+                event.workerJobId === jobId &&
+                String(event.eventType).startsWith("RUNNER_") &&
+                event.payloadJson?.commandId === commandId
+            )
+            .sort(
+              (a, b) =>
+                Number(b.payloadJson.sequence) - Number(a.payloadJson.sequence)
+            )[0];
+          return prior
+            ? {
+                eventId: prior.payloadJson.eventId,
+                sequence: prior.payloadJson.sequence,
+                terminal: [
+                  "RUNNER_EXECUTION_COMPLETED",
+                  "RUNNER_COMMAND_REJECTED",
+                  "RUNNER_EXECUTION_FAILED",
+                  "RUNNER_CANCEL_ACKNOWLEDGED",
+                  "RUNNER_UNKNOWN_OUTCOME",
+                ].includes(prior.eventType),
+              }
+            : null;
+        },
         findAction: async actionId =>
           actions.find(action => action.actionId === actionId) ?? null,
         insertAction: async values => {
@@ -1375,7 +1402,10 @@ describe("job control plane", () => {
     job.attempt = job.maxAttempts;
     job.leaseExpiresAt = new Date(Date.now() - 1_000);
     await expect(
-      controlPlane.recoverExpiredLease(created.jobId, new Date(Date.now() + 2_000))
+      controlPlane.recoverExpiredLease(
+        created.jobId,
+        new Date(Date.now() + 2_000)
+      )
     ).resolves.toBe("recovered");
     expect(job.status).toBe("expired");
     expect(job.errorCode).toBe("LEASE_EXPIRED");
@@ -1391,8 +1421,8 @@ describe("job control plane", () => {
           tenantId: definition.tenantId,
           requestedByUserId: 8,
           authorizationScope: "feature-186:vertical_drama.story:recover",
-        },
-      ),
+        }
+      )
     ).resolves.toBe(true);
 
     expect(job.status).toBe("queued");
@@ -1428,8 +1458,8 @@ describe("job control plane", () => {
           tenantId: definition.tenantId,
           requestedByUserId: 8,
           authorizationScope: "feature-186:vertical_drama.story:recover",
-        },
-      ),
+        }
+      )
     ).resolves.toBe(false);
     expect(state.jobs.get(created.jobId).status).toBe("expired");
     expect(state.outbox).toHaveLength(1);
@@ -2011,7 +2041,7 @@ describe("job control plane", () => {
         jobId: created.jobId,
         commandId: "command-1",
         eventId: "event-stale",
-        eventType: "EXECUTION_COMPLETED",
+        eventType: "PROGRESS",
         sequence: 1,
         runnerId: "runner-a",
         runnerSessionId: "session-a",
@@ -2030,7 +2060,7 @@ describe("job control plane", () => {
         jobId: created.jobId,
         commandId: "command-1",
         eventId: "event-current",
-        eventType: "EXECUTION_COMPLETED",
+        eventType: "PROGRESS",
         sequence: 1,
         runnerId: "runner-a",
         runnerSessionId: "session-a",
@@ -2044,6 +2074,116 @@ describe("job control plane", () => {
         },
       })
     ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-current",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+          resultRef: "agent-result:sha256:altered",
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-current",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+          resultRef: "agent-result:sha256:current",
+        },
+      })
+    ).resolves.toBe("duplicate");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-sequence-2",
+        eventType: "PROGRESS",
+        sequence: 2,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-sequence-1-replay",
+        eventType: "PROGRESS",
+        sequence: 1,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("ignored");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-terminal",
+        eventType: "COMMAND_REJECTED",
+        sequence: 3,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("recorded");
+    await expect(
+      controlPlane.recordRunnerReceipt({
+        jobId: created.jobId,
+        commandId: "command-1",
+        eventId: "event-after-terminal",
+        eventType: "PROGRESS",
+        sequence: 4,
+        runnerId: "runner-a",
+        runnerSessionId: "session-a",
+        tenantId: definition.tenantId,
+        payload: {
+          executionKind: "external_agent_task",
+          attempt: state.jobs.get(created.jobId).attempt,
+          leaseId: `lease:${lease!.jobId}:${lease!.attemptId}`,
+          fenceVersion: lease!.fencingVersion,
+        },
+      })
+    ).resolves.toBe("ignored");
   });
 
   it("does not terminalize on FAIL, REOBSERVE, or INCONCLUSIVE verification", async () => {

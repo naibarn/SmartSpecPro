@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   assertRunnerExecutionEligibility,
   acceptRunnerJobReceipt,
+  acceptRunnerJobReceiptDurably,
   shouldDeferRunnerExecutionCompletion,
   validateRunnerJobCommand,
   type RunnerJobCommand,
@@ -269,6 +270,60 @@ describe("Runner Job Command/Receipt contract", () => {
     expect(acceptRunnerJobReceipt(state, receipt("PROGRESS", 2))).toEqual(
       "late"
     );
+  });
+
+  it("does not advance the receipt cursor until durable persistence succeeds", async () => {
+    const state = { lastSequence: 0, terminal: false };
+    const persist = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("database unavailable"))
+      .mockResolvedValueOnce("recorded" as const);
+    const event = receipt("COMMAND_ACCEPTED", 1);
+
+    await expect(
+      acceptRunnerJobReceiptDurably(state, event, persist)
+    ).rejects.toThrow("database unavailable");
+    expect(state).toEqual({ lastSequence: 0, terminal: false });
+
+    await expect(
+      acceptRunnerJobReceiptDurably(state, event, persist)
+    ).resolves.toMatchObject({
+      sequenceDisposition: "accepted",
+      persistenceDisposition: "recorded",
+    });
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(state).toMatchObject({
+      lastSequence: 1,
+      lastEventId: event.eventId,
+    });
+  });
+
+  it("rechecks an exact terminal replay against durable persistence", async () => {
+    const event = receipt("EXECUTION_COMPLETED", 2);
+    const state = {
+      lastSequence: 2,
+      lastEventId: event.eventId,
+      terminal: true,
+    };
+    const persist = vi.fn().mockResolvedValue("duplicate" as const);
+
+    await expect(
+      acceptRunnerJobReceiptDurably(state, event, persist)
+    ).resolves.toMatchObject({
+      sequenceDisposition: "duplicate",
+      persistenceDisposition: "duplicate",
+    });
+    expect(persist).toHaveBeenCalledOnce();
+  });
+
+  it("treats command rejection as terminal while allowing its exact replay", () => {
+    const state = { lastSequence: 0, terminal: false };
+    const rejected = receipt("COMMAND_REJECTED", 1);
+
+    expect(acceptRunnerJobReceipt(state, rejected)).toBe("accepted");
+    expect(state.terminal).toBe(true);
+    expect(acceptRunnerJobReceipt(state, rejected)).toBe("duplicate");
+    expect(acceptRunnerJobReceipt(state, receipt("PROGRESS", 2))).toBe("late");
   });
 
   it("keeps semantic Computer Use completion pending until an independent verifier settles it", () => {

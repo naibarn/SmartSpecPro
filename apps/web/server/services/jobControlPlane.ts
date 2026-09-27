@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
 
@@ -117,7 +118,20 @@ export type TxRepo = {
   findEventByIdempotency(
     jobId: string,
     key: string
-  ): Promise<{ eventType: string; payloadJson?: Record<string, unknown> } | null>;
+  ): Promise<{
+    eventType: string;
+    payloadJson?: Record<string, unknown>;
+  } | null>;
+  /** Serialize a Runner command's receipt stream in the canonical job DB. */
+  lockRunnerReceiptStream(jobId: string, commandId: string): Promise<void>;
+  findLatestRunnerReceipt(
+    jobId: string,
+    commandId: string
+  ): Promise<{
+    eventId: string;
+    sequence: number;
+    terminal: boolean;
+  } | null>;
   findAction(actionId: string): Promise<{
     workerJobId: string;
     command: string;
@@ -642,36 +656,48 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   .select({
                     trustState: runnerNodes.trustState,
                     activeSessionId: runnerNodes.activeSessionId,
-                    currentSnapshotRevision: runnerNodes.currentSnapshotRevision,
+                    currentSnapshotRevision:
+                      runnerNodes.currentSnapshotRevision,
                     snapshotExpiresAt: runnerNodes.snapshotExpiresAt,
                     revokedAt: runnerNodes.revokedAt,
                   })
                   .from(runnerNodes)
-                  .where(and(
+                  .where(
+                    and(
                     eq(runnerNodes.runnerId, input.runnerId),
-                    eq(runnerNodes.tenantId, input.tenantId),
-                  ))
+                      eq(runnerNodes.tenantId, input.tenantId)
+                    )
+                  )
                   .limit(1);
-                if (!runner
-                  || runner.trustState !== "trusted"
-                  || runner.activeSessionId !== input.runnerSessionId
-                  || runner.currentSnapshotRevision !== input.capabilitySnapshotRevision
-                  || runner.revokedAt !== null
-                  || !runner.snapshotExpiresAt
-                  || runner.snapshotExpiresAt <= input.now) return false;
+                if (
+                  !runner ||
+                  runner.trustState !== "trusted" ||
+                  runner.activeSessionId !== input.runnerSessionId ||
+                  runner.currentSnapshotRevision !==
+                    input.capabilitySnapshotRevision ||
+                  runner.revokedAt !== null ||
+                  !runner.snapshotExpiresAt ||
+                  runner.snapshotExpiresAt <= input.now
+                )
+                  return false;
                 const [snapshot] = await query
                   .select({ id: runnerCapabilitySnapshots.id })
                   .from(runnerCapabilitySnapshots)
-                  .where(and(
+                  .where(
+                    and(
                     eq(
                       sql<string>`${runnerCapabilitySnapshots.snapshotJson}->>'capabilitySnapshotId'`,
-                      input.capabilitySnapshotId,
+                        input.capabilitySnapshotId
                     ),
                     eq(runnerCapabilitySnapshots.runnerId, input.runnerId),
                     eq(runnerCapabilitySnapshots.tenantId, input.tenantId),
-                    eq(runnerCapabilitySnapshots.revision, input.capabilitySnapshotRevision),
-                    gt(runnerCapabilitySnapshots.expiresAt, input.now),
-                  ))
+                      eq(
+                        runnerCapabilitySnapshots.revision,
+                        input.capabilitySnapshotRevision
+                      ),
+                      gt(runnerCapabilitySnapshots.expiresAt, input.now)
+                    )
+                  )
                   .limit(1);
                 return Boolean(snapshot);
               },
@@ -721,7 +747,10 @@ function buildDefaultRepository(): JobControlPlaneRepository {
               },
               async findEventByIdempotency(jobId, key) {
                 const [row] = await query
-                  .select({ eventType: workerJobEvents.eventType, payloadJson: workerJobEvents.payloadJson })
+                  .select({
+                    eventType: workerJobEvents.eventType,
+                    payloadJson: workerJobEvents.payloadJson,
+                  })
                   .from(workerJobEvents)
                   .where(
                     and(
@@ -731,6 +760,43 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   )
                   .limit(1);
                 return row ?? null;
+              },
+              async lockRunnerReceiptStream(jobId, commandId) {
+                await query.execute(sql`
+                  SELECT pg_advisory_xact_lock(
+                    hashtextextended(${`runner-receipt:${jobId}:${commandId}`}, 0)
+                  )
+                `);
+              },
+              async findLatestRunnerReceipt(jobId, commandId) {
+                const rows = await query.execute(sql`
+                  SELECT
+                    "payloadJson"->>'eventId' AS "eventId",
+                    ("payloadJson"->>'sequence')::int AS "sequence",
+                    "eventType"
+                  FROM "worker_job_events"
+                  WHERE "workerJobId" = ${jobId}
+                    AND left("eventType", 7) = 'RUNNER_'
+                    AND "payloadJson"->>'commandId' = ${commandId}
+                  ORDER BY ("payloadJson"->>'sequence')::int DESC, "createdAt" DESC
+                  LIMIT 1
+                `);
+                const row = rows[0];
+                if (!row || typeof row.eventId !== "string") return null;
+                const sequence = Number(row.sequence);
+                return Number.isSafeInteger(sequence) && sequence > 0
+                  ? {
+                      eventId: row.eventId,
+                      sequence,
+                      terminal: [
+                        "RUNNER_EXECUTION_COMPLETED",
+                        "RUNNER_COMMAND_REJECTED",
+                        "RUNNER_EXECUTION_FAILED",
+                        "RUNNER_CANCEL_ACKNOWLEDGED",
+                        "RUNNER_UNKNOWN_OUTCOME",
+                      ].includes(String(row.eventType)),
+                    }
+                  : null;
               },
               async findAction(actionId) {
                 const [row] = await query
@@ -1131,7 +1197,9 @@ export async function createCanonicalJobInTransaction(input: {
       progressJson: {},
       fencingVersion: 0,
       operatorReviewRequired: false,
-      scheduledAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : null,
+      scheduledAt: normalizedDefinition.scheduledAt
+        ? new Date(normalizedDefinition.scheduledAt)
+        : null,
       createdAt: now,
     })
     .returning({ id: workerJobs.id });
@@ -1169,7 +1237,9 @@ export async function createCanonicalJobInTransaction(input: {
       dedupeKey: `job:${row.id}:attempt:1`,
     },
     dedupeKey: `job:${row.id}:attempt:1`,
-    nextAttemptAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : now,
+    nextAttemptAt: normalizedDefinition.scheduledAt
+      ? new Date(normalizedDefinition.scheduledAt)
+      : now,
   });
   return { jobId: row.id, created: true };
 }
@@ -2278,7 +2348,9 @@ export function createJobControlPlane(
             progressJson: {},
             fencingVersion: 0,
             operatorReviewRequired: false,
-            scheduledAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : null,
+            scheduledAt: normalizedDefinition.scheduledAt
+              ? new Date(normalizedDefinition.scheduledAt)
+              : null,
           });
           if (!row) {
             if (normalizedDefinition.idempotencyKey) {
@@ -2321,7 +2393,9 @@ export function createJobControlPlane(
               dedupeKey: `job:${row.id}:attempt:1`,
             },
             dedupeKey: `job:${row.id}:attempt:1`,
-            nextAttemptAt: normalizedDefinition.scheduledAt ? new Date(normalizedDefinition.scheduledAt) : new Date(),
+            nextAttemptAt: normalizedDefinition.scheduledAt
+              ? new Date(normalizedDefinition.scheduledAt)
+              : new Date(),
           });
           if (normalizedDefinition.schedule) {
             if (
@@ -3881,8 +3955,7 @@ export function createJobControlPlane(
           return true;
         }
         assertJobMutationScope(job, scope);
-        if (!job || job.jobType !== "vertical_drama.story")
-          return false;
+        if (!job || job.jobType !== "vertical_drama.story") return false;
         const recoverableFailed =
           job.status === "failed" && job.operatorReviewRequired;
         const recoverableLeaseExpiry =
@@ -4387,7 +4460,10 @@ export function createJobControlPlane(
       now = new Date(),
       operationKey?: string,
       pollerLeaseTokenHash?: string,
-      approvalDelivery?: Omit<Spec224ApprovalDeliveryReceiptInput, "acknowledged">
+      approvalDelivery?: Omit<
+        Spec224ApprovalDeliveryReceiptInput,
+        "acknowledged"
+      >
     ): Promise<"failed" | "ignored"> {
       const safeReason = sanitizeJobErrorMessage(
         reason,
@@ -4397,11 +4473,13 @@ export function createJobControlPlane(
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (!job || job.status !== "waiting_external") return "ignored";
-        if (approvalDelivery && (
-          approvalDelivery.jobId !== jobId
-          || approvalDelivery.tenantId !== job.tenantId
-          || approvalDelivery.operationId !== operationKey
-        )) return "ignored";
+        if (
+          approvalDelivery &&
+          (approvalDelivery.jobId !== jobId ||
+            approvalDelivery.tenantId !== job.tenantId ||
+            approvalDelivery.operationId !== operationKey)
+        )
+          return "ignored";
         if (operationKey) {
           const externalWait =
             job.progressJson &&
@@ -4476,7 +4554,11 @@ export function createJobControlPlane(
           await repo.insertEvent({
             workerJobId: jobId,
             eventType: "APPROVAL_DELIVERY_RECONCILED",
-            eventIdempotencyKey: `spec224-approval-delivery:${approvalDelivery.deliveryId}`.slice(0, 200),
+            eventIdempotencyKey:
+              `spec224-approval-delivery:${approvalDelivery.deliveryId}`.slice(
+                0,
+                200
+              ),
             payloadJson: {
               schemaVersion: "spec224.approval-decision.v1",
               approvalRequestId: approvalDelivery.approvalRequestId,
@@ -4522,6 +4604,7 @@ export function createJobControlPlane(
       if (input.payload)
         validateBoundedPayload(input.payload, "runner.receipt.payload");
       return repository.transaction(async repo => {
+        await repo.lockRunnerReceiptStream(input.jobId, input.commandId);
         const job = await repo.findJob(input.jobId);
         if (!job) return "ignored";
         const progress =
@@ -4575,23 +4658,47 @@ export function createJobControlPlane(
             return "ignored";
         }
         const eventType = `RUNNER_${input.eventType}`.slice(0, 100);
-        const eventKey =
-          `runner-receipt:${input.commandId}:${input.eventId}`.slice(0, 200);
-        if (await repo.findEventByIdempotency(input.jobId, eventKey))
-          return "duplicate";
-        await repo.insertEvent({
-          workerJobId: input.jobId,
-          eventType,
-          attemptId: (await repo.findAttempt(input.jobId, job.attempt))?.id,
-          eventIdempotencyKey: eventKey,
-          payloadJson: {
+        const eventKey = boundedEventKey(
+          "runner-receipt",
+          input.commandId,
+          input.eventId
+        );
+        const receiptPayload = {
+          ...(input.payload ?? {}),
             commandId: input.commandId,
             eventId: input.eventId,
             sequence: input.sequence,
             runnerId: input.runnerId,
             runnerSessionId: input.runnerSessionId,
-            ...(input.payload ?? {}),
-          },
+        };
+        const priorReceipt = await repo.findEventByIdempotency(
+          input.jobId,
+          eventKey
+        );
+        if (priorReceipt) {
+          return priorReceipt.eventType === eventType &&
+            isDeepStrictEqual(priorReceipt.payloadJson, receiptPayload)
+            ? "duplicate"
+            : "ignored";
+        }
+        const latestReceipt = await repo.findLatestRunnerReceipt(
+          input.jobId,
+          input.commandId
+        );
+        if (
+          latestReceipt &&
+          (latestReceipt.terminal ||
+            input.sequence < latestReceipt.sequence ||
+            (input.sequence === latestReceipt.sequence &&
+              input.eventId !== latestReceipt.eventId))
+        )
+          return "ignored";
+        await repo.insertEvent({
+          workerJobId: input.jobId,
+          eventType,
+          attemptId: (await repo.findAttempt(input.jobId, job.attempt))?.id,
+          eventIdempotencyKey: eventKey,
+          payloadJson: receiptPayload,
         });
         return "recorded";
       });
@@ -4858,32 +4965,39 @@ export function createJobControlPlane(
         !input.runnerSessionId.trim() ||
         !Number.isSafeInteger(input.fencingVersion) ||
         !Number.isSafeInteger(input.approverId) ||
-        ((input.schemaVersion !== undefined || input.deliveryId !== undefined || input.decisionEpoch !== undefined || input.payloadDigest !== undefined)
-          && (input.schemaVersion !== "spec224.approval-decision.v1"
-            || !input.deliveryId?.trim()
-            || input.deliveryId.length > 100
-            || input.decisionEpoch !== 1
-            || !input.payloadDigest
-            || !/^[a-f0-9]{64}$/.test(input.payloadDigest)
-            || !input.capabilitySnapshotId?.trim()
-            || !input.capabilitySnapshotRevision?.trim()
-            || !input.providerRequestId?.trim()
-            || (input.provider !== "codex" && input.provider !== "claude_code")))
+        ((input.schemaVersion !== undefined ||
+          input.deliveryId !== undefined ||
+          input.decisionEpoch !== undefined ||
+          input.payloadDigest !== undefined) &&
+          (input.schemaVersion !== "spec224.approval-decision.v1" ||
+            !input.deliveryId?.trim() ||
+            input.deliveryId.length > 100 ||
+            input.decisionEpoch !== 1 ||
+            !input.payloadDigest ||
+            !/^[a-f0-9]{64}$/.test(input.payloadDigest) ||
+            !input.capabilitySnapshotId?.trim() ||
+            !input.capabilitySnapshotRevision?.trim() ||
+            !input.providerRequestId?.trim() ||
+            (input.provider !== "codex" && input.provider !== "claude_code")))
       )
         return "ignored";
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
         if (!job || job.tenantId !== input.tenantId) return "ignored";
-        const eventKey =
-          (input.deliveryId
+        const eventKey = (
+          input.deliveryId
             ? `spec224-approval-delivery:${input.deliveryId}`
-            : `computer-use-approval-resolved:${input.jobId}:${input.approvalRequestId}:${input.decision}`).slice(
-            0,
-            200
+            : `computer-use-approval-resolved:${input.jobId}:${input.approvalRequestId}:${input.decision}`
+        ).slice(0, 200);
+        const priorDecision = await repo.findEventByIdempotency(
+          input.jobId,
+          eventKey
           );
-        const priorDecision = await repo.findEventByIdempotency(input.jobId, eventKey);
         if (priorDecision) {
-          if (input.payloadDigest && priorDecision.payloadJson?.payloadDigest !== input.payloadDigest)
+          if (
+            input.payloadDigest &&
+            priorDecision.payloadJson?.payloadDigest !== input.payloadDigest
+          )
             return "ignored";
           return "duplicate";
         }
@@ -4918,22 +5032,22 @@ export function createJobControlPlane(
           approval.state !== "pending" ||
           approval.requestId !== input.approvalRequestId ||
           approval.actionId !== input.actionId ||
-          (input.schemaVersion !== undefined && (
-            approval.commandId !== input.providerRequestId ||
-            approval.provider !== input.provider
-          )) ||
-          (input.schemaVersion !== undefined && (
-            approval.capabilitySnapshotId !== input.capabilitySnapshotId ||
-            approval.capabilitySnapshotRevision !== input.capabilitySnapshotRevision
-          )) ||
+          (input.schemaVersion !== undefined &&
+            (approval.commandId !== input.providerRequestId ||
+              approval.provider !== input.provider)) ||
+          (input.schemaVersion !== undefined &&
+            (approval.capabilitySnapshotId !== input.capabilitySnapshotId ||
+              approval.capabilitySnapshotRevision !==
+                input.capabilitySnapshotRevision)) ||
           approval.runnerId !== input.runnerId ||
           approval.runnerSessionId !== input.runnerSessionId ||
           approval.fencingVersion !== input.fencingVersion ||
           job.fencingVersion !== input.fencingVersion
         )
           return "ignored";
-        if (input.schemaVersion && (
-          !repo.assertRunnerAuthorizationBinding ||
+        if (
+          input.schemaVersion &&
+          (!repo.assertRunnerAuthorizationBinding ||
           !(await repo.assertRunnerAuthorizationBinding({
             tenantId: input.tenantId,
             runnerId: input.runnerId,
@@ -4941,8 +5055,9 @@ export function createJobControlPlane(
             capabilitySnapshotId: input.capabilitySnapshotId!,
             capabilitySnapshotRevision: input.capabilitySnapshotRevision!,
             now,
-          }))
-        )) return "ignored";
+            })))
+        )
+          return "ignored";
         const attempt = await repo.findAttempt(input.jobId, job.attempt);
         const resolvedApproval = {
           ...approval,
@@ -4989,14 +5104,16 @@ export function createJobControlPlane(
               actionId: input.actionId,
               approverId: input.approverId,
               resolvedAt: now.toISOString(),
-              ...(input.deliveryId ? {
+              ...(input.deliveryId
+                ? {
                 schemaVersion: input.schemaVersion,
                 deliveryId: input.deliveryId,
                 decisionEpoch: input.decisionEpoch,
                 payloadDigest: input.payloadDigest,
                 operationId: input.operationKey,
                 result: "failed",
-              } : {}),
+                  }
+                : {}),
             },
           });
           await repo.insertEvent({
@@ -5100,14 +5217,16 @@ export function createJobControlPlane(
             actionId: input.actionId,
             approverId: input.approverId,
             resolvedAt: now.toISOString(),
-            ...(input.deliveryId ? {
+            ...(input.deliveryId
+              ? {
               schemaVersion: input.schemaVersion,
               deliveryId: input.deliveryId,
               decisionEpoch: input.decisionEpoch,
               payloadDigest: input.payloadDigest,
               operationId: input.operationKey,
               result: "resumed",
-            } : {}),
+                }
+              : {}),
           },
         });
         await repo.insertEvent({
@@ -5171,16 +5290,29 @@ export function createJobControlPlane(
       now = new Date()
     ): Promise<boolean> {
       if (
-        !input.jobId.trim() || !input.tenantId.trim() || !input.approvalRequestId.trim()
-        || !input.operationId.trim() || !input.deliveryId.trim() || input.decisionEpoch !== 1
-        || !/^[a-f0-9]{64}$/.test(input.payloadDigest)
-      ) return false;
+        !input.jobId.trim() ||
+        !input.tenantId.trim() ||
+        !input.approvalRequestId.trim() ||
+        !input.operationId.trim() ||
+        !input.deliveryId.trim() ||
+        input.decisionEpoch !== 1 ||
+        !/^[a-f0-9]{64}$/.test(input.payloadDigest)
+      )
+        return false;
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
         if (!job || job.tenantId !== input.tenantId) return false;
-        const decisionKey = `spec224-approval-delivery:${input.deliveryId}`.slice(0, 200);
-        const existing = await repo.findEventByIdempotency(input.jobId, decisionKey);
-        if (existing && existing.payloadJson?.payloadDigest !== input.payloadDigest) return false;
+        const decisionKey =
+          `spec224-approval-delivery:${input.deliveryId}`.slice(0, 200);
+        const existing = await repo.findEventByIdempotency(
+          input.jobId,
+          decisionKey
+        );
+        if (
+          existing &&
+          existing.payloadJson?.payloadDigest !== input.payloadDigest
+        )
+          return false;
         if (!existing) {
           await repo.insertEvent({
             workerJobId: input.jobId,
@@ -5200,9 +5332,13 @@ export function createJobControlPlane(
           });
         }
         if (input.acknowledged) {
-          const ackKey = `spec224-approval-ack:${input.deliveryId}`.slice(0, 200);
+          const ackKey = `spec224-approval-ack:${input.deliveryId}`.slice(
+            0,
+            200
+          );
           const ack = await repo.findEventByIdempotency(input.jobId, ackKey);
-          if (ack) return ack.payloadJson?.payloadDigest === input.payloadDigest;
+          if (ack)
+            return ack.payloadJson?.payloadDigest === input.payloadDigest;
           await repo.insertEvent({
             workerJobId: input.jobId,
             eventType: "APPROVAL_DELIVERY_ACKNOWLEDGED",
