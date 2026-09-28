@@ -97,6 +97,28 @@ describe("Feature 206 external agent executor registration", () => {
     expect(dispatcher).not.toHaveBeenCalled();
   });
 
+  it("fails closed for a DevelopmentRun without trusted runtime admission evidence", async () => {
+    const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
+    configureExternalAgentTaskDispatcher(dispatcher);
+    const registration = defaultJobExecutorRegistry.resolve(
+      "external_agent_task",
+      "feature-186-v1"
+    );
+
+    await expect(
+      registration!.executor({
+        context: {
+          ...context,
+          input: { ...context.input, spec224Run: { runId: "run-224" } },
+        },
+        lease: {} as any,
+        reporter: {} as any,
+        controlPlane: {} as any,
+      })
+    ).rejects.toMatchObject({ code: "SPEC224_RUNTIME_ADMISSION_UNAVAILABLE" });
+    expect(dispatcher).not.toHaveBeenCalled();
+  });
+
   it("passes only the validated manifest to the configured dispatcher", async () => {
     const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
