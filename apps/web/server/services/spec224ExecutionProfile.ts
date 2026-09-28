@@ -17,6 +17,8 @@ export type Spec224ExecutionProfile = {
     platform: string;
     architecture: string;
   };
+  npmRegistryUrl: string;
+  generatedArtifacts: Array<{ path: string; command: string; inputs: string[] }>;
   cargoTarget: string;
   workspaceManifestPaths: string[];
   entrypoints: {
@@ -55,7 +57,7 @@ export type Spec224ExecutionProfile = {
 const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   schemaVersion: "spec224.execution-profile.v1",
   profileId: "spec224-recovery-registered-runner-nonprod",
-  version: 3,
+  version: 4,
   repository: {
     sourceCommit: "6660d212dca2c8445346cc30cc1ddbba2c2899dd",
     gitTree: "96bfd412f031dc2f6005d4cb235fa25327d155cf",
@@ -69,6 +71,19 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     platform: "linux",
     architecture: "x86_64",
   },
+  npmRegistryUrl: "https://registry.npmjs.org/",
+  generatedArtifacts: [
+    {
+      path: "packages/remotion-render/dist/renderVideoJobEntry.js",
+      command: "pnpm --filter @smartspec/remotion-render exec esbuild src/renderVideoJobEntry.ts --bundle --platform=node --format=esm --target=node22 --external:zod --outfile=dist/renderVideoJobEntry.js",
+      inputs: ["packages/remotion-render/src/renderVideoJobEntry.ts"],
+    },
+    {
+      path: "packages/remotion-render/dist/remotionRenderVideoSchema.js",
+      command: "pnpm --filter @smartspec/remotion-render exec esbuild src/remotionRenderVideoSchema.ts --bundle --platform=neutral --format=esm --target=es2022 --external:zod --outfile=dist/remotionRenderVideoSchema.js",
+      inputs: ["packages/remotion-render/src/remotionRenderVideoSchema.ts"],
+    },
+  ],
   cargoTarget: "x86_64-unknown-linux-gnu",
   workspaceManifestPaths: [
     "package.json",
@@ -87,7 +102,7 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "packages/agent-experience/package.json": [],
     "packages/db/package.json": [],
     "packages/local-ai-core/package.json": [],
-    "packages/remotion-render/package.json": [],
+    "packages/remotion-render/package.json": ["esbuild"],
     "packages/shared/package.json": [],
     "packages/skills/package.json": [],
     "packages/ui/package.json": [],
@@ -169,6 +184,8 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "python-backend/tests/integration/test_spec224_recovery_grant_postgres.py",
     "apps/web/server/services/__tests__/spec224ExecutionProfile.test.ts",
     "apps/web/server/services/__tests__/spec224SourceBundle.test.ts",
+    "packages/remotion-render/src/renderVideoJobEntry.ts",
+    "packages/remotion-render/src/remotionRenderVideoSchema.ts",
   ],
   dependencyManifests: {
     runtime: [
@@ -206,7 +223,7 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "python-backend/spec224-admission/uv.lock:resolve-python-3.12-linux-x86_64-artifacts",
   ],
   scripts: {
-    allowed: ["cargo check --locked --offline", "focused Spec 224 Vitest", "focused Spec 224 PostgreSQL pytest"],
+    allowed: ["cargo check --locked --offline", "focused Spec 224 Vitest", "focused Spec 224 PostgreSQL pytest", "profile-bound Remotion runtime exports via esbuild (no TypeScript typecheck)"],
     forbidden: ["package lifecycle hooks", "deployment scripts", "production migration commands", "D3.19 harness"],
   },
   dynamicImports: {
@@ -263,6 +280,27 @@ export function createSpec224ExecutionProfile(input: ExecutionProfileInput): Spe
   }
   assertNonEmpty(input.runtime.platform, "runtime.platform");
   assertNonEmpty(input.runtime.architecture, "runtime.architecture");
+  assertNonEmpty(input.npmRegistryUrl, "npmRegistryUrl");
+  try {
+    const registry = new URL(input.npmRegistryUrl);
+    if (registry.protocol !== "https:" || registry.hostname !== "registry.npmjs.org" || registry.username || registry.password || registry.search || registry.hash || registry.pathname !== "/") {
+      throw new Error("invalid registry");
+    }
+  } catch {
+    throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:npmRegistryUrl");
+  }
+  const generatedPaths = new Set<string>();
+  for (const artifact of input.generatedArtifacts) {
+    assertNonEmpty(artifact.path, "generatedArtifacts.path");
+    assertNonEmpty(artifact.command, "generatedArtifacts.command");
+    if (artifact.path.startsWith("/") || artifact.path.split("/").includes("..") || generatedPaths.has(artifact.path) || !artifact.inputs.length) {
+      throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:generatedArtifacts");
+    }
+    if (artifact.inputs.some(path => !input.sourceInputs.includes(path))) {
+      throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:generatedArtifactInputs");
+    }
+    generatedPaths.add(artifact.path);
+  }
   if (input.version < 1 || !Number.isSafeInteger(input.version)) {
     throw new Error("SPEC224_EXECUTION_PROFILE_INVALID:version");
   }

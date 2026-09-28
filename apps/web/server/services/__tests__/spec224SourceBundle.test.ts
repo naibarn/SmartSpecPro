@@ -29,6 +29,7 @@ function fixtureExecutionProfile() {
     repository: { sourceCommit: "f".repeat(40), gitTree: "a".repeat(40) },
     workspaceManifestPaths: ["package.json"],
     workspaces: ["."],
+    generatedArtifacts: [],
     entrypoints: {
       node: ["src/profiled.ts"],
       python: [],
@@ -780,6 +781,93 @@ describe("Spec 224 source bundle tooling", () => {
         specifier: "UNVERIFIED_ARTIFACT:sample-pkg@1.0.0",
       })
     );
+  });
+
+  it("derives pnpm v9 tarball origin from the digest-bound trusted registry when the lock omits a URL", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/profiled.ts"), 'import value from "selected-runtime"; export { value };\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "selected-runtime": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      selected-runtime:\n        specifier: 1.0.0\n        version: 1.0.0\npackages:\n  selected-runtime@1.0.0:\n    resolution:\n      integrity: sha512-YWJjZA==\nsnapshots:\n  selected-runtime@1.0.0: {}\n`);
+    const { profileDigest: _profileDigest, ...profileBase } = fixtureExecutionProfile();
+    const profile = createSpec224ExecutionProfile({
+      ...profileBase,
+      selectedManifestDependencies: { "package.json": ["selected-runtime"] },
+      externalArtifacts: ["pnpm-lock.yaml:resolve-required-node-artifacts"],
+    });
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/profiled.ts"],
+      dependencyArtifacts: ["package.json", "pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: profile.profileId,
+      profileDigest: profile.profileDigest,
+      executionProfile: profile,
+      runtimeIdentity: { node: profile.runtime.node, packageManager: `pnpm@${profile.runtime.pnpm}`, platform: "linux-x64" },
+      selectedManifestDependencies: profile.selectedManifestDependencies,
+    });
+
+    expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({
+      name: "selected-runtime",
+      lockedArtifacts: [expect.objectContaining({
+        source: "https://registry.npmjs.org/selected-runtime/-/selected-runtime-1.0.0.tgz",
+        integrity: ["sha512-YWJjZA=="],
+      })],
+    }));
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "UNVERIFIED_ARTIFACT:selected-runtime@1.0.0" }));
+    expect(closure.closureComplete).toBe(false);
+  });
+
+  it("resolves runtime workspace exports without requiring type-only outputs and marks generated runtime files", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/profiled.ts"), 'import { value } from "@fixture/runtime"; export { value };\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", workspaces: ["packages/*"] }));
+    await mkdir(join(root, "packages/runtime/src"), { recursive: true });
+    await mkdir(join(root, "packages/runtime/dist"), { recursive: true });
+    await writeFile(join(root, "packages/runtime/package.json"), JSON.stringify({
+      name: "@fixture/runtime",
+      exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } },
+    }));
+    await writeFile(join(root, "packages/runtime/src/index.ts"), "export const value = 42;\n");
+    await writeFile(join(root, "packages/runtime/dist/index.js"), "export const value = 42;\n");
+    const { profileDigest: _profileDigest, ...profileBase } = fixtureExecutionProfile();
+    const profile = createSpec224ExecutionProfile({
+      ...profileBase,
+      workspaceManifestPaths: ["package.json", "packages/runtime/package.json"],
+      workspaces: [".", "packages/runtime"],
+      sourceInputs: ["src/profiled.ts", "packages/runtime/src/index.ts"],
+      selectedManifestDependencies: { "package.json": [], "packages/runtime/package.json": [] },
+      selectedManifestScripts: { "package.json": [], "packages/runtime/package.json": [] },
+      generatedArtifacts: [{
+        path: "packages/runtime/dist/index.js",
+        command: "pnpm exec esbuild packages/runtime/src/index.ts --bundle --outfile=packages/runtime/dist/index.js",
+        inputs: ["packages/runtime/src/index.ts"],
+      }],
+    });
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/profiled.ts"],
+      dependencyArtifacts: ["package.json", "pnpm-lock.yaml"],
+      profileInputs: [{ path: "packages/runtime/src/index.ts", kind: "source-import" }],
+      workspaceManifestPaths: profile.workspaceManifestPaths,
+      profileId: profile.profileId,
+      profileDigest: profile.profileDigest,
+      executionProfile: profile,
+      runtimeIdentity: {
+        node: profile.runtime.node,
+        packageManager: `pnpm@${profile.runtime.pnpm}`,
+        python: profile.runtime.python,
+        rustc: profile.runtime.rustc,
+        platform: `${profile.runtime.platform}-${profile.runtime.architecture}`,
+        architecture: profile.runtime.architecture,
+      },
+      selectedManifestDependencies: profile.selectedManifestDependencies,
+      selectedManifestScripts: profile.selectedManifestScripts,
+    });
+
+    expect(closure.files).toContain("packages/runtime/dist/index.js");
+    expect(closure.provenance["packages/runtime/dist/index.js"]).toContain("generated-artifact");
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "@fixture/runtime<unresolved-export:dist/index.d.ts>" }));
+    expect(closure.closureComplete).toBe(true);
   });
 
   it("resolves statically known template-literal dynamic imports and wildcard package exports", async () => {
@@ -1936,6 +2024,7 @@ describe("Spec 224 source bundle tooling", () => {
       workspaces: ["apps/web", "apps/runner-app", "python-backend"],
       entrypoints: { node: ["src/main.ts"], python: [], rust: [] },
       sourceInputs: ["src/main.ts"],
+      generatedArtifacts: [],
       moduleRoots: [],
       dependencyManifests: {
         runtime: ["package.json", "pnpm-lock.yaml", "apps/web/package.json", "apps/runner-app/Cargo.toml", "apps/runner-app/Cargo.lock", "python-backend/pyproject.toml", "python-backend/uv.lock"],

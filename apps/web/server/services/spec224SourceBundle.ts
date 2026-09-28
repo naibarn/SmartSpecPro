@@ -1542,7 +1542,19 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
   return { packages: identities, importers: {} };
 }
 
-function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDependencyLock {
+function pnpmRegistryTarballUrl(registryUrl: string, name: string, version: string): string | null {
+  try {
+    const registry = new URL(registryUrl);
+    if (registry.protocol !== "https:" || registry.hostname !== "registry.npmjs.org" || registry.username || registry.password || registry.search || registry.hash || registry.pathname !== "/") return null;
+    if (!/^(@[A-Za-z0-9._-]+\/)?[A-Za-z0-9._-]+$/.test(name) || !/^[A-Za-z0-9.+_-]+$/.test(version)) return null;
+    const packageLeaf = name.slice(name.lastIndexOf("/") + 1);
+    return `${registry.origin}/${name}/-/${packageLeaf}-${version}.tgz`;
+  } catch {
+    return null;
+  }
+}
+
+function parseNodeLockPackages(source: string, lockfilePath: string, pnpmRegistryUrl?: string): ParsedDependencyLock {
   if (lockfilePath.endsWith("package-lock.json") || lockfilePath.endsWith("npm-shrinkwrap.json")) {
     const lock = JSON.parse(source) as {
       packages?: Record<string, Record<string, unknown>>;
@@ -1642,7 +1654,11 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
     const integrity = typeof integrityValue === "string" ? [integrityValue] : [];
     const dependencies = Object.keys((value.dependencies && typeof value.dependencies === "object" ? value.dependencies : {}) as Record<string, unknown>).map(normalizePackageName);
     const optionalDependencies = Object.keys((value.optionalDependencies && typeof value.optionalDependencies === "object" ? value.optionalDependencies : {}) as Record<string, unknown>).map(normalizePackageName);
-    const source = typeof resolution.tarball === "string" ? resolution.tarball : null;
+    const source = typeof resolution.tarball === "string"
+      ? resolution.tarball
+      : lockfilePath.endsWith("pnpm-lock.yaml") && pnpmRegistryUrl
+        ? pnpmRegistryTarballUrl(pnpmRegistryUrl, name, version)
+        : null;
     result.push({
       name: normalizePackageName(name),
       version,
@@ -1746,7 +1762,7 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
   return { packages: result, importers };
 }
 
-function workspaceExportTargets(manifest: Record<string, unknown>, subpath: string): string[] {
+function workspaceExportTargets(manifest: Record<string, unknown>, subpath: string, runtimeOnly = false): string[] {
   const exportsValue = manifest.exports;
   let selected = exportsValue;
   if (exportsValue && typeof exportsValue === "object" && !Array.isArray(exportsValue)) {
@@ -1778,7 +1794,12 @@ function workspaceExportTargets(manifest: Record<string, unknown>, subpath: stri
   const visit = (value: unknown) => {
     if (typeof value === "string" && value.startsWith("./")) targets.add(value.slice(2));
     else if (Array.isArray(value)) value.forEach(visit);
-    else if (value && typeof value === "object") Object.values(value as Record<string, unknown>).forEach(visit);
+    else if (value && typeof value === "object") {
+      for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+        if (runtimeOnly && (key === "types" || key === "typings")) continue;
+        visit(child);
+      }
+    }
   };
   if (exportsValue !== undefined) visit(selected);
   else
@@ -1797,11 +1818,11 @@ function replaceExportWildcard(value: unknown, capture: string): unknown {
   return value;
 }
 
-async function resolveWorkspacePackageFiles(root: string, item: WorkspacePackage, subpath: string): Promise<{ files: string[]; unresolved: string[] }> {
+async function resolveWorkspacePackageFiles(root: string, item: WorkspacePackage, subpath: string, runtimeOnly = false): Promise<{ files: string[]; unresolved: string[] }> {
   const packageRoot = dirname(resolve(root, item.manifestPath));
   const found = new Set<string>();
   const unresolved = new Set<string>();
-  for (const exportTarget of workspaceExportTargets(item.manifest, subpath)) {
+  for (const exportTarget of workspaceExportTargets(item.manifest, subpath, runtimeOnly)) {
     if (exportTarget.includes("*") || isAbsolute(exportTarget)) {
       unresolved.add(exportTarget);
       continue;
@@ -1866,6 +1887,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
   const profile = input.executionProfile;
+  const generatedArtifactPaths = new Set(profile?.generatedArtifacts.map(artifact => artifact.path) ?? []);
   const rawPythonDependencySelections = input.pythonDependencySelections ?? profile?.pythonDependencySelections ?? {};
   const normalizePythonSelections = (selections: typeof rawPythonDependencySelections) => Object.fromEntries(Object.entries(selections)
     .map(([path, categories]) => [safeRelative(sourceRoot, path), Object.fromEntries(
@@ -2261,7 +2283,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             });
             continue;
           }
-          const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, ".");
+          const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, ".", Boolean(profile));
           dependencyEdges.push({
             from: filePath,
             specifier: `${name}@${String(range)}`,
@@ -2270,7 +2292,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
           });
           queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
-          for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
+          for (const target of resolution.files) queue.push({ path: target, kind: generatedArtifactPaths.has(target) ? "generated-artifact" : "source-import" });
           for (const target of resolution.unresolved)
             unresolved.push({
               from: filePath,
@@ -2475,7 +2497,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       const local = workspacePackages.find(item => name === item.name || name.startsWith(`${item.name}/`));
       if (local) {
         const subpath = name === local.name ? "." : `./${name.slice(local.name.length + 1)}`;
-        const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath);
+        const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath, Boolean(profile));
         dependencyEdges.push({
           from: filePath,
           specifier: name,
@@ -2484,7 +2506,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
         });
         queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
-        for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
+        for (const target of resolution.files) queue.push({ path: target, kind: generatedArtifactPaths.has(target) ? "generated-artifact" : "source-import" });
         for (const target of resolution.unresolved)
           unresolved.push({
             from: filePath,
@@ -2564,7 +2586,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const local = workspacePackages.find(item => specifier === item.name || specifier.startsWith(`${item.name}/`));
         if (local) {
           const subpath = specifier === local.name ? "." : `./${specifier.slice(local.name.length + 1)}`;
-          const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath);
+          const resolution = await resolveWorkspacePackageFiles(sourceRoot, local, subpath, Boolean(profile));
           dependencyEdges.push({
             from: filePath,
             specifier,
@@ -2573,7 +2595,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             status: resolution.files.length && !resolution.unresolved.length ? "resolved-local" : "unresolved",
           });
           queue.push({ path: local.manifestPath, kind: "workspace-manifest" });
-          for (const target of resolution.files) queue.push({ path: target, kind: "source-import" });
+          for (const target of resolution.files) queue.push({ path: target, kind: generatedArtifactPaths.has(target) ? "generated-artifact" : "source-import" });
           for (const target of resolution.unresolved)
             unresolved.push({
               from: filePath,
@@ -2625,6 +2647,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   }
   for (const path of Object.keys(selectedManifestScripts)) {
     if (!consumedScriptSelections.has(path)) unresolved.push({ from: path, specifier: "<script-selection-manifest-not-in-profile>" });
+  }
+  for (const artifact of profile?.generatedArtifacts ?? []) {
+    if (!seen.has(artifact.path)) unresolved.push({ from: artifact.path, specifier: "<profile-generated-artifact-not-in-closure>" });
+    for (const sourcePath of artifact.inputs) {
+      if (!seen.has(sourcePath)) unresolved.push({ from: artifact.path, specifier: `<generated-artifact-input-not-in-closure:${sourcePath}>` });
+    }
   }
   const hasRust = [...seen].some(path => path.endsWith(".rs"));
   if (hasRust) {
@@ -2681,7 +2709,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         ? parseUvLockPackages(lockSource, lockfilePath)
         : lockfilePath.endsWith("Cargo.lock")
           ? parseCargoLockPackages(lockSource, lockfilePath)
-          : parseNodeLockPackages(lockSource, lockfilePath);
+          : parseNodeLockPackages(lockSource, lockfilePath, lockfilePath.endsWith("pnpm-lock.yaml") ? profile?.npmRegistryUrl : undefined);
       lockedPackages.push(...parsed.packages);
       if (lockfilePath.endsWith("Cargo.lock")) {
         const importerPath = dirname(lockfilePath).split(sep).join("/") || ".";
