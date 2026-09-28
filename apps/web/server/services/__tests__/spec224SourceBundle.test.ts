@@ -1113,6 +1113,18 @@ describe("Spec 224 source bundle tooling", () => {
     });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<nested-rust-module-path-unresolved>" }));
+
+    await writeFile(join(root, "src/main.rs"), 'mod support;\nmod tests { const S: &str = r#"} mod fake_child; {"#; }\n');
+    await writeFile(join(root, "src/support.rs"), "pub fn supported() {}\n");
+    const unrelatedInlineModule = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-inline-test-module-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(unrelatedInlineModule.closureComplete).toBe(true);
+    expect(unrelatedInlineModule.unresolvedImports).toEqual([]);
   });
 
   it("does not match a Cargo prerelease to a stable semver requirement", async () => {
@@ -1242,6 +1254,8 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.requiredExternalPackages.length).toBeGreaterThan(0);
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports.some(item => item.specifier.startsWith("UNVERIFIED_ARTIFACT:"))).toBe(true);
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "cargo-import-resolution-missing:smartaihub-runner" }));
+    expect(closure.unresolvedImports.filter(item => ["config", "connection", "container", "diagnostics", "process"].some(name => item.specifier === `cargo-import-resolution-missing:${name}`))).toEqual([]);
   });
 
   it("keeps dynamically imported Node builtins in the runtime, not package closure", async () => {

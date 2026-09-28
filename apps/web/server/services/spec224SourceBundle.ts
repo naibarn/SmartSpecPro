@@ -399,6 +399,61 @@ function cargoManifestDependencies(source: string): Array<{ name: string; alias:
   return [...dependencies.values()];
 }
 
+function hasNestedOutOfLineRustModule(source: string): boolean {
+  const inlineModulePattern = /\bmod\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/g;
+  for (const match of source.matchAll(inlineModulePattern)) {
+    const openBrace = (match.index ?? 0) + match[0].lastIndexOf("{");
+    let depth = 0;
+    let index = openBrace;
+    while (index < source.length) {
+      const current = source[index];
+      if (/^\s*(?:(?:pub(?:\([^)]*\))?)\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/.test(source.slice(index))) return true;
+      const rawStringPrefix = source.slice(index).match(/^(?:br|r)(#+)?"/);
+      if (rawStringPrefix) {
+        const terminator = `"${rawStringPrefix[1] ?? ""}`;
+        const stringEnd = source.indexOf(terminator, index + rawStringPrefix[0].length);
+        if (stringEnd < 0) return true;
+        index = stringEnd + terminator.length;
+        continue;
+      }
+      if (current === "/" && source[index + 1] === "/") {
+        index = source.indexOf("\n", index + 2);
+        if (index < 0) break;
+        continue;
+      }
+      if (current === "/" && source[index + 1] === "*") {
+        let commentDepth = 1;
+        index += 2;
+        while (index < source.length && commentDepth) {
+          if (source[index] === "/" && source[index + 1] === "*") { commentDepth++; index += 2; }
+          else if (source[index] === "*" && source[index + 1] === "/") { commentDepth--; index += 2; }
+          else index++;
+        }
+        continue;
+      }
+      if (current === '"') {
+        index++;
+        while (index < source.length) {
+          if (source[index] === "\\") index += 2;
+          else if (source[index++] === '"') break;
+        }
+        continue;
+      }
+      if (current === "'") {
+        const charEnd = source.indexOf("'", index + 1);
+        if (charEnd >= 0 && charEnd - index <= 4 && !source.slice(index, charEnd).includes("\n")) { index = charEnd + 1; continue; }
+      }
+      if (current === "{") depth++;
+      else if (current === "}" && --depth === 0) {
+        break;
+      }
+      index++;
+    }
+    if (depth !== 0) return true;
+  }
+  return false;
+}
+
 function markerTokens(expression: string): string[] | null {
   const tokens: string[] = [];
   const pattern = /\s*(and\b|or\b|not\s+in\b|in\b|not\s+|==|!=|<=|>=|~=|===|<|>|\(|\)|[A-Za-z_][A-Za-z0-9_]*|'(?:\\.|[^'])*'|"(?:\\.|[^"])*")/gy;
@@ -526,7 +581,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       if (effectiveRoot.source && item.source !== effectiveRoot.source) continue;
       const importers = importersByLockfile.get(item.lockfilePath) ?? {};
       const importerPath = importerPathFor(effectiveRoot.requesterPath, importers);
-      const importerDependencyName = effectiveRoot.lockfileAlias ?? item.name;
+      const importerDependencyName = effectiveRoot.lockfileAlias ? effectiveNormalizeName(effectiveRoot.lockfileAlias) : item.name;
       const importedLocator = importerPath === null ? undefined : importers[importerPath]?.[importerDependencyName];
       if (importerPath !== null && Object.hasOwn(importers[importerPath] ?? {}, importerDependencyName)) {
         if (importedLocator === item.locator) matches.push(item.locator);
@@ -929,9 +984,7 @@ function importsIn(
   const isPython = filePath.endsWith(".py");
   const isRust = filePath.endsWith(".rs");
   if (isRust) {
-    const hasInlineModule = /\bmod\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(source);
-    const hasOutOfLineModule = /\b(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/.test(source);
-    if (hasInlineModule && hasOutOfLineModule) unresolved.add("<nested-rust-module-path-unresolved>");
+    if (hasNestedOutOfLineRustModule(source)) unresolved.add("<nested-rust-module-path-unresolved>");
     for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
     for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {
       const preceding = source.slice(0, match.index ?? 0);
@@ -942,7 +995,8 @@ function importsIn(
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
     }
     const localModuleNames = new Set([...source.matchAll(/(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
-    for (const match of source.matchAll(/\b([a-z][A-Za-z0-9_]*)::/g)) {
+    const qualifiedPathSource = source.replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
+    for (const match of qualifiedPathSource.matchAll(/(?<![:A-Za-z0-9_])([a-z][A-Za-z0-9_]*)::/g)) {
       const name = match[1];
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name) && !localModuleNames.has(name)) external.add(name);
     }
@@ -1556,6 +1610,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const externalRoots: ExternalRoot[] = [];
   const cargoImports = new Map<string, Set<string>>();
   const cargoAliasesByManifest = new Map<string, Map<string, string>>();
+  const cargoSelfLibraryByManifest = new Map<string, string>();
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
@@ -1927,6 +1982,23 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     if (filePath.endsWith("Cargo.toml")) {
       const aliases = cargoAliasesByManifest.get(filePath) ?? new Map<string, string>();
+      const packageBlock = source.match(/^\[package\]\s*([\s\S]*?)(?=^\[|^\[\[|$)/m)?.[1] ?? "";
+      const packageName = packageBlock.match(/^name\s*=\s*["']([^"']+)["']/m)?.[1];
+      const libraryBlock = source.match(/^\[lib\]\s*([\s\S]*?)(?=^\[|^\[\[|$)/m)?.[1] ?? "";
+      const libraryPath = libraryBlock.match(/^path\s*=\s*["']([^"']+)["']/m)?.[1] ?? "src/lib.rs";
+      if (packageName) {
+        try {
+          const safeLibraryPath = safeRelative(dirname(filePath) === "." ? "" : dirname(filePath), libraryPath).split(sep).join("/");
+          const candidate = join(dirname(filePath), safeLibraryPath).split(sep).join("/").replace(/^\.\//, "");
+          await assertRegularFileWithoutSymlinkParents(sourceRoot, candidate);
+          aliases.set(normalizeCargoPackageName(packageName.replaceAll("-", "_")), "@self");
+          cargoSelfLibraryByManifest.set(filePath, candidate);
+          queue.push({ path: candidate, kind: "source-import" });
+        } catch {
+          // A package without a library target is valid; unresolved self imports
+          // are rejected later if source actually refers to the package crate.
+        }
+      }
       for (const dependency of cargoManifestDependencies(source)) {
         const name = normalizeCargoPackageName(dependency.name);
         aliases.set(normalizeCargoPackageName(dependency.alias), name);
@@ -2119,6 +2191,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       try {
         const manifest = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, path), "utf8");
         for (const dependency of cargoManifestDependencies(manifest)) declaredCargoNames.add(normalizeCargoPackageName(dependency.alias));
+        for (const alias of cargoAliasesByManifest.get(path)?.keys() ?? []) declaredCargoNames.add(alias);
       } catch {
         unresolved.push({ from: path, specifier: "<cargo-manifest-read-failed>" });
       }
@@ -2323,6 +2396,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         .sort((left, right) => right.length - left.length)[0];
       const packageName = ownerManifest ? cargoAliasesByManifest.get(ownerManifest)?.get(importName) : undefined;
       const selectedRoot = ownerManifest && packageName ? rootLocators.get(`${ownerManifest}\0${packageName}`) : undefined;
+      if (packageName === "@self" && ownerManifest) {
+        edge.status = "resolved-local";
+        edge.to = cargoSelfLibraryByManifest.get(ownerManifest) ?? null;
+        continue;
+      }
       const matches = externalPackageIdentities.filter(item => item.packageManager === "cargo"
         && item.name === packageName
         && (!selectedRoot || item.locator === selectedRoot)
