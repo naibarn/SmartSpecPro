@@ -28,6 +28,13 @@ from app.models.audit_log import AuditLog
 
 logger = structlog.get_logger(__name__)
 
+SPEC224_PROTECTED_RUNTIME_OPERATIONS = {
+    "protected_dispatch",
+    "protected_execute",
+    "protected_approval_continuation",
+    "protected_recovery",
+}
+
 
 class ApprovalDBService:
     """
@@ -116,8 +123,36 @@ class ApprovalDBService:
         if not set(normalized_write_set).issubset({entry["path"] for entry in normalized_sources}):
             raise ValueError("SPEC224_RECOVERY_GRANT_WRITE_SET_OUTSIDE_SOURCE")
         allowed_operations = sorted(set(operations))
-        if len(allowed_operations) != len(operations) or any(op not in {"read_source", "modify_owned_paths", "run_focused_tests", "commit_owned_changes"} for op in allowed_operations):
+        if len(allowed_operations) != len(operations) or any(op not in {
+            "read_source", "modify_owned_paths", "run_focused_tests", "commit_owned_changes",
+            *SPEC224_PROTECTED_RUNTIME_OPERATIONS,
+        } for op in allowed_operations):
             raise ValueError("SPEC224_RECOVERY_GRANT_OPERATION_INVALID")
+
+        runtime_binding = value.get("runtimeBinding")
+        if allowed_operations and set(allowed_operations).intersection(SPEC224_PROTECTED_RUNTIME_OPERATIONS):
+            if not isinstance(runtime_binding, dict):
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_REQUIRED")
+        if runtime_binding is not None:
+            expected_binding_keys = {
+                "tenantId", "ownerId", "runId", "workerJobId", "attempt", "revision",
+                "decisionEpoch", "developmentRunFencingVersion", "workerJobFencingVersion",
+                "runnerId", "runnerSessionId", "capabilitySnapshotId", "capabilitySnapshotRevision",
+            }
+            if not isinstance(runtime_binding, dict) or set(runtime_binding) != expected_binding_keys:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            for key in ("tenantId", "runId", "workerJobId", "runnerId", "runnerSessionId", "capabilitySnapshotId", "capabilitySnapshotRevision"):
+                item = runtime_binding.get(key)
+                if not isinstance(item, str) or not item.strip() or len(item) > 255:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            if not isinstance(runtime_binding.get("ownerId"), int) or isinstance(runtime_binding["ownerId"], bool) or runtime_binding["ownerId"] <= 0:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            for key in ("attempt", "revision", "decisionEpoch", "developmentRunFencingVersion", "workerJobFencingVersion"):
+                item = runtime_binding.get(key)
+                if not isinstance(item, int) or isinstance(item, bool) or item < 0:
+                    raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
+            if runtime_binding["attempt"] < 1:
+                raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
 
         expires_at = value.get("expiresAt")
         try:
@@ -141,6 +176,7 @@ class ApprovalDBService:
             "runtimeScope": runtime,
             "environmentScope": environment,
             "expiresAt": expiry.isoformat().replace("+00:00", "Z"),
+            **({"runtimeBinding": runtime_binding} if runtime_binding is not None else {}),
         }
 
     @staticmethod
@@ -176,6 +212,11 @@ class ApprovalDBService:
         tenant_result = await self.db.execute(select(Tenant.owner_id).where(Tenant.id == tenant_id).with_for_update())
         if tenant_result.scalar_one_or_none() != owner_id:
             raise PermissionError("SPEC224_RECOVERY_GRANT_TENANT_OWNER_REQUIRED")
+        runtime_binding = normalized.get("runtimeBinding")
+        if runtime_binding is not None and (
+            runtime_binding.get("tenantId") != tenant_id or runtime_binding.get("ownerId") != owner_id
+        ):
+            raise ValueError("SPEC224_RECOVERY_GRANT_RUNTIME_BINDING_INVALID")
         user_result = await self.db.execute(select(User.isDisabled).where(User.id == owner_id))
         disabled = user_result.scalar_one_or_none()
         if disabled is None or disabled:
@@ -268,6 +309,7 @@ class ApprovalDBService:
     async def validate_spec224_recovery_grant(
         self, *, grant_id: str, tenant_id: str, source_commit: str, source_sha256: str,
         workpackage_id: str, operation: str, path: str, runtime_scope: str, environment_scope: str,
+        runtime_binding: Optional[dict] = None,
     ) -> bool:
         result = await self.db.execute(select(ApprovalRequest).where(
             ApprovalRequest.id == grant_id, ApprovalRequest.tenant_id == tenant_id,
@@ -332,6 +374,11 @@ class ApprovalDBService:
             or scope.get("environmentScope") != environment_scope or operation not in scope.get("allowedOperations", [])
             or operation in scope.get("forbiddenOperations", []) or path not in scope.get("allowedWriteSet", [])):
             return False
+        if operation in SPEC224_PROTECTED_RUNTIME_OPERATIONS:
+            if not isinstance(runtime_binding, dict) or scope.get("runtimeBinding") != runtime_binding:
+                return False
+            if runtime_binding.get("tenantId") != tenant_id or runtime_binding.get("ownerId") != grant.get("ownerId"):
+                return False
         canonical_scope = json.dumps(scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
         return hashlib.sha256(canonical_scope.encode("utf-8")).hexdigest() == grant.get("scopeDigest")
 

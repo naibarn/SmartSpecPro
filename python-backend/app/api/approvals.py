@@ -11,7 +11,7 @@ from typing import Optional, List, Literal
 from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from enum import Enum
 
 import structlog
@@ -93,6 +93,24 @@ class Spec224RecoveryGrantRevoke(BaseModel):
     reason: str = Field(..., min_length=4, max_length=500)
 
 
+class Spec224RuntimeBinding(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=255)
+    owner_id: StrictInt = Field(..., alias="ownerId", gt=0)
+    run_id: StrictStr = Field(..., alias="runId", min_length=1, max_length=255)
+    worker_job_id: StrictStr = Field(..., alias="workerJobId", min_length=1, max_length=255)
+    attempt: StrictInt = Field(..., ge=1)
+    revision: StrictInt = Field(..., ge=0)
+    decision_epoch: StrictInt = Field(..., alias="decisionEpoch", ge=0)
+    development_run_fencing_version: StrictInt = Field(..., alias="developmentRunFencingVersion", ge=0)
+    worker_job_fencing_version: StrictInt = Field(..., alias="workerJobFencingVersion", ge=0)
+    runner_id: StrictStr = Field(..., alias="runnerId", min_length=1, max_length=255)
+    runner_session_id: StrictStr = Field(..., alias="runnerSessionId", min_length=1, max_length=255)
+    capability_snapshot_id: StrictStr = Field(..., alias="capabilitySnapshotId", min_length=1, max_length=255)
+    capability_snapshot_revision: StrictStr = Field(..., alias="capabilitySnapshotRevision", min_length=1, max_length=255)
+
+
 class Spec224RecoveryGrantValidation(BaseModel):
     grant_id: str = Field(..., alias="grantId", min_length=36, max_length=36)
     tenant_id: str = Field(..., alias="tenantId", min_length=1, max_length=36)
@@ -103,6 +121,7 @@ class Spec224RecoveryGrantValidation(BaseModel):
     path: str = Field(..., min_length=1, max_length=500)
     runtime_scope: str = Field(..., alias="runtimeScope", min_length=1, max_length=64)
     environment_scope: str = Field(..., alias="environmentScope", min_length=1, max_length=64)
+    runtime_binding: Optional[Spec224RuntimeBinding] = Field(default=None, alias="runtimeBinding")
 
     class Config:
         populate_by_name = True
@@ -1286,6 +1305,7 @@ async def validate_spec224_recovery_grant(
         path=data.path,
         runtime_scope=data.runtime_scope,
         environment_scope=data.environment_scope,
+        runtime_binding=data.runtime_binding.model_dump(by_alias=True) if data.runtime_binding else None,
     )
     return {"valid": valid}
 

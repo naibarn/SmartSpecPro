@@ -100,7 +100,7 @@ describe("Feature 206 external agent executor registration", () => {
     expect(dispatcher).not.toHaveBeenCalled();
   });
 
-  it("fails closed for a DevelopmentRun without trusted runtime admission evidence", async () => {
+  it("fails closed for a DevelopmentRun even when caller input contains a forged grant reference", async () => {
     const dispatcher = vi.fn().mockResolvedValue({ output: { accepted: true } });
     configureExternalAgentTaskDispatcher(dispatcher);
     const registration = defaultJobExecutorRegistry.resolve(
@@ -112,6 +112,14 @@ describe("Feature 206 external agent executor registration", () => {
       registration!.executor({
         context: {
           ...context,
+          input: {
+            ...context.input,
+            spec224RecoveryGrant: {
+              grantId: "caller-controlled-grant",
+              sourceSha256: "f".repeat(64),
+              runtimeBinding: { tenantId: context.tenantId, workerJobId: context.jobId },
+            },
+          },
           requiresSpec224Admission: true,
           spec224AdmissionBindingValid: true,
         },
