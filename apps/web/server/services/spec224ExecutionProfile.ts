@@ -189,7 +189,12 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   },
   pythonDependencySelections: {
     "python-backend/requirements.txt": {
-      runtime: ["fastapi", "starlette", "pydantic", "pydantic-settings", "sqlalchemy", "asyncpg", "structlog", "httpx", "python-jose"],
+      runtime: [
+        "fastapi", "starlette", "pydantic", "pydantic-settings", "sqlalchemy", "asyncpg", "structlog", "httpx", "python-jose",
+        "uvicorn", "langgraph", "langgraph-checkpoint-postgres", "langchain-core", "openai", "anthropic", "google-generativeai", "groq",
+        "psycopg", "redis", "passlib", "aiohttp", "aiofiles", "aiosmtplib", "croniter", "google-api-python-client", "google-auth",
+        "google-auth-httplib2", "google-cloud-tasks", "playwright", "pillow", "pytz", "chevron", "jinja2", "openpyxl",
+      ],
       test: [],
       optional: [],
       devOnly: [],
