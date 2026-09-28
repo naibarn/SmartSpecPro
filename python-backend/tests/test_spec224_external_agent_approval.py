@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.api import approvals
 from app.api.approvals import Spec224ExternalAgentApprovalCreate
@@ -91,3 +92,74 @@ def test_spec224_resume_record_rejects_provider_or_scope_tampering():
         approvals._spec224_external_resume_payload_from_record(
             continuation, "approval-224", "approved", 207
         )
+
+
+@pytest.mark.asyncio
+async def test_spec224_grant_validation_forwards_strict_runtime_binding(monkeypatch):
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "gateway-secret", raising=False)
+    runtime_binding = {
+        "tenantId": "tenant-224",
+        "ownerId": 207,
+        "runId": "run-224",
+        "workerJobId": "job-224",
+        "attempt": 2,
+        "revision": 7,
+        "decisionEpoch": 3,
+        "developmentRunFencingVersion": 11,
+        "workerJobFencingVersion": 19,
+        "runnerId": "runner-224",
+        "runnerSessionId": "session-224",
+        "capabilitySnapshotId": "snapshot-224",
+        "capabilitySnapshotRevision": "revision-1",
+    }
+    payload = approvals.Spec224RecoveryGrantValidation(
+        grantId="0d2fca34-3d1c-40d4-8f66-dc6a22cc2e04",
+        tenantId="tenant-224",
+        sourceCommit="a" * 40,
+        sourceSha256="b" * 64,
+        workpackageId="WP-RECOVERY-04",
+        operation="protected_dispatch",
+        path="apps/web/server/services/externalAgentTaskExecutor.ts",
+        runtimeScope="local-test-runner",
+        environmentScope="isolated-non-production",
+        runtimeBinding=runtime_binding,
+    )
+    seen = {}
+
+    class FakeGrantService:
+        def __init__(self, _db):
+            pass
+
+        async def validate_spec224_recovery_grant(self, **kwargs):
+            seen.update(kwargs)
+            return True
+
+    monkeypatch.setattr(approvals, "ApprovalDBService", FakeGrantService)
+    result = await approvals.validate_spec224_recovery_grant(
+        payload, x_internal_token="gateway-secret", db=object()
+    )
+
+    assert result == {"valid": True}
+    assert seen["runtime_binding"] == runtime_binding
+
+
+def test_spec224_runtime_binding_rejects_extra_or_coerced_fields():
+    binding = {
+        "tenantId": "tenant-224",
+        "ownerId": 207,
+        "runId": "run-224",
+        "workerJobId": "job-224",
+        "attempt": 1,
+        "revision": 0,
+        "decisionEpoch": 0,
+        "developmentRunFencingVersion": 0,
+        "workerJobFencingVersion": 0,
+        "runnerId": "runner-224",
+        "runnerSessionId": "session-224",
+        "capabilitySnapshotId": "snapshot-224",
+        "capabilitySnapshotRevision": "revision-1",
+    }
+    with pytest.raises(ValidationError):
+        approvals.Spec224RuntimeBinding(**{**binding, "untrusted": "field"})
+    with pytest.raises(ValidationError):
+        approvals.Spec224RuntimeBinding(**{**binding, "ownerId": True})
