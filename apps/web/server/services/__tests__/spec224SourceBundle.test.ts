@@ -1138,6 +1138,55 @@ describe("Spec 224 source bundle tooling", () => {
     expect(unrelatedInlineModule.unresolvedImports).toEqual([]);
   });
 
+  it("resolves out-of-line Rust modules relative to file-module directories", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), "mod parent;\n");
+    await writeFile(join(root, "src/parent.rs"), "mod child;\n");
+    await mkdir(join(root, "src/parent"), { recursive: true });
+    await writeFile(join(root, "src/parent/child.rs"), "pub fn expected() {}\n");
+    await writeFile(join(root, "src/child.rs"), "pub fn decoy() {}\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n');
+    await writeFile(join(root, "Cargo.lock"), "version = 4\n");
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-file-module-relative-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.files).toContain("src/parent/child.rs");
+    expect(closure.files).not.toContain("src/child.rs");
+
+    await writeFile(join(root, "src/main.rs"), "#[cfg(unix)] mod parent;\n");
+    const cfgModule = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-cfg-module-unresolved-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(cfgModule.closureComplete).toBe(false);
+    expect(cfgModule.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<rust-cfg-module-selection-unresolved>" }));
+  });
+
+  it("resolves raw-string Rust path attributes without treating their contents as code", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), ' #[path = r#"support.rs"#] mod support;\n');
+    await writeFile(join(root, "src/support.rs"), "pub fn support() {}\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n');
+    await writeFile(join(root, "Cargo.lock"), "version = 4\n");
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-path-attribute-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.files).toContain("src/support.rs");
+  });
+
   it("does not match a Cargo prerelease to a stable semver requirement", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "src/main.rs"), "use serde::Serialize;\n");

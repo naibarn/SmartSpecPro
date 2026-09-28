@@ -992,11 +992,24 @@ async function assertRegularFileWithoutSymlinkParents(root: string, relativePath
   return current;
 }
 
-async function resolveLocalImport(sourceRoot: string, from: string, specifier: string, moduleRoots: SourceClosureInput["moduleRoots"]): Promise<string | null> {
+async function resolveLocalImport(sourceRoot: string, from: string, specifier: string, moduleRoots: SourceClosureInput["moduleRoots"], rustCrateRoots: ReadonlySet<string> = new Set()): Promise<string | null> {
   const current = resolve(sourceRoot, from);
   const language = current.endsWith(".py") ? "python" : "javascript";
   let base: string | null = null;
-  if (specifier.startsWith(".")) {
+  if (current.endsWith(".rs") && specifier.startsWith("rust-path:")) {
+    const sourceName = current.slice(current.lastIndexOf(sep) + 1);
+    const moduleDirectory = rustCrateRoots.has(from) || ["main.rs", "lib.rs", "mod.rs", "build.rs"].includes(sourceName)
+      ? dirname(current)
+      : resolve(dirname(current), sourceName.slice(0, -".rs".length));
+    base = resolve(moduleDirectory, specifier.slice("rust-path:".length));
+  } else if (current.endsWith(".rs") && specifier.startsWith("rust-mod:")) {
+    const moduleName = specifier.slice("rust-mod:".length);
+    const sourceName = current.slice(current.lastIndexOf(sep) + 1);
+    const moduleDirectory = rustCrateRoots.has(from) || ["main.rs", "lib.rs", "mod.rs", "build.rs"].includes(sourceName)
+      ? dirname(current)
+      : resolve(dirname(current), sourceName.slice(0, -".rs".length));
+    base = resolve(moduleDirectory, moduleName);
+  } else if (specifier.startsWith(".")) {
     if (language === "python") {
       const leadingDots = specifier.match(/^\.+/)?.[0].length ?? 1;
       let parent = dirname(current);
@@ -1049,16 +1062,30 @@ function importsIn(
     const rustCode = rustSyntax.source;
     if (!rustSyntax.complete) unresolved.add("<rust-lexical-scan-incomplete>");
     if (hasNestedOutOfLineRustModule(source)) unresolved.add("<nested-rust-module-path-unresolved>");
-    for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
-    for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {
-      const preceding = source.slice(0, match.index ?? 0);
-      if (!/#\s*\[\s*path\s*=\s*["'][^"']+["']\s*\]\s*$/.test(preceding)) local.add(`./${match[1]}`);
+    if (/#\s*\[\s*cfg(?:_attr)?\s*\([^\]]*\)\s*\]\s*(?:#\s*\[[^\]]+\]\s*)*(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/s.test(rustCode)) unresolved.add("<rust-cfg-module-selection-unresolved>");
+    const pathAttributeRanges: Array<{ start: number; end: number }> = [];
+    const pathAttributePatterns = [
+      /#\s*\[\s*path\s*=\s*"([^"\n]+)"\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g,
+      /#\s*\[\s*path\s*=\s*r(#+)?"([\s\S]*?)"\1\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g,
+    ];
+    for (const pattern of pathAttributePatterns) {
+      for (const match of source.matchAll(pattern)) {
+        const start = match.index ?? 0;
+        pathAttributeRanges.push({ start, end: start + match[0].length });
+        local.add(`rust-path:${match[2] ?? match[1]}`);
+      }
+    }
+    const pathAttributeCount = [...rustCode.matchAll(/#[ \t]*\[[ \t]*path\s*=/g)].length;
+    if (pathAttributeCount !== pathAttributeRanges.length) unresolved.add("<rust-path-attribute-unresolved>");
+    for (const match of rustCode.matchAll(/\bmod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/g)) {
+      const moduleIndex = (match.index ?? 0) + match[0].lastIndexOf("mod");
+      if (!pathAttributeRanges.some(range => moduleIndex >= range.start && moduleIndex < range.end)) local.add(`rust-mod:${match[1]}`);
     }
     for (const match of rustCode.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
       const name = match[1];
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
     }
-    const localModuleNames = new Set([...rustCode.matchAll(/(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
+    const localModuleNames = new Set([...rustCode.matchAll(/\bmod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
     const qualifiedPathSource = rustCode.replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
     for (const match of qualifiedPathSource.matchAll(/(?<![:A-Za-z0-9_])([a-z][A-Za-z0-9_]*)::/g)) {
       const name = match[1];
@@ -1675,6 +1702,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const cargoImports = new Map<string, Set<string>>();
   const cargoAliasesByManifest = new Map<string, Map<string, string>>();
   const cargoSelfLibraryByManifest = new Map<string, string>();
+  const rustCrateRoots = new Set(input.entryPaths.filter(path => path.endsWith(".rs")));
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
@@ -2057,6 +2085,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           await assertRegularFileWithoutSymlinkParents(sourceRoot, candidate);
           aliases.set(normalizeCargoPackageName(packageName.replaceAll("-", "_")), "@self");
           cargoSelfLibraryByManifest.set(filePath, candidate);
+          rustCrateRoots.add(candidate);
           queue.push({ path: candidate, kind: "source-import" });
         } catch {
           // A package without a library target is valid; unresolved self imports
@@ -2090,7 +2119,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           unresolved: [] as string[],
         };
     for (const name of imports.external) {
-      const aliased = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots);
+      const aliased = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots, rustCrateRoots);
       if (aliased) {
         dependencyEdges.push({
           from: filePath,
@@ -2151,7 +2180,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     for (const specifier of imports.dynamic) {
       if (specifier.startsWith("node:") || NODE_BUILTINS.has(specifier.split("/")[0])) continue;
       if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
-        const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
+        const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots, rustCrateRoots);
         if (resolved) {
           dependencyEdges.push({
             from: filePath,
@@ -2172,7 +2201,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           });
         }
       } else {
-        const aliased = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
+        const aliased = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots, rustCrateRoots);
         if (aliased) {
           dependencyEdges.push({
             from: filePath,
@@ -2218,7 +2247,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       }
     }
     for (const specifier of imports.local) {
-      const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
+      const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots, rustCrateRoots);
       if (resolved) {
         dependencyEdges.push({
           from: filePath,
