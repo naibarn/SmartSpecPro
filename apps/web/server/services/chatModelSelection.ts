@@ -59,6 +59,7 @@ export interface ResolvedChatModelSelection {
   requestedModelId?: string | null;
   resolvedModelId: string;
   resolvedProviderId?: number;
+  resolvedModelMappingId?: number;
   resolvedProviderName?: string;
   preferredProviderId?: number;
   strictProviderPin: boolean;
@@ -612,6 +613,7 @@ export async function resolveChatModelSelection(
       requestedModelId: input.bodyModel ?? null,
       resolvedModelId: chosenRow.modelId,
       resolvedProviderId: chosenRow.providerId,
+      resolvedModelMappingId: chosenRow.modelMappingId,
       resolvedProviderName: chosenRow.providerName,
       preferredProviderId: chosenRow.providerId,
       strictProviderPin: false,
@@ -648,6 +650,7 @@ export async function resolveChatModelSelection(
         requestedModelId: selection.modelId,
         resolvedModelId: chosenRow.modelId,
         resolvedProviderId: chosenRow.providerId,
+        resolvedModelMappingId: chosenRow.modelMappingId,
         resolvedProviderName: chosenRow.providerName,
         preferredProviderId: chosenRow.providerId,
         strictProviderPin: true,
@@ -670,6 +673,7 @@ export async function resolveChatModelSelection(
       requestedModelId: selection.modelId,
       resolvedModelId: chosenRow.modelId,
       resolvedProviderId: chosenRow.providerId,
+      resolvedModelMappingId: chosenRow.modelMappingId,
       resolvedProviderName: chosenRow.providerName,
       preferredProviderId: chosenRow.providerId,
       strictProviderPin: false,
@@ -727,6 +731,7 @@ export async function resolveChatModelSelection(
     requestedModelId: null,
     resolvedModelId: chosenRow.modelId,
     resolvedProviderId: chosenRow.providerId,
+    resolvedModelMappingId: chosenRow.modelMappingId,
     resolvedProviderName: chosenRow.providerName,
     preferredProviderId:
       selection.mode === "auto-provider" ? selection.providerId : chosenRow.providerId,

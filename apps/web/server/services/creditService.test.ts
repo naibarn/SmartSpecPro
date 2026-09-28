@@ -1,10 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockSelect, mockInsert, mockUpdate, mockTransaction } = vi.hoisted(() => ({
+const {
+  mockSelect,
+  mockInsert,
+  mockUpdate,
+  mockTransaction,
+  mockRedisGet,
+  mockIsRedisAvailable,
+} = vi.hoisted(() => ({
   mockSelect: vi.fn(),
   mockInsert: vi.fn(),
   mockUpdate: vi.fn(),
   mockTransaction: vi.fn(),
+  mockRedisGet: vi.fn(),
+  mockIsRedisAvailable: vi.fn(() => false),
 }));
 
 vi.mock("../db", () => ({
@@ -14,6 +23,11 @@ vi.mock("../db", () => ({
     update: mockUpdate,
     transaction: mockTransaction,
   },
+}));
+
+vi.mock("./redis", () => ({
+  getRedisClient: () => ({ get: mockRedisGet }),
+  isRedisAvailable: mockIsRedisAvailable,
 }));
 
 import {
@@ -26,10 +40,13 @@ import {
   deductCredits,
   addCredits,
   getTransactionHistorySummary,
+  getCreditReservationSnapshot,
 } from "./creditService";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockRedisGet.mockResolvedValue(null);
+  mockIsRedisAvailable.mockReturnValue(false);
 });
 
 // --- Helper to set up model_provider_map mock for isModelFree/pricing ---
@@ -132,6 +149,43 @@ describe("getTransactionHistorySummary", () => {
       net: 0,
       transactionCount: 0,
     });
+  });
+});
+
+describe("getCreditReservationSnapshot", () => {
+  it("fails closed when Redis is unavailable", async () => {
+    mockIsRedisAvailable.mockReturnValue(false);
+    await expect(getCreditReservationSnapshot("reservation-1")).resolves.toBeNull();
+    expect(mockRedisGet).not.toHaveBeenCalled();
+  });
+
+  it("reads the matching reservation from the existing owner", async () => {
+    mockIsRedisAvailable.mockReturnValue(true);
+    const snapshot = {
+      reservationId: "reservation-1",
+      userId: 7,
+      reservedAmount: 10,
+      drawnAmount: 2,
+      transactionId: 11,
+      sourceType: "chat",
+      tenantId: "tenant-a",
+      createdAt: "2026-09-27T00:00:00.000Z",
+      expiresAt: "2026-09-27T00:10:00.000Z",
+    };
+    mockRedisGet.mockResolvedValue(JSON.stringify(snapshot));
+
+    await expect(getCreditReservationSnapshot("reservation-1")).resolves.toEqual(snapshot);
+    expect(mockRedisGet).toHaveBeenCalledWith("credit:reservation:reservation-1");
+  });
+
+  it("rejects malformed or mismatched reservation records", async () => {
+    mockIsRedisAvailable.mockReturnValue(true);
+    mockRedisGet.mockResolvedValue(
+      JSON.stringify({ reservationId: "another-reservation" }),
+    );
+    await expect(getCreditReservationSnapshot("reservation-1")).rejects.toThrow(
+      "Credit reservation snapshot is malformed",
+    );
   });
 });
 

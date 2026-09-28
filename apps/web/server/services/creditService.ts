@@ -1162,6 +1162,34 @@ export interface CreditReservation {
   settledCallAmounts?: Record<string, number>;
 }
 
+/**
+ * Read the current reservation snapshot from its existing owner. This is a
+ * read-only pre-dispatch check; Redis remains the current reservation store
+ * until the credit service itself is migrated.
+ */
+export async function getCreditReservationSnapshot(
+  reservationId: string,
+): Promise<CreditReservation | null> {
+  if (!reservationId.trim() || !isRedisAvailable()) return null;
+
+  const raw = await getRedisClient().get(`credit:reservation:${reservationId}`);
+  if (!raw) return null;
+
+  const reservation = JSON.parse(raw) as CreditReservation;
+  if (
+    !reservation ||
+    typeof reservation !== "object" ||
+    reservation.reservationId !== reservationId ||
+    !Number.isSafeInteger(reservation.userId) ||
+    typeof reservation.expiresAt !== "string" ||
+    !Number.isSafeInteger(reservation.reservedAmount) ||
+    !Number.isSafeInteger(reservation.drawnAmount)
+  ) {
+    throw new Error("Credit reservation snapshot is malformed");
+  }
+  return reservation;
+}
+
 const RESERVATION_TTL_SECONDS = 600; // 10 minutes
 
 export interface CreditReservationBillingContext {
@@ -1200,6 +1228,8 @@ export async function createCreditReservation(
   const reservationId = idempotencyKey
     ? `reservation-${createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 32)}`
     : randomUUID();
+  const reservationKey = `credit:reservation:${reservationId}`;
+  const redis = isRedisAvailable() ? getRedisClient() : null;
   const skillSlug = sourceType === "skill" ? billing?.skillSlug : undefined;
   const skillRunId =
     sourceType === "skill"
@@ -1207,6 +1237,60 @@ export async function createCreditReservation(
       : undefined;
   const effectiveContextRef =
     billing?.contextRef ?? inferCreditContextRefFromMetadata(metadata);
+
+  const validateIdempotentReplay = (reservation: CreditReservation) => {
+    if (
+      reservation.reservationId !== reservationId ||
+      reservation.userId !== userId ||
+      reservation.reservedAmount !== amount ||
+      !Number.isSafeInteger(reservation.drawnAmount) ||
+      reservation.drawnAmount < 0 ||
+      reservation.drawnAmount > reservation.reservedAmount ||
+      !Number.isSafeInteger(reservation.transactionId) ||
+      reservation.sourceType !== sourceType ||
+      reservation.idempotencyKey !== idempotencyKey ||
+      (reservation.skillSlug ?? null) !== (skillSlug ?? null) ||
+      (reservation.skillRunId ?? null) !== (skillRunId ?? null) ||
+      (reservation.tenantId ?? null) !== (billing?.tenantId ?? null)
+    ) {
+      throw new Error(
+        "Credit reservation idempotency key was reused with different parameters",
+      );
+    }
+    const expiresAtMs = Date.parse(reservation.expiresAt);
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+      throw new Error("Credit reservation has expired; use a new idempotency key");
+    }
+  };
+
+  // A retry must observe the already-drawn state. Recreating the snapshot
+  // would reset drawnAmount and could let a caller spend the same reservation
+  // more than once.
+  if (idempotencyKey && redis) {
+    const existingRaw = await redis.get(reservationKey);
+    if (existingRaw) {
+      const existing = JSON.parse(existingRaw) as CreditReservation;
+      validateIdempotentReplay(existing);
+      return existing;
+    }
+  }
+
+  // The durable credit ledger retains idempotency beyond Redis reservation
+  // TTL. If its transaction exists but the reservation snapshot is gone, do
+  // not reconstruct a zero-drawn snapshot from the old debit: that could
+  // replay provider work after the original reservation expired or was used.
+  if (idempotencyKey) {
+    const [priorTransaction] = await db
+      .select({ id: creditTransactions.id })
+      .from(creditTransactions)
+      .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
+      .limit(1);
+    if (priorTransaction) {
+      throw new Error(
+        "Credit reservation snapshot is missing for a previously charged idempotency key",
+      );
+    }
+  }
 
   // Deduct the full amount upfront
   const deductResult = await deductCredits({
@@ -1245,14 +1329,35 @@ export async function createCreditReservation(
   // the durable-only path retain the credit transaction as the recovery
   // record; they must settle/refund from that ledger rather than assuming this
   // cache exists.
-  if (isRedisAvailable()) {
-    const redis = getRedisClient();
-    await redis.set(
-      `credit:reservation:${reservationId}`,
-      JSON.stringify(reservation),
-      "EX",
-      RESERVATION_TTL_SECONDS
-    );
+  if (redis) {
+    if (idempotencyKey) {
+      // NX is the final arbiter when same-key requests race after the initial
+      // read. A loser returns the winning snapshot instead of overwriting a
+      // reservation that may already have been drawn.
+      const stored = await redis.set(
+        reservationKey,
+        JSON.stringify(reservation),
+        "EX",
+        RESERVATION_TTL_SECONDS,
+        "NX",
+      );
+      if (stored !== "OK") {
+        const winnerRaw = await redis.get(reservationKey);
+        if (!winnerRaw) {
+          throw new Error("Could not confirm idempotent credit reservation");
+        }
+        const winner = JSON.parse(winnerRaw) as CreditReservation;
+        validateIdempotentReplay(winner);
+        return winner;
+      }
+    } else {
+      await redis.set(
+        reservationKey,
+        JSON.stringify(reservation),
+        "EX",
+        RESERVATION_TTL_SECONDS
+      );
+    }
   }
 
   return reservation;

@@ -671,7 +671,7 @@ source_revision_set_hash, partial/degraded
 type Risk = "low" | "medium" | "high" | "critical";
 type Selection =
   | { mode: "AUTO" }
-  | { mode: "MODEL_LOCK"; modelProfileId: string; fallback: "none" | "ask" | "preapproved_equivalent" }
+  | { mode: "MODEL_LOCK"; modelProfileId: string; providerId?: string /* server-verified optional provider constraint */; fallback: "none" | "ask" | "preapproved_equivalent" }
   | { mode: "PROVIDER_LOCK"; providerId: string; fallback: "none" | "ask" }
   | { mode: "LOCAL_ONLY" }
   | { mode: "PLATFORM_ONLY" };

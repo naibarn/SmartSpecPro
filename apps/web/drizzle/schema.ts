@@ -16,6 +16,7 @@ import {
   foreignKey,
   bigint,
   bigserial,
+  smallint,
   check,
   primaryKey,
   doublePrecision,
@@ -636,7 +637,7 @@ export const users = pgTable(
     /** Default AI persona for this user */
     defaultPersonaId: varchar("defaultPersonaId", { length: 36 }).references(
       (): AnyPgColumn => personaTemplates.id,
-      { onDelete: "set null" }
+      { onDelete: "restrict" }
     ),
 
     /** Whether this is a system/virtual user (not a human login) */
@@ -2867,6 +2868,9 @@ export const messages = pgTable(
     /** Trace ID for cost correlation with providerUsageLog */
     traceId: varchar("traceId", { length: 32 }),
 
+    /** Scoped digest used to replay completed Spec 231 Chat requests safely */
+    inferenceIdempotencyHash: varchar("inferenceIdempotencyHash", { length: 64 }),
+
     /** Authoritative runtime disclosure for reload-safe chat badges */
     runtimeMetadata: jsonb(
       "runtimeMetadata"
@@ -2883,6 +2887,9 @@ export const messages = pgTable(
       t.createdAt
     ),
     index("idx_messages_traceid").on(t.traceId),
+    uniqueIndex("messages_inference_idempotency_hash_unique")
+      .on(t.inferenceIdempotencyHash)
+      .where(sql`${t.inferenceIdempotencyHash} IS NOT NULL`),
   ]
 );
 
@@ -9915,7 +9922,7 @@ export const videoEditorProjectRevisions = pgTable(
     documentHash: varchar("documentHash", { length: 64 }).notNull(),
     reason: varchar("reason", { length: 32 }).notNull().default("edit"),
     actorUserId: integer("actorUserId").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     clientMutationId: varchar("clientMutationId", { length: 160 }),
     createdAt: timestamp("createdAt", { withTimezone: true })
@@ -15036,7 +15043,7 @@ export const backupJobs = pgTable(
   {
     id: varchar("id", { length: 36 }).primaryKey(),
     createdByUserId: integer("createdByUserId").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     mode: varchar("mode", { length: 16 }).notNull(),
     status: varchar("status", { length: 16 }).notNull().default("queued"),
@@ -16892,6 +16899,850 @@ export const workerJobOutbox = pgTable(
 
 export type WorkerJobOutbox = typeof workerJobOutbox.$inferSelect;
 export type InsertWorkerJobOutbox = typeof workerJobOutbox.$inferInsert;
+
+/** Immutable policy snapshots; the head table selects the current revision. */
+export const llmInferencePolicySnapshots = pgTable(
+  "llm_inference_policy_snapshots",
+  {
+    id: serial("id").primaryKey(),
+    scopeType: varchar("scopeType", { length: 16 }).notNull(),
+    scopeKey: varchar("scopeKey", { length: 256 }).notNull(),
+    tenantId: varchar("tenantId", { length: 36 }).references(() => tenants.id, {
+      onDelete: "restrict",
+    }),
+    principalRef: varchar("principalRef", { length: 256 }),
+    revision: varchar("revision", { length: 256 }).notNull(),
+    policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull(),
+    createdByUserId: integer("createdByUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_policy_snapshot_scope_revision_unique").on(
+      t.scopeType,
+      t.scopeKey,
+      t.revision
+    ),
+    uniqueIndex("llm_inference_policy_snapshot_id_scope_unique").on(
+      t.id,
+      t.scopeType,
+      t.scopeKey
+    ),
+    index("llm_inference_policy_snapshot_scope_created_idx").on(
+      t.scopeType,
+      t.scopeKey,
+      t.createdAt
+    ),
+    check(
+      "llm_inference_policy_snapshot_scope_check",
+      sql`(${t.scopeType} = 'platform' AND ${t.scopeKey} = 'platform' AND ${t.tenantId} IS NULL AND ${t.principalRef} IS NULL) OR (${t.scopeType} = 'tenant' AND ${t.tenantId} IS NOT NULL AND ${t.scopeKey} = ${t.tenantId} AND ${t.principalRef} IS NULL) OR (${t.scopeType} = 'principal' AND ${t.tenantId} IS NOT NULL AND ${t.principalRef} IS NOT NULL AND ${t.scopeKey} = ${t.tenantId} || ':' || ${t.principalRef})`
+    ),
+    check(
+      "llm_inference_policy_snapshot_payload_check",
+      sql`jsonb_typeof(${t.policyJson}) = 'object' AND jsonb_typeof(${t.policyJson}->'ready') = 'boolean' AND jsonb_typeof(${t.policyJson}->'requireZeroDataRetention') = 'boolean' AND jsonb_typeof(${t.policyJson}->'allowedProviderIds') = 'array' AND jsonb_typeof(${t.policyJson}->'allowedRegions') = 'array' AND jsonb_typeof(${t.policyJson}->'allowedCredentialOwnerRefs') = 'array'`
+    ),
+  ]
+);
+
+export const llmInferencePolicyHeads = pgTable(
+  "llm_inference_policy_heads",
+  {
+    scopeType: varchar("scopeType", { length: 16 }).notNull(),
+    scopeKey: varchar("scopeKey", { length: 256 }).notNull(),
+    snapshotId: integer("snapshotId").notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    primaryKey({
+      name: "llm_inference_policy_heads_pk",
+      columns: [t.scopeType, t.scopeKey],
+    }),
+    uniqueIndex("llm_inference_policy_head_snapshot_unique").on(t.snapshotId),
+    foreignKey({
+      columns: [t.snapshotId, t.scopeType, t.scopeKey],
+      foreignColumns: [
+        llmInferencePolicySnapshots.id,
+        llmInferencePolicySnapshots.scopeType,
+        llmInferencePolicySnapshots.scopeKey,
+      ],
+      name: "llm_inference_policy_head_snapshot_scope_fk",
+    }).onDelete("restrict"),
+    check(
+      "llm_inference_policy_head_scope_check",
+      sql`${t.scopeType} IN ('platform', 'tenant', 'principal')`
+    ),
+  ]
+);
+
+/** Append-only publish and rollback events for immutable policy revisions. */
+export const llmInferencePolicyEvents = pgTable(
+  "llm_inference_policy_events",
+  {
+    id: serial("id").primaryKey(),
+    scopeType: varchar("scopeType", { length: 16 }).notNull(),
+    scopeKey: varchar("scopeKey", { length: 256 }).notNull(),
+    action: varchar("action", { length: 16 }).notNull(),
+    fromRevision: varchar("fromRevision", { length: 256 }),
+    toRevision: varchar("toRevision", { length: 256 }).notNull(),
+    actorUserId: integer("actorUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    foreignKey({
+      columns: [t.scopeType, t.scopeKey, t.toRevision],
+      foreignColumns: [
+        llmInferencePolicySnapshots.scopeType,
+        llmInferencePolicySnapshots.scopeKey,
+        llmInferencePolicySnapshots.revision,
+      ],
+      name: "llm_inference_policy_event_to_revision_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.scopeType, t.scopeKey, t.fromRevision],
+      foreignColumns: [
+        llmInferencePolicySnapshots.scopeType,
+        llmInferencePolicySnapshots.scopeKey,
+        llmInferencePolicySnapshots.revision,
+      ],
+      name: "llm_inference_policy_event_from_revision_fk",
+    }).onDelete("restrict"),
+    check(
+      "llm_inference_policy_event_action_check",
+      sql`${t.action} IN ('publish', 'rollback')`
+    ),
+    check(
+      "llm_inference_policy_event_transition_check",
+      sql`${t.fromRevision} IS NULL OR ${t.fromRevision} <> ${t.toRevision}`
+    ),
+    check(
+      "llm_inference_policy_rollback_source_check",
+      sql`${t.action} <> 'rollback' OR ${t.fromRevision} IS NOT NULL`
+    ),
+    index("llm_inference_policy_event_scope_created_idx").on(
+      t.scopeType,
+      t.scopeKey,
+      t.createdAt
+    ),
+  ]
+);
+
+/** Append-only revocation evidence for model and deployment profiles. */
+export const llmInferenceRevocations = pgTable(
+  "llm_inference_revocations",
+  {
+    id: serial("id").primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    scopeType: varchar("scopeType", { length: 16 }).notNull(),
+    principalRef: varchar("principalRef", { length: 256 }),
+    targetType: varchar("targetType", { length: 16 }).notNull(),
+    targetId: varchar("targetId", { length: 256 }).notNull(),
+    reasonCode: varchar("reasonCode", { length: 64 }).notNull(),
+    createdByUserId: integer("createdByUserId").references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }),
+  },
+  t => [
+    index("llm_inference_revocation_active_scope_idx").on(
+      t.tenantId,
+      t.scopeType,
+      t.principalRef,
+      t.expiresAt
+    ),
+    index("llm_inference_revocation_target_idx").on(
+      t.targetType,
+      t.targetId,
+      t.expiresAt
+    ),
+    check(
+      "llm_inference_revocation_scope_check",
+      sql`(${t.scopeType} = 'tenant' AND ${t.principalRef} IS NULL) OR (${t.scopeType} = 'principal' AND ${t.principalRef} IS NOT NULL)`
+    ),
+    check(
+      "llm_inference_revocation_target_check",
+      sql`${t.targetType} IN ('model', 'deployment')`
+    ),
+    check(
+      "llm_inference_revocation_expiry_check",
+      sql`${t.expiresAt} IS NULL OR ${t.expiresAt} > ${t.createdAt}`
+    ),
+  ]
+);
+
+/** Immutable versioned model/deployment qualification evidence. */
+export const llmInferenceProfileVersions = pgTable(
+  "llm_inference_profile_versions",
+  {
+    id: serial("id").primaryKey(),
+    deploymentId: varchar("deploymentId", { length: 256 }).notNull(),
+    deploymentRevision: varchar("deploymentRevision", { length: 256 }).notNull(),
+    logicalModelId: varchar("logicalModelId", { length: 256 }).notNull(),
+    modelRevision: varchar("modelRevision", { length: 256 }).notNull(),
+    providerId: varchar("providerId", { length: 256 }).notNull(),
+    profileJson: jsonb("profileJson")
+      .$type<{ model: Record<string, unknown>; deployment: Record<string, unknown> }>()
+      .notNull(),
+    createdByUserId: integer("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_profile_version_deployment_revision_unique").on(
+      t.deploymentId,
+      t.deploymentRevision
+    ),
+    uniqueIndex("llm_inference_profile_version_id_deployment_unique").on(
+      t.id,
+      t.deploymentId
+    ),
+    index("llm_inference_profile_version_model_idx").on(
+      t.logicalModelId,
+      t.modelRevision
+    ),
+    index("llm_inference_profile_version_provider_idx").on(t.providerId),
+    check(
+      "llm_inference_profile_version_payload_check",
+      sql`jsonb_typeof(${t.profileJson}) = 'object' AND jsonb_typeof(${t.profileJson}->'model') = 'object' AND jsonb_typeof(${t.profileJson}->'deployment') = 'object'`
+    ),
+  ]
+);
+
+export const llmInferenceProfileHeads = pgTable(
+  "llm_inference_profile_heads",
+  {
+    deploymentId: varchar("deploymentId", { length: 256 }).primaryKey(),
+    profileVersionId: integer("profileVersionId").notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_profile_head_version_unique").on(
+      t.profileVersionId
+    ),
+    foreignKey({
+      columns: [t.profileVersionId, t.deploymentId],
+      foreignColumns: [
+        llmInferenceProfileVersions.id,
+        llmInferenceProfileVersions.deploymentId,
+      ],
+      name: "llm_inference_profile_head_version_deployment_fk",
+    }).onDelete("restrict"),
+  ]
+);
+
+/** Admin-published profiles awaiting qualification; runtime routing never reads this table. */
+export const llmInferenceProfileCandidateHeads = pgTable(
+  "llm_inference_profile_candidate_heads",
+  {
+    deploymentId: varchar("deploymentId", { length: 256 }).primaryKey(),
+    profileVersionId: integer("profileVersionId").notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_profile_candidate_head_version_unique").on(
+      t.profileVersionId
+    ),
+    foreignKey({
+      columns: [t.profileVersionId, t.deploymentId],
+      foreignColumns: [
+        llmInferenceProfileVersions.id,
+        llmInferenceProfileVersions.deploymentId,
+      ],
+      name: "llm_inference_profile_candidate_version_deployment_fk",
+    }).onDelete("restrict"),
+  ]
+);
+
+/** Immutable server-owned connectivity and capability probe receipts. */
+export const llmInferenceProbeRuns = pgTable(
+  "llm_inference_probe_runs",
+  {
+    runId: uuid("runId").primaryKey(),
+    profileVersionId: integer("profileVersionId").notNull(),
+    deploymentId: varchar("deploymentId", { length: 256 }).notNull(),
+    deploymentRevision: varchar("deploymentRevision", { length: 256 }).notNull(),
+    providerRecordId: integer("providerRecordId").notNull(),
+    modelMappingId: integer("modelMappingId").notNull(),
+    actorUserId: integer("actorUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    probeKind: varchar("probeKind", { length: 64 }).notNull(),
+    probeSuiteRevision: varchar("probeSuiteRevision", { length: 128 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull(),
+    resultJson: jsonb("resultJson").$type<Record<string, unknown>>().notNull(),
+    startedAt: timestamp("startedAt", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finishedAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    foreignKey({
+      columns: [t.profileVersionId, t.deploymentId],
+      foreignColumns: [
+        llmInferenceProfileVersions.id,
+        llmInferenceProfileVersions.deploymentId,
+      ],
+      name: "llm_inference_probe_profile_version_fk",
+    }).onDelete("restrict"),
+    check(
+      "llm_inference_probe_status_check",
+      sql`${t.status} in ('passed', 'failed', 'blocked', 'incomplete')`
+    ),
+    check(
+      "llm_inference_probe_kind_check",
+      sql`${t.probeKind} in ('connectivity', 'capability_suite')`
+    ),
+    check(
+      "llm_inference_probe_result_check",
+      sql`jsonb_typeof(${t.resultJson}) = 'object'`
+    ),
+    index("llm_inference_probe_deployment_created_idx").on(
+      t.deploymentId,
+      t.createdAt.desc()
+    ),
+  ]
+);
+
+/** Server-owned immutable qualification result for a candidate profile version. */
+export const llmInferenceProfileCertifications = pgTable(
+  "llm_inference_profile_certifications",
+  {
+    profileVersionId: integer("profileVersionId").primaryKey(),
+    probeRunId: uuid("probeRunId").notNull().unique(),
+    certifiedProfileJson: jsonb("certifiedProfileJson")
+      .$type<{ model: Record<string, unknown>; deployment: Record<string, unknown> }>()
+      .notNull(),
+    certifiedByUserId: integer("certifiedByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    certifiedAt: timestamp("certifiedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    foreignKey({
+      columns: [t.profileVersionId],
+      foreignColumns: [llmInferenceProfileVersions.id],
+      name: "llm_inference_profile_certification_version_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.probeRunId],
+      foreignColumns: [llmInferenceProbeRuns.runId],
+      name: "llm_inference_profile_certification_probe_fk",
+    }).onDelete("restrict"),
+    check(
+      "llm_inference_profile_certification_payload_check",
+      sql`jsonb_typeof(${t.certifiedProfileJson}) = 'object' AND jsonb_typeof(${t.certifiedProfileJson}->'model') = 'object' AND jsonb_typeof(${t.certifiedProfileJson}->'deployment') = 'object'`
+    ),
+  ]
+);
+
+export type LlmInferenceProbeRun = typeof llmInferenceProbeRuns.$inferSelect;
+export type InsertLlmInferenceProbeRun =
+  typeof llmInferenceProbeRuns.$inferInsert;
+
+export type LlmInferenceProfileVersion =
+  typeof llmInferenceProfileVersions.$inferSelect;
+export type InsertLlmInferenceProfileVersion =
+  typeof llmInferenceProfileVersions.$inferInsert;
+
+/** Immutable signed Spec 231 release artifacts; activation is a separate gate. */
+export const llmInferenceRolloutBundles = pgTable(
+  "llm_inference_rollout_bundles",
+  {
+    bundleHash: varchar("bundleHash", { length: 71 }).primaryKey(),
+    bundleId: varchar("bundleId", { length: 256 }).notNull(),
+    sequence: integer("sequence").notNull(),
+    payloadJson: jsonb("payloadJson")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    signingKeyId: varchar("signingKeyId", { length: 128 }).notNull(),
+    signature: varchar("signature", { length: 64 }).notNull(),
+    createdByUserId: integer("createdByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_rollout_bundle_id_unique").on(t.bundleId),
+    uniqueIndex("llm_inference_rollout_bundle_sequence_unique").on(t.sequence),
+    check(
+      "llm_inference_rollout_bundle_hash_check",
+      sql`${t.bundleHash} ~ '^sha256:[a-f0-9]{64}$'`
+    ),
+    check(
+      "llm_inference_rollout_bundle_signature_check",
+      sql`${t.signature} ~ '^[a-f0-9]{64}$'`
+    ),
+    check(
+      "llm_inference_rollout_bundle_payload_check",
+      sql`jsonb_typeof(${t.payloadJson}) = 'object' AND ${t.payloadJson}->>'contract' = 'SAH-INFERENCE-ROLLOUT-1'`
+    ),
+  ]
+);
+
+export type LlmInferenceRolloutBundle =
+  typeof llmInferenceRolloutBundles.$inferSelect;
+export type InsertLlmInferenceRolloutBundle =
+  typeof llmInferenceRolloutBundles.$inferInsert;
+
+/** Mutable active pointer; only readiness-gated activation may move it. */
+export const llmInferenceRolloutBundleHeads = pgTable(
+  "llm_inference_rollout_bundle_heads",
+  {
+    slotKey: varchar("slotKey", { length: 16 }).primaryKey(),
+    bundleHash: varchar("bundleHash", { length: 71 })
+      .notNull()
+      .references(() => llmInferenceRolloutBundles.bundleHash, {
+        onDelete: "restrict",
+      }),
+    activatedByUserId: integer("activatedByUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    readinessEvidenceJson: jsonb("readinessEvidenceJson")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    activatedAt: timestamp("activatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    check("llm_inference_rollout_bundle_head_slot_check", sql`${t.slotKey} = 'platform'`),
+    check(
+      "llm_inference_rollout_bundle_head_evidence_check",
+      sql`jsonb_typeof(${t.readinessEvidenceJson}) = 'object'`
+    ),
+  ]
+);
+
+/** Append-only activation/rollback audit; job execution remains elsewhere. */
+export const llmInferenceRolloutBundleEvents = pgTable(
+  "llm_inference_rollout_bundle_events",
+  {
+    id: serial("id").primaryKey(),
+    slotKey: varchar("slotKey", { length: 16 }).notNull(),
+    action: varchar("action", { length: 16 }).notNull(),
+    fromBundleHash: varchar("fromBundleHash", { length: 71 }),
+    toBundleHash: varchar("toBundleHash", { length: 71 }).notNull(),
+    actorUserId: integer("actorUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    readinessEvidenceJson: jsonb("readinessEvidenceJson")
+      .$type<Record<string, unknown>>()
+      .notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    foreignKey({
+      columns: [t.fromBundleHash],
+      foreignColumns: [llmInferenceRolloutBundles.bundleHash],
+      name: "llm_inference_rollout_bundle_event_from_fk",
+    }).onDelete("restrict"),
+    foreignKey({
+      columns: [t.toBundleHash],
+      foreignColumns: [llmInferenceRolloutBundles.bundleHash],
+      name: "llm_inference_rollout_bundle_event_to_fk",
+    }).onDelete("restrict"),
+    check("llm_inference_rollout_bundle_event_slot_check", sql`${t.slotKey} = 'platform'`),
+    check(
+      "llm_inference_rollout_bundle_event_action_check",
+      sql`${t.action} IN ('activate', 'rollback')`
+    ),
+    check(
+      "llm_inference_rollout_bundle_event_transition_check",
+      sql`${t.fromBundleHash} IS NULL OR ${t.fromBundleHash} <> ${t.toBundleHash}`
+    ),
+    check(
+      "llm_inference_rollout_bundle_event_evidence_check",
+      sql`jsonb_typeof(${t.readinessEvidenceJson}) = 'object'`
+    ),
+    index("llm_inference_rollout_bundle_event_created_idx").on(t.createdAt.desc()),
+  ]
+);
+
+/** Immutable routing authority snapshot for one logical inference call. */
+export const llmInferencePlans = pgTable(
+  "llm_inference_plans",
+  {
+    planId: varchar("planId", { length: 256 }).primaryKey(),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    principalRef: varchar("principalRef", { length: 256 }).notNull(),
+    logicalCallId: varchar("logicalCallId", { length: 256 }).notNull(),
+    idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+    intentHash: varchar("intentHash", { length: 71 }).notNull(),
+    planHash: varchar("planHash", { length: 71 }).notNull(),
+    planJson: jsonb("planJson").$type<Record<string, unknown>>().notNull(),
+    workerJobId: varchar("workerJobId", { length: 36 }).references(
+      () => workerJobs.id,
+      { onDelete: "restrict" }
+    ),
+    creditReservationId: varchar("creditReservationId", {
+      length: 256,
+    }).notNull(),
+    selectedModelProfile: varchar("selectedModelProfile", {
+      length: 256,
+    }).notNull(),
+    selectedDeploymentProfile: varchar("selectedDeploymentProfile", {
+      length: 256,
+    }).notNull(),
+    endpointSurface: varchar("endpointSurface", { length: 32 }).notNull(),
+    policyRevision: varchar("policyRevision", { length: 256 }).notNull(),
+    registryRevision: varchar("registryRevision", { length: 256 }).notNull(),
+    routePolicyRevision: varchar("routePolicyRevision", {
+      length: 256,
+    }).notNull(),
+    scoreCalibrationRevision: varchar("scoreCalibrationRevision", {
+      length: 256,
+    }).notNull(),
+    estimatedCostMicros: bigint("estimatedCostMicros", {
+      mode: "number",
+    }).notNull(),
+    parentCostCeilingMicros: bigint("parentCostCeilingMicros", {
+      mode: "number",
+    }).notNull(),
+    attemptBudget: smallint("attemptBudget").notNull(),
+    deadlineAt: timestamp("deadlineAt", { withTimezone: true }).notNull(),
+    overallDeadlineAt: timestamp("overallDeadlineAt", {
+      withTimezone: true,
+    }).notNull(),
+    residencyPolicySnapshotRef: varchar("residencyPolicySnapshotRef", {
+      length: 256,
+    }).notNull(),
+    routerFeatureProvenanceRef: varchar("routerFeatureProvenanceRef", {
+      length: 256,
+    }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_plans_tenant_logical_call_unique").on(
+      t.tenantId,
+      t.logicalCallId
+    ),
+    uniqueIndex("llm_inference_plans_tenant_idempotency_unique").on(
+      t.tenantId,
+      t.idempotencyKey
+    ),
+    index("llm_inference_plans_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("llm_inference_plans_worker_job_idx")
+      .on(t.workerJobId)
+      .where(sql`${t.workerJobId} IS NOT NULL`),
+    check(
+      "llm_inference_plans_intent_hash_check",
+      sql.raw("\"intentHash\" ~ '^sha256:[a-fA-F0-9]{64}$'")
+    ),
+    check(
+      "llm_inference_plans_plan_hash_check",
+      sql.raw("\"planHash\" ~ '^sha256:[a-fA-F0-9]{64}$'")
+    ),
+    check(
+      "llm_inference_plans_endpoint_surface_check",
+      sql`${t.endpointSurface} IN ('native_responses', 'responses_compatible', 'chat_compatible', 'native_provider', 'local')`
+    ),
+    check(
+      "llm_inference_plans_cost_check",
+      sql`${t.estimatedCostMicros} >= 0 AND ${t.parentCostCeilingMicros} >= ${t.estimatedCostMicros}`
+    ),
+    check(
+      "llm_inference_plans_attempt_budget_check",
+      sql`${t.attemptBudget} BETWEEN 1 AND 16`
+    ),
+    check(
+      "llm_inference_plans_deadline_check",
+      sql`${t.overallDeadlineAt} >= ${t.deadlineAt}`
+    ),
+  ]
+);
+
+export type LlmInferencePlan = typeof llmInferencePlans.$inferSelect;
+export type InsertLlmInferencePlan = typeof llmInferencePlans.$inferInsert;
+
+/** Attempt evidence is linked to canonical worker attempts when job-backed. */
+export const llmInferenceAttempts = pgTable(
+  "llm_inference_attempts",
+  {
+    attemptId: varchar("attemptId", { length: 256 }).primaryKey(),
+    planId: varchar("planId", { length: 256 })
+      .notNull()
+      .references(() => llmInferencePlans.planId, { onDelete: "cascade" }),
+    workerJobAttemptId: varchar("workerJobAttemptId", {
+      length: 36,
+    }).references(() => workerJobAttempts.id, { onDelete: "set null" }),
+    attemptOrdinal: smallint("attemptOrdinal").notNull(),
+    attemptOwnershipEpoch: bigint("attemptOwnershipEpoch", {
+      mode: "number",
+    }).notNull(),
+    ownerTokenHash: varchar("ownerTokenHash", { length: 64 }).notNull(),
+    modelProfileId: varchar("modelProfileId", { length: 256 }).notNull(),
+    actualModel: varchar("actualModel", { length: 256 }),
+    deploymentId: varchar("deploymentId", { length: 256 }).notNull(),
+    providerId: varchar("providerId", { length: 256 }).notNull(),
+    credentialOwnerRef: varchar("credentialOwnerRef", {
+      length: 256,
+    }).notNull(),
+    endpointSurface: varchar("endpointSurface", { length: 32 }).notNull(),
+    status: varchar("status", { length: 16 }).notNull().default("prepared"),
+    submissionState: varchar("submissionState", { length: 16 })
+      .notNull()
+      .default("not_submitted"),
+    outcome: varchar("outcome", { length: 16 }),
+    normalizedFailure: varchar("normalizedFailure", { length: 32 }),
+    streamCommitted: boolean("streamCommitted").notNull().default(false),
+    providerRequestId: varchar("providerRequestId", { length: 256 }),
+    gatewayRequestId: varchar("gatewayRequestId", { length: 256 }),
+    observedProviderId: varchar("observedProviderId", { length: 256 }),
+    observedCredentialOwnerRef: varchar("observedCredentialOwnerRef", {
+      length: 256,
+    }),
+    observedDeploymentId: varchar("observedDeploymentId", { length: 256 }),
+    observedEndpointSurface: varchar("observedEndpointSurface", { length: 32 }),
+    inputTokens: bigint("inputTokens", { mode: "number" }),
+    cachedInputTokens: bigint("cachedInputTokens", { mode: "number" }),
+    outputTokens: bigint("outputTokens", { mode: "number" }),
+    reasoningTokens: bigint("reasoningTokens", { mode: "number" }),
+    chargedCostMicros: bigint("chargedCostMicros", { mode: "number" }),
+    effectReceiptRefsJson: jsonb("effectReceiptRefsJson")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    terminalAt: timestamp("terminalAt", { withTimezone: true }),
+  },
+  t => [
+    uniqueIndex("llm_inference_attempts_plan_ordinal_unique").on(
+      t.planId,
+      t.attemptOrdinal
+    ),
+    uniqueIndex("llm_inference_attempts_worker_job_attempt_unique")
+      .on(t.workerJobAttemptId)
+      .where(sql`${t.workerJobAttemptId} IS NOT NULL`),
+    index("llm_inference_attempts_plan_status_idx").on(
+      t.planId,
+      t.status,
+      t.attemptOrdinal
+    ),
+    index("llm_inference_attempts_deployment_created_idx").on(
+      t.deploymentId,
+      t.createdAt
+    ),
+    index("llm_inference_attempts_unsettled_completed_idx")
+      .on(t.terminalAt, t.attemptId)
+      .where(sql`${t.status} = 'terminal' AND ${t.outcome} = 'completed' AND ${t.chargedCostMicros} IS NOT NULL`),
+    check(
+      "llm_inference_attempts_ordinal_check",
+      sql`${t.attemptOrdinal} BETWEEN 1 AND 16`
+    ),
+    check(
+      "llm_inference_attempts_epoch_check",
+      sql`${t.attemptOwnershipEpoch} > 0`
+    ),
+    check(
+      "llm_inference_attempts_endpoint_surface_check",
+      sql`${t.endpointSurface} IN ('native_responses', 'responses_compatible', 'chat_compatible', 'native_provider', 'local')`
+    ),
+    check(
+      "llm_inference_attempts_status_check",
+      sql`${t.status} IN ('prepared', 'submitting', 'submitted', 'terminal')`
+    ),
+    check(
+      "llm_inference_attempts_submission_state_check",
+      sql`${t.submissionState} IN ('not_submitted', 'submitted', 'unknown')`
+    ),
+    check(
+      "llm_inference_attempts_outcome_check",
+      sql`${t.outcome} IS NULL OR ${t.outcome} IN ('completed', 'failed', 'cancelled', 'unknown')`
+    ),
+    check(
+      "llm_inference_attempts_failure_check",
+      sql`${t.normalizedFailure} IS NULL OR ${t.normalizedFailure} IN ('rate_limited', 'provider_unavailable', 'connection_failed', 'authentication_failed', 'invalid_request', 'content_policy', 'budget_exceeded', 'unknown_outcome')`
+    ),
+    check(
+      "llm_inference_attempts_usage_check",
+      sql`COALESCE(${t.inputTokens}, 0) >= 0 AND COALESCE(${t.cachedInputTokens}, 0) >= 0 AND COALESCE(${t.outputTokens}, 0) >= 0 AND COALESCE(${t.reasoningTokens}, 0) >= 0 AND COALESCE(${t.chargedCostMicros}, 0) >= 0`
+    ),
+    check(
+      "llm_inference_attempts_state_consistency_check",
+      sql`(${t.status} = 'prepared' AND ${t.submissionState} = 'not_submitted' AND ${t.outcome} IS NULL AND ${t.terminalAt} IS NULL) OR (${t.status} = 'submitting' AND ${t.submissionState} = 'unknown' AND ${t.outcome} IS NULL AND ${t.terminalAt} IS NULL) OR (${t.status} = 'submitted' AND ${t.submissionState} = 'submitted' AND ${t.outcome} IS NULL AND ${t.terminalAt} IS NULL) OR (${t.status} = 'terminal' AND ${t.outcome} IS NOT NULL AND ${t.terminalAt} IS NOT NULL)`
+    ),
+    check(
+      "llm_inference_attempts_stream_submission_check",
+      sql`NOT ${t.streamCommitted} OR ${t.submissionState} = 'submitted'`
+    ),
+    check(
+      "llm_inference_attempts_observed_identity_check",
+      sql`(${t.observedProviderId} IS NULL AND ${t.observedCredentialOwnerRef} IS NULL AND ${t.observedDeploymentId} IS NULL AND ${t.observedEndpointSurface} IS NULL) OR (${t.observedProviderId} IS NOT NULL AND ${t.observedCredentialOwnerRef} IS NOT NULL AND ${t.observedDeploymentId} IS NOT NULL AND ${t.observedEndpointSurface} IS NOT NULL AND ${t.observedEndpointSurface} IN ('native_responses', 'responses_compatible', 'chat_compatible', 'native_provider', 'local'))`
+    ),
+  ]
+);
+
+export type LlmInferenceAttempt = typeof llmInferenceAttempts.$inferSelect;
+export type InsertLlmInferenceAttempt =
+  typeof llmInferenceAttempts.$inferInsert;
+
+/** Durable Spec 231 reservation state; the financial debit remains credit_transactions. */
+export const llmInferenceCreditReservations = pgTable(
+  "llm_inference_credit_reservations",
+  {
+    reservationId: varchar("reservationId", { length: 256 }).primaryKey(),
+    sourceTransactionId: integer("sourceTransactionId")
+      .notNull()
+      .references(() => creditTransactions.id, { onDelete: "restrict" }),
+    idempotencyKey: varchar("idempotencyKey", { length: 256 }).notNull(),
+    userId: integer("userId").notNull().references(() => users.id, {
+      onDelete: "restrict",
+    }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "restrict" }),
+    principalRef: varchar("principalRef", { length: 256 }).notNull(),
+    reservedCredits: integer("reservedCredits").notNull(),
+    settledCredits: integer("settledCredits").notNull().default(0),
+    status: varchar("status", { length: 16 }).notNull().default("reserved"),
+    expiresAt: timestamp("expiresAt", { withTimezone: true }).notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("llm_inference_credit_reservation_idempotency_unique").on(
+      t.idempotencyKey
+    ),
+    uniqueIndex("llm_inference_credit_reservation_source_tx_unique").on(
+      t.sourceTransactionId
+    ),
+    index("llm_inference_credit_reservation_scope_status_idx").on(
+      t.tenantId,
+      t.userId,
+      t.status,
+      t.expiresAt
+    ),
+    check(
+      "llm_inference_credit_reservation_amount_check",
+      sql`${t.reservedCredits} > 0 AND ${t.settledCredits} >= 0 AND ${t.settledCredits} <= ${t.reservedCredits}`
+    ),
+    check(
+      "llm_inference_credit_reservation_status_check",
+      sql`${t.status} IN ('reserved', 'closing', 'closed')`
+    ),
+  ]
+);
+
+/** Idempotent attempt charges against a durable inference reservation. */
+export const llmInferenceCreditSettlements = pgTable(
+  "llm_inference_credit_settlements",
+  {
+    reservationId: varchar("reservationId", { length: 256 })
+      .notNull()
+      .references(() => llmInferenceCreditReservations.reservationId, {
+        onDelete: "restrict",
+      }),
+    settlementKey: varchar("settlementKey", { length: 256 }).notNull(),
+    chargedCostMicros: bigint("chargedCostMicros", { mode: "number" }).notNull(),
+    chargedCredits: integer("chargedCredits").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    primaryKey({
+      name: "llm_inference_credit_settlements_pk",
+      columns: [t.reservationId, t.settlementKey],
+    }),
+    uniqueIndex("llm_inference_credit_settlement_key_unique").on(
+      t.settlementKey
+    ),
+    check(
+      "llm_inference_credit_settlement_amount_check",
+      sql`${t.chargedCostMicros} >= 0 AND ${t.chargedCredits} > 0`
+    ),
+  ]
+);
+
+/** Private first-party Chat content staged until its inference charge settles. */
+export const llmInferenceChatResponseDeliveries = pgTable(
+  "llm_inference_chat_response_deliveries",
+  {
+    attemptId: varchar("attemptId", { length: 256 })
+      .primaryKey()
+      .references(() => llmInferenceAttempts.attemptId, { onDelete: "cascade" }),
+    tenantId: varchar("tenantId", { length: 36 })
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    userId: integer("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    conversationId: integer("conversationId")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    idempotencyHash: varchar("idempotencyHash", { length: 64 }).notNull().unique(),
+    content: text("content"),
+    inputTokens: integer("inputTokens").notNull().default(0),
+    outputTokens: integer("outputTokens").notNull().default(0),
+    creditsUsed: numeric("creditsUsed", { precision: 10, scale: 4 })
+      .notNull()
+      .default("0"),
+    modelUsed: varchar("modelUsed", { length: 100 }),
+    skillUsed: varchar("skillUsed", { length: 100 }),
+    traceId: varchar("traceId", { length: 32 }),
+    runtimeMetadata: jsonb("runtimeMetadata").$type<MessageRuntimeMetadata | null>(),
+    status: varchar("status", { length: 16 }).notNull().default("pending"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    index("llm_inference_chat_response_pending_idx")
+      .on(t.createdAt, t.attemptId)
+      .where(sql`${t.status} = 'pending'`),
+    check(
+      "llm_inference_chat_response_delivery_status_check",
+      sql`(${t.status} = 'pending' AND ${t.content} IS NOT NULL) OR (${t.status} = 'delivered' AND ${t.content} IS NULL)`
+    ),
+    check(
+      "llm_inference_chat_response_delivery_usage_check",
+      sql`${t.inputTokens} >= 0 AND ${t.outputTokens} >= 0 AND ${t.creditsUsed} >= 0`
+    ),
+  ]
+);
 
 export const workerJobScheduleOccurrences = pgTable(
   "worker_job_schedule_occurrences",

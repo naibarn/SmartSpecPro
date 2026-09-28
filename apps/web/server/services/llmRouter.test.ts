@@ -380,6 +380,79 @@ describe("executeWithFallback", () => {
     });
   }
 
+  it("does not dispatch when a Spec 231 native model or API surface pin has drifted", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      providerModelId: "native-model-v2",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      disableProviderFallbacks: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 409 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("requires exact deployment identity pins to disable provider fallback", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      providerModelId: "native-model-v1",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 400 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a replacement model_provider_map row even when its model and surface match", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      modelMappingId: 43,
+      providerModelId: "native-model-v1",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      disableProviderFallbacks: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+      expectedModelMappingId: 42,
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 409 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it("downgrades Google Gemini JSON Schema to JSON mode through OpenRouter", async () => {
     const provider = makeCandidate({
       providerName: "openrouter",

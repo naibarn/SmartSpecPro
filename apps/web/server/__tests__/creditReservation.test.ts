@@ -74,7 +74,8 @@ describe("Credit Reservation Pattern", () => {
     redisStore = {};
     mockRedis = {
       get: vi.fn((key: string) => redisStore[key] ?? null),
-      set: vi.fn((key: string, val: string, _mode: string, _ttl: number) => {
+      set: vi.fn((key: string, val: string, _mode: string, _ttl: number, condition?: string) => {
+        if (condition === "NX" && redisStore[key]) return null;
         redisStore[key] = val;
         return "OK";
       }),
@@ -164,6 +165,130 @@ describe("Credit Reservation Pattern", () => {
         "EX",
         600
       );
+    });
+
+    it("returns the existing drawn snapshot for an idempotent retry", async () => {
+      const idempotencyKey = "spec231-chat-request-1";
+      const reservationId = `reservation-${(await import("node:crypto"))
+        .createHash("sha256")
+        .update(idempotencyKey)
+        .digest("hex")
+        .slice(0, 32)}`;
+      const existing: CreditReservation = {
+        reservationId,
+        userId: 1,
+        reservedAmount: 10,
+        drawnAmount: 6,
+        transactionId: 14,
+        sourceType: "chat",
+        idempotencyKey,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+      redisStore[`credit:reservation:${reservationId}`] = JSON.stringify(existing);
+
+      const result = await createCreditReservation(
+        1,
+        10,
+        "chat",
+        {},
+        idempotencyKey,
+      );
+
+      expect(result).toEqual(existing);
+      expect(result.drawnAmount).toBe(6);
+      expect(mockRedis.set).not.toHaveBeenCalled();
+    });
+
+    it("rejects reuse of an idempotency key with different reservation parameters", async () => {
+      const idempotencyKey = "spec231-chat-request-2";
+      const reservationId = `reservation-${(await import("node:crypto"))
+        .createHash("sha256")
+        .update(idempotencyKey)
+        .digest("hex")
+        .slice(0, 32)}`;
+      redisStore[`credit:reservation:${reservationId}`] = JSON.stringify({
+        reservationId,
+        userId: 1,
+        reservedAmount: 10,
+        drawnAmount: 0,
+        transactionId: 14,
+        sourceType: "chat",
+        tenantId: "tenant-1",
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      });
+
+      await expect(
+        createCreditReservation(1, 11, "chat", {}, idempotencyKey, { tenantId: "tenant-1" }),
+      ).rejects.toThrow("Credit reservation idempotency key was reused with different parameters");
+      expect(mockRedis.set).not.toHaveBeenCalled();
+    });
+
+    it("fails closed when the ledger debit exists but its Redis snapshot is gone", async () => {
+      const { db } = await import("../db");
+      (db.select as any).mockReturnValue({
+        from: () => ({
+          where: () => ({ limit: async () => [{ id: 99 }] }),
+        }),
+      });
+
+      await expect(
+        createCreditReservation(1, 10, "chat", {}, "spec231-expired-reservation"),
+      ).rejects.toThrow("Credit reservation snapshot is missing for a previously charged idempotency key");
+      expect(mockRedis.set).not.toHaveBeenCalled();
+    });
+
+    it("keeps the winning snapshot when same-key creates race", async () => {
+      const idempotencyKey = "spec231-chat-request-race";
+      const reservationId = `reservation-${(await import("node:crypto"))
+        .createHash("sha256")
+        .update(idempotencyKey)
+        .digest("hex")
+        .slice(0, 32)}`;
+      const key = `credit:reservation:${reservationId}`;
+      const { db } = await import("../db");
+      (db.select as any).mockReturnValue({
+        from: () => ({
+          where: () => ({ limit: async () => [] }),
+        }),
+      });
+      const winner: CreditReservation = {
+        reservationId,
+        userId: 1,
+        reservedAmount: 10,
+        drawnAmount: 4,
+        transactionId: 14,
+        sourceType: "chat",
+        idempotencyKey,
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+      mockRedis.get.mockImplementation(async (requestedKey: string) => {
+        if (requestedKey === key) {
+          return redisStore[key] ?? null;
+        }
+        if (requestedKey === `credit:idemp:${idempotencyKey}`) {
+          return JSON.stringify({ success: true, creditsUsed: 10, newBalance: 90, transactionId: 14 });
+        }
+        return null;
+      });
+      mockRedis.set.mockImplementationOnce(async (requestedKey: string, _value: string, ...args: unknown[]) => {
+        expect(requestedKey).toBe(key);
+        expect(args).toEqual(["EX", 600, "NX"]);
+        redisStore[key] = JSON.stringify(winner);
+        return null;
+      });
+
+      const result = await createCreditReservation(
+        1,
+        10,
+        "chat",
+        {},
+        idempotencyKey,
+      );
+
+      expect(result).toEqual(winner);
+      expect(mockRedis.set).toHaveBeenCalledTimes(1);
     });
 
     it("forwards fixed skill identity and retains it for refund", async () => {

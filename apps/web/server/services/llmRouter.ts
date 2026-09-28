@@ -22,6 +22,7 @@ import type { Message } from "../_core/llm";
 
 export interface ProviderCandidate {
   providerId: number;
+  modelMappingId?: number;
   providerName: string;
   baseUrl: string;
   apiKey: string;
@@ -220,6 +221,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
   const rows = await db
     .select({
       providerId: modelProviderMap.providerId,
+      modelMappingId: modelProviderMap.id,
       providerName: llmProviders.providerName,
       baseUrl: llmProviders.baseUrl,
       apiKeyEncrypted: llmProviders.apiKeyEncrypted,
@@ -274,6 +276,7 @@ async function resolveProvidersWithRule(modelId: string): Promise<ResolveResult>
     });
     return {
       providerId: r.providerId,
+      modelMappingId: r.modelMappingId,
       providerName: r.providerName ?? "Unknown",
       baseUrl: r.baseUrl ?? "",
       apiKey: r.apiKeyEncrypted ? decrypt(r.apiKeyEncrypted) : "",
@@ -866,6 +869,14 @@ export async function executeWithFallback(params: {
   conversationId?: number;
   preferredProvider?: number;
   strictProviderPin?: boolean;
+  /** Exact immutable upstream model ID required by a Spec 231 deployment plan. */
+  expectedProviderModelId?: string;
+  /** Exact persisted mapping surface required by a Spec 231 deployment plan. */
+  expectedApiStyle?: ProviderCandidate["apiStyle"];
+  /** Exact model_provider_map row pinned by the deployment profile. */
+  expectedModelMappingId?: number;
+  /** Cancellation signal owned by the higher-level inference attempt. */
+  signal?: AbortSignal;
   /** When true, sends reasoning.effort="high" for thinking mode (OpenRouter) */
   enableThinking?: boolean;
   /** Max output tokens. When omitted the provider uses its own default. */
@@ -942,6 +953,9 @@ export async function executeWithFallback(params: {
   if (!resolvedModel) {
     return { type: "error", error: "No enabled LLM model configured", statusCode: 503 };
   }
+  if (params.signal?.aborted) {
+    return { type: "error", error: "LLM request cancelled before dispatch", statusCode: 499 };
+  }
 
   const resolvedProviderSet = await resolveProvidersWithRule(resolvedModel);
   const candidates = params.allowFreeModels === false
@@ -977,6 +991,39 @@ export async function executeWithFallback(params: {
       error: `No healthy provider is available for model "${resolvedModel}". The model may be temporarily unavailable; try again or select another model.`,
       statusCode: 503,
     };
+  }
+
+  if (
+    params.expectedProviderModelId !== undefined ||
+    params.expectedApiStyle !== undefined ||
+    params.expectedModelMappingId !== undefined
+  ) {
+    if (
+      params.preferredProvider == null ||
+      !params.strictProviderPin ||
+      !params.disableProviderFallbacks
+    ) {
+      return {
+        type: "error",
+        error: "Exact deployment identity requires a strict single-provider pin",
+        statusCode: 400,
+      };
+    }
+    const pinned = targets[0];
+    if (
+      (params.expectedProviderModelId !== undefined &&
+        pinned.providerModelId !== params.expectedProviderModelId) ||
+      (params.expectedApiStyle !== undefined &&
+        pinned.apiStyle !== params.expectedApiStyle) ||
+      (params.expectedModelMappingId !== undefined &&
+        pinned.modelMappingId !== params.expectedModelMappingId)
+    ) {
+      return {
+        type: "error",
+        error: "Pinned provider mapping changed after inference planning",
+        statusCode: 409,
+      };
+    }
   }
 
   // 1 primary + optional provider fallbacks.
@@ -1210,6 +1257,12 @@ export async function executeWithFallback(params: {
 
       const fetchStart = Date.now();
       const abortController = new AbortController();
+      const abortFromCaller = () => abortController.abort(params.signal?.reason);
+      if (params.signal?.aborted) {
+        abortFromCaller();
+      } else {
+        params.signal?.addEventListener("abort", abortFromCaller, { once: true });
+      }
       /**
        * Two-phase timeout bound to the SAME AbortController.
        *
@@ -1277,6 +1330,7 @@ export async function executeWithFallback(params: {
       // Headers arrived — switch from the headers-phase deadline to the
       // body-phase deadline (do NOT just clear-and-leave-unbounded).
       clearTimeout(timeoutHandle);
+      params.signal?.removeEventListener("abort", abortFromCaller);
       timeoutHandle = setTimeout(() => abortController.abort(), bodyTimeoutMs);
       const networkMs = Date.now() - fetchStart;
 

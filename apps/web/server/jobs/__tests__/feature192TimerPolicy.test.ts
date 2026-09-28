@@ -16,6 +16,11 @@ describe("Feature 192 startup timer policy", () => {
 
   it("classifies every known business initializer", () => {
     expect(FEATURE_192_TIMER_INVENTORY.length).toBeGreaterThanOrEqual(20);
+    expect(FEATURE_192_TIMER_INVENTORY).toContainEqual(expect.objectContaining({
+      initializer: "initializeInferenceSettlementRecoveryJob",
+      disposition: "canonical-control-plane",
+      jobTypes: ["llm.inference_settlement_sweep"],
+    }));
     expect(() => getFeature192TimerEntry("unknown-initializer")).toThrow(
       "FEATURE_192_TIMER_UNCLASSIFIED",
     );

@@ -14,6 +14,7 @@ import {
 } from "./llmProviderCatalog";
 
 export type EnabledLlmModelRow = {
+  modelMappingId?: number;
   providerId: number;
   providerName: string;
   modelId: string;
@@ -256,6 +257,7 @@ export async function loadEnabledLlmModelRows(
 
     const rows = await db
       .select({
+        modelMappingId: modelProviderMap.id,
         providerId: llmProviders.id,
         providerName: llmProviders.providerName,
         modelId: modelProviderMap.modelId,
@@ -295,6 +297,7 @@ export async function loadEnabledLlmModelRows(
       );
 
     return hydrateEnabledLlmModelRows(rows.map((row) => ({
+      modelMappingId: row.modelMappingId,
       providerId: row.providerId,
       providerName: row.providerName,
       modelId: row.modelId,

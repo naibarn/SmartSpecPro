@@ -135,6 +135,12 @@ export const FEATURE_192_TIMER_INVENTORY: readonly Feature192TimerInventoryEntry
       jobTypes: ["worker.heartbeat_retention"],
     },
     {
+      initializer: "initializeInferenceSettlementRecoveryJob",
+      source: "server/jobs/inferenceSettlementRecoveryJob.ts",
+      disposition: "canonical-control-plane",
+      jobTypes: ["llm.inference_settlement_sweep"],
+    },
+    {
       initializer: "initializeProductionExecutionReconciliationJob",
       source: "server/jobs/productionExecutionReconciliationJob.ts",
       disposition: "external-cloudflare-scheduler",

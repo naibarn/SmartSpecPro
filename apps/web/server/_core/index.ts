@@ -190,6 +190,10 @@ import {
   shutdownWorkerHeartbeatRetentionJob,
 } from "../jobs/workerHeartbeatRetentionJob";
 import {
+  initializeInferenceSettlementRecoveryJob,
+  shutdownInferenceSettlementRecoveryJob,
+} from "../jobs/inferenceSettlementRecoveryJob";
+import {
   initializeUnifiedJobControlPlaneReconcilerJob,
   shutdownUnifiedJobControlPlaneReconcilerJob,
 } from "../jobs/unifiedJobControlPlaneReconcilerJob";
@@ -2921,6 +2925,15 @@ async function main() {
   }
 
   try {
+    await initializeInferenceSettlementRecoveryJob();
+  } catch (error) {
+    console.error(
+      "[Startup] Failed to initialize Spec 231 settlement recovery job:",
+      error,
+    );
+  }
+
+  try {
     await initializeUnifiedJobControlPlaneReconcilerJob();
   } catch (error) {
     console.error(
@@ -3151,6 +3164,7 @@ process.on("SIGTERM", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}
   );
@@ -3236,6 +3250,7 @@ process.on("SIGINT", async () => {
   await shutdownBrowserAutomationClaimReconcilerJob().catch(() => {});
   await Promise.resolve(shutdownWorkerStallWatchdogJob()).catch(() => {});
   await Promise.resolve(shutdownWorkerHeartbeatRetentionJob()).catch(() => {});
+  await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}
   );

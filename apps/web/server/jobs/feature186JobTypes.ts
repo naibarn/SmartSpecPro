@@ -8,6 +8,8 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "webhook.dispatch",
   "webhook.api_delivery",
   "embedding.generate",
+  "llm.inference_settlement_reconcile",
+  "llm.inference_settlement_sweep",
   "capacity.assessment",
   "channel.delivery",
   "automation.execute",

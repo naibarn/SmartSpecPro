@@ -17,8 +17,18 @@ import {
   resolveChatModelSelection,
   storedSelectionStateFromResolved,
 } from "./chatModelSelection";
-import { getConversationById, updateConversation } from "./chatService";
+import {
+  createInferenceAssistantMessageOnce,
+  deliverSettledInferenceChatResponseForKey,
+  findInferenceAssistantMessage,
+  getConversationById,
+  updateConversation,
+  type InferenceAssistantMessageReceipt,
+} from "./chatService";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { executeChatThroughInferenceGateway } from "./inference/chatInferenceGateway";
+import { getTraceId } from "./traceContext";
+import { inferenceCostMicrosToCreditUnits } from "./inference/creditReservationAuthority";
 
 interface HandlerParams {
   model?: string;
@@ -30,12 +40,69 @@ interface HandlerParams {
   modelSelection?: unknown;
   modelSelectionContext?: unknown;
   skillUsed?: string;
+  idempotencyKey?: string;
+  contextPrepared?: boolean;
+  requirePolicyGateway?: boolean;
   res: Response;
 }
 
 function getSelectionErrorStatus(error: unknown): number {
   const message = error instanceof Error ? error.message : String(error ?? "");
   return message.includes("not enabled for this tenant") ? 403 : 400;
+}
+
+function isActiveInferenceAttempt(status: string): boolean {
+  return status === "prepared" || status === "submitting";
+}
+
+export function replaySavedAssistantJson(
+  res: Response,
+  message: InferenceAssistantMessageReceipt
+): void {
+  res.status(200).json({
+    id: `chat-message-${message.id}`,
+    model: message.modelUsed ?? undefined,
+    choices: [{ message: { role: "assistant", content: message.content }, finish_reason: "stop" }],
+    usage: {
+      prompt_tokens: message.inputTokens ?? 0,
+      completion_tokens: message.outputTokens ?? 0,
+    },
+    _credits: { used: Number(message.creditsUsed ?? 0) },
+    _replayed: true,
+  });
+}
+
+export function replaySavedAssistantSse(
+  res: Response,
+  message: InferenceAssistantMessageReceipt
+): void {
+  const creditsUsed = Number(message.creditsUsed ?? 0);
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.write(`data: ${JSON.stringify({
+    id: `chat-message-${message.id}`,
+    model: message.modelUsed ?? undefined,
+    choices: [{ index: 0, delta: { content: message.content }, finish_reason: "stop" }],
+  })}\n\n`);
+  res.write(`event: message_complete\ndata: ${JSON.stringify({
+    content: message.content,
+    creditsUsed,
+    inputTokens: message.inputTokens ?? 0,
+    outputTokens: message.outputTokens ?? 0,
+    resolvedModelId: message.modelUsed,
+    replayed: true,
+  })}\n\n`);
+  res.write(`event: message_saved\ndata: ${JSON.stringify({
+    id: message.id,
+    creditsUsed,
+    inputTokens: message.inputTokens ?? 0,
+    outputTokens: message.outputTokens ?? 0,
+    resolvedModelId: message.modelUsed,
+    runtimeMetadata: message.runtimeMetadata,
+  })}\n\n`);
+  res.write("data: [DONE]\n\n");
+  res.end();
 }
 
 /**
@@ -54,7 +121,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     skillUsed,
     res,
   } = params;
-  if (!skillUsed || skillUsed === "help-assistant") {
+  if (!params.contextPrepared && (!skillUsed || skillUsed === "help-assistant")) {
     try {
       await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
     } catch {
@@ -65,6 +132,26 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
   const conversation = conversationId
     ? await getConversationById(conversationId, userId)
     : undefined;
+  if (conversationId && !conversation) {
+    res.status(404).json({ error: { message: "Conversation not found" } });
+    return;
+  }
+  if (conversationId && params.idempotencyKey) {
+    await deliverSettledInferenceChatResponseForKey({
+      tenantId,
+      userId,
+      idempotencyKey: params.idempotencyKey,
+    }).catch(() => "not_found" as const);
+    const savedMessage = await findInferenceAssistantMessage({
+      tenantId,
+      userId,
+      idempotencyKey: params.idempotencyKey,
+    });
+    if (savedMessage) {
+      replaySavedAssistantJson(res, savedMessage);
+      return;
+    }
+  }
   const storedSelectionState = readStoredChatModelSelectionState(conversation?.skillSettings);
   const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
 
@@ -87,6 +174,69 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
   }
 
   const effectiveModel = resolvedSelection.resolvedModelId;
+
+  const hasDatabaseModelMapping =
+    Number.isSafeInteger(resolvedSelection.resolvedModelMappingId) &&
+    Number.isSafeInteger(resolvedSelection.resolvedProviderId);
+  if (
+    resolvedSelection.selection.mode !== "explicit" ||
+    hasDatabaseModelMapping ||
+    params.requirePolicyGateway
+  ) {
+    const routed = await executeChatThroughInferenceGateway({
+      userId,
+      tenantId,
+      conversationId,
+      skillUsed,
+      messages,
+      selection: resolvedSelection.selection,
+      selectionContext: deriveChatSelectionContext(modelSelectionContext),
+      resolvedModelMappingId: resolvedSelection.resolvedModelMappingId,
+      resolvedProviderId: resolvedSelection.resolvedProviderId,
+      idempotencyKey: params.idempotencyKey,
+      traceId: getTraceId(),
+      stream: false,
+    });
+    if (routed.status === "blocked") {
+      res.status(503).json({ error: { message: "Policy-routed inference is unavailable", code: routed.reason } });
+      return;
+    }
+    if (routed.status === "executed") {
+      const execution = routed.result.execution;
+      if (execution.status === "completed") {
+        const data = execution.response as Record<string, any> | null;
+        if (data && typeof data === "object") {
+          data._credits = { used: inferenceCostMicrosToCreditUnits(execution.receipt.chargedCostMicros ?? 0) ?? 0 };
+          data._resolvedModel = {
+            inferencePlanId: routed.result.planning.planId,
+            deploymentId: routed.result.planning.selectedDeploymentId,
+            selectionMode: resolvedSelection.selection.mode,
+          };
+        }
+        res.status(200).json(data);
+      } else if (execution.status === "duplicate_attempt" && isActiveInferenceAttempt(execution.existingStatus)) {
+        res.status(202).json({
+          inference: {
+            status: "in_progress",
+            attemptId: execution.attemptId,
+            attemptStatus: execution.existingStatus,
+          },
+        });
+      } else if (execution.status === "duplicate_attempt") {
+        res.status(409).json({
+          error: {
+            message: "This idempotency key already has a terminal inference attempt",
+            code: "INFERENCE_ATTEMPT_ALREADY_TERMINAL",
+            attemptId: execution.attemptId,
+            attemptStatus: execution.existingStatus,
+          },
+        });
+      } else {
+        res.status(execution.status === "settlement_pending" ? 503 : 502).json({ error: { message: "Policy-routed inference did not complete", code: execution.status } });
+      }
+      return;
+    }
+  }
 
   // Keep planner telemetry for skill-driven chat flows, but do not allow it to override
   // the user's explicit/provider-auto/global-auto selection contract.
@@ -230,7 +380,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     skillUsed,
     res,
   } = params;
-  if (!skillUsed || skillUsed === "help-assistant") {
+  if (!params.contextPrepared && (!skillUsed || skillUsed === "help-assistant")) {
     try {
       await injectHelpContextMessage(messages, { force: skillUsed === "help-assistant" });
     } catch {
@@ -241,6 +391,30 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
   const conversation = conversationId
     ? await getConversationById(conversationId, userId)
     : undefined;
+  if (conversationId && !conversation) {
+    res.status(404);
+    res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Conversation not found", statusCode: 404 })}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    return;
+  }
+  if (conversationId && params.idempotencyKey) {
+    await deliverSettledInferenceChatResponseForKey({
+      tenantId,
+      userId,
+      idempotencyKey: params.idempotencyKey,
+    }).catch(() => "not_found" as const);
+    const savedMessage = await findInferenceAssistantMessage({
+      tenantId,
+      userId,
+      idempotencyKey: params.idempotencyKey,
+    });
+    if (savedMessage) {
+      replaySavedAssistantSse(res, savedMessage);
+      return;
+    }
+  }
   const storedSelectionState = readStoredChatModelSelectionState(conversation?.skillSettings);
   const autoSelectionEnabled = (await getTenantFeatureFlags(tenantId)).chatAutoModelSelection;
 
@@ -268,6 +442,128 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
   }
 
   const effectiveModel = resolvedSelection.resolvedModelId;
+
+  const hasDatabaseModelMapping =
+    Number.isSafeInteger(resolvedSelection.resolvedModelMappingId) &&
+    Number.isSafeInteger(resolvedSelection.resolvedProviderId);
+  if (
+    resolvedSelection.selection.mode !== "explicit" ||
+    hasDatabaseModelMapping ||
+    params.requirePolicyGateway
+  ) {
+    const routed = await executeChatThroughInferenceGateway({
+      userId,
+      tenantId,
+      conversationId,
+      skillUsed,
+      messages,
+      selection: resolvedSelection.selection,
+      selectionContext: deriveChatSelectionContext(modelSelectionContext),
+      resolvedModelMappingId: resolvedSelection.resolvedModelMappingId,
+      resolvedProviderId: resolvedSelection.resolvedProviderId,
+      idempotencyKey: params.idempotencyKey,
+      traceId: getTraceId(),
+      stream: true,
+    });
+    if (routed.status === "blocked" || routed.status === "executed") {
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      if (routed.status === "blocked") {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "Policy-routed inference is unavailable", code: routed.reason, statusCode: 503 })}\n\n`);
+      } else if (routed.result.execution.status === "completed") {
+        const execution = routed.result.execution;
+        const response = execution.response as Record<string, any> | null;
+        const content = response?.choices?.[0]?.message?.content;
+        const assistantText = typeof content === "string" ? content : "";
+        const creditsUsed = inferenceCostMicrosToCreditUnits(
+          execution.receipt.chargedCostMicros ?? 0
+        ) ?? 0;
+        let savedMessage: { id: number } | null = null;
+        let saveFailed = false;
+        if (conversationId && assistantText) {
+          try {
+            const { sanitizeMessageRuntimeMetadata } = await import("./localAiRuntimeMetadata");
+            const persisted = await createInferenceAssistantMessageOnce({
+              message: {
+                conversationId,
+                role: "assistant",
+                content: assistantText,
+                inputTokens: execution.receipt.usage?.input ?? 0,
+                outputTokens: execution.receipt.usage?.output ?? 0,
+                creditsUsed: String(creditsUsed),
+                modelUsed: resolvedSelection.resolvedModelId,
+                skillUsed,
+                traceId: getTraceId(),
+                runtimeMetadata: sanitizeMessageRuntimeMetadata({
+                  source: "cloud",
+                  model: resolvedSelection.resolvedModelId,
+                }),
+              },
+              tenantId,
+              userId,
+              idempotencyKey: params.idempotencyKey ?? `server:${getTraceId()}`,
+            });
+            savedMessage = persisted.message;
+          } catch {
+            saveFailed = true;
+            // The provider result is already settled. Keep it visible and report
+            // the persistence failure so the UI does not silently lose the answer.
+          }
+        }
+        res.write(`data: ${JSON.stringify({
+          id: response?.id,
+          model: response?.model ?? resolvedSelection.resolvedModelId,
+          choices: [{ index: 0, delta: { content: assistantText }, finish_reason: "stop" }],
+        })}\n\n`);
+        res.write(`event: message_complete\ndata: ${JSON.stringify({
+          content: assistantText,
+          creditsUsed,
+          inputTokens: execution.receipt.usage?.input ?? 0,
+          outputTokens: execution.receipt.usage?.output ?? 0,
+          inferencePlanId: routed.result.planning.planId,
+          deploymentId: routed.result.planning.selectedDeploymentId,
+          selectionMode: resolvedSelection.selection.mode,
+        })}\n\n`);
+        if (savedMessage) {
+          res.write(`event: message_saved\ndata: ${JSON.stringify({
+            id: savedMessage.id,
+            creditsUsed,
+            inputTokens: execution.receipt.usage?.input ?? 0,
+            outputTokens: execution.receipt.usage?.output ?? 0,
+            resolvedModelId: resolvedSelection.resolvedModelId,
+            runtimeMetadata: {
+              source: "cloud",
+              model: resolvedSelection.resolvedModelId,
+            },
+          })}\n\n`);
+        }
+        if (conversationId && assistantText && (!savedMessage || saveFailed)) {
+          res.write(`event: save_error\ndata: ${JSON.stringify({ error: "Assistant response could not be saved" })}\n\n`);
+        }
+      } else if (routed.result.execution.status === "duplicate_attempt" && isActiveInferenceAttempt(routed.result.execution.existingStatus)) {
+        res.status(202);
+        res.write(`event: inference_pending\ndata: ${JSON.stringify({
+          status: "in_progress",
+          attemptId: routed.result.execution.attemptId,
+          attemptStatus: routed.result.execution.existingStatus,
+        })}\n\n`);
+      } else if (routed.result.execution.status === "duplicate_attempt") {
+        res.status(409);
+        res.write(`event: inference_duplicate\ndata: ${JSON.stringify({
+          error: "This idempotency key already has a terminal inference attempt",
+          code: "INFERENCE_ATTEMPT_ALREADY_TERMINAL",
+          attemptId: routed.result.execution.attemptId,
+          attemptStatus: routed.result.execution.existingStatus,
+        })}\n\n`);
+      } else {
+        res.write(`event: error\ndata: ${JSON.stringify({ error: "Policy-routed inference did not complete", code: routed.result.execution.status, statusCode: routed.result.execution.status === "settlement_pending" ? 503 : 502 })}\n\n`);
+      }
+      res.write("data: [DONE]\n\n");
+      res.end();
+      return;
+    }
+  }
 
   const plannerResult = skillUsed
     ? await runPlanner({

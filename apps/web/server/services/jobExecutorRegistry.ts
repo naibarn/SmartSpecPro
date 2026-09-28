@@ -6,6 +6,10 @@ import { executeWorkflowNodeTask } from "./workflowNodeTaskExecutor";
 import { executeComputerUseBrowserJob } from "./computerUseRunnerJobExecutor";
 import { isFeature186HardCutoverEnabled } from "./cloudflareRuntimeTarget";
 import { omitUndefinedJobPayloadProperties } from "./feature186VerticalDramaJobAdapter";
+import {
+  executeInferenceSettlementRecoveryJob,
+  executeInferenceSettlementSweepJob,
+} from "./inference/settlementRecoveryJob";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -160,6 +164,20 @@ defaultJobExecutorRegistry.register({
     await reporter.assertActive(lease);
     return {};
   },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "llm.inference_settlement_reconcile",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: executeInferenceSettlementRecoveryJob,
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: "llm.inference_settlement_sweep",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: executeInferenceSettlementSweepJob,
 });
 
 defaultJobExecutorRegistry.register({

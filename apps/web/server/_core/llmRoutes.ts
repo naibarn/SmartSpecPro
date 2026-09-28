@@ -21,7 +21,11 @@ import {
   calculateCreditsForLLM,
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
-import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
+import {
+  handleChatWithRouter,
+  handleStreamWithRouter,
+  replaySavedAssistantSse,
+} from "../services/llmRoutesHandler";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { buildContextStateMessages } from "../services/contextEngineAdapter";
@@ -64,6 +68,8 @@ import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protecte
 import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
 import { resolveExternalMediaMessageUrls } from "../services/mediaGenerationService";
 import { resolveMcpDownloadRef } from "../services/mcpDownloadBrokerService";
+import { loadInferenceAttemptStatus } from "../services/inference/persistence";
+import { getInferenceChatRolloutState } from "../services/inference/rolloutBundle";
 
 function getPublicUrlForRequest(req: Request): string | null {
   const primaryDomain = String((req as any).tenant?.primaryDomain || "").trim();
@@ -2198,7 +2204,8 @@ async function getUserIdFromAuth(auth: AuthResult & { ok: true }): Promise<numbe
  */
 async function checkCredits(
   auth: AuthResult & { ok: true },
-  res: Response
+  res: Response,
+  resolvedUserId?: number | null
 ): Promise<{ ok: true; userId: number } | { ok: false }> {
   // Skip credit check for internal server-to-server static tokens only.
   // Logs every bypass for audit trail — disable in production if not needed.
@@ -2207,7 +2214,7 @@ async function checkCredits(
     return { ok: true, userId: 0 }; // userId 0 means no credit tracking
   }
 
-  const userId = await getUserIdFromAuth(auth);
+  const userId = resolvedUserId ?? await getUserIdFromAuth(auth);
   if (!userId) {
     res.status(403).json({
       error: {
@@ -3246,7 +3253,7 @@ async function proxyChatWithCredits(
     if (conversationId && fullContent) {
       const messageSaveStartedAt = Date.now();
       try {
-        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { createInferenceAssistantMessageOnce, getConversationById } = await import("../services/chatService");
         const { calculateCreditsForLLM, calculateCreditsFromCost } = await import("../services/creditService");
         // Verify conversation ownership
         const conversation = await getConversationById(conversationId, userId);
@@ -3255,10 +3262,6 @@ async function proxyChatWithCredits(
           const creditsUsed = (providerCostUsd > 0)
             ? calculateCreditsFromCost(providerCostUsd)
             : calculateCreditsForLLM(inputTokens, outputTokens, model);
-          if (creditsUsed > 0) {
-            await updateConversationCredits(conversationId, creditsUsed);
-          }
-
           // Get traceId for cost correlation
           const traceId = getTraceId();
 
@@ -3279,26 +3282,33 @@ async function proxyChatWithCredits(
             });
           }
 
-          const message = await createMessage({
-            conversationId,
-            role: "assistant",
-            content: fullContent,
-            inputTokens,
-            outputTokens,
-            creditsUsed: creditsUsed.toString(),
-            modelUsed: model || conversation.model || undefined,
-            skillUsed,
-            runtimeMetadata: sanitizeMessageRuntimeMetadata({
-              source: runtimeMetadataHint.source,
-              taskClass: runtimeMetadataHint.taskClass,
-              profileId: runtimeMetadataHint.profileId,
-              tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
-              voiceInputMode: runtimeMetadataHint.voiceInputMode,
-              provider: provider.providerName,
-              model: requestedModelId,
-            }),
-            traceId,
+          const saved = await createInferenceAssistantMessageOnce({
+            message: {
+              conversationId,
+              role: "assistant",
+              content: fullContent,
+              inputTokens,
+              outputTokens,
+              creditsUsed: creditsUsed.toString(),
+              modelUsed: model || conversation.model || undefined,
+              skillUsed,
+              runtimeMetadata: sanitizeMessageRuntimeMetadata({
+                source: runtimeMetadataHint.source,
+                taskClass: runtimeMetadataHint.taskClass,
+                profileId: runtimeMetadataHint.profileId,
+                tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
+                voiceInputMode: runtimeMetadataHint.voiceInputMode,
+                provider: provider.providerName,
+                model: requestedModelId,
+              }),
+              traceId,
+            },
+            tenantId,
+            userId,
+            idempotencyKey:
+              req.get("Idempotency-Key") || `legacy:${traceId}`,
           });
+          const message = saved.message;
 
           // Log to providerUsageLog for cost correlation
           logCostRequest({
@@ -3755,14 +3765,52 @@ export function registerLLMRoutes(app: Express) {
     llmLimiter,
     enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
     async (req: Request, res: Response) => {
-      const check = await guardWithCredits(req, res);
-      if (!check.ok) return;
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        unauthorized(res);
+        return;
+      }
+      const authenticatedUserId = await getUserIdFromAuth(auth);
 
       // Extract conversationId and skillUsed from request body for server-side message saving
       const conversationId = req.body?.conversationId ? Number(req.body.conversationId) : undefined;
       const skillUsed = req.body?.skillUsed;
 
-      debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: check.userId });
+      debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: authenticatedUserId });
+
+      const chatIdempotencyKey =
+        typeof req.headers["idempotency-key"] === "string"
+          ? req.headers["idempotency-key"]
+          : undefined;
+      if (conversationId && chatIdempotencyKey && authenticatedUserId) {
+        try {
+          const { findInferenceAssistantMessage } = await import("../services/chatService");
+          const savedMessage = await findInferenceAssistantMessage({
+            tenantId: (req as any).tenantId || "default",
+            userId: authenticatedUserId,
+            idempotencyKey: chatIdempotencyKey,
+          });
+          if (savedMessage) {
+            replaySavedAssistantSse(res, savedMessage);
+            return;
+          }
+        } catch (err: any) {
+          debugError("LLM", "Idempotent chat replay lookup failed", err);
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\ndata: ${JSON.stringify({
+            message: "Chat request state could not be verified",
+            code: "CHAT_IDEMPOTENCY_LOOKUP_UNAVAILABLE",
+            statusCode: 503,
+          })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+      }
+
+      const check = await checkCredits(auth, res, authenticatedUserId);
+      if (!check.ok) return;
 
       // Generic skill context injection: inject systemPrompt for any active skill
       if (skillUsed && Array.isArray(req.body?.messages)) {
@@ -3917,6 +3965,39 @@ export function registerLLMRoutes(app: Express) {
       }
 
       try {
+        const rolloutState = await getInferenceChatRolloutState();
+        if (rolloutState.state === "active_bundle_invalid") {
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\ndata: ${JSON.stringify({
+            error: "Active inference rollout bundle failed verification",
+            code: rolloutState.reason,
+            statusCode: 503,
+          })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        if (rolloutState.state === "active_bundle_verified") {
+          await handleStreamWithRouter({
+            model: req.body?.model,
+            messages: req.body?.messages || [],
+            userId: check.userId,
+            tenantId: (req as any).tenantId || "default",
+            conversationId,
+            preferredProvider: req.body?.preferredProvider
+              ? Number(req.body.preferredProvider)
+              : undefined,
+            modelSelection: req.body?.modelSelection,
+            modelSelectionContext: req.body?.modelSelectionContext,
+            skillUsed,
+            idempotencyKey: chatIdempotencyKey,
+            contextPrepared: true,
+            requirePolicyGateway: true,
+            res,
+          });
+          return;
+        }
         await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {
         if (err instanceof DelegatedWorkerPlatformError) {
@@ -4376,6 +4457,7 @@ export function registerLLMRoutes(app: Express) {
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
+          idempotencyKey: typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"] : undefined,
           res,
         });
       } catch (err: any) {
@@ -4388,6 +4470,38 @@ export function registerLLMRoutes(app: Express) {
         }
       }
     }
+  );
+
+  app.get(
+    "/api/llm/v2/inference-attempts/:attemptId",
+    llmLimiter,
+    async (req: Request, res: Response) => {
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        unauthorized(res);
+        return;
+      }
+      const userId = auth.userId;
+      const tenantId = auth.tenantId || (req as any).tenantId;
+      if (!userId || !tenantId) {
+        res.status(403).json({ error: { code: "INFERENCE_STATUS_SCOPE_REQUIRED" } });
+        return;
+      }
+      try {
+        const status = await loadInferenceAttemptStatus({
+          attemptId: req.params.attemptId,
+          tenantId,
+          principalRef: `user:${userId}`,
+        });
+        if (!status.found) {
+          res.status(404).json({ error: { code: "INFERENCE_ATTEMPT_NOT_FOUND" } });
+          return;
+        }
+        res.status(status.status === "in_progress" ? 202 : 200).json(status);
+      } catch {
+        res.status(503).json({ error: { code: "INFERENCE_STATUS_UNAVAILABLE" } });
+      }
+    },
   );
 
   app.post(
@@ -4409,6 +4523,7 @@ export function registerLLMRoutes(app: Express) {
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
+          idempotencyKey: typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"] : undefined,
           res,
         });
       } catch (err: any) {

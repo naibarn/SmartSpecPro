@@ -28,6 +28,23 @@ async function start(app: any) {
 const describeSocketSuite =
   process.env.RUN_SOCKET_TESTS === "true" ? describe : describe.skip;
 
+describe("Spec 231 inference attempt status endpoint", () => {
+  it("requires an authenticated owner before looking up attempt metadata", async () => {
+    const { registerLLMRoutes } = await import("./llmRoutes");
+    const app = express();
+    app.use(express.json());
+    registerLLMRoutes(app);
+    const { server, base } = await start(app);
+    try {
+      const response = await fetch(`${base}/api/llm/v2/inference-attempts/attempt%3Aprivate`);
+      expect(response.status).toBe(401);
+      expect(await response.json()).toMatchObject({ error: { message: "Unauthorized" } });
+    } finally {
+      await new Promise<void>(resolve => server.close(() => resolve()));
+    }
+  });
+});
+
 describeSocketSuite("website gateway /v1/chat/completions", () => {
   const oldEnv = { ...process.env };
 
