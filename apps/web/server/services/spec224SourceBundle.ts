@@ -352,6 +352,9 @@ function cargoRequirementMatches(version: string, requirement: string): boolean 
   if (!normalized || normalized === "*") return true;
   const target = normalized.replace(/^[~^=\s]+/, "");
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version) || !/^\d+(?:\.\d+){0,2}(?:\.\*)?$/.test(target)) return null;
+  // Cargo's prerelease ordering has additional rules; do not treat a prerelease
+  // as a stable match using only its numeric components.
+  if (version.includes("-")) return null;
   const actualParts = version.split(/[.-]/).slice(0, 3).map(value => Number.parseInt(value, 10));
   const targetParts = target.replace(/\.\*$/, "").split(".").map(value => Number.parseInt(value, 10));
   if (target.endsWith(".*")) return actualParts[0] === targetParts[0] && (targetParts.length === 1 || actualParts[1] === targetParts[1]);
@@ -514,9 +517,9 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
     const candidates = identities.filter(item => item.name === effectiveNormalizeName(effectiveRoot.name) && (effectiveIsPythonRoot ? item.packageManager === "uv" : isCargoRoot ? item.packageManager === "cargo" : item.packageManager !== "uv" && item.packageManager !== "cargo"));
     const matches: string[] = [];
     for (const item of candidates) {
-      const versionMatches = pythonVersionSatisfies(item.version, effectiveRoot.specifier);
+      const versionMatches = isCargoRoot ? cargoRequirementMatches(item.version, effectiveRoot.specifier ?? "*") : pythonVersionSatisfies(item.version, effectiveRoot.specifier);
       if (versionMatches === null) {
-        unresolved.push(`python-version-specifier-unresolved:${effectiveRoot.name}:${effectiveRoot.specifier}`);
+        unresolved.push(`${isCargoRoot ? "cargo" : "python"}-version-specifier-unresolved:${effectiveRoot.name}:${effectiveRoot.specifier}`);
         continue;
       }
       if (!versionMatches) continue;
@@ -926,6 +929,9 @@ function importsIn(
   const isPython = filePath.endsWith(".py");
   const isRust = filePath.endsWith(".rs");
   if (isRust) {
+    const hasInlineModule = /\bmod\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(source);
+    const hasOutOfLineModule = /\b(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/.test(source);
+    if (hasInlineModule && hasOutOfLineModule) unresolved.add("<nested-rust-module-path-unresolved>");
     for (const match of source.matchAll(/#\s*\[\s*path\s*=\s*["']([^"']+)["']\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
     for (const match of source.matchAll(/^\s*mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*;/gm)) {
       const preceding = source.slice(0, match.index ?? 0);
@@ -934,6 +940,11 @@ function importsIn(
     for (const match of source.matchAll(/\b(?:use|extern\s+crate)\s+([A-Za-z_][A-Za-z0-9_]*)/g)) {
       const name = match[1];
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
+    }
+    const localModuleNames = new Set([...source.matchAll(/(?:^|\n)\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
+    for (const match of source.matchAll(/\b([a-z][A-Za-z0-9_]*)::/g)) {
+      const name = match[1];
+      if (!["std", "core", "alloc", "crate", "self", "super"].includes(name) && !localModuleNames.has(name)) external.add(name);
     }
     for (const match of source.matchAll(/\binclude_(?:str|bytes)!\s*\(\s*["']([^"']+)["']\s*\)/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
     if (/\binclude(?:_str|_bytes)?!\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-rust-include>");

@@ -1082,7 +1082,7 @@ describe("Spec 224 source bundle tooling", () => {
 
   it("fails closed when a Rust profile has no verified Cargo dependency graph", async () => {
     const root = await sourceFixture();
-    await writeFile(join(root, "src/main.rs"), "use serde::Serialize;\n");
+    await writeFile(join(root, "src/main.rs"), "fn call_external() { serde::serialize(); }\n");
     await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n');
     await writeFile(join(root, "Cargo.lock"), 'version = 4\n[[package]]\nname = "serde"\nversion = "1.0.0"\n');
     const closure = await discoverSourceClosure({
@@ -1094,6 +1094,43 @@ describe("Spec 224 source bundle tooling", () => {
     });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "cargo-import-not-declared:serde" }));
+  });
+
+  it("fails closed when nested inline Rust module paths cannot be proven", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), "mod parent { mod child; }\n");
+    await writeFile(join(root, "src/child.rs"), "pub fn wrong() {}\n");
+    await mkdir(join(root, "src/parent"), { recursive: true });
+    await writeFile(join(root, "src/parent/child.rs"), "pub fn expected() {}\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n');
+    await writeFile(join(root, "Cargo.lock"), "version = 4\n");
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-nested-module-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(closure.closureComplete).toBe(false);
+    expect(closure.unresolvedImports).toContainEqual(expect.objectContaining({ specifier: "<nested-rust-module-path-unresolved>" }));
+  });
+
+  it("does not match a Cargo prerelease to a stable semver requirement", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), "use serde::Serialize;\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n\n[dependencies]\nserde = "^1.2.3"\n');
+    const registry = "registry+https://github.com/rust-lang/crates.io-index";
+    const checksum = createHash("sha256").update("prerelease crate").digest("hex");
+    await writeFile(join(root, "Cargo.lock"), `version = 4\n\n[[package]]\nname = "serde"\nversion = "1.2.3-alpha"\nsource = "${registry}"\nchecksum = "${checksum}"\n`);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-prerelease-rejection-profile",
+      runtimeIdentity: { cargo: "cargo 1.91.0", packageManager: "cargo@1.91.0", platform: "linux-x86_64" },
+    });
+    expect(closure.closureComplete).toBe(false);
+    expect(closure.unresolvedImports.some(item => item.specifier.includes("serde"))).toBe(true);
   });
 
   it("resolves Rust modules and Cargo.lock locators, then verifies crate bytes before sealing", async () => {
