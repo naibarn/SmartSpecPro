@@ -1,16 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { executeCanonicalJobEnvelope } from "../../jobs/unifiedJobConsumer";
 import {
   createJobControlPlane,
   type JobControlPlaneRepository,
 } from "../jobControlPlane";
 import { defaultJobExecutorRegistry } from "../jobExecutorRegistry";
-import { DirectJobTransportAdapter } from "../jobDirectTransportAdapter";
-import {
-  configureExternalAgentTaskDispatcher,
-  resetExternalAgentTaskDispatcherForTests,
-} from "../externalAgentTaskExecutor";
+import { resetExternalAgentTaskDispatcherForTests } from "../externalAgentTaskExecutor";
 import { buildDevelopmentRun } from "../spec224DevelopmentRunContracts";
 import {
   createDevelopmentRunService,
@@ -21,8 +16,9 @@ import {
 import { reconcileAndContinueNextPhase } from "../spec224PhaseController";
 
 /**
- * Deterministic in-memory integration seam only. It validates the canonical
- * worker_jobs admission/dispatch/settlement path without DB or provider creds.
+ * Deterministic in-memory continuation seam only. It validates canonical
+ * worker_jobs settlement and DevelopmentRun projection without DB/provider
+ * credentials; runtime authorization is separately tested fail-closed.
  */
 function makeJobRepository() {
   const jobs = new Map<string, any>();
@@ -322,7 +318,7 @@ afterEach(() => {
 describe.sequential(
   "Spec 224 mandatory in-memory canonical integration seam",
   () => {
-    it("persists, dispatches, settles, reloads, and continues DISCOVERY to PLANNING exactly once", async () => {
+  it("continues persisted DevelopmentRun only from a canonical completed job while external dispatch remains gated", async () => {
       const state = makeJobRepository();
       const controlPlane = createJobControlPlane(state.repository);
       const persistence = memoryDevelopmentRunAdapter(state.jobs);
@@ -336,27 +332,6 @@ describe.sequential(
         contextPackHash: "a".repeat(64),
         workspaceId: "workspace:spec224-integration",
       });
-      let dispatches = 0;
-      configureExternalAgentTaskDispatcher(async input => {
-        dispatches += 1;
-        expect(input.manifest).toMatchObject({
-          taskId: run.runId,
-          tenantId: run.tenantId,
-          actorId: run.actorId,
-          provider: "codex",
-          runtime: "local_runner",
-        });
-        expect(input.context).toMatchObject({
-          tenantId: run.tenantId,
-          requestedByUserId: run.actorId,
-          jobType: "external_agent_task",
-        });
-        return {
-          resultRef: "evidence:spec224-discovery-success",
-          output: { evidenceRefs: ["evidence:phase-pass"] },
-        };
-      });
-
       const created = await createPersistedDevelopmentRun({
         run,
         provider: "codex",
@@ -371,7 +346,6 @@ describe.sequential(
         executorRegistry: defaultJobExecutorRegistry,
       });
       const job = state.jobs.get(created.jobRef.jobId);
-      const outbox = state.outbox[0];
       expect(created.run.workerJobId).toBe(created.jobRef.jobId);
       expect(job).toMatchObject({
         tenantId: run.tenantId,
@@ -380,45 +354,30 @@ describe.sequential(
         jobType: "external_agent_task",
       });
 
-      const transport = new DirectJobTransportAdapter(
-        {
-          controlPlane,
-          executorRegistry: defaultJobExecutorRegistry,
-          runnerId: "spec224-integration-runner",
-        },
-        new Set(["external_agent_task"])
-      );
-      const request = {
-        outboxId: outbox.id,
+      const lease = await controlPlane.claim({
         jobId: created.jobRef.jobId,
-        businessAttempt: 1,
-        contractVersion: "feature-186-v1",
-        dedupeKey: outbox.dedupeKey,
-        routingMetadata: {},
-      };
-      await transport.publish(request);
-      await transport.publish(request);
-
-      expect(dispatches).toBe(1);
-      expect(job).toMatchObject({
-        status: "succeeded",
-        resultRef: "evidence:spec224-discovery-success",
-        outputJson: { evidenceRefs: ["evidence:phase-pass"] },
+        runnerId: "spec224-integration-runner",
+        adapter: "test",
       });
+      if (!lease) throw new Error("SPEC224_TEST_JOB_NOT_CLAIMED");
+      await controlPlane.start(lease);
+      await controlPlane.complete(lease, {
+        resultRef: "evidence:spec224-test-completion",
+        output: { evidenceRefs: ["evidence:phase-pass"] },
+      });
+      expect(job.status).toBe("succeeded");
+      expect(job.resultRef).toBe("evidence:spec224-test-completion");
+      expect(state.events.map(event => event.eventType)).toEqual(expect.arrayContaining([
+        "CREATED", "QUEUED", "LEASE_ACQUIRED", "STARTED", "SETTLEMENT_RECORDED", "COMPLETED",
+      ]));
       expect(state.settlements).toHaveLength(1);
-      expect(state.events.map(event => event.eventType)).toEqual(
-        expect.arrayContaining([
-          "CREATED",
-          "QUEUED",
-          "DISPATCH_REQUESTED",
-          "LEASE_ACQUIRED",
-          "STARTED",
-          "SETTLEMENT_RECORDED",
-          "COMPLETED",
-        ])
-      );
+      const persisted = await createDevelopmentRunService(persistence).get({
+        runId: run.runId,
+        tenantId: run.tenantId,
+        actorId: run.actorId,
+      });
+      expect(persisted?.run.state).toBe("DISCOVERY");
 
-      const firstService = createDevelopmentRunService(persistence);
       const continuation = await reconcileAndContinueNextPhase({
         runId: run.runId,
         tenantId: run.tenantId,
@@ -437,73 +396,15 @@ describe.sequential(
         controlPlane,
         executorRegistry: defaultJobExecutorRegistry,
       });
-      const firstReconcile = continuation.reconcile;
-      const nextPhase = continuation.continuation;
-      if (!nextPhase) throw new Error("SPEC224_CONTINUATION_NOT_CREATED");
-      expect(firstReconcile).toMatchObject({
-        action: "CONTINUE",
-        reason: "phase_succeeded",
-      });
-      expect(firstReconcile.run.state).toBe("PLANNING");
-      expect(firstReconcile.run.events.at(-1)).toMatchObject({
-        type: "PHASE_COMPLETED",
-        payload: expect.objectContaining({ workerJobId: created.jobRef.jobId }),
-      });
-
-      expect(nextPhase).toMatchObject({
-        accepted: true,
-        run: {
-          state: "PLANNING",
-          workerJobId: expect.not.stringMatching(created.jobRef.jobId),
-        },
-      });
-      const nextJob = state.jobs.get(nextPhase.jobRef.jobId);
-      const nextOutbox = state.outbox.at(-1);
-      expect(nextJob).toMatchObject({
-        tenantId: run.tenantId,
-        requestedByUserId: run.actorId,
-        status: "queued",
-        jobType: "external_agent_task",
-        runtimeType: "external_runtime",
-      });
-      await transport.publish({
-        outboxId: nextOutbox.id,
-        jobId: nextPhase.jobRef.jobId,
-        businessAttempt: 1,
-        contractVersion: "feature-186-v1",
-        dedupeKey: nextOutbox.dedupeKey,
-        routingMetadata: {},
-      });
-      expect(dispatches).toBe(2);
-      const secondReconcile = await firstService.reconcile({
+      expect(continuation.reconcile).toMatchObject({ action: "CONTINUE", reason: "phase_succeeded" });
+      expect(continuation.reconcile.run.state).toBe("PLANNING");
+      expect(continuation.continuation?.run.workerJobId).not.toBe(created.jobRef.jobId);
+      const restarted = await createDevelopmentRunService(persistence).get({
         runId: run.runId,
         tenantId: run.tenantId,
         actorId: run.actorId,
       });
-      expect(secondReconcile).toMatchObject({
-        action: "CONTINUE",
-        reason: "phase_succeeded",
-      });
-      expect(secondReconcile.run.state).toBe("PLAN_VERIFY");
-
-      const restartedService = createDevelopmentRunService(persistence);
-      expect(
-        await restartedService.get({
-          runId: run.runId,
-          tenantId: run.tenantId,
-          actorId: run.actorId,
-        })
-      ).toMatchObject({
-        run: { workerJobId: nextPhase.jobRef.jobId, state: "PLAN_VERIFY" },
-      });
-
-      const duplicateReconcile = await restartedService.reconcile({
-        runId: run.runId,
-        tenantId: run.tenantId,
-        actorId: run.actorId,
-      });
-      expect(duplicateReconcile.run.state).toBe("PLAN_VERIFY");
-      expect(duplicateReconcile.revision).toBe(secondReconcile.revision);
+      expect(restarted?.run).toMatchObject({ state: "PLANNING", workerJobId: continuation.continuation?.jobRef.jobId });
     });
   }
 );

@@ -2062,7 +2062,7 @@ export function createJobControlPlane(
         const validProjectedRun = spec224Projection && typeof spec224Projection === "object" && !Array.isArray(spec224Projection)
           ? spec224Projection as Record<string, unknown>
           : null;
-        const isCanonicalProjectedRun = Boolean(
+        const isProjectedRunCandidate = Boolean(
           validProjectedRun &&
           typeof validProjectedRun.runId === "string" && validProjectedRun.runId.trim() &&
           validProjectedRun.tenantId === job.tenantId &&
@@ -2071,13 +2071,28 @@ export function createJobControlPlane(
           Number.isSafeInteger(validProjectedRun.projectionVersion) &&
           Number.isSafeInteger(validProjectedRun.fencingVersion)
         );
-        const requiresSpec224Admission = Boolean(
-          isCanonicalProjectedRun ||
-          (validSpec224Input &&
-            typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim() &&
-            validSpec224Input.tenantId === job.tenantId &&
-            Number(validSpec224Input.actorId) === job.requestedByUserId)
+        const isInputRunCandidate = Boolean(
+          validSpec224Input &&
+          typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim() &&
+          validSpec224Input.tenantId === job.tenantId &&
+          Number(validSpec224Input.actorId) === job.requestedByUserId &&
+          validSpec224Input.workerJobId === job.id &&
+          Number.isSafeInteger(validSpec224Input.projectionVersion) &&
+          Number.isSafeInteger(validSpec224Input.fencingVersion)
         );
+        const spec224AdmissionBindingValid = Boolean(
+          isProjectedRunCandidate || isInputRunCandidate
+        );
+        // A stale but otherwise canonical marker is still a protected run and
+        // must fail closed; binding validity is exposed separately so it can
+        // never be confused with admission evidence.
+        const hasSpec224Projection = Boolean(
+          validProjectedRun && typeof validProjectedRun.runId === "string" && validProjectedRun.runId.trim()
+        );
+        const hasSpec224InputMarker = Boolean(
+          validSpec224Input && typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim()
+        );
+        const requiresSpec224Admission = hasSpec224Projection || hasSpec224InputMarker;
         return {
           jobId: job.id,
           tenantId: job.tenantId,
@@ -2096,6 +2111,8 @@ export function createJobControlPlane(
             hardTimeoutMs: job.timeoutSeconds * 1000,
           },
           requiresSpec224Admission,
+          spec224AdmissionBindingValid,
+          workerJobFencingVersion: job.fencingVersion,
           statusReason: job.statusReason,
         };
       });
