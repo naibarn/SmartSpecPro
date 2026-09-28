@@ -29,6 +29,7 @@ import { prepareAndPersistInferencePlan } from "../prepareInferencePlan";
 describe("prepare and persist inference plan", () => {
   const input = () => ({
     request: {},
+    now: new Date("2026-09-27T00:00:00.000Z"),
     owners: {
       requestContext: { tenantId: "tenant-a", principalId: "user-1" },
     } as never,
