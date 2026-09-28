@@ -591,6 +591,20 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
+        if delivery.get("state") == "acknowledged":
+            previous_receipt = delivery.get("receipt")
+            matched = (
+                isinstance(previous_receipt, dict)
+                and previous_receipt.get("deliveryId") == delivery_id
+                and previous_receipt.get("payloadDigest") == payload_digest
+                and previous_receipt == receipt
+            )
+            # A previously committed identical ACK is a read-only idempotent
+            # replay. Its original lease may have expired or been superseded;
+            # that cannot authorize a new state transition, and no transition
+            # occurs on this path.
+            await self.db.rollback()
+            return matched
         now = now or datetime.now(timezone.utc)
         now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
         lease_expiry = delivery.get("leaseExpiresAt")
@@ -606,16 +620,6 @@ class ApprovalDBService:
         ):
             await self.db.rollback()
             return False
-        if delivery.get("state") == "acknowledged":
-            previous_receipt = delivery.get("receipt")
-            matched = (
-                isinstance(previous_receipt, dict)
-                and previous_receipt.get("deliveryId") == delivery_id
-                and previous_receipt.get("payloadDigest") == payload_digest
-                and previous_receipt == receipt
-            )
-            await self.db.rollback()
-            return matched
         delivery = dict(delivery)
         delivery["state"] = "acknowledged"
         delivery["receipt"] = receipt

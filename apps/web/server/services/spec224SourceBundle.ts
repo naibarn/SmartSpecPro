@@ -4,6 +4,10 @@ import { chmod, lstat, mkdir, readFile, readdir, realpath, writeFile } from "nod
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import yaml from "js-yaml";
 import * as ts from "typescript";
+import {
+  verifySpec224ExecutionProfile,
+  type Spec224ExecutionProfile,
+} from "./spec224ExecutionProfile";
 
 const BUNDLE_MANIFEST = ".spec224-source-bundle.json";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py", ".rs"];
@@ -110,18 +114,22 @@ export type SourceBundleManifest = {
   admissionEligible: false;
   sourceRevision: string;
   specDigest: string;
+  profileDigest?: string;
   sourceTreeAttestation?: { schemaVersion: GitTreeSourceManifest["schemaVersion"]; scopeMode?: "exact-path-set"; treePath: string; manifestDigest: string };
   profileId: string;
   runtimeIdentity: {
     node?: string;
     python?: string;
     cargo?: string;
+    rustc?: string;
     packageManager?: string;
     platform?: string;
+    architecture?: string;
   };
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  pythonStandardLibraryModules?: string[];
   selectedCargoTargets: SourceCargoTargetSelection[];
   selectedCargoPackageLocators: Record<string, string[]>;
   rustCompileTimeEnvironment: Record<string, string | null>;
@@ -157,8 +165,10 @@ export type SourceClosureInput = {
     node?: string;
     python?: string;
     cargo?: string;
+    rustc?: string;
     packageManager?: string;
     platform?: string;
+    architecture?: string;
     /** Explicit interpreter tags and PEP 508 values; missing values fail closed when required. */
     pythonCompatibility?: SourcePythonCompatibility;
   };
@@ -167,6 +177,10 @@ export type SourceClosureInput = {
   /** Selected uv dependency groups and project/package extras for this exact Python profile. */
   selectedPythonDependencyGroups?: string[];
   selectedPythonExtras?: string[];
+  /** Exact top-level modules reported by the selected Python interpreter. */
+  pythonStandardLibraryModules?: string[];
+  /** Require interpreter-derived stdlib evidence for this exact profile. */
+  requireCompletePythonStandardLibrary?: boolean;
   /** Cargo's locked/offline target graph for selected executable targets. */
   cargoTargetSelections?: SourceCargoTargetSelection[];
   /** Exact non-secret compile-time Rust environment bindings; null means explicitly absent. */
@@ -183,6 +197,10 @@ export type SourceClosureInput = {
     root: string;
     language: "python" | "javascript";
   }>;
+  /** Canonical digest from the exact execution profile manifest. */
+  profileDigest?: string;
+  /** Verified canonical profile; required whenever a digest is supplied. */
+  executionProfile?: Spec224ExecutionProfile;
 };
 
 export type SourceClosureResult = {
@@ -191,19 +209,24 @@ export type SourceClosureResult = {
   files: string[];
   provenance: Record<string, SourceInputKind[]>;
   profileId: string;
+  profileDigest?: string;
   runtimeIdentity: {
     node?: string;
     python?: string;
     cargo?: string;
+    rustc?: string;
     packageManager?: string;
     platform?: string;
+    architecture?: string;
     pythonCompatibility?: SourcePythonCompatibility;
   };
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  pythonStandardLibraryModules: string[];
   selectedCargoTargets: SourceCargoTargetSelection[];
   selectedCargoPackageLocators: Record<string, string[]>;
+  dependencyArtifacts: string[];
   rustCompileTimeEnvironment: Record<string, string | null>;
   selectedManifestDependencies?: Record<string, string[]>;
   selectedManifestScripts?: Record<string, string[]>;
@@ -1100,7 +1123,8 @@ async function resolveLocalImport(sourceRoot: string, from: string, specifier: s
 
 function importsIn(
   source: string,
-  filePath: string
+  filePath: string,
+  pythonStandardLibrary: ReadonlySet<string> = PYTHON_TOP_LEVEL,
 ): {
   local: string[];
   external: string[];
@@ -1157,7 +1181,7 @@ function importsIn(
       const specifier = (match[1] ?? match[2] ?? "").trim();
       if (specifier.startsWith(".")) local.add(specifier);
       else if (specifier.split(".")[0] === "app") local.add(specifier);
-      else if (!PYTHON_TOP_LEVEL.has(specifier.split(".")[0])) external.add(specifier.split(".")[0]);
+      else if (!pythonStandardLibrary.has(specifier.split(".")[0])) external.add(specifier.split(".")[0]);
     }
     for (const match of source.matchAll(/\b(?:importlib\.import_module|__import__)\s*\(\s*["']([^"']+)["']/g)) dynamic.add(match[1]);
     if (/\b(?:importlib\.import_module|__import__)\s*\(\s*[^"'\s]/.test(source)) unresolved.add("<dynamic-python-import>");
@@ -1789,6 +1813,91 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const selectedOptionalNames = new Set((input.selectedOptionalDependencies ?? []).map(normalizePackageName));
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
+  const profile = input.executionProfile;
+  if (input.profileDigest && !profile) {
+    unresolved.push({ from: "<profile>", specifier: "<verified-execution-profile-required>" });
+  } else if (profile) {
+    if (!verifySpec224ExecutionProfile(profile)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-digest-mismatch>" });
+    }
+    if (input.profileId !== profile.profileId) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-id-mismatch>" });
+    }
+    if (input.profileDigest && input.profileDigest.toLowerCase() !== profile.profileDigest) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-digest-mismatch>" });
+    }
+    const expectedEntries = [...profile.entrypoints.node, ...profile.entrypoints.python, ...profile.entrypoints.rust].sort(compareText);
+    const actualEntries = [...input.entryPaths].map(path => safeRelative(sourceRoot, path)).sort(compareText);
+    if (canonicalJson(actualEntries) !== canonicalJson(expectedEntries)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-entrypoints-mismatch>" });
+    }
+    const expectedCargoTargets = profile.entrypoints.rust.length ? [profile.cargoTarget] : [];
+    const actualCargoTargets = [...new Set((input.cargoTargetSelections ?? []).map(selection => selection.target))].sort(compareText);
+    if (canonicalJson(actualCargoTargets) !== canonicalJson(expectedCargoTargets)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-cargo-target-mismatch>" });
+    }
+    const expectedDependencyManifests = [...new Set(
+      [...profile.dependencyManifests.runtime, ...profile.dependencyManifests.testOnly].map(value => value.split("#", 1)[0]),
+    )].sort(compareText);
+    const actualDependencyManifests = [...new Set(input.dependencyArtifacts.map(path => safeRelative(sourceRoot, path)))].sort(compareText);
+    if (canonicalJson(actualDependencyManifests) !== canonicalJson(expectedDependencyManifests)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-dependency-manifests-mismatch>" });
+    }
+    const actualWorkspaceManifests = [...new Set((input.workspaceManifestPaths ?? []).map(path => safeRelative(sourceRoot, path)))].sort(compareText);
+    if (canonicalJson(actualWorkspaceManifests) !== canonicalJson([...profile.workspaceManifestPaths].sort(compareText))) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-workspaces-mismatch>" });
+    }
+    const expectedWorkspaceDirs = [...new Set([
+      ...profile.workspaceManifestPaths.map(path => dirname(path).split(sep).join("/") || "."),
+      ...profile.dependencyManifests.runtime
+        .filter(path => /(?:^|\/)(?:Cargo\.toml|pyproject\.toml)$/.test(path))
+        .map(path => dirname(path).split(sep).join("/") || "."),
+    ])].sort(compareText);
+    if (canonicalJson([...new Set(profile.workspaces.map(path => path === "." ? "." : safeRelative(sourceRoot, path)))].sort(compareText)) !== canonicalJson(expectedWorkspaceDirs)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-workspace-set-mismatch>" });
+    }
+    const expectedSourceInputs = [...new Set(profile.sourceInputs.map(path => safeRelative(sourceRoot, path)))].filter(path => !expectedEntries.includes(path)).sort(compareText);
+    const actualSourceInputs = [...new Set((input.profileInputs ?? []).map(item => safeRelative(sourceRoot, item.path)))].sort(compareText);
+    if (canonicalJson(actualSourceInputs) !== canonicalJson(expectedSourceInputs)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-source-inputs-mismatch>" });
+    }
+    const actualModuleRoots = [...(input.moduleRoots ?? [])].sort((left, right) => compareText(left.prefix, right.prefix));
+    const expectedModuleRoots = [...profile.moduleRoots].sort((left, right) => compareText(left.prefix, right.prefix));
+    if (canonicalJson(actualModuleRoots) !== canonicalJson(expectedModuleRoots)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-module-roots-mismatch>" });
+    }
+    const runtime = input.runtimeIdentity ?? {};
+    if (
+      runtime.node !== profile.runtime.node ||
+      runtime.packageManager !== `pnpm@${profile.runtime.pnpm}` ||
+      runtime.python !== profile.runtime.python ||
+      runtime.rustc !== profile.runtime.rustc ||
+      runtime.platform !== `${profile.runtime.platform}-${profile.runtime.architecture}` ||
+      runtime.architecture !== profile.runtime.architecture
+    ) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-runtime-mismatch>" });
+    }
+    const stdlibDigest = input.pythonStandardLibraryModules?.length
+      ? sha256([...new Set(input.pythonStandardLibraryModules)].sort(compareText).join("\n"))
+      : "";
+    if (profile.entrypoints.python.length && stdlibDigest !== profile.pythonStandardLibrarySha256) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-python-stdlib-mismatch>" });
+    }
+    if (Object.values(input.selectedManifestScripts ?? {}).some(scripts => scripts.length > 0)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-script-selection-unbound>" });
+    }
+  }
+  const pythonStandardLibraryModules = [...new Set(
+    (input.pythonStandardLibraryModules ?? [...PYTHON_TOP_LEVEL]).map(name => name.trim()).filter(Boolean),
+  )].sort(compareText);
+  const pythonStandardLibrary = new Set(pythonStandardLibraryModules);
+  if (
+    input.requireCompletePythonStandardLibrary &&
+    input.entryPaths.some(path => path.endsWith(".py")) &&
+    !input.pythonStandardLibraryModules?.length
+  ) {
+    unresolved.push({ from: "<profile>", specifier: "<python-stdlib-inventory-required>" });
+  }
   const normalizeManifestSelection = (selection: Record<string, string[]> | undefined, kind: string) => {
     const normalized: Record<string, string[]> = {};
     for (const [rawPath, rawNames] of Object.entries(selection ?? {})) {
@@ -2206,7 +2315,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         specifier: "<hook-executable-closure-unverified>",
       });
     const imports = SOURCE_EXTENSIONS.some(ext => filePath.endsWith(ext))
-      ? importsIn(source, filePath)
+      ? importsIn(source, filePath, pythonStandardLibrary)
       : {
           local: [] as string[],
           external: [] as string[],
@@ -2510,7 +2619,6 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   for (const selected of selectedCargoLocators.values()) for (const locator of selected) requiredExternalSet.add(locator);
   const selectedCargoPackageLocators = Object.fromEntries([...selectedCargoLocators].sort(([a], [b]) => compareText(a, b)).map(([path, locators]) => [path, [...locators].sort()]));
   for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
-  for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   const externalArtifacts = input.externalArtifacts ?? [];
   const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
   for (const identity of lockedPackages) {
@@ -2619,6 +2727,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   externalPackageIdentities.sort((a, b) => compareText(a.lockfilePath, b.lockfilePath) || compareText(a.name, b.name) || compareText(a.version, b.version));
+  if (profile?.externalArtifacts.length && externalPackageIdentities.length) {
+    unresolved.push({ from: "<profile>", specifier: "<execution-profile-external-artifact-locators-unbound>" });
+  }
   for (const edge of dependencyEdges) {
     if (edge.status !== "external-package") continue;
     if (edge.from.endsWith(".rs")) {
@@ -2674,6 +2785,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
   }
   if (!input.profileId?.trim()) unresolved.push({ from: "<profile>", specifier: "<profile-id-missing>" });
+  if (input.profileDigest !== undefined && !/^[a-f0-9]{64}$/i.test(input.profileDigest)) {
+    unresolved.push({ from: "<profile>", specifier: "<invalid-profile-digest>" });
+  }
   if (!input.runtimeIdentity?.packageManager?.trim() || (!input.runtimeIdentity.node?.trim() && !input.runtimeIdentity.python?.trim() && !input.runtimeIdentity.cargo?.trim()))
     unresolved.push({
       from: "<profile>",
@@ -2687,6 +2801,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     files,
     provenance: Object.fromEntries([...provenance].sort(([a], [b]) => compareText(a, b)).map(([path, kinds]) => [path, [...kinds].sort()])),
     profileId: input.profileId ?? "",
+    ...(profile && verifySpec224ExecutionProfile(profile) ? { profileDigest: profile.profileDigest } : {}),
     runtimeIdentity: input.runtimeIdentity ?? {},
     packageIdentities: workspacePackages
       .map(item => ({
@@ -2703,8 +2818,10 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     selectedOptionalDependencies,
     selectedPythonDependencyGroups,
     selectedPythonExtras,
+    pythonStandardLibraryModules,
     selectedCargoTargets,
     selectedCargoPackageLocators,
+    dependencyArtifacts: [...new Set(input.dependencyArtifacts.map(path => safeRelative(sourceRoot, path)))].sort(compareText),
     rustCompileTimeEnvironment,
     ...(Object.keys(selectedManifestDependencies).length ? { selectedManifestDependencies } : {}),
     ...(Object.keys(selectedManifestScripts).length ? { selectedManifestScripts } : {}),
@@ -2713,11 +2830,26 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   };
 }
 
-export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; destination: string; closure: SourceClosureResult; sourceRevision: string; specDigest: string; dependencyArtifacts: string[]; sourceTreeAttestation?: SourceBundleManifest["sourceTreeAttestation"]; sourceTreeFileModes?: ReadonlyMap<string, number> }): Promise<SourceBundleManifest> {
+type ReadOnlyBundleInput = { sourceRoot: string; destination: string; closure: SourceClosureResult; sourceRevision: string; specDigest: string; dependencyArtifacts: string[]; executionProfile?: Spec224ExecutionProfile; sourceTreeAttestation?: SourceBundleManifest["sourceTreeAttestation"]; sourceTreeFileModes?: ReadonlyMap<string, number> };
+
+export async function assembleReadOnlySourceBundle(input: ReadOnlyBundleInput): Promise<SourceBundleManifest> {
+  return assembleReadOnlySourceBundleInternal(input, false);
+}
+
+async function assembleReadOnlySourceBundleInternal(input: ReadOnlyBundleInput, sourceTreeVerified: boolean): Promise<SourceBundleManifest> {
   const sourceRoot = resolve(input.sourceRoot);
   const destination = resolve(input.destination);
   const closure = input.closure;
   if (!/^[a-f0-9]{40}(?:[a-f0-9]{24})?$/i.test(input.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.specDigest) || !closure.profileId.trim() || !closure.runtimeIdentity.packageManager?.trim() || (!closure.runtimeIdentity.node?.trim() && !closure.runtimeIdentity.python?.trim() && !closure.runtimeIdentity.cargo?.trim())) throw new Error("SPEC224_BUNDLE_BASELINE_INVALID");
+  if (closure.profileDigest && (!input.executionProfile || !verifySpec224ExecutionProfile(input.executionProfile))) {
+    throw new Error("SPEC224_BUNDLE_VERIFIED_PROFILE_REQUIRED");
+  }
+  if (input.executionProfile && (
+    input.executionProfile.profileDigest !== closure.profileDigest ||
+    input.executionProfile.profileId !== closure.profileId ||
+    input.executionProfile.repository.sourceCommit.toLowerCase() !== input.sourceRevision.toLowerCase()
+  )) throw new Error("SPEC224_BUNDLE_PROFILE_SOURCE_MISMATCH");
+  if (closure.profileDigest && !sourceTreeVerified) throw new Error("SPEC224_BUNDLE_PROFILE_SOURCE_ATTESTATION_REQUIRED");
   if (input.sourceTreeAttestation && ((input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v2") || !input.sourceTreeAttestation.treePath.trim() || !/^[a-f0-9]{64}$/i.test(input.sourceTreeAttestation.manifestDigest) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.scopeMode !== undefined) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v2" && input.sourceTreeAttestation.scopeMode !== "exact-path-set"))) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_ATTESTATION_INVALID");
   if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "profile-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
@@ -2725,6 +2857,9 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
   const files = [...new Set(closure.files.map(file => safeRelative(sourceRoot, file)))].sort();
   if (!files.length || files.length !== closure.files.length) throw new Error("SPEC224_BUNDLE_FILE_SET_INVALID");
   const dependencyArtifacts = input.dependencyArtifacts.map(file => safeRelative(sourceRoot, file)).sort();
+  if (canonicalJson(dependencyArtifacts) !== canonicalJson(closure.dependencyArtifacts)) {
+    throw new Error("SPEC224_BUNDLE_DEPENDENCY_ARTIFACT_SET_MISMATCH");
+  }
   if (new Set(dependencyArtifacts).size !== dependencyArtifacts.length) throw new Error("SPEC224_BUNDLE_DEPENDENCY_ARTIFACT_DUPLICATE");
   if (dependencyArtifacts.some(file => !files.includes(file))) throw new Error("SPEC224_BUNDLE_DEPENDENCY_ARTIFACT_MISSING");
   const content: Array<{ path: string; bytes: Buffer; mode: number }> = [];
@@ -2776,10 +2911,14 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     specDigest: input.specDigest,
     ...(input.sourceTreeAttestation ? { sourceTreeAttestation: input.sourceTreeAttestation } : {}),
     profileId: closure.profileId,
+    ...(closure.profileDigest ? { profileDigest: closure.profileDigest } : {}),
     runtimeIdentity: closure.runtimeIdentity,
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
     selectedPythonDependencyGroups: [...closure.selectedPythonDependencyGroups].sort(),
     selectedPythonExtras: [...closure.selectedPythonExtras].sort(),
+    ...(closure.pythonStandardLibraryModules.length
+      ? { pythonStandardLibraryModules: [...closure.pythonStandardLibraryModules].sort() }
+      : {}),
     selectedCargoTargets: [...closure.selectedCargoTargets],
     selectedCargoPackageLocators: Object.fromEntries(Object.entries(closure.selectedCargoPackageLocators).map(([path, locators]) => [path, [...locators].sort()])),
     rustCompileTimeEnvironment: { ...closure.rustCompileTimeEnvironment },
@@ -2838,6 +2977,16 @@ export async function assembleGitTreeAttestedSourceBundle(input: {
   specDigest: string;
 }): Promise<{ bundle: SourceBundleManifest; sourceManifestDigest: string }> {
   if (input.sourceManifest.sourceRevision.toLowerCase() !== input.sourceRevision.toLowerCase()) throw new Error("SPEC224_BUNDLE_SOURCE_REVISION_MISMATCH");
+  if (input.closure.executionProfile) {
+    const profile = input.closure.executionProfile;
+    if (!verifySpec224ExecutionProfile(profile) || profile.repository.sourceCommit.toLowerCase() !== input.sourceRevision.toLowerCase()) {
+      throw new Error("SPEC224_BUNDLE_PROFILE_SOURCE_MISMATCH");
+    }
+    const actualGitTree = await gitText(input.repositoryRoot, ["rev-parse", `${input.sourceRevision}^{tree}`], "SPEC224_BUNDLE_PROFILE_GIT_TREE_UNAVAILABLE");
+    if (actualGitTree.toLowerCase() !== profile.repository.gitTree.toLowerCase()) {
+      throw new Error("SPEC224_BUNDLE_PROFILE_GIT_TREE_MISMATCH");
+    }
+  }
   const [repositoryStat, sourceStat] = await Promise.all([lstat(input.repositoryRoot).catch(() => null), lstat(input.sourceRoot).catch(() => null)]);
   if (!repositoryStat?.isDirectory() || repositoryStat.isSymbolicLink() || !sourceStat?.isDirectory() || sourceStat.isSymbolicLink()) throw new Error("SPEC224_BUNDLE_SOURCE_ROOT_INVALID");
   const [repositoryRealPath, sourceRealPath] = await Promise.all([realpath(input.repositoryRoot), realpath(input.sourceRoot)]);
@@ -2846,16 +2995,17 @@ export async function assembleGitTreeAttestedSourceBundle(input: {
   await attestGitTreeSourceManifest({ repositoryRoot: input.repositoryRoot, manifest: input.sourceManifest });
   const closure = await discoverSourceClosure({ ...input.closure, sourceRoot: input.sourceRoot });
   if (!closure.closureComplete) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
-  const bundle = await assembleReadOnlySourceBundle({
+  const bundle = await assembleReadOnlySourceBundleInternal({
     sourceRoot: input.sourceRoot,
     destination: input.destination,
     closure,
     sourceRevision: input.sourceRevision,
     specDigest: input.specDigest,
     dependencyArtifacts: input.closure.dependencyArtifacts,
+    ...(input.closure.executionProfile ? { executionProfile: input.closure.executionProfile } : {}),
     sourceTreeAttestation: { schemaVersion: input.sourceManifest.schemaVersion, ...(input.sourceManifest.scopeMode ? { scopeMode: input.sourceManifest.scopeMode } : {}), treePath: input.sourceManifest.treePath, manifestDigest: input.sourceManifest.manifestDigest },
     sourceTreeFileModes: new Map(input.sourceManifest.files.map(file => [file.path, file.mode])),
-  });
+  }, true);
   const sourceFiles = new Map(input.sourceManifest.files.map(file => [file.path, file]));
   const verifiedArtifacts = new Map(closure.externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT" && item.artifactPath && item.artifactSha256).map(item => [item.artifactPath!, item]));
   for (const file of bundle.files) {

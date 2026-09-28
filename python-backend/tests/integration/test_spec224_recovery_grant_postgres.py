@@ -65,13 +65,13 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
     try:
         async with engine.begin() as connection:
             owner = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
-                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
             ), {"open_id": f"spec224-grant-owner-{suffix}"})
             owner_id = owner.scalar_one()
             other = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
-                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
             ), {"open_id": f"spec224-grant-other-{suffix}"})
             other_id = other.scalar_one()
             await connection.execute(text(
@@ -360,8 +360,8 @@ async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
     try:
         async with engine.begin() as connection:
             user = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
-                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
+                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
             ), {"open_id": f"spec224-cancel-{suffix}"})
             requester_id = user.scalar_one()
             await connection.execute(text(
