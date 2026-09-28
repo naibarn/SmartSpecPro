@@ -2494,6 +2494,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     for (const specifier of imports.dynamic) {
       if (specifier.startsWith("node:") || NODE_BUILTINS.has(specifier.split("/")[0])) continue;
+      if (filePath.endsWith(".py") && pythonStandardLibrary.has(specifier.split(".")[0])) continue;
       if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
         const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots, rustCrateRoots);
         if (resolved) {

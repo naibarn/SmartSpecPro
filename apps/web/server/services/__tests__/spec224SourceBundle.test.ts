@@ -323,7 +323,7 @@ describe("Spec 224 source bundle tooling", () => {
   it("uses the selected interpreter standard-library inventory for Python closure", async () => {
     const root = await sourceFixture();
     await mkdir(join(root, "python"), { recursive: true });
-    await writeFile(join(root, "python/main.py"), "import asyncio\nimport zoneinfo\nimport sample_lib\n");
+    await writeFile(join(root, "python/main.py"), 'import asyncio\nimport zoneinfo\nimport importlib\nimport sample_lib\nimportlib.import_module("zoneinfo")\n');
 
     const closure = await discoverSourceClosure({
       sourceRoot: root,
@@ -339,6 +339,7 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.externalImports).toContain("sample_lib");
     expect(closure.externalImports).not.toContain("asyncio");
     expect(closure.externalImports).not.toContain("zoneinfo");
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: "zoneinfo" }));
   });
 
   it("recursively closes explicitly declared source directories and rejects nested symlinks", async () => {
