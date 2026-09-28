@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import yaml from "js-yaml";
+import * as ts from "typescript";
 
 const BUNDLE_MANIFEST = ".spec224-source-bundle.json";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py"];
@@ -813,20 +814,60 @@ function importsIn(
     for (const match of source.matchAll(/\b(?:importlib\.import_module|__import__)\s*\(\s*["']([^"']+)["']/g)) dynamic.add(match[1]);
     if (/\b(?:importlib\.import_module|__import__)\s*\(\s*[^"'\s]/.test(source)) unresolved.add("<dynamic-python-import>");
   } else {
-    if (/\b(?:eval\s*\(|new\s+Function\s*\()/.test(source)) unresolved.add("<dynamic-code-evaluation>");
-    const staticImport = /(?:\bimport\s+(?:[^"'()]*?\s+from\s+)?|\bexport\s+[^"']*?\s+from\s+|\brequire\s*\(\s*)["']([^"']+)["']/g;
-    for (const match of source.matchAll(staticImport)) {
-      const specifier = match[1];
+    const scriptKind = filePath.endsWith(".tsx") || filePath.endsWith(".jsx")
+      ? ts.ScriptKind.TSX
+      : filePath.endsWith(".js") || filePath.endsWith(".mjs") || filePath.endsWith(".cjs")
+        ? ts.ScriptKind.JS
+        : ts.ScriptKind.TS;
+    const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKind);
+    if (sourceFile.parseDiagnostics.length > 0) unresolved.add("<javascript-parse-error>");
+    const addModule = (specifier: string, isDynamic: boolean) => {
+      if (isDynamic) dynamic.add(specifier);
       if (specifier.startsWith(".") || specifier.startsWith("/")) local.add(specifier);
       else if (!specifier.startsWith("node:") && !NODE_BUILTINS.has(specifier.split("/")[0])) external.add(specifier);
-    }
-    const dynamicLiterals = [...[...source.matchAll(/\bimport\s*\(\s*(["'])([^"']+)\1\s*\)/g)].map(match => match[2]), ...[...source.matchAll(/\bimport\s*\(\s*`([^$`]+)`\s*\)/g)].map(match => match[1])];
-    for (const specifier of dynamicLiterals) {
-      dynamic.add(specifier);
-      if (specifier.startsWith(".") || specifier.startsWith("/")) local.delete(specifier);
-      else if (!specifier.startsWith("node:") && !NODE_BUILTINS.has(specifier.split("/")[0])) external.delete(specifier);
-    }
-    if (/\bimport\s*\(\s*(?!["']|`[^$`]*`)/.test(source) || /\brequire\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-javascript-import>");
+    };
+    const visit = (node: ts.Node) => {
+      if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+        addModule(node.moduleSpecifier.text, false);
+      }
+      if (
+        ts.isImportEqualsDeclaration(node)
+        && ts.isExternalModuleReference(node.moduleReference)
+      ) {
+        const expression = node.moduleReference.expression;
+        if (expression && (ts.isStringLiteral(expression) || ts.isNoSubstitutionTemplateLiteral(expression)))
+          addModule(expression.text, false);
+        else unresolved.add("<dynamic-javascript-import>");
+      }
+      if (ts.isCallExpression(node)) {
+        if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+          const argument = node.arguments[0];
+          if (argument && (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))) addModule(argument.text, true);
+          else unresolved.add("<dynamic-javascript-import>");
+        } else if (ts.isIdentifier(node.expression) && node.expression.text === "require") {
+          const argument = node.arguments[0];
+          if (argument && ts.isStringLiteral(argument)) addModule(argument.text, false);
+          else unresolved.add("<dynamic-javascript-import>");
+        } else if (
+          ts.isPropertyAccessExpression(node.expression)
+          && ts.isIdentifier(node.expression.expression)
+          && node.expression.expression.text === "module"
+          && node.expression.name.text === "require"
+        ) {
+          const argument = node.arguments[0];
+          if (argument && (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument)))
+            addModule(argument.text, false);
+          else unresolved.add("<dynamic-javascript-import>");
+        } else if (ts.isIdentifier(node.expression) && node.expression.text === "eval") {
+          unresolved.add("<dynamic-code-evaluation>");
+        }
+      }
+      if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "Function") {
+        unresolved.add("<dynamic-code-evaluation>");
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sourceFile);
   }
   return {
     local: [...local],
@@ -1648,21 +1689,43 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         }
         const scripts = (manifest.scripts && typeof manifest.scripts === "object" ? manifest.scripts : {}) as Record<string, unknown>;
         const selectedScripts = selectedManifestScripts[filePath];
+        const selectedScriptSet = selectedScripts ? new Set(selectedScripts) : null;
         if (selectedScripts) {
           consumedScriptSelections.add(filePath);
           for (const selected of selectedScripts) {
             if (!Object.hasOwn(scripts, selected)) unresolved.push({ from: filePath, specifier: `<selected-script-not-declared:${selected}>` });
           }
         }
-        for (const lifecycle of ["preinstall", "install", "postinstall", "prepare", "prepublish", "prepublishOnly", "preshrink", "publish", "postpublish"]) {
-          if (typeof scripts[lifecycle] === "string")
+        const lifecycleScripts = new Set([
+          "preinstall", "install", "postinstall", "prepare", "prepublish", "prepublishOnly", "preshrink", "publish", "postpublish",
+          ...(selectedScripts ?? []).flatMap(script => [`pre${script}`, `post${script}`]),
+        ]);
+        for (const lifecycle of lifecycleScripts) {
+          if (typeof scripts[lifecycle] === "string" && selectedScriptSet?.has(lifecycle)) {
+            continue;
+          }
+          if (typeof scripts[lifecycle] === "string" && selectedScripts?.some(script => lifecycle === `pre${script}` || lifecycle === `post${script}`)) {
             unresolved.push({
               from: filePath,
               specifier: `<lifecycle-script-not-authorized:${lifecycle}>`,
             });
+          } else if (typeof scripts[lifecycle] === "string" && !selectedScripts) {
+            unresolved.push({
+              from: filePath,
+              specifier: `<lifecycle-script-not-authorized:${lifecycle}>`,
+            });
+          } else if (typeof scripts[lifecycle] === "string") {
+            dependencyEdges.push({
+              from: filePath,
+              specifier: lifecycle,
+              to: null,
+              kind: "profile-input",
+              status: "profile-dependency-excluded",
+            });
+          }
         }
         for (const [scriptName, command] of Object.entries(scripts)) {
-          if (selectedScripts && !selectedScripts.includes(scriptName)) continue;
+          if (selectedScriptSet && !selectedScriptSet.has(scriptName)) continue;
           if (typeof command !== "string") continue;
           const scriptDependencies = selectedDependencies ? new Set(selectedDependencies) : manifestDependencyNames;
           for (const executable of unresolvedCommandDependencies(command, scriptDependencies))

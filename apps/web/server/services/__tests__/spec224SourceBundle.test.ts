@@ -431,6 +431,195 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.closureComplete).toBe(true);
   });
 
+  it("ignores dynamic-import and eval examples in comments but keeps executable dynamic imports fail-closed", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "comment-fixture", packageManager: "pnpm@10.4.1" }));
+    await writeFile(
+      join(root, "src/main.ts"),
+      [
+        "/** Example only: await import(moduleName); new Function('return import(name)'); */",
+        'export const load = () => import("./dep");',
+      ].join("\n"),
+    );
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "comment-aware-dynamic-import-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    });
+
+    expect(closure.files).toContain("src/dep.ts");
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.closureComplete).toBe(true);
+
+    await writeFile(join(root, "src/main.ts"), 'export const count = client.eval("return redis.call()", 1);\n');
+    const redisScript = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "redis-eval-is-not-code-eval-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    });
+    expect(redisScript.unresolvedImports).toEqual([]);
+
+    await writeFile(join(root, "src/main.ts"), "export const load = (moduleName: string) => import(moduleName);\n");
+    const unresolved = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "executable-dynamic-import-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    });
+    expect(unresolved.unresolvedImports).toContainEqual({
+      from: "src/main.ts",
+      specifier: "<dynamic-javascript-import>",
+    });
+    expect(unresolved.closureComplete).toBe(false);
+
+    await writeFile(join(root, "src/main.ts"), "eval(source);\n");
+    const evaluated = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "direct-eval-is-unresolved-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    });
+    expect(evaluated.unresolvedImports).toContainEqual({
+      from: "src/main.ts",
+      specifier: "<dynamic-code-evaluation>",
+    });
+    expect(evaluated.closureComplete).toBe(false);
+  });
+
+  it("does not require an install lifecycle hook omitted by the exact execution profile", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), "export const value = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "profile-hook-fixture",
+      scripts: { preinstall: "node scripts/check-node-version.mjs" },
+    }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "no-install-hooks-profile",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    });
+
+    expect(closure.unresolvedImports).toEqual([]);
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      from: "package.json",
+      specifier: "preinstall",
+      kind: "profile-input",
+      status: "profile-dependency-excluded",
+    }));
+    expect(closure.closureComplete).toBe(true);
+  });
+
+  it("follows TypeScript import-equals dependencies and rejects malformed source", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import dependency = require("./dep");\nexport { dependency };\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "import-equals-fixture", packageManager: "pnpm@10.4.1" }));
+    const baseInput = {
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "import-equals-and-parse-errors-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    };
+    const importEquals = await discoverSourceClosure(baseInput);
+    expect(importEquals.files).toContain("src/dep.ts");
+    expect(importEquals.closureComplete).toBe(true);
+
+    await writeFile(join(root, "src/main.ts"), 'import { dependency from "./dep";\n');
+    const malformed = await discoverSourceClosure(baseInput);
+    expect(malformed.unresolvedImports).toContainEqual({
+      from: "src/main.ts",
+      specifier: "<javascript-parse-error>",
+    });
+    expect(malformed.closureComplete).toBe(false);
+  });
+
+  it("fails closed on computed import-equals and resolves module.require calls", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "computed-require-fixture", packageManager: "pnpm@10.4.1" }));
+    const input = {
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "computed-require-closure-test",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": [] },
+    };
+
+    await writeFile(join(root, "src/main.ts"), 'import dependency = require("./dep");\nmodule.require("./dep");\nexport { dependency };\n');
+    const literalModuleRequire = await discoverSourceClosure(input);
+    expect(literalModuleRequire.files).toContain("src/dep.ts");
+    expect(literalModuleRequire.unresolvedImports).toEqual([]);
+
+    await writeFile(join(root, "src/main.ts"), 'declare const moduleName: string;\nimport dependency = require(moduleName);\nexport { dependency };\n');
+    const computedImportEquals = await discoverSourceClosure(input);
+    expect(computedImportEquals.unresolvedImports).toContainEqual({
+      from: "src/main.ts",
+      specifier: "<dynamic-javascript-import>",
+    });
+    expect(computedImportEquals.closureComplete).toBe(false);
+
+    await writeFile(join(root, "src/main.ts"), 'module.require(moduleName);\n');
+    const computedModuleRequire = await discoverSourceClosure(input);
+    expect(computedModuleRequire.unresolvedImports).toContainEqual({
+      from: "src/main.ts",
+      specifier: "<dynamic-javascript-import>",
+    });
+    expect(computedModuleRequire.closureComplete).toBe(false);
+  });
+
+  it("fails closed when a selected package script would auto-run an unapproved pre/post hook", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), "export const value = true;\n");
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "selected-hook-fixture",
+      scripts: {
+        pretest: "node scripts/pretest.mjs",
+        test: "vitest run",
+        posttest: "node scripts/posttest.mjs",
+      },
+    }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml", "package.json"],
+      profileId: "selected-test-hook-not-authorized",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: `${process.platform}-${process.arch}` },
+      selectedManifestDependencies: { "package.json": [] },
+      selectedManifestScripts: { "package.json": ["test"] },
+    });
+
+    expect(closure.unresolvedImports).toContainEqual({
+      from: "package.json",
+      specifier: "<lifecycle-script-not-authorized:pretest>",
+    });
+    expect(closure.unresolvedImports).toContainEqual({
+      from: "package.json",
+      specifier: "<lifecycle-script-not-authorized:posttest>",
+    });
+    expect(closure.closureComplete).toBe(false);
+  });
+
   it("rejects hook commands whose executable is not provided by the package manifest", async () => {
     const root = await sourceFixture();
     await writeFile(
