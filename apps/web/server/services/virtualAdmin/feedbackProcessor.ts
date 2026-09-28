@@ -1,7 +1,14 @@
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 import { getDb } from "../../db";
-import { feedbackTickets, virtualAdminIncidents, users } from "../../../drizzle/schema";
+import { feedbackTickets, users } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
+import {
+  extractAffectedUserIds,
+  extractAffectedTaskIds,
+  formatAffectedUsersForText,
+  resolveAffectedUsers,
+  type AffectedUser,
+} from "../feedbackAffectedUsers";
 
 interface ProcessedTicket {
   autoCategory: string | null;
@@ -12,7 +19,10 @@ interface ProcessedTicket {
 }
 
 // Keyword-based classification (no LLM needed for MVP)
-function classifyByKeywords(title: string, description?: string | null): { category: string; priority: string } {
+function classifyByKeywords(
+  title: string,
+  description?: string | null
+): { category: string; priority: string } {
   const text = `${title} ${description ?? ""}`.toLowerCase();
 
   if (/error|crash|bug|broken|fail|exception/.test(text)) {
@@ -31,7 +41,10 @@ function classifyByKeywords(title: string, description?: string | null): { categ
 }
 
 // Dedup: check for similar open tickets by title similarity
-async function findDuplicate(title: string, tenantId?: string | null): Promise<number | null> {
+async function findDuplicate(
+  title: string,
+  tenantId?: string | null
+): Promise<number | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -41,7 +54,11 @@ async function findDuplicate(title: string, tenantId?: string | null): Promise<n
     sql`LOWER(LEFT(${feedbackTickets.title}, 50)) = ${prefix}`,
     sql`${feedbackTickets.status} NOT IN ('resolved', 'closed', 'duplicate')`,
   ];
-  if (tenantId) conditions.push(eq(feedbackTickets.tenantId, tenantId));
+  conditions.push(
+    tenantId
+      ? eq(feedbackTickets.tenantId, tenantId)
+      : isNull(feedbackTickets.tenantId)
+  );
 
   const existing = await db
     .select({ id: feedbackTickets.id })
@@ -52,40 +69,122 @@ async function findDuplicate(title: string, tenantId?: string | null): Promise<n
   return existing[0]?.id ?? null;
 }
 
-// Correlate: find related open incidents by keyword match
-async function findRelatedIncident(title: string, tenantId?: string | null): Promise<number | null> {
-  const db = await getDb();
-  if (!db) return null;
-
-  const keywords = title.toLowerCase().split(/\s+/).filter((w) => w.length > 3).slice(0, 3);
-  if (keywords.length === 0) return null;
-
-  const conditions = [eq(virtualAdminIncidents.status, "open")];
-  if (tenantId) conditions.push(eq(virtualAdminIncidents.tenantId, tenantId));
-
-  const incidents = await db
-    .select({ id: virtualAdminIncidents.id, title: virtualAdminIncidents.title })
-    .from(virtualAdminIncidents)
-    .where(and(...conditions))
-    .orderBy(desc(virtualAdminIncidents.createdAt))
-    .limit(20);
-
-  for (const inc of incidents) {
-    const incTitle = inc.title.toLowerCase();
-    if (keywords.some((k) => incTitle.includes(k))) {
-      return inc.id;
-    }
+/**
+ * Return an incident reference only when the producer supplied one explicitly.
+ * Title keyword matching caused unrelated feedback (for example, any error
+ * containing "media") to deep-link to an arbitrary open incident.
+ */
+export function extractExplicitRelatedIncidentId(
+  contextJson: unknown
+): number | null {
+  if (
+    !contextJson ||
+    typeof contextJson !== "object" ||
+    Array.isArray(contextJson)
+  ) {
+    return null;
   }
+
+  const context = contextJson as Record<string, unknown>;
+  const extra =
+    context.extra &&
+    typeof context.extra === "object" &&
+    !Array.isArray(context.extra)
+      ? (context.extra as Record<string, unknown>)
+      : null;
+
+  for (const candidate of [
+    context.relatedIncidentId,
+    context.incidentId,
+    extra?.relatedIncidentId,
+    extra?.incidentId,
+  ]) {
+    const id =
+      typeof candidate === "number"
+        ? candidate
+        : typeof candidate === "string" && /^\d+$/.test(candidate.trim())
+          ? Number(candidate)
+          : NaN;
+    if (Number.isSafeInteger(id) && id > 0) return id;
+  }
+
   return null;
+}
+
+export function shouldNotifyAdminForTicket(
+  submittedByType: string | null | undefined,
+  duplicateOf: number | null
+): boolean {
+  return submittedByType === "human" || duplicateOf == null;
+}
+
+/**
+ * Admin notifications for auto-filed (system) tickets share a groupKey so
+ * repeats of the same error merge into one notification (occurrenceCount++)
+ * instead of flooding the admin inbox. Human feedback always notifies fresh.
+ * The 50-char title prefix mirrors findDuplicate's dedup window.
+ */
+export function adminNotificationGroupKey(ticket: {
+  submittedByType: string | null;
+  title: string;
+}): string | undefined {
+  if (ticket.submittedByType === "human") return undefined;
+  return `feedback-auto:${ticket.title.slice(0, 50).toLowerCase()}`;
+}
+
+export function buildAdminNotificationContent(params: {
+  ticketType: string;
+  autoSummary: string | null;
+  title: string;
+  ticketId: number;
+  reporter?: AffectedUser | null;
+  affectedUsers?: AffectedUser[];
+  affectedTaskIds?: string[];
+}): string {
+  const lines = [
+    `[${params.ticketType}] ${params.autoSummary ?? params.title}`,
+    `Ticket #${params.ticketId}`,
+  ];
+  if (params.reporter) {
+    lines.push(`Reporter: ${formatAffectedUsersForText([params.reporter])}`);
+  }
+  if (params.affectedUsers && params.affectedUsers.length > 0) {
+    lines.push(
+      `Affected user(s): ${formatAffectedUsersForText(params.affectedUsers)}`
+    );
+  }
+  if (params.affectedTaskIds && params.affectedTaskIds.length > 0) {
+    lines.push(`Affected task ID(s): ${params.affectedTaskIds.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
+export function resolveAdminNotificationPriority(
+  ticketPriority: string | null | undefined,
+  autoPriority: string | null | undefined
+): "low" | "normal" | "high" | "critical" {
+  if (ticketPriority === "critical") return "critical";
+  if (autoPriority === "high") return "high";
+  if (autoPriority === "low") return "low";
+  return "normal";
 }
 
 /**
  * Auto-process a newly submitted feedback ticket.
  * Updates the ticket with classification, dedup, and correlation results.
  */
-export async function processTicket(ticketId: number): Promise<ProcessedTicket> {
+export async function processTicket(
+  ticketId: number
+): Promise<ProcessedTicket> {
   const db = await getDb();
-  if (!db) return { autoCategory: null, autoPriority: null, autoSummary: null, duplicateOf: null, relatedIncidentId: null };
+  if (!db)
+    return {
+      autoCategory: null,
+      autoPriority: null,
+      autoSummary: null,
+      duplicateOf: null,
+      relatedIncidentId: null,
+    };
 
   const tickets = await db
     .select()
@@ -93,12 +192,24 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
     .where(eq(feedbackTickets.id, ticketId))
     .limit(1);
 
-  if (tickets.length === 0) return { autoCategory: null, autoPriority: null, autoSummary: null, duplicateOf: null, relatedIncidentId: null };
+  if (tickets.length === 0)
+    return {
+      autoCategory: null,
+      autoPriority: null,
+      autoSummary: null,
+      duplicateOf: null,
+      relatedIncidentId: null,
+    };
 
   const ticket = tickets[0];
-  const { category, priority } = classifyByKeywords(ticket.title, ticket.description);
+  const { category, priority } = classifyByKeywords(
+    ticket.title,
+    ticket.description
+  );
   const duplicateOf = await findDuplicate(ticket.title, ticket.tenantId);
-  const relatedIncidentId = await findRelatedIncident(ticket.title, ticket.tenantId);
+  const relatedIncidentId = extractExplicitRelatedIncidentId(
+    ticket.contextJson
+  );
 
   const result: ProcessedTicket = {
     autoCategory: category,
@@ -108,7 +219,12 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
     relatedIncidentId,
   };
 
-  // Update ticket with processing results
+  // Update ticket with processing results.
+  // Human-submitted feedback must stay in "new" status until a real admin
+  // acts on it — auto-flipping it to triaged/duplicate made the admin hub
+  // permanently show "0 new" and hid genuine user reports behind auto noise.
+  // Classification/dedup results are still recorded as advisory metadata.
+  const isHuman = ticket.submittedByType === "human";
   await db
     .update(feedbackTickets)
     .set({
@@ -117,46 +233,126 @@ export async function processTicket(ticketId: number): Promise<ProcessedTicket> 
       autoSummary: result.autoSummary,
       duplicateOf: result.duplicateOf,
       relatedIncidentId: result.relatedIncidentId,
-      status: result.duplicateOf ? "duplicate" : "triaged",
-      triagedAt: new Date(),
+      ...(isHuman
+        ? {}
+        : {
+            status: result.duplicateOf ? "duplicate" : "triaged",
+            triagedAt: new Date(),
+          }),
       updatedAt: new Date(),
     })
     .where(eq(feedbackTickets.id, ticketId));
 
+  // Repeated system diagnostics are already represented by the original
+  // ticket. Keep the duplicate record for auditability, but do not turn it
+  // into another high-priority modal notification.
+  if (!shouldNotifyAdminForTicket(ticket.submittedByType, result.duplicateOf)) {
+    return result;
+  }
+
   // Notify all admins about the new feedback ticket
   try {
+    const affectedUserIds = extractAffectedUserIds(ticket.contextJson);
+    const affectedTaskIds = extractAffectedTaskIds(ticket.contextJson);
+    const reporterId =
+      typeof ticket.submittedBy === "number" ? ticket.submittedBy : null;
+    let affectedUsers: AffectedUser[] = affectedUserIds.map(id => ({
+      id,
+      email: null,
+    }));
+    let reporter: AffectedUser | null =
+      reporterId != null ? { id: reporterId, email: null } : null;
+    const userIdsToResolve = [
+      ...affectedUserIds,
+      ...(reporterId != null ? [reporterId] : []),
+    ];
+    if (userIdsToResolve.length > 0) {
+      try {
+        const resolvedUsers = await resolveAffectedUsers(
+          db,
+          userIdsToResolve,
+          ticket.tenantId,
+          userIdsToResolve.length
+        );
+        affectedUsers = resolvedUsers.filter(user =>
+          affectedUserIds.includes(user.id)
+        );
+        reporter =
+          reporterId != null
+            ? (resolvedUsers.find(user => user.id === reporterId) ?? {
+                id: reporterId,
+                email: null,
+              })
+            : null;
+      } catch (err) {
+        console.error(
+          "[Feedback] Failed to resolve reporter/affected user emails:",
+          err
+        );
+      }
+    }
+
+    const isPublicContact =
+      ticket.contextJson &&
+      typeof ticket.contextJson === "object" &&
+      !Array.isArray(ticket.contextJson) &&
+      (ticket.contextJson as Record<string, unknown>).source ===
+        "public_contact";
+    const adminConditions = isPublicContact
+      ? [eq(users.role, "admin")]
+      : [sql`${users.role} IN ('admin', 'domain_admin')`];
+    if (ticket.tenantId) {
+      adminConditions.push(
+        sql`${users.currentTenantId}::text = ${ticket.tenantId}`
+      );
+    }
     const adminRows = await db
       .select({ id: users.id })
       .from(users)
-      .where(sql`${users.role} IN ('admin', 'domain_admin')`);
+      .where(and(...adminConditions));
 
-    const priorityMap: Record<string, "low" | "normal" | "high" | "critical"> = {
-      high: "high",
-      normal: "normal",
-      low: "low",
-    };
+    const notificationPriority = resolveAdminNotificationPriority(
+      ticket.priority,
+      result.autoPriority
+    );
 
     for (const admin of adminRows) {
       if (admin.id === ticket.submittedBy) continue;
-      const hasIncident = result.relatedIncidentId != null;
+      const reporterPrefix = reporter
+        ? `[${reporter.email ?? `user #${reporter.id}`}] `
+        : "";
+      const displayTitle =
+        reporterPrefix && !ticket.title.startsWith(reporterPrefix)
+          ? `${reporterPrefix}${ticket.title}`
+          : ticket.title;
       await createNotification({
         db,
         userId: admin.id,
+        groupKey: adminNotificationGroupKey(ticket),
         type: "alert",
-        title: `New Feedback: ${ticket.title.slice(0, 80)}`,
-        content: `[${ticket.ticketType}] ${result.autoSummary ?? ticket.title}\nTicket #${ticketId}`,
-        priority: priorityMap[result.autoPriority ?? "normal"] ?? "normal",
-        relatedResourceType: hasIncident ? "incident" : "feedback",
+        title: `New Feedback: ${displayTitle.slice(0, 80)}`,
+        content: buildAdminNotificationContent({
+          ticketType: ticket.ticketType,
+          autoSummary: result.autoSummary,
+          title: ticket.title,
+          ticketId,
+          reporter,
+          affectedUsers,
+          affectedTaskIds,
+        }),
+        priority: notificationPriority,
+        relatedResourceType: "feedback",
         relatedResourceId: String(ticketId),
-        actionUrl: hasIncident
-          ? `/admin/system-guardian?incident=${result.relatedIncidentId}`
-          : `/admin/feedback-hub?ticketId=${ticketId}`,
+        actionUrl: `/admin/feedback-hub?ticketId=${ticketId}`,
         actionLabel: "View Feedback",
         metadata: {
           source: "guardian.feedbackProcessor",
           eventId: String(ticketId),
           relatedItems: {
-            ruleId: result.relatedIncidentId != null ? String(result.relatedIncidentId) : "",
+            incidentId:
+              result.relatedIncidentId != null
+                ? String(result.relatedIncidentId)
+                : "",
             sensorId: "feedbackProcessor",
             actionTaken: result.duplicateOf ? "duplicate_detected" : "triaged",
           },

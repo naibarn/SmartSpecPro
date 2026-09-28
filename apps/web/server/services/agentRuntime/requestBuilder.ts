@@ -15,6 +15,7 @@ import {
   type RuntimeModelConfig,
   type AgentExecutionEnvelope,
 } from "../../../shared/agentRuntime/types";
+import type { OrchestraAssuranceRequest } from "../../../shared/agentRuntime/orchestraSchemas";
 import type {
   ContextMessage,
   ContextPack,
@@ -84,6 +85,7 @@ export interface BuildAgentRuntimeRequestInput {
     "surface" | "originSurface" | "entryPoint"
   >;
   runtimeSelectionSnapshot?: Record<string, unknown> | null;
+  assurance?: OrchestraAssuranceRequest | null;
 }
 
 const UNSAFE_PLAN_CONTEXT_KEY_PATTERN =
@@ -310,6 +312,7 @@ export async function buildAgentRuntimeRequest(
     gatewayInvocationMetadata: input.gatewayInvocationMetadata ?? null,
     productionAgentsSdkCapabilityManifest:
       input.productionAgentsSdkCapabilityManifest ?? null,
+    assurance: input.assurance ?? null,
   });
 
   return runtimeRequest;

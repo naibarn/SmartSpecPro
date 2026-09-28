@@ -1,3 +1,4 @@
+/** @vitest-environment jsdom */
 /**
  * Tests for section-11: Display Language dropdown in Settings preferences tab.
  * Focused unit tests for the display language controls without mounting the full Settings page.
@@ -20,6 +21,17 @@ vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string) => key,
     i18n: { language: "en", changeLanguage: mockChangeLanguage, exists: vi.fn(() => true) },
+  }),
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) => key === "displayLanguage.title"
+      ? "Display Language"
+      : key === "displayLanguage.description"
+        ? "Choose the language used across your workspace"
+        : key,
+    i18n: { language: "en", changeLanguage: mockChangeLanguage },
   }),
 }));
 

@@ -19,59 +19,163 @@
   ],
   "properties": {
     "canonical_facts": {
+      "description": "Tightened (planning/vd-series-memory-and-lineage/plan.md Stage 1.3, added 2026-07-17): every array in this file used to be `items: {type: object, additionalProperties: true}` with NO required inner shape at all, so a planner could emit `[{}]` per array and still pass — a root cause of this stage's memory being worthless in practice. `statement` is the one field the pipeline actually reads (`plannerPayload.canonical_facts[].statement`, `verticalDramaEpisodePipeline.ts`); `fact_id` stays optional (not read downstream) so an older/partial planner response is not retroactively invalidated by this schema tightening — the runtime validator (`seriesMemoryPlannerOutputSchema`, `verticalDramaSeriesMemoryPlanning.ts`) is UNCHANGED and stays fully permissive (`z.object({}).passthrough()`), so this tightening only sharpens what the LLM is told to produce, never rejects anything at runtime.",
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "statement"
+        ],
+        "properties": {
+          "fact_id": {
+            "type": "string"
+          },
+          "statement": {
+            "type": "string"
+          }
+        }
       }
     },
     "prior_episode_summaries": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "episode_number",
+          "summary"
+        ],
+        "properties": {
+          "episode_number": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
       }
     },
     "unresolved_hooks": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "hook_id",
+          "description"
+        ],
+        "properties": {
+          "hook_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
       }
     },
     "resolved_hooks": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "hook_id",
+          "description"
+        ],
+        "properties": {
+          "hook_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
       }
     },
     "relationship_state_changes": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "pair",
+          "change"
+        ],
+        "properties": {
+          "pair": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "change": {
+            "type": "string"
+          }
+        }
       }
     },
     "character_emotional_state": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "character_id",
+          "state"
+        ],
+        "properties": {
+          "character_id": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
       }
     },
     "product_tie_in_history": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "product_name"
+        ],
+        "properties": {
+          "product_name": {
+            "type": "string"
+          },
+          "usage": {
+            "type": "string"
+          }
+        }
       }
     },
     "continuity_risks": {
       "type": "array",
       "items": {
         "type": "object",
-        "additionalProperties": true
+        "additionalProperties": true,
+        "required": [
+          "risk"
+        ],
+        "properties": {
+          "risk": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        }
       }
     },
     "episode_recap": {

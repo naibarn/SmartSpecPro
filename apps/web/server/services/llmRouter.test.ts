@@ -49,8 +49,12 @@ vi.mock("./crypto", () => ({
   decrypt: vi.fn().mockReturnValue("decrypted-api-key"),
 }));
 
-import { resolveProviders, executeWithFallback } from "./llmRouter";
+import { resolveProviders, executeWithFallback, makeWorkerLlmIdempotencyKey } from "./llmRouter";
 import { auditLogger } from "./auditLogger";
+import {
+  resolveVerticalDramaLlmExtraBodyParams,
+  VERTICAL_DRAMA_REASONING_POLICY_KEY,
+} from "./verticalDramaLlmPolicy";
 
 const mockAuditLog = vi.mocked(auditLogger.log);
 
@@ -66,6 +70,25 @@ beforeEach(() => {
 });
 
 // --- Helpers ---
+
+describe("Worker Local LLM idempotency", () => {
+  it("changes when a later message is added to the same conversation", () => {
+    const base = {
+      conversationId: 42,
+      model: "wllm_12345678",
+      stream: false,
+      messages: [{ role: "user", content: "first" }],
+    } as const;
+    const first = makeWorkerLlmIdempotencyKey(base);
+    const second = makeWorkerLlmIdempotencyKey({
+      ...base,
+      messages: [...base.messages, { role: "assistant", content: "answer" }],
+    });
+    expect(first).toMatch(/^conversation:42:/);
+    expect(second).toMatch(/^conversation:42:/);
+    expect(second).not.toBe(first);
+  });
+});
 
 function mockProviderRows(rows: any[]) {
   // resolveProviders does: db.select().from().innerJoin().where()
@@ -150,6 +173,28 @@ describe("resolveProviders", () => {
     expect(result[0].isFree).toBe(true);
     expect(result[1].providerId).toBe(2);
     expect(result[2].providerId).toBe(3);
+  });
+
+  it("preserves the provider function-tool capability from the model mapping", async () => {
+    const provider = makeCandidate({ supportsFunctionTools: false });
+    let callCount = 0;
+    mockDbSelect.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          from: vi.fn().mockReturnValue({
+            innerJoin: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue([provider]),
+            }),
+          }),
+        };
+      }
+      return { from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) };
+    });
+
+    const result = await resolveProviders("gpt-4o");
+
+    expect(result[0]?.supportsFunctionTools).toBe(false);
   });
 
   it("excludes 'down' providers with active cooldown", async () => {
@@ -334,6 +379,266 @@ describe("executeWithFallback", () => {
       };
     });
   }
+
+  it("does not dispatch when a Spec 231 native model or API surface pin has drifted", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      providerModelId: "native-model-v2",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      disableProviderFallbacks: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 409 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("requires exact deployment identity pins to disable provider fallback", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      providerModelId: "native-model-v1",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 400 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a replacement model_provider_map row even when its model and surface match", async () => {
+    const provider = makeCandidate({
+      providerId: 7,
+      modelMappingId: 43,
+      providerModelId: "native-model-v1",
+      apiStyle: "responses",
+    });
+    setupProviderResolution([provider]);
+
+    const result = await executeWithFallback({
+      model: "logical-model-v1",
+      messages: [{ role: "user", content: "hello" }],
+      stream: false,
+      userId: 1,
+      preferredProvider: 7,
+      strictProviderPin: true,
+      disableProviderFallbacks: true,
+      expectedProviderModelId: "native-model-v1",
+      expectedApiStyle: "responses",
+      expectedModelMappingId: 42,
+    });
+
+    expect(result).toMatchObject({ type: "error", statusCode: 409 });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("downgrades Google Gemini JSON Schema to JSON mode through OpenRouter", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "google/gemini-3.7-flash",
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "google/gemini-3.7-flash",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      extraBodyParams: {
+        response_format: {
+          type: "json_schema",
+          json_schema: { name: "demo", schema: { type: "object" } },
+        },
+      },
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body.response_format).toEqual({ type: "json_object" });
+    expect(body.response_format.json_schema).toBeUndefined();
+  });
+
+  it("sends the resolved Vertical Drama thinking policy to a capable OpenRouter route", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "openai/gpt-5.4-mini",
+      supportsThinking: true,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const extraBodyParams = resolveVerticalDramaLlmExtraBodyParams({
+      settings: { llm: { qualityProfile: "high" } },
+      taskClass: "story_architecture",
+    });
+    const result = await executeWithFallback({
+      model: "openai/gpt-5.4-mini",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      maxTokens: 3_200,
+      extraBodyParams,
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body.reasoning).toEqual({ max_tokens: 3_040, exclude: true });
+    expect(body.max_tokens).toBe(6_240);
+    expect(body).not.toHaveProperty(VERTICAL_DRAMA_REASONING_POLICY_KEY);
+  });
+
+  it("reports an OpenRouter reasoning-only response with an actionable diagnostic", async () => {
+    const provider = makeCandidate({
+      providerName: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      providerModelId: "openai/gpt-5.6-luna",
+      supportsThinking: true,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: null, reasoning: "internal reasoning only" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 3_000 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "openai/gpt-5.6-luna",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      maxTokens: 3_200,
+      enableThinking: true,
+    });
+
+    expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("reasoning but no final assistant text");
+    }
+  });
+
+  it("strips the Vertical Drama thinking policy on an unsupported provider route", async () => {
+    const provider = makeCandidate({
+      providerName: "wavespeed_ai",
+      baseUrl: "https://api.wavespeed.ai/api/v3",
+      providerModelId: "some-model",
+      supportsThinking: false,
+    });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: "{\"ok\":true}" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "some-model",
+      messages: [{ role: "user", content: "Return JSON" }],
+      stream: false,
+      userId: 1,
+      extraBodyParams: resolveVerticalDramaLlmExtraBodyParams({
+        settings: { llm: { qualityProfile: "maximum" } },
+        taskClass: "story_architecture",
+      }),
+    });
+
+    expect(result.type).toBe("success");
+    const [, fetchInit] = mockFetch.mock.calls[0] ?? [];
+    const body = JSON.parse(String((fetchInit as any)?.body ?? "{}"));
+    expect(body).not.toHaveProperty("reasoning");
+    expect(body).not.toHaveProperty(VERTICAL_DRAMA_REASONING_POLICY_KEY);
+  });
+
+  it("treats Google INVALID_ARGUMENT as provider-fallback eligible", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "openrouter", providerModelId: "google/gemini-3.7-flash" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "openrouter", providerModelId: "google/gemini-3.1-pro" });
+    setupProviderResolution([provider1, provider2]);
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => '{"error":{"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}',
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: "OK" } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }),
+      });
+
+    const result = await executeWithFallback({
+      model: "google/gemini-3.7-flash",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    if (result.type === "success") expect(result.providerId).toBe(2);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns an actionable model-specific error when all mapped providers are unavailable", async () => {
+    setupProviderResolution([]);
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result).toEqual({
+      type: "error",
+      error: expect.stringContaining('No healthy provider is available for model "gpt-4o"'),
+      statusCode: 503,
+    });
+    expect((result as any).error).toContain("try again or select another model");
+  });
 
   it("successful primary provider returns {type: 'success'}", async () => {
     const provider = makeCandidate({ providerId: 1 });
@@ -522,10 +827,8 @@ describe("executeWithFallback", () => {
       stream: false,
       userId: 1,
       maxTokens: 6000,
+      disableProviderFallbacks: true,
       extraBodyParams: {
-        provider: {
-          allow_fallbacks: false,
-        },
         response_format: {
           type: "json_schema",
           json_schema: {
@@ -558,7 +861,7 @@ describe("executeWithFallback", () => {
       max_tokens: 6000,
       provider: expect.objectContaining({
         allow_fallbacks: false,
-        require_parameters: true,
+        require_parameters: false,
       }),
       response_format: expect.objectContaining({
         type: "json_schema",
@@ -743,9 +1046,134 @@ describe("executeWithFallback", () => {
       eventType: "llm_response",
       statusCode: 400,
       responsePayload: expect.objectContaining({
-        bodyPreview: "Bad request",
+        bodyLength: "Bad request".length,
       }),
     }));
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain("Bad request");
+  });
+
+  it("redacts OpenRouter key URLs from returned and audited provider errors", async () => {
+    const keyId = "19b1f7803431216a3c43f58823f945af1d3b55285a86711b13ab0b2bf09";
+    const provider = makeCandidate({ providerName: "openrouter" });
+    setupProviderResolution([provider]);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 402,
+      text: async () => JSON.stringify({
+        error: {
+          message: `This request requires more credits. To increase, visit https://openrouter.ai/workspaces/default/keys/${keyId}`,
+        },
+      }),
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("error");
+    if (result.type === "error") {
+      expect(result.error).toContain("[openrouter_key_url_redacted]");
+      expect(result.error).not.toContain(keyId);
+    }
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain(keyId);
+  });
+
+  it("records cross-model fallback provenance in request and response audit events", async () => {
+    setupProviderResolution([makeCandidate({ providerId: 1, providerModelId: "recommended-fallback" })]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({
+        choices: [{ message: { content: "Recovered" } }],
+        usage: { prompt_tokens: 10, completion_tokens: 5 },
+      }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "recommended-fallback",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
+      messages: [{ role: "user", content: "Hi" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_request",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
+    }));
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_response",
+      modelFallbackFrom: "primary-model",
+      modelFallbackReason: "transient_retries_exhausted",
+    }));
+  });
+
+  it("keeps private prompt text out of request audit events while retaining safe metadata", async () => {
+    const prompt = "private-prompt-audit-regression-7b3f71";
+    const responseText = "private-response-audit-regression-cac2d1";
+    setupProviderResolution([makeCandidate()]);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        choices: [{ message: { content: responseText } }],
+        usage: { prompt_tokens: 3, completion_tokens: 2 },
+      }),
+      text: async () => JSON.stringify({
+        choices: [{ message: { content: responseText } }],
+        usage: { prompt_tokens: 3, completion_tokens: 2 },
+      }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+      userId: 7,
+    });
+
+    expect(result.type, result.type === "error" ? result.error : undefined).toBe("success");
+    const requestAudit = mockAuditLog.mock.calls
+      .map(([event]) => event)
+      .find((event) => event.eventType === "llm_request");
+    expect(requestAudit).toBeDefined();
+    const auditEvents = mockAuditLog.mock.calls.map(([event]) => event);
+    expect(JSON.stringify(auditEvents)).not.toContain(prompt);
+    expect(JSON.stringify(auditEvents)).not.toContain(responseText);
+    expect(requestAudit?.requestPayload).toMatchObject({
+      messages: [{ role: "user", contentLength: prompt.length }],
+    });
+    const responseAudit = auditEvents.find((event) => event.eventType === "llm_response");
+    expect(responseAudit?.responsePayload).toMatchObject({ assistantContentLength: responseText.length });
+  });
+
+  it("does not persist provider error bodies in audit events", async () => {
+    const privateEcho = "provider-error-private-payload-ec51f4";
+    setupProviderResolution([makeCandidate()]);
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ error: { code: privateEcho, message: privateEcho } }),
+      headers: { get: () => "application/json" },
+    });
+
+    const result = await executeWithFallback({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: "request text" }],
+      stream: false,
+      userId: 7,
+    });
+
+    expect(result.type).toBe("error");
+    expect(JSON.stringify(mockAuditLog.mock.calls)).not.toContain(privateEcho);
   });
 
   it("400 invalid-model responses can fallback to the next provider", async () => {
@@ -775,6 +1203,47 @@ describe("executeWithFallback", () => {
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, "http_400");
     expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+  });
+
+  it("vision reference download 404s fallback without poisoning provider health", async () => {
+    const provider1 = makeCandidate({ providerId: 1, providerName: "OpenRouter-A" });
+    const provider2 = makeCandidate({ providerId: 2, providerName: "OpenRouter-B" });
+    setupProviderResolution([provider1, provider2]);
+
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({
+          error: {
+            message: "Vision reference image unavailable: upstream status code: 404",
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Recovered with vision" } }],
+          usage: { prompt_tokens: 12, completion_tokens: 6 },
+        }),
+      });
+
+    const result = await executeWithFallback({
+      model: "gpt-5.6-luna",
+      messages: [{ role: "user", content: "Inspect the attached frame" }],
+      stream: false,
+      userId: 1,
+    });
+
+    expect(result.type).toBe("success");
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockHealthRecordFailure).not.toHaveBeenCalledWith(1, expect.any(String));
+    expect(mockHealthRecordSuccess).toHaveBeenCalledWith(2);
+    expect(mockAuditLog).toHaveBeenCalledWith(expect.objectContaining({
+      eventType: "llm_response",
+      errorType: "reference_unavailable",
+    }));
   });
 
   it("max fallback attempts respected (default 3)", async () => {
@@ -844,6 +1313,77 @@ describe("executeWithFallback", () => {
       expect(result.error).toContain("OpenRouter-B");
       expect(result.error).toContain("HTTP 500");
     }
+  });
+
+  // Timeout-hole fix (2026-07-18) — see this file's doc comment at the fetch
+  // call site (audit-2026-07-18.jsonl root cause: moonshotai/kimi-k3
+  // capacity-limited, totalMs 275904 per hung attempt, headers arrived but
+  // the body never did). Previously the AbortController was cleared as soon
+  // as headers arrived, so a stalled `response.text()` read had NO deadline
+  // at all.
+  describe("body-read timeout (two-phase AbortController)", () => {
+    it("aborts a stalled body read at the body-timeout deadline and classifies it as a retryable network_error", async () => {
+      const provider = makeCandidate({ providerId: 1 });
+      setupProviderResolution([provider]);
+
+      mockFetch.mockImplementation((_url: string, init: any) => {
+        const signal: AbortSignal = init.signal;
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => "application/json" },
+          // Headers arrive immediately (this promise resolves), but the BODY
+          // never does until the (re-armed) AbortController fires.
+          text: () =>
+            new Promise((_resolve, reject) => {
+              signal.addEventListener("abort", () => {
+                reject(new DOMException("This operation was aborted.", "AbortError"));
+              });
+            }),
+        });
+      });
+
+      const result = await executeWithFallback({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+        userId: 1,
+        timeoutMs: 30, // tight deadline so the test runs fast
+        disableProviderFallbacks: true,
+      });
+
+      expect(result.type).toBe("error");
+      if (result.type === "error") {
+        expect(result.error.toLowerCase()).toContain("aborted");
+      }
+      // Classified via the outer catch as "network_error" — the same class
+      // `verticalDramaStoryBible.ts`'s `classifyVerticalDramaLlmError`
+      // already treats as "transient" (bounded-retry-eligible).
+      expect(mockHealthRecordFailure).toHaveBeenCalledWith(1, "network_error");
+    });
+
+    it("does not abort a normal-latency call with no timeoutMs override (byte-identical default behavior)", async () => {
+      const provider = makeCandidate({ providerId: 1 });
+      setupProviderResolution([provider]);
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          choices: [{ message: { content: "Hello" } }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+        }),
+      });
+
+      const result = await executeWithFallback({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: "Hi" }],
+        stream: false,
+        userId: 1,
+      });
+
+      expect(result.type).toBe("success");
+    });
   });
 
   it("recordSuccess called on success, recordFailure on failure", async () => {

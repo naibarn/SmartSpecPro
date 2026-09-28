@@ -4,6 +4,7 @@ import {
   getSensors,
   collectSafe,
   loadSensorConfig,
+  registerAllSensors,
 } from "../sensorRegistry";
 import type { Sensor, SensorReading } from "../types";
 
@@ -98,5 +99,11 @@ describe("SensorRegistry", () => {
   it("uses default config when no DB override exists", async () => {
     const config = await loadSensorConfig("tenant-1", "test_sensor");
     expect(config).toBeNull(); // DB returns null since getDb is mocked to return null
+  });
+
+  it("registers video_intelligence_health among the built-in sensors", async () => {
+    await registerAllSensors();
+    const all = getSensors();
+    expect(all.find((s) => s.id === "video_intelligence_health")).toBeDefined();
   });
 });

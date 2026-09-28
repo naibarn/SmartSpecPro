@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/minimax-h3/reference-plan.schema.json",
+  "title": "MiniMax H3 Reference Plan",
+  "type": "object",
+  "required": [
+    "mode",
+    "model",
+    "hardFrames",
+    "rawReferences",
+    "referenceLabels",
+    "contentOrder",
+    "conflictDetected",
+    "conflictResolution",
+    "derivedReferences",
+    "warnings",
+    "nonProviderReferences"
+  ],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": [
+        "t2va",
+        "i2va",
+        "l2va",
+        "fl2va",
+        "ref2va"
+      ]
+    },
+    "model": {
+      "type": "string",
+      "enum": [
+        "MiniMax-H3",
+        "MiniMax-H3-Max"
+      ]
+    },
+    "hardFrames": {
+      "type": "object",
+      "required": [
+        "firstFrameAssetId",
+        "lastFrameAssetId"
+      ],
+      "properties": {
+        "firstFrameAssetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "lastFrameAssetId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "rawReferences": {
+      "type": "object",
+      "required": [
+        "images",
+        "videos",
+        "audio"
+      ],
+      "properties": {
+        "images": {
+          "type": "array",
+          "maxItems": 9,
+          "items": {
+            "type": "string"
+          }
+        },
+        "videos": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "audio": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "referenceLabels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "assetId",
+          "kind",
+          "semanticRoles"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "Picture",
+              "Video",
+              "Audio",
+              "Subject"
+            ]
+          },
+          "semanticRoles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "entityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "contentOrder": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "providerType",
+          "providerRole",
+          "ordinal"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string",
+            "enum": [
+              "image_url",
+              "video_url",
+              "audio_url"
+            ]
+          },
+          "providerRole": {
+            "type": "string",
+            "enum": [
+              "first_frame",
+              "last_frame",
+              "reference_image",
+              "reference_video",
+              "reference_audio"
+            ]
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "conflictDetected": {
+      "type": "boolean"
+    },
+    "conflictResolution": {
+      "type": "string",
+      "enum": [
+        "none",
+        "prefer_hard_start_end",
+        "prefer_raw_multimodal_refs",
+        "soft_keyframe_full_reference",
+        "derive_references_to_text",
+        "prebake_keyframe_then_hard_frame",
+        "split_generation",
+        "blocked"
+      ]
+    },
+    "derivedReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sourceAssetId",
+          "derivation",
+          "resultRole"
+        ],
+        "properties": {
+          "sourceAssetId": {
+            "type": "string"
+          },
+          "derivation": {
+            "type": "string",
+            "enum": [
+              "visual_description",
+              "motion_description",
+              "camera_description",
+              "audio_description",
+              "voice_profile",
+              "extract_audio",
+              "prebaked_keyframe"
+            ]
+          },
+          "resultRole": {
+            "type": "string"
+          },
+          "resultAssetId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "nonProviderReferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "assetId",
+          "reason",
+          "preservedAs"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "preservedAs": {
+            "type": "string",
+            "enum": [
+              "analysis_only",
+              "post_only",
+              "derived_guidance",
+              "prebake_input",
+              "separate_stage"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

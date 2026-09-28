@@ -14,7 +14,7 @@ Security:
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_no_ssrf
+from app.core.media_job_validators import validate_provider_reference_url
 
 logger = structlog.get_logger()
 
@@ -208,7 +208,7 @@ class BytePlusModelArkProvider:
         """
         # SSRF validation must be first — before building content or any HTTP call.
         if reference_image_url is not None:
-            validate_uri_no_ssrf(reference_image_url)
+            validate_provider_reference_url(reference_image_url)
 
         inline_params = self._build_inline_params(resolution, duration, camerafixed, watermark)
         content: list[dict] = [

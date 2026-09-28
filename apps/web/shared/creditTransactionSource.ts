@@ -44,6 +44,7 @@ export type CreditTransactionOriginSurface =
 export interface CreditTransactionSourceInput {
   sourceType?: unknown;
   description?: unknown;
+  skillName?: unknown;
   skillSlug?: unknown;
   metadata?: Record<string, unknown> | null | undefined;
 }
@@ -104,6 +105,54 @@ export function resolveCreditTransactionOriginSurface(
     ?? normalizeCreditTransactionOriginSurface(metadata.launchSurface)
     ?? null
   );
+}
+
+/**
+ * Prefer the registry/settlement display name over a technical skill slug.
+ * Legacy rows may only have the slug, so keep that as a safe final fallback.
+ */
+export function resolveCreditTransactionSkillLabel(
+  transaction: CreditTransactionSourceInput,
+): string | null {
+  const metadata = asRecord(transaction.metadata);
+  const transactionName = typeof transaction.skillName === "string" ? transaction.skillName.trim() : "";
+  if (transactionName) return transactionName;
+
+  const metadataName = [metadata?.skillName, metadata?.skillDisplayName]
+    .find((value): value is string => typeof value === "string" && value.trim().length > 0);
+  if (metadataName) return metadataName.trim();
+
+  const metadataSkill = typeof metadata?.skill === "string" ? metadata.skill.trim() : "";
+  if (metadataSkill) return metadataSkill;
+
+  const skillSlug = typeof transaction.skillSlug === "string" ? transaction.skillSlug.trim() : "";
+  return skillSlug || null;
+}
+
+/**
+ * Keep skill identity as the primary credit-history label. The raw description
+ * remains available as a secondary line so model/cost context is not lost.
+ */
+export function resolveCreditTransactionDescription(
+  transaction: CreditTransactionSourceInput,
+): { primary: string; secondary: string | null } {
+  const description = typeof transaction.description === "string"
+    ? transaction.description.trim()
+    : "";
+  const skillLabel = resolveCreditTransactionSkillLabel(transaction);
+  const isSkillTransaction = transaction.sourceType === "skill"
+    || transaction.sourceType === "creator_revenue"
+    || Boolean(skillLabel && transaction.skillSlug);
+  if (isSkillTransaction && skillLabel) {
+    return {
+      primary: skillLabel,
+      secondary: description && description !== skillLabel ? description : null,
+    };
+  }
+  return {
+    primary: description || skillLabel || "—",
+    secondary: null,
+  };
 }
 
 export function inferCreditTransactionSourceType(

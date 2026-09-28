@@ -1,5 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { buildMediaStudioCommonPayload } from "./mediaStudioPayload";
+import {
+  buildMediaStudioCommonPayload,
+  resolveMediaStudioGenerationAspectRatio,
+  syncMediaStudioAspectRatioAliases,
+} from "./mediaStudioPayload";
+
+describe("Media Studio aspect-ratio synchronization", () => {
+  it("keeps the visible studio ratio authoritative over a stale hidden skill default", () => {
+    expect(resolveMediaStudioGenerationAspectRatio({
+      studioAspectRatio: "9:16",
+    })).toBe("9:16");
+  });
+
+  it("allows the explicit specialized resolver result for Veo storyboard generation", () => {
+    expect(resolveMediaStudioGenerationAspectRatio({
+      studioAspectRatio: "auto",
+      specializedAspectRatio: "16:9",
+    })).toBe("16:9");
+  });
+
+  it("updates existing hidden aliases without manufacturing absent fields", () => {
+    expect(syncMediaStudioAspectRatioAliases({
+      aspectRatio: "16:9",
+      aspect_ratio: "16:9",
+      request: "portrait cover",
+    }, "9:16")).toEqual({
+      aspectRatio: "9:16",
+      aspect_ratio: "9:16",
+      request: "portrait cover",
+    });
+    expect(syncMediaStudioAspectRatioAliases({ request: "portrait cover" }, "9:16"))
+      .toEqual({ request: "portrait cover" });
+  });
+});
 
 describe("buildMediaStudioCommonPayload", () => {
   it("keeps referenceImageUrls even when extra params include model-specific image fields", () => {
@@ -62,5 +95,36 @@ describe("buildMediaStudioCommonPayload", () => {
     });
 
     expect(payload.originSurface).toBe("media_studio");
+  });
+
+  it("preserves the native transparent-background provider input", () => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: "A product cutout",
+      model: "gpt-image-2-text-to-image",
+      aspectRatio: "1:1",
+      referenceImages: [],
+      extraParams: { background: "transparent" },
+    });
+
+    expect(payload.extraParams).toEqual({ background: "transparent" });
+  });
+
+  it("carries the explicit digital-watermark choice to every async export payload", () => {
+    const payload = buildMediaStudioCommonPayload({
+      prompt: "A protected editorial image",
+      aspectRatio: "1:1",
+      referenceImages: [],
+      protectionIntent: {
+        choice: "on",
+        choiceSource: "per_export",
+        requireBeforePublish: true,
+      },
+    });
+
+    expect(payload.protectionIntent).toEqual({
+      choice: "on",
+      choiceSource: "per_export",
+      requireBeforePublish: true,
+    });
   });
 });

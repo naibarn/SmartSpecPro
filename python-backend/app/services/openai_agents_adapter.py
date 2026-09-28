@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 from collections import Counter
 from collections.abc import Awaitable, Iterable, Sequence
@@ -28,6 +29,12 @@ from app.services.openai_agents_gateway_model import (
 )
 from app.services.openai_agents_trace import build_trace_config, normalize_stream_event
 from app.services.openai_agents_version import ADAPTER_VERSION, get_effective_openai_agents_version
+from app.services.openai_agents_vertical_drama_outputs import (
+    build_vertical_drama_output_guardrails,
+    resolve_vertical_drama_output_type,
+    supported_vertical_drama_output_schemas,
+    validate_vertical_drama_output_identity,
+)
 
 SideEffectClass = str
 
@@ -592,6 +599,7 @@ class OpenAIAgentsAdapter:
             "supportedRuntimeContractVersions": runtime_versions,
             "supportedTraceSchemaVersions": trace_versions,
             "supportedCheckpointSchemaVersions": checkpoint_versions,
+            "supportedAssuranceOutputSchemas": supported_vertical_drama_output_schemas(),
         }
 
     async def run(
@@ -877,13 +885,19 @@ class OpenAIAgentsAdapter:
             else (request.stepAssignment.ownerDisplayLabel if request.stepAssignment else None)
             or "SmartSpecPro Runtime Agent"
         )
-        agent = sdk["Agent"](
-            name=agent_name,
-            instructions=request.objective,
-            model=sdk_model,
-            tools=[tool.tool for tool in prepared_tools],
-            handoffs=[handoff.handoff for handoff in prepared_handoffs],
-        )
+        agent_kwargs: dict[str, Any] = {
+            "name": agent_name,
+            "instructions": request.objective,
+            "model": sdk_model,
+            "tools": [tool.tool for tool in prepared_tools],
+            "handoffs": [handoff.handoff for handoff in prepared_handoffs],
+        }
+        if request.assurance is not None:
+            output_type = resolve_vertical_drama_output_type(request.assurance)
+            if output_type is not None:
+                agent_kwargs["output_type"] = output_type
+                agent_kwargs["output_guardrails"] = build_vertical_drama_output_guardrails(request.assurance)
+        agent = sdk["Agent"](**agent_kwargs)
         sdk_tracing_enabled = trace_config.sdk_tracing_enabled and request.surface != "media_production"
         include_sensitive_trace_data = False if request.surface == "media_production" else trace_config.include_sensitive_data
         run_config = sdk["RunConfig"](
@@ -920,12 +934,16 @@ class OpenAIAgentsAdapter:
             prepared_tools,
             prepared_handoffs,
         )
-        return await sdk_runtime["Runner"].run(
-            agent,
-            self._build_input_payload(request),
-            context=self._build_context(request),
-            run_config=sdk_runtime["RunConfig"],
-        )
+        run_kwargs: dict[str, Any] = {
+            "context": self._build_context(request),
+            "run_config": sdk_runtime["RunConfig"],
+        }
+        if request.assurance is not None:
+            run_kwargs["max_turns"] = request.assurance.budget.maxTurns
+        run_call = sdk_runtime["Runner"].run(agent, self._build_input_payload(request), **run_kwargs)
+        if request.assurance is not None:
+            return await asyncio.wait_for(run_call, timeout=request.assurance.budget.maxWallClockSeconds)
+        return await run_call
 
     async def _run_streamed_with_sdk(
         self,
@@ -941,12 +959,13 @@ class OpenAIAgentsAdapter:
             prepared_tools,
             prepared_handoffs,
         )
-        return sdk_runtime["Runner"].run_streamed(
-            agent,
-            self._build_input_payload(request),
-            context=self._build_context(request),
-            run_config=sdk_runtime["RunConfig"],
-        )
+        run_kwargs: dict[str, Any] = {
+            "context": self._build_context(request),
+            "run_config": sdk_runtime["RunConfig"],
+        }
+        if request.assurance is not None:
+            run_kwargs["max_turns"] = request.assurance.budget.maxTurns
+        return sdk_runtime["Runner"].run_streamed(agent, self._build_input_payload(request), **run_kwargs)
 
     async def _resume_with_sdk(
         self,
@@ -976,11 +995,13 @@ class OpenAIAgentsAdapter:
             request.checkpointPayload,
             context_override=self._build_context(request),
         )
-        return await sdk_runtime["Runner"].run(
-            agent,
-            run_state,
-            run_config=sdk_runtime["RunConfig"],
-        )
+        run_kwargs: dict[str, Any] = {"run_config": sdk_runtime["RunConfig"]}
+        if request.assurance is not None:
+            run_kwargs["max_turns"] = request.assurance.budget.maxTurns
+        run_call = sdk_runtime["Runner"].run(agent, run_state, **run_kwargs)
+        if request.assurance is not None:
+            return await asyncio.wait_for(run_call, timeout=request.assurance.budget.maxWallClockSeconds)
+        return await run_call
 
     def _build_input_payload(self, request: AgentRuntimeRequest) -> Any:
         plan_context_input = (request.planContext or {}).get("input") if request.planContext else None
@@ -1173,5 +1194,10 @@ class OpenAIAgentsAdapter:
             "stepLinks": [],
         }
         response = AgentRuntimeResponse.model_validate(response_payload)
+        if request.assurance is not None and response.finalOutput is not None:
+            try:
+                validate_vertical_drama_output_identity(request.assurance, response.finalOutput)
+            except ValueError as exc:
+                raise OpenAIAgentsAdapterError("assurance_output_invalid", str(exc)) from exc
         _enforce_media_production_response_identity(request, response)
         return response

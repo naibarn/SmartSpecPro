@@ -1,0 +1,1018 @@
+import { describe, expect, it } from "vitest";
+import {
+  detectVerticalDramaCharacterLookConflict,
+  detectVerticalDramaCharacterLookIntent,
+  findVerticalDramaCharacterLookReuseCandidate,
+  getVerticalDramaCharacterLookIntentForEntry,
+  getVerticalDramaCharacterLookSemanticKey,
+  normalizeVerticalDramaCharacterLookImageBrief,
+  normalizeVerticalDramaCharacterLookText,
+  selectVerticalDramaCharacterLooks,
+  VERTICAL_DRAMA_LOOK_IMAGE_BRIEF_MAX_LENGTH,
+  looksLikeCharacterLookStoryLeak,
+} from "./characterLookSelection";
+
+const base = {
+  characterKey: "mali",
+  name: "มะลิ",
+  description: "หญิงสาวผมยาวสีดำ มีไฝเล็กใต้ตาซ้าย ใบหน้าอ่อนโยน",
+  hasPortrait: true,
+};
+
+describe("vertical drama automatic character look selection", () => {
+  it("recognizes story leakage without treating ordinary wardrobe cues as leakage", () => {
+    expect(
+      looksLikeCharacterLookStoryLeak(
+        "มยุรีเตรียมอาหารกับครอบครัว Story evidence: episode 8"
+      )
+    ).toBe(true);
+    expect(looksLikeCharacterLookStoryLeak("เสื้อผ้าสบาย ๆ ในบ้าน")).toBe(
+      false
+    );
+  });
+
+  it("supports a reusable look brief up to 2,000 characters and trims oversized input recoverably", () => {
+    const accepted = "x".repeat(2000);
+    expect(normalizeVerticalDramaCharacterLookImageBrief(accepted)).toBe(
+      accepted
+    );
+
+    const oversized = normalizeVerticalDramaCharacterLookImageBrief(
+      "รายละเอียดลุค ".repeat(500)
+    );
+    expect(oversized).toBeDefined();
+    expect(oversized!.length).toBeLessThanOrEqual(
+      VERTICAL_DRAMA_LOOK_IMAGE_BRIEF_MAX_LENGTH
+    );
+    expect(oversized).toMatch(/…$/);
+  });
+
+  it("keeps story evidence out of the pure selector contract", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "พิมพ์ชนกไปร่วมงานกลางคืนในโรงแรม",
+          sceneKey: "gala",
+        },
+      ],
+    });
+
+    expect(result.suggestions[0]).not.toHaveProperty("description");
+    expect(result.suggestions[0]).not.toHaveProperty("imageBrief");
+    expect(result.suggestions[0].evidence[0].text).toContain("ร่วมงานกลางคืน");
+    expect(result.suggestions[0].requestKey).toContain("gala");
+  });
+
+  it("matches equivalent Thai/English cues to an existing look", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-sleep",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดใส่นอน",
+          variantType: "outfit",
+          description: "ชุดนอนผ้าฝ้ายสีฟ้าอ่อน",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิกำลังเข้านอนและคุยอยู่บนเตียงนอน",
+          sceneKey: "bedroom",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-sleep"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "matched_existing",
+      status: "ready",
+      canonicalIntent: "sleepwear",
+    });
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("matches a casual home cue to an existing casual look", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-casual",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อยืดสีครีมกับกางเกงผ้านุ่ม",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิคุยอยู่ในบ้านพักตอนเช้า",
+          sceneKey: "home",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-casual"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "matched_existing",
+      canonicalIntent: "casual_home",
+    });
+  });
+
+  it("proposes one reusable casual-home look for a base-only character", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิยืนคุยกับลุงชาญในบ้านพัก",
+          sceneKey: "home",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "มะลิหยิบแก้วน้ำในบ้าน",
+          sceneKey: "home",
+        },
+      ],
+    });
+
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0]).toMatchObject({
+      canonicalIntent: "casual_home",
+      variantLabel: "ชุดลำลองอยู่บ้าน",
+      sourceShotNumbers: [1, 2],
+    });
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "needs_new_look",
+      status: "waiting_for_look_design",
+    });
+  });
+
+  it("lets sleepwear win over a compatible home cue", () => {
+    expect(
+      detectVerticalDramaCharacterLookConflict("กำลังเข้านอนในห้องนอนที่บ้าน")
+    ).toEqual([]);
+    expect(
+      detectVerticalDramaCharacterLookIntent("กำลังเข้านอนในบ้าน")
+    ).toEqual({
+      key: "sleepwear",
+      label: "ชุดนอน",
+      variantType: "outfit",
+    });
+  });
+
+  it("creates one reusable, portrait-less proposal for a missing age/look intent", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "เด็กเพิ่งคลอดอยู่ในอ้อมแขนของแม่",
+          sceneKey: "hospital",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "ทารกแรกเกิดหลับอย่างสงบในห้องพักฟื้น",
+          sceneKey: "hospital",
+        },
+      ],
+    });
+
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0]).toMatchObject({
+      canonicalIntent: "newborn",
+      variantType: "age_stage",
+      sourceShotNumbers: [1, 2],
+    });
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "needs_new_look",
+      status: "waiting_for_look_design",
+      requestedLabel: "วัยทารกแรกเกิด",
+    });
+  });
+
+  it.each([
+    ["วัยทารก", "infant"],
+    ["วัยเด็กเล็ก", "early_childhood"],
+    ["วัยเด็กมัธยม", "school_age"],
+    ["วัยนักศึกษา", "university_student"],
+    ["วัยผู้ใหญ่", "adult"],
+    ["วัยชรา", "older_adult"],
+  ])("canonicalizes %s as an explicit age-stage request", (text, ageStage) => {
+    expect(detectVerticalDramaCharacterLookIntent(text)).toMatchObject({
+      variantType: "age_stage",
+      ageStage,
+    });
+  });
+
+  it("does not apply relational adult wording to every character in a shot", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "thir",
+          name: "ธีร์",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom", "pimchanok", "thir"],
+          text: "ภูมิถือช้อนค้างกลางอากาศและมองผู้ใหญ่ทั้งสองอย่างจริงใจ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "poom",
+      "pimchanok",
+      "thir",
+    ]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("does not apply one character's outfit cue to the other characters in the same shot", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        { characterKey: "pim", name: "พิมพ์ชนก", hasPortrait: true },
+        {
+          characterKey: "pim-casual",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+        { characterKey: "thee", name: "ธีร์", hasPortrait: true },
+        {
+          characterKey: "thee-work",
+          name: "ธีร์",
+          parentCharacterKey: "thee",
+          variantLabel: "ชุดทำงาน",
+          variantType: "outfit",
+          description: "เสื้อเชิ้ตครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pim-casual", "thee"],
+          text: "พิมพ์ชนกในชุดลำลองนั่งรอ ธีร์ยืนอยู่หน้าห้อง",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["pim", "thee-work"],
+          text: "ธีร์ในชุดทำงานวางแฟ้มให้พิมพ์ชนก แล้วถอยไปนั่งห่าง",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual([
+      "pim-casual",
+      "thee",
+    ]);
+  });
+
+  it("locks an established outfit across adjacent shots in the same physical location", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        { characterKey: "pim", name: "พิมพ์ชนก", hasPortrait: true },
+        {
+          characterKey: "pim-casual",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อครีมกับกางเกงกรมท่า",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pim-formal",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pim",
+          variantLabel: "ชุดราตรี",
+          variantType: "outfit",
+          description: "เดรสสีเข้ม",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pim-casual"],
+          locationKey: "clinic-front",
+          sceneKey: "clinic-arrival",
+          text: "พิมพ์ชนกในชุดลำลองยืนหน้าคลินิก",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["pim-formal"],
+          locationKey: "clinic-front",
+          sceneKey: "clinic-arrival",
+          text: "พิมพ์ชนกในชุดราตรีเดินไปที่ประตูกระจก",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual(["pim-casual"]);
+  });
+
+  it("keeps the context-aware inherited look when the model returns age-stage refs", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-casual",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-adult",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-dress",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "ชุดเดรส",
+          variantType: "outfit",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-adult",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      preferredLookKeysByFamily: new Map([
+        ["poom", "poom-casual"],
+        ["pimchanok", "pimchanok-dress"],
+      ]),
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom-look-adult", "pimchanok-look-adult"],
+          text: "ภูมิถือช้อนค้างกลางอากาศและมองผู้ใหญ่ทั้งสองอย่างจริงใจ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "poom-casual",
+      "pimchanok-dress",
+    ]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("keeps a child look when an explicit adult request conflicts with authoritative age", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "poom",
+          name: "ภูมิ",
+          authoritativeAgeBand: "minor",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "poom-adult",
+          name: "ภูมิ",
+          parentCharacterKey: "poom",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["poom-adult"],
+          text: "ภูมิเป็นวัยผู้ใหญ่ในฉากย้อนเวลา",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["poom"]);
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "poom",
+      mode: "base",
+      status: "review",
+    });
+  });
+
+  it("rejects an outfit variant whose own visual metadata is infant when the character is school-age", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "ภาคินทารก",
+          variantType: "outfit",
+          description: "เด็กทารก",
+          ageRange: { min: 0, max: 1 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-casual",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          description: "เสื้อยืดสีขาวสำหรับเด็กวัยเรียน",
+          ageRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin-infant"],
+          text: "ภาคินพบภูมิในสนามเด็กเล่น",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin-casual"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "phakin-casual",
+      status: "review",
+    });
+  });
+
+  it("rejects a baby age-stage look for a known older child unless the shot is an explicit flashback", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin-infant-stage"],
+          text: "ภาคินเดินเล่นที่สวนสาธารณะ",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      selectedLookKey: "phakin",
+      status: "review",
+    });
+  });
+
+  it("allows a younger age-stage look only when the character is explicitly in the past", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin"],
+          text: "ภาพย้อนอดีต ภาคินเป็นทารกในอ้อมแขนของแม่",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "phakin-infant-stage",
+    ]);
+  });
+
+  it("does not apply a baby reference mentioned as another person to the current character", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "phakin",
+          name: "ภาคิน",
+          authoritativeAgeBand: "minor",
+          authoritativeAgeRange: { min: 8, max: 14 },
+          hasPortrait: true,
+        },
+        {
+          characterKey: "phakin-infant-stage",
+          name: "ภาคิน",
+          parentCharacterKey: "phakin",
+          variantLabel: "วัยทารก",
+          variantType: "age_stage",
+          ageStage: "infant",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["phakin"],
+          text: "ภาคินมองเด็กทารกในรถเข็น",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["phakin"]);
+  });
+
+  it("reuses an adult base look instead of creating a redundant adult age-stage look", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        {
+          characterKey: "pimchanok",
+          name: "พิมพ์ชนก",
+          authoritativeAgeBand: "adult",
+          hasPortrait: true,
+        },
+        {
+          characterKey: "pimchanok-adult",
+          name: "พิมพ์ชนก",
+          parentCharacterKey: "pimchanok",
+          variantLabel: "วัยผู้ใหญ่",
+          variantType: "age_stage",
+          ageStage: "adult",
+          hasPortrait: false,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["pimchanok-adult"],
+          text: "พิมพ์ชนกเป็นวัยผู้ใหญ่ในฉากปัจจุบัน",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["pimchanok"]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("uses the stored structured age stage even when a look label is generic", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-university",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "Look 02",
+          variantType: "age_stage",
+          ageStage: "university_student",
+          description: "ลุคตัวละครแบบต่อเนื่อง",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิอยู่ในช่วงวัยนักศึกษา",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual([
+      "mali-university",
+    ]);
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("rotates an existing look after a meaningful scene transition, then keeps continuity", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-evening",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดราตรี",
+          variantType: "outfit",
+          description: "เดรสผ้าไหมสีแดงสำหรับงานกาลา",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "คุยในบ้าน",
+          sceneKey: "home",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "เดินเข้าสถานที่ใหม่เพื่อร่วมงานกาลา",
+          sceneKey: "gala",
+        },
+        {
+          shotNumber: 3,
+          characterKeys: ["mali"],
+          text: "ยืนคุยต่อในงาน",
+          sceneKey: "gala",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual(["mali-evening"]);
+    expect(result.characterKeysByShotNumber.get(3)).toEqual(["mali-evening"]);
+  });
+
+  it("keeps one look across a same-event location change and generic continuation wording", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-evening",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดราตรี",
+          variantType: "outfit",
+          description: "เดรสผ้าไหมสีแดงสำหรับงานกาลา",
+          hasPortrait: true,
+        },
+      ],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิประชุมงานที่ออฟฟิศ",
+          sceneKey: "office",
+          locationKey: "office",
+          timeKey: "day",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "ต่อมา มะลิแวะสวนสาธารณะระหว่างทาง",
+          sceneKey: "park",
+          locationKey: "park",
+          timeKey: "day",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(2)).toEqual(["mali"]);
+    expect(result.assignmentsByShotNumber.get(2)?.[0]?.reason).toContain(
+      "รักษาความต่อเนื่อง"
+    );
+  });
+
+  it("proposes one reusable new outfit when time/location changes but no alternate exists", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "คุยในสตูดิโอตอนกลางวัน",
+          sceneKey: "home",
+          timeKey: "day",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "เดินเข้าร้านใหม่",
+          sceneKey: "shop",
+          timeKey: "night",
+        },
+      ],
+    });
+
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.assignmentsByShotNumber.get(2)?.[0]).toMatchObject({
+      mode: "base",
+      status: "ready",
+    });
+  });
+
+  it("detects a textual time/place transition when structured shot metadata is absent", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิคุยในสตูดิโอตอนกลางวัน",
+        },
+        {
+          shotNumber: 2,
+          characterKeys: ["mali"],
+          text: "วันรุ่งขึ้น มะลิเดินทางไปสถานที่ใหม่ตอนกลางคืน",
+        },
+      ],
+    });
+
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.assignmentsByShotNumber.get(2)?.[0]).toMatchObject({
+      mode: "base",
+      status: "ready",
+    });
+  });
+
+  it("never overrides a manually selected portrait-less look", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-newborn",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ทารก",
+          variantType: "age_stage",
+          hasPortrait: false,
+        },
+      ],
+      manualShotNumbers: new Set([1]),
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali-newborn"],
+          text: "เด็กเพิ่งคลอด",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-newborn"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "manual_override",
+      status: "waiting_for_portrait",
+    });
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("keeps a manual look authoritative when the shot is replayed", () => {
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [
+        base,
+        {
+          characterKey: "mali-sleep",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดนอน",
+          variantType: "outfit",
+          hasPortrait: true,
+        },
+      ],
+      manualShotNumbers: new Set([1]),
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali-sleep"],
+          text: "มะลิไปงานกลางคืน",
+        },
+      ],
+    });
+
+    expect(result.characterKeysByShotNumber.get(1)).toEqual(["mali-sleep"]);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      mode: "manual_override",
+      selectedLookKey: "mali-sleep",
+    });
+  });
+
+  it("normalizes look identity instead of using the visible label as a key", () => {
+    expect(
+      detectVerticalDramaCharacterLookIntent("sleepwear for bedtime")
+    ).toEqual({
+      key: "sleepwear",
+      label: "ชุดนอน",
+      variantType: "outfit",
+    });
+    expect(
+      getVerticalDramaCharacterLookSemanticKey({
+        parentCharacterKey: "mali",
+        canonicalIntent: "Sleepwear",
+        variantType: "outfit",
+      })
+    ).toBe("mali::outfit::sleepwear");
+    const formal = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "มะลิไปร่วมงานกาลา",
+          sceneKey: "gala",
+        },
+      ],
+    });
+    expect(formal.suggestions[0].requestKey).toContain("eveningformal");
+  });
+
+  it("reuses a legacy equivalent look even when semantic metadata is missing", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-sleep-old",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดใส่นอน",
+          variantType: "outfit",
+          description: "ชุดนอนผ้าฝ้ายสีฟ้าอ่อน",
+          hasPortrait: true,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "sleepwear",
+      variantLabel: "ชุดนอน",
+      requestKey: "mali::outfit::sleepwear::new-scene",
+      semanticKey: "mali::outfit::sleepwear",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-sleep-old");
+    expect(getVerticalDramaCharacterLookIntentForEntry(candidate!)).toEqual({
+      key: "sleepwear",
+      variantType: "outfit",
+    });
+    expect(normalizeVerticalDramaCharacterLookText(" ชุดใส่นอน ")).toBe(
+      "ชุดใส่นอน"
+    );
+  });
+
+  it("reuses one canonical look across different shot-context request keys", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-home",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดลำลองอยู่บ้าน",
+          variantType: "outfit",
+          lookSemanticKey: "mali::outfit::casual_home",
+          hasPortrait: false,
+          rowId: 4,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "casual_home",
+      variantLabel: "ชุดลำลองอยู่บ้าน",
+      requestKey: "mali::outfit::casual_home::gala|unknown|night",
+      semanticKey: "mali::outfit::casual_home",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-home");
+  });
+
+  it("prefers a portrait-bearing candidate and never crosses variant types", () => {
+    const candidate = findVerticalDramaCharacterLookReuseCandidate({
+      candidates: [
+        {
+          characterKey: "mali-sleep-pending",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดนอน",
+          variantType: "outfit",
+          hasPortrait: false,
+          rowId: 1,
+        },
+        {
+          characterKey: "mali-sleep-ready",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "ชุดใส่นอน",
+          variantType: "outfit",
+          description: "ชุดนอนผ้าฝ้าย",
+          hasPortrait: true,
+          rowId: 2,
+        },
+        {
+          characterKey: "mali-sleep-age",
+          name: "มะลิ",
+          parentCharacterKey: "mali",
+          variantLabel: "วัยทารกแรกเกิด",
+          variantType: "age_stage",
+          hasPortrait: true,
+          rowId: 3,
+        },
+      ],
+      parentCharacterKey: "mali",
+      variantType: "outfit",
+      canonicalIntent: "sleepwear",
+      variantLabel: "ชุดนอน",
+      requestKey: "mali::outfit::sleepwear::bedroom",
+      semanticKey: "mali::outfit::sleepwear",
+    });
+
+    expect(candidate?.characterKey).toBe("mali-sleep-ready");
+  });
+
+  it("does not silently choose the first look when story cues conflict", () => {
+    expect(
+      detectVerticalDramaCharacterLookConflict(
+        "เด็กทารกใส่ชุดนักเรียนไปโรงเรียน"
+      )
+    ).toEqual(["วัยทารกแรกเกิด", "ชุดนักเรียน"]);
+
+    const result = selectVerticalDramaCharacterLooks({
+      catalog: [base],
+      shots: [
+        {
+          shotNumber: 1,
+          characterKeys: ["mali"],
+          text: "เด็กทารกใส่ชุดนักเรียนไปโรงเรียน",
+        },
+      ],
+    });
+    expect(result.suggestions).toHaveLength(0);
+    expect(result.assignmentsByShotNumber.get(1)?.[0]).toMatchObject({
+      status: "review",
+      selectedLookKey: "mali",
+    });
+  });
+
+  it("does not treat night-time alone as formalwear", () => {
+    expect(
+      detectVerticalDramaCharacterLookIntent("เดินกลับบ้านตอนกลางคืน")
+    ).toBeNull();
+  });
+});

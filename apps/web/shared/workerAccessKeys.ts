@@ -4,6 +4,7 @@ import {
   workerRuntimeTypeSchema,
   workerStatusSchema,
 } from "./workerRuntime";
+import { workerSeriesScopeValues } from "./workerSeriesControlPlane";
 
 export const workerLlmRoutingModeValues = ["auto", "pinned_provider"] as const;
 export type WorkerLlmRoutingMode = (typeof workerLlmRoutingModeValues)[number];
@@ -14,13 +15,19 @@ export const workerAccessPermissionScopeValues = [
   "workers:heartbeat",
   "workers:claim",
   "workers:report",
+  "workers:jobs:read",
   "workers:diagnostics",
+  ...workerSeriesScopeValues,
   "llm:chat",
+  "llm:inventory",
   "delegate:http",
   "delegate:mcp",
   "callbacks:publish",
   "library:read",
+  "library:download",
   "library:write",
+  "media:read",
+  "media:download",
   "rag:read",
   "rag:write",
   "skills:execute",
@@ -39,6 +46,7 @@ export const workerAccessPermissionPresetValues = [
   "content_worker",
   "knowledge_worker",
   "work_os_worker",
+  "vertical_drama_media_operator",
   "full_personal_worker",
   "custom",
 ] as const;
@@ -88,8 +96,17 @@ export const connectedWorkerRecordSchema = z.object({
   sharedGroups: z.array(connectedWorkerShareGroupSchema).default([]),
   preferredProviderName: z.string().min(1).nullable().optional().default(null),
   permissionPreset: z.string().min(1).nullable().optional().default(null),
+  permissionScopes: z.array(workerAccessPermissionScopeSchema).default([]),
   permissionScopeCount: z.number().int().nonnegative().default(0),
   quotaDisplayLabel: z.string().min(1).nullable().optional().default(null),
+  capabilities: z.object({
+    hermesReady: z.boolean().default(false),
+    hermesVersion: z.string().min(1).nullable().default(null),
+    hermesReason: z.string().min(1).nullable().default(null),
+    localMediaReady: z.boolean().default(false),
+    localMediaCapabilities: z.array(z.string().min(1)).default([]),
+    acceptJobs: z.boolean().nullable().default(null),
+  }).default({}),
 });
 
 export type ConnectedWorkerRecord = z.infer<typeof connectedWorkerRecordSchema>;
@@ -99,9 +116,14 @@ const READONLY_PERMISSION_SCOPES: WorkerAccessPermissionScope[] = [
   "workers:heartbeat",
   "workers:claim",
   "workers:report",
+  "workers:jobs:read",
   "workers:diagnostics",
   "llm:chat",
+  "llm:inventory",
   "library:read",
+  "library:download",
+  "media:read",
+  "media:download",
   "rag:read",
   "workos:read",
 ];
@@ -133,6 +155,20 @@ const WORK_OS_WORKER_PERMISSION_SCOPES: WorkerAccessPermissionScope[] = [
   "delegate:mcp",
 ];
 
+const VERTICAL_DRAMA_MEDIA_OPERATOR_PERMISSION_SCOPES: WorkerAccessPermissionScope[] = [
+  ...READONLY_PERMISSION_SCOPES,
+  "series:read",
+  "series:bind",
+  "series:scan",
+  "series:media:process",
+  "series:media:publish",
+  "comfy:profiles:read",
+  "comfy:profiles:write",
+  "comfy:workflow:discover",
+  "comfy:execute",
+  "comfy:artifact:write",
+];
+
 const FULL_PERSONAL_WORKER_PERMISSION_SCOPES: WorkerAccessPermissionScope[] = [
   ...workerAccessPermissionScopeValues,
 ];
@@ -146,6 +182,7 @@ export const workerAccessPermissionPresetScopes: Record<
   content_worker: CONTENT_WORKER_PERMISSION_SCOPES,
   knowledge_worker: KNOWLEDGE_WORKER_PERMISSION_SCOPES,
   work_os_worker: WORK_OS_WORKER_PERMISSION_SCOPES,
+  vertical_drama_media_operator: VERTICAL_DRAMA_MEDIA_OPERATOR_PERMISSION_SCOPES,
   full_personal_worker: FULL_PERSONAL_WORKER_PERMISSION_SCOPES,
 };
 

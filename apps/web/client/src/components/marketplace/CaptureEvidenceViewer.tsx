@@ -1,3 +1,5 @@
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+
 type CaptureAsset = {
   id: string;
   kind: string;
@@ -41,7 +43,7 @@ export function CaptureEvidenceViewer({
             className={`rounded-md border bg-slate-50 p-3 ${isHighlighted(asset) ? "border-blue-400 ring-2 ring-blue-100" : ""}`}
           >
             {String(asset.contentType ?? "").startsWith("image/") ? (
-              <img src={asset.url} alt={asset.section ?? asset.kind} className="max-h-64 w-full object-contain" />
+              <AuthenticatedMediaImage src={asset.url} alt={asset.section ?? asset.kind} className="max-h-64 w-full object-contain" />
             ) : (
               <a className="text-sm text-blue-700 underline" href={asset.url} target="_blank" rel="noreferrer">
                 Open asset

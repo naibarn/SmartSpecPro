@@ -122,6 +122,42 @@ class TestLibraryBackfillService:
         assert [row["entity_id"] for row in gallery_rows] == [f"gallery:{gallery_item.id}"]
 
     @pytest.mark.asyncio
+    async def test_canonical_rebuild_includes_items_with_existing_chunks(self, backfill_db):
+        item = await _seed_item(backfill_db, tenant_id="tenant-406", suffix=1)
+        backfill_db.add(
+            LibraryChunk(
+                tenant_id=item.tenant_id,
+                library_item_id=item.id,
+                chunk_index=0,
+                content="legacy chunk row is not vector input",
+                content_type="text",
+                vector_ref_id="legacy-vector-ref",
+                metadata={},
+                created_at=datetime.utcnow(),
+            )
+        )
+        await backfill_db.commit()
+
+        normal_rows = await load_backfill_candidates(
+            backfill_db,
+            domain="library",
+            tenant_id=item.tenant_id,
+            cursor=0,
+            limit=10,
+        )
+        rebuild_rows = await load_backfill_candidates(
+            backfill_db,
+            domain="library",
+            tenant_id=item.tenant_id,
+            cursor=0,
+            limit=10,
+            include_existing=True,
+        )
+
+        assert normal_rows == []
+        assert [row["entity_id"] for row in rebuild_rows] == [f"library:{item.id}"]
+
+    @pytest.mark.asyncio
     async def test_backfill_dry_run_reports_work_without_writes(self, backfill_db):
         for i in range(3):
             await _seed_item(backfill_db, tenant_id="tenant-401", suffix=i)
@@ -248,6 +284,40 @@ class TestLibraryBackfillService:
         assert refreshed.status == "completed"
         assert refreshed.processed_count == 4
         assert refreshed.succeeded_count == 4
+
+    @pytest.mark.asyncio
+    async def test_canonical_campaign_keeps_snapshot_boundary_and_zero_legacy_reads(self, backfill_db):
+        for i in range(2):
+            await _seed_item(backfill_db, tenant_id="tenant-453", suffix=i)
+
+        campaign = await create_backfill_campaign(
+            backfill_db,
+            domain="library",
+            tenant_id="tenant-453",
+            rebuild_from_canonical=True,
+        )
+        snapshot = dict(campaign.checkpoint_json)
+        assert snapshot["snapshot_id"]
+        assert snapshot["source_high_water_mark"] > 0
+        assert snapshot["source_adapter_version"] == "library-canonical-sql-r2-v1"
+        assert snapshot["legacy_vector_values_read"] == 0
+
+        await _seed_item(backfill_db, tenant_id="tenant-453", suffix=99)
+        result = await run_backfill_campaign_batch(
+            backfill_db,
+            campaign_id=campaign.id,
+            batch_size=10,
+            dry_run=False,
+            max_enqueue=10,
+        )
+
+        assert result["counters"]["processed"] == 2
+        assert result["diagnostics"]["snapshot_id"] == snapshot["snapshot_id"]
+        assert result["diagnostics"]["legacy_vector_values_read"] == 0
+        assert result["diagnostics"]["rebuild_from_canonical"] is True
+        assert dict((await backfill_db.scalar(
+            select(LibraryBackfillCampaign).where(LibraryBackfillCampaign.id == campaign.id)
+        )).checkpoint_json)["rebuild_from_canonical"] is True
 
     @pytest.mark.asyncio
     async def test_run_library_backfill_batch_enqueues_gallery_domain(self, backfill_db):

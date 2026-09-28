@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MutableRefObject } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Square, Trash2, Video, X } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clipboard, Crop, Download, ExternalLink, Film, Grid3X3, History, ImagePlus, Layers, Loader2, Maximize2, Mic, Music2, Pencil, Play, RefreshCw, Scissors, Search, Sparkles, Square, Trash2, Video, X } from "lucide-react";
 import { sanitizeProjectName } from "@smartspec/shared";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,10 +19,25 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { LocaleToggle } from "@/components/LocaleToggle";
+import {
+  AuthenticatedMediaImage,
+  AuthenticatedMediaVideo,
+  getAuthenticatedMediaUrl,
+} from "@/components/media/AuthenticatedMediaImage";
 import { StoryboardBatchReviewPanel, type StoryboardPromptPlannerOptions, type StoryboardSourceTrimRange } from "@/components/media/StoryboardBatchReviewDialog";
 import { RenderProgressDialog } from "@/components/videoeditor/RenderProgressDialog";
 import LibrarySearchPanel from "@/components/media/LibrarySearchPanel";
 import { HyperframesStoryboardReviewPanel } from "@/components/marketplaceCapture/HyperframesStoryboardReviewPanel";
+// Feature 136 (section 11, §6.9) — sequential 9-image storyboard per-shot
+// review + loop report. `projectSequentialShotCards` returns `[]` for
+// legacy 3x3 runs, so `SequentialShotReviewSection` self-disables with no
+// extra strategy branching needed in this page beyond the query `enabled`
+// guard below.
+import { SequentialShotReviewSection } from "@/components/marketplaceCapture/SequentialShotReviewSection";
+import {
+  projectSequentialLoopReport,
+  projectSequentialShotCards,
+} from "@/lib/marketplaceSequentialStoryboardUi";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { useTenantFeatureFlags } from "@/hooks/useTenantFeatureFlag";
 import { trpc } from "@/lib/trpc";
@@ -32,6 +47,7 @@ import {
   storyboardHistoryTaskMatchesProduct,
 } from "@/lib/storyboardHistoryGalleryFilter";
 import { resolveMediaModelTransportConfig } from "@shared/mediaModelTransport";
+import type { MediaTransport } from "@shared/mcpConnectTypes";
 import {
   buildHyperframesRenderLibrarySession,
   getHyperframesRenderLibraryReadyOutput,
@@ -337,7 +353,12 @@ type StoryboardReviewVideoModelOption = {
   value: string;
   label: string;
   provider: string;
-  transport: "gateway_api" | "mcp";
+  // Widened to the full `MediaTransport` union (Feature 135 added a third
+  // "hermes_worker" arm) so this option shape can carry the real resolved
+  // transport through; only the label falls back to existing "MCP"/"API"
+  // copy for the not-yet-built hermes UI (see the `label` computation
+  // below), which is fine for display purposes.
+  transport: MediaTransport;
   providerKey: string | null;
   providerModelId?: string | null;
   toolName?: string | null;
@@ -482,6 +503,9 @@ function getStoryboardReviewVideoOptionValues(
   return {
     videoModel:
       normalizeStoryboardReviewVideoModelId(plan?.videoModelId) ||
+      normalizeStoryboardReviewVideoModelId(draft?.modelProvenance?.video?.requestedModelId) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.modelProvenance?.video?.requestedModelId) ||
+      normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.videoModelId) ||
       normalizeStoryboardReviewVideoModelId(firstTask?.storyboardContext?.model) ||
       normalizeStoryboardReviewVideoModelId(firstTask?.model) ||
       STORYBOARD_REVIEW_VIDEO_MODEL_OPTIONS[0].value,
@@ -534,7 +558,12 @@ function buildStoryboardReviewCurrentVideoModelOption(input: {
     modelId: normalizedModelId,
     configJson: input.model?.configJson,
   });
-  const transport = explicitTransport ?? resolvedTransport.transport;
+  // Feature 135 widened MediaTransport with a third "hermes_worker" arm.
+  // Pass the REAL resolved transport through (not coerced) — this option's
+  // `label` ternary below only distinguishes "mcp" vs. everything else, so
+  // a hermes_worker model falls back to the existing "API" label copy fine
+  // until hermes-aware UI ships in a later section.
+  const transport: MediaTransport = explicitTransport ?? resolvedTransport.transport;
   const legacyProviderKey =
     typeof firstTaskTransportMetadata?.providerKey === "string"
       ? firstTaskTransportMetadata.providerKey.trim()
@@ -710,24 +739,25 @@ function findStoryboardImageUrl(value: unknown, visited = new WeakSet<object>())
 
 function toCanvasSafeStoryboardImageUrl(imageUrl: string): string {
   if (!imageUrl || typeof window === "undefined") return imageUrl;
+  // Keep managed media on the authenticated same-origin storage route. The
+  // image proxy is intended for remote CORS sources and cannot forward the
+  // browser session required by `/api/storage/files/*`.
+  const authenticatedUrl = getAuthenticatedMediaUrl(imageUrl) || imageUrl;
   if (
-    imageUrl.startsWith("data:") ||
-    imageUrl.startsWith("blob:") ||
-    imageUrl.startsWith("/api/media/image-proxy?")
+    authenticatedUrl.startsWith("data:") ||
+    authenticatedUrl.startsWith("blob:") ||
+    authenticatedUrl.startsWith("/api/media/image-proxy?")
   ) {
-    return imageUrl;
+    return authenticatedUrl;
   }
 
   try {
-    const parsed = new URL(imageUrl, window.location.origin);
-    if (parsed.origin === window.location.origin && parsed.pathname.startsWith("/api/storage/files/") && parsed.protocol === "https:") {
-      return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
-    }
+    const parsed = new URL(authenticatedUrl, window.location.origin);
     if (parsed.origin === window.location.origin) return parsed.toString();
     if (parsed.protocol !== "https:") return parsed.toString();
     return `/api/media/image-proxy?url=${encodeURIComponent(parsed.toString())}`;
   } catch {
-    return imageUrl;
+    return authenticatedUrl;
   }
 }
 
@@ -769,6 +799,11 @@ function findFirstStoryboardReviewThumbnail(value: unknown, visited = new WeakSe
   }
 
   const record = value as Record<string, unknown>;
+  if (Array.isArray(record.artifacts)) {
+    const durableUrl = extractStoryboardMediaUrl(record, "video");
+    if (durableUrl) return durableUrl;
+    return null;
+  }
   for (const key of [
     "thumbnailUrl",
     "thumbnail_url",
@@ -833,8 +868,12 @@ function findFirstStoryboardReviewImageUrl(value: unknown, visited = new WeakSet
 function getStoryboardReviewProjectThumbnail(item: unknown): string | null {
   if (!item || typeof item !== "object") return null;
   const record = item as Record<string, unknown>;
-  return findFirstStoryboardReviewThumbnail(record.thumbnailUrl)
-    ?? findFirstStoryboardReviewThumbnail(record.reviewData);
+  const reviewThumbnail = findFirstStoryboardReviewThumbnail(record.reviewData);
+  if (reviewThumbnail) return reviewThumbnail;
+  const directThumbnail = findFirstStoryboardReviewThumbnail(record.thumbnailUrl);
+  return directThumbnail && isManagedStoryboardAssetUrl(directThumbnail)
+    ? directThumbnail
+    : null;
 }
 
 function getStoryboardClipPosterUrl(clip: StoryboardClipCandidate | null | undefined): string | undefined {
@@ -3153,6 +3192,8 @@ function normalizeLegacyStoryboardReviewTask(
     ?? asLegacyReviewValue(task.aspect_ratio)
     ?? "16:9";
   const url = asLegacyReviewValue(task.url)
+    ?? asLegacyReviewValue(task.imageUrl)
+    ?? asLegacyReviewValue(task.image_url)
     ?? asLegacyReviewValue(task.resultUrl)
     ?? asLegacyReviewValue(task.videoUrl);
   const rawType = asLegacyReviewValue(task.type)?.toLowerCase();
@@ -3163,10 +3204,11 @@ function normalizeLegacyStoryboardReviewTask(
       ? Math.max(Math.trunc(asNumberValue(task.index) ?? asNumberValue(task.order) ?? index), 0)
       : index,
     status: normalizeLegacyStoryboardTaskStatus(task.status),
-    type: (rawType === "image" || rawType === "img" || isProbablyImageUrl(url ?? "") || Boolean(asLegacyImageUrl(task.thumbnailUrl)))
+    type: (rawType === "image" || rawType === "img" || isProbablyImageUrl(url ?? "") || Boolean(asLegacyImageUrl(task.imageUrl)) || Boolean(asLegacyImageUrl(task.thumbnailUrl)))
       ? "image"
       : "video",
     prompt,
+    videoPrompt: asLegacyReviewValue(task.videoPrompt),
     model: asLegacyReviewValue(task.model) ?? "",
     durationSeconds: asNumberValue(task.durationSeconds) ?? asNumberValue(task.duration) ?? undefined,
     createdAt: asNumberValue(task.createdAt) ?? asNumberValue(task.created_at) ?? Date.now(),
@@ -3377,6 +3419,7 @@ function getStoryboardDraftContentSignature(draft: StoryboardReviewDraft | null 
       storyboardGuide: draft.storyboardGuide ?? null,
       voiceoverFullScript: draft.voiceoverFullScript ?? null,
       useVoiceoverScriptAsConcept: Boolean(draft.useVoiceoverScriptAsConcept),
+      modelProvenance: draft.modelProvenance ?? null,
       videoSegmentState: draft.videoSegmentState ?? null,
       companionAudio: companionAudio.map((audio) => ({
         id: audio.id,
@@ -3408,6 +3451,7 @@ function getStoryboardDraftContentSignature(draft: StoryboardReviewDraft | null 
         statusDetail: task.statusDetail ?? null,
         source: task.source ?? null,
         aspectRatio: task.aspectRatio ?? null,
+        modelProvenance: task.modelProvenance ?? null,
         storyboardContext: task.storyboardContext ?? null,
         transportMetadata: task.transportMetadata ?? null,
         marketplaceProduct: task.marketplaceProduct ?? null,
@@ -3812,6 +3856,13 @@ export default function StoryboardReviewPage() {
     DEFAULT_HYPERFRAMES_FINAL_SFX_IDS.map((id, index) => buildDefaultHyperframesFinalSfxDraft(id, index)),
   );
   const [isHyperframesFinalPanelExpanded, setIsHyperframesFinalPanelExpanded] = useState(false);
+  // Storyboard review layout fix (2026-07-23, user-reported): the sequential
+  // 9-shot IMAGE grid renders at the very top of this page and is extremely
+  // tall, so it pushed the clip list — the primary work surface of this page —
+  // far below the fold, making the page look like it rendered "the wrong
+  // layout" after a refresh. It now starts COLLAPSED behind a toggle, the same
+  // way the final-composite panel below already does.
+  const [isSequentialShotsExpanded, setIsSequentialShotsExpanded] = useState(false);
   const [isHyperframesFinalPayloadExpanded, setIsHyperframesFinalPayloadExpanded] = useState(false);
   const [isHyperframesFinalAudioPreviewExpanded, setIsHyperframesFinalAudioPreviewExpanded] = useState(false);
   const [isHyperframesFinalTextPreviewExpanded, setIsHyperframesFinalTextPreviewExpanded] = useState(false);
@@ -4105,6 +4156,199 @@ export default function StoryboardReviewPage() {
       },
     },
   );
+  // Feature 136 (section 11, §6.9) — full run metadata, NEVER the
+  // `summary: true` list query (`listAutoReviewRuns` strips
+  // `sequentialStoryboard` from the response entirely).
+  const autoReviewRunQuery = trpc.marketplaceCapture.getAutoReviewRun.useQuery(
+    { runId: effectiveHyperframesRunId ?? "" },
+    { enabled: Boolean(effectiveHyperframesRunId) },
+  );
+  const stagedWorkflowRunId =
+    compactStoryboardText((autoReviewRunQuery.data as any)?.metadataJson?.planningArchitecture) === "staged_two_skill_v2"
+      ? compactStoryboardText(effectiveHyperframesRunId)
+      : "";
+  const stagedCheckpointStateQuery =
+    trpc.marketplaceCapture.getStagedAutoReviewCheckpointState.useQuery(
+      { runId: stagedWorkflowRunId },
+      {
+        enabled: Boolean(stagedWorkflowRunId),
+        refetchInterval: stagedWorkflowRunId ? 4000 : false,
+        refetchOnWindowFocus: true,
+        retry: false,
+        staleTime: 0,
+      },
+    );
+  const stagedFinalAssemblyApproved = useMemo(() => {
+    if (!stagedWorkflowRunId) return true;
+    const checkpoints = Array.isArray(stagedCheckpointStateQuery.data?.checkpoints)
+      ? stagedCheckpointStateQuery.data.checkpoints
+      : [];
+    return checkpoints.some((checkpoint: any) =>
+      checkpoint?.kind === "final_assembly" &&
+      ["approved", "consumed"].includes(String(checkpoint?.state ?? "")) &&
+      checkpoint?.state !== "superseded",
+    );
+  }, [stagedCheckpointStateQuery.data, stagedWorkflowRunId]);
+  const stagedFinalAssemblyGateReason =
+    stagedWorkflowRunId && !stagedFinalAssemblyApproved
+      ? locale === "th"
+        ? "ต้องกลับไป Job Workbench เพื่อยืนยันการประกอบขั้นสุดท้ายก่อน Render"
+        : "Return to Job Workbench and approve final assembly before rendering."
+      : null;
+  const sequentialShotCards = useMemo(
+    () => projectSequentialShotCards((autoReviewRunQuery.data as any)?.metadataJson),
+    [autoReviewRunQuery.data],
+  );
+  const sequentialLoopReport = useMemo(
+    () => projectSequentialLoopReport((autoReviewRunQuery.data as any)?.metadataJson),
+    [autoReviewRunQuery.data],
+  );
+  const [sequentialRegeneratingShotId, setSequentialRegeneratingShotId] =
+    useState<number | null>(null);
+  const [sequentialSavingShotId, setSequentialSavingShotId] = useState<number | null>(null);
+  const [sequentialShotError, setSequentialShotError] = useState<{
+    shotId: number;
+    blockerId: string;
+    message: string;
+  } | null>(null);
+  // Marketplace spare-image repair — the shot whose spare-image swap
+  // mutation is currently in flight (nullable-single-id convention, mirrors
+  // `sequentialRegeneratingShotId`/`sequentialSavingShotId` above).
+  const [sequentialSwappingShotId, setSequentialSwappingShotId] = useState<number | null>(
+    null,
+  );
+  const [sequentialPromptGeneration, setSequentialPromptGeneration] = useState<{
+    shotId: number;
+    stage: "image" | "video";
+  } | null>(null);
+  const regenerateSequentialShotMutation =
+    trpc.marketplaceCapture.regenerateAutoReviewSequentialShot.useMutation({
+      onSuccess: () => {
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: error => toast.error(error.message),
+      onSettled: () => setSequentialRegeneratingShotId(null),
+    });
+  const saveSequentialShotOverrideMutation =
+    trpc.marketplaceCapture.saveAutoReviewSequentialShotOverride.useMutation({
+      onSuccess: () => {
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        // Server rejection message ends with "[ids: id1, id2, ...]"
+        // (`buildSequentialShotOverrideRejectionMessage`, section 08) — the
+        // first id is the primary blocker for this card's error display.
+        const idMatch = /\[ids:\s*([^,\]]+)/.exec(error.message);
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: idMatch ? idMatch[1].trim() : "unknown",
+          message: error.message,
+        });
+      },
+      onSettled: () => setSequentialSavingShotId(null),
+    });
+  // Marketplace spare-image repair — swaps a shot's live frame to an
+  // already-generated, already-paid-for alternate from a non-selected
+  // image-attempt wave. No provider call, no credit spend. Errors surface
+  // the same way `saveSequentialShotOverrideMutation` surfaces them (the
+  // shared `sequentialShotError` card-level banner), not a toast.
+  const selectSequentialShotAlternateMutation =
+    trpc.marketplaceCapture.selectAutoReviewSequentialShotAlternate.useMutation({
+      onSuccess: () => {
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_alternate_swap_failed",
+          message: error.message,
+        });
+      },
+      onSettled: () => setSequentialSwappingShotId(null),
+    });
+  const generateSequentialShotPromptMutation =
+    trpc.marketplaceCapture.generateAutoReviewSequentialShotPrompt.useMutation({
+      onSuccess: () => {
+        setSequentialPromptGeneration(null);
+        setSequentialShotError(null);
+        void trpcUtils.marketplaceCapture.getAutoReviewRun.invalidate({
+          runId: effectiveHyperframesRunId ?? "",
+        });
+      },
+      onError: (error, variables) => {
+        setSequentialPromptGeneration(null);
+        setSequentialShotError({
+          shotId: variables.shotId,
+          blockerId: "sequential_shot_prompt_generation_failed",
+          message: error.message,
+        });
+      },
+    });
+  const handleRegenerateSequentialShot = useCallback(
+    (shotId: number) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialRegeneratingShotId(shotId);
+      regenerateSequentialShotMutation.mutate({ runId: effectiveHyperframesRunId, shotId });
+    },
+    [effectiveHyperframesRunId, regenerateSequentialShotMutation],
+  );
+  const handleSaveSequentialShotEdits = useCallback(
+    (input: {
+      shotId: number;
+      storySummary: string;
+      dialogue: string;
+      imagePrompt: string;
+      videoPrompt: string;
+    }) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialSavingShotId(input.shotId);
+      saveSequentialShotOverrideMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        shotId: input.shotId,
+        visualSummary: input.storySummary,
+        dialogue: input.dialogue,
+        startFrameImagePrompt: input.imagePrompt,
+        videoPrompt: input.videoPrompt,
+      });
+    },
+    [effectiveHyperframesRunId, saveSequentialShotOverrideMutation],
+  );
+  const handleSelectSequentialShotAlternate = useCallback(
+    (input: { shotId: number; attempt: number }) => {
+      if (!effectiveHyperframesRunId) return;
+      setSequentialSwappingShotId(input.shotId);
+      selectSequentialShotAlternateMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        shotId: input.shotId,
+        attempt: input.attempt,
+      });
+    },
+    [effectiveHyperframesRunId, selectSequentialShotAlternateMutation],
+  );
+  const handleGenerateSequentialShotPrompt = useCallback(
+    (input: { shotId: number; stage: "image" | "video" }) => {
+      if (!effectiveHyperframesRunId || sequentialPromptGeneration) return;
+      setSequentialShotError(null);
+      setSequentialPromptGeneration(input);
+      generateSequentialShotPromptMutation.mutate({
+        runId: effectiveHyperframesRunId,
+        ...input,
+      });
+    },
+    [
+      effectiveHyperframesRunId,
+      generateSequentialShotPromptMutation,
+      sequentialPromptGeneration,
+    ],
+  );
   const createHyperframesPreviewMutation =
     trpc.marketplaceCapture.createHyperframesPreview.useMutation({
       onSuccess: result => {
@@ -4246,6 +4490,7 @@ export default function StoryboardReviewPage() {
   const saveProjectMutation = trpc.videoEditorProjects.save.useMutation();
   const uploadMutation = trpc.ai.upload.useMutation();
   const generateVideoAsyncMutation = trpc.media.generateVideoAsync.useMutation();
+  const generateImageAsyncMutation = trpc.media.generateImageAsync.useMutation();
   const cancelMediaTaskMutation = trpc.media.cancelTask.useMutation();
   const addRenderToLibraryMutation = trpc.mediaJobs.addCompletedRenderToLibrary.useMutation();
   const generateStoryboardVideoPromptMutation = trpc.skills.generateStoryboardVideoPrompt.useMutation();
@@ -7891,7 +8136,8 @@ export default function StoryboardReviewPage() {
   ]);
   const hyperframesFinalCompositeRenderBlockedReason =
     hyperframesFinalCompositeDisabledReason ??
-    hyperframesFinalCompositeDuplicateGuardReason;
+    hyperframesFinalCompositeDuplicateGuardReason ??
+    stagedFinalAssemblyGateReason;
   const hyperframesFinalCompositeRenderButtonDisabled = Boolean(
     createHyperframesFinalCompositeMutation.isPending ||
       updateHyperframesFinalCompositeStateMutation.isPending ||
@@ -7969,6 +8215,7 @@ export default function StoryboardReviewPage() {
             : "High quality capture is not enabled for this rollout."
           : null) ??
     hyperframesFinalCompositeDisabledReason ??
+    stagedFinalAssemblyGateReason ??
     (!canonicalReviewId || !effectiveHyperframesProductId || !effectiveHyperframesRunId
       ? locale === "th"
         ? "กำลังรอ context จาก Marketplace Capture"
@@ -9487,7 +9734,7 @@ export default function StoryboardReviewPage() {
   const pollStoryboardGenerationTask = useCallback(async (
     taskId: string,
     pollId: string,
-    options?: { cancelRef?: MutableRefObject<boolean> },
+    options?: { cancelRef?: MutableRefObject<boolean>; mediaKind?: "image" | "video" },
   ): Promise<boolean> => {
     const normalizedPollId = pollId.trim();
     if (!normalizedPollId) return false;
@@ -9502,6 +9749,7 @@ export default function StoryboardReviewPage() {
         if (!latestTask || latestTask.status !== "generating" || !storyboardTaskTracksPollId(latestTask, normalizedPollId)) {
           return true;
         }
+        const mediaKind = options?.mediaKind ?? (latestTask.type === "image" ? "image" : "video");
 
         if (options?.cancelRef?.current) {
           await cancelMediaTaskMutation.mutateAsync({ taskId: normalizedPollId }).catch(() => undefined);
@@ -9523,19 +9771,24 @@ export default function StoryboardReviewPage() {
 
         const status = normalizeStoryboardProviderTaskStatus((currentTask as Record<string, unknown> | null)?.status);
         if (status === "completed") {
-          const completedUrl = extractStoryboardMediaUrl(currentTask, "video");
+          const completedUrl = extractStoryboardMediaUrl(currentTask, mediaKind);
+          const taskArtifacts = Array.isArray((currentTask as Record<string, unknown> | null)?.artifacts)
+            ? (currentTask as Record<string, unknown>).artifacts
+            : undefined;
           if (!completedUrl) {
             const message = t("mediaStudio.storyboardReviewNoOutputUrl");
             setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
               status: "error",
               error: message,
               statusDetail: message,
+              ...(taskArtifacts ? { artifacts: taskArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
             }));
             return true;
           }
           setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
             status: "completed",
             url: completedUrl,
+            ...(taskArtifacts ? { artifacts: taskArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
             error: undefined,
             statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
           }));
@@ -9544,7 +9797,12 @@ export default function StoryboardReviewPage() {
         }
 
         if (status === "failed") {
-          const message = extractStoryboardProviderTaskError(currentTask, t("mediaStudio.storyboardReviewVideoGenerationFailed"));
+          const message = extractStoryboardProviderTaskError(
+            currentTask,
+            mediaKind === "image"
+              ? (locale === "th" ? "สร้างภาพไม่สำเร็จ" : "Image generation failed")
+              : t("mediaStudio.storyboardReviewVideoGenerationFailed"),
+          );
           setAndSaveDraft((current) => updateTrackedStoryboardGenerationTask(current, taskId, normalizedPollId, {
             status: "error",
             error: message,
@@ -9582,7 +9840,7 @@ export default function StoryboardReviewPage() {
     }
 
     return false;
-  }, [cancelMediaTaskMutation, setAndSaveDraft, t, trpcUtils.media.getTask]);
+  }, [cancelMediaTaskMutation, locale, setAndSaveDraft, t, trpcUtils.media.getTask]);
 
   useEffect(() => {
     if (!activeDraft) return;
@@ -9710,7 +9968,7 @@ export default function StoryboardReviewPage() {
       toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
       return true;
     }
-    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft);
+    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft, "video");
     const effectiveModel = optionalStoryboardRouteString(effectiveContext?.model);
     if (!effectiveContext || !effectiveModel) {
       toast.error(
@@ -9935,6 +10193,9 @@ export default function StoryboardReviewPage() {
         ...(context.useReferenceVideoUrlFallback && context.referenceVideoUrl ? { referenceVideoUrl: context.referenceVideoUrl } : {}),
       } as any);
       const immediateUrl = extractStoryboardMediaUrl(taskResult as any, "video");
+      const immediateArtifacts = Array.isArray((taskResult as unknown as Record<string, unknown>)?.artifacts)
+        ? (taskResult as unknown as Record<string, unknown>).artifacts
+        : undefined;
       const pollId = (taskResult as any)?.taskId || (taskResult as any)?.id;
       if (pollId) {
         activeGenerationTaskIdRef.current = String(pollId);
@@ -9963,6 +10224,7 @@ export default function StoryboardReviewPage() {
       setAndSaveDraft((current) => updateDraftTask(current, taskId, {
         status: "completed",
         url: completedUrl ?? undefined,
+        ...(immediateArtifacts ? { artifacts: immediateArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
         error: undefined,
         statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
       }));
@@ -9979,6 +10241,130 @@ export default function StoryboardReviewPage() {
       setIsCancellingGeneration(false);
     }
   }, [cancelMediaTaskMutation, draft, generateStoryboardVideoPromptMutation, generateVideoAsyncMutation, locale, optimizeStoryboardReviewVideoPromptMutation, pollStoryboardGenerationTask, resolveStoryboardReviewVideoModelRoute, setAndSaveDraft, t]);
+
+  const regenerateImageTask = useCallback(async (taskId: string, prompt: string): Promise<boolean> => {
+    const currentDraft = draftRef.current ?? draft;
+    if (!currentDraft || generationCancelRequestedRef.current) return false;
+    const task = currentDraft.tasks.find((item) => item.id === taskId);
+    if (!task?.storyboardContext) {
+      toast.error(t("mediaStudio.storyboardReviewClipContextMissing"));
+      return true;
+    }
+    const effectiveContext = getStoryboardTaskEffectiveGenerationContext(task, currentDraft, "image");
+    const effectiveModel = optionalStoryboardRouteString(effectiveContext?.model);
+    if (!effectiveContext || !effectiveModel) {
+      toast.error(locale === "th" ? "ไม่พบโมเดลสร้างภาพสำหรับช็อตนี้" : "No image model is selected for this shot.");
+      return true;
+    }
+    const normalizedPrompt = prompt.trim();
+    if (!normalizedPrompt) {
+      toast.error(t("mediaStudio.storyboardReviewPromptRequired"));
+      return true;
+    }
+
+    activeGenerationTaskIdRef.current = null;
+    setRegeneratingTaskId(taskId);
+    setIsCancellingGeneration(false);
+    setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+      status: "generating",
+      prompt: normalizedPrompt,
+      storyboardContext: effectiveContext,
+      error: undefined,
+      backendTaskId: undefined,
+      providerTaskId: undefined,
+      statusDetail: locale === "th" ? "กำลังสร้างภาพ..." : "Generating image...",
+    }));
+
+    const transportMetadata = effectiveContext.transportMetadata;
+    const transportRecord = transportMetadata && typeof transportMetadata === "object" && !Array.isArray(transportMetadata)
+      ? transportMetadata as Record<string, unknown>
+      : {};
+    const transportPayload = transportMetadata?.transport === "mcp"
+      ? {
+          transport: "mcp" as const,
+          mcpConnectionId: optionalStoryboardRouteString(transportRecord.mcpConnectionId) ?? optionalStoryboardRouteString(transportRecord.connectionId),
+          sharedGroupId: transportMetadata.sharedGroupId,
+          mcpApprovalId: optionalStoryboardRouteString(transportRecord.mcpApprovalId) ?? optionalStoryboardRouteString(transportRecord.approvalId),
+          mcpProviderKey: optionalStoryboardRouteString(transportRecord.providerKey),
+          mcpProviderModelId: optionalStoryboardRouteString(transportRecord.providerModelId),
+          mcpToolName: optionalStoryboardRouteString(transportRecord.toolName),
+          mcpArgumentShape: optionalStoryboardRouteString(transportRecord.argumentShape),
+          originSurface: "storyboard_review" as const,
+          idempotencyKey: `storyboard-review-image-${taskId}-${Date.now()}`,
+        }
+      : {
+          transport: "gateway_api" as const,
+          originSurface: "storyboard_review" as const,
+        };
+
+    try {
+      const payload = buildMediaStudioCommonPayload({
+        prompt: normalizedPrompt,
+        model: effectiveModel,
+        aspectRatio: effectiveContext.aspectRatio,
+        referenceImages: effectiveContext.referenceImages,
+        referenceVideos: [],
+        extraParams: {
+          ...(effectiveContext.extraParams ?? {}),
+          generationType: "image",
+        },
+        apiConfig: effectiveContext.apiConfig,
+        resolution: effectiveContext.resolution,
+      });
+      const taskResult = await generateImageAsyncMutation.mutateAsync({
+        ...payload,
+        ...transportPayload,
+        numImages: 1,
+      } as any);
+      const immediateUrl = extractStoryboardMediaUrl(taskResult as any, "image");
+      const immediateArtifacts = Array.isArray((taskResult as unknown as Record<string, unknown>)?.artifacts)
+        ? (taskResult as unknown as Record<string, unknown>).artifacts
+        : undefined;
+      const pollId = (taskResult as any)?.taskId || (taskResult as any)?.id;
+      if (pollId) {
+        activeGenerationTaskIdRef.current = String(pollId);
+        setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+          backendTaskId: String(pollId),
+          providerTaskId: String((taskResult as any)?.taskId ?? pollId),
+          statusDetail: t("mediaStudio.storyboardReviewGenerationTaskStarted"),
+        }));
+      }
+      if (generationCancelRequestedRef.current) {
+        if (pollId) await cancelMediaTaskMutation.mutateAsync({ taskId: String(pollId) }).catch(() => undefined);
+        setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+          status: "queued",
+          error: undefined,
+          statusDetail: t("mediaStudio.storyboardReviewGenerationCancelled"),
+        }));
+        return false;
+      }
+      if (!immediateUrl && pollId) {
+        return await pollStoryboardGenerationTask(taskId, String(pollId), {
+          cancelRef: generationCancelRequestedRef,
+          mediaKind: "image",
+        });
+      }
+      if (!immediateUrl) throw new Error(t("mediaStudio.storyboardReviewNoOutputUrl"));
+      setAndSaveDraft((current) => updateDraftTask(current, taskId, {
+        status: "completed",
+        url: immediateUrl,
+        ...(immediateArtifacts ? { artifacts: immediateArtifacts as StoryboardGenerationTask["artifacts"] } : {}),
+        error: undefined,
+        statusDetail: t("mediaStudio.storyboardReviewCompletedStatus"),
+      }));
+      toast.success(locale === "th" ? "สร้างภาพสำเร็จ" : "Image generated.");
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : t("mediaStudio.storyboardReviewRegenerateFailed");
+      setAndSaveDraft((current) => updateDraftTask(current, taskId, { status: "error", error: message, statusDetail: message }));
+      toast.error(message);
+      return true;
+    } finally {
+      activeGenerationTaskIdRef.current = null;
+      setRegeneratingTaskId(null);
+      setIsCancellingGeneration(false);
+    }
+  }, [cancelMediaTaskMutation, draft, generateImageAsyncMutation, locale, pollStoryboardGenerationTask, setAndSaveDraft, t]);
 
   const deleteReview = useCallback(async (id: number) => {
     try {
@@ -10170,7 +10556,11 @@ export default function StoryboardReviewPage() {
               ) : (
                 <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
               )}
-              {locale === "th" ? "New Project" : "New Project"}
+              {locale === "th" ? "สร้างโปรเจกต์เปล่า" : "Create blank project"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+              {locale === "th" ? "สร้างด้วย Skill Framework" : "Create with Skill Framework"}
             </Button>
             <Button variant="outline" size="sm" className="h-8 w-full px-2 text-xs sm:w-auto" onClick={() => setLocation("/media-studio")}>
               {t("mediaStudio.title")}
@@ -10178,6 +10568,28 @@ export default function StoryboardReviewPage() {
           </div>
         </div>
       </header>
+
+      {stagedWorkflowRunId ? (
+        <div className="border-b border-violet-200 bg-[radial-gradient(circle_at_top_right,_rgba(124,58,237,0.12),_transparent_48%),#f5f3ff] px-3 py-3 sm:px-4">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">Job handoff</span>
+                <p className="text-sm font-semibold text-violet-950">Storyboard Review คือขั้นแก้ละเอียดหลังผ่าน Job Workbench</p>
+              </div>
+              <p className="mt-1 text-xs leading-5 text-violet-800">หากต้องแก้เนื้อเรื่อง Prompt หรือขอสร้างใหม่ ให้กลับไปที่ job ก่อน ส่วนหน้านี้ใช้จัดวางภาพ ตัดต่อ และตรวจงานสร้างสรรค์ต่อ</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a className="inline-flex min-h-11 items-center rounded-md bg-violet-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500" href={`/marketplace/auto-review/${encodeURIComponent(stagedWorkflowRunId)}`}>
+                กลับไป Job Workbench
+              </a>
+              {effectiveHyperframesProductId ? <a className="inline-flex min-h-11 items-center rounded-md border border-violet-200 bg-white px-3 py-2 text-sm font-medium text-violet-800 transition hover:bg-violet-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500" href={`/marketplace-capture/products/${encodeURIComponent(effectiveHyperframesProductId)}`}>
+                หน้าสินค้า
+              </a> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {verticalDramaReviewMetadata ? (
         <div className="border-b bg-white px-2 py-3 sm:px-4 xl:shrink-0">
@@ -10193,6 +10605,52 @@ export default function StoryboardReviewPage() {
 
       {hyperframesContextAvailable ? (
         <div className="border-b bg-sky-50 px-2 py-1.5 sm:px-3">
+          {/* Feature 136 (section 11) — self-disables (renders null) for
+              legacy 3x3 runs via the empty-shots projection; no additional
+              frame-strategy branching needed here.
+              2026-07-23: gated behind a collapse toggle (see
+              `isSequentialShotsExpanded`) so the tall 9-shot image grid no
+              longer buries the clip list at the top of the page. */}
+          {sequentialShotCards.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setIsSequentialShotsExpanded(current => !current)}
+              aria-expanded={isSequentialShotsExpanded}
+              className="mb-1 flex w-full items-center justify-between gap-2 rounded-md border border-sky-200 bg-white px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1"
+            >
+              <span>
+                {locale === "th"
+                  ? `ช็อตภาพทั้งหมด ${sequentialShotCards.length} ภาพ`
+                  : `All ${sequentialShotCards.length} shot images`}
+              </span>
+              <span className="text-xs font-normal text-slate-500">
+                {isSequentialShotsExpanded
+                  ? locale === "th"
+                    ? "ซ่อน"
+                    : "Hide"
+                  : locale === "th"
+                    ? "แสดง / แก้ไขภาพ"
+                    : "Show / edit images"}
+              </span>
+            </button>
+          ) : null}
+          {isSequentialShotsExpanded ? (
+            <SequentialShotReviewSection
+              shots={sequentialShotCards}
+              loopReport={sequentialLoopReport}
+              budgets={{ imageMaxChars: 4000, videoMaxChars: 2000 }}
+              busyShotId={sequentialRegeneratingShotId}
+              savingShotId={sequentialSavingShotId}
+              swappingShotId={sequentialSwappingShotId}
+              shotError={sequentialShotError}
+              onRegenerateShot={handleRegenerateSequentialShot}
+              onSaveShotEdits={handleSaveSequentialShotEdits}
+              onGenerateShotPrompt={handleGenerateSequentialShotPrompt}
+              generatingPrompt={sequentialPromptGeneration}
+              onSelectShotAlternate={handleSelectSequentialShotAlternate}
+              locale={locale}
+            />
+          ) : null}
           {isHyperframesFinalPanelExpanded ? (
             <HyperframesStoryboardReviewPanel
               render={hyperframesRenderProjection}
@@ -10495,7 +10953,7 @@ export default function StoryboardReviewPage() {
                     )}
                     {locale === "th" ? "Render ใหม่" : "Render again"}
                   </Button>
-                  {hyperframesFinalVideoUrl ? (
+                  {hyperframesFinalVideoUrl && isManagedStoryboardAssetUrl(hyperframesFinalVideoUrl) ? (
                     <>
                       <Button
                         asChild
@@ -10634,7 +11092,7 @@ export default function StoryboardReviewPage() {
                       )}
                       {locale === "th" ? "ยกเลิก" : "Cancel"}
                     </Button>
-                  ) : previewMatchCaptureProjection.outputUrl ? (
+                    ) : previewMatchCaptureProjection.outputUrl && isManagedStoryboardAssetUrl(previewMatchCaptureProjection.outputUrl) ? (
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       <Button
                         type="button"
@@ -11070,7 +11528,7 @@ export default function StoryboardReviewPage() {
 		                            data-has-overlay-copy={shotHasOverlayLayer ? "true" : "false"}
 		                            data-subtitle-preset={hyperframesFinalSubtitlePreset}
 		                          >
-	                            <video
+	                            <AuthenticatedMediaVideo
 	                              key={`hf-shot-map-preview-media-${clip.id}`}
 	                              src={clip.url}
 	                              poster={shotPosterUrl}
@@ -11078,6 +11536,7 @@ export default function StoryboardReviewPage() {
 	                              playsInline
 	                              preload="metadata"
 	                              className="hf-preview-media"
+	                              errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
 	                              aria-hidden="true"
 	                            />
 		                            {shotHasOverlayLayer ? (
@@ -11554,7 +12013,7 @@ export default function StoryboardReviewPage() {
                               data-subtitle-preset={hyperframesFinalSubtitlePreset}
                               data-preview-mode={hyperframesFinalSelectedShotPreviewMode}
 	                          >
-                            <video
+                            <AuthenticatedMediaVideo
                               key={`hf-compact-preview-media-${selectedClip.id}-${hyperframesFinalSelectedShotPreviewMode}`}
 	                              src={selectedClip.url}
 	                              poster={selectedPreviewPosterUrl}
@@ -11572,6 +12031,7 @@ export default function StoryboardReviewPage() {
                                 hyperframesFinalSelectedShotPreviewMode === "video" ? "hf-preview-media--interactive" : "",
                                 "opacity-100",
                               )}
+	                              errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
 	                              onLoadedMetadata={() => {
 	                                const video = hyperframesFinalSelectedShotVideoRef.current;
 	                                if (video && hyperframesFinalSelectedShotPreviewMode === "video") {
@@ -11682,13 +12142,14 @@ export default function StoryboardReviewPage() {
                               hyperframesFinalSelectedShotPreviewMode === "design" ||
                               (hyperframesFinalSelectedShotPreviewMode === "video" && !selectedVideoIsReady)
                             ) ? (
-                              <img
+                              <AuthenticatedMediaImage
                                 src={selectedPreviewPosterUrl}
                                 alt=""
                                 aria-hidden="true"
                                 className={cn(
                                   "pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95 transition-opacity duration-200",
                                 )}
+                                errorLabel={locale === "th" ? "ไม่พบ poster ของ shot นี้" : "Shot poster unavailable"}
                               />
                             ) : null}
                             {hyperframesFinalSelectedShotPreviewMode === "video" &&
@@ -12180,7 +12641,7 @@ export default function StoryboardReviewPage() {
 	                                  </div>
 	                                ) : null}
 	                                <div className="relative mt-1.5 aspect-[9/16] overflow-hidden rounded-md bg-slate-900">
-                                  <video
+                                  <AuthenticatedMediaVideo
                                     key={`hf-shot-rail-media-${railClip.id}`}
                                     src={railClip.url}
                                     poster={railPosterUrl}
@@ -12188,6 +12649,7 @@ export default function StoryboardReviewPage() {
                                     playsInline
                                     preload="metadata"
                                     className="absolute inset-0 h-full w-full object-cover opacity-90"
+                                    errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                                     aria-hidden="true"
                                   />
 	                                  {railHasOverlayLayer ? (
@@ -13218,7 +13680,7 @@ export default function StoryboardReviewPage() {
                         data-subtitle-preset={hyperframesFinalSubtitlePreset}
 	                    >
                       {selectedPreviewClip?.url ? (
-                        <video
+                        <AuthenticatedMediaVideo
                           key={`hf-preview-media-${selectedPreviewClip.id}`}
                           src={selectedPreviewClip.url}
                           poster={selectedPreviewPosterUrl}
@@ -13226,6 +13688,7 @@ export default function StoryboardReviewPage() {
                           playsInline
                           preload="auto"
                           className="hf-preview-media"
+                          errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                           aria-hidden="true"
                         />
                       ) : null}
@@ -13305,7 +13768,7 @@ export default function StoryboardReviewPage() {
                       data-subtitle-preset={hyperframesFinalSubtitlePreset}
                     >
                       {subtitlePreviewClip?.url ? (
-                        <video
+                        <AuthenticatedMediaVideo
                           key={`hf-sub-preview-media-${subtitlePreviewClip.id}`}
                           src={subtitlePreviewClip.url}
                           poster={subtitlePreviewPosterUrl}
@@ -13313,6 +13776,7 @@ export default function StoryboardReviewPage() {
                           playsInline
                           preload="auto"
                           className="hf-preview-media"
+                          errorLabel={locale === "th" ? "โหลดวีดีโอของ shot นี้ไม่สำเร็จ" : "Shot video unavailable"}
                           aria-hidden="true"
                         />
                       ) : null}
@@ -13546,12 +14010,14 @@ export default function StoryboardReviewPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-2">
-                  <Badge variant="secondary">{t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}</Badge>
+                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="max-w-full shrink-0">
+                    {t("mediaStudio.storyboardReviewReadyBadge", { completed: completedCount, total: tasks.length })}
+                  </Badge>
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 px-2 text-xs"
+                    className="h-8 w-full max-w-full shrink-0 whitespace-nowrap px-2 text-xs sm:w-auto"
                     onClick={createManualStoryboardReviewProject}
                     disabled={isCreatingManualReviewProject}
                   >
@@ -13560,7 +14026,11 @@ export default function StoryboardReviewPage() {
                     ) : (
                       <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
                     )}
-                    {locale === "th" ? "New Project" : "New Project"}
+                    {locale === "th" ? "สร้างโปรเจกต์เปล่า" : "Create blank project"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="h-8 w-full max-w-full shrink-0 whitespace-nowrap px-2 text-xs sm:w-auto" onClick={() => setLocation("/storyboard-review/new/skill-framework")}>
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    {locale === "th" ? "สร้างด้วย Skill Framework" : "Create with Skill Framework"}
                   </Button>
                 </div>
                 <div className="relative mt-3">
@@ -13631,9 +14101,9 @@ export default function StoryboardReviewPage() {
                               activeDraft ? "h-14 w-20 xl:h-24 xl:w-full 2xl:h-14 2xl:w-20" : "h-12 w-16",
                             )}>
                               {showVideoThumbnail && thumbnailUrl ? (
-                                <video src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                <AuthenticatedMediaVideo src={thumbnailUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" aria-label={locale === "th" ? "ตัวอย่างวิดีโอโปรเจกต์" : "Project video thumbnail"} errorLabel={locale === "th" ? "วิดีโอไม่พร้อมใช้งาน" : "Video unavailable"} />
                               ) : showImageThumbnail && thumbnailUrl ? (
-                                <img src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                                <AuthenticatedMediaImage src={thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" errorLabel={locale === "th" ? "ภาพไม่พร้อมใช้งาน" : "Image unavailable"} />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center text-slate-400">
                                   <Video className="h-5 w-5" />
@@ -13778,6 +14248,7 @@ export default function StoryboardReviewPage() {
               onSelectAll={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: current.taskIds }))}
               onSelectNone={() => setAndSaveDraft((current) => ({ ...current, updatedAt: Date.now(), selectedTaskIds: [] }))}
               onRegenerateTask={regenerateTask}
+              onRegenerateImageTask={regenerateImageTask}
               onRegenerateVideoSegmentPrompt={regenerateVideoSegmentPromptForTask}
               onSplitVideoSegmentToPerShot={requestSplitVideoSegmentToPerShot}
               onUpdateTaskPrompt={updateTaskPrompt}
@@ -13808,6 +14279,15 @@ export default function StoryboardReviewPage() {
               mediaAttachTargetTaskId={mediaAttachTargetTaskId}
               mediaAttachTargetFrameIndex={mediaAttachTargetFrameIndex}
               onMediaAttachTargetChange={setStoryboardMediaAttachTarget}
+              // Marketplace spare-image repair — Storyboard Review clip
+              // list placement (2026-07-23 user feedback on b661284a6):
+              // the same sequential-shot data + handler already wired to
+              // `SequentialShotReviewSection` above, now also reaching the
+              // clip list so its spare strip renders under each clip's Ref
+              // thumbnail instead of only in the collapsed 9-shot grid.
+              sequentialShots={sequentialShotCards}
+              sequentialSwappingShotId={sequentialSwappingShotId}
+              onSelectSequentialShotAlternate={handleSelectSequentialShotAlternate}
               onMoveTask={moveStoryboardTask}
               onRemoveTask={removeStoryboardTask}
               onAutoCompound={autoCompound}
@@ -14367,7 +14847,7 @@ export default function StoryboardReviewPage() {
                                 >
                                   {mediaPickerKind === "video" && resultUrl ? (
                                     <>
-                                      <video src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                      <AuthenticatedMediaVideo src={resultUrl} className="h-full w-full object-cover" muted playsInline preload="metadata" aria-label={locale === "th" ? "ตัวอย่างวิดีโอจากประวัติ" : "History video preview"} errorLabel={locale === "th" ? "วิดีโอหมดอายุหรือไม่พร้อมใช้งาน" : "Video expired or unavailable"} />
                                       <span className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition group-hover:bg-black/30 group-hover:opacity-100">
                                         <Maximize2 className="h-4 w-4 text-white" />
                                       </span>
@@ -14558,7 +15038,7 @@ export default function StoryboardReviewPage() {
                                 style={{ aspectRatio: "1 / 1" }}
                                 onClick={() => setGalleryLightbox({ url, title })}
                               >
-                                <img src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} />
+                                <AuthenticatedMediaImage src={url} alt={title} className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" draggable={false} errorLabel={locale === "th" ? "ภาพหมดอายุหรือไม่พร้อมใช้งาน" : "Image expired or unavailable"} />
                                 <span className="absolute left-2 top-2 rounded-full bg-white/90 p-1 text-slate-700 shadow">
                                   <History className="h-3.5 w-3.5" />
                                 </span>
@@ -15070,10 +15550,11 @@ export default function StoryboardReviewPage() {
               </div>
             </div>
             <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-lg bg-black">
-              <img
+              <AuthenticatedMediaImage
                 src={galleryLightbox.url}
                 alt={galleryLightbox.title}
                 className="max-h-[calc(100dvh-8rem)] max-w-full object-contain"
+                errorLabel={locale === "th" ? "ไม่พบภาพนี้แล้ว" : "Image unavailable"}
                 draggable
                 onDragStart={(event) => startStoryboardImageDrag(event, {
                   url: galleryLightbox.url,
@@ -15163,14 +15644,15 @@ export default function StoryboardReviewPage() {
                     data-preview-mode="video"
                   >
                     {overlay?.posterUrl && !videoPreviewPlaybackReady ? (
-                      <img
+                      <AuthenticatedMediaImage
                         src={overlay.posterUrl}
                         alt=""
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-0 z-[5] h-full w-full object-cover opacity-95"
+                        errorLabel={locale === "th" ? "ไม่พบ poster ของวีดีโอนี้" : "Video poster unavailable"}
                       />
                     ) : null}
-                    <video
+                    <AuthenticatedMediaVideo
                       key={videoPreview.url}
                       ref={videoPreviewVideoRef}
                       src={videoPreview.url}
@@ -15183,6 +15665,7 @@ export default function StoryboardReviewPage() {
                         "absolute inset-0 z-10 h-full w-full bg-transparent object-cover transition-opacity duration-200",
                         "opacity-100",
                       )}
+                      errorLabel={locale === "th" ? "ไม่พบวีดีโอนี้แล้ว" : "Video unavailable"}
                       onLoadStart={() => {
                         setVideoPreviewError("");
                       }}

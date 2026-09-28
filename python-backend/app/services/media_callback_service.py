@@ -340,9 +340,9 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
                             "completed_at": datetime.utcnow().isoformat(),
                         },
                     })
-                    await MediaTaskService.update_task_by_external_id(
+                    await MediaTaskService.update_task_status(
                         db,
-                        provider_task_id,
+                        task.id,
                         TaskStatus.COMPLETED,
                         result_url=normalized.get("result_url"),
                         result_data=result_data,
@@ -356,17 +356,17 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
                 ):
                     target_status = TaskStatus.PROCESSING
                 else:
-                    await MediaTaskService.update_task_by_external_id(
+                    await MediaTaskService.update_task_status(
                         db,
-                        provider_task_id,
+                        task.id,
                         target_status,
                         result_url=normalized.get("result_url"),
                         result_data={"output": normalized.get("output")},
                     )
             else:
-                await MediaTaskService.update_task_by_external_id(
+                await MediaTaskService.update_task_status(
                     db,
-                    provider_task_id,
+                    task.id,
                     target_status,
                     result_url=normalized.get("result_url"),
                     result_data={"output": normalized.get("output")},
@@ -377,6 +377,14 @@ async def _process_callback_event(db: AsyncSession, event: MediaCallbackEvent) -
         event.processed_at = datetime.utcnow()
         event.updated_at = datetime.utcnow()
         await db.commit()
+
+        if (
+            task.media_type == "image"
+            and target_status in {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED}
+        ):
+            from app.tasks.media_tasks import _dispatch_pending_image_tasks_async
+
+            await _dispatch_pending_image_tasks_async(task.user_id)
 
         logger.info(
             "media_callback_processed",

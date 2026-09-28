@@ -8,6 +8,7 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { rateLimitBackoffMs } from "@/lib/rateLimitBackoff";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -107,7 +108,28 @@ import {
   type MediaHistoryReferenceMediaAsset,
   type MediaHistoryReferenceImageConfig,
 } from "@/lib/mediaHistoryDebug";
+import {
+  createMediaHistoryPollState,
+  MEDIA_HISTORY_POLL_INTERVAL_MS,
+  reserveMediaHistoryPoll,
+  setMediaHistoryRateLimit,
+} from "@/lib/mediaHistoryPolling";
 import { cn } from "@/lib/utils";
+import {
+  getMediaTaskArtifactStatus,
+  selectMediaTaskPlaybackUrl,
+  type MediaTaskArtifactLite,
+} from "@/lib/mediaTaskArtifacts";
+import {
+  inferMediaAspectRatio,
+  parseMediaAspectRatio,
+  type MediaAspectRatio,
+} from "@/lib/mediaAspectRatio";
+import { resolveMediaDisplayName } from "@shared/mediaDisplayName";
+import {
+  formatMediaProviderDisplayName,
+  normalizeMediaProviderKey,
+} from "@/lib/mediaProviderDisplayName";
 
 type MediaType = "image" | "video" | "audio";
 type TaskStatus =
@@ -124,6 +146,31 @@ type Translator = (
 
 const MEDIA_HISTORY_PAGE_SIZE = 50;
 const MEDIA_HISTORY_SOURCE_FILTER_MAX_LENGTH = 128;
+export const MEDIA_HISTORY_TASK_STALE_TIME_MS = 30_000;
+export const MEDIA_HISTORY_TASK_GC_TIME_MS = 15 * 60_000;
+export const MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS =
+  MEDIA_HISTORY_POLL_INTERVAL_MS;
+export const MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT = "always" as const;
+export const MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS = false;
+
+const MEDIA_PROVIDER_ERROR_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
+  ["kie_ai", /\bkie(?:\.ai|_ai)?\b/i],
+  ["wavespeed_ai", /\bwave[\s_-]*speed(?:_ai)?\b/i],
+  ["fal_ai", /\bfal(?:\.ai|_ai)?\b/i],
+  ["magnific", /\bmagnific\b/i],
+  ["byteplus_modelark", /\bbyteplus(?:\s+modelark)?\b/i],
+];
+
+export function hasMediaTaskErrorProviderMismatch(
+  providerName: unknown,
+  errorMessage: unknown,
+): boolean {
+  const providerKey = normalizeMediaProviderKey(providerName);
+  if (!providerKey || typeof errorMessage !== "string") return false;
+  return MEDIA_PROVIDER_ERROR_PATTERNS.some(
+    ([key, pattern]) => key !== providerKey && pattern.test(errorMessage),
+  );
+}
 
 interface MediaHistoryQueryState {
   mediaType: MediaType | "all";
@@ -142,6 +189,7 @@ interface MediaTask {
   prompt: string;
   parameters?: Record<string, unknown>;
   resultUrl?: string;
+  artifacts?: MediaTaskArtifactLite[] | null;
   resultData?: Record<string, unknown>;
   creditsUsed?: number;
   errorMessage?: string;
@@ -190,7 +238,7 @@ export function parseMediaHistoryQueryState(search: string): MediaHistoryQuerySt
 
 const statusConfig: Record<
   TaskStatus,
-  { labelKey: string; color: string; icon: React.ElementType }
+  { labelKey: string; color: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   pending: {
     labelKey: "pending",
@@ -221,7 +269,7 @@ const statusConfig: Record<
 
 const mediaTypeConfig: Record<
   MediaType,
-  { labelKey: string; icon: React.ElementType; color: string }
+  { labelKey: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   image: { labelKey: "image", icon: Image, color: "text-purple-600" },
   video: { labelKey: "video", icon: Video, color: "text-blue-600" },
@@ -263,6 +311,69 @@ function canManuallyFetchTaskResult(
   return Boolean(
     task?.taskId && !task?.resultUrl && task?.status !== "cancelled"
   );
+}
+
+export function canAddTaskToGallery(
+  task:
+    | (Pick<MediaTask, "status" | "resultUrl"> &
+        Partial<Pick<MediaTask, "mediaType">>)
+    | null
+    | undefined,
+  isAdmin: boolean,
+): boolean {
+  return Boolean(
+    isAdmin &&
+      (task?.mediaType === "image" || task?.mediaType === "video") &&
+      task.status === "completed" &&
+      task.resultUrl,
+  );
+}
+
+export function resolveMediaHistoryGalleryTitle(
+  task: Pick<MediaTask, "mediaType" | "prompt" | "parameters" | "resultData">,
+): string {
+  return resolveMediaDisplayName({
+    mediaType: task.mediaType,
+    prompt: task.prompt,
+    parameters: task.parameters,
+    resultData: task.resultData,
+  }).title;
+}
+
+export function resolveMediaHistoryGalleryAspectRatio(
+  task: Pick<MediaTask, "mediaType" | "parameters" | "resultData">,
+): MediaAspectRatio {
+  const width = findFirstNumber(task.resultData, [
+    "width",
+    "image_width",
+    "video_width",
+  ]);
+  const height = findFirstNumber(task.resultData, [
+    "height",
+    "image_height",
+    "video_height",
+  ]);
+  const detected =
+    width !== null && height !== null
+      ? inferMediaAspectRatio(width, height)
+      : null;
+  if (detected) return detected;
+
+  const requested = parseMediaAspectRatio(
+    findFirstScalarString(task.parameters, [
+      "aspectRatio",
+      "aspect_ratio",
+      "ratio",
+    ]) ??
+      findFirstScalarString(task.resultData, [
+        "aspectRatio",
+        "aspect_ratio",
+        "ratio",
+      ]),
+  );
+  if (requested) return requested;
+
+  return task.mediaType === "video" ? "16:9" : "1:1";
 }
 
 function getTaskFetchResultLabel(
@@ -429,6 +540,28 @@ function extractTaskErrorInfo(
   push(task.errorMessage);
   if (resultData) walk(resultData);
 
+  const apiDebugInfo = extractTaskApiDebugInfo(task);
+  const providerLabel = apiDebugInfo?.providerHint
+    ? formatMediaProviderDisplayName(apiDebugInfo.providerHint)
+    : "";
+  const rawSummary = details[0] ?? "";
+  const mentionsDifferentProvider = hasMediaTaskErrorProviderMismatch(
+    apiDebugInfo?.providerHint,
+    rawSummary,
+  );
+  const providerAwareSummary =
+    providerLabel && mentionsDifferentProvider
+      ? t?.("historyPage.details.providerGenerationFailed", {
+          provider: providerLabel,
+          mediaType:
+            task.mediaType === "image"
+              ? t?.("image") || "image"
+              : task.mediaType === "video"
+                ? t?.("video") || "video"
+                : t?.("audio") || "audio",
+        }) || `${providerLabel} generation failed.`
+      : rawSummary;
+
   const stateHint = findScalar(resultData, [
     "state",
     "status",
@@ -444,7 +577,7 @@ function extractTaskErrorInfo(
   ]);
 
   const summary =
-    details[0] ||
+    providerAwareSummary ||
     (task.status === "failed"
       ? t?.("historyPage.details.errorSummaryFallback") ||
         "Generation failed, but provider did not return a clear error message."
@@ -629,7 +762,11 @@ function findFirstNumber(
 }
 
 function extractMediaHistoryResultUrl(task: MediaTask): string | null {
-  const resultUrl = (
+  const durableUrl = selectMediaTaskPlaybackUrl(task);
+  if (durableUrl) return normalizeGeneratedStorageUrl(durableUrl);
+  if (task.artifacts?.length) return null;
+
+  const legacyCandidate = (
     (typeof task.resultUrl === "string" && task.resultUrl.trim() ? task.resultUrl.trim() : null) ||
     readFirstHttpUrl(task.resultData?.resultUrl) ||
     readFirstHttpUrl(task.resultData?.result_url) ||
@@ -648,7 +785,18 @@ function extractMediaHistoryResultUrl(task: MediaTask): string | null {
     readFirstHttpUrl(task.resultData?.resultJson) ||
     null
   );
-  return resultUrl ? normalizeGeneratedStorageUrl(resultUrl) : null;
+  if (!legacyCandidate) return null;
+
+  // A completed task without an artifact row may still carry an older direct
+  // R2 URL. Normalize that legacy form, but never promote a provider URL to
+  // playback; providerOriginalUrl remains diagnostic/fallback provenance only.
+  const normalized = normalizeGeneratedStorageUrl(legacyCandidate);
+  try {
+    const parsed = new URL(normalized, window.location.origin);
+    return parsed.pathname.startsWith("/api/storage/files/") ? normalized : null;
+  } catch {
+    return normalized.startsWith("/api/storage/files/") ? normalized : null;
+  }
 }
 
 function normalizeGeneratedStorageUrl(value: string): string {
@@ -773,7 +921,22 @@ export function buildFallbackApiUrl(
   }
   const normalizedBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : "";
   if (normalizedBaseUrl) {
-    return `${normalizedBaseUrl.replace(/\/+$/, "")}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+    const baseWithoutSlash = normalizedBaseUrl.replace(/\/+$/, "");
+    const normalizedEndpoint = endpoint.trim();
+    try {
+      const base = new URL(baseWithoutSlash);
+      const basePath = base.pathname.replace(/\/+$/, "");
+      if (
+        normalizedEndpoint.startsWith("/") &&
+        basePath &&
+        (normalizedEndpoint === basePath || normalizedEndpoint.startsWith(`${basePath}/`))
+      ) {
+        return `${base.origin}${normalizedEndpoint}`;
+      }
+    } catch {
+      // Fall back to the existing string join for non-URL test/custom values.
+    }
+    return `${baseWithoutSlash}${normalizedEndpoint.startsWith("/") ? "" : "/"}${normalizedEndpoint}`;
   }
   const normalizedProvider = String(providerHint || "")
     .trim()
@@ -918,6 +1081,7 @@ function extractTaskApiDebugInfo(
     providerApi?.provider,
     debugObj.provider_hint,
     providerDebug?.provider_hint,
+    failureObj.provider,
     submission.provider,
     apiConfig.provider
   );
@@ -1156,10 +1320,38 @@ function VideoThumbnailCard({
 }) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  const useImageThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
 
   useEffect(() => {
     setThumbnailFailed(false);
+    setShouldLoadVideo(false);
   }, [src, thumbnailUrl]);
+
+  useEffect(() => {
+    if (useImageThumbnail) return;
+    if (
+      typeof window === "undefined" ||
+      !("IntersectionObserver" in window)
+    ) {
+      setShouldLoadVideo(true);
+      return;
+    }
+    const element = previewRef.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      entries => {
+        if (!entries.some(entry => entry.isIntersecting)) return;
+        setShouldLoadVideo(true);
+        observer.disconnect();
+      },
+      { rootMargin: "400px" },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [src, thumbnailUrl, useImageThumbnail]);
 
   const handleLoadedMetadata = useCallback(() => {
     const el = videoRef.current;
@@ -1171,10 +1363,9 @@ function VideoThumbnailCard({
     }
   }, []);
 
-  const useImageThumbnail = Boolean(thumbnailUrl) && !thumbnailFailed;
-
   return (
     <div
+      ref={previewRef}
       className={cn(
         "relative h-full w-full overflow-hidden bg-slate-950",
         className
@@ -1185,9 +1376,11 @@ function VideoThumbnailCard({
           src={thumbnailUrl!}
           alt={alt}
           className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
           onError={() => setThumbnailFailed(true)}
         />
-      ) : (
+      ) : shouldLoadVideo ? (
         <video
           ref={videoRef}
           src={src}
@@ -1198,7 +1391,7 @@ function VideoThumbnailCard({
           onLoadedMetadata={handleLoadedMetadata}
           onError={onError}
         />
-      )}
+      ) : null}
       <div className="absolute inset-0 flex items-center justify-center bg-black/20 pointer-events-none">
         <div className="rounded-full bg-black/55 p-3 text-white">
           <Play className="h-5 w-5" />
@@ -1287,6 +1480,17 @@ export default function MediaHistory() {
     limit: MEDIA_HISTORY_PAGE_SIZE,
     offset: currentPage * MEDIA_HISTORY_PAGE_SIZE,
     daysAgo: 12, // Only show tasks from last 12 days
+  }, {
+    // Keep the previous page visible while the short metadata cache is
+    // revalidated. Always revalidate on mount so newly completed media is not
+    // hidden behind a long-lived list cache.
+    staleTime: MEDIA_HISTORY_TASK_STALE_TIME_MS,
+    gcTime: MEDIA_HISTORY_TASK_GC_TIME_MS,
+    placeholderData: previous => previous,
+    refetchInterval: MEDIA_HISTORY_TASK_REFETCH_INTERVAL_MS,
+    refetchIntervalInBackground: false,
+    refetchOnMount: MEDIA_HISTORY_TASK_REVALIDATE_ON_MOUNT,
+    refetchOnWindowFocus: MEDIA_HISTORY_TASK_REFETCH_ON_WINDOW_FOCUS,
   });
   const tasks: MediaTask[] = useMemo(
     () => (tasksData?.tasks || []).map((task: MediaTask) => {
@@ -1361,7 +1565,11 @@ export default function MediaHistory() {
     },
     {
       enabled: tasks.length > 0 || hasLibraryContextFilter,
-      staleTime: 30_000,
+      staleTime: MEDIA_HISTORY_TASK_STALE_TIME_MS,
+      gcTime: MEDIA_HISTORY_TASK_GC_TIME_MS,
+      placeholderData: previous => previous,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: false,
     }
   );
   const recentLibraryResults = (recentLibraryData?.results ||
@@ -1369,6 +1577,13 @@ export default function MediaHistory() {
 
   // Mutation for fetching task result from provider
   const fetchResultMutation = trpc.media.fetchTaskResult.useMutation();
+  const mediaHistoryPollStateRef = useRef(createMediaHistoryPollState());
+  const pollTasksRef = useRef<MediaTask[]>(tasks);
+  const pollFetchResultRef = useRef(fetchResultMutation.mutateAsync);
+  const pollRefetchRef = useRef(refetch);
+  pollTasksRef.current = tasks;
+  pollFetchResultRef.current = fetchResultMutation.mutateAsync;
+  pollRefetchRef.current = refetch;
 
   // Mutation for deleting a task
   const deleteTaskMutation = trpc.media.deleteTask.useMutation({
@@ -1606,6 +1821,10 @@ export default function MediaHistory() {
 
   // Handle adding task result to gallery (admin only)
   const handleAddToGallery = async (task: MediaTask) => {
+    if (task.mediaType !== "image" && task.mediaType !== "video") {
+      toast.info(t("historyPage.actions.imagesAndVideosOnly"));
+      return;
+    }
     if (!task.resultUrl) {
       toast.error(t("historyPage.toasts.noResultUrlAvailable"));
       return;
@@ -1624,16 +1843,14 @@ export default function MediaHistory() {
         folder: folder as "images" | "videos" | "thumbnails" | "websites",
       });
 
-      // Determine aspect ratio based on media type
-      let aspectRatio: "1:1" | "9:16" | "16:9" = "1:1";
-      if (task.mediaType === "video") {
-        aspectRatio = "16:9";
-      }
+      // Prefer the real dimensions from the provider result, then the
+      // requested ratio, and only fall back to the media type default.
+      const aspectRatio = resolveMediaHistoryGalleryAspectRatio(task);
 
       // Create gallery item with permanent URL
       await addToGalleryMutation.mutateAsync({
-        type: task.mediaType === "audio" ? "video" : task.mediaType, // Map audio to video for gallery
-        title: task.prompt.slice(0, 100) || `${task.mediaType} - ${task.model}`,
+        type: task.mediaType,
+        title: resolveMediaHistoryGalleryTitle(task),
         description: task.prompt,
         aspectRatio,
         fileUrl: importResult.fileUrl, // Use permanent URL from storage
@@ -1916,7 +2133,7 @@ export default function MediaHistory() {
     }
     setShareDialogTarget({
       itemId: state.itemId,
-      title: task.prompt.slice(0, 80) || `${task.mediaType} - ${task.model}`,
+      title: resolveMediaHistoryGalleryTitle(task),
     });
   };
 
@@ -2162,35 +2379,48 @@ export default function MediaHistory() {
 
   // Background fallback polling:
   // if provider callback/worker update is delayed, periodically refresh one pending task.
-  useEffect(() => {
-    const hasPendingTasks = tasks.some(
-      task =>
-        !task.resultUrl &&
-        (task.status === "processing" || task.status === "pending")
-    );
+  const hasPendingTasks = tasks.some(
+    task =>
+      !task.resultUrl &&
+      (task.status === "processing" || task.status === "pending")
+  );
 
-    if (!hasPendingTasks) return;
+  useEffect(() => {
+    if (!hasPendingTasks) {
+      mediaHistoryPollStateRef.current.nextAttemptAtByTask.clear();
+      return;
+    }
 
     const tick = async () => {
-      if (
-        document.visibilityState !== "visible" ||
-        fetchResultMutation.isPending
-      )
-        return;
-      const nextTask = tasks.find(
+      if (document.visibilityState !== "visible") return;
+
+      const nextTask = pollTasksRef.current.find(
         task =>
           !!task.taskId &&
           !task.resultUrl &&
           (task.status === "processing" || task.status === "pending")
       );
+      const pollKey = nextTask?.id ?? "__media_history_list__";
+      const pollState = mediaHistoryPollStateRef.current;
+      if (!reserveMediaHistoryPoll(pollState, pollKey, Date.now())) return;
+
+      pollState.inFlight = true;
       try {
         if (nextTask) {
-          await fetchResultMutation.mutateAsync({ taskId: nextTask.id });
+          await pollFetchResultRef.current({ taskId: nextTask.id });
         } else {
-          await refetch();
+          await pollRefetchRef.current();
         }
       } catch (error) {
+        // A 429 means we're polling faster than the server allows. Pause for
+        // the server-advised Retry-After window instead of retrying next tick.
+        const backoffMs = rateLimitBackoffMs(error);
+        if (backoffMs > 0) {
+          setMediaHistoryRateLimit(pollState, Date.now(), backoffMs);
+        }
         console.error("Background fetch task result failed:", error);
+      } finally {
+        pollState.inFlight = false;
       }
     };
 
@@ -2199,12 +2429,7 @@ export default function MediaHistory() {
       void tick();
     }, 15000);
     return () => window.clearInterval(interval);
-  }, [
-    tasks,
-    fetchResultMutation.isPending,
-    fetchResultMutation.mutateAsync,
-    refetch,
-  ]);
+  }, [hasPendingTasks]);
 
   useEffect(() => {
     const tracking = Object.entries(taskLibraryState).filter(
@@ -2637,6 +2862,8 @@ export default function MediaHistory() {
                             src={item.thumbnail_url}
                             alt={item.title}
                             className="h-full w-full object-cover"
+                            loading="lazy"
+                            decoding="async"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-white">
@@ -2810,14 +3037,15 @@ export default function MediaHistory() {
                 {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
+                  const artifactStatus = getMediaTaskArtifactStatus(
+                    task,
+                    locale.startsWith("th"),
+                  );
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary =
                     isMediaTaskEligibleForLibraryAdd(task);
-                  const canAddToGallery =
-                    isAdmin &&
-                    task.status === "completed" &&
-                    Boolean(task.resultUrl);
+                  const canAddToGallery = canAddTaskToGallery(task, isAdmin);
                   const canFetchResult = canManuallyFetchTaskResult(task);
                   const isFetchPending =
                     fetchResultMutation.isPending &&
@@ -2860,6 +3088,19 @@ export default function MediaHistory() {
                             />
                             {status.label}
                           </Badge>
+                          {artifactStatus && (
+                            <Badge
+                              variant="outline"
+                              title={artifactStatus.detail}
+                              className={cn(
+                                "bg-white/90 shadow-sm",
+                                artifactStatus.tone === "expired" &&
+                                  "border-amber-300 text-amber-700",
+                              )}
+                            >
+                              {artifactStatus.label}
+                            </Badge>
+                          )}
                         </div>
                         {canAddToLibrary && (
                           <div className="absolute right-3 top-3 z-10">
@@ -2891,6 +3132,8 @@ export default function MediaHistory() {
                                   t("historyPage.preview.generatedImage")
                                 }
                                 className="h-full w-full object-contain"
+                                loading="lazy"
+                                decoding="async"
                                 onError={() => markExpired(task.resultUrl!)}
                               />
                             </button>
@@ -3101,6 +3344,24 @@ export default function MediaHistory() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
+                        {canAddToGallery && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => handleAddToGallery(task)}
+                            disabled={importingTaskId === task.id}
+                            className="w-full gap-2 bg-purple-600 text-white hover:bg-purple-700"
+                          >
+                            {importingTaskId === task.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <ImagePlus className="h-4 w-4" />
+                            )}
+                            {importingTaskId === task.id
+                              ? t("historyPage.actions.importing")
+                              : t("historyPage.actions.addToGallery")}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   );
@@ -3114,6 +3375,10 @@ export default function MediaHistory() {
                 {visibleTasks.map(task => {
                   const typeConfig = getMediaTypeMeta(task.mediaType, t);
                   const status = getStatusMeta(task.status, t);
+                  const artifactStatus = getMediaTaskArtifactStatus(
+                    task,
+                    locale.startsWith("th"),
+                  );
                   const StatusIcon = status?.icon || AlertCircle;
                   const TypeIcon = typeConfig?.icon || FileImage;
                   const canAddToLibrary =
@@ -3146,6 +3411,8 @@ export default function MediaHistory() {
                               src={task.resultUrl}
                               alt={t("historyPage.preview.previewAlt")}
                               className="w-14 h-14 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                              loading="lazy"
+                              decoding="async"
                               onError={() => markExpired(task.resultUrl!)}
                               onClick={() => handleOpenFullscreenMedia(task)}
                             />
@@ -3198,6 +3465,19 @@ export default function MediaHistory() {
                             />
                             {status.label}
                           </Badge>
+                          {artifactStatus && (
+                            <Badge
+                              variant="outline"
+                              title={artifactStatus.detail}
+                              className={cn(
+                                "text-xs",
+                                artifactStatus.tone === "expired" &&
+                                  "border-amber-300 text-amber-700",
+                              )}
+                            >
+                              {artifactStatus.label}
+                            </Badge>
+                          )}
                           {canAddToLibrary &&
                             libraryState?.action !== "adding" &&
                             libraryState?.action !== "error" && (
@@ -3399,6 +3679,10 @@ export default function MediaHistory() {
                     {visibleTasks.map(task => {
                       const typeConfig = getMediaTypeMeta(task.mediaType, t);
                       const status = getStatusMeta(task.status, t);
+                      const artifactStatus = getMediaTaskArtifactStatus(
+                        task,
+                        locale.startsWith("th"),
+                      );
                       const StatusIcon = status?.icon || AlertCircle;
                       const TypeIcon = typeConfig?.icon || FileImage;
                       const externalTaskId = extractMediaHistoryExternalTaskId(task);
@@ -3444,6 +3728,8 @@ export default function MediaHistory() {
                                   src={task.resultUrl}
                                   alt={t("historyPage.preview.previewAlt")}
                                   className="w-12 h-12 rounded-lg object-cover border cursor-pointer hover:opacity-80"
+                                  loading="lazy"
+                                  decoding="async"
                                   onError={() => markExpired(task.resultUrl!)}
                                   onClick={() =>
                                     handleOpenFullscreenMedia(task)
@@ -3524,6 +3810,19 @@ export default function MediaHistory() {
                               />
                               {status.label}
                             </Badge>
+                            {artifactStatus && (
+                              <Badge
+                                variant="outline"
+                                title={artifactStatus.detail}
+                                className={cn(
+                                  "ml-2",
+                                  artifactStatus.tone === "expired" &&
+                                    "border-amber-300 text-amber-700",
+                                )}
+                              >
+                                {artifactStatus.label}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             {externalTaskId ? (
@@ -3717,7 +4016,7 @@ export default function MediaHistory() {
                                       <Download className="w-4 h-4" />
                                     </Button>
                                     {/* Add to Gallery button - admin only */}
-                                    {isAdmin && (
+                                    {canAddTaskToGallery(task, isAdmin) && (
                                       <Button
                                         variant="ghost"
                                         size="sm"
@@ -4059,6 +4358,61 @@ export default function MediaHistory() {
                     </p>
                   </div>
                 )}
+                {selectedTask.artifacts?.length ? (
+                  <div className="sm:col-span-2 rounded-lg border border-slate-200 bg-white p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-slate-700">
+                        {locale.startsWith("th")
+                          ? "แหล่งจัดเก็บผลลัพธ์"
+                          : "Result storage provenance"}
+                      </span>
+                      {(() => {
+                        const artifactStatus = getMediaTaskArtifactStatus(
+                          selectedTask,
+                          locale.startsWith("th"),
+                        );
+                        return artifactStatus ? (
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              artifactStatus.tone === "expired" &&
+                                "border-amber-300 text-amber-700",
+                            )}
+                          >
+                            {artifactStatus.label}
+                          </Badge>
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="mt-2 space-y-2 text-xs">
+                      {selectedTask.artifacts.map(artifact => (
+                        <div
+                          key={`${selectedTask.id}-${artifact.outputIndex ?? 0}`}
+                          className="rounded border bg-slate-50 p-2"
+                        >
+                          <p className="font-medium text-slate-600">
+                            {locale.startsWith("th")
+                              ? `ผลลัพธ์ที่ ${(artifact.outputIndex ?? 0) + 1}`
+                              : `Output ${(artifact.outputIndex ?? 0) + 1}`}
+                          </p>
+                          <p className="mt-1 break-all font-mono text-emerald-700">
+                            R2: {artifact.r2Url ??
+                              (locale.startsWith("th")
+                                ? "ยังไม่มีไฟล์ถาวร"
+                                : "No durable object yet")}
+                          </p>
+                          <p className="mt-1 break-all font-mono text-slate-600">
+                            Provider: {artifact.providerStatus === "expired"
+                              ? locale.startsWith("th")
+                                ? "หมดอายุ / เรียกดูไม่ได้แล้ว"
+                                : "Expired / no longer viewable"
+                              : artifact.providerOriginalUrl ?? "-"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
                 {selectedTask.celeryTaskId && (
                   <div className="sm:col-span-2">
                     <span className="text-sm text-gray-500">
@@ -4765,7 +5119,7 @@ export default function MediaHistory() {
                       {t("download")}
                     </Button>
                     {/* Add to Gallery button - admin only */}
-                    {isAdmin && (
+                    {canAddTaskToGallery(selectedTask, isAdmin) && (
                       <Button
                         variant="default"
                         onClick={() => handleAddToGallery(selectedTask)}

@@ -28,7 +28,7 @@ describe("desktopRunRouter", () => {
     expect(result.labels.locality).toBe("hybrid");
   });
 
-  it("selects Agency Swarm for connector-heavy or complex orchestration", () => {
+  it("selects the cloud orchestra for connector-heavy or complex orchestration", () => {
     const result = routeDesktopRun({
       packageTrustClass: "org_verified",
       requiresLocalFiles: false,
@@ -43,9 +43,28 @@ describe("desktopRunRouter", () => {
       degradedGateway: false,
     });
 
-    expect(result.selectedRuntime).toBe("agency_swarm");
+    expect(result.selectedRuntime).toBe("cloud_agent");
     expect(result.reason).toBe("connector_orchestration");
-    expect(result.labels.workspace).toBe("local_workspace");
+    expect(result.labels.workspace).toBe("none");
+  });
+
+  it("rejects the retired Agency Swarm runtime even when explicitly requested", () => {
+    expect(() =>
+      routeDesktopRun({
+        explicitRuntime: "agency_swarm",
+        packageTrustClass: "org_verified",
+        requiresLocalFiles: false,
+        requiresConnectors: false,
+        platformSkillEligible: false,
+        orchestrationComplexity: "moderate",
+        piAvailable: true,
+        agencyAvailable: true,
+        openClawAvailable: true,
+        cloudAllowed: true,
+        offline: false,
+        degradedGateway: false,
+      }),
+    ).toThrow("requested runtime agency_swarm is unavailable");
   });
 
   it("keeps deterministic skill work on platform skill when local tooling is unnecessary", () => {

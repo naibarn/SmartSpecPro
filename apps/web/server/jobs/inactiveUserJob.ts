@@ -1,18 +1,24 @@
 /**
  * Inactive User Check Background Job
  *
- * Checks for users registered via admin invite codes who haven't used
- * any credits within the configured inactivity window, and disables them.
+ * Checks users with tracked signup/invite free credits who haven't used
+ * credits within the configured inactivity window, then resets and disables
+ * them. The same lifecycle service is enforced during authentication.
  * Runs every 24 hours.
  */
 
 import { checkAndDisableInactiveUsers } from "../services/inactiveUserService";
+import { shouldRunFeature192InProcessTimer } from "./feature192TimerPolicy";
 
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 let intervalId: NodeJS.Timeout | null = null;
 let startupTimeoutId: NodeJS.Timeout | null = null;
 
 export async function initializeInactiveUserJob(): Promise<void> {
+  if (!shouldRunFeature192InProcessTimer("initializeInactiveUserJob")) {
+    console.info("[InactiveUserJob] in-process scheduler disabled; awaiting canonical scheduler");
+    return;
+  }
   // Clean up any previous instance (e.g., hot-reload)
   shutdownInactiveUserJob();
 

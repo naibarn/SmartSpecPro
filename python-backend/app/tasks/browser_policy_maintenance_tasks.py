@@ -11,7 +11,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.sqlalchemy_sync import to_sync_sqlalchemy_url
 
@@ -148,7 +148,7 @@ def maintain_browser_policy_decision_partitions(
     }
 
 
-@celery_app.task(name="app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions")
+@job_task_registry.task(name="app.tasks.browser_policy_maintenance_tasks.ensure_browser_policy_decision_partitions")
 def ensure_browser_policy_decision_partitions() -> dict[str, object]:
     try:
         with get_sync_session() as session:

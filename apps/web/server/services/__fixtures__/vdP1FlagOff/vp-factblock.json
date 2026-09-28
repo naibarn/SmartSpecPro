@@ -1,0 +1,1 @@
+"TARGET VIDEO MODEL (MANDATORY MODEL-FAMILY SHAPING):\n- family: veo\n- model: \"veo-test\"\n- negative_prompt_supported: yes\n- reference_images_accepted: 4\nApply the skill's \"MODEL-FAMILY SHAPING\" section for this family."

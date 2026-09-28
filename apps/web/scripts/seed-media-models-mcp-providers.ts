@@ -11,7 +11,7 @@ const DATABASE_URL =
   process.env.DATABASE_URL ||
   "postgresql://smartspec:smartspec123@localhost:5432/smartspec";
 
-type McpMediaModelSeed = {
+export type McpMediaModelSeed = {
   modelId: string;
   name: string;
   description: string;
@@ -27,6 +27,8 @@ type McpMediaModelSeed = {
   sizes?: string[];
   defaultParams?: Record<string, unknown>;
   referenceImageLimit?: number;
+  nativeAudioDialogue?: boolean;
+  supportsNativeAudio?: boolean;
   priority: number;
   sortOrder: number;
 };
@@ -222,6 +224,30 @@ const HIGGSFIELD_CATALOG_MEDIA_MODELS: McpMediaModelSeed[] = [
     defaultParams: { quality: "basic" },
     priority: 20,
     sortOrder: 220,
+  },
+  {
+    modelId: "higgsfield/seedream_v5_pro",
+    name: "Seedream 5.0 Pro (Higgsfield MCP)",
+    description:
+      "Deep-thinking image generation, instruction-precise editing, and native text rendering through Higgsfield MCP provider-account credits.",
+    modelType: "image",
+    provider: "higgsfield",
+    providerModelId: "seedream_v5_pro",
+    toolName: "generate_image",
+    argumentShape: "higgsfield.generate_image",
+    aliases: [
+      "higgsfield seedream 5.0 pro",
+      "seedream_v5_pro",
+      "seedream 5.0 pro",
+      "higgsfield reasoning",
+      "higgsfield text-rendering",
+      "higgsfield editing",
+      "higgsfield infographics",
+    ],
+    creditCost: 0,
+    aspectRatios: ["1:1", "16:9", "9:16", "4:3", "3:4"],
+    priority: 46,
+    sortOrder: 246,
   },
   {
     modelId: "higgsfield/gpt_image_2",
@@ -1156,6 +1182,8 @@ const HIGGSFIELD_CATALOG_MEDIA_MODELS: McpMediaModelSeed[] = [
     aspectRatios: [],
     sizes: ["480p", "720p"],
     defaultParams: { resolution: "720p", duration: 5 },
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
     priority: 66,
     sortOrder: 266,
   },
@@ -1524,6 +1552,8 @@ const HIGGSFIELD_CATALOG_MEDIA_MODELS: McpMediaModelSeed[] = [
     creditCost: 0,
     aspectRatios: ["16:9", "9:16", "1:1"],
     defaultParams: { duration: 5 },
+    nativeAudioDialogue: true,
+    supportsNativeAudio: true,
     priority: 81,
     sortOrder: 281,
   },
@@ -1695,6 +1725,10 @@ const HIGGSFIELD_CATALOG_MEDIA_MODELS: McpMediaModelSeed[] = [
     sortOrder: 288,
   },
 ];
+
+export function buildHiggsfieldCatalogMediaModels(): McpMediaModelSeed[] {
+  return HIGGSFIELD_CATALOG_MEDIA_MODELS;
+}
 
 const MCP_MEDIA_MODELS: McpMediaModelSeed[] = [
   ...HIGGSFIELD_CATALOG_MEDIA_MODELS,
@@ -1870,7 +1904,9 @@ const MCP_MEDIA_MODELS: McpMediaModelSeed[] = [
   },
 ];
 
-function buildConfigJson(model: McpMediaModelSeed): Record<string, unknown> {
+export function buildMcpMediaModelConfigJson(
+  model: McpMediaModelSeed,
+): Record<string, unknown> {
   return {
     transport: "mcp",
     provider: model.provider,
@@ -1883,6 +1919,8 @@ function buildConfigJson(model: McpMediaModelSeed): Record<string, unknown> {
       video: model.modelType === "video",
     },
     referenceImageLimit: model.referenceImageLimit ?? 5,
+    ...(model.nativeAudioDialogue === true ? { hasAudio: true } : {}),
+    ...(model.supportsNativeAudio === true ? { nativeAudio: true } : {}),
     mcp: {
       providerKey: model.provider,
       providerModelId: model.providerModelId,
@@ -1983,7 +2021,7 @@ export async function seedMcpProviderMediaModels(
           ${sql.json(model.sizes ?? [])},
           ${model.priority},
           ${model.sortOrder},
-          ${sql.json(buildConfigJson(model))},
+          ${sql.json(buildMcpMediaModelConfigJson(model))},
           true
         )
         ON CONFLICT ("modelId") DO UPDATE SET

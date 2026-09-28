@@ -18,6 +18,7 @@ import {
   buildSystemPrompt,
   buildUserPrompt,
 } from "../promptEnhancementService";
+import { resolveExternalMediaReferenceUrls } from "../mediaGenerationService";
 import type { UnifiedExecutionRequest, Attachment } from "./types";
 
 // ─── Token Budget Constants (matching "balanced" profile from promptComposer) ──
@@ -113,7 +114,7 @@ export async function buildChatContext(
   messages.push({ role: "system", content: skillPrompt });
 
   // 3. User message (potentially multimodal)
-  const userContent = buildUserMessage(request);
+  const userContent = await buildUserMessage(request);
   messages.push({ role: "user", content: userContent });
 
   return messages;
@@ -321,9 +322,9 @@ const EXCLUDED_PARAM_KEYS = new Set([
   "publicUrl",
 ]);
 
-function buildUserMessage(
+async function buildUserMessage(
   request: UnifiedExecutionRequest,
-): string | unknown[] {
+): Promise<string | unknown[]> {
   let userText = request.userMessage;
 
   // U05: Append dynamic params inside an XML fence to prevent prompt injection
@@ -352,7 +353,13 @@ function buildUserMessage(
   }
 
   // Collect image URLs from attachments and dynamicParams
-  const imageUrls = collectImageUrls(request);
+  const imageUrls = await resolveExternalMediaReferenceUrls(
+    collectImageUrls(request),
+    request.tenantId
+      ? { userId: request.userId, tenantId: request.tenantId }
+      : undefined,
+    request.conversationContext?.publicUrl,
+  ) ?? [];
 
   if (imageUrls.length === 0) {
     return userText;

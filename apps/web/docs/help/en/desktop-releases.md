@@ -42,12 +42,20 @@ Published installers appear in the desktop release panel on the dashboard.
 
 What you can do there:
 
-- download the latest published installer for your platform
+- download any latest published installer, including an installer for another machine
 - see available platforms
 - review version, platform, installer format, channel, and file size
 - read release notes when provided
 
-The panel tries to prioritize your current operating system automatically, then falls back to another published platform if needed.
+The panel shows Windows, macOS, and Linux releases together. It highlights the
+native macOS DMG when one is published, while keeping the other platform
+downloads available for users who manage more than one machine. The Worker App
+inside a desktop installation only checks its matching platform/architecture
+for self-update.
+
+For normal macOS Worker App installation, use the native Apple Silicon DMG.
+The macOS source ZIP is a developer fallback for building on a Mac and is not
+the normal end-user installer.
 
 ## Supported platforms and formats
 
@@ -93,6 +101,20 @@ Typical admin tasks:
 4. Provide the version, platform, channel, and optional release notes.
 5. Decide whether to publish immediately.
 6. Publish, unpublish, refresh, or delete releases as needed.
+
+## Trigger a build from the UI
+
+Admin Desktop Host dispatches the workflow manually and imports the release assets into the SmartAIHub catalog. End users do not need to open GitHub or know the repository.
+
+Before triggering a build, configure GitHub in the **Release source** panel:
+
+1. In GitHub, open the build repository and go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**.
+2. Set the **Resource owner**, choose **Repository access → Only select repositories**, and select the repository entered in SmartAIHub.
+3. Under **Repository permissions**, set `Actions` to **Read and write** and `Contents` to **Read-only**, then click **Generate token**.
+4. Copy the token immediately, paste it into **GitHub access token** in SmartAIHub, then click **Save configuration** and **Test GitHub connection**.
+5. Enter the repository such as `naibarn/SmartSpecPro`, workflow `desktop-release.yml`, and ref `main`, then queue the build.
+
+`Contents: Read-only` is required because SmartAIHub reads and downloads the release assets after the workflow finishes. A token with only `Actions: write` can queue a successful build, but the portal catalog will remain empty.
 
 ## Upload workflow
 

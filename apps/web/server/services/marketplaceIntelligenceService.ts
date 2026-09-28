@@ -749,6 +749,7 @@ export async function createMarketplaceProductMetricEnrichment(
       .where(and(
         eq(marketplaceProducts.id, input.productId),
         eq(marketplaceProducts.userId, actor.userId),
+        eq(marketplaceProducts.tenantId, actor.tenantId),
       ))
       .limit(1);
     if (!product) throw new Error("Marketplace product not found for current user.");

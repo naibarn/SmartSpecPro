@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 
 const setLocationMock = vi.fn();
 const authState = {
@@ -8,11 +9,11 @@ const authState = {
 };
 const tenantFeatureFlagsState = {
   desktopHostEnabled: false,
+  contentProtectionEnabled: false,
 };
 const {
   chatListConversationsUseQuery,
   getPersonalConversationUseQuery,
-  reviewDashboardUseQuery,
   getMenuVisibilityUseQuery,
 } = vi.hoisted(() => ({
   chatListConversationsUseQuery: vi.fn(() => ({
@@ -47,57 +48,6 @@ const {
       totalCreditsUsed: 0,
       updatedAt: "2026-04-09T10:00:00.000Z",
       projectId: "personal",
-    },
-    isLoading: false,
-  })),
-  reviewDashboardUseQuery: vi.fn(() => ({
-    data: {
-      overview: {
-        totalAgencies: 4,
-        reviewedAgencies: 3,
-        reviewCount: 6,
-        averageRating: 4.3,
-        averageObjectiveAlignment: 0.82,
-        reviewCoverage: 0.75,
-      },
-      recentReviews: [
-        {
-          id: 11,
-          agencyId: "agency-1",
-          agencyName: "Growth Agency",
-          rating: 5,
-          suggestionsCount: 2,
-          overallAssessment: "Strong output quality and good instruction coverage.",
-          createdAt: "2026-03-23T12:00:00.000Z",
-        },
-        {
-          id: 12,
-          agencyId: "agency-2",
-          agencyName: "Support Agency",
-          rating: 3,
-          suggestionsCount: 1,
-          overallAssessment: "Needs more model diversity.",
-          createdAt: "2026-03-23T11:00:00.000Z",
-        },
-      ],
-      recentImprovements: [
-        {
-          id: 21,
-          agencyId: "agency-1",
-          agencyName: "Growth Agency",
-          changeType: "node_instructions",
-          description: "Applied: tightened the content brief.",
-          createdAt: "2026-03-23T13:00:00.000Z",
-        },
-        {
-          id: 22,
-          agencyId: "agency-2",
-          agencyName: "Support Agency",
-          changeType: "model_selection",
-          description: "Dismissed: keep the current model.",
-          createdAt: "2026-03-23T09:00:00.000Z",
-        },
-      ],
     },
     isLoading: false,
   })),
@@ -251,24 +201,8 @@ const translationMap: Record<string, string> = {
   "dashboard:trendHealth.title": "Trend & Health",
   "dashboard:quickActions.subtitle": "Workspace Shortcuts",
   "dashboard:nextBestActions.title": "Next Best Actions",
-  "dashboard:nextBestActions.startWork": "Start work",
-  "dashboard:nextBestActions.startWorkDetail": "Create a new request when work begins outside chat.",
-  "dashboard:nextBestActions.myRequests": "My requests",
-  "dashboard:nextBestActions.myRequestsDetail": "Review the work you already started and pick up where you left off.",
-  "dashboard:review.improvementLoop": "Tenant-wide improvement loop",
-  "dashboard:filterByAgency": "Filter by agency",
-  "dashboard:review.open": "Open Review",
-  "dashboard:review.appliedChanges": "Applied Changes",
-  "dashboard:review.recentReviews": "Recent Reviews",
-  "dashboard:review.agencies": "Agencies",
-  "dashboard:review.center": "Open Review Center",
-  "dashboard:notices.openAgencies": "Open agencies",
-  "dashboard:notices.reviewCoverage": "Agency review coverage",
-  "dashboard:notices.reviewCoverageDetail": "Review the agencies list and open any agency review that needs attention.",
-  "dashboard:allAgencies": "All Agencies",
   "dashboard:sections.documents": "Documents",
   "dashboard:sections.social": "Social",
-  "dashboard:review.coverage": "{{percent}}% coverage",
   "dashboard:review.metrics.agencies": "Agencies",
   "dashboard:review.metrics.reviewed": "Reviewed",
   "dashboard:review.metrics.averageRating": "Avg rating",
@@ -278,8 +212,6 @@ const translationMap: Record<string, string> = {
   "dashboard:socialMenu.publishing": "Publishing",
   "dashboard:socialMenu.moderation": "Moderation",
   "dashboard:socialMenu.automation": "Social Automation",
-  "dashboard:review.eyebrow": "Agency Review Center",
-  "dashboard:review.description": "Track the latest agency feedback and rollout improvements.",
   "dashboard:nextBestActions.manageDesktopReleases": "Manage desktop releases",
   "dashboard:admin.systemMonitoring": "System Monitoring",
   "dashboard:admin.tools": "Admin Tools",
@@ -401,10 +333,6 @@ function translate(key: string, params?: Record<string, string | number>) {
     return `${params?.count ?? 0} failed generations need review`;
   }
 
-  if (key === "dashboard:review.coverage") {
-    return `${params?.percent ?? 0}% coverage`;
-  }
-
   if (key === "dashboard:admin.monitoringToolsGrouped") {
     return "Monitoring tools are grouped inside the command center.";
   }
@@ -519,6 +447,11 @@ vi.mock("@tanstack/react-query", () => ({
       };
     }
 
+    if (key === "content-protection-overview") {
+      if (options.enabled) void options.queryFn();
+      return { data: undefined, isLoading: false, isError: false };
+    }
+
     if (key === "dashboard-analytics-time-series") {
       return {
         data: {
@@ -570,19 +503,6 @@ vi.mock("@/features/desktop-releases/DesktopReleasePanel", () => ({
   DesktopReleasePanel: () => <div data-testid="desktop-release-panel" />,
 }));
 
-vi.mock("@/hooks/useAgencyQuery", () => ({
-  useAgencyList: () => ({
-    data: {
-      agencies: [
-        { id: "agency-1", name: "Growth Agency" },
-        { id: "agency-2", name: "Support Agency" },
-      ],
-    },
-    isLoading: false,
-    isError: false,
-  }),
-}));
-
 vi.mock("@/hooks/useMenuItems", () => ({
   getResolvedMenuItems: (_role: string, group: string) => {
     if (group === "admin") {
@@ -624,6 +544,13 @@ vi.mock("@/hooks/useMenuItems", () => ({
         path: "/dashboard",
         external: false,
         IconComponent: () => React.createElement("span", null, "D"),
+      },
+      {
+        id: "workflow-studio",
+        label: "Workflow Studio",
+        path: "/studio/workflow",
+        external: false,
+        IconComponent: () => React.createElement("span", null, "W"),
       },
       {
         id: "document-management",
@@ -674,6 +601,22 @@ vi.mock("@/lib/trpc", () => ({
     media: {
       listTasks: {
         useQuery: vi.fn(() => ({ data: { tasks: [], total: 0 }, isLoading: false })),
+      },
+    },
+    workerJobs: {
+      dashboardSummary: {
+        useQuery: vi.fn(() => ({
+          data: {
+            counts: { pending: 0, queued: 0, running: 0, waitingExternal: 0, retryScheduled: 0, succeeded: 0, failed: 0, canceled: 0, expired: 0, active: 0, stale: 0, executingByStatus: { leased: 0, claimed: 0, preparing: 0, running: 0, uploading: 0, publishing: 0, indexing: 0 } },
+            capacity: { workersTotal: 0, workersOnline: 0, workersUnhealthy: 0, workersStale: 0, totalSlots: 0, usedSlots: 0, freeSlots: 0, queueDepth: 0, capacityKnown: true, unknownCapacityWorkers: 0, slotSources: [] },
+            outbox: { pending: 0, failed: 0, quarantined: 0, oldestPendingAt: null, oldestPendingAgeSeconds: 0 },
+            backlog: { oldestQueuedAt: null, oldestQueuedAgeSeconds: 0 },
+            alerts: { hasIncident: false, capacityExhausted: false, capacityUnknown: false },
+            openJobs: [],
+            recentJobs: [],
+          },
+          isLoading: false,
+        })),
       },
     },
     skills: {
@@ -902,22 +845,12 @@ vi.mock("@/lib/trpc", () => ({
         useMutation: vi.fn(() => financeMutationMock()),
       },
     },
-    workflow: {
-      list: {
-        useQuery: vi.fn(() => ({ data: { workflows: [] }, isLoading: false })),
-      },
-    },
     approvals: {
       getPending: {
         useQuery: vi.fn(() => ({ data: { requests: [] }, isLoading: false })),
       },
       submitDecision: {
         useMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
-      },
-    },
-    agency: {
-      reviewDashboard: {
-        useQuery: reviewDashboardUseQuery,
       },
     },
     systemSettings: {
@@ -937,6 +870,7 @@ describe("Dashboard", () => {
     getMenuVisibilityUseQuery.mockReturnValue({ data: [], isLoading: false });
     authState.role = "user";
     tenantFeatureFlagsState.desktopHostEnabled = false;
+    tenantFeatureFlagsState.contentProtectionEnabled = false;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
       matches: query.includes("1280px"),
       media: query,
@@ -961,6 +895,23 @@ describe("Dashboard", () => {
     expect(setLocationMock).toHaveBeenCalledWith("/document-management?scope=private_vault&sort=updated_desc");
   });
 
+  it("requests content protection overview through the canonical tRPC path", async () => {
+    tenantFeatureFlagsState.contentProtectionEnabled = true;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ result: { data: {} } }),
+    } as Response);
+
+    render(<Dashboard />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/trpc/contentProtection.overview", {
+        credentials: "include",
+      });
+    });
+    fetchMock.mockRestore();
+  });
+
   it("shows Social Automation in the sidebar when the menu item is unavailable", () => {
     render(<Dashboard />);
 
@@ -968,6 +919,27 @@ describe("Dashboard", () => {
     fireEvent.click(socialAutomationButton);
 
     expect(setLocationMock).toHaveBeenCalledWith("/social/automation");
+  });
+
+  it("surfaces the Video Studio quick action on the dashboard home screen", () => {
+    render(<Dashboard />);
+
+    const quickLinks = screen.getByTestId("dashboard-quick-links");
+    const videoStudioButton = within(quickLinks).getByRole("button", { name: /video studio/i });
+
+    fireEvent.click(videoStudioButton);
+    expect(setLocationMock).toHaveBeenCalledWith("/video-studio");
+  });
+
+  it("surfaces Workflow Studio as a dashboard quick action", () => {
+    render(<Dashboard />);
+
+    const quickLinks = screen.getByTestId("dashboard-quick-links");
+    fireEvent.click(
+      within(quickLinks).getByRole("button", { name: /workflow studio/i })
+    );
+
+    expect(setLocationMock).toHaveBeenCalledWith("/studio/workflow");
   });
 
   it("does not show hidden social menu items in the fallback social section", () => {
@@ -988,84 +960,14 @@ describe("Dashboard", () => {
     expect(screen.queryByRole("button", { name: /social automation/i })).not.toBeInTheDocument();
   });
 
-  it("shows agency review summary on the dashboard", () => {
-    render(<Dashboard />);
-
-    expect(screen.getByText("Tenant-wide improvement loop")).toBeInTheDocument();
-    expect(screen.getByText("75% coverage")).toBeInTheDocument();
-    expect(screen.getByText("Avg rating")).toBeInTheDocument();
-    expect(screen.getByText("4.3")).toBeInTheDocument();
-    expect(screen.getByText("Avg alignment")).toBeInTheDocument();
-    expect(screen.getByText("82%")).toBeInTheDocument();
-    expect(screen.getAllByText("Growth Agency").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("node_instructions")).toBeInTheDocument();
-  });
-
-  it("routes the review coverage notice to the agencies list", () => {
-    reviewDashboardUseQuery.mockReturnValueOnce({
-      data: {
-        overview: {
-          totalAgencies: 4,
-          reviewedAgencies: 2,
-          reviewCount: 6,
-          averageRating: 4.3,
-          averageObjectiveAlignment: 0.82,
-          reviewCoverage: 0.5,
-        },
-        recentReviews: [
-          {
-            id: 11,
-            agencyId: "agency-1",
-            agencyName: "Growth Agency",
-            rating: 5,
-            suggestionsCount: 2,
-            overallAssessment: "Strong output quality and good instruction coverage.",
-            createdAt: "2026-03-23T12:00:00.000Z",
-          },
-        ],
-        recentImprovements: [],
-      },
-      isLoading: false,
-    });
-
-    render(<Dashboard />);
-
-    expect(screen.getByText("Agency review coverage")).toBeInTheDocument();
-    expect(screen.getByText("Open agencies")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /open agencies/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/agencies");
-  });
-
-  it("filters the review center by agency and opens the selected review center", () => {
-    render(<Dashboard />);
-
-    fireEvent.change(screen.getByLabelText(/filter by agency/i), {
-      target: { value: "agency-1" },
-    });
-
-    expect(screen.getByText("Strong output quality and good instruction coverage.")).toBeInTheDocument();
-    expect(screen.queryByText("Needs more model diversity.")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /^open review$/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/agencies/agency-1/review");
-
-    setLocationMock.mockClear();
-
-    fireEvent.click(screen.getByRole("button", { name: /open review center/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/agencies/agency-1/review");
-  });
-
   it("shows the priority snapshot and trend sections", () => {
     render(<Dashboard />);
 
     expect(screen.getByText("Priority Snapshot")).toBeInTheDocument();
     expect(screen.getByText("Trend & Health")).toBeInTheDocument();
-    expect(screen.getByText("Workpack Hub")).toBeInTheDocument();
     expect(screen.getAllByText("Workspace Shortcuts").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Next Best Actions")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /start work/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("button", { name: /my requests/i }).length).toBeGreaterThan(0);
+    expect(screen.getByTestId("dashboard-job-usage")).toBeInTheDocument();
   });
 
   it("keeps the core dashboard surfaces available on tablet viewports", () => {
@@ -1086,40 +988,7 @@ describe("Dashboard", () => {
     expect(screen.getByText("Priority Snapshot")).toBeInTheDocument();
     expect(screen.getByText("Trend & Health")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Personal Finance" })).toBeInTheDocument();
-    expect(screen.getByText("Tenant-wide improvement loop")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^Finance$/i })).toBeInTheDocument();
-  });
-
-  it("links workpack surfaces from the dashboard hub", () => {
-    render(<Dashboard />);
-
-    expect(screen.getByRole("button", { name: /intake studio/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /discovery library/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /roi dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /exceptions inbox/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /intake studio/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/intake?entrypoint=dashboard");
-
-    setLocationMock.mockClear();
-
-    fireEvent.click(screen.getByRole("button", { name: /discovery library/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/workpacks/discovery?entrypoint=dashboard");
-  });
-
-  it("shows the admin work os console shortcut for admin users", () => {
-    authState.role = "admin";
-
-    render(<Dashboard />);
-
-    expect(screen.getByRole("button", { name: /work os console/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /queued runs/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /failed runs/i })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /work os console/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/admin/work-os");
-
-    fireEvent.click(screen.getByRole("button", { name: /failed runs/i }));
-    expect(setLocationMock).toHaveBeenCalledWith("/admin/skills?tab=maintenance&legacyQueueFilter=failed");
   });
 
   it("shows the personal finance report surface and shortcut", () => {

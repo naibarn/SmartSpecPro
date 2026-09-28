@@ -1,0 +1,15 @@
+{
+  "name": "vertical_drama_story_architecture_planner",
+  "display_name": "Vertical Drama Story Architecture Planner",
+  "display_name_th": "ผู้วางสถาปัตยกรรมเรื่องซีรีย์แนวตั้ง",
+  "version": "1.0.0",
+  "description": "Build a complete story contract before readable draft synthesis and downstream full-story generation.",
+  "description_th": "วางสัญญาโครงเรื่องให้ครบทั้งปลายทาง ตัวละคร Arc และ Payoff ก่อนสร้าง Draft และเรื่องเต็ม",
+  "entry_prompt": "Create one bounded, coherent Story Architecture Contract from the premise and setup. Preserve explicit user facts, separate season endpoint from long-term destination, and return JSON only.",
+  "input_schema": "input.schema.json",
+  "output_schema": "output.schema.json",
+  "capabilities": ["story_architecture", "premise_first", "bilingual_ui", "repair_mode"],
+  "contract_version": 1,
+  "supported_output_contract_versions": [1],
+  "smartspec_slug": "vertical-drama-story-architecture-planner"
+}

@@ -239,6 +239,11 @@ export {};
       || hostname.endsWith(".grok.com");
   }
 
+  function isMetaAIHost(hostname: string) {
+    return hostname === "meta.ai"
+      || hostname.endsWith(".meta.ai");
+  }
+
   function isFacebookHost(hostname: string) {
     return hostname === "facebook.com" || hostname.endsWith(".facebook.com");
   }
@@ -295,7 +300,7 @@ export {};
 
   function isBridgeTargetHost() {
     const hostname = location.hostname.toLowerCase();
-    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isGrokHost(hostname) || isFacebookHost(hostname) || isTikTokStudioContext();
+    return isGoogleFlowContext() || isMagnificHost(hostname) || isHiggsfieldHost(hostname) || isGrokHost(hostname) || isMetaAIHost(hostname) || isFacebookHost(hostname) || isTikTokStudioContext();
   }
 
   function isPotentialFileDrag(event: DragEvent) {
@@ -473,6 +478,44 @@ export {};
       fileInput: inputDetails,
       filesLengthBeforeChange,
       filesLengthAfterChange,
+    });
+    return inputSet;
+  }
+
+  async function deliverMetaAIFileDrop(target: HTMLElement, file: File, originalEvent: DragEvent) {
+    dispatchFileDragEvents(target, file, originalEvent, ["dragenter", "dragover"]);
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    const initial = setNearestFileInputDetailed(target, transfer.files);
+    let inputSet = initial.inputSet;
+    let inputDetails = initial.input;
+    let retryUsed = false;
+    if (!inputSet) {
+      // Meta.ai may mount the file input after the drop surface enters its
+      // active state. Give the uploader one short render turn before falling
+      // back to the synthetic drop path.
+      await delay(120);
+      const retry = setNearestFileInputDetailed(target, transfer.files);
+      inputSet = retry.inputSet;
+      inputDetails = retry.input || inputDetails;
+      retryUsed = true;
+    }
+    if (!inputSet) {
+      dispatchFileDragEvents(target, file, originalEvent, ["drop"]);
+    } else {
+      await dispatchGoogleFlowDragCleanup(target, file, originalEvent);
+    }
+    void recordDiagnosticLog("meta_ai_drag_delivery", {
+      strategy: inputSet ? "file_input_after_preview" : "synthetic_drop_fallback",
+      fallbackStep: retryUsed ? "file_input_retry" : "file_input_initial",
+      cleanupStep: inputSet ? "dragleave_dragend" : "drop",
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size,
+      targetTag: target.tagName,
+      targetClass: typeof target.className === "string" ? target.className : "",
+      fileInputCount: document.querySelectorAll("input[type='file']").length,
+      fileInput: inputDetails,
     });
     return inputSet;
   }
@@ -693,6 +736,8 @@ export {};
       await deliverHiggsfieldFileDrop(target, file, event);
     } else if (isGrokHost(location.hostname.toLowerCase())) {
       await deliverGrokFileDrop(target, file, event);
+    } else if (isMetaAIHost(location.hostname.toLowerCase())) {
+      await deliverMetaAIFileDrop(target, file, event);
     } else if (isFacebookHost(location.hostname.toLowerCase()) || isTikTokStudioContext()) {
       await deliverSocialFileDrop(target, file, event);
     } else {

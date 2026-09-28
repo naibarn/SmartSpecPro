@@ -1,0 +1,176 @@
+# Feature 194 legacy-store disposition manifest.
+# This manifest is an approval ledger, not a destructive command.
+# No legacy vector payload is a rebuild input.
+
+manifest_version: feature-194-retirement-manifest-v1
+status: retirement_gates_pending
+source_of_truth:
+  domain_data: postgresql
+  file_bytes: r2
+legacy_vectors_are_not_migration_input: true
+destructive_cleanup_enabled: false
+
+source_families:
+  - name: library_chunks
+    owner: library-rag
+    canonical_source: postgresql.library_items + postgresql.library_chunks + managed_r2_locator
+    target_workload: knowledge
+    target_index: smartaihub-knowledge-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: library_chunk_vectors
+    legacy_vector_values_read: false
+    retention_until: pending_cutover_approval
+
+  - name: web_documents
+    owner: web-document-search
+    canonical_source: postgresql.document_records + managed_r2_locator
+    target_workload: knowledge
+    target_index: smartaihub-knowledge-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: docs-index-prod
+    legacy_vector_values_read: false
+    retention_until: pending_cutover_approval
+
+  - name: web_images
+    owner: web-image-search
+    canonical_source: postgresql.image_records + managed_r2_locator
+    target_workload: media
+    target_index: smartaihub-media-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: images-index-prod
+    legacy_vector_values_read: false
+    retention_until: pending_cutover_approval
+
+  - name: vertical_drama_media
+    owner: vertical-drama-media-search
+    canonical_source: postgresql.vertical_drama_media_assets + versioned_derived_artifacts + managed_r2_locator
+    target_workload: media
+    target_index: smartaihub-media-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: drama-media-index-prod
+    legacy_vector_values_read: false
+    retention_until: pending_cutover_approval
+
+  - name: conversation_message_chunks
+    owner: conversation-search
+    canonical_source: postgresql.messages + postgresql.message_chunks
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: message_chunks.embedding
+    legacy_vector_values_read: false
+    retention_until: pending_source_family_gate
+
+  - name: scoped_memories
+    owner: memory-search
+    canonical_source: postgresql.scoped_memories
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: scoped_memories.embedding
+    legacy_vector_values_read: false
+    retention_until: pending_source_family_gate
+
+  - name: agency_agent_memories
+    owner: python-agency-memory
+    canonical_source: postgresql.agency_agent_memories
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: agency_agent_memories.embedding
+    legacy_vector_values_read: false
+    retention_until: pending_source_family_gate
+
+  - name: agency_memory_chunks
+    owner: python-agency-memory
+    canonical_source: postgresql.agency_memory_chunks
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: rebuild_from_canonical
+    legacy_storage: agency_memory_chunks.embedding
+    legacy_vector_values_read: false
+    retention_until: pending_source_family_gate
+
+  - name: episodic_memory_collections
+    owner: python-episodic-memory
+    canonical_source: pending_independent_sql_or_r2_owner_mapping
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: retain_legacy_until
+    legacy_storage: chroma.episodic_memories + chroma.code_snippets + chroma.conversation_history
+    legacy_vector_values_read: false
+    reason: canonical_owner_and_retention_mapping_required_before_rebuild
+    retention_until: pending_operator_approval
+
+  - name: social_conversation_archive
+    owner: python-social-archive
+    canonical_source: pending_tenant_scoped_sql_or_r2_owner_mapping
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: retain_legacy_until
+    legacy_storage: chroma.tenant_collections
+    legacy_vector_values_read: false
+    reason: tenantId_and_acl_provenance_gap
+    retention_until: pending_operator_approval
+
+  - name: generic_vector_documents
+    owner: python-generic-vector-store
+    canonical_source: pending_caller_and_owner_trace
+    target_workload: pending
+    target_index: none_until_contract_defined
+    disposition: retain_legacy_until
+    legacy_storage: vector_documents + vector_collections + embedding_jobs
+    legacy_vector_values_read: false
+    reason: all_runtime_callers_and_scheduler_dependencies_not_yet_proven_unused
+    retention_until: pending_operator_approval
+
+  - name: multimodal_memory_vectors
+    owner: node-python-multimodal-memory
+    canonical_source: postgresql.multimodal_memory_records + managed_r2_locator
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: retain_legacy_until
+    legacy_storage: multimodal_memory_vectors
+    legacy_vector_values_read: false
+    reason: modality_specific_model_and_query_contract_pending
+    retention_until: pending_source_family_gate
+
+  - name: kilo_memory_embeddings
+    owner: worker-runtime
+    canonical_source: pending_worker_runtime_inventory
+    target_workload: agent-memory
+    target_index: smartaihub-agent-memory-v1
+    disposition: retain_legacy_until
+    legacy_storage: worker_app.sqlite_embedding_blob
+    legacy_vector_values_read: false
+    reason: worker_runtime_release_and_recovery_evidence_pending
+    retention_until: pending_operator_approval
+
+physical_structures:
+  - target: smartspec_vector_entries
+    owner: node-vector-provider
+    disposition: retain_legacy_until
+    action_after_gates: disable_auto_creation_then_drop_with_forward_migration
+    retention_until: pending_cutover_approval
+  - target: postgres.vector_extension
+    owner: database-platform
+    disposition: retain_legacy_until
+    action_after_gates: drop_last_after_catalog_and_import_audit
+    retention_until: pending_all_vector_column_retirement
+  - target: chroma_persistent_roots_and_volumes
+    owner: python-vector-platform
+    disposition: retain_legacy_until
+    action_after_gates: stop_writers_verify_restore_then_remove_exact_roots
+    retention_until: pending_source_family_gate
+
+cleanup_gates:
+  - exact_target_disposition_approved
+  - canonical_sql_r2_restore_verified
+  - projection_registry_coverage_verified
+  - replacement_read_hydration_acl_delete_tests_passed
+  - retention_until_recorded_and_expired
+  - backup_pitr_checkpoint_verified
+  - no_runtime_reader_writer_scheduler_reference
+  - no_inflight_reconciler_can_recreate_target
+  - operator_signed_deletion_manifest
+  - post_delete_catalog_and_startup_scan

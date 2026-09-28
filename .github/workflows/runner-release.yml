@@ -1,0 +1,255 @@
+name: SmartAIHub Runner manual release
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build"
+        required: false
+        default: "main"
+      version:
+        description: "Artifact version label"
+        required: true
+        default: "manual"
+      platform:
+        description: "Target platform or all native targets"
+        required: true
+        type: choice
+        options: [all, windows, macos-intel, macos-arm64, linux]
+        default: all
+      profile:
+        description: "Runner profile metadata"
+        required: true
+        type: choice
+        options: [local_device, shared_container, all]
+        default: all
+      publish:
+        description: "Publish a GitHub release after manual approval"
+        required: true
+        type: boolean
+        default: false
+      release_id:
+        description: "Explicit release identifier when publish is enabled"
+        required: false
+        default: ""
+      release_notes:
+        description: "Release notes shown in the internal release catalog"
+        required: false
+        default: ""
+      signing_mode:
+        description: "Signing/provenance mode"
+        required: true
+        type: choice
+        options: [unsigned-review, required-secret]
+        default: unsigned-review
+
+permissions:
+  contents: write
+
+jobs:
+  plan:
+    name: select-runner-targets
+    runs-on: ubuntu-latest
+    outputs:
+      native_matrix: ${{ steps.matrix.outputs.native_matrix }}
+    steps:
+      - name: Select native build matrix
+        id: matrix
+        env:
+          TARGET_PLATFORM: ${{ inputs.platform }}
+        shell: bash
+        run: |
+          case "$TARGET_PLATFORM" in
+            all)
+              matrix='{"include":[{"name":"windows-x86_64","platform":"windows","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary":"smartaihub-runner.exe"},{"name":"macos-x86_64","platform":"macos-intel","os":"macos-15-intel","target":"x86_64-apple-darwin","binary":"smartaihub-runner"},{"name":"macos-arm64","platform":"macos-arm64","os":"macos-14","target":"aarch64-apple-darwin","binary":"smartaihub-runner"},{"name":"linux-x86_64","platform":"linux","os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu","binary":"smartaihub-runner"}]}'
+              ;;
+            windows)
+              matrix='{"include":[{"name":"windows-x86_64","platform":"windows","os":"windows-latest","target":"x86_64-pc-windows-msvc","binary":"smartaihub-runner.exe"}]}'
+              ;;
+            macos-intel)
+              matrix='{"include":[{"name":"macos-x86_64","platform":"macos-intel","os":"macos-15-intel","target":"x86_64-apple-darwin","binary":"smartaihub-runner"}]}'
+              ;;
+            macos-arm64)
+              matrix='{"include":[{"name":"macos-arm64","platform":"macos-arm64","os":"macos-14","target":"aarch64-apple-darwin","binary":"smartaihub-runner"}]}'
+              ;;
+            linux)
+              matrix='{"include":[{"name":"linux-x86_64","platform":"linux","os":"ubuntu-latest","target":"x86_64-unknown-linux-gnu","binary":"smartaihub-runner"}]}'
+              ;;
+            *)
+              echo "Unsupported target platform: $TARGET_PLATFORM" >&2
+              exit 1
+              ;;
+          esac
+          echo "native_matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: plan
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.native_matrix) }}
+
+    runs-on: ${{ matrix.os }}
+    if: inputs.profile == 'all' || inputs.profile == 'local_device'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Resolve selected source commit
+        id: source
+        shell: bash
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Test Runner crate
+        run: cargo test --manifest-path apps/runner-app/Cargo.toml
+
+      - name: Check signing gate
+        if: inputs.signing_mode == 'required-secret'
+        shell: bash
+        env:
+          RUNNER_SIGNING_KEY: ${{ secrets.RUNNER_SIGNING_KEY }}
+        run: |
+          if [ -z "$RUNNER_SIGNING_KEY" ]; then echo "RUNNER_SIGNING_KEY is required"; exit 1; fi
+
+      - name: Build Runner
+        env:
+          SAH_RUNNER_BUILD_VERSION: ${{ inputs.version }}
+        run: cargo build --manifest-path apps/runner-app/Cargo.toml --release --target ${{ matrix.target }}
+
+      - name: Package Runner (Unix)
+        if: runner.os != 'Windows'
+        env:
+          RUNNER_VERSION: ${{ inputs.version }}
+          RUNNER_PROFILE: ${{ inputs.profile }}
+          RUNNER_REF: ${{ inputs.ref }}
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}"
+          tar -C "apps/runner-app/target/${{ matrix.target }}/release" -czf "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.tar.gz" "${{ matrix.binary }}"
+          printf '{"artifact":"smartaihub-runner-%s-%s","target":"%s","profile":"%s","sourceRef":"%s","sourceCommit":"%s","version":"%s","contractVersion":"sah-runner-v1"}\n' "${{ matrix.name }}" "$RUNNER_VERSION" "${{ matrix.target }}" "$RUNNER_PROFILE" "$RUNNER_REF" "${{ steps.source.outputs.commit }}" "$RUNNER_VERSION" > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.manifest.json"
+          shasum -a 256 dist/* > "dist/smartaihub-runner-${{ matrix.name }}-${RUNNER_VERSION}.SHA256SUMS"
+
+      - name: Package Runner (Windows)
+        if: runner.os == 'Windows'
+        env:
+          RUNNER_VERSION: ${{ inputs.version }}
+          RUNNER_PROFILE: ${{ inputs.profile }}
+          RUNNER_REF: ${{ inputs.ref }}
+        shell: pwsh
+        run: |
+           New-Item -ItemType Directory -Force dist | Out-Null
+           Copy-Item "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.exe"
+           Compress-Archive -Path "apps/runner-app/target/${{ matrix.target }}/release/${{ matrix.binary }}" -DestinationPath "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.zip"
+           $sourceCommit = git rev-parse HEAD
+           $manifest = [ordered]@{
+             artifact = "smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION"
+             target = "${{ matrix.target }}"
+             profile = $env:RUNNER_PROFILE
+             sourceRef = $env:RUNNER_REF
+             sourceCommit = $sourceCommit
+             version = $env:RUNNER_VERSION
+             contractVersion = "sah-runner-v1"
+           } | ConvertTo-Json -Compress
+           $manifest | Set-Content -Encoding utf8 "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.manifest.json"
+           Get-FileHash dist/* -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLowerInvariant())  $($_.Path | Split-Path -Leaf)" } | Set-Content "dist/smartaihub-runner-${{ matrix.name }}-$env:RUNNER_VERSION.SHA256SUMS"
+
+      - name: Sign package and update binary
+        if: inputs.signing_mode == 'required-secret'
+        env:
+          RUNNER_SIGNING_KEY: ${{ secrets.RUNNER_SIGNING_KEY }}
+        shell: bash
+        run: |
+          key_file="$(mktemp)"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s' "$RUNNER_SIGNING_KEY" > "$key_file"
+          for asset in dist/*; do
+            case "$asset" in
+              *.manifest.json|*.SHA256SUMS|*.sig) continue ;;
+            esac
+            openssl dgst -sha256 -sign "$key_file" -out "$asset.sig" "$asset"
+            base64 < "$asset.sig" | tr -d '\n' > "$asset.sig.b64"
+            rm -f "$asset.sig"
+            mv "$asset.sig.b64" "$asset.sig"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartaihub-runner-${{ matrix.name }}-${{ inputs.version }}
+          path: dist/*
+
+  container-manifest:
+    name: shared-container-manifest
+    if: inputs.profile == 'all' || inputs.profile == 'shared_container'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Resolve selected source commit
+        id: source
+        shell: bash
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Create deterministic Container manifest
+        env:
+          RUNNER_VERSION: ${{ inputs.version }}
+          RUNNER_REF: ${{ inputs.ref }}
+        run: |
+          mkdir -p dist
+          printf '{"entrypoint":"smartaihub-runner","command":["smartaihub-runner","run"],"profile":"shared_container","resourceProfiles":["small","medium","large"],"healthSignal":"/health/runner","sourceRef":"%s","sourceCommit":"%s","version":"%s","contractVersion":"sah-runner-v1","imageDigest":"operator-supplied"}\n' "$RUNNER_REF" "${{ steps.source.outputs.commit }}" "$RUNNER_VERSION" > dist/smartaihub-runner-container-manifest.json
+          shasum -a 256 dist/smartaihub-runner-container-manifest.json > "dist/smartaihub-runner-container-${RUNNER_VERSION}.SHA256SUMS"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: smartaihub-runner-container-manifest-${{ inputs.version }}
+          path: dist/*
+
+  publish:
+    name: publish-runner-release
+    needs: [build, container-manifest]
+    if: inputs.publish == true && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.container-manifest.result == 'success' || needs.container-manifest.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - name: Resolve selected source commit
+        id: publish_source
+        shell: bash
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Validate publish inputs
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+          PUBLISH: ${{ inputs.publish }}
+          SIGNING_MODE: ${{ inputs.signing_mode }}
+        shell: bash
+        run: |
+          if [ -z "$RELEASE_ID" ]; then echo "release_id is required when publish=true"; exit 1; fi
+          if [[ ! "$RELEASE_ID" =~ ^[A-Za-z0-9._-]+$ ]]; then echo "release_id contains unsupported characters"; exit 1; fi
+          if [ "$PUBLISH" = "true" ] && [ "$SIGNING_MODE" != "required-secret" ]; then echo "publish requires required-secret signing"; exit 1; fi
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: smartaihub-runner-*
+          merge-multiple: true
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          SOURCE_COMMIT: ${{ steps.publish_source.outputs.commit }}
+        shell: bash
+        run: |
+          tag="runner-v${RELEASE_ID}"
+          title="SmartAIHub Runner ${RELEASE_ID}"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$tag" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT"
+          else
+            gh release create "$tag" release-assets/* --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT"
+          fi
+          echo "Published $tag from $SOURCE_COMMIT"

@@ -48,7 +48,7 @@ interface ArtifactPanelProps {
   className?: string;
 }
 
-const artifactIcons: Record<ArtifactType, React.ElementType> = {
+const artifactIcons: Record<ArtifactType, React.ComponentType<{ className?: string }>> = {
   code: Code2,
   markdown: FileText,
   image: Image,

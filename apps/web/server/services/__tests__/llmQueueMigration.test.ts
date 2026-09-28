@@ -54,6 +54,7 @@ describe("LLM Queue Migration", () => {
       provider: "openai",
       inputTokens: 100,
       outputTokens: 50,
+      sourceType: "chat",
     });
 
     expect(result).toBe("sync");
@@ -78,9 +79,8 @@ describe("LLM Queue Migration", () => {
     expect(result).toBe("sync");
   });
 
-  it("should enqueue multi-step skill jobs to Cloud Tasks workflow-tasks queue", async () => {
+  it("fails closed until a canonical Cloudflare skill executor is registered", async () => {
     const { addSkillJob } = await import("../../services/llmQueue");
-    const { enqueueTask } = await import("../../services/cloudTasks");
 
     const result = await addSkillJob({
       userId: 1,
@@ -97,19 +97,7 @@ describe("LLM Queue Migration", () => {
       updatedAt: new Date(),
     });
 
-    expect(enqueueTask).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queueName: "workflow-tasks",
-        handlerPath: "/_internal/tasks/execute-skill-step",
-        payload: expect.objectContaining({
-          userId: 1,
-          skillId: "test-skill",
-          skillName: "Test Skill",
-        }),
-      })
-    );
-
-    expect(result).toBe("projects/p/locations/l/queues/q/tasks/skill-123");
+    expect(result).toBeNull();
   });
 
   it("should return in-memory stats from getAllQueueStats", async () => {

@@ -40,6 +40,20 @@ export function formatModelCost(
 }
 
 /**
+ * Format a single price value (input OR output) for display.
+ * Converts per-1M token pricing to per-1K token display, same convention as formatModelCost.
+ */
+export function formatUnitModelCost(pricing: string | number, isFree: boolean): string {
+  if (isFree) return "Free";
+
+  const unit = Number(pricing) / 1000;
+
+  if (unit === 0) return "Free";
+
+  return `$${unit.toFixed(4)}/1K`;
+}
+
+/**
  * Get the cheapest provider for a model (free first, then by total cost)
  */
 export function getCheapestProvider(providers: ModelProvider[]): ModelProvider | undefined {

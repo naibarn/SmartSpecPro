@@ -1,0 +1,316 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/product-mechanism.schema.json",
+  "title": "Product Mechanism & Demonstration Model",
+  "type": "object",
+  "required": [
+    "productNature",
+    "categoryFamily",
+    "primaryFunction",
+    "targetSurfacesOrSystems",
+    "affordances",
+    "functionalChain",
+    "observableOutcomes",
+    "hiddenOrInvisibleMechanisms",
+    "requiredProofMoments",
+    "forbiddenAssumptions",
+    "recommendedDemoArc",
+    "recommendedVisualizationModes",
+    "evidenceBindings",
+    "researchNeeded"
+  ],
+  "properties": {
+    "productNature": {
+      "type": "string",
+      "enum": [
+        "physical",
+        "digital",
+        "service",
+        "hybrid",
+        "unknown"
+      ]
+    },
+    "categoryFamily": {
+      "type": "string"
+    },
+    "primaryFunction": {
+      "type": "string"
+    },
+    "secondaryFunctions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "targetSurfacesOrSystems": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Examples: floor, fabric, skin, hair, indoor air, phone UI, food, vehicle surface."
+    },
+    "preconditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "affordances": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "target",
+          "evidenceLevel",
+          "confidence"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "conditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidenceLevel": {
+            "type": "string",
+            "enum": [
+              "user_fact",
+              "reference_observed",
+              "verified_research",
+              "category_convention",
+              "hypothesis"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "functionalChain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "stage",
+          "description",
+          "visibility",
+          "truthStatus"
+        ],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "setup",
+              "input",
+              "activation",
+              "operation",
+              "internal_mechanism",
+              "observable_effect",
+              "outcome"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "directly_visible",
+              "partially_visible",
+              "hidden",
+              "invisible"
+            ]
+          },
+          "truthStatus": {
+            "type": "string",
+            "enum": [
+              "supported",
+              "illustrative_only",
+              "unverified"
+            ]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "internalMotion": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "component",
+          "motion",
+          "visibility"
+        ],
+        "properties": {
+          "component": {
+            "type": "string"
+          },
+          "motion": {
+            "type": "string"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": [
+              "visible",
+              "partially_visible",
+              "hidden",
+              "invisible"
+            ]
+          },
+          "speedCharacter": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "evidenceRefs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "observableOutcomes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "hiddenOrInvisibleMechanisms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requiredProofMoments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "safetyCriticalSteps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "forbiddenAssumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendedDemoArc": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "context",
+          "problem",
+          "setup",
+          "activation",
+          "operation",
+          "mechanism_explanation",
+          "proof",
+          "outcome",
+          "hero",
+          "cta"
+        ]
+      }
+    },
+    "recommendedVisualizationModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "literal_demo",
+          "macro_insert",
+          "cutaway",
+          "xray_style",
+          "exploded_view",
+          "particle_flow",
+          "airflow_streamlines",
+          "thermal_gradient",
+          "moisture_flow",
+          "cleaning_lift",
+          "motion_trace",
+          "virtual_screen",
+          "ui_composite",
+          "feature_callout",
+          "before_after",
+          "time_compression",
+          "data_overlay",
+          "product_packshot_composite",
+          "water_flow",
+          "steam_flow"
+        ]
+      }
+    },
+    "evidenceBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "fact",
+          "basis",
+          "confidence"
+        ],
+        "properties": {
+          "fact": {
+            "type": "string"
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "user",
+              "asset",
+              "verified_research",
+              "category_convention"
+            ]
+          },
+          "reference": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "researchNeeded": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}

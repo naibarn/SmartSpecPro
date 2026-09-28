@@ -21,7 +21,7 @@ def mock_current_user():
     user.id = 1
     user.email = "test@example.com"
     user.currentTenantId = "tenant-1"
-    user.creditBalance = 100.0
+    user.credits = 100.0
     user.is_active = True
     return user
 
@@ -164,6 +164,27 @@ class TestCompileEndpoint:
 class TestExecuteEndpoint:
     """Tests for POST /api/v1/workflows/execute."""
 
+    @pytest.fixture(autouse=True)
+    def override_fastapi_dependencies(self, mock_current_user):
+        """Override the dependency objects captured when the app routes load."""
+        from app.core.auth import get_current_user as dependency_get_current_user
+        from app.core.database import get_db as dependency_get_db
+
+        mock_session = AsyncMock()
+        mock_session.add = MagicMock()
+
+        async def override_current_user():
+            return mock_current_user
+
+        async def override_db():
+            yield mock_session
+
+        app.dependency_overrides[dependency_get_current_user] = override_current_user
+        app.dependency_overrides[dependency_get_db] = override_db
+        yield
+        app.dependency_overrides.pop(dependency_get_current_user, None)
+        app.dependency_overrides.pop(dependency_get_db, None)
+
     async def test_execute_endpoint_starts(self, mock_current_user):
         """Compiled workflow starts execution and returns execution_id."""
         # Mock compiled workflow
@@ -204,7 +225,7 @@ class TestExecuteEndpoint:
 
     async def test_execute_endpoint_insufficient_credits(self, mock_current_user):
         """Returns 402 when credits are insufficient."""
-        mock_current_user.creditBalance = 0.0
+        mock_current_user.credits = 0.0
 
         compiled_workflow = {
             "nodes": [],
@@ -225,6 +246,26 @@ class TestExecuteEndpoint:
                 )
 
         assert response.status_code == 402
+
+    async def test_execute_endpoint_requires_tenant(self, mock_current_user):
+        """Tenant-less users cannot start workflow execution."""
+        mock_current_user.currentTenantId = None
+        compiled_workflow = {
+            "nodes": [],
+            "edges": [],
+            "_compiledMetadata": {"compiled_at": "2026-02-09T10:00:00Z"},
+        }
+
+        with patch("app.api.workflows.get_current_user", return_value=mock_current_user):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                response = await client.post(
+                    "/api/v1/workflows/execute",
+                    json={"workflowJson": compiled_workflow},
+                )
+
+        assert response.status_code == 403
+        assert "Tenant context is required" in response.json()["detail"]
 
     async def test_execute_endpoint_not_compiled(self, mock_current_user):
         """Returns 400 when workflow is not compiled."""

@@ -2,6 +2,16 @@ import fs from "fs";
 import path from "path";
 
 const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID = "product-reference-storyboard";
+// Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard) — section
+// 05, closing gap G7. Kept as a LOCAL literal (not imported from
+// `productReviewSequentialStoryboardSkillRunner.ts`) so this leaf module
+// never imports from either runner file — the sequential runner imports
+// FROM here (`appendProductReferenceStoryboardCategoryRules`), so the
+// reverse import would create a cycle. The two literals are kept in sync by
+// convention, mirroring how each runner already defines its OWN skill-id
+// constant independently.
+const PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID =
+  "product-review-sequential-storyboard";
 
 const PRODUCT_REFERENCE_STORYBOARD_CATEGORY_IDS = new Set([
   "household_product",
@@ -81,7 +91,16 @@ export function appendProductReferenceStoryboardCategoryRules(
     userInputs: Record<string, unknown>;
   }
 ): { systemPrompt: string; audit: ProductReferenceStoryboardCategoryRuleAudit } {
-  if (params.skillSlug !== PRODUCT_REFERENCE_STORYBOARD_SKILL_ID) {
+  // Feature 136 section 05 (G7 fix, ADDITIVE): the sequential skill shares
+  // the SAME per-category rule library as the 3x3 skill (there is no
+  // separate `references/product-categories/` folder under the sequential
+  // skill's own bundle) — callers for the sequential skill MUST pass
+  // `skillDirectories` pointing at the 3x3 skill's folder explicitly; this
+  // gate only decides WHETHER the lookup runs, not WHERE it looks.
+  if (
+    params.skillSlug !== PRODUCT_REFERENCE_STORYBOARD_SKILL_ID &&
+    params.skillSlug !== PRODUCT_REVIEW_SEQUENTIAL_STORYBOARD_SKILL_ID
+  ) {
     return {
       systemPrompt,
       audit: {

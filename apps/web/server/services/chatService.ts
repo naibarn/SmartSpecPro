@@ -2,11 +2,16 @@
  * Chat Service - Database operations for conversations, messages, and memory
  */
 import { TRPCError } from "@trpc/server";
+import { createHash } from "node:crypto";
 import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import {
   conversations,
   messages,
+  llmInferenceChatResponseDeliveries,
+  llmInferenceAttempts,
+  llmInferencePlans,
+  llmInferenceCreditSettlements,
   conversationSummaries,
   entityMemories,
   skillPreferences,
@@ -453,6 +458,356 @@ export async function createMessage(data: InsertMessage): Promise<Message> {
     .where(eq(conversations.id, data.conversationId));
 
   return message;
+}
+
+function hashInferenceMessageIdempotencyKey(input: {
+  tenantId: string;
+  userId: number;
+  idempotencyKey: string;
+}): string {
+  return createHash("sha256")
+    .update(JSON.stringify([
+      "SAH-SPEC231-CHAT-MESSAGE-1",
+      input.tenantId,
+      input.userId,
+      input.idempotencyKey,
+    ]))
+    .digest("hex");
+}
+
+export type InferenceAssistantMessageReceipt = Pick<
+  Message,
+  | "id"
+  | "conversationId"
+  | "role"
+  | "content"
+  | "inputTokens"
+  | "outputTokens"
+  | "creditsUsed"
+  | "modelUsed"
+  | "runtimeMetadata"
+>;
+
+function inferenceConversationTenantScope(tenantId: string) {
+  return tenantId === "default"
+    ? isNull(conversations.tenantId)
+    : eq(conversations.tenantId, tenantId);
+}
+
+export async function findInferenceAssistantMessage(input: {
+  tenantId: string;
+  userId: number;
+  idempotencyKey: string;
+}): Promise<InferenceAssistantMessageReceipt | null> {
+  const db = getDb();
+  const inferenceIdempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  const [message] = await db
+    .select({
+      id: messages.id,
+      conversationId: messages.conversationId,
+      role: messages.role,
+      content: messages.content,
+      inputTokens: messages.inputTokens,
+      outputTokens: messages.outputTokens,
+      creditsUsed: messages.creditsUsed,
+      modelUsed: messages.modelUsed,
+      runtimeMetadata: messages.runtimeMetadata,
+    })
+    .from(messages)
+    .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+    .where(and(
+      eq(messages.inferenceIdempotencyHash, inferenceIdempotencyHash),
+      eq(conversations.userId, input.userId),
+      inferenceConversationTenantScope(input.tenantId),
+      eq(messages.role, "assistant"),
+    ))
+    .limit(1);
+  return message ?? null;
+}
+
+/** Insert the assistant receipt and conversation credit aggregate atomically. */
+export async function createInferenceAssistantMessageOnce(input: {
+  message: Omit<InsertMessage, "inferenceIdempotencyHash">;
+  tenantId: string;
+  userId: number;
+  idempotencyKey: string;
+}): Promise<{ message: InferenceAssistantMessageReceipt; created: boolean }> {
+  const db = getDb();
+  const inferenceIdempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  const creditsUsed = Number(input.message.creditsUsed ?? 0);
+
+  return db.transaction(async tx => {
+    const [inserted] = await tx
+      .insert(messages)
+      .values({
+        ...input.message,
+        inferenceIdempotencyHash,
+      })
+      .onConflictDoNothing()
+      .returning({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        role: messages.role,
+        content: messages.content,
+        inputTokens: messages.inputTokens,
+        outputTokens: messages.outputTokens,
+        creditsUsed: messages.creditsUsed,
+        modelUsed: messages.modelUsed,
+        runtimeMetadata: messages.runtimeMetadata,
+      });
+
+    if (inserted) {
+      const [updatedConversation] = await tx
+        .update(conversations)
+        .set({
+          messageCount: sql`${conversations.messageCount} + 1`,
+          totalCreditsUsed: sql`${conversations.totalCreditsUsed} + ${creditsUsed}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(conversations.id, input.message.conversationId),
+          eq(conversations.userId, input.userId),
+          inferenceConversationTenantScope(input.tenantId),
+        ))
+        .returning({ id: conversations.id });
+      if (!updatedConversation) {
+        throw new Error("Conversation scope changed before inference message persistence");
+      }
+      return { message: inserted, created: true };
+    }
+
+    const [existing] = await tx
+      .select({
+        id: messages.id,
+        conversationId: messages.conversationId,
+        role: messages.role,
+        content: messages.content,
+        inputTokens: messages.inputTokens,
+        outputTokens: messages.outputTokens,
+        creditsUsed: messages.creditsUsed,
+        modelUsed: messages.modelUsed,
+        runtimeMetadata: messages.runtimeMetadata,
+      })
+      .from(messages)
+      .where(eq(messages.inferenceIdempotencyHash, inferenceIdempotencyHash))
+      .limit(1);
+    if (
+      !existing ||
+      existing.role !== "assistant" ||
+      existing.conversationId !== input.message.conversationId
+    ) {
+      throw new Error("Inference message idempotency key scope conflict");
+    }
+    return { message: existing, created: false };
+  });
+}
+
+type InferenceChatDeliveryMessage = Omit<InsertMessage, "inferenceIdempotencyHash">;
+
+/** Store normal Chat content privately before settlement so a process crash cannot lose a paid answer. */
+export async function stageInferenceChatResponseDelivery(input: {
+  attemptId: string;
+  tenantId: string;
+  userId: number;
+  idempotencyKey: string;
+  message: InferenceChatDeliveryMessage;
+}): Promise<void> {
+  const db = getDb();
+  const idempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  await db.transaction(async tx => {
+    const [owner] = await tx
+      .select({ conversationId: conversations.id })
+      .from(llmInferenceAttempts)
+      .innerJoin(llmInferencePlans, eq(llmInferencePlans.planId, llmInferenceAttempts.planId))
+      .innerJoin(conversations, eq(conversations.id, input.message.conversationId))
+      .where(and(
+        eq(llmInferenceAttempts.attemptId, input.attemptId),
+        eq(llmInferenceAttempts.status, "submitting"),
+        eq(llmInferencePlans.tenantId, input.tenantId),
+        eq(llmInferencePlans.principalRef, `user:${input.userId}`),
+        eq(conversations.userId, input.userId),
+        inferenceConversationTenantScope(input.tenantId),
+      ))
+      .limit(1);
+    if (!owner) throw new Error("Inference response delivery owner scope is invalid");
+
+    const [inserted] = await tx
+      .insert(llmInferenceChatResponseDeliveries)
+      .values({
+        attemptId: input.attemptId,
+        tenantId: input.tenantId,
+        userId: input.userId,
+        conversationId: input.message.conversationId,
+        idempotencyHash,
+        content: input.message.content,
+        inputTokens: input.message.inputTokens ?? 0,
+        outputTokens: input.message.outputTokens ?? 0,
+        creditsUsed: String(input.message.creditsUsed ?? "0"),
+        modelUsed: input.message.modelUsed,
+        skillUsed: input.message.skillUsed,
+        traceId: input.message.traceId,
+        runtimeMetadata: input.message.runtimeMetadata,
+      })
+      .onConflictDoNothing()
+      .returning({ attemptId: llmInferenceChatResponseDeliveries.attemptId });
+    if (inserted) return;
+
+    const [existing] = await tx
+      .select({
+        tenantId: llmInferenceChatResponseDeliveries.tenantId,
+        userId: llmInferenceChatResponseDeliveries.userId,
+        conversationId: llmInferenceChatResponseDeliveries.conversationId,
+        idempotencyHash: llmInferenceChatResponseDeliveries.idempotencyHash,
+        content: llmInferenceChatResponseDeliveries.content,
+        status: llmInferenceChatResponseDeliveries.status,
+      })
+      .from(llmInferenceChatResponseDeliveries)
+      .where(eq(llmInferenceChatResponseDeliveries.attemptId, input.attemptId))
+      .limit(1);
+    if (!existing || existing.status !== "pending" ||
+      existing.tenantId !== input.tenantId || existing.userId !== input.userId ||
+      existing.conversationId !== input.message.conversationId ||
+      existing.idempotencyHash !== idempotencyHash || existing.content !== input.message.content) {
+      throw new Error("Inference response delivery idempotency scope conflict");
+    }
+  });
+}
+
+/** Publish a staged response only after the matching durable credit settlement exists. */
+export async function deliverSettledInferenceChatResponse(attemptId: string): Promise<
+  "delivered" | "already_delivered" | "not_settled" | "not_found"
+> {
+  const db = getDb();
+  return db.transaction(async tx => {
+    const [delivery] = await tx
+      .select()
+      .from(llmInferenceChatResponseDeliveries)
+      .where(eq(llmInferenceChatResponseDeliveries.attemptId, attemptId))
+      .for("update")
+      .limit(1);
+    if (!delivery) return "not_found";
+    if (delivery.status === "delivered") return "already_delivered";
+    if (!delivery.content) throw new Error("Pending inference response content is missing");
+
+    const [settled] = await tx
+      .select({ settlementKey: llmInferenceCreditSettlements.settlementKey })
+      .from(llmInferenceAttempts)
+      .innerJoin(llmInferencePlans, eq(llmInferencePlans.planId, llmInferenceAttempts.planId))
+      .innerJoin(llmInferenceCreditSettlements, and(
+        eq(llmInferenceCreditSettlements.reservationId, llmInferencePlans.creditReservationId),
+        eq(llmInferenceCreditSettlements.settlementKey, llmInferenceAttempts.attemptId),
+      ))
+      .where(and(
+        eq(llmInferenceAttempts.attemptId, attemptId),
+        eq(llmInferenceAttempts.outcome, "completed"),
+        eq(llmInferencePlans.tenantId, delivery.tenantId),
+      ))
+      .limit(1);
+    if (!settled) return "not_settled";
+
+    const [inserted] = await tx
+      .insert(messages)
+      .values({
+        conversationId: delivery.conversationId,
+        role: "assistant",
+        content: delivery.content,
+        inputTokens: delivery.inputTokens,
+        outputTokens: delivery.outputTokens,
+        creditsUsed: String(delivery.creditsUsed),
+        modelUsed: delivery.modelUsed,
+        skillUsed: delivery.skillUsed,
+        traceId: delivery.traceId,
+        runtimeMetadata: delivery.runtimeMetadata,
+        inferenceIdempotencyHash: delivery.idempotencyHash,
+      })
+      .onConflictDoNothing()
+      .returning({ id: messages.id });
+
+    if (inserted) {
+      const [conversation] = await tx
+        .update(conversations)
+        .set({
+          messageCount: sql`${conversations.messageCount} + 1`,
+          totalCreditsUsed: sql`${conversations.totalCreditsUsed} + ${Number(delivery.creditsUsed)}`,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(conversations.id, delivery.conversationId),
+          eq(conversations.userId, delivery.userId),
+          inferenceConversationTenantScope(delivery.tenantId),
+        ))
+        .returning({ id: conversations.id });
+      if (!conversation) throw new Error("Conversation scope changed before response delivery");
+    } else {
+      const [existing] = await tx
+        .select({ conversationId: messages.conversationId, role: messages.role, content: messages.content })
+        .from(messages)
+        .where(eq(messages.inferenceIdempotencyHash, delivery.idempotencyHash))
+        .limit(1);
+      if (!existing || existing.conversationId !== delivery.conversationId ||
+        existing.role !== "assistant" || existing.content !== delivery.content) {
+        throw new Error("Inference response delivery idempotency scope conflict");
+      }
+    }
+
+    await tx
+      .update(llmInferenceChatResponseDeliveries)
+      .set({ status: "delivered", content: null, updatedAt: new Date() })
+      .where(eq(llmInferenceChatResponseDeliveries.attemptId, attemptId));
+    return "delivered";
+  });
+}
+
+export async function deliverPendingInferenceChatResponses(limit = 50): Promise<{
+  scanned: number;
+  delivered: number;
+  pending: number;
+}> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+    return { scanned: 0, delivered: 0, pending: 0 };
+  }
+  const db = getDb();
+  const rows = await db
+    .select({ attemptId: llmInferenceChatResponseDeliveries.attemptId })
+    .from(llmInferenceChatResponseDeliveries)
+    .innerJoin(llmInferenceAttempts, eq(llmInferenceAttempts.attemptId, llmInferenceChatResponseDeliveries.attemptId))
+    .innerJoin(llmInferencePlans, eq(llmInferencePlans.planId, llmInferenceAttempts.planId))
+    .innerJoin(llmInferenceCreditSettlements, and(
+      eq(llmInferenceCreditSettlements.reservationId, llmInferencePlans.creditReservationId),
+      eq(llmInferenceCreditSettlements.settlementKey, llmInferenceAttempts.attemptId),
+    ))
+    .where(and(
+      eq(llmInferenceChatResponseDeliveries.status, "pending"),
+      eq(llmInferenceAttempts.outcome, "completed"),
+    ))
+    .orderBy(asc(llmInferenceChatResponseDeliveries.createdAt))
+    .limit(limit);
+  let delivered = 0;
+  for (const row of rows) {
+    const result = await deliverSettledInferenceChatResponse(row.attemptId);
+    if (result === "delivered" || result === "already_delivered") delivered += 1;
+  }
+  return { scanned: rows.length, delivered, pending: rows.length - delivered };
+}
+
+export async function deliverSettledInferenceChatResponseForKey(input: {
+  tenantId: string;
+  userId: number;
+  idempotencyKey: string;
+}): Promise<"delivered" | "already_delivered" | "not_settled" | "not_found"> {
+  const db = getDb();
+  const idempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  const [row] = await db
+    .select({ attemptId: llmInferenceChatResponseDeliveries.attemptId })
+    .from(llmInferenceChatResponseDeliveries)
+    .where(and(
+      eq(llmInferenceChatResponseDeliveries.idempotencyHash, idempotencyHash),
+      eq(llmInferenceChatResponseDeliveries.tenantId, input.tenantId),
+      eq(llmInferenceChatResponseDeliveries.userId, input.userId),
+    ))
+    .limit(1);
+  if (!row) return "not_found";
+  return deliverSettledInferenceChatResponse(row.attemptId);
 }
 
 /**

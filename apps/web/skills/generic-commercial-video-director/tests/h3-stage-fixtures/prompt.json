@@ -1,0 +1,43 @@
+{
+  "mode": "ref2va",
+  "compilerMode": "smartaihub_native",
+  "durationSeconds": 10,
+  "keyframeAlignmentInstruction": null,
+  "subjectDefinitions": "<Subject 1> is the presenter in <Picture 2>. <Subject 2> is the product in <Picture 1>.",
+  "summary": "[reference generation + audio reference] Presenter demonstrates product while retaining product and voice reference.",
+  "retentionAnalysis": "<Subject 1>: fully_preserved. <Subject 2>: fully_preserved. <Audio 1>: reference.",
+  "integratedMultimodalDescription": null,
+  "detailedDescription": "[Shot 1] Presenter demonstrates product. (S1) says: <d>[Thai] ใช้งานง่ายและเห็นรายละเอียดชัดเจน</d>",
+  "overallSoundscape": "Quiet studio ambience and subtle product handling sounds.",
+  "nonDiegeticMusic": "Soft modern electronic pulse.",
+  "promptText": "subject_definitions:\n...\nsummary:\n...\nretention_analysis:\n...\ndetailed_description:\n...\noverall_soundscape: ...\nnon_diegetic_music: ...",
+  "shotMap": [
+    {
+      "shotId": "S01",
+      "shotIndex": 1,
+      "startSeconds": 0,
+      "cutTimestamp": null
+    }
+  ],
+  "speakerMap": [
+    {
+      "speakerId": "presenter",
+      "h3SpeakerId": "S1",
+      "lineIds": [
+        "L1"
+      ],
+      "language": "Thai",
+      "languageSupport": "variable"
+    }
+  ],
+  "audioPlan": {
+    "nativeDialogue": true,
+    "nativeDiegeticSound": true,
+    "nativeMusic": true,
+    "externalFallbackRecommended": true,
+    "fallbackReason": "Thai quality is variable."
+  },
+  "warnings": [
+    "Thai dialogue requires QC/fallback."
+  ]
+}

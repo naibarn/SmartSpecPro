@@ -85,49 +85,6 @@ const SERVICE_CONFIGS: ServiceConfig[] = [
     description: 'Reverse proxy with HTTPS (optional)'
   },
 
-  // Media Processing (Docker containers via docker-compose.media.yml)
-  {
-    id: 'smartspec-celery-media', name: 'celery-media', displayName: 'Celery Media Worker',
-    ports: [], type: 'docker',
-    description: 'API-bound media generation tasks (2 CPUs, 3GB)'
-  },
-  {
-    id: 'smartspec-celery-video', name: 'celery-video', displayName: 'Celery Video Worker',
-    ports: [], type: 'docker',
-    description: 'FFmpeg video rendering tasks (4 CPUs, 8GB)'
-  },
-  {
-    id: 'smartspec-celery-beat', name: 'celery-beat', displayName: 'Celery Beat',
-    ports: [], type: 'docker',
-    description: 'Periodic task scheduler (cleanup, retry)'
-  },
-  {
-    id: 'smartspec-flower', name: 'flower', displayName: 'Flower Dashboard',
-    ports: ['5555'], type: 'docker',
-    description: 'Celery monitoring UI → http://localhost:5555'
-  },
-
-  // Local code intelligence (SocratiCode MCP support)
-  {
-    id: 'socraticode-qdrant', name: 'socraticode-qdrant', displayName: 'SocratiCode Qdrant',
-    ports: ['16333', '16334'], type: 'docker',
-    description: 'Vector database for SocratiCode codebase index'
-  },
-  {
-    id: 'socraticode-ollama', name: 'socraticode-ollama', displayName: 'SocratiCode Ollama',
-    ports: ['11435'], type: 'docker',
-    description: 'Local embedding runtime for SocratiCode'
-  },
-  {
-    id: 'socraticode-smartspecpro-index', name: 'socraticode-index', displayName: 'SocratiCode Index Runner',
-    ports: [], type: 'systemd', systemdName: 'socraticode-smartspecpro-index',
-    description: 'Background index resume service for SmartSpecPro'
-  },
-  {
-    id: 'socraticode-smartspecpro-watch', name: 'socraticode-watch', displayName: 'SocratiCode Watcher',
-    ports: [], type: 'systemd', systemdName: 'socraticode-smartspecpro-watch',
-    description: 'Keeps the SmartSpecPro SocratiCode index updated after file changes'
-  },
 ];
 
 export interface ServiceStatus {

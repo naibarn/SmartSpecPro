@@ -65,9 +65,43 @@
  * (guarded so it only clears a pointer that still points at ITS OWN jobId).
  */
 
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import { getRedisClient } from "./redis";
+import {
+  createFeature186VerticalDramaJob,
+  isFeature186HardCutoverEnabled,
+} from "./feature186VerticalDramaJobAdapter";
+import { createJobControlPlane } from "./jobControlPlane";
 import { debugError } from "../_core/logger";
+import { classifyCreditFailure } from "./creditFailurePolicy";
+import {
+  formatAffectedUsersForText,
+  resolveAffectedUsers,
+} from "./feedbackAffectedUsers";
+import { getDb, type DrizzleDB } from "../db";
+import { workerJobs } from "../../drizzle/schema";
+import { and, eq } from "drizzle-orm";
+import {
+  finalizeStoryGeneration,
+  StoryGenerationFenceLostError,
+  transitionStoryGenerationRun,
+} from "./verticalDramaStoryGenerationRuntime";
+import {
+  claimStoryGenerationLease,
+  getStoryGenerationRun,
+  updateStoryGenerationCheckpoint,
+} from "./verticalDramaStoryGenerationRepository";
+import {
+  mergeStoryPlanFieldsIntoCandidate,
+  validateStoryGenerationOutput,
+} from "./verticalDramaStoryGenerationValidation";
+import type { StoryGenerationRunContract } from "./verticalDramaStoryGenerationContracts";
+import { visualSourceSnapshotSchema } from "@shared/verticalDramaSeries/visualSource";
+import {
+  captureSeriesVisualSourceSnapshot,
+  validateSnapshotForRun,
+} from "./verticalDramaVisualSourceSnapshotService";
+
 
 export const VERTICAL_DRAMA_STORY_JOBS_QUEUE = "vertical_drama_story_jobs";
 
@@ -80,20 +114,35 @@ const VERTICAL_DRAMA_STORY_JOBS_WORKER_CONCURRENCY = 3;
 /** Bounds how long a finished/queued job record survives in Redis — long
  *  enough to cover a realistic "client polls, then reloads and resumes"
  *  window, short enough to bound Redis memory for a large premium run's
- *  `result` payload (which can carry a full season's shot drafts). */
-const JOB_RECORD_TTL_SECONDS = 2 * 60 * 60; // 2h
+ *  `result` payload (which can carry a full season's shot drafts). Raised
+ *  from 2h -> 6h (resilient resume, added 2026-07-14,
+ *  `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — a
+ *  multi-hour deep-draft run now checkpoints per chunk (see `checkpoint` on
+ *  `VerticalDramaStoryJobRecord`) and refreshes this TTL on every write (the
+ *  heartbeat below), so the floor only matters for a run that stops making
+ *  progress entirely. */
+const JOB_RECORD_TTL_SECONDS = 6 * 60 * 60; // 6h
 /** Safety-net TTL on the per-series active-job pointer — self-heals a
  *  crashed/killed worker's stuck pointer (which would otherwise deadlock the
- *  series' story-job slot forever) instead of requiring manual recovery. */
-const ACTIVE_POINTER_TTL_SECONDS = 2 * 60 * 60; // 2h
+ *  series' story-job slot forever) instead of requiring manual recovery.
+ *  Raised 2h -> 6h alongside `JOB_RECORD_TTL_SECONDS` above; refreshed on
+ *  every progress/checkpoint/status write (see `refreshActivePointerTtl`) so
+ *  an actively-progressing job's pointer never expires mid-run. */
+const ACTIVE_POINTER_TTL_SECONDS = 6 * 60 * 60; // 6h
+/** Failed jobs remain discoverable for an explicit repair/continue action. */
+const RECOVERABLE_POINTER_TTL_SECONDS = 24 * 60 * 60; // 24h
+/** Recovery is a short critical section: inspect -> transition -> enqueue. */
+const RECOVERY_LOCK_TTL_SECONDS = 120;
 
 /* -------------------------------------------------------------------------- */
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
 export type VerticalDramaStoryJobKind =
+  | "plan"
   | "deep_generate"
   | "extend"
+  | "episode_repair"
   /**
    * "ปรับปรุงบทละครให้มีความสมบูรณ์" (added 2026-07-10) — replaces the old
    * `critique`/`apply_critique`/`quality_loop` season-quality flow with one
@@ -124,6 +173,13 @@ export type VerticalDramaStoryJobProgressPhase =
 
 export interface VerticalDramaStoryJobProgress {
   phase: VerticalDramaStoryJobProgressPhase;
+  /** Initial plan lifecycle stage; absent for legacy/deep jobs. */
+  stage?:
+    | "generating"
+    | "candidate_saved"
+    | "validating"
+    | "saving"
+    | "handoff";
   /**
    * 1-based index of the current call-round (chunk / revise-round) within
    * this job, when applicable. For `improve_script` jobs (2026-07-10
@@ -138,6 +194,17 @@ export interface VerticalDramaStoryJobProgress {
   callsDone?: number;
   /** Episode numbers this progress event's "fix" work targets (mainly meaningful for phase "fix"). */
   episodesDone?: number[];
+  /** True when a failed multi-episode chunk is being retried one episode at a time. */
+  retrying?: boolean;
+  /** Episode numbers currently being retried after a chunk split. */
+  retryEpisodeNumbers?: number[];
+  /** Number of fully speakable episodes already persisted to the series. */
+  episodesCompleted?: number;
+  /** Total episodes requested by this deep-draft run. */
+  episodesTotal?: number;
+  /** Inclusive episode range currently being processed. */
+  currentEpisodeStart?: number;
+  currentEpisodeEnd?: number;
   /**
    * 1-based index of the episode currently being processed within this job
    * (added 2026-07-10 for `improve_script`'s per-episode generation loop —
@@ -176,9 +243,36 @@ export interface VerticalDramaStoryJobOwner {
 }
 
 export interface VerticalDramaStoryJobPayload extends VerticalDramaStoryJobOwner {
+  /** Present only inside the worker executor; public enqueue payloads omit it. */
+  jobId?: string;
   kind: VerticalDramaStoryJobKind;
   /** Kind-specific light input (validated by the router BEFORE enqueueing) — e.g. `{ mode, horizonEpisodes, idempotencyKey }`. */
   input: Record<string, unknown>;
+}
+
+/**
+ * Resilient resume checkpoint (added 2026-07-14,
+ * `planning/vertical-drama-deep-story-resilient-resume/plan.md`) — a
+ * kind-agnostic snapshot of a long-running job's own progress, written
+ * incrementally (per chunk) so a mid-run crash/redelivery can resume instead
+ * of restarting from scratch and re-charging credits. `draftedItems` is
+ * `unknown[]` deliberately: this file stays domain-agnostic (never imports
+ * `verticalDramaStoryBible.ts`'s `DeepDraftedEpisodeItem` — see this file's
+ * own module doc comment on why); `routers/verticalDramaSeries.ts` casts it
+ * back to the concrete shape it knows.
+ */
+export interface VerticalDramaStoryJobCheckpoint {
+  draftedItems: unknown[];
+  completedEpisodeNumbers: number[];
+  chunkSizesDone: number[];
+  creditsUsed: number;
+  /** Initial story-plan recovery state; absent for deep/extend jobs. */
+  planStage?: "candidate_ready" | "finalizing" | "completed";
+  /** Schema-validated `generateStoryBible` result, kept for local resume. */
+  planCandidate?: unknown;
+  planCreditsUsed?: number;
+  planModel?: string;
+  updatedAt: string;
 }
 
 export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayload {
@@ -191,15 +285,97 @@ export interface VerticalDramaStoryJobRecord extends VerticalDramaStoryJobPayloa
   error: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Resilient resume — this job's own incremental progress, written via
+   * `persistCheckpoint` (see `VerticalDramaStoryJobExecutor`/
+   * `runVerticalDramaStoryJob`). Optional/absent for the job kind that never
+   * checkpoints (`improve_script`) and for any job started before this
+   * field existed — omitting it is BYTE-IDENTICAL to before this feature
+   * existed (a fresh run with no checkpoint drafts everything, exactly like
+   * today).
+   */
+  checkpoint?: VerticalDramaStoryJobCheckpoint;
+  /**
+   * Number of background recovery attempts already spent by this job. This
+   * is persisted so a worker redelivery cannot reset the safety budget and
+   * spin forever on a provider/schema response that makes no progress.
+   */
+  recoveryAttempts?: number;
+  /** Unique BullMQ delivery token; prevents a stale failed event from
+   * overwriting a later explicit recovery delivery. */
+  dispatchId?: string;
+  /** Last durable running-state heartbeat; separate from Redis TTL. */
+  heartbeatAt?: string;
+}
+
+export type VerticalDramaStoryJobRecoveryReason =
+  | "active"
+  | "checkpoint_available"
+  | "no_checkpoint"
+  | "unsupported_kind"
+  | "recovery_limit"
+  | "no_remaining_work"
+  | "not_found";
+
+export interface VerticalDramaStoryJobRecoveryState {
+  jobId: string;
+  kind: VerticalDramaStoryJobKind;
+  status: VerticalDramaStoryJobStatus;
+  canResume: boolean;
+  reason: VerticalDramaStoryJobRecoveryReason;
+  completedEpisodeNumbers: number[];
+  remainingEpisodeNumbers: number[] | null;
+  completedEpisodeCount: number;
+  remainingEpisodeCount: number | null;
+  totalEpisodeCount: number | null;
+  recoveryAttempts: number;
+  maxRecoveryAttempts: number;
+  checkpointUpdatedAt: string | null;
+  heartbeatAt: string | null;
+  error: string | null;
+  updatedAt: string;
+}
+
+export interface VerticalDramaStoryJobRecoveryResult {
+  started: boolean;
+  jobId: string | null;
+  status: VerticalDramaStoryJobStatus | null;
+  reason: VerticalDramaStoryJobRecoveryReason;
+  state: VerticalDramaStoryJobRecoveryState | null;
+}
+
+/**
+ * Resilient resume — handed to the executor alongside `onProgress` on every
+ * (re)start of `runVerticalDramaStoryJob`, INCLUDING a same-jobId BullMQ
+ * redelivery after a mid-run crash. `checkpoint` is the record's checkpoint
+ * AS OF THIS RUN'S START (`null` for a fresh job or one with no checkpoint
+ * yet) — kind-specific executors read it to seed either the initial plan
+ * candidate or `generateStoryBibleDeep`'s `resumeDraftedItems`/
+ * `alreadyDraftedEpisodeNumbers`.
+ * `persistCheckpoint` is fire-and-forget (never awaited by the executor),
+ * mirroring `onProgress`'s exact contract — a slow/failing checkpoint write
+ * must never block or fail the real generation work.
+ */
+export interface VerticalDramaStoryJobResumeContext {
+  checkpoint: VerticalDramaStoryJobCheckpoint | null;
+  persistCheckpoint: (checkpoint: VerticalDramaStoryJobCheckpoint) => void;
+  /** Awaitable variant for critical plan checkpoints that must survive before the next stage starts. */
+  persistCheckpointAndWait?: (
+    checkpoint: VerticalDramaStoryJobCheckpoint,
+  ) => Promise<void>;
 }
 
 /** Generic executor signature — dispatches a job payload to kind-specific
  *  domain logic. `onProgress` is fire-and-forget (never awaited by the
  *  executor) so threading it into `verticalDramaStoryBible.ts` is a true
- *  zero-behavior-change addition there. */
+ *  zero-behavior-change addition there. `resume` (added 2026-07-14) is
+ *  ALWAYS passed (never optional) — a job kind that doesn't checkpoint
+ *  simply never calls `resume.persistCheckpoint` and ignores
+ *  `resume.checkpoint` (always `null` for it, since it never writes one). */
 export type VerticalDramaStoryJobExecutor = (
   payload: VerticalDramaStoryJobPayload,
   onProgress: (progress: VerticalDramaStoryJobProgress) => void,
+  resume: VerticalDramaStoryJobResumeContext,
 ) => Promise<unknown>;
 
 /* -------------------------------------------------------------------------- */
@@ -211,11 +387,17 @@ export interface VerticalDramaStoryJobRedisAdapter {
   get: (key: string) => Promise<string | null>;
   set: (key: string, value: string, mode: "EX", seconds: number) => Promise<unknown>;
   del: (key: string) => Promise<unknown>;
+  /** Optional in tests; production uses Redis SET NX for recovery locking. */
+  setIfAbsent?: (key: string, value: string, seconds: number) => Promise<boolean>;
+  /** Optional in tests; production deletes only its own lock token. */
+  delIfValue?: (key: string, value: string) => Promise<unknown>;
 }
 
 export interface VerticalDramaStoryJobStoreDependencies {
   redis: VerticalDramaStoryJobRedisAdapter;
   now: () => number;
+  /** Injectable only for tests; production waits without blocking a request. */
+  sleep: (milliseconds: number) => Promise<void>;
 }
 
 function defaultRedisAdapter(): VerticalDramaStoryJobRedisAdapter {
@@ -224,6 +406,15 @@ function defaultRedisAdapter(): VerticalDramaStoryJobRedisAdapter {
     get: (key: string) => client.get(key),
     set: (key: string, value: string, mode: "EX", seconds: number) => client.set(key, value, mode, seconds),
     del: (key: string) => client.del(key),
+    setIfAbsent: async (key: string, value: string, seconds: number) =>
+      (await client.set(key, value, "EX", seconds, "NX")) === "OK",
+    delIfValue: (key: string, value: string) =>
+      client.eval(
+        "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+        1,
+        key,
+        value,
+      ),
   };
 }
 
@@ -233,6 +424,10 @@ function resolveDeps(
   return {
     redis: dependencies?.redis ?? defaultRedisAdapter(),
     now: dependencies?.now ?? Date.now,
+    sleep:
+      dependencies?.sleep ??
+      ((milliseconds: number) =>
+        new Promise(resolve => setTimeout(resolve, milliseconds))),
   };
 }
 
@@ -242,6 +437,14 @@ function jobRecordKey(jobId: string): string {
 
 function activePointerKey(tenantId: string, seriesId: number): string {
   return `vd:story-job:active:${tenantId}:${seriesId}`;
+}
+
+function recoverablePointerKey(tenantId: string, seriesId: number): string {
+  return `vd:story-job:recoverable:${tenantId}:${seriesId}`;
+}
+
+function recoveryLockKey(tenantId: string, seriesId: number): string {
+  return `vd:story-job:recovery-lock:${tenantId}:${seriesId}`;
 }
 
 async function readRecord(
@@ -261,7 +464,40 @@ async function writeRecord(
   record: VerticalDramaStoryJobRecord,
   deps: VerticalDramaStoryJobStoreDependencies,
 ): Promise<void> {
-  await deps.redis.set(jobRecordKey(record.jobId), JSON.stringify(record), "EX", JOB_RECORD_TTL_SECONDS);
+  const persistedRecord = record.status === "running"
+    ? { ...record, heartbeatAt: record.updatedAt }
+    : record;
+  await deps.redis.set(jobRecordKey(record.jobId), JSON.stringify(persistedRecord), "EX", JOB_RECORD_TTL_SECONDS);
+  // Heartbeat TTL (added 2026-07-14, resilient resume) — refresh the
+  // per-series active-pointer's TTL on every WRITE made while the job is
+  // actively running (the initial "running" transition + every subsequent
+  // `onProgress`/`persistCheckpoint` call both route through this same
+  // function), so a long multi-hour run never has its pointer expire out
+  // from under it. Deliberately re-`set`s (rather than a bare `expire`) so
+  // no adapter-interface change is needed — `set` is already the only write
+  // primitive `VerticalDramaStoryJobRedisAdapter` exposes. Skipped for
+  // "queued" (nothing is progressing yet; the enqueue-time TTL already
+  // covers the pre-dequeue window) and terminal writes (`runVerticalDramaStoryJob`'s
+  // own `finally` block deletes the pointer immediately after anyway).
+  // Defensively checks the pointer ALREADY points at THIS job before
+  // refreshing it — mirrors `runVerticalDramaStoryJob`'s own `finally`-block
+  // guard exactly, so a stale/superseded job's write can never re-claim (or
+  // extend the TTL of) a pointer a NEWER job has since taken over.
+  if (record.status === "running") {
+    try {
+      const pointerKey = activePointerKey(record.tenantId, record.seriesId);
+      const currentPointer = await deps.redis.get(pointerKey);
+      if (currentPointer === record.jobId) {
+        await deps.redis.set(pointerKey, record.jobId, "EX", ACTIVE_POINTER_TTL_SECONDS);
+      }
+    } catch (error) {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to refresh active-pointer TTL for story job ${record.jobId}`,
+        error,
+      );
+    }
+  }
 }
 
 /**
@@ -284,19 +520,202 @@ function enqueueWrite(jobId: string, fn: () => Promise<unknown>): Promise<unknow
   return next;
 }
 
+/**
+ * Resilient resume — standalone, independently-testable checkpoint writer.
+ * Reads the CURRENT persisted record, shallow-merges `patch` onto its
+ * existing `checkpoint` (a field present in `patch` wins; a field absent
+ * from `patch` falls back to whatever the record already had, `[]`/`0`
+ * otherwise — supports both "send the full replacement every time"
+ * callers, like `runVerticalDramaStoryJob`'s own `persistCheckpoint` below,
+ * and a genuinely-partial patch), and writes the result back — through the
+ * SAME per-job `enqueueWrite` serialization `onProgress`/the terminal
+ * succeeded/failed write use, so a checkpoint write can never complete AFTER
+ * (and clobber) a terminal write, and two checkpoint writes queued out of
+ * call-order still apply strictly in the order they were CALLED. No-op
+ * (never throws) when the record is missing/TTL'd out — mirrors this file's
+ * established "best-effort, fire-and-forget-safe" convention for anything
+ * called from deep inside the story-bible service's own call chain.
+ */
+export async function updateVerticalDramaStoryJobCheckpoint(
+  jobId: string,
+  patch: Partial<VerticalDramaStoryJobCheckpoint>,
+  dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
+): Promise<void> {
+  const deps = resolveDeps(dependencies);
+  await enqueueWrite(jobId, async () => {
+    const latest = await readRecord(jobId, deps);
+    if (!latest) return;
+    const priorCheckpoint = latest.checkpoint;
+    const mergedCheckpoint: VerticalDramaStoryJobCheckpoint = {
+      draftedItems: patch.draftedItems ?? priorCheckpoint?.draftedItems ?? [],
+      completedEpisodeNumbers:
+        patch.completedEpisodeNumbers ?? priorCheckpoint?.completedEpisodeNumbers ?? [],
+      chunkSizesDone: patch.chunkSizesDone ?? priorCheckpoint?.chunkSizesDone ?? [],
+      creditsUsed: patch.creditsUsed ?? priorCheckpoint?.creditsUsed ?? 0,
+      ...(patch.planStage !== undefined || priorCheckpoint?.planStage !== undefined
+        ? { planStage: patch.planStage ?? priorCheckpoint?.planStage }
+        : {}),
+      ...(patch.planCandidate !== undefined || priorCheckpoint?.planCandidate !== undefined
+        ? { planCandidate: patch.planCandidate ?? priorCheckpoint?.planCandidate }
+        : {}),
+      ...(patch.planCreditsUsed !== undefined || priorCheckpoint?.planCreditsUsed !== undefined
+        ? { planCreditsUsed: patch.planCreditsUsed ?? priorCheckpoint?.planCreditsUsed }
+        : {}),
+      ...(patch.planModel !== undefined || priorCheckpoint?.planModel !== undefined
+        ? { planModel: patch.planModel ?? priorCheckpoint?.planModel }
+        : {}),
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await writeRecord(
+      {
+        ...latest,
+        status: "running",
+        checkpoint: mergedCheckpoint,
+        updatedAt: mergedCheckpoint.updatedAt,
+      },
+      deps,
+    );
+  });
+}
+
+/**
+ * Enqueue the next story stage while the current stage still owns the
+ * per-series pointer. The normal enqueue path intentionally dedupes every
+ * cross-kind submission; a server-owned plan -> deep handoff is the one
+ * legitimate exception. It atomically releases only the current job's
+ * pointer, then submits the next job through the same durable path.
+ */
+export async function enqueueVerticalDramaStoryJobHandoff(
+  previousJobId: string,
+  payload: VerticalDramaStoryJobPayload,
+  dependencies?: VerticalDramaStoryJobEnqueueDependencies,
+): Promise<{ jobId: string; deduped: boolean }> {
+  const deps = resolveDeps(dependencies);
+  const pointerKey = activePointerKey(payload.tenantId, payload.seriesId);
+  const currentPointer = await deps.redis.get(pointerKey);
+  if (currentPointer === previousJobId) {
+    await deps.redis.del(pointerKey);
+  }
+  return enqueueVerticalDramaStoryJob(payload, dependencies);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Enqueue (submit) — dedupe-aware                                            */
 /* -------------------------------------------------------------------------- */
 
 export interface VerticalDramaStoryJobEnqueueDependencies extends Partial<VerticalDramaStoryJobStoreDependencies> {
   /** Overridable for tests — production default enqueues onto the real BullMQ queue (see `initVerticalDramaStoryJobsQueue`). */
-  enqueueBullmqJob?: (jobId: string) => Promise<void>;
+  enqueueBullmqJob?: (jobId: string, dispatchId: string) => Promise<void>;
+}
+
+function recoveryState(record: VerticalDramaStoryJobRecord): VerticalDramaStoryJobRecoveryState {
+  const completedEpisodeNumbers = Array.from(
+    new Set(record.checkpoint?.completedEpisodeNumbers ?? []),
+  ).sort((a, b) => a - b);
+  const totalEpisodeCount = totalEpisodeCountForRecovery(record);
+  const remainingEpisodeNumbers = totalEpisodeCount === null
+    ? null
+    : Array.from({ length: totalEpisodeCount }, (_, index) => index + 1)
+        .filter(episodeNumber => !completedEpisodeNumbers.includes(episodeNumber));
+  const recoveryAttempts = Math.max(0, record.recoveryAttempts ?? 0);
+  let reason: VerticalDramaStoryJobRecoveryReason;
+  if (record.status === "queued" || record.status === "running") {
+    reason = "active";
+  } else if (!isCheckpointResumableStoryJobKind(record.kind)) {
+    reason = "unsupported_kind";
+  } else if (!record.checkpoint) {
+    reason = "no_checkpoint";
+  } else if (recoveryAttempts >= STORY_JOB_MAX_RECOVERY_ATTEMPTS) {
+    reason = "recovery_limit";
+  } else if (remainingEpisodeNumbers !== null && remainingEpisodeNumbers.length === 0) {
+    reason = "no_remaining_work";
+  } else {
+    reason = "checkpoint_available";
+  }
+  return {
+    jobId: record.jobId,
+    kind: record.kind,
+    status: record.status,
+    canResume: reason === "checkpoint_available",
+    reason,
+    completedEpisodeNumbers,
+    remainingEpisodeNumbers,
+    completedEpisodeCount: completedEpisodeNumbers.length,
+    remainingEpisodeCount: remainingEpisodeNumbers?.length ?? null,
+    totalEpisodeCount,
+    recoveryAttempts,
+    maxRecoveryAttempts: STORY_JOB_MAX_RECOVERY_ATTEMPTS,
+    checkpointUpdatedAt: record.checkpoint?.updatedAt ?? null,
+    heartbeatAt: record.heartbeatAt ?? null,
+    error: record.error ?? null,
+    updatedAt: record.updatedAt,
+  };
+}
+
+function totalEpisodeCountForRecovery(record: VerticalDramaStoryJobRecord): number | null {
+  const progressTotal = record.progress?.episodesTotal;
+  if (Number.isInteger(progressTotal) && (progressTotal as number) > 0) {
+    return progressTotal as number;
+  }
+  const inputTotal = record.input.horizonEpisodes;
+  if (typeof inputTotal === "number" && Number.isInteger(inputTotal) && inputTotal > 0) {
+    return inputTotal;
+  }
+  return null;
+}
+
+async function publishRecoverablePointer(
+  record: VerticalDramaStoryJobRecord,
+  deps: VerticalDramaStoryJobStoreDependencies,
+): Promise<void> {
+  await deps.redis.set(
+    recoverablePointerKey(record.tenantId, record.seriesId),
+    record.jobId,
+    "EX",
+    RECOVERABLE_POINTER_TTL_SECONDS,
+  );
+}
+
+async function clearActivePointerIfOwned(
+  record: VerticalDramaStoryJobRecord,
+  deps: VerticalDramaStoryJobStoreDependencies,
+): Promise<void> {
+  const pointerKey = activePointerKey(record.tenantId, record.seriesId);
+  const currentPointer = await deps.redis.get(pointerKey).catch(() => null);
+  if (currentPointer === record.jobId) {
+    await deps.redis.del(pointerKey).catch(() => {});
+  }
+}
+
+async function withRecoveryLock<T>(
+  owner: { tenantId: string; seriesId: number },
+  deps: VerticalDramaStoryJobStoreDependencies,
+  operation: () => Promise<T>,
+): Promise<T | null> {
+  const lockKey = recoveryLockKey(owner.tenantId, owner.seriesId);
+  const token = randomUUID();
+  const acquired = deps.redis.setIfAbsent
+    ? await deps.redis.setIfAbsent(lockKey, token, RECOVERY_LOCK_TTL_SECONDS)
+    : true;
+  if (!acquired) return null;
+  try {
+    return await operation();
+  } finally {
+    if (deps.redis.delIfValue) {
+      await deps.redis.delIfValue(lockKey, token).catch(() => {});
+    } else {
+      await deps.redis.del(lockKey).catch(() => {});
+    }
+  }
 }
 
 export async function enqueueVerticalDramaStoryJob(
   payload: VerticalDramaStoryJobPayload,
   dependencies?: VerticalDramaStoryJobEnqueueDependencies,
 ): Promise<{ jobId: string; deduped: boolean }> {
+  if (storyJobsDraining) {
+    throw new Error("VD_STORY_JOBS_DRAINING");
+  }
   const deps = resolveDeps(dependencies);
   const pointerKey = activePointerKey(payload.tenantId, payload.seriesId);
 
@@ -317,6 +736,7 @@ export async function enqueueVerticalDramaStoryJob(
   }
 
   const jobId = randomUUID();
+  const dispatchId = randomUUID();
   const nowIso = new Date(deps.now()).toISOString();
   const record: VerticalDramaStoryJobRecord = {
     jobId,
@@ -331,14 +751,46 @@ export async function enqueueVerticalDramaStoryJob(
     error: null,
     createdAt: nowIso,
     updatedAt: nowIso,
+    dispatchId,
   };
   await writeRecord(record, deps);
-  await deps.redis.set(pointerKey, jobId, "EX", ACTIVE_POINTER_TTL_SECONDS);
+  const pointerClaimed = deps.redis.setIfAbsent
+    ? await deps.redis.setIfAbsent(pointerKey, jobId, ACTIVE_POINTER_TTL_SECONDS)
+    : (await deps.redis.get(pointerKey)) === null;
+  if (!pointerClaimed) {
+    await deps.redis.del(jobRecordKey(jobId)).catch(() => {});
+    const currentPointer = await deps.redis.get(pointerKey);
+    if (currentPointer) return { jobId: currentPointer, deduped: true };
+    return enqueueVerticalDramaStoryJob(payload, dependencies);
+  }
+  await deps.redis.del(recoverablePointerKey(payload.tenantId, payload.seriesId)).catch(() => {});
 
-  const enqueueBullmqJob = dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob;
   try {
-    await enqueueBullmqJob(jobId);
+    if (isFeature186HardCutoverEnabled()) {
+      await createFeature186VerticalDramaJob({
+        jobId,
+        tenantId: payload.tenantId,
+        userId: payload.userId,
+        jobType: "vertical_drama.story",
+        executionClass: "long",
+        payload: record as unknown as Record<string, unknown>,
+      });
+    } else {
+      await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(jobId, dispatchId);
+    }
   } catch (error) {
+    if (isFeature186HardCutoverEnabled()) {
+      const failedRecord: VerticalDramaStoryJobRecord = {
+        ...record,
+        status: "failed",
+        error: error instanceof Error ? error.message.slice(0, 2000) : "Canonical job submission failed",
+        updatedAt: new Date(deps.now()).toISOString(),
+      };
+      await enqueueWrite(jobId, () => writeRecord(failedRecord, deps));
+      await clearActivePointerIfOwned(failedRecord, deps);
+      await notifyStoryJobTerminal(failedRecord);
+      throw error;
+    }
     // Best-effort — mirrors `jobAutomationService.ts`'s own "queue
     // unavailable -> job stays queued until a worker comes up" degradation.
     // The record itself is already durably written, so this never turns a
@@ -365,10 +817,325 @@ export async function getVerticalDramaStoryJobStatus(
   dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
 ): Promise<VerticalDramaStoryJobRecord | null> {
   const deps = resolveDeps(dependencies);
-  const record = await readRecord(jobId, deps);
-  if (!record) return null;
+  let record = await readRecord(jobId, deps);
+  if (!record) {
+    const [canonical] = await getDb()
+      .select({ tenantId: workerJobs.tenantId, inputJson: workerJobs.inputJson })
+      .from(workerJobs)
+      .where(and(
+        eq(workerJobs.id, jobId),
+        eq(workerJobs.jobType, "vertical_drama.story"),
+      ))
+      .limit(1);
+    const input = canonical?.inputJson as Partial<VerticalDramaStoryJobRecord> | undefined;
+    if (
+      !canonical ||
+      canonical.tenantId !== owner.tenantId ||
+      !input ||
+      input.tenantId !== canonical.tenantId ||
+      input.seriesId !== owner.seriesId ||
+      typeof input.kind !== "string"
+    ) return null;
+    record = {
+      ...input,
+      jobId,
+      tenantId: canonical.tenantId,
+      status: "queued",
+      progress: input.progress ?? null,
+      result: input.result ?? null,
+      error: input.error ?? null,
+      createdAt: input.createdAt ?? new Date(deps.now()).toISOString(),
+      updatedAt: input.updatedAt ?? new Date(deps.now()).toISOString(),
+    } as VerticalDramaStoryJobRecord;
+    await writeRecord(record, deps);
+  }
   if (record.tenantId !== owner.tenantId || record.seriesId !== owner.seriesId) return null;
+  record = await refreshStoryJobFromCanonicalControlPlane(record, deps);
   return record;
+}
+
+/** Redis is a story-domain projection; worker_jobs owns execution truth.
+ * Refresh every status read from PostgreSQL so stale cached status cannot
+ * keep a dead job active or hide a current worker state. */
+async function refreshStoryJobFromCanonicalControlPlane(
+  record: VerticalDramaStoryJobRecord,
+  deps: VerticalDramaStoryJobStoreDependencies,
+): Promise<VerticalDramaStoryJobRecord> {
+  const [canonical] = await getDb()
+    .select({
+      status: workerJobs.status,
+      failureReason: workerJobs.failureReason,
+      errorMessage: workerJobs.errorMessage,
+      progressJson: workerJobs.progressJson,
+      outputJson: workerJobs.outputJson,
+    })
+    .from(workerJobs)
+    .where(and(
+      eq(workerJobs.id, record.jobId),
+      eq(workerJobs.tenantId, record.tenantId),
+      eq(workerJobs.jobType, "vertical_drama.story"),
+    ))
+    .limit(1);
+  const canonicalStatus = canonical?.status ?? "failed";
+  const terminalStatus = canonicalStatus === "completed" || canonicalStatus === "succeeded"
+    ? "succeeded"
+    : ["failed", "canceled", "cancelled", "expired"].includes(canonicalStatus)
+      ? "failed"
+      : null;
+  const currentStatus = terminalStatus ?? (["running", "claimed", "leased"].includes(canonicalStatus) ? "running" : "queued");
+  let synced = record;
+  await enqueueWrite(record.jobId, async () => {
+    const latest = await readRecord(record.jobId, deps);
+    if (!latest) {
+      synced = latest ?? record;
+      return;
+    }
+    synced = {
+      ...latest,
+      status: currentStatus,
+      progress: (canonical?.progressJson as unknown as VerticalDramaStoryJobProgress | null) ?? latest.progress,
+      result: terminalStatus === "succeeded" ? (canonical?.outputJson ?? latest.result) : null,
+      error: terminalStatus === "failed"
+        ? (
+            canonical?.failureReason ||
+            canonical?.errorMessage ||
+            (canonical ? `Canonical worker job ${canonical.status}` : "Canonical worker job not found")
+          ).slice(0, 2000)
+        : null,
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    await writeRecord(synced, deps);
+  });
+  if (terminalStatus) {
+    await clearActivePointerIfOwned(synced, deps);
+    if (terminalStatus === "failed") await publishRecoverablePointer(synced, deps);
+    await notifyStoryJobTerminal(synced);
+  }
+  return synced;
+}
+
+/**
+ * Read the failed terminal job that can be explicitly repaired from its
+ * checkpoint. This is intentionally separate from the active-job read: a
+ * failed job must stop blocking normal generation while remaining visible to
+ * the creator after a refresh.
+ */
+export async function getVerticalDramaStoryJobRecovery(
+  owner: { tenantId: string; seriesId: number; userId?: number },
+  dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
+): Promise<VerticalDramaStoryJobRecoveryState | null> {
+  const deps = resolveDeps(dependencies);
+  const active = await getActiveVerticalDramaStoryJob(owner, deps);
+  if (active && (owner.userId === undefined || active.userId === owner.userId)) {
+    return recoveryState(active);
+  }
+
+  const pointerKey = recoverablePointerKey(owner.tenantId, owner.seriesId);
+  const jobId = await deps.redis.get(pointerKey);
+  if (!jobId) return null;
+  const record = await readRecord(jobId, deps);
+  if (!record || record.status !== "failed") {
+    await deps.redis.del(pointerKey).catch(() => {});
+    return null;
+  }
+  if (
+    record.tenantId !== owner.tenantId ||
+    record.seriesId !== owner.seriesId ||
+    (owner.userId !== undefined && record.userId !== owner.userId)
+  ) {
+    return null;
+  }
+  return recoveryState(record);
+}
+
+/**
+ * Explicitly requeues a failed checkpoint-bearing job. The domain id and
+ * checkpoint are preserved; only the BullMQ delivery token changes. The
+ * operation never charges credits itself and is safe to call repeatedly from
+ * multiple tabs.
+ */
+export async function recoverVerticalDramaStoryJob(
+  owner: { tenantId: string; seriesId: number; userId?: number },
+  expectedJobId: string,
+  dependencies?: VerticalDramaStoryJobEnqueueDependencies,
+): Promise<VerticalDramaStoryJobRecoveryResult> {
+  const deps = resolveDeps(dependencies);
+  const result = await withRecoveryLock(owner, deps, async () => {
+    const active = await getActiveVerticalDramaStoryJob(owner, deps);
+    if (active) {
+      return {
+        started: false,
+        jobId: active.jobId,
+        status: active.status,
+        reason: "active" as const,
+        state: recoveryState(active),
+      } satisfies VerticalDramaStoryJobRecoveryResult;
+    }
+
+    const recoverable = await getVerticalDramaStoryJobRecovery(owner, deps);
+    if (!recoverable || recoverable.jobId !== expectedJobId) {
+      return {
+        started: false,
+        jobId: null,
+        status: null,
+        reason: "not_found" as const,
+        state: null,
+      } satisfies VerticalDramaStoryJobRecoveryResult;
+    }
+    if (!recoverable.canResume) {
+      return {
+        started: false,
+        jobId: recoverable.jobId,
+        status: recoverable.status,
+        reason: recoverable.reason,
+        state: recoverable,
+      } satisfies VerticalDramaStoryJobRecoveryResult;
+    }
+
+    const record = await readRecord(expectedJobId, deps);
+    if (!record || record.status !== "failed") {
+      return {
+        started: false,
+        jobId: null,
+        status: null,
+        reason: "not_found" as const,
+        state: null,
+      } satisfies VerticalDramaStoryJobRecoveryResult;
+    }
+    if (owner.userId !== undefined && record.userId !== owner.userId) {
+      return {
+        started: false,
+        jobId: null,
+        status: null,
+        reason: "not_found" as const,
+        state: null,
+      } satisfies VerticalDramaStoryJobRecoveryResult;
+    }
+
+    const dispatchId = randomUUID();
+    const recoveredRecord: VerticalDramaStoryJobRecord = {
+      ...record,
+      status: "queued",
+      result: null,
+      error: null,
+      recoveryAttempts: Math.max(0, record.recoveryAttempts ?? 0) + 1,
+      dispatchId,
+      updatedAt: new Date(deps.now()).toISOString(),
+    };
+    if (isFeature186HardCutoverEnabled()) {
+      const checkpoint = record.checkpoint;
+      if (!checkpoint) {
+        throw new Error("STORY_CHECKPOINT_RECOVERY_EVIDENCE_MISSING");
+      }
+      const checkpointDigest = createHash("sha256")
+        .update(JSON.stringify(checkpoint), "utf8")
+        .digest("hex");
+      const actionId = `feature-186:story-checkpoint:${expectedJobId}:${recoveredRecord.recoveryAttempts}`;
+      const recovered = await createJobControlPlane().recoverCheckpoint(
+        expectedJobId,
+        actionId,
+        "story_checkpoint_recovery",
+        {
+          checkpointDigest,
+          completedEpisodeCount: checkpoint.completedEpisodeNumbers.length,
+        },
+        owner.userId,
+        {
+          tenantId: owner.tenantId,
+          requestedByUserId: owner.userId,
+          authorizationScope: "feature-186:vertical_drama.story:recover",
+        },
+      );
+      if (!recovered) {
+        throw new Error("STORY_CHECKPOINT_RECOVERY_REJECTED");
+      }
+      // The durable CP transition is committed before the compatibility
+      // projection is reopened. If Redis is unavailable, the canonical
+      // outbox remains recoverable and the next worker attempt will fail
+      // closed instead of silently creating a second provider operation.
+      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
+      await deps.redis.set(
+        activePointerKey(record.tenantId, record.seriesId),
+        expectedJobId,
+        "EX",
+        ACTIVE_POINTER_TTL_SECONDS,
+      );
+      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
+    } else {
+      await enqueueWrite(expectedJobId, () => writeRecord(recoveredRecord, deps));
+      await deps.redis.set(
+        activePointerKey(record.tenantId, record.seriesId),
+        expectedJobId,
+        "EX",
+        ACTIVE_POINTER_TTL_SECONDS,
+      );
+      await deps.redis.del(recoverablePointerKey(record.tenantId, record.seriesId)).catch(() => {});
+      try {
+        await (dependencies?.enqueueBullmqJob ?? defaultEnqueueBullmqJob)(expectedJobId, dispatchId);
+      } catch (error) {
+        debugError(
+          "verticalDramaStoryJobs",
+          `Failed to enqueue recovered BullMQ job for story job ${expectedJobId}`,
+          error,
+        );
+      }
+    }
+    return {
+      started: true,
+      jobId: expectedJobId,
+      status: "queued" as const,
+      reason: "active" as const,
+      state: recoveryState(recoveredRecord),
+    } satisfies VerticalDramaStoryJobRecoveryResult;
+  });
+
+  if (result) return result;
+  const active = await getActiveVerticalDramaStoryJob(owner, deps);
+  if (active) {
+    return {
+      started: false,
+      jobId: active.jobId,
+      status: active.status,
+      reason: "active",
+      state: recoveryState(active),
+    };
+  }
+  return {
+    started: false,
+    jobId: null,
+    status: null,
+    reason: "active",
+    state: null,
+  };
+}
+
+/** Reconciles BullMQ's worker-level terminal failure into the domain record. */
+export async function reconcileVerticalDramaStoryJobFailure(
+  jobId: string,
+  error: unknown,
+  dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
+  dispatchId?: string,
+): Promise<void> {
+  const deps = resolveDeps(dependencies);
+  const record = await readRecord(jobId, deps);
+  if (!record || record.status === "succeeded" || record.status === "failed") return;
+  // A late failed event from a prior delivery must not overwrite an explicit
+  // recovery that has already installed a new dispatch token.
+  if (record.dispatchId && record.dispatchId !== dispatchId) return;
+  const message = error instanceof Error
+    ? error.message
+    : String(error ?? "Unknown BullMQ failure");
+  const terminalRecord: VerticalDramaStoryJobRecord = {
+    ...record,
+    status: "failed",
+    result: null,
+    error: message.slice(0, 2000),
+    updatedAt: new Date(deps.now()).toISOString(),
+  };
+  await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps));
+  await clearActivePointerIfOwned(terminalRecord, deps);
+  await publishRecoverablePointer(terminalRecord, deps);
+  await notifyStoryJobTerminal(terminalRecord);
 }
 
 /** Refresh-safe resume support: the currently-active (queued/running) job
@@ -376,7 +1143,7 @@ export async function getVerticalDramaStoryJobStatus(
  *  a crashed worker (record missing or already terminal) instead of
  *  reporting a phantom "active" job forever. */
 export async function getActiveVerticalDramaStoryJob(
-  owner: { tenantId: string; seriesId: number },
+  owner: { tenantId: string; seriesId: number; userId?: number },
   dependencies?: Partial<VerticalDramaStoryJobStoreDependencies>,
 ): Promise<VerticalDramaStoryJobRecord | null> {
   const deps = resolveDeps(dependencies);
@@ -384,11 +1151,14 @@ export async function getActiveVerticalDramaStoryJob(
   const jobId = await deps.redis.get(pointerKey);
   if (!jobId) return null;
 
-  const record = await readRecord(jobId, deps);
+  let record = await readRecord(jobId, deps);
   if (!record || record.status === "succeeded" || record.status === "failed") {
     await deps.redis.del(pointerKey).catch(() => {});
     return null;
   }
+  record = await refreshStoryJobFromCanonicalControlPlane(record, deps);
+  if (record.status === "succeeded" || record.status === "failed") return null;
+  if (owner.userId !== undefined && record.userId !== owner.userId) return null;
   return record;
 }
 
@@ -398,10 +1168,24 @@ export async function getActiveVerticalDramaStoryJob(
 
 /** Thai job-kind label used in the completion/failure notification below. */
 const STORY_JOB_KIND_LABEL_TH: Record<VerticalDramaStoryJobKind, string> = {
+  plan: "วางแผนเนื้อเรื่องหลัก",
   deep_generate: "สร้างร่างละเอียดเนื้อเรื่อง",
   extend: "ขยายร่างเนื้อเรื่อง",
+  episode_repair: "สร้างเนื้อหาตอนใหม่",
   improve_script: "ปรับปรุงบทละครให้มีความสมบูรณ์",
 };
+
+function storyJobUserFailureMessage(
+  record: Pick<VerticalDramaStoryJobRecord, "kind" | "error">,
+): string {
+  if (/VD_STORY_POLICY_RISK|high-risk policy context/i.test(record.error ?? "")) {
+    return "เนื้อหาที่สร้างใหม่ยังไม่ผ่านการตรวจสอบความปลอดภัย กรุณาเลือกซ่อมเนื้อหาใหม่อีกครั้งหรือปรับเนื้อหาให้ปลอดภัยขึ้น";
+  }
+  if (record.kind === "episode_repair") {
+    return "การสร้างเนื้อหาตอนใหม่ไม่สำเร็จ กรุณาเปิดตอนเพื่อตรวจสอบ revision และลองใหม่";
+  }
+  return (record.error ?? "งานเนื้อเรื่องไม่สำเร็จ").slice(0, 200);
+}
 
 function storyJobActionUrl(record: VerticalDramaStoryJobRecord): string {
   return `/drama-series/${record.seriesId}`;
@@ -465,6 +1249,13 @@ async function insertAndProcessSystemFeedbackTicket(
 ): Promise<void> {
   const { feedbackTickets } = await import("../../drizzle/schema");
   const { processTicket } = await import("./virtualAdmin/feedbackProcessor");
+  const [reporter] = await resolveAffectedUsers(
+    db as DrizzleDB,
+    [input.userId],
+    input.tenantId,
+    1,
+  ).catch(() => []);
+  const reporterLine = `Reporter: ${reporter ? formatAffectedUsersForText([reporter]) : `user #${input.userId}`}`;
 
   const [ticket] = await (db as {
     insert: (table: typeof feedbackTickets) => {
@@ -483,7 +1274,7 @@ async function insertAndProcessSystemFeedbackTicket(
       severity: "high",
       category: input.category,
       title: sanitizeFeedbackText(input.title).slice(0, 255),
-      description: sanitizeFeedbackText(input.description).slice(0, 5000),
+      description: sanitizeFeedbackText(`${reporterLine}\n${input.description}`).slice(0, 5000),
       stepsToReproduce: sanitizeFeedbackText(input.stepsToReproduce),
       expectedBehavior: input.expectedBehavior,
       actualBehavior: sanitizeFeedbackText(input.actualBehavior).slice(0, 2000),
@@ -521,90 +1312,29 @@ export async function submitVerticalDramaSystemFeedback(
   }
 }
 
-async function submitFailedStoryJobFeedback(
-  record: VerticalDramaStoryJobRecord,
-  db: unknown,
-): Promise<void> {
-  const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
+async function reportStoryJobFailure(record: VerticalDramaStoryJobRecord): Promise<void> {
   const actionUrl = storyJobActionUrl(record);
-  const errorMessage = record.error ?? "Unknown vertical drama story job failure";
-  const createdAt = record.createdAt ?? null;
-  const updatedAt = record.updatedAt ?? null;
-  const contextJson = {
+  const { reportSystemFailure } = await import("./systemAutoReportService");
+  const creditFailure = classifyCreditFailure({
+    errorMessage: record.error,
+    path: actionUrl,
+  });
+  await reportSystemFailure({
     source: "vertical_drama_story_jobs",
-    eventType: "system_job_failure",
-    user: {
-      id: record.userId,
-      tenantId: record.tenantId,
-    },
-    verticalDrama: {
-      seriesId: record.seriesId,
-      jobId: record.jobId,
-      kind: record.kind,
-      status: record.status,
-      input: record.input,
-      progress: record.progress,
-      createdAt,
-      updatedAt,
-    },
-    diagnostics: {
-      pageUrl: actionUrl,
-      actionUrl,
-      redisKey: storyJobRedisKey(record.jobId),
-      activePointerKey: activePointerKey(record.tenantId, record.seriesId),
-      queue: VERTICAL_DRAMA_STORY_JOBS_QUEUE,
-      ownerService: "apps/web/server/services/verticalDramaStoryJobs.ts",
-      executorBoundary: "apps/web/server/routers/verticalDramaSeries.ts:runVerticalDramaStoryJobExecutor",
-      lookupHints: [
-        `Open ${actionUrl}`,
-        `Search Redis key ${storyJobRedisKey(record.jobId)}`,
-        "Search server logs for source=vertical_drama_story_jobs and this jobId",
-        "Inspect feedback contextJson.verticalDrama for kind/input/progress",
-      ],
-      screenshotCapture: {
-        attached: false,
-        reason:
-          "This ticket was created by a server-side background worker, which has no browser viewport to capture automatically.",
-        fallback:
-          "Client-side system-error feedback can attach pasted/uploaded screenshots when a browser-visible error opens the feedback dialog.",
-      },
-    },
-    error: {
-      message: errorMessage,
-    },
-  };
-
-  const description = [
-    `ระบบ Vertical Drama background job ล้มเหลวและสร้าง feedback นี้อัตโนมัติ`,
-    `User ID: ${record.userId}`,
-    `Tenant ID: ${record.tenantId}`,
-    `Series ID: ${record.seriesId}`,
-    `Job ID: ${record.jobId}`,
-    `Kind: ${record.kind} (${kindLabel})`,
-    `Page: ${actionUrl}`,
-    `Error: ${errorMessage}`,
-  ].join("\n");
-
-  await submitVerticalDramaSystemFeedback(
-    {
-      tenantId: record.tenantId,
-      userId: record.userId,
-      seriesId: record.seriesId,
-      category: "vertical_drama_story_jobs",
-      title: `[System] ${kindLabel} ล้มเหลว (series #${record.seriesId})`,
-      description,
-      stepsToReproduce: [
-        `1. เปิดหน้า ${actionUrl}`,
-        `2. ตรวจ job ${record.jobId} ใน Redis key ${storyJobRedisKey(record.jobId)}`,
-        `3. ค้น log ด้วย jobId และ source vertical_drama_story_jobs`,
-        "4. ดู contextJson ของ ticket นี้เพื่อเทียบ kind/input/progress/error",
-      ].join("\n"),
-      expectedBehavior: `${kindLabel} ควรเสร็จหรือบันทึกผลลัพธ์บางส่วนได้โดยไม่ทำให้ workflow ล้มเหลวเงียบ`,
-      actualBehavior: errorMessage,
-      contextJson,
-    },
-    db,
-  );
+    userId: record.userId,
+    tenantId: record.tenantId,
+    jobId: record.jobId,
+    path: actionUrl,
+    title: `Story job failed (${record.kind})`,
+    errorMessage: record.error ?? "Unknown vertical drama story job failure",
+    // Only attach the user-credit hint after the message has been identified
+    // as a credit failure; otherwise an unrelated story-job error must remain
+    // a normal system failure.
+    creditContext: creditFailure.isCreditFailure
+      ? { source: "user", modelKind: "llm" }
+      : undefined,
+    extra: { seriesId: record.seriesId, kind: record.kind },
+  });
 }
 
 /**
@@ -631,32 +1361,36 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
     const db = await getDb();
     const kindLabel = STORY_JOB_KIND_LABEL_TH[record.kind];
     const succeeded = record.status === "succeeded";
+    const creditFailure = !succeeded
+      ? classifyCreditFailure({
+          errorMessage: record.error,
+          path: storyJobActionUrl(record),
+        })
+      : null;
     try {
-      await createNotification({
-        db,
-        userId: record.userId,
-        type: succeeded ? "system" : "alert",
-        title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
-        content: succeeded
-          ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
-          : `งาน "${kindLabel}" ล้มเหลว: ${(record.error ?? "").slice(0, 200)}`,
-        priority: succeeded ? "normal" : "high",
-        // No `relatedResourceType` fits (the `ResourceType` union has no
-        // "vertical drama series/job" member) — omitted, same as any other
-        // caller with no matching category (`mapToCategory` falls back to
-        // `"business"`).
-        relatedResourceId: record.jobId,
-        actionUrl: storyJobActionUrl(record),
-        actionLabel: "เปิดซีรีย์",
-        groupKey: `vd_story_job:${record.jobId}`,
-        metadata: {
-          source: "vertical_drama_story_jobs",
-          relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
-          ...(succeeded
-            ? {}
-            : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
-        },
-      });
+      if (!creditFailure?.isCreditFailure) {
+        await createNotification({
+          db,
+          userId: record.userId,
+          type: succeeded ? "system" : "alert",
+          title: succeeded ? `${kindLabel} เสร็จแล้ว` : `${kindLabel} ไม่สำเร็จ`,
+          content: succeeded
+            ? `งาน "${kindLabel}" เสร็จเรียบร้อยแล้ว กลับไปดูผลลัพธ์ได้เลย`
+            : `งาน "${kindLabel}" ล้มเหลว: ${storyJobUserFailureMessage(record)}`,
+          priority: succeeded ? "normal" : "high",
+          relatedResourceId: record.jobId,
+          actionUrl: storyJobActionUrl(record),
+          actionLabel: "เปิดซีรีย์",
+          groupKey: `vd_story_job:${record.jobId}`,
+          metadata: {
+            source: "vertical_drama_story_jobs",
+            relatedItems: { seriesId: String(record.seriesId), kind: record.kind },
+            ...(succeeded
+              ? {}
+              : { errorDetails: { errorMessage: (record.error ?? "").slice(0, 500) } }),
+          },
+        });
+      }
     } catch (error) {
       debugError(
         "verticalDramaStoryJobs",
@@ -666,37 +1400,11 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
     }
     if (!succeeded) {
       try {
-        await submitFailedStoryJobFeedback(record, db);
+        await reportStoryJobFailure(record);
       } catch (error) {
         debugError(
           "verticalDramaStoryJobs",
           `Failed to submit auto feedback for story job ${record.jobId}`,
-          error,
-        );
-      }
-      // Fingerprinted/deduped system auto-report (task: server-side auto-
-      // report service) — separate from `submitFailedStoryJobFeedback` above,
-      // which always creates a new ticket per failure. This one dedups
-      // repeats of the "same" failure across a rolling 24h window instead of
-      // flooding the queue. Kept as an additional call (not a replacement)
-      // to avoid touching the existing, already-tested
-      // `submitFailedStoryJobFeedback` behavior/tests; see the auto-report
-      // task's Result Report for a follow-up consolidation recommendation.
-      try {
-        const { reportSystemFailure } = await import("./systemAutoReportService");
-        await reportSystemFailure({
-          source: "vertical_drama_story_jobs",
-          userId: record.userId,
-          tenantId: record.tenantId,
-          jobId: record.jobId,
-          title: `Story job failed (${record.kind})`,
-          errorMessage: record.error ?? "unknown",
-          extra: { seriesId: record.seriesId, kind: record.kind },
-        });
-      } catch (error) {
-        debugError(
-          "verticalDramaStoryJobs",
-          `Failed to file system auto-report for story job ${record.jobId}`,
           error,
         );
       }
@@ -715,6 +1423,94 @@ async function notifyStoryJobTerminal(record: VerticalDramaStoryJobRecord): Prom
 /* like `jobAutomationService.ts`'s own `executeJob(jobId)`.                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A partial deep draft is a recoverable intermediate state, not a terminal
+ * result. The kind guard is intentional: `improve_script` has its own
+ * per-episode partial-result contract and does not expose the deep-draft
+ * checkpoint/resume semantics used here.
+ */
+function isCheckpointResumableStoryJobKind(
+  kind: VerticalDramaStoryJobKind,
+): boolean {
+  return kind === "deep_generate" || kind === "extend";
+}
+
+function isPartialStoryJobResult(result: unknown): boolean {
+  return Boolean(
+    result &&
+      typeof result === "object" &&
+      (result as { partial?: unknown }).partial === true,
+  );
+}
+
+/**
+ * Executor errors are normally already retried by the LLM service. These
+ * patterns cover failures that can still escape that layer, especially the
+ * provider's HTTP-400 in-flight credit-capacity response. Permanent credit
+ * exhaustion is deliberately excluded: waiting cannot make a user's balance
+ * sufficient and should remain a clear terminal failure.
+ */
+function isRetryableStoryJobError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/insufficient[_ ]?(quota|credits?)|not enough credits|payment required/i.test(message)) {
+    return false;
+  }
+  return [
+    "would exceed your available credits",
+    "in-flight requests",
+    "rate limit",
+    "too many requests",
+    "temporarily unavailable",
+    "no healthy provider",
+    "all providers failed",
+    "timed out",
+    "timeout",
+    "etimedout",
+    "econnreset",
+    "econnrefused",
+    "fetch failed",
+    "network error",
+    "502",
+    "503",
+    "504",
+  ].some(pattern => message.toLowerCase().includes(pattern));
+}
+
+/**
+ * A validated initial-plan candidate is safe to replay through local
+ * finalization. Keep retrying bounded, non-credit failures after that
+ * checkpoint so a transient DB/queue/runtime blip does not turn into a
+ * terminal job that visibly lost the whole story. Durable validation and
+ * credit failures remain terminal by design.
+ */
+function isRetryablePlanCheckpointError(
+  kind: VerticalDramaStoryJobKind,
+  checkpoint: VerticalDramaStoryJobCheckpoint | null,
+  error: unknown,
+): boolean {
+  if (kind !== "plan" || checkpoint?.planCandidate === undefined) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return !/insufficient[_ ]?(quota|credits?)|not enough credits|payment required|STORY_PLAN_FINAL_GATE_FAILED|story plan did not pass|schema validation|forbidden|not found/i.test(message);
+}
+
+const STORY_JOB_MAX_RECOVERY_ATTEMPTS = 8;
+const STORY_JOB_RECOVERY_BACKOFF_MS = [
+  1_000,
+  5_000,
+  15_000,
+  30_000,
+  60_000,
+  120_000,
+  300_000,
+  300_000,
+] as const;
+
+function storyJobRecoveryDelay(attempt: number): number {
+  return STORY_JOB_RECOVERY_BACKOFF_MS[
+    Math.min(attempt, STORY_JOB_RECOVERY_BACKOFF_MS.length - 1)
+  ];
+}
+
 export async function runVerticalDramaStoryJob(
   jobId: string,
   executor: VerticalDramaStoryJobExecutor,
@@ -727,14 +1523,53 @@ export async function runVerticalDramaStoryJob(
     return;
   }
 
+  const assuranceRunId = typeof record.input.runId === "string"
+    ? record.input.runId
+    : null;
+  let assuranceFenceToken: number | undefined;
+  const syncAssuranceState = (operation: Promise<unknown>) => {
+    operation.catch((error) => {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to sync durable story-generation run for job ${jobId}`,
+        error,
+      );
+    });
+  };
+
   record.status = "running";
   record.updatedAt = new Date(deps.now()).toISOString();
   await enqueueWrite(jobId, () => writeRecord(record, deps));
 
+  // Resilient resume (added 2026-07-14) — `record.checkpoint` as of THIS
+  // RUN'S START is what gets handed to the executor as `resume.checkpoint`
+  // (so a same-jobId BullMQ redelivery after a mid-run crash resumes from
+  // where the PRIOR attempt left off). `currentCheckpoint` then tracks the
+  // latest value `persistCheckpoint` below has queued a write for — every
+  // OTHER write this function makes (`onProgress`, and both terminal
+  // succeeded/failed writes) includes it too, so a later write (which closes
+  // over the stale `record` object read above for every OTHER field) can
+  // never regress the checkpoint back to its start-of-run value. Safe
+  // without re-reading Redis because `onProgress`/`persistCheckpoint` are
+  // only ever called synchronously, one at a time, from within this single
+  // executor invocation's own call stack (never concurrently) — so by the
+  // time any queued write's closure actually runs, `currentCheckpoint`
+  // already reflects every `persistCheckpoint` call made before it.
+  let currentCheckpoint: VerticalDramaStoryJobCheckpoint | null = record.checkpoint ?? null;
+  let currentProgress: VerticalDramaStoryJobProgress | null = record.progress ?? null;
+  let recoveryAttempts = Math.max(0, record.recoveryAttempts ?? 0);
+
   const onProgress = (progress: VerticalDramaStoryJobProgress) => {
+    currentProgress = progress;
     enqueueWrite(jobId, () =>
       writeRecord(
-        { ...record, status: "running", progress, updatedAt: new Date(deps.now()).toISOString() },
+        {
+          ...record,
+          status: "running",
+          progress,
+          checkpoint: currentCheckpoint ?? undefined,
+          updatedAt: new Date(deps.now()).toISOString(),
+        },
         deps,
       ),
     ).catch((error) => {
@@ -742,35 +1577,301 @@ export async function runVerticalDramaStoryJob(
     });
   };
 
+  // Resilient resume — fire-and-forget, mirrors `onProgress`'s exact
+  // contract. The caller (`routers/verticalDramaSeries.ts`) always sends the
+  // FULL replacement checkpoint (computed from its own running accumulator),
+  // so `updateVerticalDramaStoryJobCheckpoint`'s merge is effectively a
+  // replace — kept as a merge there for standalone-caller safety (see its
+  // own doc comment). `currentCheckpoint` is updated SYNCHRONOUSLY here
+  // (before the actual Redis write is even enqueued) so every later write in
+  // this run sees at least this value — see the doc comment above.
+  const persistCheckpoint = (checkpoint: VerticalDramaStoryJobCheckpoint) => {
+    currentCheckpoint = checkpoint;
+    return updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps).catch((error) => {
+      debugError("verticalDramaStoryJobs", `Failed to persist checkpoint for story job ${jobId}`, error);
+    });
+  };
+
+  const persistCheckpointAndWait = async (
+    checkpoint: VerticalDramaStoryJobCheckpoint,
+  ): Promise<void> => {
+    currentCheckpoint = checkpoint;
+    await updateVerticalDramaStoryJobCheckpoint(jobId, checkpoint, deps);
+  };
+
   try {
-    const result = await executor(
-      {
-        kind: record.kind,
-        seriesId: record.seriesId,
+    if (assuranceRunId) {
+      const lease = await claimStoryGenerationLease({
         tenantId: record.tenantId,
-        userId: record.userId,
-        input: record.input,
-      },
-      onProgress,
-    );
+        runId: assuranceRunId,
+        workerId: `story-job:${jobId}`,
+      });
+      if (!lease) throw new Error("STORY_GENERATION_LEASE_NOT_ACQUIRED");
+      assuranceFenceToken = lease.fenceToken;
+      await transitionStoryGenerationRun({
+        tenantId: record.tenantId,
+        runId: assuranceRunId,
+        to: "running",
+        stage: "generation",
+        expectedFenceToken: assuranceFenceToken,
+      });
+    }
+    let result: unknown;
+    while (true) {
+      try {
+        const executorInput =
+          recoveryAttempts > 0
+            ? {
+                ...record.input,
+                // Private worker metadata. Kind-specific executors use this
+                // only to make retry credit/idempotency keys unique; it is
+                // never accepted from the public mutation input.
+                __storyJobRecoveryAttempt: recoveryAttempts,
+              }
+            : record.input;
+        result = await executor(
+          {
+            kind: record.kind,
+            jobId,
+            seriesId: record.seriesId,
+            tenantId: record.tenantId,
+            userId: record.userId,
+            input: executorInput,
+          },
+          onProgress,
+          {
+            checkpoint: currentCheckpoint,
+            persistCheckpoint,
+            persistCheckpointAndWait,
+          },
+        );
+      } catch (error) {
+        const retryable =
+          isRetryableStoryJobError(error) ||
+          isRetryablePlanCheckpointError(record.kind, currentCheckpoint, error);
+        if (!retryable || recoveryAttempts >= STORY_JOB_MAX_RECOVERY_ATTEMPTS) {
+          throw error;
+        }
+        recoveryAttempts += 1;
+        record.recoveryAttempts = recoveryAttempts;
+        await enqueueWrite(jobId, () =>
+          writeRecord(
+            {
+              ...record,
+              status: "running",
+              progress: currentProgress,
+              result: null,
+              error: null,
+              checkpoint: currentCheckpoint ?? undefined,
+              updatedAt: new Date(deps.now()).toISOString(),
+            },
+            deps,
+          ),
+        );
+        await deps.sleep(storyJobRecoveryDelay(recoveryAttempts - 1));
+        continue;
+      }
+
+      if (
+        !isCheckpointResumableStoryJobKind(record.kind) ||
+        !isPartialStoryJobResult(result) ||
+        recoveryAttempts >= STORY_JOB_MAX_RECOVERY_ATTEMPTS
+      ) {
+        break;
+      }
+
+      // `generateStoryBibleDeep` intentionally returns partial after its own
+      // bounded in-process repair pass. Keep the SAME background job alive
+      // and re-enter it with the latest checkpoint so only missing/silent
+      // episodes are requested on the next pass. The active-series pointer
+      // remains set until the final non-partial result is persisted.
+      recoveryAttempts += 1;
+      record.recoveryAttempts = recoveryAttempts;
+      await enqueueWrite(jobId, () =>
+        writeRecord(
+          {
+            ...record,
+            status: "running",
+            progress: currentProgress,
+            result: null,
+            error: null,
+            checkpoint: currentCheckpoint ?? undefined,
+            updatedAt: new Date(deps.now()).toISOString(),
+          },
+          deps,
+        ),
+      );
+      await deps.sleep(storyJobRecoveryDelay(recoveryAttempts - 1));
+    }
+    let assuranceAccepted = true;
+    let assuranceError: string | null = null;
+    if (assuranceRunId) {
+      const isPartial = Boolean(
+        result && typeof result === "object" && (result as { partial?: boolean }).partial,
+      );
+      const resultRecord = result && typeof result === "object"
+        ? result as Record<string, unknown>
+        : null;
+      const candidateOutput = Array.isArray(resultRecord?.draftedItems)
+        ? resultRecord.draftedItems
+        : Array.isArray(resultRecord?.improvedItems)
+          ? resultRecord.improvedItems
+          : null;
+      const durableRun = await getStoryGenerationRun(record.tenantId, assuranceRunId);
+      const contract = durableRun?.contractJson as StoryGenerationRunContract | undefined;
+      if (!durableRun || !contract || !candidateOutput) {
+        assuranceAccepted = false;
+        assuranceError = "STORY_GENERATION_FINAL_GATE_INPUT_MISSING";
+        await transitionStoryGenerationRun({
+          tenantId: record.tenantId,
+          runId: assuranceRunId,
+          to: "failed",
+          stage: "finalization",
+          checkpoint: currentCheckpoint,
+          errorCode: assuranceError,
+          expectedFenceToken: assuranceFenceToken,
+        });
+      } else {
+        const sourceSnapshot = durableRun.sourceSnapshotJson as { payload?: unknown } | null;
+        const sourcePayload = sourceSnapshot?.payload as Record<string, unknown> | null;
+        const admittedVisualSnapshot = visualSourceSnapshotSchema.safeParse(sourceSnapshot?.payload);
+        if (admittedVisualSnapshot.success) {
+          const currentVisualSnapshot = await captureSeriesVisualSourceSnapshot(
+            { tenantId: record.tenantId, userId: record.userId },
+            record.seriesId,
+          );
+          const visualSnapshotGate = currentVisualSnapshot
+            ? validateSnapshotForRun(currentVisualSnapshot, {
+                revision: admittedVisualSnapshot.data.revision,
+                fingerprint: admittedVisualSnapshot.data.fingerprint,
+              })
+            : {
+                ok: false as const,
+                code: "STALE_SOURCE_SNAPSHOT" as const,
+                message: "Visual source pack is no longer available",
+              };
+          if (!visualSnapshotGate.ok) {
+            assuranceAccepted = false;
+            assuranceError = visualSnapshotGate.code;
+            await transitionStoryGenerationRun({
+              tenantId: record.tenantId,
+              runId: assuranceRunId,
+              to: "failed",
+              stage: "finalization",
+              checkpoint: currentCheckpoint,
+              errorCode: assuranceError,
+              expectedFenceToken: assuranceFenceToken,
+            });
+          }
+        }
+        if (!assuranceAccepted) {
+          // A changed source pack must fence the run before any candidate is
+          // validated or finalized. The creator must start a new run.
+        } else {
+        const plan = sourcePayload?.bible ?? sourcePayload?.plan;
+        const validationOutput = plan !== undefined
+          ? mergeStoryPlanFieldsIntoCandidate(candidateOutput, plan)
+          : candidateOutput;
+        const report = validateStoryGenerationOutput({
+          contract,
+          output: validationOutput,
+          ...(plan !== undefined ? { plan } : {}),
+          repairRound: Number((durableRun.checkpointJson as { repairRound?: unknown } | null)?.repairRound ?? 0),
+        });
+        await updateStoryGenerationCheckpoint(record.tenantId, assuranceRunId, {
+          status: "validating",
+          stage: "validation",
+          report,
+          checkpoint: currentCheckpoint,
+          expectedFenceToken: assuranceFenceToken,
+        });
+        if (isPartial) {
+          assuranceAccepted = false;
+          assuranceError = "STORY_GENERATION_PARTIAL";
+          await transitionStoryGenerationRun({
+            tenantId: record.tenantId,
+            runId: assuranceRunId,
+            to: "partial",
+            stage: "validation",
+            checkpoint: currentCheckpoint,
+            errorCode: assuranceError,
+            expectedFenceToken: assuranceFenceToken,
+          });
+        } else {
+          // The story executor already performed structural/semantic repair.
+          // Assurance findings are retained for observability, while a
+          // complete candidate is finalized automatically with no approval
+          // click or second user workflow.
+          const finalized = await finalizeStoryGeneration(
+            record.tenantId,
+            assuranceRunId,
+            `finalize:${assuranceRunId}`,
+            undefined,
+            assuranceFenceToken,
+          );
+          assuranceAccepted = finalized?.status === "succeeded";
+          assuranceError = assuranceAccepted ? null : "STORY_GENERATION_FINALIZATION_FAILED";
+        }
+        }
+      }
+    }
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
-      status: "succeeded",
+      status: assuranceAccepted ? "succeeded" : "failed",
       result,
-      error: null,
+      error: assuranceAccepted ? null : assuranceError,
+      progress: currentProgress,
+      checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps));
+    if (terminalRecord.status === "failed") {
+      await publishRecoverablePointer(terminalRecord, deps).catch((pointerError) => {
+        debugError(
+          "verticalDramaStoryJobs",
+          `Failed to publish recoverable pointer for story job ${jobId}`,
+          pointerError,
+        );
+      });
+    }
     await notifyStoryJobTerminal(terminalRecord);
   } catch (error) {
+    // A stale worker must not publish a terminal Redis record after another
+    // worker has claimed the durable run. The durable fence is the authority;
+    // the next worker owns recovery and will publish the current result.
+    if (error instanceof StoryGenerationFenceLostError) return;
     const message = error instanceof Error ? error.message : String(error);
     const terminalRecord: VerticalDramaStoryJobRecord = {
       ...record,
       status: "failed",
+      progress: currentProgress,
       error: message,
+      // Resilient resume — MUST reflect the latest checkpoint, not the
+      // stale start-of-run one: a same-jobId BullMQ redelivery (retry) reads
+      // exactly this field back via `readRecord` to resume, so losing it
+      // here would silently undo every chunk this failed attempt completed.
+      checkpoint: currentCheckpoint ?? undefined,
       updatedAt: new Date(deps.now()).toISOString(),
     };
     await enqueueWrite(jobId, () => writeRecord(terminalRecord, deps)).catch(() => {});
+    await publishRecoverablePointer(terminalRecord, deps).catch((pointerError) => {
+      debugError(
+        "verticalDramaStoryJobs",
+        `Failed to publish recoverable pointer for story job ${jobId}`,
+        pointerError,
+      );
+    });
+    if (assuranceRunId && assuranceFenceToken !== undefined) {
+      syncAssuranceState(transitionStoryGenerationRun({
+        tenantId: record.tenantId,
+        runId: assuranceRunId,
+        to: "failed",
+        stage: "finalization",
+        checkpoint: currentCheckpoint,
+        errorCode: "STORY_JOB_FAILED",
+        expectedFenceToken: assuranceFenceToken,
+      }));
+    }
     await notifyStoryJobTerminal(terminalRecord);
   } finally {
     pendingWrites.delete(jobId);
@@ -792,12 +1893,49 @@ export async function runVerticalDramaStoryJob(
 let queue: any = null;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let worker: any = null;
+let reconciliationInterval: ReturnType<typeof setInterval> | null = null;
+let storyJobsDraining = false;
 
-async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
-  if (!queue) {
-    throw new Error(`${VERTICAL_DRAMA_STORY_JOBS_QUEUE} queue is not initialized`);
+export function setVerticalDramaStoryJobsDraining(draining: boolean): void {
+  storyJobsDraining = draining;
+}
+
+export function isVerticalDramaStoryJobsDraining(): boolean {
+  return storyJobsDraining;
+}
+
+async function defaultEnqueueBullmqJob(jobId: string, dispatchId: string): Promise<void> {
+  throw new Error("LEGACY_QUEUE_RETIRED: enqueue through worker_jobs");
+}
+
+/** Reconcile failed deliveries that happened before a worker event handler
+ * was ready during a restart/deploy. This never creates a new logical job. */
+export async function reconcileVerticalDramaStoryJobsQueueOnce(): Promise<{
+  inspected: number;
+  reconciled: number;
+}> {
+  if (!queue || typeof queue.getJobs !== "function") {
+    return { inspected: 0, reconciled: 0 };
   }
-  await queue.add("run", { jobId }, { removeOnComplete: true, removeOnFail: true });
+  const failedJobs: unknown[] = await queue.getJobs(["failed"], 0, 100);
+  let reconciled = 0;
+  for (const bullJob of failedJobs) {
+    if (!bullJob || typeof bullJob !== "object") continue;
+    const data = (bullJob as { data?: unknown }).data;
+    if (!data || typeof data !== "object") continue;
+    const jobId = (data as { jobId?: unknown }).jobId;
+    if (typeof jobId !== "string" || !jobId) continue;
+    const failedReason = (bullJob as { failedReason?: unknown }).failedReason;
+    const dispatchId = (data as { dispatchId?: unknown }).dispatchId;
+    await reconcileVerticalDramaStoryJobFailure(
+      jobId,
+      typeof failedReason === "string" ? failedReason : "BullMQ delivery failed",
+      undefined,
+      typeof dispatchId === "string" ? dispatchId : undefined,
+    );
+    reconciled += 1;
+  }
+  return { inspected: failedJobs.length, reconciled };
 }
 
 /**
@@ -811,38 +1949,10 @@ async function defaultEnqueueBullmqJob(jobId: string): Promise<void> {
  * `enqueueVerticalDramaStoryJob`/`getVerticalDramaStoryJobStatus`/
  * `getActiveVerticalDramaStoryJob` from this file).
  */
-export async function initVerticalDramaStoryJobsQueue(): Promise<void> {
-  if (queue) return;
-  try {
-    const { Queue, Worker } = await import("bullmq");
-    const connection = getRedisClient();
-    queue = new Queue(VERTICAL_DRAMA_STORY_JOBS_QUEUE, { connection });
-    worker = new Worker(
-      VERTICAL_DRAMA_STORY_JOBS_QUEUE,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      async (bullJob: any) => {
-        const { runVerticalDramaStoryJobExecutor } = await import("../routers/verticalDramaSeries");
-        await runVerticalDramaStoryJob(bullJob.data.jobId, runVerticalDramaStoryJobExecutor);
-      },
-      { connection, concurrency: VERTICAL_DRAMA_STORY_JOBS_WORKER_CONCURRENCY },
-    );
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    worker.on("failed", (bullJob: any, err: Error) => {
-      console.error(`[${VERTICAL_DRAMA_STORY_JOBS_QUEUE}] Job ${bullJob?.id} failed:`, err.message);
-    });
-  } catch (err) {
-    console.warn(`[${VERTICAL_DRAMA_STORY_JOBS_QUEUE}] BullMQ initialization skipped:`, (err as Error).message);
-  }
+export async function initVerticalDramaStoryJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }
 
-export async function closeVerticalDramaStoryJobsQueue(): Promise<void> {
-  try {
-    await worker?.close();
-    await queue?.close();
-  } catch {
-    // ignore
-  } finally {
-    queue = null;
-    worker = null;
-  }
+export async function closeVerticalDramaStoryJobsQueue(): Promise<void>  {
+  // Execution and recovery are owned by the canonical worker_jobs control plane.
 }

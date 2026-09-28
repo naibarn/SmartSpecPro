@@ -13,7 +13,7 @@ import httpx
 import structlog
 from sqlalchemy import text
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.database import get_db_context
 from app.core.vectordb import VectorCollection
@@ -433,7 +433,7 @@ async def archive_resolved_conversations_async() -> dict[str, int]:
     return {"processed": processed, "skipped": skipped, "errors": errors}
 
 
-@celery_app.task(
+@job_task_registry.task(
     name="app.tasks.social_archive_task.archive_resolved_conversations",
     bind=True,
     max_retries=2,

@@ -150,6 +150,7 @@ export const VideoSegmentPlanSchema = z
     audioStrategy: VideoSegmentAudioStrategySchema,
     referenceMode: VideoSegmentReferenceModeSchema,
     creativeBrief: VideoSegmentCreativeBriefSchema.optional(),
+    motionDirection: z.string().trim().max(2000).optional(),
     creativePresets: z.array(VideoSegmentCreativePresetSchema).default([]),
     segments: z.array(VideoSegmentSchema),
     fallbackReason: z.string().min(1).optional(),
@@ -171,6 +172,7 @@ export const VideoSegmentPlannerInputSchema = z
       "single_storyboard_frame"
     ),
     creativeBrief: VideoSegmentCreativeBriefSchema.optional(),
+    motionDirection: z.string().trim().max(2000).optional(),
     creativePresets: z.array(VideoSegmentCreativePresetSchema).default([]),
     shots: z.array(VideoSegmentPlannerShotSchema).min(1).max(60),
     capability: VideoModelSegmentCapabilitySchema.optional(),

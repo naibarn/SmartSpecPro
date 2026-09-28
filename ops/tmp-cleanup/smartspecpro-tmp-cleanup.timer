@@ -1,0 +1,12 @@
+[Unit]
+Description=Periodically quarantine stale SmartSpecPro temporary artifacts
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=6h
+RandomizedDelaySec=15min
+Persistent=true
+Unit=smartspecpro-tmp-cleanup.service
+
+[Install]
+WantedBy=timers.target

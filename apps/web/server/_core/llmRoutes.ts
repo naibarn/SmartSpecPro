@@ -2,7 +2,11 @@ import type { Express, Request, Response } from "express";
 import crypto from "crypto";
 import { decrypt } from "../services/crypto";
 import { ENV } from "./env";
-import { compareCachedInternalToken, getCachedAppRuntimeConfig } from "../services/appRuntimeConfig";
+import {
+  compareCachedInternalToken,
+  getCachedAppRuntimeConfig,
+  getCachedPublicAppUrl,
+} from "../services/appRuntimeConfig";
 import { authorizeRequest, AuthResult } from "./authz";
 import { enforceJsonBodyMaxBytes, rateLimit } from "./limits";
 import { getUserByOpenId, getUserById, getDb, db } from "../db";
@@ -17,7 +21,11 @@ import {
   calculateCreditsForLLM,
 } from "../services/creditService";
 import { debugLog, debugError } from "./logger";
-import { handleChatWithRouter, handleStreamWithRouter } from "../services/llmRoutesHandler";
+import {
+  handleChatWithRouter,
+  handleStreamWithRouter,
+  replaySavedAssistantSse,
+} from "../services/llmRoutesHandler";
 import { auditLogger } from "../services/auditLogger";
 import { getTraceId } from "../services/traceContext";
 import { buildContextStateMessages } from "../services/contextEngineAdapter";
@@ -58,6 +66,27 @@ import { getEffectiveSafetyProfileFromPrefs } from "../services/ageSafetyProfile
 import { getSecurityPinVersion } from "../services/securityPinService";
 import { getPolicyDayKey, getProtectedSurfaceScopes } from "../services/protectedSurfaceTokenService";
 import { DEFAULT_AGE_SAFETY_POLICY } from "../../shared/ageSafetyPolicy";
+import { resolveExternalMediaMessageUrls } from "../services/mediaGenerationService";
+import { resolveMcpDownloadRef } from "../services/mcpDownloadBrokerService";
+import { loadInferenceAttemptStatus } from "../services/inference/persistence";
+import { getInferenceChatRolloutState } from "../services/inference/rolloutBundle";
+
+function getPublicUrlForRequest(req: Request): string | null {
+  const primaryDomain = String((req as any).tenant?.primaryDomain || "").trim();
+  if (primaryDomain) return `https://${primaryDomain}`;
+
+  const configuredPublicUrl = getCachedPublicAppUrl();
+  if (configuredPublicUrl) return configuredPublicUrl;
+
+  const host = String(req.headers.host || "").trim();
+  if (host) {
+    const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0]?.trim();
+    const protocol = forwardedProto === "https" || req.secure ? "https" : "http";
+    return `${protocol}://${host}`;
+  }
+
+  return null;
+}
 
 // --- Provider-specific Rate Limiter with Queue System ---
 // Uses Bottleneck with Redis for distributed rate limiting when available
@@ -80,6 +109,7 @@ import { isRedisAvailable } from "../services/redis";
 interface ProviderQueueConfig {
   minDelayMs: number;
   maxConcurrent: number;
+  perUserMaxConcurrent?: number;
   freeModelMultiplier: number;
 }
 
@@ -88,6 +118,7 @@ interface ProviderRateLimiter {
   activeRequests: number;
   waitingCount: number;
   config: ProviderQueueConfig;
+  userActiveRequests: Map<string, number>;
 }
 
 const providerRateLimiters: Map<string, ProviderRateLimiter> = new Map();
@@ -95,7 +126,9 @@ const providerRateLimiters: Map<string, ProviderRateLimiter> = new Map();
 const PROVIDER_QUEUE_CONFIGS: Record<string, ProviderQueueConfig> = {
   'opencode-zen': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
   'opencode': { minDelayMs: 1500, maxConcurrent: 2, freeModelMultiplier: 2 },
-  'openrouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
+  // OpenRouter account policy: 20 requests/minute. The queue remains
+  // accepting; this delay only controls when the upstream request is sent.
+  'openrouter': { minDelayMs: 3000, maxConcurrent: 10, perUserMaxConcurrent: 3, freeModelMultiplier: 1.5 },
   'krouter': { minDelayMs: 50, maxConcurrent: 10, freeModelMultiplier: 1.5 },
   'default': { minDelayMs: 200, maxConcurrent: 5, freeModelMultiplier: 1.5 },
 };
@@ -106,7 +139,7 @@ function getInMemoryRateLimiter(providerName: string): ProviderRateLimiter {
 
   if (!limiter) {
     const config = PROVIDER_QUEUE_CONFIGS[key] ?? PROVIDER_QUEUE_CONFIGS['default'];
-    limiter = { lastRequestTime: 0, activeRequests: 0, waitingCount: 0, config };
+    limiter = { lastRequestTime: 0, activeRequests: 0, waitingCount: 0, config, userActiveRequests: new Map() };
     providerRateLimiters.set(key, limiter);
   }
 
@@ -117,7 +150,7 @@ function getInMemoryRateLimiter(providerName: string): ProviderRateLimiter {
  * Acquire a slot in the provider queue
  * Uses Bottleneck with Redis when available, falls back to in-memory
  */
-async function acquireProviderSlot(providerName: string, isFreeModel: boolean = false): Promise<{ queuePosition: number }> {
+async function acquireProviderSlot(providerName: string, isFreeModel: boolean = false, userKey?: string): Promise<{ queuePosition: number }> {
   // Try to use Bottleneck if available (has Redis)
   // Note: For streaming, we still need the slot pattern since we can't wrap
   // the entire stream in scheduleWithLimiter
@@ -126,7 +159,11 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
   const queuePosition = limiter.waitingCount + limiter.activeRequests;
 
   // Wait for concurrency slot
-  while (limiter.activeRequests >= limiter.config.maxConcurrent) {
+  while (
+    limiter.activeRequests >= limiter.config.maxConcurrent
+    || Boolean(userKey && limiter.config.perUserMaxConcurrent
+      && (limiter.userActiveRequests.get(userKey) ?? 0) >= limiter.config.perUserMaxConcurrent)
+  ) {
     debugLog("LLM", `Waiting for slot: ${providerName} (active: ${limiter.activeRequests}/${limiter.config.maxConcurrent})`);
     await new Promise(resolve => setTimeout(resolve, 100));
   }
@@ -148,6 +185,9 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
 
   limiter.lastRequestTime = Date.now();
   limiter.activeRequests++;
+  if (userKey) {
+    limiter.userActiveRequests.set(userKey, (limiter.userActiveRequests.get(userKey) ?? 0) + 1);
+  }
   limiter.waitingCount--;
 
   return { queuePosition };
@@ -156,9 +196,14 @@ async function acquireProviderSlot(providerName: string, isFreeModel: boolean = 
 /**
  * Release a slot in the provider queue
  */
-function releaseProviderSlot(providerName: string): void {
+function releaseProviderSlot(providerName: string, userKey?: string): void {
   const limiter = getInMemoryRateLimiter(providerName);
   limiter.activeRequests = Math.max(0, limiter.activeRequests - 1);
+  if (userKey) {
+    const active = Math.max(0, (limiter.userActiveRequests.get(userKey) ?? 0) - 1);
+    if (active === 0) limiter.userActiveRequests.delete(userKey);
+    else limiter.userActiveRequests.set(userKey, active);
+  }
 }
 
 /**
@@ -2159,7 +2204,8 @@ async function getUserIdFromAuth(auth: AuthResult & { ok: true }): Promise<numbe
  */
 async function checkCredits(
   auth: AuthResult & { ok: true },
-  res: Response
+  res: Response,
+  resolvedUserId?: number | null
 ): Promise<{ ok: true; userId: number } | { ok: false }> {
   // Skip credit check for internal server-to-server static tokens only.
   // Logs every bypass for audit trail — disable in production if not needed.
@@ -2168,7 +2214,7 @@ async function checkCredits(
     return { ok: true, userId: 0 }; // userId 0 means no credit tracking
   }
 
-  const userId = await getUserIdFromAuth(auth);
+  const userId = resolvedUserId ?? await getUserIdFromAuth(auth);
   if (!userId) {
     res.status(403).json({
       error: {
@@ -2380,6 +2426,8 @@ async function proxyChatWithCredits(
   let resolvedChatSelection;
   try {
     resolvedChatSelection = await resolveChatModelSelection({
+      tenantId,
+      userId,
       bodyModel: req.body?.model,
       bodyPreferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : null,
       bodyModelSelection: req.body?.modelSelection,
@@ -2568,7 +2616,8 @@ async function proxyChatWithCredits(
   // Apply provider-specific rate limiting with queue system to avoid API rate limit errors
   const isFreeModel = model.toLowerCase().includes('free') || model.toLowerCase().includes('-free');
   const queueWaitStartedAt = Date.now();
-  const slot = await acquireProviderSlot(provider.providerName, isFreeModel);
+  const providerUserKey = `user:${userId}`;
+  const slot = await acquireProviderSlot(provider.providerName, isFreeModel, providerUserKey);
   timing.queueWaitMs = Date.now() - queueWaitStartedAt;
   queuePosition = slot.queuePosition;
 
@@ -2583,7 +2632,7 @@ async function proxyChatWithCredits(
     });
   } catch (fetchError: any) {
     // Release slot on fetch error (network issues, etc.)
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
     // Record failed request
     recordModelUsage(provider.providerName, requestedModelId, false);
     const parsedError = parseProviderError(fetchError?.message || "Network error", provider.providerName);
@@ -2596,7 +2645,7 @@ async function proxyChatWithCredits(
 
   if (!upstream.ok) {
     // Release slot on upstream error
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
     // Record failed request
     recordModelUsage(provider.providerName, requestedModelId, false);
     const message = await upstream.text().catch(() => upstream.statusText);
@@ -2608,7 +2657,7 @@ async function proxyChatWithCredits(
   }
 
   if (bridgeResponsesForChat && stream) {
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     const text = await upstream.text();
     let rawData: any;
@@ -2829,7 +2878,7 @@ async function proxyChatWithCredits(
   if (!stream) {
     // Non-streaming: parse response, deduct credits, return
     // Release slot immediately since we have the response
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     const text = await upstream.text();
     let rawData: any;
@@ -3099,7 +3148,7 @@ async function proxyChatWithCredits(
     } catch {}
 
     // Release provider slot after streaming completes
-    releaseProviderSlot(provider.providerName);
+    releaseProviderSlot(provider.providerName, providerUserKey);
 
     // Try to extract usage from the accumulated SSE transcript.
     let inputTokens = 0;
@@ -3204,7 +3253,7 @@ async function proxyChatWithCredits(
     if (conversationId && fullContent) {
       const messageSaveStartedAt = Date.now();
       try {
-        const { createMessage, getConversationById, updateConversationCredits } = await import("../services/chatService");
+        const { createInferenceAssistantMessageOnce, getConversationById } = await import("../services/chatService");
         const { calculateCreditsForLLM, calculateCreditsFromCost } = await import("../services/creditService");
         // Verify conversation ownership
         const conversation = await getConversationById(conversationId, userId);
@@ -3213,10 +3262,6 @@ async function proxyChatWithCredits(
           const creditsUsed = (providerCostUsd > 0)
             ? calculateCreditsFromCost(providerCostUsd)
             : calculateCreditsForLLM(inputTokens, outputTokens, model);
-          if (creditsUsed > 0) {
-            await updateConversationCredits(conversationId, creditsUsed);
-          }
-
           // Get traceId for cost correlation
           const traceId = getTraceId();
 
@@ -3237,26 +3282,33 @@ async function proxyChatWithCredits(
             });
           }
 
-          const message = await createMessage({
-            conversationId,
-            role: "assistant",
-            content: fullContent,
-            inputTokens,
-            outputTokens,
-            creditsUsed: creditsUsed.toString(),
-            modelUsed: model || conversation.model || undefined,
-            skillUsed,
-            runtimeMetadata: sanitizeMessageRuntimeMetadata({
-              source: runtimeMetadataHint.source,
-              taskClass: runtimeMetadataHint.taskClass,
-              profileId: runtimeMetadataHint.profileId,
-              tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
-              voiceInputMode: runtimeMetadataHint.voiceInputMode,
-              provider: provider.providerName,
-              model: requestedModelId,
-            }),
-            traceId,
+          const saved = await createInferenceAssistantMessageOnce({
+            message: {
+              conversationId,
+              role: "assistant",
+              content: fullContent,
+              inputTokens,
+              outputTokens,
+              creditsUsed: creditsUsed.toString(),
+              modelUsed: model || conversation.model || undefined,
+              skillUsed,
+              runtimeMetadata: sanitizeMessageRuntimeMetadata({
+                source: runtimeMetadataHint.source,
+                taskClass: runtimeMetadataHint.taskClass,
+                profileId: runtimeMetadataHint.profileId,
+                tokenSavedEstimate: runtimeMetadataHint.tokenSavedEstimate,
+                voiceInputMode: runtimeMetadataHint.voiceInputMode,
+                provider: provider.providerName,
+                model: requestedModelId,
+              }),
+              traceId,
+            },
+            tenantId,
+            userId,
+            idempotencyKey:
+              req.get("Idempotency-Key") || `legacy:${traceId}`,
           });
+          const message = saved.message;
 
           // Log to providerUsageLog for cost correlation
           logCostRequest({
@@ -3425,6 +3477,53 @@ function estimateDelegatedChatCredits(
 }
 
 export function registerLLMRoutes(app: Express) {
+  const handleManagedMediaDownload = async (req: Request, res: Response) => {
+    try {
+      const result = await resolveMcpDownloadRef(req.params.token, req.headers.range);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Content-Type", result.contentType);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${result.fileName.replace(/"/g, "_")}"; filename*=UTF-8''${encodeURIComponent(result.fileName)}`,
+      );
+      if (result.contentLength != null) {
+        res.setHeader("Content-Length", String(result.contentLength));
+      }
+      if (result.isPartial && result.rangeStart != null && result.rangeEnd != null) {
+        res.status(206);
+        res.setHeader(
+          "Content-Range",
+          `bytes ${result.rangeStart}-${result.rangeEnd}/${result.totalLength ?? "*"}`,
+        );
+      }
+
+      const stream = result.stream as any;
+      if (typeof stream.pipe === "function") {
+        stream.pipe(res);
+        return;
+      }
+      const reader = stream.getReader();
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        res.write(chunk.value);
+      }
+      res.end();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "download_failed";
+      const status = message === "download_ref_invalid" ? 401
+        : message === "download_ref_revoked" ? 410
+          : message === "download_grant_unavailable" ? 503
+            : 404;
+      if (!res.headersSent) res.status(status).json({ error: message });
+    }
+  };
+
+  app.get("/api/mcp/downloads/:token/:fileName", handleManagedMediaDownload);
+  app.get("/api/mcp/downloads/:token", handleManagedMediaDownload);
+
   // Initialize database connection
   try {
     void getDb();
@@ -3666,14 +3765,52 @@ export function registerLLMRoutes(app: Express) {
     llmLimiter,
     enforceJsonBodyMaxBytes(MAX_LLM_BODY_BYTES),
     async (req: Request, res: Response) => {
-      const check = await guardWithCredits(req, res);
-      if (!check.ok) return;
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        unauthorized(res);
+        return;
+      }
+      const authenticatedUserId = await getUserIdFromAuth(auth);
 
       // Extract conversationId and skillUsed from request body for server-side message saving
       const conversationId = req.body?.conversationId ? Number(req.body.conversationId) : undefined;
       const skillUsed = req.body?.skillUsed;
 
-      debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: check.userId });
+      debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: authenticatedUserId });
+
+      const chatIdempotencyKey =
+        typeof req.headers["idempotency-key"] === "string"
+          ? req.headers["idempotency-key"]
+          : undefined;
+      if (conversationId && chatIdempotencyKey && authenticatedUserId) {
+        try {
+          const { findInferenceAssistantMessage } = await import("../services/chatService");
+          const savedMessage = await findInferenceAssistantMessage({
+            tenantId: (req as any).tenantId || "default",
+            userId: authenticatedUserId,
+            idempotencyKey: chatIdempotencyKey,
+          });
+          if (savedMessage) {
+            replaySavedAssistantSse(res, savedMessage);
+            return;
+          }
+        } catch (err: any) {
+          debugError("LLM", "Idempotent chat replay lookup failed", err);
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\ndata: ${JSON.stringify({
+            message: "Chat request state could not be verified",
+            code: "CHAT_IDEMPOTENCY_LOOKUP_UNAVAILABLE",
+            statusCode: 503,
+          })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+      }
+
+      const check = await checkCredits(auth, res, authenticatedUserId);
+      if (!check.ok) return;
 
       // Generic skill context injection: inject systemPrompt for any active skill
       if (skillUsed && Array.isArray(req.body?.messages)) {
@@ -3798,6 +3935,28 @@ export function registerLLMRoutes(app: Express) {
         }
       }
 
+      if (Array.isArray(req.body?.messages)) {
+        try {
+          const tenantId = String((req as any).tenantId || "").trim();
+          req.body.messages = await resolveExternalMediaMessageUrls(
+            req.body.messages as Array<Record<string, unknown>>,
+            tenantId ? { userId: check.userId, tenantId } : undefined,
+            getPublicUrlForRequest(req),
+          );
+        } catch (err: any) {
+          debugLog("LLM", "Managed chat media resolution failed", err?.message);
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\n`);
+          res.write(
+            `data: ${JSON.stringify({ message: err?.message || "Image attachment could not be prepared" })}\n\n`,
+          );
+          res.write(`data: [DONE]\n\n`);
+          res.end();
+          return;
+        }
+      }
+
       // ── Smart max_tokens: auto-set based on skill category and task type ───
       // Prevents requesting more tokens than needed (and avoids 402 credit errors
       // on providers like OpenRouter where max_tokens counts against balance).
@@ -3806,6 +3965,39 @@ export function registerLLMRoutes(app: Express) {
       }
 
       try {
+        const rolloutState = await getInferenceChatRolloutState();
+        if (rolloutState.state === "active_bundle_invalid") {
+          res.status(200);
+          res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+          res.write(`event: error\ndata: ${JSON.stringify({
+            error: "Active inference rollout bundle failed verification",
+            code: rolloutState.reason,
+            statusCode: 503,
+          })}\n\n`);
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        if (rolloutState.state === "active_bundle_verified") {
+          await handleStreamWithRouter({
+            model: req.body?.model,
+            messages: req.body?.messages || [],
+            userId: check.userId,
+            tenantId: (req as any).tenantId || "default",
+            conversationId,
+            preferredProvider: req.body?.preferredProvider
+              ? Number(req.body.preferredProvider)
+              : undefined,
+            modelSelection: req.body?.modelSelection,
+            modelSelectionContext: req.body?.modelSelectionContext,
+            skillUsed,
+            idempotencyKey: chatIdempotencyKey,
+            contextPrepared: true,
+            requirePolicyGateway: true,
+            res,
+          });
+          return;
+        }
         await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
       } catch (err: any) {
         if (err instanceof DelegatedWorkerPlatformError) {
@@ -4265,6 +4457,7 @@ export function registerLLMRoutes(app: Express) {
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
+          idempotencyKey: typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"] : undefined,
           res,
         });
       } catch (err: any) {
@@ -4277,6 +4470,38 @@ export function registerLLMRoutes(app: Express) {
         }
       }
     }
+  );
+
+  app.get(
+    "/api/llm/v2/inference-attempts/:attemptId",
+    llmLimiter,
+    async (req: Request, res: Response) => {
+      const auth = await authorizeRequest(req, { allowBearer: true, allowSession: true });
+      if (!auth.ok) {
+        unauthorized(res);
+        return;
+      }
+      const userId = auth.userId;
+      const tenantId = auth.tenantId || (req as any).tenantId;
+      if (!userId || !tenantId) {
+        res.status(403).json({ error: { code: "INFERENCE_STATUS_SCOPE_REQUIRED" } });
+        return;
+      }
+      try {
+        const status = await loadInferenceAttemptStatus({
+          attemptId: req.params.attemptId,
+          tenantId,
+          principalRef: `user:${userId}`,
+        });
+        if (!status.found) {
+          res.status(404).json({ error: { code: "INFERENCE_ATTEMPT_NOT_FOUND" } });
+          return;
+        }
+        res.status(status.status === "in_progress" ? 202 : 200).json(status);
+      } catch {
+        res.status(503).json({ error: { code: "INFERENCE_STATUS_UNAVAILABLE" } });
+      }
+    },
   );
 
   app.post(
@@ -4298,6 +4523,7 @@ export function registerLLMRoutes(app: Express) {
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,
           skillUsed: req.body?.skillUsed,
+          idempotencyKey: typeof req.headers["idempotency-key"] === "string" ? req.headers["idempotency-key"] : undefined,
           res,
         });
       } catch (err: any) {

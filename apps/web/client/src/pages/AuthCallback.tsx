@@ -51,6 +51,7 @@ export default function AuthCallback() {
   };
 
   useEffect(() => {
+    const isAccountLinkFlow = sessionStorage.getItem('oauth_account_link') === 'google';
     const handleCallback = async () => {
       try {
         // Get the authorization code from URL
@@ -67,6 +68,10 @@ export default function AuthCallback() {
         }
 
         const provider = params?.provider;
+        if (isAccountLinkFlow && provider !== 'google') {
+          sessionStorage.removeItem('oauth_account_link');
+          throw new Error('Invalid Google account linking callback');
+        }
         // Retrieve CSRF state token
         const savedState = sessionStorage.getItem('oauth_state');
         const urlState = urlParams.get('state');
@@ -75,6 +80,24 @@ export default function AuthCallback() {
 
         if (provider === 'meta') {
           metaCompleteOAuth.mutate({ code, state });
+          return;
+        }
+
+        if (isAccountLinkFlow && provider === 'google') {
+          const linkResponse = await fetch(getSmartSpecWebEndpoint('/trpc/auth.completeGoogleOnlyLink'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ json: { code, state } }),
+          });
+          const linkData = await linkResponse.json().catch(() => null);
+          if (!linkResponse.ok) {
+            throw new Error(linkData?.error?.json?.message || 'Google account linking failed');
+          }
+          sessionStorage.removeItem('oauth_account_link');
+          setStatus('success');
+          setMessage('Google sign-in is now enabled for this account. Redirecting...');
+          setTimeout(() => setLocation('/settings?section=profile'), 1500);
           return;
         }
 
@@ -99,14 +122,34 @@ export default function AuthCallback() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ json: { accessToken: data.access_token, provider } }),
+          body: JSON.stringify({
+            json: {
+              accessToken: data.access_token,
+              provider,
+              isNewUser: data.is_new_user === true,
+            },
+          }),
         });
 
         if (!sessionRes.ok) {
           const sessionErr = await sessionRes.json().catch(() => null);
-          throw new Error(
-            sessionErr?.error?.json?.message || 'Failed to create session'
-          );
+          const sessionMessage = sessionErr?.error?.json?.message || 'Failed to create session';
+          const sessionCode = sessionErr?.error?.json?.data?.code;
+          const isInviteAdmissionError =
+            sessionRes.status === 403 &&
+            (sessionCode === 'FORBIDDEN' || !sessionCode) &&
+            /invite code|registration/i.test(sessionMessage);
+
+          if (isInviteAdmissionError) {
+            setStatus('error');
+            setMessage(sessionMessage);
+            setTimeout(() => {
+              setLocation('/signup?inviteRequired=1');
+            }, 1200);
+            return;
+          }
+
+          throw new Error(sessionMessage);
         }
 
         const sessionData = await sessionRes.json();
@@ -137,13 +180,14 @@ export default function AuthCallback() {
         }, 1500);
       } catch (error) {
         console.error('Auth callback error:', error);
+        sessionStorage.removeItem('oauth_account_link');
         clearPendingOAuthTwoFactor();
         setStatus('error');
         setMessage(error instanceof Error ? error.message : t('callback.error'));
         
         // Redirect to login after delay
         setTimeout(() => {
-          setLocation('/login');
+          setLocation(isAccountLinkFlow ? '/settings?section=profile' : '/login');
         }, 3000);
       }
     };

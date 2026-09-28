@@ -1,13 +1,13 @@
 /**
- * Reads a PPTX file as a Base64 string and uploads it to the library
- * via the provided tRPC `mutateAsync` callback.
+ * Uploads a PPTX file to the Library. The normal path uses the shared direct
+ * R2 uploader; the callback remains as a legacy compatibility path for older
+ * callers/tests.
  *
  * Separated from the component so it can be easily mocked in tests.
  *
- * Progress phases:
- *   10%  – FileReader started
- *   50%  – Base64 read complete, upload starting
- *  100%  – Upload complete
+ * Progress starts at 10%; the normal R2 path reports raw PUT progress and
+ * reaches 100% after Library finalize. The callback path retains the legacy
+ * FileReader/Base64 phases for compatibility.
  *
  * Throws DOMException("Aborted", "AbortError") when `signal` fires.
  * Throws Error with a descriptive message on other failures.
@@ -28,16 +28,32 @@ export type UploadPptxInput = {
  * TypeScript without widening to `any`.
  */
 export type UploadPptxMutateAsync = (
-  input: UploadPptxInput,
+  input: UploadPptxInput
 ) => Promise<{ item: { id: number } }>;
 
 export async function uploadPptxFile(
   file: File,
   onProgress: (pct: number) => void,
   signal: AbortSignal,
-  mutateAsync: UploadPptxMutateAsync,
+  mutateAsync?: UploadPptxMutateAsync
 ): Promise<{ libraryItemId: number }> {
   onProgress(10);
+
+  if (!mutateAsync) {
+    const { uploadLibraryFileDirect } =
+      await import("@/services/libraryUploadClient");
+    const result = await uploadLibraryFileDirect(file, {
+      title: file.name.replace(/\.pptx$/i, ""),
+      visibility: "private",
+      onProgress: pct => onProgress(Math.max(10, pct)),
+      signal,
+    });
+    if (signal.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    onProgress(100);
+    return { libraryItemId: Number(result?.item?.id ?? 0) };
+  }
 
   const base64 = await readFileAsBase64(file, signal);
 
@@ -73,7 +89,7 @@ function readFileAsBase64(file: File, signal: AbortSignal): Promise<string> {
         reader.abort();
         reject(new DOMException("Aborted", "AbortError"));
       },
-      { once: true },
+      { once: true }
     );
 
     reader.onload = () => {

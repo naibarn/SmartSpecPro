@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "เปิดแอร์แล้วอธิบายการกระจายลมและความรู้สึกเย็นในห้องให้คนดูเห็นภาพ",
+  "locale": "th-TH",
+  "contentMode": "presenter",
+  "product": {
+    "name": "Air Conditioner Example",
+    "category": "air conditioner",
+    "targetSurfacesOrSystems": [
+      "indoor air"
+    ],
+    "mechanismFacts": [
+      "Visual airflow direction must be tied to verified product behavior"
+    ],
+    "approvedClaims": []
+  },
+  "visualExplanationPolicy": {
+    "mode": "explicit",
+    "allowParticleAndFlowEffects": true,
+    "requireEvidenceForFeatureVisualization": true,
+    "requireTruthClassification": true
+  }
+}

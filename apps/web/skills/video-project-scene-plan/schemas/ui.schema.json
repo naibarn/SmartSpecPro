@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "skillId": "video-project-scene-plan",
+  "title": "Video Project Scene Plan",
+  "titleTh": "วางแผนฉากโปรเจกต์วิดีโอ",
+  "description": "Selects a deterministic motion template per scene beat and binds real project/catalog data into that template's parameters. Never emits image or video prompt text.",
+  "descriptionTh": "เลือกเทมเพลตโมชันที่เหมาะกับแต่ละฉากและผูกข้อมูลจริงของโปรเจกต์/แคตตาล็อกเข้ากับพารามิเตอร์ของเทมเพลตนั้น ไม่สร้างข้อความพรอมต์ภาพหรือวิดีโอ",
+  "sections": [
+    {
+      "id": "input",
+      "title": "Input",
+      "titleTh": "ข้อมูลนำเข้า",
+      "icon": "clapperboard",
+      "fields": [
+        {
+          "id": "payload",
+          "type": "textarea",
+          "label": "Skill JSON Input",
+          "labelTh": "ข้อมูล JSON ของสกิล",
+          "placeholder": "Provided by the video project router (brief + format + availableTemplates + layerBudget + plannableScenes + occupiedIntervals + catalogFacts + brandKit)",
+          "placeholderTh": "ระบบเราต์เตอร์โปรเจกต์วิดีโอเป็นผู้ส่งให้ (brief + format + availableTemplates + layerBudget + plannableScenes + occupiedIntervals + catalogFacts + brandKit)",
+          "helpText": "This skill is invoked programmatically by the videoProjects router (section-05), not from chat.",
+          "helpTextTh": "สกิลนี้ถูกเรียกโดยเราต์เตอร์โปรเจกต์วิดีโอ (section-05) ไม่ใช่จากแชท",
+          "required": true,
+          "rows": 6
+        }
+      ]
+    }
+  ],
+  "outputMapping": {
+    "payload": "payload"
+  }
+}

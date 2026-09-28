@@ -5,6 +5,7 @@ Separate from the login OAuth flow (which creates/authenticates users).
 This manages tokens for authenticated users who connect Google Drive.
 """
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -51,13 +52,28 @@ class GoogleTokenService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def _get_connection(self, user_id: int) -> Optional[OAuthConnection]:
-        """Get the user's Google OAuth connection."""
+    async def _get_connection(
+        self, user_id: int, *, include_login_only: bool = False
+    ) -> Optional[OAuthConnection]:
+        """Get the user's usable Google Drive connection.
+
+        ``login_only`` rows are identity bindings created by the account
+        conversion flow. They deliberately have no Drive token and must not
+        be treated as a usable Drive connection. The Drive consent exchange
+        may include one so it can upgrade the existing row without violating
+        the one-user/one-provider constraint.
+        """
+        filters = [
+            OAuthConnection.user_id == user_id,
+            OAuthConnection.provider == "google",
+        ]
+        if not include_login_only:
+            filters.extend([
+                OAuthConnection.status == "active",
+                OAuthConnection.access_token.is_not(None),
+            ])
         result = await self.db.execute(
-            select(OAuthConnection).where(
-                OAuthConnection.user_id == user_id,
-                OAuthConnection.provider == "google",
-            )
+            select(OAuthConnection).where(*filters)
         )
         return result.scalar_one_or_none()
 
@@ -88,6 +104,8 @@ class GoogleTokenService:
             .where(
                 OAuthConnection.user_id == user_id,
                 OAuthConnection.provider == "google",
+                OAuthConnection.status == "active",
+                OAuthConnection.access_token.is_not(None),
             )
             .with_for_update()
         )
@@ -241,7 +259,7 @@ class GoogleTokenService:
         encrypted_access = self._encrypt_token(access_token)
         encrypted_refresh = self._encrypt_token(refresh_token) if refresh_token else None
 
-        existing = await self._get_connection(user_id)
+        existing = await self._get_connection(user_id, include_login_only=True)
         if existing:
             existing.access_token = encrypted_access
             if encrypted_refresh:
@@ -295,10 +313,18 @@ class GoogleTokenService:
         }
 
     async def _get_email_from_connection(self, conn: OAuthConnection) -> Optional[str]:
-        """Extract email from connection (provider_user_id stores email for Google)."""
+        """Extract email from legacy provider IDs or stored profile JSON."""
         pid = conn.provider_user_id
         if pid and "@" in pid:
             return pid
+        if conn.profile_data:
+            try:
+                profile = json.loads(conn.profile_data)
+                email = profile.get("email")
+                if isinstance(email, str) and email.strip():
+                    return email.strip()
+            except (TypeError, ValueError):
+                pass
         return None
 
     async def revoke_token(self, user_id: int) -> bool:

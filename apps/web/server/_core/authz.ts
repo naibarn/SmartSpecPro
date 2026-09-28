@@ -7,6 +7,13 @@ import { validateKey } from "../services/apiKeyService";
 import { getRedisClient } from "../services/redis";
 import { getCachedMcpServerToken, getCachedPreferredInternalToken } from "../services/appRuntimeConfig";
 import { verifyDelegatedWorkerBearerToken } from "../services/workerDelegationService";
+import { hermesAgentDeviceRevocationKey } from "../services/hermesAgentPairingService";
+import {
+  applyConnectedDeviceScopePolicy,
+  isConnectedDeviceRevoked,
+} from "../services/connectedDeviceService";
+import { getMcpOAuthJwksConfig, verifyMcpOAuthBearerToken } from "./mcpOAuthJwks";
+import { isMcpOAuthGrantActive } from "../services/mcpOAuthAuthorizationService";
 
 export type AuthResult =
   | {
@@ -22,6 +29,17 @@ export type AuthResult =
       jti?: string;
       deviceIdHash?: string;
       origin?: string;
+    }
+  | {
+      ok: true;
+      mode: "agent_pairing";
+      sub: string;
+      scopes: string[];
+      tenantId: string;
+      userId: number;
+      tokenUse: string;
+      deviceIdHash: string;
+      jti?: string;
     }
   | {
       ok: true;
@@ -46,6 +64,10 @@ export type AuthResult =
       quotaDaily: number | null;
       quotaWeekly: number | null;
       quotaMonthly: number | null;
+      keyPurpose?: "public_api" | "mcp_cli";
+      creditQuota5h?: number | null;
+      creditQuotaDaily?: number | null;
+      creditQuotaWeekly?: number | null;
     }
   | {
       ok: true;
@@ -83,6 +105,27 @@ function scopesForStaticToken(token: string): string[] {
   if (mcpServerToken && token === mcpServerToken) return ["mcp:read", "mcp:write"];
   if (gatewayToken && token === gatewayToken) return ["llm:chat", "mcp:read", "mcp:write"];
   return [];
+}
+
+function isMcpOAuthRequest(req: Request): boolean {
+  const path = String(req.originalUrl || req.path || "").split("?", 1)[0];
+  return path === "/v1/mcp" || path.startsWith("/v1/mcp/") || path === "/mcp" || path.startsWith("/mcp/");
+}
+
+/**
+ * First-party Hermes pairing is a signed local JWT, not an OAuth access token.
+ * When OAuth is enabled we must still route that token to the local verifier;
+ * this untrusted preview is only a dispatch hint and is never authorization.
+ */
+function looksLikeMcpPairingToken(token: string): boolean {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return false;
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return decoded?.tokenUse === "mcp_agent_pairing";
+  } catch {
+    return false;
+  }
 }
 
 export async function authorizeRequest(
@@ -128,6 +171,14 @@ export async function authorizeRequest(
             quotaDaily: authCtx.quotaDaily ?? null,
             quotaWeekly: authCtx.quotaWeekly ?? null,
             quotaMonthly: authCtx.quotaMonthly ?? null,
+            ...(authCtx.keyPurpose === "mcp_cli"
+              ? {
+                  keyPurpose: "mcp_cli" as const,
+                  creditQuota5h: authCtx.creditQuota5h ?? null,
+                  creditQuotaDaily: authCtx.creditQuotaDaily ?? null,
+                  creditQuotaWeekly: authCtx.creditQuotaWeekly ?? null,
+                }
+              : {}),
           };
         }
 
@@ -153,6 +204,42 @@ export async function authorizeRequest(
           sub: "static",
           scopes: staticScopes,
         };
+      }
+
+      // Optional inbound OAuth resource-server validation. It is intentionally
+      // checked before the local HS256 verifier and fails closed when enabled;
+      // an invalid external token must not be reinterpreted as another auth
+      // mode or leak implementation details to the caller.
+      if (
+        getMcpOAuthJwksConfig() &&
+        isMcpOAuthRequest(req) &&
+        !looksLikeMcpPairingToken(token)
+      ) {
+        try {
+          const identity = await verifyMcpOAuthBearerToken(token);
+          if (identity.grantId && !(await isMcpOAuthGrantActive({ grantId: identity.grantId, userId: identity.userId, tenantId: identity.tenantId }))) {
+            return { ok: false, error: "OAuth grant revoked" };
+          }
+          const effectiveScopes = await applyConnectedDeviceScopePolicy({
+            tenantId: identity.tenantId,
+            ownerUserId: identity.userId,
+            authKind: "mcp_oauth",
+            grantedScopes: identity.scopes,
+            grantId: identity.grantId,
+          });
+          return {
+            ok: true,
+            mode: "bearer",
+            sub: identity.sub,
+            scopes: effectiveScopes,
+            tenantId: identity.tenantId,
+            userId: identity.userId,
+            tokenUse: "mcp_oauth",
+            ...(identity.jti ? { jti: identity.jti } : {}),
+          };
+        } catch {
+          return { ok: false, error: "Invalid OAuth token" };
+        }
       }
 
       // Signed JWT bearer token (short-lived)
@@ -211,6 +298,44 @@ export async function authorizeRequest(
         const origin = typeof (claims as any).origin === "string"
           ? (claims as any).origin.trim()
           : "";
+        if (tokenUse === "mcp_agent_pairing") {
+          if (!tenantId || !userId || !deviceIdHash || !jti || claims.type !== "access") {
+            return { ok: false, error: "Invalid MCP pairing token" };
+          }
+          if (await isJtiRevoked(hermesAgentDeviceRevocationKey({
+            tenantId,
+            userId,
+            deviceIdHash,
+            consentId: typeof (claims as any).consentId === "string" ? String((claims as any).consentId) : null,
+          }))) {
+            return { ok: false, error: "MCP pairing has been revoked" };
+          }
+          if (await isConnectedDeviceRevoked({
+            tenantId,
+            deviceId: deviceIdHash,
+            authKind: "mcp_agent_pairing",
+          })) {
+            return { ok: false, error: "MCP pairing has been revoked" };
+          }
+          const effectiveScopes = await applyConnectedDeviceScopePolicy({
+            tenantId,
+            ownerUserId: userId,
+            authKind: "mcp_agent_pairing",
+            grantedScopes: claims.scopes || [],
+            deviceIdHash,
+          });
+          return {
+            ok: true,
+            mode: "agent_pairing",
+            sub,
+            scopes: effectiveScopes,
+            tenantId,
+            userId,
+            tokenUse,
+            deviceIdHash,
+            ...(jti ? { jti } : {}),
+          };
+        }
         return {
           ok: true,
           mode: "bearer",

@@ -584,7 +584,7 @@ export async function reconcileBrowserAutomationTaskClaims(
       if (mappedStatus === "failed") failed += 1;
       if (mappedStatus === "cancelled") cancelled += 1;
       if (terminal) {
-        await finalizeAutomationCopilotTaskReservation(claim.taskId, String(payload.status ?? "")).catch(() => {});
+        await finalizeAutomationCopilotTaskReservation(claim.taskId, String(payload.status ?? ""), tenantId).catch(() => {});
       }
       if (!terminal) pending += 1;
       continue;
@@ -695,7 +695,7 @@ export async function reconcileBrowserAutomationTaskClaims(
     if (mappedStatus === "failed") failed += 1;
     if (mappedStatus === "cancelled") cancelled += 1;
     if (terminal) {
-      await finalizeAutomationCopilotTaskReservation(claim.taskId, String(payload.status ?? "")).catch(() => {});
+      await finalizeAutomationCopilotTaskReservation(claim.taskId, String(payload.status ?? ""), tenantId).catch(() => {});
     }
     if (!terminal) pending += 1;
   }

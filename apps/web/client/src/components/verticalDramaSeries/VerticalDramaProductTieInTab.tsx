@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { pickCopy, verticalDramaCopy } from "@/components/verticalDramaSeries/verticalDramaCopy";
 import {
   VERTICAL_DRAMA_PRODUCT_CATEGORIES,
@@ -77,7 +78,6 @@ export interface VerticalDramaProductTieIn {
   productCategory?: VerticalDramaProductCategory;
   [key: string]: unknown;
 }
-
 export interface VerticalDramaProductTieInTabProps {
   lang: "th" | "en";
   seriesId: string;
@@ -181,7 +181,7 @@ export function VerticalDramaProductTieInTab({
       <CardHeader>
         <CardTitle className="text-base">{pickCopy(lang, verticalDramaCopy.productTieIn)}</CardTitle>
       </CardHeader>
-      <CardContent className="grid max-w-md gap-4">
+      <CardContent className="grid w-full max-w-none gap-4">
         {readOnly && (
           <Badge variant="outline" className="w-fit">
             {pickCopy(lang, verticalDramaCopy.readOnly)}
@@ -204,7 +204,7 @@ export function VerticalDramaProductTieInTab({
           <>
             {productTieIn?.productImageUrl && (
               <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-md border bg-muted">
-                <img
+                <AuthenticatedMediaImage
                   src={productTieIn.productImageUrl}
                   alt={productName || "Product"}
                   className="h-full w-full object-cover"
@@ -323,7 +323,7 @@ export function VerticalDramaProductTieInTab({
                               key={`${img.url}-${idx}`}
                               className="flex aspect-square items-center justify-center overflow-hidden rounded border bg-muted"
                             >
-                              <img
+                              <AuthenticatedMediaImage
                                 src={img.url}
                                 alt={img.role || "Product"}
                                 className="h-full w-full object-cover"

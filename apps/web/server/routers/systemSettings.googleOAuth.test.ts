@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { validateGoogleOAuthFormat } from "../services/googleOAuthValidation";
+import {
+  isValidGoogleRedirectUri,
+  validateGoogleOAuthFormat,
+} from "../services/googleOAuthValidation";
 
 /**
  * Tests for Google OAuth admin configuration — validates the shared
@@ -42,5 +45,29 @@ describe("validateGoogleOAuthFormat", () => {
       valid: true,
       message: expect.any(String),
     });
+  });
+});
+
+describe("isValidGoogleRedirectUri", () => {
+  it("keeps login and Drive callback paths separate", () => {
+    expect(
+      isValidGoogleRedirectUri(
+        "https://smartaihub.app/auth/callback/google",
+        "/auth/callback/google"
+      )
+    ).toBe(true);
+    expect(
+      isValidGoogleRedirectUri(
+        "https://smartaihub.app/auth/callback/google-drive",
+        "/auth/callback/google"
+      )
+    ).toBe(false);
+    expect(
+      isValidGoogleRedirectUri(
+        "https://smartaihub.app/auth/callback/google-drive",
+        "/auth/callback/google-drive"
+      )
+    ).toBe(true);
+    expect(isValidGoogleRedirectUri("", "/auth/callback/google")).toBe(true);
   });
 });

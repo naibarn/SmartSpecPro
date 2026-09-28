@@ -1,8 +1,8 @@
 /**
  * InfrastructureSettingsPanel
  *
- * Admin panel for GCP configuration, Celery/Cloud Tasks toggle,
- * Cloud Tasks queue status dashboard, Redis/cache provider configuration,
+ * Admin panel for Cloudflare runtime configuration,
+ * Cloudflare canonical queue status dashboard, Redis/cache provider configuration,
  * and monitoring/observability settings (Sentry, PostHog, system health).
  */
 
@@ -14,7 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardCard } from "@/components/dashboard";
+import { HStack } from "@astryxdesign/core/HStack";
+import { VStack } from "@astryxdesign/core/VStack";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -39,6 +42,8 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import HermesInfrastructureSettingsCard from "./HermesInfrastructureSettingsCard";
+import VerticalDramaEnhancedRuntimeSettingsPanel from "./VerticalDramaEnhancedRuntimeSettingsPanel";
 import {
   Server,
   Save,
@@ -74,21 +79,6 @@ import {
 // ============================================================
 // Types
 // ============================================================
-
-interface GcpConfigField {
-  value: string;
-  source: "db" | "env" | "none";
-}
-
-type GcpConfig = Record<string, GcpConfigField>;
-
-interface GcpForm {
-  gcp_project_id: string;
-  gcp_region: string;
-  cloud_run_python_url: string;
-  cloud_run_node_url: string;
-  cloud_run_sa_email: string;
-}
 
 interface QueueMetric {
   queueName: string;
@@ -171,21 +161,74 @@ interface AppRuntimeForm {
   llm_gateway_service_account_id: string;
 }
 
+interface McpRuntimeForm {
+  modern_protocol_enabled: boolean;
+  oauth_inbound_enabled: boolean;
+  oauth_protected_resource_enabled: boolean;
+  oauth_authorization_server_enabled: boolean;
+  oauth_dynamic_registration_enabled: boolean;
+  public_base_url: string;
+  oauth_issuer: string;
+  oauth_resource: string;
+  oauth_jwks_uri: string;
+  oauth_audience: string;
+  oauth_authorization_servers: string;
+  oauth_scopes_supported: string;
+  cors_allowed_origins: string;
+  session_allowed_origins: string;
+  session_ttl_seconds: number;
+  workspace_root: string;
+  workspace_write_enabled: boolean;
+  max_read_bytes: number;
+  max_write_bytes: number;
+  extension_allowlist: string;
+  mcp_rpm: number;
+}
+
+function buildRecommendedMcpRuntimeForm(
+  scopes: readonly string[],
+  publicBaseUrl = "https://smartaihub.app",
+): McpRuntimeForm {
+  const normalizedBaseUrl = publicBaseUrl.trim().replace(/\/$/, "") || "https://smartaihub.app";
+  return {
+    modern_protocol_enabled: true,
+    oauth_inbound_enabled: true,
+    oauth_protected_resource_enabled: true,
+    oauth_authorization_server_enabled: true,
+    // Hermes CLI and other native MCP clients use RFC 7591 registration to
+    // obtain a client_id before starting the browser-based PKCE flow. The
+    // registration endpoint remains safe because the server only accepts
+    // HTTPS or explicit loopback redirect URIs and applies a rate limit.
+    oauth_dynamic_registration_enabled: true,
+    public_base_url: normalizedBaseUrl,
+    oauth_issuer: normalizedBaseUrl,
+    oauth_resource: `${normalizedBaseUrl}/v1/mcp`,
+    oauth_jwks_uri: `${normalizedBaseUrl}/.well-known/jwks.json`,
+    oauth_audience: "smartaihub-mcp",
+    oauth_authorization_servers: normalizedBaseUrl,
+    oauth_scopes_supported: scopes.join("\n"),
+    cors_allowed_origins: normalizedBaseUrl,
+    session_allowed_origins: normalizedBaseUrl,
+    session_ttl_seconds: 1800,
+    workspace_root: "",
+    workspace_write_enabled: false,
+    max_read_bytes: 1_048_576,
+    max_write_bytes: 1_048_576,
+    extension_allowlist: ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html",
+    mcp_rpm: 240,
+  };
+}
+
+function getBrowserPublicBaseUrl(): string {
+  if (typeof window !== "undefined" && window.location.origin.startsWith("https://")) {
+    return window.location.origin.replace(/\/$/, "");
+  }
+  return "https://smartaihub.app";
+}
+
 // ============================================================
 // Constants
 // ============================================================
-
-const GCP_REGIONS = [
-  "asia-southeast1",
-  "asia-east1",
-  "asia-northeast1",
-  "us-central1",
-  "us-east1",
-  "us-west1",
-  "europe-west1",
-  "europe-west3",
-  "australia-southeast1",
-];
 
 const QUEUE_LABELS: Record<string, string> = {
   "media-jobs": "Media Jobs",
@@ -194,14 +237,6 @@ const QUEUE_LABELS: Record<string, string> = {
   "workflow-tasks": "Workflow",
   "polling-tasks": "Polling",
   "periodic-tasks": "Periodic",
-};
-
-const EMPTY_FORM: GcpForm = {
-  gcp_project_id: "",
-  gcp_region: "",
-  cloud_run_python_url: "",
-  cloud_run_node_url: "",
-  cloud_run_sa_email: "",
 };
 
 // ============================================================
@@ -213,38 +248,59 @@ export default function InfrastructureSettingsPanel() {
   const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   const copy = {
     tabs: {
-      gcp: isThai ? "GCP" : "GCP",
       runtime: isThai ? "รันไทม์" : "Runtime",
       tasks: isThai ? "งาน" : "Tasks",
       queues: isThai ? "คิว" : "Queues",
       redis: isThai ? "Redis" : "Redis",
       monitoring: isThai ? "มอนิเตอร์" : "Monitoring",
       scaleTier: isThai ? "ระดับการสเกล" : "Scale Tier",
-    },
-    gcp: {
-      title: isThai ? "ตั้งค่า GCP" : "GCP Configuration",
-      description: isThai ? "ตั้งค่า Google Cloud Platform สำหรับ Cloud Run และ Cloud Tasks" : "Google Cloud Platform project settings for Cloud Run and Cloud Tasks.",
-      guideTitle: isThai ? "คู่มือการตั้งค่า — วิธีตั้งค่า GCP สำหรับ Cloud Tasks" : "Setup Guide — How to configure GCP for Cloud Tasks",
-      projectId: isThai ? "Project ID" : "Project ID",
-      region: isThai ? "รีเจียน" : "Region",
-      selectRegion: isThai ? "เลือกรีเจียน" : "Select region",
-      pythonServiceUrl: isThai ? "Python Service URL" : "Python Service URL",
-      nodeServiceUrl: isThai ? "Node Service URL" : "Node Service URL",
-      serviceAccountEmail: isThai ? "อีเมล Service Account" : "Service Account Email",
-      save: isThai ? "บันทึกการตั้งค่า GCP" : "Save GCP Configuration",
-      env: isThai ? "มาจาก env" : "from env",
+      mcp: isThai ? "MCP/OAuth" : "MCP/OAuth",
     },
     runtime: {
       title: isThai ? "ปลายทางและโทเคนของ App Runtime" : "App Runtime Endpoints & Tokens",
       hideSecrets: isThai ? "ซ่อน secrets" : "Hide secrets",
       showSecrets: isThai ? "แสดง secrets" : "Show secrets",
     },
+    mcp: {
+      title: isThai ? "MCP และ OAuth" : "MCP & OAuth",
+      description: isThai ? "ตั้งค่า MCP สำหรับ Hermes, Claude และ Codex ผ่านฐานข้อมูล ไม่ต้องแก้ env บน production" : "Configure MCP for Hermes, Claude, and Codex through the database; no production env editing is required.",
+      source: isThai ? "แหล่งค่าปัจจุบัน" : "Current source",
+      database: isThai ? "ฐานข้อมูล (UI)" : "Database (UI)",
+      none: isThai ? "ยังไม่ได้ตั้งค่า" : "Not configured",
+      save: isThai ? "บันทึก MCP/OAuth" : "Save MCP/OAuth",
+      keyReady: isThai ? "มี signing key แล้ว" : "Signing key configured",
+      keyMissing: isThai ? "ยังไม่มี signing key" : "Signing key missing",
+      keyAutomatic: isThai ? "ระบบจะสร้าง signing key อัตโนมัติเมื่อเปิด OAuth Authorization Server" : "The server creates the signing key automatically when OAuth Authorization Server is enabled.",
+      productionNote: isThai ? "Production จะอ่านค่าจาก UI/ฐานข้อมูลเท่านั้น บันทึกแล้ว refresh runtime ทันที ไม่ต้องใส่ค่า MCP_* ใน env" : "Production reads MCP settings from the UI/database only. Saving refreshes the runtime immediately; MCP_* env values are not required.",
+      modern: isThai ? "เปิด Modern MCP protocol" : "Enable Modern MCP protocol",
+      inbound: isThai ? "รับและตรวจสอบ OAuth bearer token" : "Accept and verify OAuth bearer tokens",
+      protectedResource: isThai ? "เปิด OAuth Protected Resource Metadata" : "Publish OAuth Protected Resource Metadata",
+      authorizationServer: isThai ? "เปิด OAuth Authorization Server" : "Enable OAuth Authorization Server",
+      dynamicRegistration: isThai ? "อนุญาต dynamic client registration (จำเป็นสำหรับ CLI ครั้งแรก)" : "Allow dynamic client registration (required for first-time CLI setup)",
+      publicBaseUrl: isThai ? "Public base URL" : "Public base URL",
+      issuer: isThai ? "OAuth issuer" : "OAuth issuer",
+      resource: isThai ? "MCP resource" : "MCP resource",
+      jwks: isThai ? "JWKS URL" : "JWKS URL",
+      audience: isThai ? "Audience" : "Audience",
+      authServers: isThai ? "Authorization servers (บรรทัดละหนึ่งรายการ)" : "Authorization servers (one per line)",
+      scopes: isThai ? "Scopes ที่อนุญาต (บรรทัดละหนึ่งรายการ)" : "Allowed scopes (one per line)",
+      cors: isThai ? "CORS origins (บรรทัดละหนึ่งรายการ)" : "CORS origins (one per line)",
+      sessionOrigins: isThai ? "Session origins (บรรทัดละหนึ่งรายการ)" : "Session origins (one per line)",
+      sessionTtl: isThai ? "อายุ session (วินาที)" : "Session TTL (seconds)",
+    },
+    renderWorker: {
+      title: isThai ? "Render Worker ในเครื่องนี้" : "In-Server Render Worker",
+      label: isThai
+        ? "ให้เซิร์ฟเวอร์เรนเดอร์วิดีโอ (ffmpeg) เอง"
+        : "Server also acts as an ffmpeg render worker",
+      helper: isThai
+        ? "เมื่อเปิด เซิร์ฟเวอร์นี้จะดึงงาน ffmpeg จากคิว Worker Jobs มาเรนเดอร์เอง (ทำงานเหมือน worker หนึ่งตัว, เฉพาะงาน ffmpeg ไม่รวม Remotion/Hyperframes). เมื่อปิด งานจะรอในคิวจนกว่าจะมี worker มารับ"
+        : "When on, this server claims and renders ffmpeg video-assembly jobs from the Worker Jobs queue (acts like one worker; ffmpeg-only, not Remotion/Hyperframes). When off, jobs wait in the queue until another worker claims them.",
+    },
   } as const;
-  const [activeTab, setActiveTab] = useState("gcp");
-  const [gcpForm, setGcpForm] = useState<GcpForm>(EMPTY_FORM);
-  const [selectedMode, setSelectedMode] = useState<"celery" | "cloud_tasks">("celery");
+  const [activeTab, setActiveTab] = useState("app-runtime");
+  const [selectedMode, setSelectedMode] = useState<"cloudflare">("cloudflare");
   const [showFailedTasks, setShowFailedTasks] = useState(false);
-  const [showGcpGuide, setShowGcpGuide] = useState(false);
   const [showRedisGuide, setShowRedisGuide] = useState(false);
   const [showRedisPasswords, setShowRedisPasswords] = useState(false);
   const [redisForm, setRedisForm] = useState<RedisForm>({
@@ -292,19 +348,39 @@ export default function InfrastructureSettingsPanel() {
     forge_api_key: "",
     llm_gateway_service_account_id: "",
   });
+  const [mcpRuntimeForm, setMcpRuntimeForm] = useState<McpRuntimeForm>({
+    modern_protocol_enabled: false,
+    oauth_inbound_enabled: false,
+    oauth_protected_resource_enabled: false,
+    oauth_authorization_server_enabled: false,
+    oauth_dynamic_registration_enabled: false,
+    public_base_url: "",
+    oauth_issuer: "",
+    oauth_resource: "",
+    oauth_jwks_uri: "",
+    oauth_audience: "smartaihub-mcp",
+    oauth_authorization_servers: "",
+    oauth_scopes_supported: "",
+    cors_allowed_origins: "",
+    session_allowed_origins: "",
+    session_ttl_seconds: 1800,
+    workspace_root: "",
+    workspace_write_enabled: false,
+    max_read_bytes: 1_048_576,
+    max_write_bytes: 1_048_576,
+    extension_allowlist: ".md,.txt,.json,.yaml,.yml,.ts,.tsx,.js,.py,.css,.html",
+    mcp_rpm: 240,
+  });
+  const [webProcessRenderWorkerEnabled, setWebProcessRenderWorkerEnabled] = useState(false);
+  const [confirmServerFfmpegWorker, setConfirmServerFfmpegWorker] = useState(false);
+
   const [selectedTier, setSelectedTier] = useState<"starter" | "growth" | "pro" | "business" | "enterprise">("starter");
-  const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudrun">("localhost");
+  const [selectedDeployMode, setSelectedDeployMode] = useState<"localhost" | "cloudflare">("cloudflare");
   const [showApplyDialog, setShowApplyDialog] = useState(false);
   const [applyResults, setApplyResults] = useState<any[] | null>(null);
   const [, setLocation] = useLocation();
 
   // --- Queries ---
-  const {
-    data: gcpConfig,
-    isLoading: gcpLoading,
-    refetch: refetchGcp,
-  } = trpc.infrastructure.getGcpConfig.useQuery();
-
   const {
     data: modeData,
     isLoading: modeLoading,
@@ -324,6 +400,16 @@ export default function InfrastructureSettingsPanel() {
     isLoading: redisLoading,
     refetch: refetchRedis,
   } = trpc.infrastructure.getRedisConfig.useQuery();
+
+  const { data: searchCacheConfig, refetch: refetchSearchCache } = trpc.infrastructure.getSearchResultCacheConfig.useQuery();
+  const updateSearchCacheProvider = trpc.infrastructure.updateSearchResultCacheProvider.useMutation({
+    onSuccess: (data) => { toast.success(data.provider === "cloudflare_kv" ? "เปิดใช้ Cloudflare KV สำหรับ Search Cache แล้ว" : "ปิด Search Cache แล้ว"); refetchSearchCache(); },
+    onError: (err) => { toast.error(`เปลี่ยนผู้ให้บริการ Cache ไม่สำเร็จ: ${err.message}`); refetchSearchCache(); },
+  });
+  const probeSearchCache = trpc.infrastructure.probeSearchResultCache.useMutation({
+    onSuccess: () => toast.success("Worker endpoint และ KV binding พร้อมใช้งาน"),
+    onError: (err) => toast.error(`ตรวจสอบไม่ผ่าน: ${err.message}`),
+  });
 
   const {
     data: redisHealth,
@@ -346,6 +432,12 @@ export default function InfrastructureSettingsPanel() {
   } = trpc.infrastructure.getAppRuntimeConfig.useQuery();
 
   const {
+    data: mcpRuntimeConfig,
+    isLoading: mcpRuntimeLoading,
+    refetch: refetchMcpRuntime,
+  } = trpc.infrastructure.getMcpRuntimeConfig.useQuery();
+
+  const {
     data: monitoringStatus,
     refetch: refetchMonitoringStatus,
   } = trpc.infrastructure.getMonitoringStatus.useQuery();
@@ -366,9 +458,23 @@ export default function InfrastructureSettingsPanel() {
   const { data: deployModeInfo, isLoading: deployModeLoading, refetch: refetchDeployMode } =
     trpc.infrastructure.getDeployModeInfo.useQuery();
 
+  const {
+    data: infrastructureSettings,
+    refetch: refetchInfrastructureSettings,
+  } = trpc.systemSettings.getSettingsByCategory.useQuery({
+    category: "infrastructure" as any,
+  });
+
+  useEffect(() => {
+    const renderWorkerSetting = infrastructureSettings?.find(
+      (s: any) => s.key === "web_process_render_worker_enabled",
+    );
+    setWebProcessRenderWorkerEnabled(renderWorkerSetting?.value === "true");
+  }, [infrastructureSettings]);
+
   const setDeployModeMutation = trpc.infrastructure.setDeployModeInfo.useMutation({
     onSuccess: (data) => {
-      toast.success(`Deploy mode switched to ${data.mode === "cloudrun" ? "Cloud Run" : "Localhost"}`);
+      toast.success(`Deploy mode switched to ${data.mode === "cloudflare" ? "Cloudflare" : "Localhost"}`);
       refetchDeployMode();
       refetchScaleTier();
     },
@@ -413,19 +519,51 @@ export default function InfrastructureSettingsPanel() {
     onError: (err) => toast.error(`Failed to save: ${err.message}`),
   });
 
-  const updateGcpMutation = trpc.infrastructure.updateGcpConfig.useMutation({
+  const updateMcpRuntimeMutation = trpc.infrastructure.updateMcpRuntimeConfig.useMutation({
     onSuccess: () => {
-      toast.success("GCP configuration saved");
-      refetchGcp();
+      toast.success(isThai ? "บันทึก MCP/OAuth สำเร็จ และ refresh runtime แล้ว" : "MCP/OAuth saved and runtime refreshed");
+      refetchMcpRuntime();
     },
-    onError: (err) => toast.error(`Failed to save: ${err.message}`),
+    onError: (err) => toast.error(`Failed to save MCP/OAuth: ${err.message}`),
   });
+
+  const generateMcpOAuthSigningKeyMutation = trpc.infrastructure.generateMcpOAuthSigningKey.useMutation({
+    onSuccess: (data) => {
+      toast.success(isThai
+        ? `สร้าง signing key สำเร็จ (${data.kid})`
+        : `Signing key created (${data.kid})`);
+      refetchMcpRuntime();
+    },
+    onError: (err) => toast.error(isThai
+      ? `สร้าง signing key ไม่สำเร็จ: ${err.message}`
+      : `Failed to create signing key: ${err.message}`),
+  });
+
+  const updateRenderWorkerSettingMutation = trpc.systemSettings.updateSetting.useMutation({
+    onSuccess: () => refetchInfrastructureSettings(),
+    onError: (err: any) => toast.error(`Failed to save: ${err.message}`),
+  });
+  const applyRenderWorkerSetting = (checked: boolean) => {
+    const previousValue = webProcessRenderWorkerEnabled;
+    setWebProcessRenderWorkerEnabled(checked);
+    updateRenderWorkerSettingMutation.mutate(
+      {
+        category: "infrastructure" as any,
+        key: "web_process_render_worker_enabled",
+        value: checked ? "true" : "false",
+        description:
+          "Web server process also claims and renders ffmpeg video-assembly jobs from the render queue",
+      },
+      {
+        onError: () => setWebProcessRenderWorkerEnabled(previousValue),
+      },
+    );
+  };
+
 
   const setModeMutation = trpc.infrastructure.setTaskProcessingMode.useMutation({
     onSuccess: (data) => {
-      toast.success(
-        `Task processing switched to ${data.mode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`,
-      );
+      toast.success(`Task processing is fixed to ${data.mode === "cloudflare" ? "Cloudflare" : data.mode}`);
       refetchMode();
       refetchDashboard();
     },
@@ -449,20 +587,8 @@ export default function InfrastructureSettingsPanel() {
 
   // --- Populate form from query data ---
   useEffect(() => {
-    if (gcpConfig) {
-      setGcpForm({
-        gcp_project_id: gcpConfig.gcp_project_id?.value ?? "",
-        gcp_region: gcpConfig.gcp_region?.value ?? "",
-        cloud_run_python_url: gcpConfig.cloud_run_python_url?.value ?? "",
-        cloud_run_node_url: gcpConfig.cloud_run_node_url?.value ?? "",
-        cloud_run_sa_email: gcpConfig.cloud_run_sa_email?.value ?? "",
-      });
-    }
-  }, [gcpConfig]);
-
-  useEffect(() => {
     if (modeData) {
-      setSelectedMode(modeData.mode as "celery" | "cloud_tasks");
+      setSelectedMode("cloudflare");
     }
   }, [modeData]);
 
@@ -523,6 +649,41 @@ export default function InfrastructureSettingsPanel() {
   }, [appRuntimeConfig]);
 
   useEffect(() => {
+    const config = mcpRuntimeConfig?.config;
+    if (!config) return;
+    // Empty URL values are rendered as placeholders by the browser and are
+    // easy to mistake for real values. Seed only missing fields from the
+    // current HTTPS origin so the first production save is actionable.
+    const defaults = buildRecommendedMcpRuntimeForm(
+      mcpRuntimeConfig?.defaults?.scopesSupported ?? [],
+      getBrowserPublicBaseUrl(),
+    );
+    setMcpRuntimeForm({
+      modern_protocol_enabled: config.modernProtocolEnabled,
+      oauth_inbound_enabled: config.oauthInboundEnabled,
+      oauth_protected_resource_enabled: config.oauthProtectedResourceEnabled,
+      oauth_authorization_server_enabled: config.oauthAuthorizationServerEnabled,
+      oauth_dynamic_registration_enabled: config.oauthDynamicRegistrationEnabled,
+      public_base_url: config.publicBaseUrl || defaults.public_base_url,
+      oauth_issuer: config.oauthIssuer || defaults.oauth_issuer,
+      oauth_resource: config.oauthResource || defaults.oauth_resource,
+      oauth_jwks_uri: config.oauthJwksUri || defaults.oauth_jwks_uri,
+      oauth_audience: config.oauthAudience,
+      oauth_authorization_servers: config.oauthAuthorizationServers.join("\n") || defaults.oauth_authorization_servers,
+      oauth_scopes_supported: config.oauthScopesSupported.join("\n") || defaults.oauth_scopes_supported,
+      cors_allowed_origins: config.corsAllowedOrigins.join("\n") || defaults.cors_allowed_origins,
+      session_allowed_origins: config.sessionAllowedOrigins.join("\n") || defaults.session_allowed_origins,
+      session_ttl_seconds: config.sessionTtlSeconds,
+      workspace_root: config.workspaceRoot,
+      workspace_write_enabled: config.workspaceWriteEnabled,
+      max_read_bytes: config.maxReadBytes,
+      max_write_bytes: config.maxWriteBytes,
+      extension_allowlist: config.extensionAllowlist.join(","),
+      mcp_rpm: config.mcpRpm,
+    });
+  }, [mcpRuntimeConfig]);
+
+  useEffect(() => {
     if (scaleTierData?.tier) {
       setSelectedTier(scaleTierData.tier);
     }
@@ -531,17 +692,13 @@ export default function InfrastructureSettingsPanel() {
   // Sync deploy mode — deployModeInfo is the authoritative source
   useEffect(() => {
     if (deployModeInfo?.mode) {
-      setSelectedDeployMode(deployModeInfo.mode as "localhost" | "cloudrun");
+      setSelectedDeployMode(deployModeInfo.mode === "localhost" ? "localhost" : "cloudflare");
     } else if (scaleTierData?.deployMode) {
-      setSelectedDeployMode(scaleTierData.deployMode as "localhost" | "cloudrun");
+      setSelectedDeployMode(scaleTierData.deployMode === "localhost" ? "localhost" : "cloudflare");
     }
   }, [deployModeInfo, scaleTierData]);
 
   // --- Handlers ---
-  const handleSaveGcp = () => {
-    updateGcpMutation.mutate(gcpForm);
-  };
-
   const handleSaveMode = () => {
     setModeMutation.mutate({ mode: selectedMode });
   };
@@ -576,10 +733,48 @@ export default function InfrastructureSettingsPanel() {
     updateAppRuntimeMutation.mutate(appRuntimeForm as any);
   };
 
-  const hasGcpConfig = !!(gcpForm.gcp_project_id && gcpForm.gcp_region);
+  const handleSaveMcpRuntime = () => {
+    const urlFields = [
+      ["Public base URL", mcpRuntimeForm.public_base_url],
+      ["OAuth issuer", mcpRuntimeForm.oauth_issuer],
+      ["MCP resource", mcpRuntimeForm.oauth_resource],
+      ["JWKS URL", mcpRuntimeForm.oauth_jwks_uri],
+    ] as const;
+    const invalidField = urlFields.find(([, value]) => {
+      try {
+        const parsed = new URL(value.trim());
+        return parsed.protocol !== "https:" || !parsed.hostname;
+      } catch {
+        return true;
+      }
+    });
+    if (invalidField) {
+      toast.error(isThai
+        ? `กรุณากรอก ${invalidField[0]} เป็น HTTPS URL ที่ถูกต้อง หรือกด “ใช้ค่ามาตรฐาน production”`
+        : `${invalidField[0]} must be a valid HTTPS URL. Use “Use production defaults” to fill it automatically.`);
+      return;
+    }
+    updateMcpRuntimeMutation.mutate({
+      ...mcpRuntimeForm,
+      public_base_url: mcpRuntimeForm.public_base_url.trim(),
+      oauth_issuer: mcpRuntimeForm.oauth_issuer.trim(),
+      oauth_resource: mcpRuntimeForm.oauth_resource.trim(),
+      oauth_jwks_uri: mcpRuntimeForm.oauth_jwks_uri.trim(),
+    });
+  };
+
+  const applyRecommendedMcpRuntime = () => {
+    const scopes = mcpRuntimeConfig?.defaults?.scopesSupported
+      ?? mcpRuntimeConfig?.config?.oauthScopesSupported
+      ?? [];
+    setMcpRuntimeForm(buildRecommendedMcpRuntimeForm(scopes));
+    toast.info(isThai
+      ? "ใส่ค่ามาตรฐาน production แล้ว กดบันทึกเพื่อเปิดใช้งาน"
+      : "Production-safe MCP defaults loaded. Save to apply them.");
+  };
 
   // --- Loading state ---
-  if (gcpLoading && modeLoading) {
+  if (modeLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -589,303 +784,117 @@ export default function InfrastructureSettingsPanel() {
 
   return (
     <div className="space-y-6">
+      <VerticalDramaEnhancedRuntimeSettingsPanel />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="gcp" className="flex items-center gap-1">
-            <Cloud className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{copy.tabs.gcp}</span>
-          </TabsTrigger>
-          <TabsTrigger value="app-runtime" className="flex items-center gap-1">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
+          <TabsTrigger
+            value="app-runtime"
+            aria-label={copy.tabs.runtime}
+            className="flex items-center gap-1"
+          >
             <Globe className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.runtime}</span>
           </TabsTrigger>
-          <TabsTrigger value="tasks" className="flex items-center gap-1">
+          <TabsTrigger
+            value="mcp"
+            aria-label={copy.tabs.mcp}
+            className="flex items-center gap-1"
+          >
+            <Shield className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{copy.tabs.mcp}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="tasks"
+            aria-label={copy.tabs.tasks}
+            className="flex items-center gap-1"
+          >
             <Server className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.tasks}</span>
           </TabsTrigger>
-          <TabsTrigger value="queues" className="flex items-center gap-1">
+          <TabsTrigger
+            value="queues"
+            aria-label={copy.tabs.queues}
+            className="flex items-center gap-1"
+          >
             <Activity className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.queues}</span>
           </TabsTrigger>
-          <TabsTrigger value="redis" className="flex items-center gap-1">
+          <TabsTrigger
+            value="redis"
+            aria-label={copy.tabs.redis}
+            className="flex items-center gap-1"
+          >
             <Database className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.redis}</span>
           </TabsTrigger>
-          <TabsTrigger value="monitoring" className="flex items-center gap-1">
+          <TabsTrigger
+            value="monitoring"
+            aria-label={copy.tabs.monitoring}
+            className="flex items-center gap-1"
+          >
             <Shield className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.monitoring}</span>
           </TabsTrigger>
-          <TabsTrigger value="scale-tier" className="flex items-center gap-1">
+          <TabsTrigger
+            value="scale-tier"
+            aria-label={copy.tabs.scaleTier}
+            className="flex items-center gap-1"
+          >
             <Gauge className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">{copy.tabs.scaleTier}</span>
           </TabsTrigger>
+          <TabsTrigger
+            value="cloudflare-runtime"
+            aria-label="Cloudflare"
+            className="flex items-center gap-1"
+          >
+            <Cloud className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Cloudflare</span>
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="gcp">
-      {/* ============================================ */}
-      {/* CARD 1: GCP Configuration                   */}
-      {/* ============================================ */}
-      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
-        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
-          <h3 className="flex items-center gap-2 text-lg">
-            <Cloud className="w-5 h-5 text-purple-500" />
-            {copy.gcp.title}
-          </h3>
-          <p>
-            {copy.gcp.description}
-          </p>
-        </div>
-        <div className="space-y-5 pt-6">
-          {/* Setup Guide (collapsible) */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50/50 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setShowGcpGuide(!showGcpGuide)}
-              className="flex items-center justify-between w-full px-4 py-3 text-sm font-medium text-blue-700 hover:bg-blue-100/50 transition-colors"
-            >
-              <span className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                {copy.gcp.guideTitle}
-              </span>
-              {showGcpGuide ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : (
-                <ChevronDown className="h-4 w-4" />
-              )}
-            </button>
-            {showGcpGuide && (
-              <div className="px-4 pb-4 text-sm text-blue-800 space-y-4 border-t border-blue-200">
-                {/* Step 1 */}
-                <div className="pt-3">
-                  <p className="font-semibold mb-1">Step 1: Create GCP Project</p>
-                  <ol className="list-decimal ml-5 space-y-1 text-blue-700">
-                    <li>
-                      Go to{" "}
-                      <a
-                        href="https://console.cloud.google.com/projectcreate"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline inline-flex items-center gap-0.5"
-                      >
-                        GCP Console → Create Project
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </li>
-                    <li>Enter a project name (e.g. <code className="bg-blue-100 px-1 rounded">smartaihub-mvp</code>)</li>
-                    <li>Copy the <strong>Project ID</strong> and paste it in the field below</li>
-                  </ol>
-                </div>
-
-                {/* Step 2 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 2: Enable Required APIs</p>
-                  <p className="text-blue-700 mb-1">Run these commands in Google Cloud Shell or local gcloud CLI:</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`gcloud services enable \\
-  run.googleapis.com \\
-  cloudtasks.googleapis.com \\
-  cloudbuild.googleapis.com \\
-  artifactregistry.googleapis.com \\
-  --project=YOUR_PROJECT_ID`}
-                  </pre>
-                </div>
-
-                {/* Step 3 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 3: Create Service Account</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# Create the service account
-gcloud iam service-accounts create cloud-run-api \\
-  --display-name="Cloud Run API" \\
-  --project=YOUR_PROJECT_ID
-
-# Grant Cloud Tasks permissions
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
-  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
-  --role="roles/cloudtasks.enqueuer"
-
-# Grant Cloud Run invoker (for OIDC auth)
-gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \\
-  --member="serviceAccount:cloud-run-api@YOUR_PROJECT_ID.iam.gserviceaccount.com" \\
-  --role="roles/run.invoker"`}
-                  </pre>
-                </div>
-
-                {/* Step 4 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 4: Create Cloud Tasks Queues</p>
-                  <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
-{`# Create all 6 queues (adjust region as needed)
-for QUEUE in media-jobs video-jobs-short video-jobs-long \\
-             workflow-tasks polling-tasks periodic-tasks; do
-  gcloud tasks queues create $QUEUE \\
-    --location=YOUR_REGION \\
-    --project=YOUR_PROJECT_ID
-done`}
-                  </pre>
-                </div>
-
-                {/* Step 5 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 5: Deploy Cloud Run Services</p>
-                  <p className="text-blue-700">
-                    After deploying your services to Cloud Run, copy the service URLs
-                    from the{" "}
-                    <a
-                      href="https://console.cloud.google.com/run"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline inline-flex items-center gap-0.5"
-                    >
-                      Cloud Run Console
-                      <ExternalLink className="h-3 w-3" />
-                    </a>{" "}
-                    and paste them in the Python/Node Service URL fields below.
-                  </p>
-                </div>
-
-                {/* Step 6 */}
-                <div>
-                  <p className="font-semibold mb-1">Step 6: Fill in the form below</p>
-                  <ul className="list-disc ml-5 space-y-1 text-blue-700">
-                    <li><strong>Project ID</strong> — Your GCP project ID</li>
-                    <li><strong>Region</strong> — Where queues and services are deployed</li>
-                    <li><strong>Python Service URL</strong> — Cloud Run URL for the Python backend</li>
-                    <li><strong>Node Service URL</strong> — Cloud Run URL for the Node.js API</li>
-                    <li>
-                      <strong>Service Account Email</strong> — Format:{" "}
-                      <code className="bg-blue-100 px-1 rounded text-xs">
-                        cloud-run-api@PROJECT_ID.iam.gserviceaccount.com
-                      </code>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Project ID */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_project_id">{copy.gcp.projectId}</Label>
-              {gcpConfig?.gcp_project_id?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="gcp_project_id"
-              value={gcpForm.gcp_project_id}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, gcp_project_id: e.target.value })
-              }
-              placeholder="e.g. smartaihub-mvp"
-            />
-          </div>
-
-          {/* Region */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="gcp_region">{copy.gcp.region}</Label>
-              {gcpConfig?.gcp_region?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Select
-              value={gcpForm.gcp_region}
-              onValueChange={(val) => setGcpForm({ ...gcpForm, gcp_region: val })}
-            >
-              <SelectTrigger id="gcp_region">
-                <SelectValue placeholder={copy.gcp.selectRegion} />
-              </SelectTrigger>
-              <SelectContent>
-                {GCP_REGIONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {r}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Python Service URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_python_url">{copy.gcp.pythonServiceUrl}</Label>
-              {gcpConfig?.cloud_run_python_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_python_url"
-              type="url"
-              value={gcpForm.cloud_run_python_url}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_python_url: e.target.value })
-              }
-              placeholder="https://python-orchestrator-xxx.run.app"
-            />
-          </div>
-
-          {/* Node Service URL */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_node_url">{copy.gcp.nodeServiceUrl}</Label>
-              {gcpConfig?.cloud_run_node_url?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_node_url"
-              type="url"
-              value={gcpForm.cloud_run_node_url}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_node_url: e.target.value })
-              }
-              placeholder="https://node-api-xxx.run.app"
-            />
-          </div>
-
-          {/* Service Account Email */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="cloud_run_sa_email">{copy.gcp.serviceAccountEmail}</Label>
-              {gcpConfig?.cloud_run_sa_email?.source === "env" && (
-                <Badge variant="outline" className="text-xs">{copy.gcp.env}</Badge>
-              )}
-            </div>
-            <Input
-              id="cloud_run_sa_email"
-              type="email"
-              value={gcpForm.cloud_run_sa_email}
-              onChange={(e) =>
-                setGcpForm({ ...gcpForm, cloud_run_sa_email: e.target.value })
-              }
-              placeholder="cloud-run-api@project.iam.gserviceaccount.com"
-            />
-          </div>
-
-          {/* Info notice */}
-          <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-            <Info className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>
-              Changes to service URLs take effect on new task dispatches.
-              Running services may need a restart to pick up URL changes.
-            </span>
-          </div>
-
-          <Button
-            onClick={handleSaveGcp}
-            disabled={updateGcpMutation.isPending}
-          >
-            {updateGcpMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            {copy.gcp.save}
-          </Button>
-        </div>
-      </DashboardCard>
+        <TabsContent value="cloudflare-runtime">
+          <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+            <VStack as="header" gap={2}>
+              <h3 className="flex items-center gap-2 text-lg">
+                <Cloud className="w-5 h-5 text-orange-500" />
+                Cloudflare production runtime
+              </h3>
+              <p>Google Cloud runtime configuration has been retired. OAuth and Google Drive remain product integrations only.</p>
+            </VStack>
+            <VStack as="section" gap={3}>
+              <p><strong>Target:</strong> Cloudflare Workers, Queues, Workflows, Containers, Cron, Hyperdrive, R2 and Vectorize.</p>
+              <p><strong>Dispatch:</strong> canonical worker_jobs outbox to the deployment-owned <code>/internal/jobs/publish</code> boundary.</p>
+              <p><strong>Activation:</strong> target-account bindings, recovery rehearsal and rollback evidence are required before production enablement.</p>
+              <VStack as="section" gap={2}>
+                <h4>รายการ Worker bindings และ endpoints</h4>
+                <ul className="grid gap-1 sm:grid-cols-2">
+                  <li><code>HYPERDRIVE</code> — PostgreSQL connection</li>
+                  <li><code>JOB_QUEUE</code> — canonical queue transport</li>
+                  <li><code>JOB_WORKFLOW</code> — durable workflow execution</li>
+                  <li><code>JOB_CONTAINERS</code> — approved long-running container work</li>
+                  <li><code>WORKER_APP</code> — managed Worker App dispatch</li>
+                  <li><code>MEDIA_BUCKET</code> — R2 media artifacts</li>
+                  <li><code>VECTOR_INDEX</code> — Vectorize index</li>
+                  <li><code>SEARCH_RESULT_CACHE</code> — optional KV for disposable search cache only</li>
+                </ul>
+                <p>Endpoints: <code>/healthz</code> (liveness), <code>/readyz</code> (job runtime readiness), <code>/internal/jobs/publish</code> (requires job activation/token), <code>/internal/cache/search</code> (requires cache token/KV only).</p>
+                <p>Durable Objects ยังไม่มี binding ใน Worker release ปัจจุบัน; เตรียม handoff สำหรับ voice WebSocket/revocation ตาม Spec 237/242 ก่อนประกาศ class/namespace และเพิ่ม binding</p>
+              </VStack>
+              <VStack as="section" gap={2}>
+                <h4>ทำตามลำดับนี้ใน deployment pipeline</h4>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>สร้าง resources ในบัญชี Cloudflare เป้าหมาย แล้วบันทึก ID ของ Account, Zone, Hyperdrive, Queue, Workflow, Container, R2, Vectorize และ KV ใน secret manager/deployment config ห้าม hard-code ID ใน source</li>
+                  <li>เพิ่ม binding ตามชื่อด้านบนให้ Worker <code>smartspec-cloudflare-runtime</code>; <code>SEARCH_RESULT_CACHE</code> เป็น optional จนกว่าจะเปิด Search Cache</li>
+                  <li>กำหนด Custom Domain หรือ Worker Route ของ runtime hostname ให้ตรงกับ <code>CLOUDFLARE_RUNTIME_URL</code>; config นี้ปิด <code>workers.dev</code> โดยตั้งใจ</li>
+                  <li>ตั้ง Worker secrets <code>CLOUDFLARE_RUNTIME_TOKEN</code> และ <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> แยกกัน แล้วตั้งค่าที่ตรงกันใน Web app secret manager พร้อม <code>CLOUDFLARE_RUNTIME_URL</code></li>
+                  <li>Deploy โดยคง <code>CLOUDFLARE_ACTIVATION=disabled</code>; ตรวจ <code>/healthz</code>, target readiness และ recovery evidence ก่อนเปิด job runtime ตาม gate ของมัน</li>
+                  <li>Search Cache เปิดได้แยกผ่านสวิตช์ในแท็บ Cache / Redis หลัง probe สำเร็จ โดยไม่ต้องเปิด job runtime</li>
+                </ol>
+              </VStack>
+              <p className="text-xs">หน้า Admin แสดงคู่มือและสถานะจากฝั่ง Web เท่านั้น ไม่สร้าง resource, ไม่แสดง secret และไม่อ้างว่า target พร้อมจาก local tests; เก็บหลักฐาน target แยกจาก readiness ในเครื่อง</p>
+            </VStack>
+          </DashboardCard>
         </TabsContent>
 
         <TabsContent value="app-runtime">
@@ -1024,6 +1033,123 @@ done`}
           </DashboardCard>
         </TabsContent>
 
+        <TabsContent value="mcp">
+          <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden">
+            <div className="border-b bg-gradient-to-r from-emerald-50/60 to-cyan-50/40 pb-5">
+              <h3 className="flex items-center gap-2 text-lg"><Shield className="w-5 h-5 text-emerald-600" />{copy.mcp.title}</h3>
+              <p>{copy.mcp.description}</p>
+            </div>
+            <div className="space-y-5 pt-6">
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 text-sm text-cyan-950">
+                <div>
+                  <div className="font-semibold">{isThai ? "เปิดใช้งาน production แบบแนะนำ" : "Enable the recommended production profile"}</div>
+                  <div className="mt-1 text-xs text-cyan-800">
+                    {isThai
+                      ? "เปิด Modern MCP, OAuth inbound, PRM, Authorization Server, dynamic registration สำหรับ Hermes/Claude Code/Codex CLI และสร้าง signing key อัตโนมัติเมื่อกดบันทึก โดยไม่เปิด workspace write"
+                      : "Enables Modern MCP, inbound OAuth, PRM, the Authorization Server, and controlled dynamic registration for Hermes/Claude Code/Codex CLI. Saving also provisions the signing key; workspace writes stay off."}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => refetchMcpRuntime()} disabled={mcpRuntimeLoading}>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    {isThai ? "ตรวจสอบค่าปัจจุบัน" : "Refresh status"}
+                  </Button>
+                  <Button type="button" size="sm" onClick={applyRecommendedMcpRuntime}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    {isThai ? "ใช้ค่ามาตรฐาน production" : "Use production defaults"}
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 text-sm text-emerald-900">
+                <div className="font-semibold">{copy.mcp.productionNote}</div>
+                <div className="mt-2">{copy.mcp.source}: <Badge variant="outline">{mcpRuntimeConfig?.source === "db" ? copy.mcp.database : mcpRuntimeConfig?.source === "env" ? "development fallback" : copy.mcp.none}</Badge></div>
+                <div className="mt-1 flex flex-wrap items-center gap-3">
+                  {mcpRuntimeConfig?.keyConfigured ? (
+                    <span className="text-emerald-700">✓ {copy.mcp.keyReady}</span>
+                  ) : (
+                    <>
+                      <span className="text-amber-700">⚠ {copy.mcp.keyMissing}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-300 bg-white text-amber-900 hover:bg-amber-50"
+                        disabled={generateMcpOAuthSigningKeyMutation.isPending}
+                        onClick={() => generateMcpOAuthSigningKeyMutation.mutate()}
+                      >
+                        {generateMcpOAuthSigningKeyMutation.isPending
+                          ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          : <Shield className="mr-2 h-4 w-4" />}
+                        {isThai ? "สร้าง signing key" : "Create signing key"}
+                      </Button>
+                      <span className="text-xs text-amber-800">{copy.mcp.keyAutomatic}</span>
+                    </>
+                  )}
+                </div>
+                <div className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+                  <span>POST {mcpRuntimeForm.oauth_resource || "https://smartaihub.app/v1/mcp"}</span>
+                  <span>PRM {mcpRuntimeForm.oauth_protected_resource_enabled ? "enabled" : "off"}</span>
+                  <span>JWKS {mcpRuntimeForm.oauth_jwks_uri || "not configured"}</span>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                {([
+                  ["modern_protocol_enabled", copy.mcp.modern],
+                  ["oauth_inbound_enabled", copy.mcp.inbound],
+                  ["oauth_protected_resource_enabled", copy.mcp.protectedResource],
+                  ["oauth_authorization_server_enabled", copy.mcp.authorizationServer],
+                  ["oauth_dynamic_registration_enabled", copy.mcp.dynamicRegistration],
+                ] as const).map(([key, label]) => (
+                  <label key={key} className="flex items-center justify-between rounded-xl border p-3 text-sm">
+                    <span>{label}</span>
+                    <Switch checked={mcpRuntimeForm[key]} onCheckedChange={(checked) => setMcpRuntimeForm((prev) => ({ ...prev, [key]: checked }))} />
+                  </label>
+                ))}
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div><Label htmlFor="mcp_public_base_url">{copy.mcp.publicBaseUrl}</Label><Input id="mcp_public_base_url" type="url" value={mcpRuntimeForm.public_base_url} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, public_base_url: e.target.value }))} placeholder="https://smartaihub.app" /></div>
+                <div><Label htmlFor="mcp_oauth_issuer">{copy.mcp.issuer}</Label><Input id="mcp_oauth_issuer" type="url" value={mcpRuntimeForm.oauth_issuer} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_issuer: e.target.value }))} placeholder="https://smartaihub.app" /></div>
+                <div><Label htmlFor="mcp_oauth_resource">{copy.mcp.resource}</Label><Input id="mcp_oauth_resource" type="url" value={mcpRuntimeForm.oauth_resource} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_resource: e.target.value }))} placeholder="https://smartaihub.app/v1/mcp" /></div>
+                <div><Label htmlFor="mcp_oauth_jwks_uri">{copy.mcp.jwks}</Label><Input id="mcp_oauth_jwks_uri" type="url" value={mcpRuntimeForm.oauth_jwks_uri} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_jwks_uri: e.target.value }))} placeholder="https://smartaihub.app/.well-known/jwks.json" /></div>
+                <div><Label htmlFor="mcp_oauth_audience">{copy.mcp.audience}</Label><Input id="mcp_oauth_audience" value={mcpRuntimeForm.oauth_audience} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, oauth_audience: e.target.value }))} /></div>
+                <div><Label htmlFor="mcp_session_ttl">{copy.mcp.sessionTtl}</Label><Input id="mcp_session_ttl" type="number" min={300} max={86400} value={mcpRuntimeForm.session_ttl_seconds} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, session_ttl_seconds: Number(e.target.value) }))} /></div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {([
+                  ["oauth_authorization_servers", copy.mcp.authServers],
+                  ["oauth_scopes_supported", copy.mcp.scopes],
+                  ["cors_allowed_origins", copy.mcp.cors],
+                  ["session_allowed_origins", copy.mcp.sessionOrigins],
+                ] as const).map(([key, label]) => (
+                  <div key={key}><Label htmlFor={`mcp_${key}`}>{label}</Label><textarea id={`mcp_${key}`} rows={key === "oauth_scopes_supported" ? 8 : 4} value={mcpRuntimeForm[key]} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, [key]: e.target.value }))} className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm" /></div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 p-4 space-y-4">
+                <div className="font-medium">Legacy workspace MCP compatibility</div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div><Label htmlFor="mcp_workspace_root">Workspace root</Label><Input id="mcp_workspace_root" value={mcpRuntimeForm.workspace_root} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, workspace_root: e.target.value }))} placeholder="/srv/smartaihub/workspace" /></div>
+                  <div><Label htmlFor="mcp_rpm">Legacy MCP requests per minute</Label><Input id="mcp_rpm" type="number" min={10} max={10000} value={mcpRuntimeForm.mcp_rpm} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, mcp_rpm: Number(e.target.value) }))} /></div>
+                  <div><Label htmlFor="mcp_max_read_bytes">Maximum read bytes</Label><Input id="mcp_max_read_bytes" type="number" value={mcpRuntimeForm.max_read_bytes} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, max_read_bytes: Number(e.target.value) }))} /></div>
+                  <div><Label htmlFor="mcp_max_write_bytes">Maximum write bytes</Label><Input id="mcp_max_write_bytes" type="number" value={mcpRuntimeForm.max_write_bytes} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, max_write_bytes: Number(e.target.value) }))} /></div>
+                </div>
+                <div><Label htmlFor="mcp_extension_allowlist">Allowed file extensions</Label><Input id="mcp_extension_allowlist" value={mcpRuntimeForm.extension_allowlist} onChange={(e) => setMcpRuntimeForm((p) => ({ ...p, extension_allowlist: e.target.value }))} /></div>
+                <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>Allow legacy workspace writes</span><Switch checked={mcpRuntimeForm.workspace_write_enabled} onCheckedChange={(checked) => setMcpRuntimeForm((p) => ({ ...p, workspace_write_enabled: checked }))} /></label>
+                <div className="text-xs text-slate-500">Workspace writes require the OAuth `mcp:write` scope. An existing legacy token remains a compatibility fallback but is never shown or requested in this UI.</div>
+              </div>
+
+              <div className="flex flex-wrap justify-end gap-3">
+                <Button onClick={handleSaveMcpRuntime} disabled={mcpRuntimeLoading || updateMcpRuntimeMutation.isPending}>
+                  {updateMcpRuntimeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{copy.mcp.save}
+                </Button>
+              </div>
+            </div>
+          </DashboardCard>
+        </TabsContent>
+
         <TabsContent value="tasks">
       {/* ============================================ */}
       {/* CARD 2: Task Processing Backend              */}
@@ -1039,47 +1165,14 @@ done`}
           </p>
         </div>
         <div className="space-y-5 pt-6">
-          {/* Mode selector */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Celery option */}
-            <button
-              type="button"
-              onClick={() => setSelectedMode("celery")}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
-                selectedMode === "celery"
-                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                  : "border-gray-200 hover:border-gray-300 bg-white"
-              }`}
-            >
-              {selectedMode === "celery" && (
-                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
-              )}
-              <div className="font-semibold text-base mb-1">Celery</div>
-              <p className="text-sm text-muted-foreground">
-                Redis-based task queue. Requires Celery workers running
-                (celery-media, celery-video, celery-beat).
-              </p>
-            </button>
-
-            {/* Cloud Tasks option */}
-            <button
-              type="button"
-              onClick={() => setSelectedMode("cloud_tasks")}
-              className={`relative rounded-xl border-2 p-4 text-left transition-all ${
-                selectedMode === "cloud_tasks"
-                  ? "border-purple-500 bg-purple-50/50 ring-1 ring-purple-200"
-                  : "border-gray-200 hover:border-gray-300 bg-white"
-              }`}
-            >
-              {selectedMode === "cloud_tasks" && (
-                <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
-              )}
-              <div className="font-semibold text-base mb-1">Cloud Tasks</div>
-              <p className="text-sm text-muted-foreground">
-                Google Cloud managed queue with OIDC auth. Requires GCP
-                configuration above.
-              </p>
-            </button>
+          <div className="relative rounded-xl border-2 border-purple-500 bg-purple-50/50 p-4 text-left ring-1 ring-purple-200">
+            <CheckCircle2 className="absolute top-3 right-3 h-5 w-5 text-purple-500" />
+            <div className="font-semibold text-base mb-1">Cloudflare runtime</div>
+            <p className="text-sm text-muted-foreground">
+              The production target is fixed to Cloudflare Queues, Workflows,
+              Containers/Worker App, and Hyperdrive. Legacy Celery and Google
+              Cloud task controls are retired.
+            </p>
           </div>
 
           {/* Source indicator */}
@@ -1089,17 +1182,6 @@ done`}
               <Badge variant="outline" className="text-xs">
                 {modeData.source}
               </Badge>
-            </div>
-          )}
-
-          {/* Warning if switching to Cloud Tasks without GCP config */}
-          {selectedMode === "cloud_tasks" && !hasGcpConfig && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>
-                GCP Project ID and Region must be configured before enabling
-                Cloud Tasks. Save GCP configuration first.
-              </span>
             </div>
           )}
 
@@ -1115,12 +1197,81 @@ done`}
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}
-            {modeData?.mode === selectedMode
-              ? "No changes"
-              : `Switch to ${selectedMode === "cloud_tasks" ? "Cloud Tasks" : "Celery"}`}
+            {modeData?.mode === selectedMode ? "Cloudflare is active" : "Use Cloudflare runtime"}
           </Button>
         </div>
       </DashboardCard>
+
+      {/* ============================================ */}
+      {/* CARD: In-Server Render Worker (ffmpeg video-assembly queue) */}
+      {/* ============================================ */}
+      <DashboardCard className="border-0 shadow-sm shadow-gray-200/50 rounded-2xl overflow-hidden mt-6">
+        <div className="border-b bg-gradient-to-r from-purple-50/50 to-pink-50/30 pb-5">
+          <h3 className="flex items-center gap-2 text-lg">
+            <Server className="w-5 h-5 text-purple-500" />
+            {copy.renderWorker.title}
+          </h3>
+        </div>
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4 mt-6">
+          <div className="space-y-1">
+            <Label className="text-sm font-medium">{copy.renderWorker.label}</Label>
+            <p className="text-xs text-muted-foreground">{copy.renderWorker.helper}</p>
+          </div>
+          <Switch
+            checked={webProcessRenderWorkerEnabled}
+            onCheckedChange={(checked) => {
+              // Turning this ON is the ONE switch in the whole system that lets
+              // ffmpeg render inside the web server process. It is CPU- and
+              // memory-heavy and degrades the app for every tenant, so it must
+              // never flip from a single stray click (user policy 2026-07-31).
+              // Turning it OFF is always safe and needs no confirmation.
+              if (checked) {
+                setConfirmServerFfmpegWorker(true);
+                return;
+              }
+              applyRenderWorkerSetting(false);
+            }}
+            disabled={updateRenderWorkerSettingMutation.isPending}
+          />
+        </div>
+        <AlertDialog
+          open={confirmServerFfmpegWorker}
+          onOpenChange={setConfirmServerFfmpegWorker}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                เปิดให้เซิร์ฟเวอร์เว็บ render ด้วย ffmpeg?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                สวิตช์นี้ทำให้ process ของเว็บรับงาน render แล้วเรียก ffmpeg
+                ในเครื่องเดียวกับที่ให้บริการผู้ใช้ — กิน CPU และหน่วยความจำหนักมาก
+                และกระทบผู้ใช้ทุก tenant พร้อมกัน แนวทางหลักของระบบคือให้ Remotion
+                ทำงานบนเครื่อง Worker แทน เปิดเฉพาะกรณีจำเป็นจริง ๆ และควรปิดกลับทันทีเมื่อเสร็จ
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="server-ffmpeg-worker-cancel">
+                ยกเลิก
+              </AlertDialogCancel>
+              <AlertDialogAction
+                data-testid="server-ffmpeg-worker-accept"
+                onClick={() => applyRenderWorkerSetting(true)}
+              >
+                ยืนยันเปิด
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DashboardCard>
+
+      {/* ============================================ */}
+      {/* CARD: Hermes Media Worker (Feature 135 — Grok media worker) */}
+      {/* ============================================ */}
+      <HermesInfrastructureSettingsCard
+        infrastructureSettings={infrastructureSettings as any}
+        onSettingsChanged={refetchInfrastructureSettings}
+      />
         </TabsContent>
 
         <TabsContent value="queues">
@@ -1136,7 +1287,7 @@ done`}
                 Queue Status
               </h3>
               <p className="mt-1">
-                Cloud Tasks queue metrics (auto-refreshes every 30s).
+                Cloudflare canonical outbox metrics (auto-refreshes every 30s).
               </p>
             </div>
             <Button
@@ -1310,6 +1461,57 @@ done`}
         </TabsContent>
 
         <TabsContent value="redis">
+      <DashboardCard className="mb-5 border-0 shadow-sm rounded-2xl overflow-hidden">
+        <VStack as="header" gap={2}>
+          <h3 className="flex items-center gap-2 text-lg"><Cloud className="h-5 w-5 text-sky-600" />ย้าย Search Result Cache ไป Cloudflare KV</h3>
+          <p className="mt-1 text-sm text-muted-foreground">สวิตช์นี้กระทบเฉพาะ cache ผลค้นหาของ Responses API เท่านั้น ไม่ได้เปิด Queue และไม่ย้าย session, lock หรือ rate limit</p>
+        </VStack>
+        <VStack as="section" gap={4} padding={5}>
+          <HStack as="section" justify="between" wrap="wrap" gap={4}>
+            <VStack gap={1}>
+              <p className="font-medium">สถานะ: {searchCacheConfig?.provider === "cloudflare_kv" ? "Cloudflare KV" : "ปิด cache ชั่วคราว"}</p>
+              <p className="text-sm text-muted-foreground">Worker URL: {searchCacheConfig?.endpointConfigured ? "ตั้งค่าแล้ว" : "ยังไม่ตั้งค่า"} · Token: {searchCacheConfig?.tokenConfigured ? "ตั้งค่าแล้ว (ซ่อนไว้)" : "ยังไม่ตั้งค่า"}</p>
+            </VStack>
+            <HStack gap={3} wrap="wrap" align="center">
+              <Button variant="outline" onClick={() => probeSearchCache.mutate()} disabled={probeSearchCache.isPending}>
+                {probeSearchCache.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TestTube className="mr-2 h-4 w-4" />}ทดสอบ Worker/KV
+              </Button>
+              <Label htmlFor="search-cache-provider">ใช้ Cloudflare KV</Label>
+              <Switch id="search-cache-provider" checked={searchCacheConfig?.provider === "cloudflare_kv"}
+                disabled={!searchCacheConfig || updateSearchCacheProvider.isPending || (!searchCacheConfig.endpointConfigured || !searchCacheConfig.tokenConfigured) && searchCacheConfig.provider !== "cloudflare_kv"}
+                onCheckedChange={(checked) => updateSearchCacheProvider.mutate({ provider: checked ? "cloudflare_kv" : "disabled" })} />
+            </HStack>
+          </HStack>
+          <VStack as="section" gap={2}>
+            <h4>คู่มือตั้งค่า Cloudflare (ต้องทำในบัญชี/ระบบ deploy)</h4>
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>สร้าง Workers KV namespace ชื่อที่ต้องการ เช่น <code>SEARCH_RESULT_CACHE</code></li>
+              <li>นำ namespace ID ไปผูกกับ Worker <code>smartspec-cloudflare-runtime</code> ด้วย binding name <code>SEARCH_RESULT_CACHE</code> ใน environment เป้าหมายทุกชุด ค่า ID ต้องมาจาก namespace จริง</li>
+              <li>กำหนด hostname ให้ Worker ก่อน เพราะ config ปัจจุบันปิด <code>workers.dev</code>: เพิ่ม Custom Domain แยก เช่น <code>runtime.example.com</code> (อย่าใช้ hostname ของหน้าเว็บหลัก) หรือ Route ผ่าน deployment pipeline แล้วตั้ง <code>CLOUDFLARE_RUNTIME_URL</code> เป็น origin ของ hostname นี้ (ไม่ต้องเติม path)</li>
+              <li>ตั้ง Worker secret <code>CLOUDFLARE_SEARCH_CACHE_TOKEN</code> และตั้ง secret ค่าเดียวกันให้ Web application</li>
+              <li>Deploy Worker และ Web application แล้วกด “ทดสอบ Worker/KV”; probe จะเขียน/อ่าน canary ที่หมดอายุใน 60 วินาที ต้องผ่านก่อนจึงเปิดสวิตช์ได้</li>
+              <li>เปิดสวิตช์เพื่อ cutover ได้ทันที ข้อมูล cache เดิมไม่ย้าย เริ่มเก็บใหม่ใน KV; ปิดสวิตช์เพื่อหยุดใช้ cache ระหว่างแก้ปัญหา</li>
+            </ol>
+            <pre className="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-100">{`# สร้าง namespace แล้วบันทึก ID ไว้ใน deployment secret/config
+npx wrangler kv namespace create SEARCH_RESULT_CACHE
+
+# เพิ่ม binding ใน config ของ Worker environment (ใส่ ID จริงผ่านระบบ deploy)
+{ "binding": "SEARCH_RESULT_CACHE", "id": "<KV_NAMESPACE_ID>" }
+
+# เพิ่ม hostname ให้ Worker (เลือก Custom Domain หรือ zone route อย่างใดอย่างหนึ่ง)
+{ "pattern": "runtime.<your-domain>", "custom_domain": true }
+# กรณีใช้ zone route ให้ใช้ pattern "runtime.<your-domain>/*" และ zone_name จริง
+
+# ตั้ง token ใน environment ของ Worker; ตั้ง secret ชื่อเดียวกันใน Web app secret manager
+npx wrangler secret put CLOUDFLARE_SEARCH_CACHE_TOKEN
+# Web app environment:
+CLOUDFLARE_RUNTIME_URL=https://<worker-host>
+CLOUDFLARE_SEARCH_CACHE_TOKEN=<same-secret-value>`}</pre>
+            <p className="mt-2 text-muted-foreground">ทำซ้ำทั้ง namespace binding และ secret แยกตาม staging/production; อย่าใช้ namespace/token ข้าม environment การเปลี่ยนนี้ไม่ provision namespace ให้อัตโนมัติ ค่า token ไม่แสดงใน UI และหาก KV ใช้ไม่ได้ คำขอจะทำงานต่อโดยถือว่า cache miss</p>
+            <p className="text-muted-foreground">401 = token ไม่ตรง · 503 = Worker ยังไม่มี binding หรือ KV อ่าน/เขียนไม่ได้ · สวิตช์ปิด = ปิด Search Result Cache เท่านั้น</p>
+          </VStack>
+        </VStack>
+      </DashboardCard>
       {/* ============================================ */}
       {/* CARD 4: Cache / Redis Configuration          */}
       {/* ============================================ */}
@@ -1478,14 +1680,14 @@ REDIS_UPSTASH_URL=rediss://default:AXxx...@us1-xxx.upstash.io:6379
 
 # Still need local/Memorystore for realtime (pub/sub)
 REDIS_URL=redis://localhost:6379
-# OR for Cloud Run:
+# OR for a separately managed realtime Redis service:
 REDIS_MEMORYSTORE_URL=redis://10.0.0.3:6379`}
                   </pre>
                 </div>
 
-                {/* Cloud Run / Production */}
+                {/* Cloudflare / Production */}
                 <div>
-                  <p className="font-semibold mb-1">Cloud Run Production Setup</p>
+                  <p className="font-semibold mb-1">Cloudflare Production Setup</p>
                   <pre className="bg-blue-100/70 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre">
 {`# Recommended production configuration:
 # Cache → Upstash (global, serverless, TLS)
@@ -1617,7 +1819,7 @@ REDIS_URL=redis://10.0.0.3:6379`}
                   Memorystore
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GCP managed. Lowest latency via VPC.
+                  Cloudflare-managed connectivity is configured by the deployment pipeline.
                 </p>
                 {redisConfig?.redis_memorystore_url?.source === "env" && (
                   <Badge variant="outline" className="text-xs mt-1.5">from env</Badge>
@@ -2595,23 +2797,22 @@ FIREBASE_PROJECT_ID=your-project-id`}
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedDeployMode("cloudrun")}
+                onClick={() => setSelectedDeployMode("cloudflare")}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-                  selectedDeployMode === "cloudrun"
+                  selectedDeployMode === "cloudflare"
                     ? "bg-purple-100 text-purple-700"
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 <Cloud className="h-4 w-4" />
-                Cloud Run (GCP)
+                Cloudflare production target
               </button>
             </div>
-            {selectedDeployMode === "cloudrun" && deployModeInfo && !deployModeInfo.gcpConfigured && (
+            {selectedDeployMode === "cloudflare" && deployModeInfo && !deployModeInfo.runtime?.hardCutover && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-700">
                 <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
-                  GCP is not configured. Please fill in the <strong>GCP Configuration</strong> section above
-                  before applying Cloud Run mode.
+                Cloudflare hard cutover is not active yet. Target-account bindings and deployment evidence are required.
                 </span>
               </div>
             )}
@@ -2622,7 +2823,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 onClick={() => setDeployModeMutation.mutate({ mode: selectedDeployMode })}
                 disabled={
                   setDeployModeMutation.isPending ||
-                  (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
+                  (selectedDeployMode === "cloudflare" && deployModeInfo !== undefined && !deployModeInfo.runtime?.hardCutover)
                 }
               >
                 {setDeployModeMutation.isPending ? (
@@ -2692,7 +2893,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 <Info className="h-4 w-4" />
                 Configuration Preview — {(scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier}
                 <Badge variant="outline" className="text-xs ml-auto">
-                  {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                  {selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"}
                 </Badge>
               </p>
               {(() => {
@@ -2701,43 +2902,43 @@ FIREBASE_PROJECT_ID=your-project-id`}
                   : (scaleTierData.allTiers ?? []).find((t: any) => t.id === selectedTier);
                 if (!config) return null;
 
-                if (selectedDeployMode === "cloudrun") {
+                if (selectedDeployMode === "cloudflare") {
                   return (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node Instances</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeMinInstances ?? 0}–{config.cloudRunNodeMaxInstances ?? "—"}
+                          {config.cloudflareNodeMinInstances ?? 0}–{config.cloudflareNodeMaxInstances ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node CPU / Memory</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeCpu ?? "—"} / {config.cloudRunNodeMemory ?? "—"}
+                          {config.cloudflareNodeCpu ?? "—"} / {config.cloudflareNodeMemory ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-3 space-y-1">
                         <span className="text-xs text-blue-600 block">Node Concurrency</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunNodeConcurrency ?? "—"}
+                          {config.cloudflareNodeConcurrency ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python Instances</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonMinInstances ?? 0}–{config.cloudRunPythonMaxInstances ?? "—"}
+                          {config.cloudflarePythonMinInstances ?? 0}–{config.cloudflarePythonMaxInstances ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python CPU / Memory</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonCpu ?? "—"} / {config.cloudRunPythonMemory ?? "—"}
+                          {config.cloudflarePythonCpu ?? "—"} / {config.cloudflarePythonMemory ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-green-50 p-3 space-y-1">
                         <span className="text-xs text-green-600 block">Python Concurrency</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunPythonConcurrency ?? "—"}
+                          {config.cloudflarePythonConcurrency ?? "—"}
                         </span>
                       </div>
                       <div className="rounded-lg bg-gray-50 p-3 space-y-1">
@@ -2755,13 +2956,13 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       <div className="rounded-lg bg-purple-50 p-3 space-y-1">
                         <span className="text-xs text-purple-600 block">Media Queue</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunMediaQueueConcurrency ?? "—"} concurrent
+                          {config.cloudflareMediaQueueConcurrency ?? "—"} concurrent
                         </span>
                       </div>
                       <div className="rounded-lg bg-purple-50 p-3 space-y-1">
                         <span className="text-xs text-purple-600 block">Workflow Queue</span>
                         <span className="text-sm font-mono font-medium">
-                          {config.cloudRunWorkflowQueueConcurrency ?? "—"} concurrent
+                          {config.cloudflareWorkflowQueueConcurrency ?? "—"} concurrent
                         </span>
                       </div>
                     </div>
@@ -2801,18 +3002,6 @@ FIREBASE_PROJECT_ID=your-project-id`}
                       </span>
                     </div>
                     <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      <span className="text-xs text-gray-500 block">Celery Media</span>
-                      <span className="text-sm font-mono font-medium">
-                        {config.celeryMediaConcurrency ?? "—"}
-                      </span>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
-                      <span className="text-xs text-gray-500 block">Celery Video</span>
-                      <span className="text-sm font-mono font-medium">
-                        {config.celeryVideoConcurrency ?? "—"}
-                      </span>
-                    </div>
-                    <div className="rounded-lg bg-gray-50 p-3 space-y-1">
                       <span className="text-xs text-gray-500 block">API Rate Limit</span>
                       <span className="text-sm font-mono font-medium">
                         {config.nginxApiLimitRate ?? "—"}
@@ -2837,13 +3026,12 @@ FIREBASE_PROJECT_ID=your-project-id`}
           )}
 
           {/* Info notice — mode-aware */}
-          {selectedDeployMode === "cloudrun" ? (
+          {selectedDeployMode === "cloudflare" ? (
             <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
               <Cloud className="h-4 w-4 mt-0.5 shrink-0" />
               <span>
-                Applying will update <strong>Cloud Run service configs</strong> (instances, CPU, memory)
-                and <strong>Cloud Tasks queue concurrency</strong> via <code className="bg-blue-100 px-1 rounded text-xs">gcloud</code> CLI.
-                <strong> Zero-downtime</strong> rolling updates via new Cloud Run revisions.
+                Applying will record Cloudflare target budgets for the deployment pipeline.
+                <strong> No local infrastructure mutation</strong>; target-account bindings and recovery evidence remain gated.
               </span>
             </div>
           ) : (
@@ -2866,19 +3054,19 @@ FIREBASE_PROJECT_ID=your-project-id`}
             disabled={
               applyScaleTierMutation.isPending ||
               (scaleTierData?.tier === selectedTier && selectedDeployMode === (deployModeInfo?.mode ?? "localhost") && !applyResults) ||
-              (selectedDeployMode === "cloudrun" && deployModeInfo !== undefined && !deployModeInfo.gcpConfigured)
+              (selectedDeployMode === "cloudflare" && deployModeInfo !== undefined && !deployModeInfo.runtime?.hardCutover)
             }
           >
             {applyScaleTierMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : selectedDeployMode === "cloudrun" ? (
+            ) : selectedDeployMode === "cloudflare" ? (
               <Cloud className="h-4 w-4 mr-2" />
             ) : (
               <Zap className="h-4 w-4 mr-2" />
             )}
             {scaleTierData?.tier === selectedTier
-              ? `Re-apply Current Tier (${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"})`
-              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} — ${selectedDeployMode === "cloudrun" ? "Cloud Run" : "Restart Services"}`}
+              ? `Re-apply Current Tier (${selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"})`
+              : `Apply ${(scaleTierData?.allTiers ?? []).find((t: any) => t.id === selectedTier)?.label ?? selectedTier} — ${selectedDeployMode === "cloudflare" ? "Cloudflare" : "Restart Services"}`}
           </Button>
 
           {/* Apply Results */}
@@ -2889,7 +3077,7 @@ FIREBASE_PROJECT_ID=your-project-id`}
                 Apply Results
                 {applyResults[0]?.mode && (
                   <Badge variant="outline" className="text-xs ml-auto">
-                    {applyResults[0].mode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                    {applyResults[0].mode === "cloudflare" ? "Cloudflare" : "Localhost"}
                   </Badge>
                 )}
               </p>
@@ -2938,14 +3126,14 @@ FIREBASE_PROJECT_ID=your-project-id`}
             <AlertDialogTitle className="flex items-center gap-2">
               Apply Scale Tier Configuration
               <Badge variant="outline" className="text-xs font-normal">
-                {selectedDeployMode === "cloudrun" ? "Cloud Run" : "Localhost"}
+                {selectedDeployMode === "cloudflare" ? "Cloudflare" : "Localhost"}
               </Badge>
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-3">
                 <p>
                   This will apply the <strong className="capitalize">{selectedTier}</strong> tier
-                  configuration{selectedDeployMode === "cloudrun" ? " to Cloud Run services." : " and restart services."}
+              configuration{selectedDeployMode === "cloudflare" ? " for the Cloudflare deployment pipeline." : " and restart services."}
                 </p>
                 {scaleTierData?.tier && scaleTierData.tier !== selectedTier && (
                   <div className="flex items-center gap-2 text-sm">
@@ -2954,17 +3142,17 @@ FIREBASE_PROJECT_ID=your-project-id`}
                     <Badge className="bg-purple-100 text-purple-700 capitalize">{selectedTier}</Badge>
                   </div>
                 )}
-                {selectedDeployMode === "cloudrun" ? (
+                {selectedDeployMode === "cloudflare" ? (
                   <>
                     <div className="rounded-lg bg-blue-50 p-3 text-sm text-blue-700">
-                      <strong>Cloud Run:</strong> Zero-downtime rolling updates via new revisions.
+                      <strong>Cloudflare:</strong> target-account deployment and rollback are controlled by the approved pipeline.
                       No service interruption for users.
                     </div>
                     <p className="text-sm">The following changes will be made:</p>
                     <ul className="list-disc ml-5 space-y-1 text-sm text-muted-foreground">
-                      <li>Update Node API Cloud Run service (instances, CPU, memory, env vars)</li>
-                      <li>Update Python Orchestrator Cloud Run service (instances, CPU, memory, env vars)</li>
-                      <li>Update Cloud Tasks queue concurrency (media-jobs, workflow-tasks)</li>
+                      <li>Validate Hyperdrive, Queues, Workflows, Containers, Worker App, R2, and Vectorize bindings</li>
+                      <li>Promote only after target-account recovery and rollback evidence is accepted</li>
+                      <li>Apply Cloudflare Queue/Workflow capacity through the target-account deployment pipeline</li>
                       <li>Redis: skipped (Upstash memory is per-plan)</li>
                     </ul>
                   </>
@@ -3004,15 +3192,15 @@ FIREBASE_PROJECT_ID=your-project-id`}
             >
               {applyScaleTierMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : selectedDeployMode === "cloudrun" ? (
+              ) : selectedDeployMode === "cloudflare" ? (
                 <Cloud className="h-4 w-4 mr-2" />
               ) : (
                 <Zap className="h-4 w-4 mr-2" />
               )}
               {applyScaleTierMutation.isPending
                 ? "Applying..."
-                : selectedDeployMode === "cloudrun"
-                  ? "Apply to Cloud Run"
+                : selectedDeployMode === "cloudflare"
+                  ? "Apply Cloudflare target budgets"
                   : "Apply & Restart"}
             </AlertDialogAction>
           </AlertDialogFooter>

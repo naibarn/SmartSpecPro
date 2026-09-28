@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ต่อจากภาพเริ่มต้น แล้วทำท่าตามวิดีโออ้างอิง พร้อมใช้เสียงอ้างอิง",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "referencePurposes": [
+        "first_frame"
+      ],
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "motion",
+      "role": "motion_reference",
+      "mediaType": "video",
+      "referencePurposes": [
+        "motion"
+      ],
+      "providerUsePolicy": "prefer_raw"
+    },
+    {
+      "assetId": "voice",
+      "role": "voice_reference",
+      "mediaType": "audio",
+      "referencePurposes": [
+        "voice_timbre"
+      ],
+      "providerUsePolicy": "prefer_raw"
+    }
+  ],
+  "providerOptions": {
+    "minimaxH3": {
+      "model": "MiniMax-H3",
+      "hardFrameConflictPolicy": "auto",
+      "referenceStrategy": "auto",
+      "dialoguePolicy": "native_try_then_external_fallback"
+    }
+  }
+}

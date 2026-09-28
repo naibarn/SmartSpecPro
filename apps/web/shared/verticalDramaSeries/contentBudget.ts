@@ -212,7 +212,8 @@ export const verticalDramaPerShotSpeechBudgetSchema = z
 export type VerticalDramaBreakdownVersionSource =
   | "generate_story"
   | "arc_replan"
-  | "improve_script";
+  | "improve_script"
+  | "episode_repair";
 
 /** Append-only — a new version is added, never edited in place (spec §7.7.3). */
 export type VerticalDramaBreakdownVersion = {
@@ -236,7 +237,12 @@ export const verticalDramaBreakdownVersionSchema = z
     versionId: z.string().min(1),
     createdAt: z.string().min(1),
     createdByUserId: z.number().int().positive(),
-    source: z.enum(["generate_story", "arc_replan", "improve_script"]),
+    source: z.enum([
+      "generate_story",
+      "arc_replan",
+      "improve_script",
+      "episode_repair",
+    ]),
     items: z.array(verticalDramaEpisodeBreakdownItemSchema).min(1),
     /** Feature 132 §5 (F132B) — see `VerticalDramaBreakdownVersion.ledgers`'s own doc comment. */
     ledgers: verticalDramaQualityLedgersSchema.optional(),

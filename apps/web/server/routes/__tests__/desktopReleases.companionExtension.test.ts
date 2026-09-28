@@ -1,0 +1,224 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { createDesktopReleaseRouter } from "../desktopReleases";
+
+const originalPublicReleaseDir = process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR;
+const temporaryDirs: string[] = [];
+
+afterEach(() => {
+  if (originalPublicReleaseDir == null) delete process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR;
+  else process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = originalPublicReleaseDir;
+  for (const dir of temporaryDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+function getRouteHandler(routePath: string) {
+  const router = createDesktopReleaseRouter() as any;
+  const layer = router.stack.find((candidate: any) => candidate.route?.path === routePath);
+  return layer?.route?.stack?.[0]?.handle as ((req: any, res: any) => unknown) | undefined;
+}
+
+function invokeJsonRoute(routePath: string) {
+  const handler = getRouteHandler(routePath);
+  if (!handler) return null;
+  let payload: any = null;
+  const res = {
+    setHeader: () => undefined,
+    status: () => res,
+    json: (value: any) => { payload = value; return res; },
+  };
+  handler({}, res);
+  return payload;
+}
+
+async function invokeJsonRouteAsync(routePath: string, req: any = {}) {
+  const handler = getRouteHandler(routePath);
+  if (!handler) return null;
+  let payload: any = null;
+  const res = {
+    setHeader: () => undefined,
+    status: () => res,
+    json: (value: any) => { payload = value; return res; },
+  };
+  await handler(req, res);
+  return payload;
+}
+
+describe("SmartAIHub Companion public releases", () => {
+  it("registers the admin portal-sync retry route for completed GitHub builds", () => {
+    expect(getRouteHandler("/builds/:runId/sync")).toBeTypeOf("function");
+  });
+
+  it("registers canonical and legacy latest/download routes", () => {
+    expect(getRouteHandler("/companion-extension/latest")).toBeTypeOf("function");
+    expect(getRouteHandler("/companion-extension/download")).toBeTypeOf("function");
+    expect(getRouteHandler("/marketplace-extension/latest")).toBeTypeOf("function");
+    expect(getRouteHandler("/marketplace-extension/download")).toBeTypeOf("function");
+    expect(getRouteHandler("/worker-app/history")).toBeTypeOf("function");
+  });
+
+  it("selects the highest release across canonical and legacy filenames", () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "companion-release-test-"));
+    temporaryDirs.push(releaseDir);
+    fs.writeFileSync(path.join(releaseDir, "smartaihub-marketplace-capture-extension-9.9.8.zip"), "legacy");
+    fs.writeFileSync(path.join(releaseDir, "smartaihub-companion-extension-9.9.9.zip"), "canonical");
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const canonical = invokeJsonRoute("/companion-extension/latest");
+    const legacy = invokeJsonRoute("/marketplace-extension/latest");
+
+    expect(canonical?.release).toMatchObject({
+      version: "9.9.9",
+      fileName: "smartaihub-companion-extension-9.9.9.zip",
+      downloadUrl: "/api/desktop-releases/companion-extension/download",
+    });
+    expect(legacy?.release).toMatchObject({
+      version: "9.9.9",
+      fileName: "smartaihub-companion-extension-9.9.9.zip",
+      downloadUrl: "/api/desktop-releases/marketplace-extension/download",
+    });
+  });
+
+  it("retains the updated-at tie-break across both filename families", () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "companion-release-tie-test-"));
+    temporaryDirs.push(releaseDir);
+    const legacyPath = path.join(releaseDir, "smartaihub-marketplace-capture-extension-9.9.9.zip");
+    const canonicalPath = path.join(releaseDir, "smartaihub-companion-extension-9.9.9.zip");
+    fs.writeFileSync(legacyPath, "legacy");
+    fs.writeFileSync(canonicalPath, "canonical");
+    fs.utimesSync(legacyPath, new Date("2026-08-17T00:00:00Z"), new Date("2026-08-17T00:00:00Z"));
+    fs.utimesSync(canonicalPath, new Date("2026-08-18T00:00:00Z"), new Date("2026-08-18T00:00:00Z"));
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    expect(invokeJsonRoute("/companion-extension/latest")?.release?.fileName)
+      .toBe("smartaihub-companion-extension-9.9.9.zip");
+  });
+});
+
+describe("SmartAIHub Worker App public releases", () => {
+  it("selects the highest static installer while the release catalog is unavailable", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-release-test-"));
+    temporaryDirs.push(releaseDir);
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.208-x64-setup.exe"), "old");
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.211-x64-setup.exe"), "current");
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/latest");
+
+    expect(payload?.release).toMatchObject({
+      version: "0.1.211",
+      fileName: "smart-ai-hub-worker-app-0.1.211-x64-setup.exe",
+      downloadUrl: "/api/desktop-releases/worker-app/download",
+    });
+  });
+
+  it("selects the native macOS arm64 installer when the Worker App target is requested", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-macos-release-test-"));
+    temporaryDirs.push(releaseDir);
+    fs.writeFileSync(
+      path.join(releaseDir, "smart-ai-hub-worker-app-0.1.320-arm64-setup.dmg"),
+      "mac-installer",
+    );
+    fs.writeFileSync(
+      path.join(releaseDir, "smart-ai-hub-worker-app-0.1.321-x64-setup.exe"),
+      "windows-installer",
+    );
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/latest", {
+      query: { platform: "macos", architecture: "arm64" },
+    });
+
+    expect(payload?.release).toMatchObject({
+      version: "0.1.320",
+      fileName: "smart-ai-hub-worker-app-0.1.320-arm64-setup.dmg",
+      installerFormat: "dmg",
+      platform: "macos",
+      architecture: "arm64",
+      downloadUrl:
+        "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+    });
+  });
+
+  it("rejects unsupported Worker App target architecture requests", async () => {
+    const payload = await invokeJsonRouteAsync("/worker-app/latest", {
+      query: { platform: "macos", architecture: "x64" },
+    });
+
+    expect(payload).toEqual({ error: "worker_app_macos_arm64_required" });
+  });
+
+  it("returns the latest release plus ten older Worker App versions", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-history-test-"));
+    temporaryDirs.push(releaseDir);
+    for (let version = 201; version <= 211; version += 1) {
+      fs.writeFileSync(
+        path.join(releaseDir, `smart-ai-hub-worker-app-0.1.${version}-x64-setup.exe`),
+        `release-${version}`,
+      );
+    }
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const payload = await invokeJsonRouteAsync("/worker-app/history", {
+      query: { platform: "windows", architecture: "x64" },
+    });
+
+    expect(payload?.latest).toMatchObject({ version: "0.1.211" });
+    expect(payload?.history).toHaveLength(10);
+    expect(payload?.history.map((release: { version: string }) => release.version)).toEqual([
+      "0.1.210",
+      "0.1.209",
+      "0.1.208",
+      "0.1.207",
+      "0.1.206",
+      "0.1.205",
+      "0.1.204",
+      "0.1.203",
+      "0.1.202",
+      "0.1.201",
+    ]);
+    expect(payload?.history[0].downloadUrl).toBe(
+      "/api/desktop-releases/worker-app/download?version=0.1.210",
+    );
+  });
+
+  it("selects an exact Worker App version for download and rejects unknown versions", async () => {
+    const releaseDir = fs.mkdtempSync(path.join(os.tmpdir(), "worker-app-version-download-test-"));
+    temporaryDirs.push(releaseDir);
+    const selectedPath = path.join(releaseDir, "smart-ai-hub-worker-app-0.1.208-x64-setup.exe");
+    fs.writeFileSync(selectedPath, "selected-release");
+    fs.writeFileSync(path.join(releaseDir, "smart-ai-hub-worker-app-0.1.211-x64-setup.exe"), "latest-release");
+    process.env.SMARTAIHUB_PUBLIC_RELEASES_DIR = releaseDir;
+
+    const handler = getRouteHandler("/worker-app/download");
+    expect(handler).toBeTypeOf("function");
+    const createReadStreamSpy = vi.spyOn(fs, "createReadStream").mockReturnValue({ pipe: vi.fn() } as any);
+    try {
+      const response = {
+        setHeader: vi.fn(),
+        status: vi.fn(function status() { return response; }),
+        json: vi.fn(function json() { return response; }),
+      };
+
+      await handler?.({ query: { version: "0.1.208", platform: "windows", architecture: "x64" } }, response);
+
+      expect(createReadStreamSpy).toHaveBeenCalledWith(selectedPath);
+      expect(response.status).not.toHaveBeenCalledWith(404);
+
+      const missingResponse = {
+        setHeader: vi.fn(),
+        status: vi.fn(function status() { return missingResponse; }),
+        json: vi.fn(function json() { return missingResponse; }),
+      };
+      await handler?.({ query: { version: "../0.1.999", platform: "windows", architecture: "x64" } }, missingResponse);
+
+      expect(missingResponse.status).toHaveBeenCalledWith(404);
+      expect(missingResponse.json).toHaveBeenCalledWith({ error: "worker_app_release_not_found" });
+    } finally {
+      createReadStreamSpy.mockRestore();
+    }
+  });
+});

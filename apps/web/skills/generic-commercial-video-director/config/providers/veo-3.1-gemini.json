@@ -1,0 +1,129 @@
+{
+  "profileVersion": "1.0",
+  "id": "veo-3.1-gemini",
+  "provider": "Google",
+  "model": "veo-3.1-generate-preview",
+  "modelFamily": "Veo 3.1",
+  "kind": "video",
+  "availability": "preview",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "Generate videos with Veo 3.1 in Gemini API",
+        "url": "https://ai.google.dev/gemini-api/docs/veo",
+        "notes": "Official Gemini API docs"
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "reference_images": {
+      "status": "verified",
+      "notes": "Up to three reference images"
+    },
+    "video_extend": {
+      "status": "verified",
+      "notes": null
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": null
+    },
+    "dialogue_lipsync": {
+      "status": "conditional",
+      "notes": "Native audio and dialogue prompting supported; exact lip sync should be QC-gated"
+    },
+    "multi_shot": {
+      "status": "conditional",
+      "notes": null
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 8,
+      "maxSeconds": 8,
+      "allowedSeconds": [
+        8
+      ]
+    },
+    "resolutions": [
+      "720p",
+      "1080p",
+      "4k"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "9:16"
+    ],
+    "referenceLimits": {
+      "referenceImagesMax": 3
+    },
+    "notes": [
+      "Veo 3.1 generates 8-second clips in Gemini API."
+    ]
+  },
+  "bestFor": [
+    "premium hero shots",
+    "cinematic product advertising",
+    "first/last frame interpolation"
+  ],
+  "knownRisks": [
+    "fixed short duration encourages external shot assembly"
+  ],
+  "promptProfile": "cinematic-shot-specific",
+  "adapterId": "veo",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": null,
+      "notes": []
+    },
+    "nativeMultiShot": {
+      "status": "conditional",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": null,
+      "supportsSingleContinuousShotConstraint": null,
+      "notes": []
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": null,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [
+        "Extension numerical limits remain fail-closed until verified for this adapter/profile."
+      ],
+      "durationControl": "unknown",
+      "deterministicDurationRequest": false
+    }
+  }
+}

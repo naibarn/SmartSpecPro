@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { OrchestraAssuranceRequestSchema, OrchestraAssuranceResultSchema } from "./orchestraSchemas";
 
 export const CURRENT_RUNTIME_CONTRACT_VERSION = 2;
 export const CURRENT_TRACE_SCHEMA_VERSION = 2;
@@ -618,6 +619,7 @@ export const AgentRuntimeRequestSchema =
       AgentsGatewayInvocationMetadataSchema.nullable().optional(),
     productionAgentsSdkCapabilityManifest:
       ProductionAgentsSdkCapabilityManifestSchema.nullable().optional(),
+    assurance: OrchestraAssuranceRequestSchema.nullable().optional(),
   }).superRefine((value, ctx) => {
     if (value.executionEnvelope.tenantId !== value.tenantId) {
       ctx.addIssue({
@@ -879,6 +881,7 @@ export const AgentRuntimeResponseSchema =
     checkpointMetadata: z.record(z.unknown()).nullable().optional(),
     eventSequenceMetadata: z.record(z.unknown()).default({}),
     stepLinks: z.array(AgentRuntimeStepLinkSchema).default([]),
+    assurance: OrchestraAssuranceResultSchema.nullable().optional(),
   });
 
 export type AgentRuntimeSurface = z.infer<typeof AgentRuntimeSurfaceSchema>;

@@ -1,0 +1,247 @@
+{
+  "profileVersion": "4.0",
+  "id": "seedance-2.5-byteplus",
+  "provider": "BytePlus/ByteDance",
+  "model": "dreamina-seedance-2-5-260628",
+  "modelFamily": "Seedance 2.5",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "BytePlus LAS Enhanced/Basic Video Generation",
+        "url": "https://docs.byteplus.com/en/docs/byteplus_las/video_gen_enhanced",
+        "notes": "Official API/model limits and request lifecycle."
+      },
+      {
+        "title": "ByteDance Seedance 2.5",
+        "url": "https://seed.bytedance.com/en/seedance2_5",
+        "notes": "Official 30s storytelling and extension overview."
+      },
+      {
+        "title": "ByteDance — Introducing Seedance 2.5",
+        "url": "https://seed.bytedance.com/en/blog/one-take-creation-flexible-referencing-introducing-seedance-2-5",
+        "notes": "Official 30 images / 10 videos / 10 audios, multi-round extension, timestamp editing and clay/motion reference capabilities."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": null
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "First frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": null
+    },
+    "multimodal_reference": {
+      "status": "verified",
+      "notes": "Large image/video/audio reference bundle."
+    },
+    "reference_image": {
+      "status": "verified",
+      "notes": "Up to 30 images."
+    },
+    "reference_video": {
+      "status": "verified",
+      "notes": "Up to 10 clips; official launch advertises 10 videos."
+    },
+    "reference_audio": {
+      "status": "verified",
+      "notes": "Up to 10 clips; audio-only reference supported."
+    },
+    "audio_only_reference": {
+      "status": "verified",
+      "notes": "BytePlus documents audio-only reference for 2.5."
+    },
+    "motion_reference": {
+      "status": "verified",
+      "notes": "Enhanced motion/camera/creative reference."
+    },
+    "clay_render_reference": {
+      "status": "verified",
+      "notes": "White-model/clay render can guide blocking, trajectories and camera."
+    },
+    "video_edit": {
+      "status": "verified",
+      "notes": "Timestamp-level targeted editing."
+    },
+    "video_extend": {
+      "status": "verified",
+      "notes": "Official multi-round extension."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Audio-video joint generation."
+    },
+    "dialogue_lipsync": {
+      "status": "verified",
+      "notes": "Official multimodal examples preserve voices and synchronized speech."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "Up to 30s story with multiple logically connected shots."
+    },
+    "timestamp_control": {
+      "status": "verified",
+      "notes": "Generation/editing can target time ranges in prompts."
+    },
+    "green_screen_edit": {
+      "status": "verified",
+      "notes": "Official launch highlights green-screen editing."
+    },
+    "hard_frame_plus_multimodal_refs": {
+      "status": "unknown",
+      "notes": "BytePlus documents first/last and multimodal workflows but does not expose a clear direct-mix contract. Fail closed/prebake unless endpoint is verified."
+    },
+    "real_human_reference_direct_upload": {
+      "status": "conditional",
+      "notes": "BytePlus material-library allowlist is required for reference images/videos containing real human faces."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 4,
+      "maxSeconds": 30,
+      "allowedSeconds": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30
+      ]
+    },
+    "resolutions": [
+      "480p",
+      "720p"
+    ],
+    "aspectRatios": [
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16",
+      "21:9",
+      "adaptive"
+    ],
+    "referenceLimits": {
+      "maxReferenceImages": 30,
+      "maxReferenceVideos": 10,
+      "referenceVideoMinSeconds": 2,
+      "referenceVideoMaxSeconds": 30,
+      "maxReferenceVideoTotalSeconds": 30,
+      "maxReferenceAudios": 10,
+      "referenceAudioMinSeconds": 2,
+      "referenceAudioMaxSeconds": 30,
+      "maxReferenceAudioTotalSeconds": 30,
+      "audioOnlyReferenceSupported": true,
+      "realHumanFaceMaterialLibraryRequired": true,
+      "maxAdvertisedReferenceMedia": 50
+    },
+    "notes": [
+      "Output 24fps MP4 at 480p/720p on current BytePlus enhanced endpoint.",
+      "Official Seedance launch advertises up to 30 images + 10 videos + 10 audio references."
+    ]
+  },
+  "bestFor": [
+    "up to 30-second one-pass commercial storytelling",
+    "large multi-character/product/place reference bundles",
+    "raw motion/camera/video references",
+    "voice/music/audio-driven generation",
+    "multi-round long-form extension",
+    "timestamp-targeted editing",
+    "clay/white-model production control"
+  ],
+  "knownRisks": [
+    "Maximum output resolution is lower than Seedance 2.0 on the current BytePlus endpoint.",
+    "Very large reference sets can dilute reference priority; use a quality-first reference budget.",
+    "Real-human image/video references may require material-library allowlist.",
+    "Direct hard-frame + arbitrary multimodal-reference mixing is not explicitly verified."
+  ],
+  "promptProfile": "seedance-2.x",
+  "adapterId": "seedance",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "4–30 seconds per generation."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "verified",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": true,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Official launch demonstrates 30s timestamped multi-shot and one-take narratives."
+      ]
+    },
+    "extension": {
+      "status": "verified",
+      "appendOnly": true,
+      "minAdditionalSeconds": 4,
+      "maxAdditionalSeconds": 30,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": 1,
+      "defaultAdditionalSeconds": 30,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": 30,
+      "supportsGeneratedVideoMultiTurn": true,
+      "supportsUploadedVideo": true,
+      "supportsNewDialogueOnGeneratedMultiTurn": true,
+      "supportsNewDialogueOnUploadedTalkingVideo": true,
+      "tailMayBeRewritten": false,
+      "localTimecodeResetsAtExtensionStart": true,
+      "requiresStoredInteractionState": true,
+      "notes": [
+        "Current official Seedance 2.5 model page states that a 30-second generation can be extended twice.",
+        "The launch blog describes multi-round extension; SmartAIHub uses the stricter current two-extension cap until the API contract states otherwise.",
+        "Each continuation still requires state/seam QC and project/budget limits."
+      ],
+      "durationControl": "prompt_guided",
+      "deterministicDurationRequest": false,
+      "extensionKind": "reference_continuation",
+      "requiresExternalAssembly": true,
+      "sourceReferenceRole": "reference_video",
+      "referenceTailMinSeconds": 2,
+      "referenceTailMaxSeconds": 30,
+      "supportsReferenceAudioContinuity": true,
+      "maxExtensionTurns": 2,
+      "sourceInputMinSeconds": 2,
+      "sourceInputMaxSeconds": 30
+    }
+  }
+}

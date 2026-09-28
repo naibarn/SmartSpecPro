@@ -74,6 +74,17 @@ Return plain prompt text only. Do not return JSON, Markdown fences, explanations
 
 The final prompt must be complete and must not end mid-field or mid-frame.
 
+## Safety And Evidence Lock Preservation
+
+These blocks outrank every compression rule below. Whenever the source prompt contains any of them, reproduce the header and its directive sentences verbatim in the output:
+
+- `MINOR SAFETY CLOTHING LOCK:`
+- `GUARDIAN PRESENCE LOCK:`
+- `DEMONSTRATION EVIDENCE LOCK:`
+- `CLAIM SAFETY EXCLUSIONS:`
+
+Never delete, rename, merge, translate, summarize, or paraphrase these blocks, and never fold their wording into another sentence. A prompt that expresses the same safety idea in different words is a failed optimization: downstream validation matches these headers literally and rejects the prompt. Compress frame prose and every other section first; if the budget still does not fit, keep these blocks intact and shorten the frames further.
+
 If the source prompt is a 3x3 storyboard, preserve:
 
 - one single 9:16 image / strict 3x3 grid / EXACTLY 9 PANELS / 9 CELLS ONLY / exactly 3 equal-width columns / exactly 3 equal-height rows / clean narrow gutters between panels / no collage/masonry layout / each panel occupies exactly one cell / never split one panel into two cells / wide shot means a wide field of view inside a vertical portrait panel, not a horizontal panel;
@@ -83,6 +94,7 @@ If the source prompt is a 3x3 storyboard, preserve:
 - `CINEMATIC REALISM LOCK`;
 - `PRODUCT REFERENCE LOCK`;
 - `TEXT RENDERING POLICY`;
+- every safety/evidence lock listed above, verbatim;
 - one shared `CAMERA/LIGHT/DEPTH:` block;
 - one shared `PRODUCT VERIFY:` block;
 - explicit wording that the attached product reference image is the primary visual source of truth, the written product description is secondary and must never override the attached product image, and the product must match that reference exactly;
@@ -97,7 +109,7 @@ First remove or merge content that does not change image quality:
 3. Merge repeated human realism details into one short global line unless a frame needs a specific hands-only or face-visible note.
 4. Remove duplicated adjectives, repeated negative prompts, repeated no-text phrases, and repeated grid constraints.
 5. Remove examples, explanations, validation metadata, field names from schemas, and process notes.
-6. Shorten long global locks to one compact sentence each.
+6. Shorten long global locks to one compact sentence each, except the safety/evidence locks above, which stay verbatim.
 7. Shorten each frame to the concrete visual action plus the story/voiceover meaning.
 
 Then optimize the frame section:
@@ -108,7 +120,7 @@ Then optimize the frame section:
 - Keep character identity only where people appear.
 - Prefer one concise visual-only sentence per `Frame N:`.
 - If still too long, shorten story-intent wording before shortening concrete visual/product cues.
-- If still too long, compress global locks further before removing any frame content.
+- If still too long, compress global locks further before removing any frame content, but never the safety/evidence locks.
 
 ## Rewrite Loop
 
@@ -131,8 +143,9 @@ Never return:
 - a prompt ending with `Frame N:`, `VISUAL:`, `STORY MATCH:`, `PRODUCT VERIFY:`, `CAMERA/LIGHT/DEPTH:`, or `HUMAN REALISM:`;
 - frame text containing `STORY MATCH:`, `HUMAN REALISM:`, `VISUAL:`, quoted voiceover lines, timecodes, subtitles, captions, or other text likely to be rendered in the image;
 - only lock headers without all required frames;
+- a prompt missing any safety/evidence lock that the source prompt contained;
 - JSON or wrapper fields such as `prompt`, `output`, `scenes`, or `frames`.
 
 If the source prompt is extremely long, keep the minimal complete structure:
 
-OUTPUT FORMAT LOCK, CINEMATIC REALISM LOCK, PRODUCT REFERENCE LOCK, TEXT RENDERING POLICY, CAMERA/LIGHT/DEPTH, PRODUCT VERIFY, and Frame 1-9 with compact visual-only frame prose.
+OUTPUT FORMAT LOCK, CINEMATIC REALISM LOCK, PRODUCT REFERENCE LOCK, TEXT RENDERING POLICY, CAMERA/LIGHT/DEPTH, PRODUCT VERIFY, every safety/evidence lock present in the source (verbatim), and Frame 1-9 with compact visual-only frame prose.

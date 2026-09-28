@@ -1,0 +1,29 @@
+[Unit]
+Description=Safely quarantine stale SmartSpecPro temporary artifacts
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User=dev
+Group=dev
+ExecStart=/usr/local/sbin/smartspecpro-tmp-cleanup --apply
+TimeoutStartSec=10min
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+PrivateDevices=yes
+PrivateNetwork=yes
+PrivateTmp=no
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectControlGroups=yes
+ProtectKernelLogs=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+ProtectClock=yes
+ReadWritePaths=/tmp /var/tmp
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+UMask=0077
+MemoryMax=256M
+CPUQuota=50%

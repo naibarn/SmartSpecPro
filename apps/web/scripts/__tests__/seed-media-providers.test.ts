@@ -14,7 +14,7 @@ describe("seed-media-providers", () => {
       defaultModel: "wavespeed-ai/cinematic-video-generator",
       isEnabled: false,
     });
-    expect(wavespeed?.availableModels).toHaveLength(12);
+    expect(wavespeed?.availableModels).toHaveLength(27);
     expect(wavespeed?.availableModels).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: "wavespeed-ai/cinematic-video-generator",
@@ -33,9 +33,24 @@ describe("seed-media-providers", () => {
         type: "audio",
       }),
       expect.objectContaining({
+        id: "openai/gpt-image-2.5-flare/text-to-image",
+        type: "image",
+      }),
+      expect.objectContaining({
+        id: "openai/gpt-image-2.5-sunburst/text-to-image",
+        type: "image",
+      }),
+      expect.objectContaining({
         id: "elevenlabs/eleven-v3",
         type: "audio",
       }),
+      ...[
+        "image-to-video-spicy", "image-to-video", "reference-to-video", "text-to-video",
+        "image-to-video-lora", "reference-to-video-lora", "text-to-video-lora", "video-edit",
+        "video-extend", "image-edit-lora", "text-to-image-lora", "image-edit", "text-to-image",
+      ].map((suffix) => expect.objectContaining({
+        id: `wavespeed-ai/minimax-h3/${suffix}`,
+      })),
     ]));
   });
 

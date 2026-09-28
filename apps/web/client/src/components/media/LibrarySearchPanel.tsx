@@ -8,6 +8,8 @@ import { FileImage, FileText, Film, Grid2X2, Loader2, Maximize2, Music, Plus, Se
 
 import type { LibraryItemTypeFilter, LibrarySearchResultItem } from "@/lib/libraryUi";
 import { getLibraryStatusMeta } from "@/lib/libraryUi";
+import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
+import { normalizeMediaSourceUrl } from "@/lib/mediaUrl";
 import type { ProductionReferenceInput } from "@shared/mediaProduction";
 
 type MediaLibraryItemTypeFilter = Exclude<LibraryItemTypeFilter, "all">;
@@ -73,10 +75,50 @@ export default function LibrarySearchPanel({
   const showItemTypeFilter = typeof onItemTypeFilterChange === "function";
   const showAddToReference = typeof onAddToReference === "function";
 
+  const getDurableMediaUrl = (
+    item: LibrarySearchResultItem,
+    variant: "source" | "thumbnail"
+  ): string | null => {
+    const metadata = item.metadata;
+    const allowSourceKeyFallback =
+      variant === "source" || item.item_type.toLowerCase() === "image";
+    const storageKey =
+      metadata && typeof metadata === "object"
+        ? [
+            variant === "thumbnail" ? metadata.thumbnail_key : undefined,
+            variant === "thumbnail" ? metadata.thumbnailKey : undefined,
+            allowSourceKeyFallback ? metadata.source_key : undefined,
+            allowSourceKeyFallback ? metadata.sourceKey : undefined,
+            allowSourceKeyFallback ? metadata.storage_key : undefined,
+            allowSourceKeyFallback ? metadata.storageKey : undefined,
+          ]
+            .find(value => typeof value === "string" && value.trim())
+            ?.toString()
+            .trim()
+        : null;
+    if (storageKey) {
+      return `/api/storage/files/${encodeURI(storageKey.replace(/^\/+/, ""))}`;
+    }
+
+    const value =
+      variant === "thumbnail" ? item.thumbnail_url : item.source_url;
+    const trimmed = value?.trim() || "";
+    if (/^(?:\/api\/storage\/files\/|\/uploads\/)/i.test(trimmed)) {
+      return trimmed;
+    }
+
+    // Legacy Library rows may contain a valid HTTPS provider/CDN URL but no
+    // storage-key metadata. Keep those images visible and reusable while
+    // preferring the durable storage proxy whenever a managed key exists.
+    return /^https:\/\//i.test(trimmed)
+      ? normalizeMediaSourceUrl(trimmed)
+      : null;
+  };
+
   const getItemDragUrl = (item: LibrarySearchResultItem): string | null => {
     const itemType = item.item_type.toLowerCase();
-    const sourceUrl = item.source_url?.trim() || null;
-    const thumbnailUrl = item.thumbnail_url?.trim() || null;
+    const sourceUrl = getDurableMediaUrl(item, "source");
+    const thumbnailUrl = getDurableMediaUrl(item, "thumbnail");
 
     if (itemType === "video") {
       return sourceUrl;
@@ -111,13 +153,13 @@ export default function LibrarySearchPanel({
 
   const renderItemPreview = (item: LibrarySearchResultItem) => {
     const itemType = item.item_type.toLowerCase();
-    const thumbnailUrl = item.thumbnail_url?.trim() || null;
-    const sourceUrl = item.source_url?.trim() || null;
+    const thumbnailUrl = getDurableMediaUrl(item, "thumbnail");
+    const sourceUrl = getDurableMediaUrl(item, "source");
     const previewUrl = thumbnailUrl || sourceUrl;
 
     if (itemType === "image" && previewUrl) {
       return (
-        <img
+        <AuthenticatedMediaImage
           src={previewUrl}
           alt={item.title}
           className="h-full w-full object-cover"
@@ -130,7 +172,7 @@ export default function LibrarySearchPanel({
     if (itemType === "video") {
       if (thumbnailUrl) {
         return (
-          <img
+          <AuthenticatedMediaImage
             src={thumbnailUrl}
             alt={item.title}
             className="h-full w-full object-cover"
@@ -236,7 +278,7 @@ export default function LibrarySearchPanel({
               const canAddToReference = showAddToReference && (canAddToReferenceItem ? canAddToReferenceItem(item) : true);
               const itemType = item.item_type.toLowerCase();
               const canPreview = itemType === "image" || itemType === "video";
-              const sourceUrl = item.source_url?.trim() || null;
+              const sourceUrl = getDurableMediaUrl(item, "source");
               return (
                 <div
                   key={item.item_id}

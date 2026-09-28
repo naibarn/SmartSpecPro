@@ -18,10 +18,7 @@
 
 import { TRPCError } from "@trpc/server";
 import { middleware } from "../_core/trpc";
-import { getDb } from "../db";
-import { tenants } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
-import { isFeatureEnabled } from "../services/tenantFeatureFlagService";
+import { isTenantFeatureEnabled } from "../services/tenantFeatureFlagService";
 import type { TenantFeatureFlagKey } from "../../shared/featureFlags";
 
 /**
@@ -40,24 +37,7 @@ export function requireFeatureFlag(flag: TenantFeatureFlagKey) {
       });
     }
 
-    // Read tenant's featureFlags column — fail closed if DB is unavailable
-    const db = await getDb();
-    if (!db) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: `Feature '${flag}' is not available (service unavailable)`,
-      });
-    }
-
-    const [row] = await db
-      .select({ featureFlags: tenants.featureFlags })
-      .from(tenants)
-      .where(eq(tenants.id, tenantId))
-      .limit(1);
-
-    const storedFlags = (row?.featureFlags as Record<string, boolean>) ?? null;
-
-    if (!isFeatureEnabled(storedFlags, flag)) {
+    if (!(await isTenantFeatureEnabled(tenantId, flag))) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message: `Feature '${flag}' is not enabled for this tenant`,

@@ -1,0 +1,32 @@
+{
+  "id": "omni-flash-1.1-extension",
+  "providerProfileId": "gemini-omni-1.1-flash",
+  "version": "1.0",
+  "basePromptSections": [
+    "source_declarations",
+    "continuity_contract",
+    "local_timeline",
+    "camera",
+    "audio_dialogue",
+    "end_bridge"
+  ],
+  "extensionPromptSections": [
+    "continuation_directive",
+    "state_at_extension_start",
+    "do_not_repeat",
+    "local_timeline",
+    "camera",
+    "audio_dialogue",
+    "continuity_contract",
+    "end_bridge"
+  ],
+  "rules": [
+    "For a logical single shot, explicitly say single continuous shot / no scene cuts.",
+    "For planned multi-shot, specify cuts with local timecodes.",
+    "On extension turns, local 0s means the beginning of the newly generated extension.",
+    "Do not replay earlier actions; continue from the exact end-state of the previous turn.",
+    "Describe audio changes or continuation explicitly.",
+    "Keep exact UI/labels out of seam-sensitive tail frames when possible; composite after the final temporal chain.",
+    "Use previous_interaction_id for model-generated multi-turn continuity when available."
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "protocol": "smartaihub.media.job",
+  "version": "1.0",
+  "jobId": "job-fixture-1",
+  "tenantId": "tenant-fixture-1",
+  "projectId": "project-fixture-1",
+  "revisionId": "revision-fixture-1",
+  "operation": "video.render",
+  "inputs": {
+    "assets": [
+      { "namespace": "media_asset", "id": "asset-fixture-1" }
+    ]
+  },
+  "plan": {
+    "planHash": "sha256:plan-fixture-1",
+    "profileVersion": "web-default-v1",
+    "stages": [
+      { "id": "render", "operation": "video.render", "dependsOn": [] }
+    ],
+    "outputRoles": ["final_video"]
+  },
+  "requirements": {
+    "capabilities": ["ffmpeg"],
+    "resourceProfile": "cpu_heavy",
+    "maxDurationSeconds": 3600
+  },
+  "retry": { "maxAttempts": 2, "backoffSeconds": 5 },
+  "billing": { "required": false, "estimateCredits": 0 }
+}

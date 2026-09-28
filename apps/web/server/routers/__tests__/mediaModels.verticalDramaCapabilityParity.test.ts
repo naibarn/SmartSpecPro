@@ -75,7 +75,7 @@ describe("badge-path vs generation-path capability parity (DB-only model)", () =
     expect(generationPathCaps).toEqual(badgePathCaps);
   });
 
-  it("stays in agreement even when the DB row's configJson is missing hasAudio (both paths resolve false, never a false-positive badge)", () => {
+  it("stays in agreement and preserves the Grok family invariant when DB configJson is missing hasAudio", () => {
     const rowWithoutAudio = { ...dbRow, configJson: { ...dbRow.configJson, hasAudio: undefined } };
     const badgePathCaps = resolveVerticalDramaCapabilities(rowWithoutAudio.modelId, {
       type: rowWithoutAudio.modelType,
@@ -87,7 +87,8 @@ describe("badge-path vs generation-path capability parity (DB-only model)", () =
       aspectRatios: rowWithoutAudio.aspectRatios,
       configJson: rowWithoutAudio.configJson,
     });
-    expect(badgePathCaps.nativeAudioDialogue).toBe(false);
+    expect(badgePathCaps.nativeAudioDialogue).toBe(true);
+    expect(badgePathCaps.supportsNativeAudio).toBe(true);
     expect(generationPathCaps).toEqual(badgePathCaps);
   });
 });

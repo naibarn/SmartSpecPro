@@ -1,0 +1,33 @@
+{
+  "purpose": "Explain supported airflow direction from the indoor unit",
+  "truthMode": "supported_explanatory",
+  "basePlateStrategy": "clean_plate_then_composite",
+  "layers": [
+    {
+      "layerId": "airflow-1",
+      "type": "airflow",
+      "content": "soft semi-transparent streamlines following verified outlet direction",
+      "renderStage": "post_composite",
+      "anchor": "air conditioner outlet",
+      "timing": "after activation",
+      "truthMode": "supported_explanatory",
+      "motionTrackingRequired": true,
+      "occlusionAware": true,
+      "sourceFactRefs": [
+        "airflow-direction"
+      ],
+      "textMustBeExact": false
+    }
+  ],
+  "compositingRequired": true,
+  "disclaimerOrVisualCue": "Keep clearly graphical rather than literal particles.",
+  "claimSafety": {
+    "safe": true,
+    "unsupportedImplications": [],
+    "requiredCorrections": []
+  },
+  "fallbackStrategy": [
+    "simplify_effect",
+    "use_voiceover_instead"
+  ]
+}

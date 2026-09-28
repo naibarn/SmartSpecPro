@@ -58,6 +58,16 @@ vi.mock("../skillModelFallback", () => ({
     mockExecuteSkillLlmWithFallback(...args),
 }));
 
+const mockSettleSkillRun = vi.fn(async (input: { actualWorkCredits?: number }) => ({
+  totalCredits: input.actualWorkCredits ?? 3,
+  userTransactionId: 1,
+  tenantRevenueTransactionId: 2,
+  skillRevenueTransactionId: null,
+}));
+vi.mock("../skillRevenueBilling", () => ({
+  settleSkillRun: (input: { actualWorkCredits?: number }) => mockSettleSkillRun(input),
+}));
+
 const mockGetSkillByIdAsync = vi.fn(async (skillId: string) => ({
   id: skillId || "general-article-writer",
   name:
@@ -218,7 +228,7 @@ function makeUnifiedResult(content = "unified team response", costCredits = 3) {
     result: { type: "text" as const, content },
     tokens: { input: 100, output: 200 },
     costCredits,
-    creditsDeducted: 0, // team_room uses calculate_only
+    creditsDeducted: 3,
     modelUsed: "gpt-4o",
     skillId: "general-article-writer",
     nextSpeakerHint: "reviewer-persona",
@@ -326,7 +336,7 @@ describe("Team Room → Unified Orchestrator Wiring", () => {
     expect(mockExecuteUnified).toHaveBeenCalledTimes(1);
     const req = mockExecuteUnified.mock.calls[0][0];
     expect(req.channel).toBe("team_room");
-    expect(req.creditMode).toBe("calculate_only");
+    expect(req.creditMode).toBe("deduct");
     expect(req.userId).toBe(42);
     expect(req.tenantId).toBe("tenant-1");
     expect(req.userMessage).toBe("Write a report about AI trends");

@@ -8,7 +8,7 @@
 import { z } from "zod";
 import { publicProcedure, adminProcedure, router } from "../_core/trpc";
 import { getAppRuntimeConfig, getPreferredInternalToken } from "../services/appRuntimeConfig";
-import { storagePut } from "../storage";
+import { assertR2StorageActive, storagePut } from "../storage";
 import {
   getHelpManifest,
   getHelpTopic,
@@ -99,6 +99,7 @@ export const helpRouter = router({
       if (data.base64) {
         const relKey = `help-assets/${input.featureName}/${input.step}.png`;
         const buffer = Buffer.from(data.base64, "base64");
+        await assertR2StorageActive();
         const { url } = await storagePut(relKey, buffer, "image/png");
         const markdown = `![${input.step}](${url})`;
         return { url, filename: `${input.step}.png`, markdown };

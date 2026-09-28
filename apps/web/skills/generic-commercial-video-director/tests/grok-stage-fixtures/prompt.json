@@ -1,0 +1,45 @@
+{
+  "mode": "reference_to_video",
+  "durationSeconds": 10,
+  "promptText": "REFERENCE BINDINGS: <IMAGE_1> is the presenter. <IMAGE_2> is the product. <AUDIO_0> is the presenter voice.",
+  "referenceBindings": [
+    {
+      "label": "<IMAGE_1>",
+      "meaning": "character identity reference",
+      "preserve": [
+        "identity"
+      ]
+    },
+    {
+      "label": "<IMAGE_2>",
+      "meaning": "product identity/geometry reference",
+      "preserve": [
+        "product_geometry",
+        "product_label"
+      ]
+    },
+    {
+      "label": "<AUDIO_0>",
+      "meaning": "speaker voice reference",
+      "preserve": [
+        "voice_identity"
+      ]
+    }
+  ],
+  "dialogueLines": [
+    {
+      "speakerId": "host",
+      "text": "รุ่นนี้ใช้งานง่ายค่ะ",
+      "voiceLabel": "<AUDIO_0>",
+      "lipSyncRequired": true
+    }
+  ],
+  "cameraIntent": "Slow push-in from medium shot.",
+  "continuityLocks": [
+    "preserve presenter identity",
+    "preserve product geometry"
+  ],
+  "warnings": [
+    "Reference-to-video guides subject/style consistency but does not lock frame 0."
+  ]
+}

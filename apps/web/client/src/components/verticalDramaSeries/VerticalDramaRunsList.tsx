@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { vdCopy, vdStageLabel, type VdLocale } from "./verticalDramaWorkspaceCopy";
 import type { VerticalDramaPipelineStage } from "@shared/verticalDramaSeries";
+import type { RunResult } from "@shared/verticalDramaSeries";
 
 export interface VerticalDramaRunRow {
   runId: string;
@@ -22,6 +23,8 @@ export interface VerticalDramaRunRow {
   startedAt: string | Date;
   updatedAt: string | Date;
   completedAt?: string | Date | null;
+  warnings?: RunResult["warnings"];
+  errors?: RunResult["errors"];
   artifactLedgerHref: string;
 }
 

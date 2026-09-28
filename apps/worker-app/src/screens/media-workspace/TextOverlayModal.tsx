@@ -1,0 +1,522 @@
+import React, { useState, useEffect } from "react";
+import { useWorkerLocale } from "../../app/workerContext";
+import type { NleClip } from "../../types/nleProject";
+
+interface TextOverlayModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddTextClip: (clip: NleClip) => void;
+  currentTimeMs: number;
+}
+
+export const GOOGLE_FONTS = [
+  { label: "Kanit (โมเดิร์น ยอดนิยมไทย)", value: "'Kanit', sans-serif" },
+  { label: "Prompt (เรียบหรู ทันสมัย)", value: "'Prompt', sans-serif" },
+  { label: "Sarabun (ทางการ อ่านง่าย)", value: "'Sarabun', sans-serif" },
+  { label: "Mitr (โค้งมน สดใส)", value: "'Mitr', sans-serif" },
+  { label: "Chonburi (ตัวหนา คลาสสิก)", value: "'Chonburi', cursive" },
+  { label: "Montserrat (Clean Geometric)", value: "'Montserrat', sans-serif" },
+  { label: "Inter (Tech UI Minimal)", value: "'Inter', sans-serif" },
+  { label: "Poppins (Friendly Bold)", value: "'Poppins', sans-serif" },
+  { label: "Bebas Neue (Tall Impact)", value: "'Bebas Neue', sans-serif" },
+  { label: "Oswald (Condensed Strong)", value: "'Oswald', sans-serif" },
+];
+
+export const SYSTEM_FONTS = [
+  { label: "Arial", value: "Arial, sans-serif" },
+  { label: "Segoe UI", value: "'Segoe UI', sans-serif" },
+  { label: "Tahoma", value: "Tahoma, sans-serif" },
+  { label: "Impact", value: "Impact, sans-serif" },
+  { label: "Times New Roman", value: "'Times New Roman', serif" },
+  { label: "Courier New", value: "'Courier New', monospace" },
+  { label: "System Default", value: "system-ui, sans-serif" },
+];
+
+export const TEXT_PRESETS = [
+  {
+    id: "tiktok_viral",
+    name: "⚡ TikTok Punchy",
+    desc: "เหลืองขอบดำ หนา มีมิติ",
+    fontFamily: "'Kanit', sans-serif",
+    fontSize: 48,
+    fontColor: "#facc15",
+    backgroundColor: "transparent",
+    strokeColor: "#000000",
+    strokeWidth: 4,
+    shadowColor: "rgba(0,0,0,0.9)",
+    shadowBlur: 8,
+    shadowOffsetX: 3,
+    shadowOffsetY: 4,
+    animationEffect: "pop" as const,
+  },
+  {
+    id: "youtube_hook",
+    name: "🔴 YouTube Hook",
+    desc: "ขาวบนกล่องแดง โดดเด่น",
+    fontFamily: "'Prompt', sans-serif",
+    fontSize: 44,
+    fontColor: "#ffffff",
+    backgroundColor: "rgba(239, 68, 68, 0.95)",
+    strokeColor: "#000000",
+    strokeWidth: 2,
+    shadowColor: "rgba(0,0,0,0.8)",
+    shadowBlur: 10,
+    shadowOffsetX: 2,
+    shadowOffsetY: 3,
+    animationEffect: "slide_up" as const,
+  },
+  {
+    id: "cyber_neon",
+    name: "💎 Cyber Neon",
+    desc: "ฟ้านีออน เรืองแสง Glow",
+    fontFamily: "'Montserrat', sans-serif",
+    fontSize: 46,
+    fontColor: "#22d3ee",
+    backgroundColor: "transparent",
+    strokeColor: "#0891b2",
+    strokeWidth: 1,
+    shadowColor: "#06b6d4",
+    shadowBlur: 18,
+    shadowOffsetX: 0,
+    shadowOffsetY: 0,
+    animationEffect: "glow_pulse" as const,
+  },
+  {
+    id: "minimal_luxury",
+    name: "👑 Minimal Gold",
+    desc: "ทองเรียบหรู ละมุนตา",
+    fontFamily: "'Sarabun', sans-serif",
+    fontSize: 40,
+    fontColor: "#fbbf24",
+    backgroundColor: "transparent",
+    strokeColor: "transparent",
+    strokeWidth: 0,
+    shadowColor: "rgba(0,0,0,0.6)",
+    shadowBlur: 6,
+    shadowOffsetX: 1,
+    shadowOffsetY: 2,
+    animationEffect: "fade" as const,
+  },
+  {
+    id: "glass_pill",
+    name: "🏷️ Glassmorphism",
+    desc: "กล่องดำมน โปร่งแสงหรู",
+    fontFamily: "'Inter', sans-serif",
+    fontSize: 36,
+    fontColor: "#ffffff",
+    backgroundColor: "rgba(15, 23, 42, 0.82)",
+    strokeColor: "transparent",
+    strokeWidth: 0,
+    shadowColor: "rgba(0,0,0,0.5)",
+    shadowBlur: 12,
+    shadowOffsetX: 0,
+    shadowOffsetY: 4,
+    animationEffect: "pop" as const,
+  },
+  {
+    id: "retro_arcade",
+    name: "👾 Retro Arcade",
+    desc: "ชมพู Retro ตัวหนา",
+    fontFamily: "'Chonburi', cursive",
+    fontSize: 44,
+    fontColor: "#f43f5e",
+    backgroundColor: "transparent",
+    strokeColor: "#ffffff",
+    strokeWidth: 2,
+    shadowColor: "#4c0519",
+    shadowBlur: 0,
+    shadowOffsetX: 4,
+    shadowOffsetY: 4,
+    animationEffect: "bounce" as const,
+  },
+];
+
+const PRESET_LABELS: Record<string, { th: string; en: string }> = {
+  tiktok_viral: { th: "⚡ TikTok สะดุดตา", en: "⚡ TikTok Punchy" },
+  youtube_hook: { th: "🔴 YouTube Hook", en: "🔴 YouTube Hook" },
+  cyber_neon: { th: "💎 ไซเบอร์นีออน", en: "💎 Cyber Neon" },
+  minimal_luxury: { th: "👑 มินิมอลโกลด์", en: "👑 Minimal Gold" },
+  glass_pill: { th: "🏷️ กลาสมอร์ฟิซึม", en: "🏷️ Glassmorphism" },
+  retro_arcade: { th: "👾 เรโทรอาร์เคด", en: "👾 Retro Arcade" },
+};
+
+const PRESET_DESCRIPTIONS: Record<string, { th: string; en: string }> = {
+  tiktok_viral: { th: "เหลืองขอบดำ หนา มีมิติ", en: "Bold yellow text with a black outline" },
+  youtube_hook: { th: "ขาวบนกล่องแดง โดดเด่น", en: "White text on a standout red panel" },
+  cyber_neon: { th: "ฟ้านีออน เรืองแสง", en: "Glowing neon blue" },
+  minimal_luxury: { th: "ทองเรียบหรู ละมุนตา", en: "Elegant, refined gold" },
+  glass_pill: { th: "กล่องดำมน โปร่งแสงหรู", en: "Polished translucent dark pill" },
+  retro_arcade: { th: "ชมพูเรโทร ตัวหนา", en: "Bold retro pink" },
+};
+
+const getPresetLabel = (id: string, locale: string) =>
+  (PRESET_LABELS[id] ?? { th: id, en: id })[locale === "en" ? "en" : "th"];
+
+const getPresetDescription = (id: string, locale: string) =>
+  (PRESET_DESCRIPTIONS[id] ?? { th: "", en: "" })[locale === "en" ? "en" : "th"];
+
+const getGoogleFontLabel = (label: string, locale: string) => {
+  if (locale === "en") {
+    return {
+      "Kanit (โมเดิร์น ยอดนิยมไทย)": "Kanit (modern Thai favorite)",
+      "Prompt (เรียบหรู ทันสมัย)": "Prompt (clean and contemporary)",
+      "Sarabun (ทางการ อ่านง่าย)": "Sarabun (formal and readable)",
+      "Mitr (โค้งมน สดใส)": "Mitr (rounded and lively)",
+      "Chonburi (ตัวหนา คลาสสิก)": "Chonburi (bold and classic)",
+    }[label] ?? label;
+  }
+  return label;
+};
+
+export function TextOverlayModal({
+  isOpen,
+  onClose,
+  onAddTextClip,
+  currentTimeMs,
+}: TextOverlayModalProps) {
+  const locale = useWorkerLocale();
+  const t = (th: string, en: string) => (locale === "en" ? en : th);
+  const [text, setText] = useState("หัวข้อข้อความโดนใจ (Text Hook)");
+  const [fontFamily, setFontFamily] = useState("'Kanit', sans-serif");
+  const [fontWeight, setFontWeight] = useState(400);
+  const [fontStyle, setFontStyle] = useState<"normal" | "italic">("normal");
+  const [fontSize, setFontSize] = useState(48);
+  const [fontColor, setFontColor] = useState("#facc15");
+  const [backgroundColor, setBackgroundColor] = useState("transparent");
+  const [strokeColor, setStrokeColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState(4);
+  const [shadowColor, setShadowColor] = useState("rgba(0,0,0,0.85)");
+  const [shadowBlur, setShadowBlur] = useState(8);
+  const [shadowOffsetX, setShadowOffsetX] = useState(3);
+  const [shadowOffsetY, setShadowOffsetY] = useState(3);
+  const [animationEffect, setAnimationEffect] = useState<
+    "none" | "fade" | "pop" | "slide_up" | "typewriter" | "glow_pulse" | "bounce"
+  >("pop");
+  const [positionPreset, setPositionPreset] = useState<"top" | "center" | "lower_third" | "custom">("top");
+  const [posX, setPosX] = useState(0.5);
+  const [posY, setPosY] = useState(0.20);
+  const [letterSpacingPx, setLetterSpacingPx] = useState(0);
+  const [isUppercase, setIsUppercase] = useState(false);
+  const [durationSec, setDurationSec] = useState(4.0);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  const handleApplyPreset = (preset: (typeof TEXT_PRESETS)[0]) => {
+    setFontFamily(preset.fontFamily);
+    setFontSize(preset.fontSize);
+    setFontColor(preset.fontColor);
+    setBackgroundColor(preset.backgroundColor);
+    setStrokeColor(preset.strokeColor);
+    setStrokeWidth(preset.strokeWidth);
+    setShadowColor(preset.shadowColor);
+    setShadowBlur(preset.shadowBlur);
+    setShadowOffsetX(preset.shadowOffsetX);
+    setShadowOffsetY(preset.shadowOffsetY);
+    setAnimationEffect(preset.animationEffect);
+  };
+
+  const handlePositionPreset = (pos: "top" | "center" | "lower_third") => {
+    setPositionPreset(pos);
+    if (pos === "top") {
+      setPosX(0.5);
+      setPosY(0.20);
+    } else if (pos === "center") {
+      setPosX(0.5);
+      setPosY(0.50);
+    } else if (pos === "lower_third") {
+      setPosX(0.5);
+      setPosY(0.80);
+    }
+  };
+
+  const handleCreateClip = () => {
+    const newClip: NleClip = {
+      id: `text_${Date.now()}`,
+      name: `✍️ ${text.slice(0, 18) || "ข้อความ"}`,
+      timelineStartMs: Math.round(currentTimeMs),
+      durationMs: Math.round(durationSec * 1000),
+      sourceType: "text",
+      text,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      fontSize,
+      fontColor,
+      backgroundColor,
+      strokeColor,
+      strokeWidth,
+      shadowColor,
+      shadowBlur,
+      shadowOffsetX,
+      shadowOffsetY,
+      animationEffect,
+      transform: {
+        x: posX,
+        y: posY,
+        scale: 1.0,
+        opacity: 1.0,
+      },
+    };
+
+    onAddTextClip(newClip);
+    onClose();
+  };
+
+  return (
+    <div className="nle-modal-overlay" onClick={onClose}>
+      <div className="nle-modal-card text-overlay-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="nle-modal-header">
+          <div className="modal-header-title">
+            <span className="modal-icon">✍️</span>
+            <h3>{t("เพิ่มข้อความบนจอ", "Add on-screen text")}</h3>
+          </div>
+          <button type="button" className="modal-close-btn" onClick={onClose}>
+            ✕
+          </button>
+        </div>
+
+        <div className="nle-modal-body">
+          {/* Live Preview Box */}
+          <div className="text-preview-stage">
+            <div className="text-preview-label">👁️ {t("ตัวอย่างผลลัพธ์:", "Live preview:")}</div>
+            <div className="text-preview-canvas">
+              <div
+                className={`preview-text-rendered anim-${animationEffect}`}
+                style={{
+                  fontFamily,
+                  fontWeight,
+                  fontStyle,
+                  fontSize: `${Math.round(fontSize * 0.75)}px`,
+                  color: fontColor,
+                  backgroundColor: backgroundColor !== "transparent" ? backgroundColor : undefined,
+                  paintOrder: "stroke fill",
+                WebkitTextStroke: strokeWidth > 0 ? `${strokeWidth}px ${strokeColor}` : undefined,
+                  textShadow: shadowBlur > 0 || shadowOffsetX !== 0 || shadowOffsetY !== 0
+                    ? `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${shadowColor}`
+                    : undefined,
+                  padding: backgroundColor !== "transparent" ? "6px 16px" : undefined,
+                  borderRadius: backgroundColor !== "transparent" ? "12px" : undefined,
+                }}
+              >
+                {text || t("ตัวอย่างข้อความ", "Preview text")}
+              </div>
+            </div>
+          </div>
+
+          {/* Text Input */}
+          <div className="modal-form-group">
+            <label className="form-label">{t("ข้อความที่ต้องการแสดง:", "Text to display:")}</label>
+            <textarea
+              className="text-input-field"
+              rows={2}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={t("พิมพ์ข้อความ เช่น 'เทคนิคเด็ดที่คุณต้องรู้!'", "Type text, e.g. 'A tip you need to know!'")}
+            />
+          </div>
+
+          {/* Presets Row */}
+          <div className="modal-form-group">
+            <label className="form-label">{t("สไตล์ยอดนิยม:", "Popular styles:")}</label>
+            <div className="text-presets-grid">
+              {TEXT_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="preset-card-btn"
+                  onClick={() => handleApplyPreset(p)}
+                >
+                  <span className="preset-card-name">{getPresetLabel(p.id, locale)}</span>
+                  <span className="preset-card-desc">{getPresetDescription(p.id, locale)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Font Selection & Size */}
+          <div className="modal-form-row">
+            <div className="form-col">
+              <label className="form-label">{t("ฟอนต์:", "Font family:")}</label>
+              <select
+                className="font-select-field"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+              >
+                <optgroup label={t("🌐 Google Fonts (ไทยและสากลยอดนิยม)", "🌐 Google Fonts (Thai and international favorites)")}>
+                  {GOOGLE_FONTS.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {getGoogleFontLabel(f.label, locale)}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label={t("💻 ฟอนต์ในเครื่อง", "💻 System fonts")}>
+                  {SYSTEM_FONTS.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+              <label className="form-label" htmlFor="text-font-weight">{t("น้ำหนักตัวอักษร", "Font weight")}</label>
+              <select id="text-font-weight" className="font-select-field" value={fontWeight} onChange={(e) => setFontWeight(Number(e.target.value))}>
+                <option value={400}>{t("Regular (ปกติ)", "Regular")}</option>
+                <option value={500}>Medium</option>
+                <option value={600}>Semi-bold</option>
+                <option value={700}>{t("Bold (หนา)", "Bold")}</option>
+                <option value={800}>Extra-bold</option>
+                <option value={900}>Black</option>
+              </select>
+              <label className="form-label" htmlFor="text-font-style">{t("รูปแบบตัวอักษร", "Font style")}</label>
+              <select id="text-font-style" className="font-select-field" value={fontStyle} onChange={(e) => setFontStyle(e.target.value as "normal" | "italic")}>
+                <option value="normal">{t("Normal (ตรง)", "Normal")}</option>
+                <option value="italic">{t("Italic (เอียง)", "Italic")}</option>
+              </select>
+            </div>
+            <div className="form-col">
+              <label className="form-label">{t("ขนาดตัวอักษร", "Font size")}: {fontSize}px</label>
+              <input
+                type="range"
+                min={20}
+                max={120}
+                value={fontSize}
+                onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+                className="slider-range-input"
+              />
+            </div>
+          </div>
+
+          {/* Colors, Stroke & Shadow */}
+          <div className="modal-form-row">
+            <div className="form-col">
+              <label className="form-label">{t("สีตัวอักษร:", "Text color:")}</label>
+              <div className="color-picker-row">
+                <input
+                  type="color"
+                  value={fontColor}
+                  onChange={(e) => setFontColor(e.target.value)}
+                  className="color-box-input"
+                />
+                <span className="color-val-label">{fontColor}</span>
+              </div>
+            </div>
+            <div className="form-col">
+              <label className="form-label">{t("สีพื้นหลังข้อความ:", "Text background:")}</label>
+              <div className="color-picker-row">
+                <button
+                  type="button"
+                  className={`bg-toggle-pill ${backgroundColor === "transparent" ? "active" : ""}`}
+                  onClick={() => setBackgroundColor("transparent")}
+                >
+                  {t("ไม่มี", "None")}
+                </button>
+                <input
+                  type="color"
+                  value={backgroundColor === "transparent" ? "#0f172a" : backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="color-box-input"
+                />
+              </div>
+            </div>
+            <div className="form-col">
+              <label className="form-label">{t("ขอบตัวอักษร", "Text outline")}: {strokeWidth}px</label>
+              <div className="color-picker-row">
+                <input
+                  type="color"
+                  value={strokeColor}
+                  onChange={(e) => setStrokeColor(e.target.value)}
+                  className="color-box-input"
+                />
+                <input
+                  type="range"
+                  min={0}
+                  max={8}
+                  value={strokeWidth}
+                  onChange={(e) => setStrokeWidth(parseInt(e.target.value, 10))}
+                  className="slider-range-input"
+                  style={{ width: "80px" }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Shadow & Animation Effects */}
+          <div className="modal-form-row">
+            <div className="form-col">
+              <label className="form-label">{t("เอฟเฟกต์แอนิเมชัน:", "Animation:")}</label>
+              <select
+                className="font-select-field"
+                value={animationEffect}
+                onChange={(e) => setAnimationEffect(e.target.value as any)}
+              >
+                <option value="none">{t("นิ่ง", "Static")}</option>
+                <option value="fade">✨ {t("ค่อยๆ ปรากฏ", "Fade in")}</option>
+                <option value="pop">💥 {t("เด้งขยายขึ้น", "Pop scale")}</option>
+                <option value="slide_up">⬆️ {t("เลื่อนขึ้นจากล่าง", "Slide up")}</option>
+                <option value="typewriter">⌨️ {t("พิมพ์ดีด", "Typewriter")}</option>
+                <option value="glow_pulse">🌟 {t("เรืองแสงกระพริบ", "Glow pulse")}</option>
+                <option value="bounce">🏀 {t("ดึ๋งต่อเนื่อง", "Bounce loop")}</option>
+              </select>
+            </div>
+            <div className="form-col">
+              <label className="form-label">{t("ตำแหน่งข้อความ:", "Text position:")}</label>
+              <div className="pos-preset-group">
+                <button
+                  type="button"
+                  className={`pos-chip ${positionPreset === "top" ? "active" : ""}`}
+                  onClick={() => handlePositionPreset("top")}
+                >
+                  {t("พาดหัวบน", "Top")}
+                </button>
+                <button
+                  type="button"
+                  className={`pos-chip ${positionPreset === "center" ? "active" : ""}`}
+                  onClick={() => handlePositionPreset("center")}
+                >
+                  {t("กึ่งกลาง", "Center")}
+                </button>
+                <button
+                  type="button"
+                  className={`pos-chip ${positionPreset === "lower_third" ? "active" : ""}`}
+                  onClick={() => handlePositionPreset("lower_third")}
+                >
+                  {t("แถบล่าง", "Lower third")}
+                </button>
+              </div>
+            </div>
+            <div className="form-col">
+              <label className="form-label">{t("ระยะเวลาแสดงผล", "Duration")}: {durationSec.toFixed(1)} {t("วินาที", "seconds")}</label>
+              <input
+                type="range"
+                min={1.0}
+                max={15.0}
+                step={0.5}
+                value={durationSec}
+                onChange={(e) => setDurationSec(parseFloat(e.target.value))}
+                className="slider-range-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="nle-modal-footer">
+          <button type="button" className="modal-cancel-btn" onClick={onClose}>
+            {t("ยกเลิก", "Cancel")}
+          </button>
+          <button type="button" className="modal-confirm-btn" onClick={handleCreateClip}>
+            ➕ {t("เพิ่มข้อความลงวิดีโอ (Track T1)", "Add text to video (Track T1)")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

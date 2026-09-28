@@ -1,0 +1,825 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/shot-plan.schema.json",
+  "title": "Production Shot Plan v5",
+  "type": "object",
+  "required": [
+    "shotId",
+    "targetKind",
+    "shotTopology",
+    "globalEndSeconds",
+    "globalStartSeconds",
+    "sequenceOrder",
+    "durationSeconds",
+    "purpose",
+    "hasStartFrame",
+    "startState",
+    "transitions",
+    "endState",
+    "visualDesign",
+    "speakerMap",
+    "mechanismVisualization",
+    "feasibility",
+    "generationStrategy",
+    "promptPackage"
+  ],
+  "properties": {
+    "shotId": {
+      "type": "string"
+    },
+    "durationSeconds": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 30
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "hasStartFrame": {
+      "type": "boolean"
+    },
+    "startState": {
+      "$ref": "observed-start-state.schema.json"
+    },
+    "transitions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "transitionId",
+          "fromState",
+          "actor",
+          "action",
+          "timing",
+          "toState"
+        ],
+        "properties": {
+          "transitionId": {
+            "type": "string"
+          },
+          "fromState": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "initiator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "objectResponse": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "secondaryPhysics": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cameraResponse": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timing": {
+            "type": "string"
+          },
+          "toState": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "endState": {
+      "type": "string"
+    },
+    "speakerMap": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "lineId",
+          "speakerId",
+          "text",
+          "lipSyncRequired",
+          "onScreen"
+        ],
+        "properties": {
+          "lineId": {
+            "type": "string"
+          },
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          },
+          "onScreen": {
+            "type": "boolean"
+          },
+          "timing": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "visualDesign": {
+      "type": "object",
+      "required": [
+        "camera",
+        "composition",
+        "blocking",
+        "environment",
+        "lighting",
+        "continuity"
+      ],
+      "properties": {
+        "camera": {
+          "type": "string"
+        },
+        "composition": {
+          "type": "string"
+        },
+        "blocking": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "lighting": {
+          "type": "string"
+        },
+        "continuity": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "referenceLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "startStateLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "productIntegrityLocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "feasibility": {
+      "type": "object",
+      "required": [
+        "riskLevel",
+        "risks",
+        "recommendedMitigations"
+      ],
+      "properties": {
+        "riskLevel": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "risks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "recommendedMitigations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "generationStrategy": {
+      "type": "object",
+      "required": [
+        "modelProfileId",
+        "mode",
+        "durationSeconds",
+        "requiresNativeAudio",
+        "requiresLipSync",
+        "keyframeStrategy",
+        "fallbackModelProfileIds"
+      ],
+      "properties": {
+        "modelProfileId": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "text_to_video",
+            "image_to_video",
+            "first_last_frame",
+            "reference_to_video",
+            "extend",
+            "edit",
+            "keyframe_to_video"
+          ]
+        },
+        "durationSeconds": {
+          "type": "number"
+        },
+        "requiresNativeAudio": {
+          "type": "boolean"
+        },
+        "requiresLipSync": {
+          "type": "boolean"
+        },
+        "keyframeStrategy": {
+          "type": "string"
+        },
+        "fallbackModelProfileIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "basePlateGoal": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "compositingRequired": {
+          "type": "boolean",
+          "default": false
+        },
+        "overlayRenderPreference": {
+          "type": "string",
+          "enum": [
+            "native_generation",
+            "post_composite",
+            "hybrid",
+            "none"
+          ],
+          "default": "none"
+        },
+        "exactScreenOrTextRequired": {
+          "type": "boolean",
+          "default": false
+        },
+        "graphicsRendererProfileId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "temporalStrategy": {
+          "type": "string",
+          "enum": [
+            "single_generation",
+            "native_multishot",
+            "extension_chain",
+            "external_multishot",
+            "hybrid"
+          ]
+        },
+        "promptChainId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "promptPackage": {
+      "type": "object",
+      "required": [
+        "modelNeutralIntent",
+        "providerPrompt",
+        "referenceMapping",
+        "chronology",
+        "constraints"
+      ],
+      "properties": {
+        "modelNeutralIntent": {
+          "type": "string"
+        },
+        "providerPrompt": {
+          "type": "string"
+        },
+        "negativePrompt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "referenceMapping": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "chronology": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dialogueBlock": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "basePlatePrompt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "visualEffectPrompt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "postCompositeInstructions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "keyframes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "generationJobs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "qc": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "repairPlan": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "demonstrationPlan": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "phase",
+            "usageSteps",
+            "proofMoment",
+            "usageCorrectnessCritical"
+          ],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "enum": [
+                "context",
+                "problem",
+                "setup",
+                "activation",
+                "operation",
+                "mechanism_explanation",
+                "proof",
+                "outcome",
+                "hero",
+                "cta"
+              ]
+            },
+            "usageSteps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "step",
+                  "actor",
+                  "target",
+                  "mustBeCorrect"
+                ],
+                "properties": {
+                  "step": {
+                    "type": "string"
+                  },
+                  "actor": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "mustBeCorrect": {
+                    "type": "boolean"
+                  },
+                  "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "proofMoment": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "usageCorrectnessCritical": {
+              "type": "boolean"
+            },
+            "timeCompression": {
+              "type": "boolean",
+              "default": false
+            },
+            "preCompletedSteps": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Steps already completed before this shot, inferred from Start Frame or previous-shot continuity."
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mechanismVisualization": {
+      "$ref": "https://smartaihub.app/schemas/stages/visualization-plan.schema.json"
+    },
+    "postGraphicsPlan": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type",
+              "content",
+              "timing"
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "timing": {
+                "type": "string"
+              },
+              "exactSourceRequired": {
+                "type": "boolean",
+                "default": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "continuityKeys": {
+      "type": "object",
+      "properties": {
+        "productStateId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mechanismStateId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "effectContinuityId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "screenStateId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "sequenceOrder": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "globalStartSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "globalEndSeconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "shotTopology": {
+      "type": "string",
+      "enum": [
+        "single_continuous",
+        "planned_cut",
+        "insert",
+        "cutaway",
+        "reaction",
+        "presenter",
+        "hero",
+        "montage"
+      ]
+    },
+    "generationChainId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "generationSegmentIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mustRemainSingleContinuousShot": {
+      "type": "boolean",
+      "default": false
+    },
+    "durationAdaptation": {
+      "type": "object",
+      "properties": {
+        "logicalShotDurationSeconds": {
+          "type": "number",
+          "minimum": 1
+        },
+        "providerDirectlySupportsDuration": {
+          "type": "boolean"
+        },
+        "adaptationMode": {
+          "type": "string",
+          "enum": [
+            "none",
+            "extension_chain",
+            "split_into_shots",
+            "route_other_model",
+            "time_compress",
+            "trim_or_edit"
+          ]
+        },
+        "generationSegmentDurationsSeconds": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "rationale": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "targetKind": {
+      "type": "string",
+      "enum": [
+        "physical_product",
+        "place_venue",
+        "service_business",
+        "digital_product",
+        "experience_event",
+        "property_accommodation",
+        "food_beverage",
+        "brand_campaign",
+        "narrative_no_promotion",
+        "unknown"
+      ]
+    },
+    "experiencePlan": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "phase",
+            "subject",
+            "evidenceRefs",
+            "truthPolicy",
+            "proofMoment",
+            "interactionSteps"
+          ],
+          "properties": {
+            "phase": {
+              "type": "string",
+              "enum": [
+                "context",
+                "establish",
+                "approach",
+                "enter",
+                "orient",
+                "highlight_area",
+                "detail",
+                "interact",
+                "service",
+                "experience",
+                "feature",
+                "proof",
+                "outcome",
+                "reaction",
+                "recommendation",
+                "tour",
+                "hero",
+                "cta",
+                "narrative_beat"
+              ]
+            },
+            "subject": {
+              "type": "string"
+            },
+            "evidenceRefs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "truthPolicy": {
+              "type": "string",
+              "enum": [
+                "visible_evidence",
+                "verified_fact",
+                "subjective_reaction",
+                "generic_narrative",
+                "clearly_stylized"
+              ]
+            },
+            "proofMoment": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "interactionSteps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "actor",
+                  "action",
+                  "target"
+                ],
+                "properties": {
+                  "actor": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "evidenceRefs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "unseenAreaRisk": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "targetKind": {
+            "enum": [
+              "physical_product",
+              "food_beverage"
+            ]
+          }
+        },
+        "required": [
+          "targetKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "demonstrationPlan"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "targetKind": {
+            "enum": [
+              "place_venue",
+              "service_business",
+              "digital_product",
+              "experience_event",
+              "property_accommodation",
+              "brand_campaign"
+            ]
+          }
+        },
+        "required": [
+          "targetKind"
+        ]
+      },
+      "then": {
+        "required": [
+          "experiencePlan"
+        ]
+      }
+    }
+  ]
+}

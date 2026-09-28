@@ -18,6 +18,7 @@ import {
   getStaticFallbackModels,
   getStaticModelById,
   deriveVerticalDramaCapabilities,
+  isGrokVideoFamily,
   resolveVerticalDramaCapabilities,
 } from "../modelRegistry";
 
@@ -88,6 +89,39 @@ describe("Vertical Drama capability metadata (Phase 0.1/0.2)", () => {
     expect(model.supportsStartFrame).toBe(true);
     expect(model.maxReferenceImages).toBe(1);
     expect(model.verticalDramaReady).toBe(true);
+    expect(model.nativeAudioDialogue).toBe(true);
+    expect(model.supportsNativeAudio).toBe(true);
+  });
+});
+
+describe("Grok video family native-audio invariant", () => {
+  it.each([
+    ["higgsfield/grok_video", { providerModelId: "grok_video" }],
+    ["higgsfield/grok_video_v15", { mcp: { providerModelId: "grok_video_v15" } }],
+    ["grok-imagine/text-to-video", {}],
+    ["grok-imagine/image-to-video", {}],
+    ["grok-imagine-video-1-5-preview", {}],
+    ["grok-video-3", {}],
+    ["magnific-mcp/grok-video-next", { providerModelId: "grok-video-next" }],
+    ["future-provider/video", { mcp: { providerModelId: "grok_video_future" } }],
+  ])("classifies %s as a Grok video", (modelId, configJson) => {
+    expect(isGrokVideoFamily(modelId, { type: "video", configJson })).toBe(true);
+    const caps = resolveVerticalDramaCapabilities(modelId, {
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: { ...configJson, hasAudio: false, nativeAudio: false },
+    });
+    expect(caps.nativeAudioDialogue).toBe(true);
+    expect(caps.supportsNativeAudio).toBe(true);
+  });
+
+  it.each([
+    ["higgsfield/grok_image", "image"],
+    ["grok-imagine/text-to-image", "image"],
+    ["grok-imagine/upscale", "image"],
+    ["future-provider/video", "video"],
+  ] as const)("does not misclassify %s (%s)", (modelId, type) => {
+    expect(isGrokVideoFamily(modelId, { type })).toBe(false);
   });
 });
 
@@ -97,15 +131,25 @@ describe("Phase 0.3 — new video models (verified callable)", () => {
     expect(model.provider).toBe("kie.ai");
     expect(model.isEnabled).toBe(true);
     expect(model.supportsStartFrame).toBe(true);
-    expect(model.maxReferenceImages).toBe(1);
+    expect(model.maxReferenceImages).toBe(7);
     // Grok Imagine v1.x generates native in-video audio incl. speech
     // (xAI synchronized audio, user-confirmed 2026-07-06).
     expect(model.nativeAudioDialogue).toBe(true);
     expect(model.verticalDramaReady).toBe(true);
     expect(model.aspectRatios).toContain("9:16");
+    expect(model.aspectRatios).toEqual(["auto", "1:1", "16:9", "9:16", "3:2", "2:3"]);
     expect(model.aliases).toContain("grok imagine 1.5");
     expect(model.configJson?.kieModelId).toBe("grok-imagine-video-1-5-preview");
     expect(model.configJson?.apiPayloadFormat).toBe("market");
+    expect(model.configJson?.supportedResolutions).toEqual(["480p", "720p", "1080p"]);
+    expect(model.configJson?.supportedDurations).toEqual(Array.from({ length: 15 }, (_, index) => index + 1));
+    expect(model.configJson?.inputFields).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: "image_urls", maxItems: 7 }),
+      expect.objectContaining({
+        key: "resolution",
+        options: expect.arrayContaining([expect.objectContaining({ value: "1080p" })]),
+      }),
+    ]));
   });
 
   it("keeps WaveSpeed Seedance 2.0 image-to-video enabled with correct capability metadata", () => {
@@ -218,8 +262,62 @@ describe("deriveVerticalDramaCapabilities", () => {
       expect(caps.maxReferenceImages).toBeUndefined();
     });
 
-    it("image models never set maxReferenceImages (only verticalDramaReady applies)", () => {
+    it("byte-identical: an image model with no configJson.maxReferenceImages signal still resolves to undefined (regression guard)", () => {
       const caps = deriveVerticalDramaCapabilities({ type: "image", aspectRatios: ["9:16"] });
+      expect(caps.maxReferenceImages).toBeUndefined();
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
+    it("byte-identical: an image model with an empty configJson still resolves maxReferenceImages to undefined", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: {},
+      });
+      expect(caps.maxReferenceImages).toBeUndefined();
+    });
+
+    it("latent-bug fix: an image model that DOES declare configJson.maxReferenceImages now surfaces it (previously always undefined)", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: 10 },
+      });
+      expect(caps.maxReferenceImages).toBe(10);
+      // verticalDramaReady logic is unchanged by this fix — still 9:16-only.
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
+    it("normalizes a Hermes image model's referenceImageLimit into maxReferenceImages", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: {
+          transport: "hermes_worker",
+          referenceImageLimit: 3,
+        },
+      });
+      expect(caps.maxReferenceImages).toBe(3);
+      expect(caps.verticalDramaReady).toBe(true);
+    });
+
+    it("the static google-banana-2-lite catalog entry (configJson.maxReferenceImages: 14) now resolves a defined maxReferenceImages via deriveVerticalDramaCapabilities", () => {
+      const staticModel = getStaticModelById("google-banana-2-lite");
+      expect(staticModel?.configJson?.maxReferenceImages).toBe(14);
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: staticModel?.aspectRatios,
+        configJson: staticModel?.configJson,
+      });
+      expect(caps.maxReferenceImages).toBe(14);
+    });
+
+    it("treats a non-numeric configJson.maxReferenceImages on an image model as unknown (undefined), mirroring the video branch", () => {
+      const caps = deriveVerticalDramaCapabilities({
+        type: "image",
+        aspectRatios: ["9:16"],
+        configJson: { maxReferenceImages: "not-a-number" },
+      });
       expect(caps.maxReferenceImages).toBeUndefined();
     });
   });
@@ -254,7 +352,6 @@ describe("supportsNativeAudio (task #36 — optional NATIVE AUDIO DIRECTION prom
       "sora-2",
       "kling-2.6",
       "veo_3_1-fast",
-      "grok-video-3",
     ]) {
       expect(findVideo(id).supportsNativeAudio).not.toBe(true);
     }
@@ -324,6 +421,19 @@ describe("resolveVerticalDramaCapabilities", () => {
       aspectRatios: ["auto", "16:9", "9:16"],
       configJson: getStaticModelById("veo-3-1")?.configJson,
     });
+    expect(caps.supportsNativeAudio).toBe(true);
+  });
+
+  it("repairs a DB-only Higgsfield Grok row whose persisted audio metadata is missing", () => {
+    const caps = resolveVerticalDramaCapabilities("higgsfield/grok_video", {
+      type: "video",
+      aspectRatios: ["9:16"],
+      configJson: {
+        providerModelId: "grok_video",
+        mcp: { providerModelId: "grok_video" },
+      },
+    });
+    expect(caps.nativeAudioDialogue).toBe(true);
     expect(caps.supportsNativeAudio).toBe(true);
   });
 });

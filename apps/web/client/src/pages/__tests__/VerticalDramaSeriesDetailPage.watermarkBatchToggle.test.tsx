@@ -18,6 +18,9 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({
       verticalDramaSeries: { get: { invalidate: vi.fn() } },
+      verticalDramaEpisodes: {
+        getEpisodeCoverStatus: { fetch: vi.fn() },
+      },
     }),
     verticalDramaEpisodes: {
       generateNextEpisodes: {
@@ -25,6 +28,17 @@ vi.mock("@/lib/trpc", () => ({
       },
       deleteEpisode: {
         useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+      generateEpisodeCover: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false, variables: undefined }),
+      },
+      setEpisodeCoverAsset: {
+        useMutation: () => ({ mutate: vi.fn(), isPending: false }),
+      },
+    },
+    mediaModels: {
+      list: {
+        useQuery: () => ({ data: { models: [] }, isLoading: false, isError: false, refetch: vi.fn() }),
       },
     },
     verticalDramaSeries: {

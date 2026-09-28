@@ -52,15 +52,32 @@ const { mockGenerateEpisodeScript, mockGenerateStoryboardShotgrid } = vi.hoisted
   mockGenerateEpisodeScript: vi.fn(),
   mockGenerateStoryboardShotgrid: vi.fn(),
 }));
+const { mockGenerateShotSceneIntent } = vi.hoisted(() => ({
+  mockGenerateShotSceneIntent: vi.fn(),
+}));
 vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+}));
+vi.mock("../verticalDramaShotSceneIntent", () => ({
+  generateVerticalDramaShotSceneIntent: mockGenerateShotSceneIntent,
+  applyVerticalDramaShotSceneIntent: vi.fn(({ storyboard }: any) => storyboard),
+  VerticalDramaShotSceneIntentReviewRequiredError: class extends Error {},
 }));
 // `repairStage`'s real-repair wiring added a static import of this module's
 // `generateEpisodeDialogueAudioPlan`/`buildDialogueAudioPlan` — not exercised
@@ -181,6 +198,11 @@ beforeEach(() => {
     creditsUsed: 1,
     model: "gpt-x",
   });
+  mockGenerateShotSceneIntent.mockResolvedValue({
+    intent: { contract_version: "vd-shot-scene-intent-v1", shots: [] },
+    creditsUsed: 0,
+    model: "gpt-x",
+  });
   mockGetPrimaryPortraitUrl.mockResolvedValue(null);
 });
 
@@ -250,6 +272,16 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetActiveBreakdown.mockReturnValue([SAMPLE_BREAKDOWN_ITEM]);
     mockReadItemShotDrafts.mockReturnValue(SAMPLE_SHOTS);
@@ -266,6 +298,16 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false);
@@ -279,6 +321,16 @@ describe("generateRealStoryboard — deep story drafts hydration wiring (W10-B)"
     const bible = { breakdownVersions: [] };
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases`
+      // rows); empty alias table is out of scope for this file's own
+      // episode-draft-hydration assertions.
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select
+      // (the series' location roster, `existingLocations`); empty roster is
+      // out of scope for this file's own episode-draft-hydration assertions.
       .mockReturnValueOnce(selectChain([]));
     mockGetActiveBreakdown.mockReturnValue([]); // no matching item at all
 

@@ -1,0 +1,268 @@
+{
+  "profileVersion": "3.0",
+  "id": "minimax-h3-max",
+  "provider": "MiniMax",
+  "model": "MiniMax-H3-Max",
+  "modelFamily": "MiniMax H3",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "MiniMax H3 V2 Create Video API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-create",
+        "notes": "Official V2 modes, multimodal references, duration/resolution/ratio constraints."
+      },
+      {
+        "title": "MiniMax H3 Context-IR API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-h3-context-ir",
+        "notes": "Official multimodal context interpretation endpoint."
+      },
+      {
+        "title": "MiniMax H3 Regenerate 2K API",
+        "url": "https://platform.minimax.io/docs/api-reference/video-generation-v2-regeneration",
+        "notes": "Official 768P-to-2K regeneration workflow."
+      },
+      {
+        "title": "MiniMax H3 Open Source",
+        "url": "https://www.minimax.io/news/minimax-h3-open-source",
+        "notes": "Official H3 system architecture, local checkpoints and output specs."
+      },
+      {
+        "title": "MiniMax H3 Base Prompt Guide",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md",
+        "notes": "Official T2VA/I2VA/FL2VA/L2VA prompt syntax."
+      },
+      {
+        "title": "MiniMax H3 Full Reference Prompt Guide",
+        "url": "https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md",
+        "notes": "Official reference labels, retention, editing/continuation and audio rules."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "T2VA."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "First-frame, last-frame, first+last-frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "role=first_frame; max 1."
+    },
+    "last_frame": {
+      "status": "verified",
+      "notes": "role=last_frame; max 1."
+    },
+    "first_last_frame": {
+      "status": "verified",
+      "notes": "FL2VA hard anchors."
+    },
+    "middle_frame": {
+      "status": "unsupported",
+      "notes": "Official V2 docs state H3-Max does not support middle frames."
+    },
+    "reference_to_video": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "reference_image": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "reference_video": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "reference_audio": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "video_edit": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "video_continuation": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "motion_reference": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "camera_reference": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "style_reference": {
+      "status": "verified",
+      "notes": "Image/video may guide style."
+    },
+    "voice_reference": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "audio_reuse": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Native synchronized 32kHz stereo audio."
+    },
+    "dialogue": {
+      "status": "verified",
+      "notes": "Stable Sx speaker IDs and <d>[Language]... dialogue format."
+    },
+    "dialogue_lipsync": {
+      "status": "verified",
+      "notes": "Native audiovisual speech; production QC required."
+    },
+    "native_multi_shot": {
+      "status": "verified",
+      "notes": "[Shot N] plus explicit cut timestamps."
+    },
+    "h3_context_ir": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "regenerate_2k": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "local_open_weights": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "local_sglang": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "local_vllm": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "local_diffusers": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    },
+    "local_comfyui": {
+      "status": "unsupported",
+      "notes": "Not supported by the H3-Max profile."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 5,
+      "maxSeconds": 15,
+      "allowedSeconds": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "resolutions": [
+      "480P",
+      "768P"
+    ],
+    "aspectRatios": [
+      "adaptive",
+      "21:9",
+      "16:9",
+      "4:3",
+      "1:1",
+      "3:4",
+      "9:16"
+    ],
+    "referenceLimits": {
+      "hardFrames": {
+        "maxFirstFrames": 1,
+        "maxLastFrames": 1
+      },
+      "referenceImageVideoAudio": "unsupported"
+    },
+    "notes": [
+      "Every request requires a non-empty text item.",
+      "T2VA requires an explicit non-adaptive ratio.",
+      "I2VA/FL2VA ratio follows input keyframe and is treated as adaptive.",
+      "Ref2VA may use adaptive or explicit supported ratio.",
+      "Output: 24 FPS + 32kHz stereo audio per official H3 system spec.",
+      "Stable dialogue languages: Arabic, Chinese, English, French, German, Italian, Japanese, Korean, Portuguese, Russian, Spanish; others vary.",
+      "Hosted V2 cannot mix first_frame/last_frame with reference_image/reference_video/reference_audio in one generation request."
+    ]
+  },
+  "bestFor": [
+    "fast T2VA previews",
+    "fast first/last-frame generation",
+    "draft generation without raw multimodal references"
+  ],
+  "knownRisks": [
+    "No Ref2VA raw image/video/audio.",
+    "No 2K.",
+    "No documented middle-frame support.",
+    "Do not choose for reference-heavy production ads."
+  ],
+  "promptProfile": "minimax-h3",
+  "adapterId": "minimax_h3",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "Integer duration 5-15 seconds."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "conditional",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": true,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "Compile [Shot 1], [Shot 2] At MM:SS.mmm.",
+        "FL2VA generally prefers a single continuous shot unless cuts are explicit."
+      ]
+    },
+    "extension": {
+      "status": "unsupported",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": null,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [
+        "H3-Max has no Ref2VA continuation path."
+      ],
+      "durationControl": null,
+      "deterministicDurationRequest": null,
+      "extensionKind": null,
+      "requiresExternalAssembly": null,
+      "sourceReferenceRole": null,
+      "referenceTailMinSeconds": null,
+      "referenceTailMaxSeconds": null,
+      "supportsReferenceAudioContinuity": null
+    }
+  }
+}

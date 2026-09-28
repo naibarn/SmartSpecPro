@@ -20,6 +20,11 @@ import {
 const F132_FLAG_KEYS = VERTICAL_DRAMA_QUALITY_ENGINE_FEATURE_FLAG_KEYS;
 
 describe("Feature 132 quality-engine feature flags (F132A-I)", () => {
+  it("registers the Worker Local LLM rollout flag independently", () => {
+    expect(ALLOWED_FEATURE_FLAGS.has("workerLocalLlmModels")).toBe(true);
+    expect(FEATURE_FLAG_DEFAULTS.workerLocalLlmModels).toBe(true);
+  });
+
   it("all 9 F132 flags are present in TenantFeatureFlags/ALLOWED_FEATURE_FLAGS/FEATURE_FLAG_DEFAULTS", () => {
     expect(F132_FLAG_KEYS).toHaveLength(9);
 

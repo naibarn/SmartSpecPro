@@ -46,9 +46,9 @@ walkthroughs, feature explainers, internal docs, demo scripts, release tutorials
 or professional learning material from an existing page, feature, or flow.
 
 1. Discover the real feature behavior from code first.
-   - Use SocratiCode when active to locate routes, pages, components, API calls,
-     state machines, permissions, and edge states.
-   - Verify with targeted file reads and `rg`; do not invent product behavior.
+   - Use targeted `rg` and bounded file reads to locate routes, pages, components,
+     API calls, state machines, permissions, and edge states.
+   - Verify the result with focused source inspection; do not invent product behavior.
 2. Create the help content backbone.
    - For written help, produce concise help docs with user goals, steps, states,
      caveats, and troubleshooting.
@@ -73,7 +73,7 @@ or professional learning material from an existing page, feature, or flow.
 | Skill | Trigger Examples | Orchestra Handling | Safety/Gates |
 |---|---|---|---|
 | `api-smoke-test` | `api-smoke-test`, `/api-smoke`, API route smoke test | Run API route checks for status, JSON shape, CORS, and rate-limit headers. | Network target must be authorized; private IP protections remain active. |
-| `architecture` | architecture map, Mermaid diagram, code structure | Use after SocratiCode/graph narrowing; generate architecture docs/diagrams. | Verify diagrams match discovered files. |
+| `architecture` | architecture map, Mermaid diagram, code structure | Use after targeted repository discovery; generate architecture docs/diagrams. | Verify diagrams match discovered files. |
 | `brainstorming` | brainstorm, creative feature/design ideation, คิดไอเดีย, ออกแบบ concept | Use only as the ideation prelude when direction/options/audience/workflow are not yet settled; after direction is chosen, route to quick plan, deep plan, or deep-project by scope. | Keep brainstorming separate from unapproved implementation; capture chosen direction and open blockers before planning. |
 | `bundle-tracker` | `/bundle`, bundle size, heavy frontend deps | Run bundle tracker or include in `/ship`. | Warn on missing build artifacts. |
 | `code-profiler` | `/profile`, `/code`, backend performance profile | Run static performance review or include in `/ship`. | Findings need file evidence. |

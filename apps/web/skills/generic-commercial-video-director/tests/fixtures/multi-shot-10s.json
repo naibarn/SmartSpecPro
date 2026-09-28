@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สร้างวิดีโอ tie-in สินค้าแบบ multi-shot ให้เห็นการใช้งานจริง",
+  "locale": "th-TH",
+  "contentMode": "auto",
+  "format": {
+    "durationSeconds": 30,
+    "aspectRatio": "9:16",
+    "shotDurationPolicy": {
+      "mode": "fixed",
+      "fixedSeconds": 10,
+      "allowedSeconds": [
+        8,
+        10,
+        15
+      ],
+      "preferredSeconds": 10
+    },
+    "multiShotStrategy": "auto",
+    "extensionPolicy": {
+      "mode": "auto"
+    }
+  }
+}

@@ -1,9 +1,8 @@
 """
 Help Documentation Screenshot Capture API.
 
-Admin-only endpoint that navigates to a URL, captures a screenshot,
-saves it to the Node.js uploads directory, and returns a URL for embedding
-in help markdown files.
+Admin-only endpoint that navigates to a URL and returns screenshot bytes.
+Node.js persists the image in R2 before exposing it to help markdown.
 
 POST /api/help/screenshot
 """
@@ -12,9 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import os
 import secrets
-from pathlib import Path
 from typing import Optional
 
 import structlog
@@ -24,6 +21,10 @@ from pydantic import BaseModel, Field
 from app.core.config import settings
 
 logger = structlog.get_logger(__name__)
+
+# Module-level seam for tests/internal callers; screenshots stay in memory and
+# are persisted by the Node caller through the tenant-scoped R2 media path.
+BrowserSession = None
 
 router = APIRouter(prefix="/api/help", tags=["Help Documentation"])
 
@@ -69,6 +70,7 @@ class ScreenshotResponse(BaseModel):
     url: str
     filename: str
     markdown: str
+    base64: str
 
 
 # ── Endpoint ──────────────────────────────────────────────────────────────
@@ -83,15 +85,17 @@ async def capture_help_screenshot(req: ScreenshotRequest) -> ScreenshotResponse:
     """Capture a screenshot of a web page for help documentation.
 
     Navigates to the given URL using a sandboxed browser session, saves the
-    resulting PNG to the Node.js uploads directory, and returns the public
-    URL and ready-to-paste Markdown image tag.
+    resulting PNG in memory. The Node.js caller persists it through the
+    tenant-scoped R2 media pipeline.
     """
-    from app.services.playwright_feature_gate import is_playwright_enabled
+    browser_session_factory = BrowserSession
+    if browser_session_factory is None:
+        from app.services.playwright_feature_gate import is_playwright_enabled
 
-    if not is_playwright_enabled():
-        raise HTTPException(status_code=503, detail="Playwright screenshot capture is disabled.")
+        if not is_playwright_enabled():
+            raise HTTPException(status_code=503, detail="Playwright screenshot capture is disabled.")
 
-    from app.services.tools.browser_tool import BrowserSession
+        from app.services.tools.browser_tool import BrowserSession as browser_session_factory
 
     logger.info(
         "help_screenshot_start",
@@ -100,7 +104,7 @@ async def capture_help_screenshot(req: ScreenshotRequest) -> ScreenshotResponse:
         step=req.step,
     )
 
-    session = BrowserSession(
+    session = browser_session_factory(
         user_id=0,  # system user — no credit accounting for internal tooling
         tenant_id="system",
         allowed_domains=["smartaihub.app", "localhost"],
@@ -118,34 +122,17 @@ async def capture_help_screenshot(req: ScreenshotRequest) -> ScreenshotResponse:
 
         png_bytes = base64.b64decode(screenshot_data)
 
-        # Resolve output directory — default mirrors the Node.js static uploads path.
-        uploads_base = Path(
-            os.environ.get(
-                "HELP_ASSETS_DIR",
-                str(Path(__file__).resolve().parents[3] / "apps" / "web" / "server" / "uploads"),
-            )
-        )
-        help_dir = uploads_base / "help-assets" / req.feature_name
-        help_dir.mkdir(parents=True, exist_ok=True)
-
         filename = f"{req.step}.png"
-        filepath = help_dir / filename
-        filepath.write_bytes(png_bytes)
-
-        url_path = f"/uploads/help-assets/{req.feature_name}/{filename}"
-        markdown = f"![{req.step}]({url_path})"
-
         logger.info(
-            "help_screenshot_saved",
-            path=str(filepath),
-            url=url_path,
+            "help_screenshot_captured",
             size_bytes=len(png_bytes),
         )
 
         return ScreenshotResponse(
-            url=url_path,
+            url="",
             filename=filename,
-            markdown=markdown,
+            markdown="",
+            base64=base64.b64encode(png_bytes).decode("ascii"),
         )
 
     except HTTPException:

@@ -23,9 +23,25 @@ export interface UpdateExportRecordInput {
   stage?: string | null;
   errorMessage?: string | null;
   outputUrl?: string | null;
+  outputOriginalUrl?: string | null;
   outputStorageKey?: string | null;
   outputBytes?: number | null;
   celeryTaskId?: string | null;
+}
+
+/**
+ * Return the canonical browser URL for an export record.
+ *
+ * `outputUrl` is retained for legacy exports, but a persisted R2 key always
+ * wins so an old local/presigned URL cannot leak back to the Download button.
+ */
+export function getPresentationExportDownloadUrl(
+  record: Pick<PresentationExport, "outputUrl" | "outputStorageKey">,
+): string | null {
+  if (record.outputStorageKey?.trim()) {
+    return `/api/storage/files/${encodeURI(record.outputStorageKey)}`;
+  }
+  return record.outputUrl ?? null;
 }
 
 /**

@@ -18,12 +18,17 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
   onDuckingChange
 }) => {
   const audioTracks = tracks.filter(t => t.type === 'audio');
+  const lockedTrack = audioTracks.some(track => track.locked);
+  const lockedVoiceover = audioTracks.some(track => track.id === ducking.voiceoverTrackId && track.locked);
+  const mixLocked = lockedTrack || lockedVoiceover;
 
   const handleChange = (field: keyof DuckingConfig, value: any) => {
+    if (mixLocked) return;
     onDuckingChange({ ...ducking, [field]: value });
   };
 
   const handlePreset = (preset: 'subtle' | 'moderate' | 'aggressive') => {
+    if (mixLocked) return;
     const presets = {
       subtle: {
         threshold: 0.05,
@@ -205,6 +210,32 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
           gap: 8px;
         }
 
+        .ducking-waveform {
+          height: 54px;
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          padding: 8px;
+          margin: 10px 0;
+          border: 1px solid #34404b;
+          border-radius: 5px;
+          background: repeating-linear-gradient(90deg, #151a1f 0 14px, #1b242b 14px 15px);
+        }
+
+        .ducking-waveform span {
+          flex: 1;
+          min-height: 3px;
+          border-radius: 2px;
+          background: linear-gradient(180deg, #39b5ff, #0078d4);
+        }
+
+        .waveform-caption {
+          color: #777;
+          font-size: 10px;
+          line-height: 1.4;
+          margin-bottom: 12px;
+        }
+
         .preset-button {
           padding: 6px 12px;
           background: #1e1e1e;
@@ -247,6 +278,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             className="toggle-input"
             checked={ducking.enabled}
             onChange={(e) => handleChange('enabled', e.target.checked)}
+            disabled={mixLocked}
           />
           <span className="toggle-slider"></span>
         </label>
@@ -263,6 +295,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             className="form-select"
             value={ducking.voiceoverTrackId}
             onChange={(e) => handleChange('voiceoverTrackId', e.target.value)}
+            disabled={mixLocked}
           >
             {audioTracks.length > 0 ? (
               audioTracks.map(track => (
@@ -283,23 +316,35 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             <button
               className="preset-button"
               onClick={() => handlePreset('subtle')}
+              disabled={mixLocked}
             >
               Subtle
             </button>
             <button
               className="preset-button"
               onClick={() => handlePreset('moderate')}
+              disabled={mixLocked}
             >
               Moderate
             </button>
             <button
               className="preset-button"
               onClick={() => handlePreset('aggressive')}
+              disabled={mixLocked}
             >
               Aggressive
             </button>
           </div>
         </div>
+
+        <div className="ducking-waveform" role="img" aria-label="Ducking volume envelope preview">
+          {Array.from({ length: 32 }, (_, index) => {
+            const phase = Math.sin(index * 0.78) * 0.25 + 0.65;
+            const attenuation = ducking.enabled ? Math.max(0.18, 1 - (ducking.ratio / 20) * phase) : 1;
+            return <span key={index} style={{ height: `${Math.round(attenuation * 100)}%` }} />;
+          })}
+        </div>
+        <div className="waveform-caption">ตัวอย่าง envelope ความดังหลังใช้ preset (ลาก playhead ใน timeline เพื่อตรวจเสียงจริง)</div>
 
         {/* Threshold */}
         <div className="form-group">
@@ -315,6 +360,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             step="0.001"
             value={ducking.threshold}
             onChange={(e) => handleChange('threshold', parseFloat(e.target.value))}
+            disabled={mixLocked}
           />
         </div>
 
@@ -332,6 +378,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             step="0.5"
             value={ducking.ratio}
             onChange={(e) => handleChange('ratio', parseFloat(e.target.value))}
+            disabled={mixLocked}
           />
         </div>
 
@@ -349,6 +396,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             step="1"
             value={ducking.attack}
             onChange={(e) => handleChange('attack', parseInt(e.target.value))}
+            disabled={mixLocked}
           />
         </div>
 
@@ -366,6 +414,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             step="10"
             value={ducking.release}
             onChange={(e) => handleChange('release', parseInt(e.target.value))}
+            disabled={mixLocked}
           />
         </div>
 
@@ -383,6 +432,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
             step="0.5"
             value={ducking.backgroundGain}
             onChange={(e) => handleChange('backgroundGain', parseFloat(e.target.value))}
+            disabled={mixLocked}
           />
         </div>
 
@@ -392,6 +442,7 @@ export const AudioDuckingPanel: React.FC<AudioDuckingPanelProps> = ({
           Audio ducking automatically reduces background music volume when
           voiceover is speaking, making speech clearer and more intelligible.
         </div>
+        {mixLocked && <div className="info-box" role="status" style={{ marginTop: 8 }}>ปลดล็อก audio track ก่อนแก้ Ducking หรือ preset</div>}
       </div>
     </div>
   );

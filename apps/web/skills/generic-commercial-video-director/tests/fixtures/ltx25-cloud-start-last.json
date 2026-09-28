@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ต่อจากภาพแรกและจบตรงภาพสุดท้ายอย่างเป็นธรรมชาติ",
+  "locale": "th-TH",
+  "format": {
+    "durationSeconds": 8,
+    "aspectRatio": "9:16"
+  },
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true,
+      "providerUsePolicy": "must_use_raw"
+    },
+    {
+      "assetId": "end",
+      "role": "end_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true,
+      "providerUsePolicy": "must_use_raw"
+    }
+  ],
+  "providerOptions": {
+    "ltx25": {
+      "executionRoute": "cloud_api",
+      "model": "ltx-2-5-pro",
+      "mode": "first_last_to_video",
+      "durationPolicy": "exact",
+      "resolution": "1080x1920",
+      "fps": 24,
+      "generateAudio": "on"
+    }
+  }
+}

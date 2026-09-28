@@ -4,6 +4,7 @@ import { getDb } from "../../db";
 import {
   invoices,
   notificationDispatches,
+  payments,
   type InsertNotificationDispatch,
 } from "../../../drizzle/schema";
 import { createNotification } from "../notificationService";
@@ -69,9 +70,17 @@ function buildNotificationContent(params: {
   }
 }
 
-function shouldSuppressForInvoiceStatus(notificationType: BillingNotificationType, invoiceStatus: string) {
+function shouldSuppressForInvoiceStatus(
+  notificationType: BillingNotificationType,
+  invoiceStatus: string,
+  payment?: { paymentChannel: string | null; status: string | null },
+) {
   if (notificationType === "invoice_due_reminder") {
-    return ["paid", "canceled", "canceled_overdue", "replaced"].includes(invoiceStatus);
+    return ["paid", "canceled", "canceled_overdue", "replaced"].includes(invoiceStatus)
+      || (
+        payment?.paymentChannel === "promptpay_direct_manual"
+        && payment.status === "manual_review_required"
+      );
   }
   if (notificationType === "qr_ready") {
     return !["issued", "payment_pending"].includes(invoiceStatus);
@@ -172,7 +181,18 @@ export async function sendInvoiceNotification(params: {
   const dedupeBase = buildDedupeKey(params.notificationType, invoice.id, params.variant);
   const renewalAttempt = await getCurrentRenewalAttemptForInvoice(invoice.id).catch(() => null);
   const runtime = await getBillingRuntimeConfig();
-  const suppressed = shouldSuppressForInvoiceStatus(params.notificationType, invoice.status);
+  let payment: { paymentChannel: string | null; status: string | null } | undefined;
+  if (params.notificationType === "invoice_due_reminder") {
+    [payment] = await db
+      .select({ paymentChannel: payments.paymentChannel, status: payments.status })
+      .from(payments)
+      .where(and(
+        eq(payments.invoiceId, invoice.id),
+        eq(payments.paymentChannel, "promptpay_direct_manual"),
+      ))
+      .limit(1);
+  }
+  const suppressed = shouldSuppressForInvoiceStatus(params.notificationType, invoice.status, payment);
   const insertedDispatches: Array<{ channel: string; id: number; status: string }> = [];
   const nowMs = Date.now();
   const rateLimit = getNotificationRateLimitConfig(params.notificationType);

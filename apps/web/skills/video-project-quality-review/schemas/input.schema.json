@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "video-project-quality-review/input",
+  "title": "Video Project Quality Review Input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["documentSummary", "metrics", "claimValidation"],
+  "properties": {
+    "documentSummary": {
+      "description": "Compact summary of the compiled VideoProjectDocument (topic, audience, language, platform preset, per-scene narration/caption text, brand-kit id). Built by the caller (section-07) from shared/videoIntelligence/projectSchemas.ts's VideoProjectDocument — never sent as the full raw document.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "metrics": {
+      "description": "VideoProjectQualityMetrics computed deterministically in code (server/services/videoProjectQualityMetrics.ts). Echo facts back verbatim in your reasoning — never recompute or second-guess these numbers.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["sceneDurations", "captionCps", "layerCounts", "safeAreaViolations", "claimCoverage", "renderCost"],
+      "properties": {
+        "sceneDurations": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "captionCps": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "layerCounts": { "type": "object", "additionalProperties": true },
+        "safeAreaViolations": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "claimCoverage": { "type": "object", "additionalProperties": true },
+        "renderCost": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "claimValidation": {
+      "description": "ClaimValidationResult computed deterministically by server/services/validateProjectClaims.ts. Empty (all arrays empty) for a Motion Studio project — skip the product-claim-compliance dimension entirely in that case.",
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["mappedClaims", "unmappedStatements", "prohibitedClaims", "coverage", "blocksFinalRender"],
+      "properties": {
+        "mappedClaims": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "unmappedStatements": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "prohibitedClaims": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+        "coverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "blocksFinalRender": { "type": "boolean" }
+      }
+    }
+  }
+}

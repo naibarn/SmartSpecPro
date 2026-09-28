@@ -48,7 +48,11 @@ function getCatalogFamily(category: string): string {
   if (category === "article_generation" || category === "blog_writing") return "article_writing";
   if (category === "slide_generation") return "content_tools";
   if (category === "product_review" || category.endsWith("_review")) return "product_review";
-  if (category === "prompt_enhancement" || category === "image_prompt_generation") return "media_prompts";
+  if (
+    category === "prompt_enhancement"
+    || category === "image_prompt_generation"
+    || category === "character_prompt_generation"
+  ) return "media_prompts";
   if (["chat_assistant", "translation", "brainstorm", "summarization"].includes(category)) return "content_tools";
   if (category === "code_assistant" || category === "data_analysis") return "code_tools";
   if (category === "web_search" || category === "document_analysis") return "research";

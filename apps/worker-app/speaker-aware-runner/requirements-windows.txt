@@ -1,0 +1,10 @@
+# Core inference/audio stack. Install the CUDA build on RTX Worker hosts.
+numpy>=2.0,<3
+scipy>=1.13,<2
+onnxruntime-gpu>=1.18,<2
+opencv-python-headless>=4.10,<5
+mediapipe>=0.10.14,<1
+webrtcvad-wheels>=2.0.14,<3
+
+# Optional only when the user enables Pyannote diarization.
+pyannote.audio>=3.3,<4

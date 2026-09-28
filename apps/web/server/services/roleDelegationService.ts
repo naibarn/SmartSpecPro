@@ -3,19 +3,8 @@ import {
   type RoleVisibilityClass,
   sanitizeRoleSensitivePayload,
 } from "../../shared/roleAgentContracts";
-import type { SideEffectClass } from "../../shared/workpackContracts";
 import { createRoleId, getRoleAgentDetail, saveRoleApprovalRequest, saveRoleHandoff, saveRoleMessage } from "./rolePersistence";
 import * as roomService from "./roomService";
-import { getWorkpackDetail } from "./workpackPersistence";
-
-const SIDE_EFFECT_RANK: Record<SideEffectClass, number> = {
-  read_only: 0,
-  bounded_write: 1,
-  external_write: 2,
-  irreversible: 3,
-  financial: 4,
-  privileged: 5,
-};
 
 const DEFAULT_MESSAGE_VISIBILITY: RoleVisibilityClass[] = [
   "owner_full",
@@ -86,47 +75,14 @@ function canMirrorToRoom(visibilityClass: RoleVisibilityClass): boolean {
   return visibilityClass === "shared_reference" || visibilityClass === "redacted_summary";
 }
 
-function maxAllowedSideEffect(detail: NonNullable<Awaited<ReturnType<typeof getRoleAgentDetail>>>): SideEffectClass {
-  const contract = detail.activeContract;
-  return (contract?.authorityEnvelope.sideEffectCeiling ?? "read_only") as SideEffectClass;
-}
-
-function maxBudget(detail: NonNullable<Awaited<ReturnType<typeof getRoleAgentDetail>>>): number {
-  return detail.activeContract?.authorityEnvelope.monthlyBudgetLimit ?? 0;
-}
-
 async function delegationBlockers(input: {
   sender: NonNullable<Awaited<ReturnType<typeof getRoleAgentDetail>>>;
   recipient: NonNullable<Awaited<ReturnType<typeof getRoleAgentDetail>>>;
-  workpackFamily?: string | null;
 }): Promise<string[]> {
   const blockers: string[] = [];
   if (input.sender.role.tenantId !== input.recipient.role.tenantId) blockers.push("cross_tenant_forbidden");
   if (!input.sender.activeContract) blockers.push("sender_contract_missing");
   if (!input.recipient.activeContract) blockers.push("recipient_contract_missing");
-
-  if (input.workpackFamily) {
-    const recipientBinding = input.recipient.bindings.find((binding) => binding.workpackFamily === input.workpackFamily && binding.active);
-    if (!recipientBinding) blockers.push("recipient_binding_missing");
-    const workpackDetail = await getWorkpackDetail(input.workpackFamily);
-    if (workpackDetail) {
-      const connectorFamilies = Array.from(new Set(workpackDetail.version.connectorMaps.map((map) => map.connectorFamily)));
-      if (connectorFamilies.some((family) => !input.sender.activeContract?.authorityEnvelope.connectorFamilies.includes(family))) {
-        blockers.push("sender_connector_scope_exceeded");
-      }
-      if (connectorFamilies.some((family) => !input.recipient.activeContract?.authorityEnvelope.connectorFamilies.includes(family))) {
-        blockers.push("recipient_connector_scope_exceeded");
-      }
-      const maxSideEffect = workpackDetail.version.executionPlan?.steps.reduce<SideEffectClass>((current, step) => {
-        return SIDE_EFFECT_RANK[step.sideEffectClass] > SIDE_EFFECT_RANK[current] ? step.sideEffectClass : current;
-      }, "read_only") ?? "read_only";
-      if (SIDE_EFFECT_RANK[maxSideEffect] > SIDE_EFFECT_RANK[maxAllowedSideEffect(input.sender)]) blockers.push("sender_side_effect_exceeded");
-      if (SIDE_EFFECT_RANK[maxSideEffect] > SIDE_EFFECT_RANK[maxAllowedSideEffect(input.recipient)]) blockers.push("recipient_side_effect_exceeded");
-      const estimatedBudget = workpackDetail.version.executionPlan?.steps.length ?? 0;
-      if (maxBudget(input.sender) > 0 && estimatedBudget > maxBudget(input.sender)) blockers.push("sender_budget_exceeded");
-      if (maxBudget(input.recipient) > 0 && estimatedBudget > maxBudget(input.recipient)) blockers.push("recipient_budget_exceeded");
-    }
-  }
 
   return blockers;
 }
@@ -165,7 +121,6 @@ export async function sendTypedRoleMessage(input: {
     ? await delegationBlockers({
       sender,
       recipient,
-      workpackFamily: input.relatedWorkpackFamily ?? null,
     })
     : [];
   if (blockers.length > 0 && ["handoff", "request", "approval_request"].includes(input.intentType)) {

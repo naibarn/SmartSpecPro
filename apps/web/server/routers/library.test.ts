@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockCreateLibraryItem,
   mockGetLibraryItemById,
+  mockGetLibraryGalleryPublicationState,
   mockGetLibraryMarkdownContent,
   mockGetUserEffectivePermission,
   mockGetLibraryUploadStatuses,
@@ -10,6 +11,7 @@ const {
   mockSaveLibraryMarkdown,
   mockSearchLibraryItems,
   mockUploadLibraryFile,
+  mockPublishLibraryItemToGallery,
   mockUpdateLibraryItem,
   mockSoftDeleteLibraryItem,
   mockShareLibraryItem,
@@ -19,9 +21,12 @@ const {
   mockResolvePublicShareLink,
   mockAuditLog,
   mockGetDb,
+  mockValidateLibraryUploadMetadata,
+  mockStoragePresignPut,
 } = vi.hoisted(() => ({
   mockCreateLibraryItem: vi.fn(),
   mockGetLibraryItemById: vi.fn(),
+  mockGetLibraryGalleryPublicationState: vi.fn(),
   mockGetLibraryMarkdownContent: vi.fn(),
   mockGetUserEffectivePermission: vi.fn(),
   mockGetLibraryUploadStatuses: vi.fn(),
@@ -29,6 +34,7 @@ const {
   mockSaveLibraryMarkdown: vi.fn(),
   mockSearchLibraryItems: vi.fn(),
   mockUploadLibraryFile: vi.fn(),
+  mockPublishLibraryItemToGallery: vi.fn(),
   mockUpdateLibraryItem: vi.fn(),
   mockSoftDeleteLibraryItem: vi.fn(),
   mockShareLibraryItem: vi.fn(),
@@ -37,6 +43,8 @@ const {
   mockRevokePublicShareLink: vi.fn(),
   mockResolvePublicShareLink: vi.fn(),
   mockAuditLog: vi.fn(),
+  mockValidateLibraryUploadMetadata: vi.fn(),
+  mockStoragePresignPut: vi.fn(),
   mockGetDb: vi.fn().mockResolvedValue({
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
@@ -52,9 +60,16 @@ vi.mock("../db", () => ({
   getDb: mockGetDb,
 }));
 
+vi.mock("../storage", () => ({
+  storageDelete: vi.fn(),
+  storageHeadFile: vi.fn(),
+  storagePresignPut: mockStoragePresignPut,
+}));
+
 vi.mock("../services/libraryService", () => ({
   createLibraryItem: mockCreateLibraryItem,
   getLibraryItemById: mockGetLibraryItemById,
+  getLibraryGalleryPublicationState: mockGetLibraryGalleryPublicationState,
   getLibraryMarkdownContent: mockGetLibraryMarkdownContent,
   getUserEffectivePermission: mockGetUserEffectivePermission,
   getLibraryUploadStatuses: mockGetLibraryUploadStatuses,
@@ -62,6 +77,8 @@ vi.mock("../services/libraryService", () => ({
   saveLibraryMarkdown: mockSaveLibraryMarkdown,
   searchLibraryItems: mockSearchLibraryItems,
   uploadLibraryFile: mockUploadLibraryFile,
+  validateLibraryUploadMetadata: mockValidateLibraryUploadMetadata,
+  publishLibraryItemToGallery: mockPublishLibraryItemToGallery,
   updateLibraryItem: mockUpdateLibraryItem,
   softDeleteLibraryItem: mockSoftDeleteLibraryItem,
   shareLibraryItem: mockShareLibraryItem,
@@ -640,6 +657,47 @@ describe("libraryRouter.getItem", () => {
   });
 });
 
+describe("libraryRouter.publishToGallery", () => {
+  it("publishes media with the tenant-scoped admin actor", async () => {
+    mockPublishLibraryItemToGallery.mockResolvedValue({
+      success: true,
+      galleryItemId: 77,
+      created: true,
+      publicUrl: "/api/gallery/media/77/file",
+    });
+
+    const fn = libraryRouter.publishToGallery as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 1, role: "admin", currentTenantId: "tenant-a" },
+        tenantId: "tenant-a",
+      },
+      input: { id: 42 },
+    });
+
+    expect(result.publicUrl).toBe("/api/gallery/media/77/file");
+    expect(mockPublishLibraryItemToGallery).toHaveBeenCalledWith(
+      42,
+      expect.objectContaining({ userId: 1, tenantId: "tenant-a", role: "admin" }),
+    );
+  });
+
+  it("rejects non-admin users before invoking the publication service", async () => {
+    const fn = libraryRouter.publishToGallery as Function;
+
+    await expect(
+      fn({
+        ctx: {
+          user: { id: 2, role: "user", currentTenantId: "tenant-a" },
+          tenantId: "tenant-a",
+        },
+        input: { id: 42 },
+      }),
+    ).rejects.toThrow("Only admins can publish");
+    expect(mockPublishLibraryItemToGallery).not.toHaveBeenCalled();
+  });
+});
+
 describe("libraryRouter.updateItem", () => {
   it("maps URL validation error to client-safe bad request", async () => {
     const error = new Error("Invalid thumbnailUrl: URL scheme file: is not allowed");
@@ -784,4 +842,40 @@ describe("libraryRouter.permanentDelete", () => {
   it.todo("rejects admin for items < 90 days in trash");
   it.todo("throws NOT_FOUND for non-trashed item");
   it.todo("logs audit event with daysInTrash");
+});
+
+describe("libraryRouter.directUploadInit", () => {
+  it("returns a tenant-scoped presigned upload capability without file data", async () => {
+    mockValidateLibraryUploadMetadata.mockReturnValue({
+      fileName: "clip.mp4",
+      fileType: "video/mp4",
+      extension: "mp4",
+    });
+    mockStoragePresignPut.mockResolvedValue({
+      key: "library/uploads/tenant-1/9/upload.mp4",
+      url: "https://r2.example/upload",
+    });
+
+    const fn = libraryRouter.directUploadInit as Function;
+    const result = await fn({
+      ctx: {
+        user: { id: 9, role: "user", currentTenantId: "tenant-1" },
+        tenantId: "tenant-1",
+        privateVaultToken: null,
+      },
+      input: {
+        fileName: "clip.mp4",
+        fileType: "video/mp4",
+        fileSizeBytes: 30 * 1024 * 1024,
+        operation: "create",
+      },
+    });
+
+    expect(result).toMatchObject({
+      method: "presigned",
+      uploadUrl: "https://r2.example/upload",
+      storageKey: "library/uploads/tenant-1/9/upload.mp4",
+    });
+    expect(result).not.toHaveProperty("fileBase64");
+  });
 });

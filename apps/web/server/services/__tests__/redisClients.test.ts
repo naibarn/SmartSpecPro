@@ -11,7 +11,8 @@ const mockSet = vi.fn();
 const mockDel = vi.fn();
 const mockDuplicate = vi.fn();
 
-const MockRedis = vi.fn().mockImplementation(() => ({
+const MockRedis = vi.fn().mockImplementation(function MockRedisClient() {
+  return {
   quit: mockQuit,
   ping: mockPing,
   get: mockGet,
@@ -20,7 +21,8 @@ const MockRedis = vi.fn().mockImplementation(() => ({
   duplicate: mockDuplicate,
   status: "ready",
   on: vi.fn(),
-}));
+  };
+});
 
 vi.mock("ioredis", () => ({
   default: MockRedis,
@@ -68,6 +70,19 @@ describe("RedisClients", () => {
       expect(client).toBeDefined();
     });
 
+    it("uses the dedicated JTI Redis URL for the rollback bridge", async () => {
+      process.env.TOKEN_REVOKE_REDIS_URL = "rediss://jti-redis:6379";
+      process.env.REDIS_UPSTASH_URL = "rediss://cache-redis:6379";
+
+      const { getTokenRevocationClient } = await import("../redisClients");
+      getTokenRevocationClient();
+
+      expect(MockRedis).toHaveBeenCalledWith(
+        "rediss://jti-redis:6379",
+        expect.objectContaining({ maxRetriesPerRequest: 3 }),
+      );
+    });
+
     it("throws a descriptive error when no Redis URL is configured", async () => {
       delete process.env.REDIS_UPSTASH_URL;
       delete process.env.REDIS_URL;
@@ -107,18 +122,20 @@ describe("RedisClients", () => {
   });
 
   describe("graceful shutdown", () => {
-    it("disconnects both clients on closeAllRedis()", async () => {
+    it("disconnects initialized Redis clients on closeAllRedis()", async () => {
       process.env.REDIS_UPSTASH_URL = "rediss://upstash:6379";
       process.env.REDIS_MEMORYSTORE_URL = "redis://memorystore:6379";
+      process.env.TOKEN_REVOKE_REDIS_URL = "redis://jti:6379";
 
-      const { getCacheClient, getRealtimeClient, closeAllRedis } =
+      const { getCacheClient, getRealtimeClient, getTokenRevocationClient, closeAllRedis } =
         await import("../redisClients");
 
       getCacheClient();
       getRealtimeClient();
+      getTokenRevocationClient();
       await closeAllRedis();
 
-      expect(mockQuit).toHaveBeenCalledTimes(2);
+      expect(mockQuit).toHaveBeenCalledTimes(3);
     });
 
     it("handles shutdown gracefully when clients are not initialized", async () => {

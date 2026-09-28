@@ -10,10 +10,17 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function generateArticleDraftHtml(state: Pick<ComposerState, "topic" | "executionSource" | "skillId" | "agencyName" | "requiresWebSearch" | "requiresThinking">): string {
-  const sourceLabel = state.executionSource === "agency"
-    ? state.agencyName || "Agency"
-    : state.skillId || "Skill";
+export function generateArticleDraftHtml(
+  state: Pick<
+    ComposerState,
+    | "topic"
+    | "executionSource"
+    | "skillId"
+    | "requiresWebSearch"
+    | "requiresThinking"
+  >
+): string {
+  const sourceLabel = state.skillId || "Skill";
 
   return [
     `<h1>${escapeHtml(state.topic.trim() || "Untitled article")}</h1>`,
@@ -23,15 +30,15 @@ export function generateArticleDraftHtml(state: Pick<ComposerState, "topic" | "e
   ].join("");
 }
 
-export function makeComposerStateFromDraft(draft: ContentComposerDraft): ComposerState {
+export function makeComposerStateFromDraft(
+  draft: ContentComposerDraft
+): ComposerState {
   return {
     activeDraftId: draft.id,
     currentStep: 1,
     topic: draft.topic ?? "",
-    executionSource: draft.executionSource === "agency" ? "agency" : "skill",
+    executionSource: "skill",
     skillId: draft.skillId ?? null,
-    agencyId: draft.agencyId ?? null,
-    agencyName: null,
     requiresWebSearch: draft.requiresWebSearch ?? false,
     requiresThinking: draft.requiresThinking ?? false,
     showComplexityBanner: false,
@@ -39,11 +46,13 @@ export function makeComposerStateFromDraft(draft: ContentComposerDraft): Compose
     isGenerating: false,
     generationError: null,
     attachmentIds: draft.attachmentIds ?? [],
-    destinationKind: draft.destinationKind as ComposerState["destinationKind"] ?? null,
-    docsSubKind: draft.docsSubKind as ComposerState["docsSubKind"] ?? null,
+    destinationKind:
+      (draft.destinationKind as ComposerState["destinationKind"]) ?? null,
+    docsSubKind: (draft.docsSubKind as ComposerState["docsSubKind"]) ?? null,
     docsTargetId: draft.docsTargetId ?? null,
     blogTargetId: draft.blogTargetId ?? null,
-    socialPlatform: draft.socialPlatform as ComposerState["socialPlatform"] ?? null,
+    socialPlatform:
+      (draft.socialPlatform as ComposerState["socialPlatform"]) ?? null,
     socialTargetId: draft.socialTargetId ?? null,
     socialCaption: draft.socialCaption ?? "",
     captionIsManuallyEdited: Boolean(draft.socialCaption),
@@ -60,9 +69,8 @@ export function makeSaveDraftInput(state: ComposerState) {
   return {
     id: state.activeDraftId ?? null,
     topic: state.topic || null,
-    executionSource: state.executionSource,
+    executionSource: "skill",
     skillId: state.skillId,
-    agencyId: state.agencyId,
     requiresWebSearch: state.requiresWebSearch,
     requiresThinking: state.requiresThinking,
     articleBody: state.articleBody || null,

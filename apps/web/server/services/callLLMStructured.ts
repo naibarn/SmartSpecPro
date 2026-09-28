@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { randomUUID } from "crypto";
 import type { Message } from "../_core/llm";
 import { executeWithFallback, resolveProviders } from "./llmRouter";
 import { deductCreditsForModel } from "./creditService";
@@ -325,7 +326,6 @@ async function callLLMStructuredWithRuntime<T>(
     : await resolveStructuredAutoChatModelSelection();
   const resolvedModel =
     requestedModel ?? autoStructuredSelection?.resolvedModelId ?? null;
-
   if (!resolvedModel) {
     throw new Error("No structured LLM model could be resolved");
   }
@@ -574,6 +574,14 @@ async function callLLMStructuredLegacy<T>(
     : await resolveStructuredAutoChatModelSelection();
   const resolvedModel =
     requestedModel ?? autoStructuredSelection?.resolvedModelId ?? null;
+  const fixedSkillRunId = typeof billingMetadata?.skillSlug === "string"
+    ? String(billingMetadata.skillRunId ?? randomUUID())
+    : undefined;
+  const genericIdempotencyKey =
+    typeof billingMetadata?.idempotencyKey === "string" &&
+    billingMetadata.idempotencyKey.trim().length > 0
+      ? billingMetadata.idempotencyKey.trim()
+      : undefined;
 
   const augmentedSystemPrompt = `${systemPrompt}
 
@@ -599,7 +607,7 @@ The JSON must strictly conform to the expected schema.`;
 
   // Wire task planner ONCE before the retry loop
   const plannerResult = await runPlanner({
-    sourceType: "skill",
+    sourceType: billingMetadata?.skillSlug ? "skill" : "chat",
     userId,
     tenantId,
     conversationModel: resolvedModel,
@@ -725,13 +733,15 @@ The JSON must strictly conform to the expected schema.`;
       costUsd,
       tenantId,
       description: billingDescription,
+      skillSlug: (billingMetadata?.skillSlug as string) ?? undefined,
+      idempotencyKey: fixedSkillRunId ?? genericIdempotencyKey,
       metadata: {
         requestType: "structured_llm",
         structured: true,
         attempt: attempt + 1,
         ...(billingMetadata ?? {}),
       },
-      sourceType: "skill",
+      sourceType: billingMetadata?.skillSlug ? "skill" : "chat",
     });
     totalCredits += creditsUsed;
 

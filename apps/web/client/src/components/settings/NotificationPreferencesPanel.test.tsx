@@ -2,6 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { NotificationPreferencesPanel } from "./NotificationPreferencesPanel";
 
+vi.mock("./WebhookManagement", () => ({
+  WebhookManagement: () => null,
+}));
+
 // ─── Mock tRPC ──────────────────────────────────────────────────────────────
 
 const mockGetPreferences = vi.fn();
@@ -50,6 +54,11 @@ vi.mock("@/lib/trpc", () => ({
         }),
       },
     },
+    notificationWebhooks: {
+      listWebhooks: {
+        useQuery: () => ({ data: [] }),
+      },
+    },
   },
 }));
 
@@ -76,7 +85,7 @@ vi.mock("@tanstack/react-query", async () => {
 });
 
 const CATEGORIES = [
-  "system_health", "media_jobs", "workflow", "skill",
+  "system_health", "credits", "media_jobs", "workflow", "skill",
   "feedback", "agency", "follow", "scheduled",
   "security", "business",
 ];
@@ -89,7 +98,7 @@ beforeEach(() => {
 });
 
 describe("NotificationPreferencesPanel", () => {
-  it("renders a row for each of the 10 notification categories", () => {
+  it("renders a row for each of the 11 notification categories", () => {
     render(<NotificationPreferencesPanel />);
     for (const cat of CATEGORIES) {
       expect(screen.getByTestId(`category-row-${cat}`)).toBeInTheDocument();
@@ -99,9 +108,18 @@ describe("NotificationPreferencesPanel", () => {
   it("displays category labels", () => {
     render(<NotificationPreferencesPanel />);
     expect(screen.getByText("System Health")).toBeInTheDocument();
+    expect(screen.getByText("Credits")).toBeInTheDocument();
     expect(screen.getByText("Media Jobs")).toBeInTheDocument();
     expect(screen.getByText("Security")).toBeInTheDocument();
     expect(screen.getByText("Business")).toBeInTheDocument();
+  });
+
+  it("defaults the Credits severity to High", () => {
+    render(<NotificationPreferencesPanel />);
+
+    expect(
+      screen.getByLabelText("Minimum severity for Credits")
+    ).toHaveTextContent("High");
   });
 
   it("renders In-App, Email, and Telegram toggle columns", () => {

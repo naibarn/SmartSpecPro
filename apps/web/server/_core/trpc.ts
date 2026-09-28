@@ -5,6 +5,39 @@ import type { TrpcContext } from "./context";
 import { createRateLimitMiddleware } from "./rateLimitedProcedure";
 import { getTraceId } from "../services/traceContext";
 
+const DATABASE_ERROR_PATTERNS = [
+  /failed query:/i,
+  /drizzle(?: query)? error/i,
+  /postgres(?: error| query)/i,
+  /invalid input syntax for type/i,
+  /database error/i,
+  /duplicate key value violates unique constraint/i,
+  /violates (?:foreign key|not-null|check) constraint/i,
+  /relation [^\n]+ does not exist/i,
+  /column [^\n]+ does not exist/i,
+  /syntax error at or near/i,
+];
+
+/**
+ * Database/ORM failures are useful in server logs but must not be returned in
+ * tRPC error messages, where they can expose SQL, table names, and parameters
+ * to browsers and the feedback dialog. Keep application-authored internal
+ * messages intact unless they match a database error signature.
+ */
+export function sanitizeTrpcErrorMessage(
+  code: string,
+  message: string,
+): string {
+  if (
+    code === "INTERNAL_SERVER_ERROR" &&
+    DATABASE_ERROR_PATTERNS.some(pattern => pattern.test(message))
+  ) {
+    return "Internal server error";
+  }
+
+  return message;
+}
+
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
   errorFormatter({ shape, ctx, error }) {
@@ -15,11 +48,31 @@ const t = initTRPC.context<TrpcContext>().create({
     // traces, env, or internal paths) — only the id is added.
     const traceId = getTraceId() ?? ctx?.req?.requestId ?? null;
 
+    // Surface a Retry-After hint (in seconds) for rate-limit (429) errors so
+    // the client can back off precisely instead of hammering. Call sites that
+    // map an upstream 429 (e.g. media.fetchTaskResult / media.listAllTasks)
+    // attach it via `new TRPCError({ cause: { retryAfterSeconds } })`; tRPC
+    // copies plain-object cause fields onto error.cause, so we read it back
+    // here and expose only the number. Absent/invalid → field omitted.
+    const cause = error.cause as { retryAfterSeconds?: unknown; name?: unknown; code?: unknown } | undefined;
+    const retryAfter =
+      typeof cause?.retryAfterSeconds === "number"
+      && Number.isFinite(cause.retryAfterSeconds)
+      && cause.retryAfterSeconds > 0
+        ? cause.retryAfterSeconds
+        : undefined;
+    const creditContextCode = cause?.name === "CreditContextError" && typeof cause.code === "string"
+      ? cause.code
+      : undefined;
+
     return {
       ...shape,
+      message: sanitizeTrpcErrorMessage(error.code, shape.message),
       data: {
         ...shape.data,
         traceId,
+        ...(retryAfter != null ? { retryAfter } : {}),
+        ...(creditContextCode != null ? { creditContextCode } : {}),
       },
     };
   },
@@ -78,6 +131,10 @@ export const verifyEmailProcedure = t.procedure.use(
 
 export const resetPasswordProcedure = t.procedure.use(
   createRateLimitMiddleware({ namespace: "reset-password", limit: 5, windowMs: 60_000 }),
+);
+
+export const verifyResetCodeProcedure = t.procedure.use(
+  createRateLimitMiddleware({ namespace: "verify-reset-code", limit: 10, windowMs: 60_000 }),
 );
 
 // Rate-limited admin procedure — auth check first (rejects unauthenticated

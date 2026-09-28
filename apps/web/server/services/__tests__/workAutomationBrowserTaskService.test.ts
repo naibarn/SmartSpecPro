@@ -171,7 +171,7 @@ describe("workAutomationBrowserTaskService", () => {
       stepId: "step-1",
       status: "succeeded",
     }));
-    expect(mocks.finalizeAutomationCopilotTaskReservation).toHaveBeenCalledWith("run-1:research", "success");
+    expect(mocks.finalizeAutomationCopilotTaskReservation).toHaveBeenCalledWith("run-1:research", "success", "tenant-1");
     expect(updatePayloads.length).toBeGreaterThan(0);
   });
 

@@ -1,0 +1,569 @@
+{
+  "schema_version": "1.0",
+  "spec_214_revision": 6,
+  "source": "specs/feature/214-node-type-contract-architecture/spec.md#appendix-a",
+  "entry_count": 112,
+  "alias_authority": false,
+  "entries": [
+    {
+      "old_name": "manual-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowInterface + manual invocation"
+    },
+    {
+      "old_name": "form-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowInterface / human.input"
+    },
+    {
+      "old_name": "webhook-trigger",
+      "disposition": "canonical-node",
+      "canonical_target": "core.trigger"
+    },
+    {
+      "old_name": "schedule-trigger",
+      "disposition": "canonical-node",
+      "canonical_target": "core.trigger"
+    },
+    {
+      "old_name": "chat-trigger",
+      "disposition": "canonical-node",
+      "canonical_target": "core.trigger"
+    },
+    {
+      "old_name": "library-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding(artifact/library) or data.retrieval"
+    },
+    {
+      "old_name": "file-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowInterface(ArtifactRef)"
+    },
+    {
+      "old_name": "project-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding(project-context)"
+    },
+    {
+      "old_name": "previous-run-input",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding(previous-run)"
+    },
+    {
+      "old_name": "document-parser",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "ocr",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "document-extractor",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "document-classifier",
+      "disposition": "composition",
+      "canonical_target": "ai.model + flow.router"
+    },
+    {
+      "old_name": "chunker",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "structured-parser",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "data-transform",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "filter",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "map",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "reduce",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "join",
+      "disposition": "ambiguous-remove",
+      "canonical_target": "data.transform OR flow.join"
+    },
+    {
+      "old_name": "split",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "merge",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "library-search",
+      "disposition": "canonical-node",
+      "canonical_target": "data.retrieval"
+    },
+    {
+      "old_name": "vector-search",
+      "disposition": "canonical-node",
+      "canonical_target": "data.retrieval"
+    },
+    {
+      "old_name": "rerank",
+      "disposition": "canonical-node",
+      "canonical_target": "data.retrieval"
+    },
+    {
+      "old_name": "citation-builder",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "embedding",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "tenant-context",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding"
+    },
+    {
+      "old_name": "user-context",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding"
+    },
+    {
+      "old_name": "project-context",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding"
+    },
+    {
+      "old_name": "config-value",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding"
+    },
+    {
+      "old_name": "secret-reference",
+      "disposition": "remove-node",
+      "canonical_target": "SecretBinding"
+    },
+    {
+      "old_name": "llm-prompt",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "llm-structured",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "classifier",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "summarizer",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "translator",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.model"
+    },
+    {
+      "old_name": "prompt-template",
+      "disposition": "canonical-node",
+      "canonical_target": "data.transform"
+    },
+    {
+      "old_name": "ai-agent",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.agent"
+    },
+    {
+      "old_name": "skill",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "external-agent",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.agent"
+    },
+    {
+      "old_name": "subflow-call",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.subflow"
+    },
+    {
+      "old_name": "http-request",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "mcp-tool",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "connector-action",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "database-query",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "database-write",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "notification",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "file-transform",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "artifact-store",
+      "disposition": "canonical-node",
+      "canonical_target": "data.artifact"
+    },
+    {
+      "old_name": "artifact-publish",
+      "disposition": "canonical-node",
+      "canonical_target": "data.artifact"
+    },
+    {
+      "old_name": "browser_session_start",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use runtime/session state"
+    },
+    {
+      "old_name": "browser_session_instruction",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use runtime/session state"
+    },
+    {
+      "old_name": "browser_session_wait_for_user",
+      "disposition": "composition",
+      "canonical_target": "automation.computer_use + human.input"
+    },
+    {
+      "old_name": "browser_session_review_gate",
+      "disposition": "composition",
+      "canonical_target": "automation.computer_use + human.approval"
+    },
+    {
+      "old_name": "image-generate",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "video-generate",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "audio-generate",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "tts",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "transcription",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.model / core.capability"
+    },
+    {
+      "old_name": "storyboard",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.agent / core.capability"
+    },
+    {
+      "old_name": "media-compose",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "media-qc",
+      "disposition": "canonical-node",
+      "canonical_target": "quality.verifier"
+    },
+    {
+      "old_name": "render",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "preview",
+      "disposition": "remove-node",
+      "canonical_target": "Studio UI / Artifact preview"
+    },
+    {
+      "old_name": "condition",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.router"
+    },
+    {
+      "old_name": "switch",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.router"
+    },
+    {
+      "old_name": "parallel",
+      "disposition": "remove-node",
+      "canonical_target": "Graph fan-out + ConcurrencyScope"
+    },
+    {
+      "old_name": "loop",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.loop"
+    },
+    {
+      "old_name": "foreach",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.loop"
+    },
+    {
+      "old_name": "delay",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.wait"
+    },
+    {
+      "old_name": "retry",
+      "disposition": "remove-node",
+      "canonical_target": "RetryPolicyAttachment"
+    },
+    {
+      "old_name": "human-approval",
+      "disposition": "canonical-node",
+      "canonical_target": "human.approval"
+    },
+    {
+      "old_name": "human-input",
+      "disposition": "canonical-node",
+      "canonical_target": "human.input"
+    },
+    {
+      "old_name": "checkpoint",
+      "disposition": "remove-node",
+      "canonical_target": "CheckpointPolicyAttachment"
+    },
+    {
+      "old_name": "error-handler",
+      "disposition": "remove-node",
+      "canonical_target": "ErrorBoundaryScope + error edges"
+    },
+    {
+      "old_name": "subflow",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.subflow"
+    },
+    {
+      "old_name": "run-until",
+      "disposition": "canonical-node",
+      "canonical_target": "flow.loop"
+    },
+    {
+      "old_name": "result-view",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowInterface output + Studio UI"
+    },
+    {
+      "old_name": "output-mapper",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowOutputBinding / data.transform"
+    },
+    {
+      "old_name": "trace-event",
+      "disposition": "remove-node",
+      "canonical_target": "InstrumentationAttachment / runtime projection"
+    },
+    {
+      "old_name": "log",
+      "disposition": "remove-node",
+      "canonical_target": "InstrumentationAttachment / runtime projection"
+    },
+    {
+      "old_name": "metric",
+      "disposition": "remove-node",
+      "canonical_target": "InstrumentationAttachment / runtime projection"
+    },
+    {
+      "old_name": "run-status",
+      "disposition": "remove-node",
+      "canonical_target": "InstrumentationAttachment / runtime projection"
+    },
+    {
+      "old_name": "external-agent-task",
+      "disposition": "canonical-node",
+      "canonical_target": "ai.agent"
+    },
+    {
+      "old_name": "capability-search",
+      "disposition": "control-plane",
+      "canonical_target": "Capability Registry service"
+    },
+    {
+      "old_name": "capability-describe",
+      "disposition": "control-plane",
+      "canonical_target": "Capability Registry service"
+    },
+    {
+      "old_name": "capability-invoke",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "capability-status",
+      "disposition": "control-plane",
+      "canonical_target": "Runtime/Capability status service"
+    },
+    {
+      "old_name": "capability-result",
+      "disposition": "control-plane",
+      "canonical_target": "Runtime/Capability status service"
+    },
+    {
+      "old_name": "asset-select",
+      "disposition": "composition",
+      "canonical_target": "data.retrieval / human.input"
+    },
+    {
+      "old_name": "asset-preview",
+      "disposition": "remove-node",
+      "canonical_target": "Studio UI / Artifact preview"
+    },
+    {
+      "old_name": "context-package",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding / data.transform"
+    },
+    {
+      "old_name": "workspace-bind",
+      "disposition": "remove-node",
+      "canonical_target": "WorkflowBinding(workspace)"
+    },
+    {
+      "old_name": "git-operation",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "verification",
+      "disposition": "canonical-node",
+      "canonical_target": "quality.verifier"
+    },
+    {
+      "old_name": "code-task",
+      "disposition": "preset-or-binding",
+      "canonical_target": "ai.agent / core.capability"
+    },
+    {
+      "old_name": "economic-quote",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "budget-guard",
+      "disposition": "remove-node",
+      "canonical_target": "BudgetPolicyAttachment"
+    },
+    {
+      "old_name": "economic-reserve",
+      "disposition": "runtime-internal",
+      "canonical_target": "Spec 207 economic runtime/control plane"
+    },
+    {
+      "old_name": "economic-authorization",
+      "disposition": "runtime-internal",
+      "canonical_target": "Spec 207 economic runtime/control plane"
+    },
+    {
+      "old_name": "economic-capture",
+      "disposition": "runtime-internal",
+      "canonical_target": "Spec 207 economic runtime/control plane"
+    },
+    {
+      "old_name": "economic-release",
+      "disposition": "runtime-internal",
+      "canonical_target": "Spec 207 economic runtime/control plane"
+    },
+    {
+      "old_name": "economic-status",
+      "disposition": "runtime-internal",
+      "canonical_target": "Spec 207 economic runtime/control plane"
+    },
+    {
+      "old_name": "settlement-report",
+      "disposition": "canonical-node",
+      "canonical_target": "core.capability"
+    },
+    {
+      "old_name": "browser_observe",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use strategy/runtime primitive"
+    },
+    {
+      "old_name": "browser_action",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use strategy/runtime primitive"
+    },
+    {
+      "old_name": "browser_file_transfer",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use strategy/runtime primitive"
+    },
+    {
+      "old_name": "browser_verify",
+      "disposition": "runtime-internal",
+      "canonical_target": "automation.computer_use strategy/runtime primitive"
+    },
+    {
+      "old_name": "browser_takeover",
+      "disposition": "composition",
+      "canonical_target": "automation.computer_use + human.input"
+    },
+    {
+      "old_name": "managed-agent-fleet",
+      "disposition": "control-plane",
+      "canonical_target": "Agent runtime/fleet service"
+    },
+    {
+      "old_name": "agent-session-control",
+      "disposition": "control-plane",
+      "canonical_target": "Agent runtime/fleet service"
+    }
+  ]
+}

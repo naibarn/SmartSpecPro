@@ -40,6 +40,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MultiProviderAdmin } from "@/components/admin/MultiProviderAdmin";
+import { AdminInferencePolicyPanel } from "@/components/admin/AdminInferencePolicyPanel";
+import { AdminInferenceRolloutPanel } from "@/components/admin/AdminInferenceRolloutPanel";
 import {
   Settings,
   Key,
@@ -489,6 +491,9 @@ export default function AdminLLMProviders() {
         <DashboardKpiCard icon={CheckCircle2} label={t("admin.llmProviders.kpis.ready")} value={stats?.ready || 0} valueClassName="text-blue-600" />
         <DashboardKpiCard icon={Cpu} label={t("admin.llmProviders.kpis.totalModels")} value={totalModels} valueClassName="text-purple-600" />
       </div>
+
+      <AdminInferencePolicyPanel />
+      <AdminInferenceRolloutPanel />
 
       {/* Sync Result Notification */}
       {syncResult && (

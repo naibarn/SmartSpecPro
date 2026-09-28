@@ -1,0 +1,293 @@
+import fs from "fs";
+import os from "os";
+import path from "path";
+import crypto from "crypto";
+
+import AdmZip from "adm-zip";
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  isOfficialRuntimePackManifest,
+  requiredRuntimeArchiveFiles,
+  validateRuntimePackArchive,
+} from "../workerRuntimePackValidation";
+
+const tempPaths: string[] = [];
+
+function createManifest(runtimeId: "hyperframes-wsl2" | "hyperframes-macos-arm64" = "hyperframes-wsl2") {
+  const isMac = runtimeId === "hyperframes-macos-arm64";
+  return {
+    allowed: true,
+    runtimeId,
+    version: "2026.08.31.1",
+    hyperframesVersion: "hyperframes@0.7.109; @hyperframes/producer@0.7.109",
+    runtimePlatform: isMac ? "macos-arm64" : "wsl2-linux-x64",
+    architecture: isMac ? "arm64" : "x64",
+    rendererKind: "hyperframes_cli_official",
+    sidecarLauncher: "smart-ai-hub-hyperframes-node-launcher",
+    sidecarScriptPath: "hyperframes-sidecar/render.mjs",
+    sidecarSha256: "a".repeat(64),
+    checksumFile: "SHA256SUMS",
+    signatureFile: "SHA256SUMS.sig",
+    transcription: {
+      engine: "whisper.cpp",
+      version: "1.9.3",
+      binaryPath: "whisper/whisper-cli",
+      binarySha256: "b".repeat(64),
+      model: "large-v3",
+      modelPath: "whisper/.cache/hyperframes/whisper/models/ggml-large-v3.bin",
+      modelSha256: "c".repeat(64),
+      modelUrl:
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+    },
+  };
+}
+
+function makeArchive(
+  manifest: Record<string, unknown>,
+  signature?: string,
+  checksumTextOverride?: string,
+  speakerAwareRunnerBytes?: Buffer
+) {
+  const keyPair = crypto.generateKeyPairSync("ed25519");
+  const zip = new AdmZip();
+  zip.addFile(
+    "runtime-pack/manifest.json",
+    Buffer.from(JSON.stringify(manifest))
+  );
+  const runtimeId = manifest.runtimeId as "hyperframes-wsl2" | "hyperframes-macos-arm64";
+  const isMac = runtimeId === "hyperframes-macos-arm64";
+  const transcription = manifest.transcription as Record<string, string>;
+  const sidecarPath = isMac ? "sidecars/hyperframes-render" : "sidecars/hyperframes-render.exe";
+  zip.addFile(
+    "runtime-pack/SHA256SUMS",
+    Buffer.from(
+      checksumTextOverride ??
+        `${transcription.binarySha256}  runtime-pack/${transcription.binaryPath}\n${transcription.modelSha256}  runtime-pack/${transcription.modelPath}\n${manifest.sidecarSha256}  ${sidecarPath}\n`
+    )
+  );
+  const checksumText =
+    checksumTextOverride ??
+    `${(manifest.transcription as Record<string, string>).binarySha256}  runtime-pack/${(manifest.transcription as Record<string, string>).binaryPath}\n${(manifest.transcription as Record<string, string>).modelSha256}  runtime-pack/${(manifest.transcription as Record<string, string>).modelPath}\n${manifest.sidecarSha256}  ${sidecarPath}\n`;
+  const signatureText =
+    signature ??
+    crypto.sign(null, Buffer.from(checksumText), keyPair.privateKey).toString("base64");
+  zip.deleteFile("runtime-pack/SHA256SUMS");
+  zip.addFile("runtime-pack/SHA256SUMS", Buffer.from(checksumText));
+  zip.addFile("runtime-pack/SHA256SUMS.sig", Buffer.from(signatureText));
+  for (const file of requiredRuntimeArchiveFiles(runtimeId)) {
+    if (!zip.getEntry(file.replace(/\*$/, "fixture"))) {
+      zip.addFile(file.replace(/\*$/, "fixture"), Buffer.from("fixture"));
+    }
+  }
+  const runner = manifest.speakerAwareRunner as Record<string, string> | undefined;
+  if (runner && speakerAwareRunnerBytes) {
+    zip.addFile(`runtime-pack/${runner.path}`, speakerAwareRunnerBytes);
+  }
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), "worker-runtime-validation-test-")
+  );
+  const archivePath = path.join(
+    directory,
+    `smart-ai-hub-worker-runtime-${runtimeId}-2026.08.31.1.zip`
+  );
+  zip.writeZip(archivePath);
+  tempPaths.push(directory);
+  return {
+    archivePath,
+    publicKey: keyPair.publicKey.export({ type: "spki", format: "pem" }).toString(),
+  };
+}
+
+afterEach(() => {
+  for (const tempPath of tempPaths.splice(0))
+    fs.rmSync(tempPath, { recursive: true, force: true });
+});
+
+describe("worker runtime pack validation", () => {
+  it("accepts a complete official WSL2 archive", async () => {
+    const manifest = createManifest();
+    expect(isOfficialRuntimePackManifest(manifest, "hyperframes-wsl2")).toBe(
+      true
+    );
+    const archive = makeArchive(manifest);
+    const result = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(result.valid).toBe(true);
+    expect(result.checks.every(check => check.status === "ok")).toBe(true);
+  });
+
+  it("rejects placeholder signatures and missing transcription metadata", async () => {
+    const manifest = createManifest();
+    manifest.transcription = undefined;
+    expect(isOfficialRuntimePackManifest(manifest, "hyperframes-wsl2")).toBe(
+      false
+    );
+    const archive = makeArchive(
+      createManifest(),
+      "placeholder-signature-required-before-release"
+    );
+    const result = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.checks.find(check => check.id === "signature")?.status).toBe(
+      "error"
+    );
+  });
+
+  it("rejects archives whose checksum file does not bind the manifest assets", async () => {
+    const manifest = createManifest();
+    const archive = makeArchive(
+      manifest,
+      undefined,
+      "bad-checksum\n"
+    );
+    const result = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(result.valid).toBe(false);
+    expect(
+      result.checks.find(check => check.id === "checksum_bindings")?.status
+    ).toBe("error");
+  });
+
+  it("rejects a validly shaped signature from the wrong Ed25519 key", async () => {
+    const archive = makeArchive(createManifest());
+    const otherKey = crypto.generateKeyPairSync("ed25519");
+    const result = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: otherKey.publicKey.export({ type: "spki", format: "pem" }).toString(),
+    });
+    expect(result.valid).toBe(false);
+    expect(
+      result.checks.find(check => check.id === "signature_verification")?.status
+    ).toBe("error");
+  });
+
+  it("requires a declared Feature 179 runner to be present and checksum-bound", async () => {
+    const runnerBytes = Buffer.from("MZ-smartaihub-feature-179-runner");
+    const runnerSha256 = crypto.createHash("sha256").update(runnerBytes).digest("hex");
+    const manifest = createManifest();
+    manifest.speakerAwareRunner = {
+      path: "speaker-aware/speaker-aware-runner.exe",
+      version: "0.1.1",
+      contractVersion: "feature-179-v1",
+      sha256: runnerSha256,
+    };
+    const transcription = manifest.transcription as Record<string, string>;
+    const checksumText = [
+      `${transcription.binarySha256}  runtime-pack/${transcription.binaryPath}`,
+      `${transcription.modelSha256}  runtime-pack/${transcription.modelPath}`,
+      `${manifest.sidecarSha256}  sidecars/hyperframes-render.exe`,
+      `${runnerSha256}  runtime-pack/speaker-aware/speaker-aware-runner.exe`,
+      "",
+    ].join("\n");
+    const archive = makeArchive(manifest, undefined, checksumText, runnerBytes);
+    const valid = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(valid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("ok");
+
+    const missingRunner = makeArchive(manifest, undefined, checksumText);
+    const invalid = await validateRuntimePackArchive({
+      filePath: missingRunner.archivePath,
+      fileName: path.basename(missingRunner.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: missingRunner.publicKey,
+    });
+    expect(invalid.valid).toBe(false);
+    expect(invalid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("error");
+  });
+
+  it("rejects a runner older than the capability probe contract", async () => {
+    const runnerBytes = Buffer.from("MZ-smartaihub-feature-179-runner");
+    const runnerSha256 = crypto.createHash("sha256").update(runnerBytes).digest("hex");
+    const manifest = createManifest();
+    manifest.speakerAwareRunner = {
+      path: "speaker-aware/speaker-aware-runner.exe",
+      version: "0.1.0",
+      contractVersion: "feature-179-v1",
+      sha256: runnerSha256,
+    };
+    const transcription = manifest.transcription as Record<string, string>;
+    const checksumText = [
+      `${transcription.binarySha256}  runtime-pack/${transcription.binaryPath}`,
+      `${transcription.modelSha256}  runtime-pack/${transcription.modelPath}`,
+      `${manifest.sidecarSha256}  sidecars/hyperframes-render.exe`,
+      `${runnerSha256}  runtime-pack/speaker-aware/speaker-aware-runner.exe`,
+      "",
+    ].join("\n");
+    const archive = makeArchive(manifest, undefined, checksumText, runnerBytes);
+    const result = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-wsl2",
+      publicKey: archive.publicKey,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("error");
+  });
+
+  it("accepts a native Mac runner path and rejects a Windows runner path", async () => {
+    const runnerBytes = Buffer.from("Mach-O-smartaihub-feature-179-runner");
+    const runnerSha256 = crypto.createHash("sha256").update(runnerBytes).digest("hex");
+    const manifest = createManifest("hyperframes-macos-arm64");
+    manifest.speakerAwareRunner = {
+      path: "speaker-aware/speaker-aware-runner",
+      version: "0.1.1",
+      contractVersion: "feature-179-v1",
+      sha256: runnerSha256,
+    };
+    const transcription = manifest.transcription as Record<string, string>;
+    const checksumText = [
+      `${transcription.binarySha256}  runtime-pack/${transcription.binaryPath}`,
+      `${transcription.modelSha256}  runtime-pack/${transcription.modelPath}`,
+      `${manifest.sidecarSha256}  sidecars/hyperframes-render`,
+      `${runnerSha256}  runtime-pack/speaker-aware/speaker-aware-runner`,
+      "",
+    ].join("\n");
+    const archive = makeArchive(manifest, undefined, checksumText, runnerBytes);
+    const valid = await validateRuntimePackArchive({
+      filePath: archive.archivePath,
+      fileName: path.basename(archive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-macos-arm64",
+      publicKey: archive.publicKey,
+    });
+    expect(valid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("ok");
+
+    manifest.speakerAwareRunner.path = "speaker-aware/speaker-aware-runner.exe";
+    const invalidArchive = makeArchive(manifest, undefined, checksumText, runnerBytes);
+    const invalid = await validateRuntimePackArchive({
+      filePath: invalidArchive.archivePath,
+      fileName: path.basename(invalidArchive.archivePath),
+      version: "2026.08.31.1",
+      runtimeId: "hyperframes-macos-arm64",
+      publicKey: invalidArchive.publicKey,
+    });
+    expect(invalid.checks.find(check => check.id === "speaker_aware_runner")?.status).toBe("error");
+  });
+});

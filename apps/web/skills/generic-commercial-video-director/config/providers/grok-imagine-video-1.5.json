@@ -1,0 +1,238 @@
+{
+  "profileVersion": "3.0",
+  "id": "grok-imagine-video-1.5",
+  "provider": "xAI",
+  "model": "grok-imagine-video-1.5",
+  "modelFamily": "Grok Imagine Video",
+  "kind": "multimodal",
+  "availability": "ga",
+  "verification": {
+    "status": "verified",
+    "verifiedAt": "2026-09-01",
+    "sources": [
+      {
+        "title": "xAI Video Generation",
+        "url": "https://docs.x.ai/developers/model-capabilities/video/generation",
+        "notes": "Official duration, aspect ratio, resolution, audio and mode-exclusivity documentation."
+      },
+      {
+        "title": "xAI Image-to-Video",
+        "url": "https://docs.x.ai/developers/model-capabilities/video/image-to-video",
+        "notes": "Official start-frame / image-to-video workflow for grok-imagine-video-1.5."
+      },
+      {
+        "title": "xAI Reference-to-Video",
+        "url": "https://docs.x.ai/developers/model-capabilities/video/reference-to-video",
+        "notes": "Official reference-image and preset-voice workflow, limits and resolution boundary."
+      },
+      {
+        "title": "xAI grok-imagine-video-1.5 model page",
+        "url": "https://docs.x.ai/developers/models/grok-imagine-video-1.5",
+        "notes": "Official model identity and pricing/model metadata."
+      },
+      {
+        "title": "xAI Imagine Files Input",
+        "url": "https://docs.x.ai/developers/model-capabilities/imagine/files/inputs",
+        "notes": "Official URL/base64/file_id input routes for first-frame and reference-image assets."
+      }
+    ]
+  },
+  "capabilities": {
+    "text_to_video": {
+      "status": "verified",
+      "notes": "Prompt-only video generation."
+    },
+    "image_to_video": {
+      "status": "verified",
+      "notes": "A single source image acts as the starting frame."
+    },
+    "first_frame": {
+      "status": "verified",
+      "notes": "Image-to-video source image is the opening frame."
+    },
+    "last_frame": {
+      "status": "unsupported",
+      "notes": "No last-frame interpolation control is documented for grok-imagine-video-1.5."
+    },
+    "first_last_frame": {
+      "status": "unsupported",
+      "notes": "No first+last interpolation mode is documented."
+    },
+    "reference_to_video": {
+      "status": "verified",
+      "notes": "Reference images and/or reference voices guide a newly composed scene without locking frame 0."
+    },
+    "reference_image": {
+      "status": "verified",
+      "notes": "Maximum 7 reference images."
+    },
+    "reference_video": {
+      "status": "unsupported",
+      "notes": "Reference-to-video accepts image references, not motion-video references. Video is handled by separate xAI edit/extend workflows."
+    },
+    "reference_audio_preset_voice": {
+      "status": "verified",
+      "notes": "Up to 3 preset voice_id references in reference-to-video."
+    },
+    "reference_audio_custom": {
+      "status": "conditional",
+      "notes": "User-supplied voice/audio references are available only to trusted partners on request; fail closed unless account capability is verified."
+    },
+    "native_audio": {
+      "status": "verified",
+      "notes": "Generated videos include audio by default; generate_audio=false requests silence."
+    },
+    "dialogue_lipsync": {
+      "status": "conditional",
+      "notes": "Native audiovisual speech is supported, but exact speech/lipsync should be production-QC'd."
+    },
+    "native_multi_shot": {
+      "status": "unknown",
+      "notes": "No dedicated provider-native shot/timestamp contract is documented; prefer logical independent shots for repairability."
+    },
+    "video_edit": {
+      "status": "unsupported",
+      "notes": "Current official editing examples use companion model grok-imagine-video."
+    },
+    "video_extend": {
+      "status": "unsupported",
+      "notes": "Current official extension examples use companion model grok-imagine-video."
+    },
+    "files_api_input": {
+      "status": "verified",
+      "notes": "Start and reference images may use URL, base64 data URI or xAI file_id."
+    },
+    "native_1080p_t2v_i2v": {
+      "status": "verified",
+      "notes": "1080p is supported for text-to-video and image-to-video."
+    },
+    "reference_720p_cap": {
+      "status": "verified",
+      "notes": "Reference-to-video is capped at 720p."
+    }
+  },
+  "limits": {
+    "durations": {
+      "minSeconds": 1,
+      "maxSeconds": 15,
+      "allowedSeconds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "resolutions": [
+      "480p",
+      "720p",
+      "1080p"
+    ],
+    "aspectRatios": [
+      "1:1",
+      "16:9",
+      "9:16",
+      "4:3",
+      "3:4",
+      "3:2",
+      "2:3"
+    ],
+    "referenceLimits": {
+      "maxReferenceImages": 7,
+      "maxPresetVoiceReferences": 3,
+      "referenceToVideoMaxResolution": "720p",
+      "textToVideoMaxResolution": "1080p",
+      "imageToVideoMaxResolution": "1080p",
+      "startFrameAndReferenceModeMutuallyExclusive": true,
+      "referenceVideoSupported": false,
+      "customAudioReferenceRequiresTrustedPartnerEntitlement": true,
+      "referenceImagePromptLabels": "<IMAGE_1>...<IMAGE_7>",
+      "referenceAudioPromptLabels": "<AUDIO_0>...<AUDIO_2>"
+    },
+    "notes": [
+      "Only one video generation mode may be active per request.",
+      "A start-frame image (image-to-video) cannot be combined with reference-to-video inputs.",
+      "Reference-to-video images guide people/objects/clothing/style but do not lock the first frame.",
+      "For image-to-video, output defaults to the input image aspect ratio. Supplying aspect_ratio overrides it and may stretch the source image; production should pre-normalize the Start Frame instead of relying on provider stretching.",
+      "Generated audio is enabled by default unless generate_audio=false."
+    ]
+  },
+  "bestFor": [
+    "1-15 second product and commercial clips",
+    "exact Start Frame animation",
+    "character/product/place consistency via up to 7 image references",
+    "native audiovisual presenter clips",
+    "1080p text-to-video or image-to-video",
+    "reference-driven product placement and character storytelling"
+  ],
+  "knownRisks": [
+    "Start Frame and Reference-to-Video cannot be combined in one request.",
+    "Reference mode is limited to 720p.",
+    "Video reference is not a Reference-to-Video input for 1.5; motion/camera video references require derivation or another provider/workflow.",
+    "Custom uploaded voice references require a trusted-partner entitlement and must not be assumed available.",
+    "No last-frame or first+last-frame control is documented.",
+    "Overriding aspect ratio on an image-to-video request may stretch the Start Frame."
+  ],
+  "promptProfile": "grok-imagine-video-1.5",
+  "adapterId": "grok_imagine_video_1_5",
+  "temporalPlanning": {
+    "baseGeneration": {
+      "durationControl": "exact",
+      "stepSeconds": 1,
+      "notes": [
+        "duration is directly controllable from 1 to 15 seconds."
+      ]
+    },
+    "nativeMultiShot": {
+      "status": "unknown",
+      "maxShotsPerGeneration": null,
+      "supportsExplicitTimedCuts": null,
+      "supportsSingleContinuousShotConstraint": true,
+      "notes": [
+        "No dedicated official native multi-shot API contract is documented. Prefer independent logical shots in production."
+      ]
+    },
+    "extension": {
+      "status": "unsupported",
+      "appendOnly": null,
+      "minAdditionalSeconds": null,
+      "maxAdditionalSeconds": null,
+      "allowedAdditionalSeconds": null,
+      "stepSeconds": null,
+      "defaultAdditionalSeconds": null,
+      "maxCumulativeSeconds": null,
+      "contextSeconds": null,
+      "supportsGeneratedVideoMultiTurn": null,
+      "supportsUploadedVideo": null,
+      "supportsNewDialogueOnGeneratedMultiTurn": null,
+      "supportsNewDialogueOnUploadedTalkingVideo": null,
+      "tailMayBeRewritten": null,
+      "localTimecodeResetsAtExtensionStart": null,
+      "requiresStoredInteractionState": null,
+      "notes": [
+        "Use companion model grok-imagine-video for xAI edit/extend workflows."
+      ],
+      "durationControl": null,
+      "deterministicDurationRequest": null,
+      "extensionKind": null,
+      "requiresExternalAssembly": null,
+      "sourceReferenceRole": null,
+      "referenceTailMinSeconds": null,
+      "referenceTailMaxSeconds": null,
+      "supportsReferenceAudioContinuity": null,
+      "maxExtensionTurns": null,
+      "sourceInputMinSeconds": null,
+      "sourceInputMaxSeconds": null
+    }
+  }
+}

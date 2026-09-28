@@ -1,0 +1,74 @@
+{
+  "schema_version": "1.9",
+  "corpus_version": "spec-212-r20-2930-bilingual",
+  "spec_revision": 20,
+  "contract_profile_revision": 20,
+  "use_case_identity_revision": 20,
+  "use_case_count": 2930,
+  "canonical_prompt_executions": 5860,
+  "required_locales": [
+    "th",
+    "en"
+  ],
+  "first_id": "UC-0001",
+  "last_id": "UC-2930",
+  "parent_spec_revision": 19,
+  "revision_19": {
+    "adds_use_cases": true,
+    "count": 20,
+    "first_id": "UC-2811",
+    "last_id": "UC-2830",
+    "family": "MINI_APP_PRODUCTIZATION_MONETIZATION",
+    "purpose": "Historical R19 flow-to-Mini-App generation, publication approval and monetization coverage"
+  },
+  "revision_20": {
+    "adds_use_cases": true,
+    "count": 100,
+    "first_id": "UC-2831",
+    "last_id": "UC-2930",
+    "family": "SIX_FAMILY_EXPANSION",
+    "families": {
+      "TENANT_WHITE_LABEL_PRODUCT_PLATFORM": 20,
+      "AGENTIC_PRODUCT_DEVELOPMENT": 20,
+      "MANAGED_RUNTIME_DEPLOYMENT": 15,
+      "TENANT_DATA_CAPABILITY_SECURITY": 15,
+      "SKILL_PRODUCT_CAPABILITY_LOOP": 15,
+      "AGENTIC_CONTEXT_HARNESS_SECURITY": 15
+    },
+    "canonical_prompt_executions": 200,
+    "purpose": "Extend bilingual benchmark coverage for tenant product, agentic development, managed runtime, capability security, skill lifecycle and harness security"
+  },
+  "files": {
+    "spec-212-use-cases-2930-bilingual.json": {
+      "sha256": "7bd01f60b315b08d0ac36f5ba40950a410850ea94c45a804e10a85c4e8ffb9a3",
+      "records": 2930
+    },
+    "spec-212-marketplace-catalog-2930-bilingual.json": {
+      "sha256": "d6f0c445c23f4cb1f9147340d5e71004b4caf87a1826c06509d5cc11a8120105",
+      "records": 2930
+    },
+    "specs/feature/212-AI Workflow studio capability validation benchmark harness/spec.md": {
+      "sha256": "b645e3181bd17f86f3047160614ea3aab838045ee4430995e5220671ce4b3942"
+    },
+    "spec-212-current-contract-profile-r20.json": {
+      "sha256": "dba55de456d2165eba6d30a5519895634fba37154ff635993338e0cc60b222d8"
+    },
+    "spec-214-spec212-coverage-manifest-r20.json": {
+      "sha256": "6d556bcd964119c4ca68ce95b307508b111be8082bdd9519175ef55ec1cc502b"
+    },
+    "specs/feature/214-node-type-contract-architecture/spec.md": {
+      "sha256": "88eeb97c5d8a131e683a24831648262ade75ad15a9dda59866952637dfaf7798"
+    },
+    "specs/feature/215-workflow-compiler-runtime-execution-architecture/spec.md": {
+      "sha256": "5a8ec1cffde8d1e2ad6c0dbd9ef5497b4c7894ed84dd34c04abde2cd2b64f73a"
+    },
+    "spec-212-use-case-identity-r20.json": {
+      "sha256": "4f63bd2fad805cae00f3f934b419e5714369a4ce2c2536d3045c991de6e10aa3",
+      "records": 2930
+    },
+    "spec-214-112-nodeType-clean-slate-disposition.json": {
+      "sha256": "aec43fb0f8a4e27e1aee75b04c66238bc9d98e4e22d85e6e71db9c5812ab6bd7",
+      "records": 112
+    }
+  }
+}

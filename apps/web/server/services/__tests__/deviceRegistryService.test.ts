@@ -40,6 +40,5 @@ describe("deviceRegistryService", () => {
 
     expect(snapshot.featureFlags.desktopHostEnabled).toBe(false);
     expect(snapshot.featureFlags.desktopPackageSync).toBe(false);
-    expect(snapshot.featureFlags.desktopAgencyRuntime).toBe(false);
   });
 });

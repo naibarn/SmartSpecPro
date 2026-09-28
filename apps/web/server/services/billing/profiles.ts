@@ -1,15 +1,19 @@
-import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 
 import {
   billingProfiles,
   invoiceAuditLogs,
+  invoiceLineItems,
   invoices,
+  paymentAttempts,
+  paymentSlips,
   payments,
   reconciliationRuns,
   sellerProfiles,
   sellerProfileRevisions,
   supportRecoveryCases,
   taxPolicies,
+  users,
   webhookEvents,
   type InsertBillingProfile,
   type InsertSellerProfile,
@@ -469,6 +473,19 @@ export async function getInvoiceForUser(params: { invoiceId: number; userId: num
       ? {
         id: payment.id,
         status: payment.status,
+        paymentChannel: payment.paymentChannel,
+        amount: payment.amount,
+        currency: payment.currency,
+        promptpayAmountThb: payment.promptpayAmountThb ?? null,
+        randomSatang: payment.randomSatang ?? null,
+        sourceAmountUsd: payment.sourceAmountUsd ?? null,
+        fxRate: payment.fxRate ?? null,
+        fxRateDate: payment.fxRateDate ?? null,
+        fxFetchedAt: payment.fxFetchedAt ?? null,
+        fxSellSpreadBps: payment.fxSellSpreadBps ?? null,
+        fxRiskBufferBps: payment.fxRiskBufferBps ?? null,
+        fxEffectiveRate: payment.fxEffectiveRate ?? null,
+        promptpayRecipientSnapshotJson: payment.promptpayRecipientSnapshotJson ?? null,
         providerPaymentType: payment.providerPaymentType,
         providerPaymentId: payment.providerPaymentId ?? null,
         providerReferenceId: payment.providerReferenceId ?? null,
@@ -480,6 +497,10 @@ export async function getInvoiceForUser(params: { invoiceId: number; userId: num
         qrCodeUrl:
           typeof payment.rawResponseJson?.qrCodeUrl === "string"
             ? payment.rawResponseJson.qrCodeUrl
+            : null,
+        qrPayload:
+          typeof payment.rawResponseJson?.qrPayload === "string"
+            ? payment.rawResponseJson.qrPayload
             : null,
       }
       : null,
@@ -499,6 +520,118 @@ export async function getAdminVisibleInvoice(params: { invoiceId: number; tenant
   return invoice ?? null;
 }
 
+export async function getAdminInvoiceAuditDetails(params: { invoiceId: number; tenantId: string | null }) {
+  const db = getDb();
+  const invoiceWhereClause = params.tenantId
+    ? and(eq(invoices.id, params.invoiceId), eq(invoices.tenantId, params.tenantId))
+    : eq(invoices.id, params.invoiceId);
+
+  const [row] = await db
+    .select({
+      invoice: invoices,
+      customer: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+      },
+    })
+    .from(invoices)
+    .innerJoin(users, eq(users.id, invoices.userId))
+    .where(invoiceWhereClause)
+    .limit(1);
+
+  if (!row) return null;
+
+  const [lineItems, paymentRows, auditRows] = await Promise.all([
+    db
+      .select()
+      .from(invoiceLineItems)
+      .where(eq(invoiceLineItems.invoiceId, row.invoice.id))
+      .orderBy(invoiceLineItems.id),
+    db
+      .select()
+      .from(payments)
+      .where(eq(payments.invoiceId, row.invoice.id))
+      .orderBy(desc(payments.createdAt)),
+    db
+      .select()
+      .from(invoiceAuditLogs)
+      .where(eq(invoiceAuditLogs.invoiceId, row.invoice.id))
+      .orderBy(desc(invoiceAuditLogs.createdAt)),
+  ]);
+
+  const paymentIds = paymentRows.map((payment) => payment.id);
+  const [slipRows, attemptRows] = paymentIds.length > 0
+    ? await Promise.all([
+      db
+        .select()
+        .from(paymentSlips)
+        .where(inArray(paymentSlips.paymentId, paymentIds))
+        .orderBy(desc(paymentSlips.uploadedAt)),
+      db
+        .select()
+        .from(paymentAttempts)
+        .where(inArray(paymentAttempts.paymentId, paymentIds))
+        .orderBy(desc(paymentAttempts.createdAt)),
+    ])
+    : [[], []];
+
+  const actorIds = Array.from(new Set([
+    ...auditRows.map((log) => log.actorId),
+    ...slipRows.map((slip) => slip.reviewedBy),
+  ].filter((id): id is number => typeof id === "number")));
+  const actorRows = actorIds.length > 0
+    ? await db
+      .select({ id: users.id, name: users.name, email: users.email })
+      .from(users)
+      .where(inArray(users.id, actorIds))
+    : [];
+  const actorById = new Map(actorRows.map((actor) => [actor.id, actor]));
+
+  return {
+    invoice: row.invoice,
+    customer: row.customer,
+    lineItems,
+    payments: paymentRows.map((payment) => ({
+      ...payment,
+      rawResponseJson: sanitizeSensitiveJson(payment.rawResponseJson),
+      attempts: attemptRows
+        .filter((attempt) => attempt.paymentId === payment.id)
+        .map((attempt) => ({
+          ...attempt,
+          providerPayloadJson: sanitizeSensitiveJson(attempt.providerPayloadJson),
+        })),
+      slips: slipRows
+        .filter((slip) => slip.paymentId === payment.id)
+        .map((slip) => ({
+          id: slip.id,
+          paymentId: slip.paymentId,
+          invoiceId: slip.invoiceId,
+          userId: slip.userId,
+          tenantId: slip.tenantId,
+          originalFileName: slip.originalFileName,
+          mimeType: slip.mimeType,
+          fileSizeBytes: slip.fileSizeBytes,
+          status: slip.status,
+          customerNote: slip.customerNote,
+          rejectionReason: slip.rejectionReason,
+          uploadedAt: slip.uploadedAt,
+          reviewedAt: slip.reviewedAt,
+          reviewedBy: slip.reviewedBy,
+          reviewer: slip.reviewedBy ? actorById.get(slip.reviewedBy) ?? null : null,
+          createdAt: slip.createdAt,
+          updatedAt: slip.updatedAt,
+        })),
+    })),
+    auditLogs: auditRows.map((log) => ({
+      ...log,
+      beforeJson: sanitizeSensitiveJson(log.beforeJson),
+      afterJson: sanitizeSensitiveJson(log.afterJson),
+      actor: log.actorId ? actorById.get(log.actorId) ?? null : null,
+    })),
+  };
+}
+
 export async function listAdminInvoices(params: {
   tenantId: string | null;
   query?: string | null;
@@ -508,18 +641,24 @@ export async function listAdminInvoices(params: {
   const limit = Math.min(Math.max(params.limit ?? 50, 1), 200);
   const search = params.query?.trim() || null;
   const scopedTenantClause = params.tenantId ? eq(invoices.tenantId, params.tenantId) : undefined;
+  const invoiceListSelection = {
+    ...getTableColumns(invoices),
+    customerEmail: users.email,
+  };
 
   if (!search) {
     if (!scopedTenantClause) {
       return db
-        .select()
+        .select(invoiceListSelection)
         .from(invoices)
+        .leftJoin(users, eq(users.id, invoices.userId))
         .orderBy(desc(invoices.createdAt))
         .limit(limit);
     }
     return db
-      .select()
+      .select(invoiceListSelection)
       .from(invoices)
+      .leftJoin(users, eq(users.id, invoices.userId))
       .where(scopedTenantClause)
       .orderBy(desc(invoices.createdAt))
       .limit(limit);
@@ -543,6 +682,7 @@ export async function listAdminInvoices(params: {
   const invoiceSearchClauses = [
     ilike(invoices.invoiceNumber, `%${search}%`),
     ilike(invoices.orderId, `%${search}%`),
+    ilike(users.email, `%${search}%`),
     Number.isInteger(numericSearch) ? eq(invoices.userId, numericSearch) : undefined,
     invoiceIdMatches.length > 0 ? inArray(invoices.id, invoiceIdMatches) : undefined,
   ].filter(Boolean) as any[];
@@ -551,8 +691,9 @@ export async function listAdminInvoices(params: {
   const whereClause = scopedTenantClause && searchClause ? and(scopedTenantClause, searchClause) : scopedTenantClause ?? searchClause;
 
   return db
-    .select()
+    .select(invoiceListSelection)
     .from(invoices)
+    .leftJoin(users, eq(users.id, invoices.userId))
     .where(whereClause)
     .orderBy(desc(invoices.createdAt))
     .limit(limit);

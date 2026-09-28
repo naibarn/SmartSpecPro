@@ -9,6 +9,7 @@ from uuid import uuid4
 
 
 TransportScope = Literal["viewer", "controller"]
+ReadinessState = Literal["READY", "DEGRADED", "NOT_READY", "TEST_ONLY"]
 
 REQUIRED_PROVIDER_CAPABILITIES = {
     "observer_token",
@@ -75,6 +76,8 @@ class LiveBrowserReadiness:
     ready: bool
     failures: list[str]
     details: dict[str, Any]
+    evidence: dict[str, Any] = field(default_factory=dict)
+    state: ReadinessState = "NOT_READY"
 
 
 @dataclass(slots=True)
@@ -122,6 +125,8 @@ class ManagedBrowserBackend(Protocol):
 
     def capture_evidence(self, *, session_id: str, tab_id: str, now: datetime) -> LiveBrowserEvidenceHandle: ...
 
+    def readiness_evidence(self, *, now: datetime) -> dict[str, Any]: ...
+
 
 class InMemoryManagedBrowserBackend:
     def __init__(
@@ -147,6 +152,29 @@ class InMemoryManagedBrowserBackend:
 
     def report_health(self) -> dict[str, bool]:
         return dict(self._health)
+
+    def readiness_evidence(self, *, now: datetime) -> dict[str, Any]:
+        timestamp = now.astimezone(UTC).isoformat()
+        return {
+            "backend_kind": "in_memory",
+            "execution_target": "test_only",
+            "provider_identity": "in_memory",
+            "provider_version": "test-double",
+            "browser_engine": None,
+            "browser_version": None,
+            "probe_kind": "synthetic",
+            "probe_started_at": timestamp,
+            "probe_completed_at": timestamp,
+            "probe_age_ms": 0,
+            "probe_result": "synthetic",
+            "capability_snapshot_id": "in-memory",
+            "snapshot_revision": 0,
+            "snapshot_expires_at": timestamp,
+            "runner_id": None,
+            "runner_session_id": None,
+            "evidence_ref": None,
+            "readiness_state": "TEST_ONLY",
+        }
 
     def create_session(self, *, session_id: str, initial_url: str, tab_cap: int) -> ManagedBrowserSession:
         tab_id = "tab_1"
@@ -398,7 +426,8 @@ class ManagedLiveBrowserAdapter:
         session = self._backend.set_active_tab(session_id=session_id, tab_id=tab_id)
         return next(tab for tab in session.tabs if tab.tab_id == tab_id)
 
-    def check_readiness(self) -> LiveBrowserReadiness:
+    def check_readiness(self, *, now: datetime | None = None) -> LiveBrowserReadiness:
+        timestamp = now or datetime.now(UTC)
         health = self._backend.report_health()
         failures: list[str] = []
         missing = sorted(REQUIRED_PROVIDER_CAPABILITIES - self._backend.get_capabilities())
@@ -409,10 +438,32 @@ class ManagedLiveBrowserAdapter:
             failures.append("provider_attach_failed")
         if not health.get("token_refresh", True):
             failures.append("provider_token_refresh_failed")
+        evidence_reader = getattr(self._backend, "readiness_evidence", None)
+        evidence = dict(evidence_reader(now=timestamp)) if callable(evidence_reader) else {}
+        backend_kind = evidence.get("backend_kind", "unknown")
+        probe_result = evidence.get("probe_result")
+        if backend_kind == "in_memory":
+            failures.append("provider_backend_in_memory")
+        if not evidence:
+            failures.append("provider_readiness_evidence_missing")
+        elif probe_result == "synthetic":
+            failures.append("provider_probe_synthetic")
+        elif probe_result not in {"passed", "degraded"}:
+            failures.append("provider_probe_failed")
+
+        if backend_kind == "in_memory":
+            state: ReadinessState = "TEST_ONLY"
+        elif failures:
+            state = "DEGRADED" if probe_result == "degraded" else "NOT_READY"
+        else:
+            state = "READY"
+        evidence["readiness_state"] = state
         return LiveBrowserReadiness(
-            ready=not failures,
+            ready=not failures and state == "READY",
             failures=failures,
             details=health,
+            evidence=evidence,
+            state=state,
         )
 
     def _assert_capabilities(self, required: set[str] | None = None) -> None:

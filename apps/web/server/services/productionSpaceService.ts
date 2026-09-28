@@ -116,10 +116,11 @@ type ProductionMediaDispatcher = {
     attempt: ProductionActionAttempt;
     userId: number;
     userToken: string;
+    tenantId?: string;
     publicUrl?: string;
   }): Promise<MediaTask>;
-  getTask?(input: { mediaTaskId: string; userToken: string }): Promise<MediaTask>;
-  cancelTask?(input: { mediaTaskId: string; userToken: string }): Promise<MediaTask>;
+  getTask?(input: { mediaTaskId: string; userToken: string; tenantId?: string; userId?: number }): Promise<MediaTask>;
+  cancelTask?(input: { mediaTaskId: string; userToken: string; tenantId?: string; userId?: number }): Promise<MediaTask>;
 };
 type ProductionExecutionReconciliationAlert = {
   code: "provider_callback_missing" | "credit_ledger_mismatch" | "production_state_transition_blocked";
@@ -593,6 +594,7 @@ const defaultMediaDispatcher: ProductionMediaDispatcher = {
       : {};
     const auditContext = {
       userId: input.userId,
+      tenantId: input.tenantId,
       traceId: input.attempt.attemptId,
       source: "trpc.mediaProduction.runExecution",
       stage: "production-dispatch",
@@ -655,6 +657,8 @@ const defaultMediaDispatcher: ProductionMediaDispatcher = {
   },
   async getTask(input) {
     return mediaGenerationService.getTask(input.mediaTaskId, input.userToken, {
+      userId: input.userId,
+      tenantId: input.tenantId,
       traceId: `production-reconcile:${input.mediaTaskId}`,
       source: "trpc.mediaProduction.reconcileExecution",
       stage: "status",
@@ -1475,6 +1479,7 @@ export async function scheduleProductionExecution(params: Omit<Parameters<typeof
           attempt: nextAttempt,
           userId: params.userId,
           userToken: params.userToken,
+          tenantId: params.tenantId,
           publicUrl: params.publicUrl,
         });
         dispatchedTasks.push({ nodeId: node.id, task });
@@ -1597,7 +1602,12 @@ export async function cancelProductionExecution(params: Omit<Parameters<typeof s
   if (params.userToken && mediaDispatcher.cancelTask) {
     for (const mediaTaskId of cancelledAttempt.mediaTaskIds) {
       try {
-        await mediaDispatcher.cancelTask({ mediaTaskId, userToken: params.userToken });
+        await mediaDispatcher.cancelTask({
+          mediaTaskId,
+          userToken: params.userToken,
+          tenantId: params.tenantId,
+          userId: params.userId,
+        });
       } catch {
         skippedMediaTaskIds.push(mediaTaskId);
       }
@@ -1676,7 +1686,12 @@ export async function reconcileProductionExecution(params: Omit<Parameters<typeo
   const tasks = params.tasks ?? [];
   if (tasks.length === 0 && params.userToken && mediaDispatcher.getTask) {
     for (const mediaTaskId of attempt.mediaTaskIds) {
-      tasks.push(await mediaDispatcher.getTask({ mediaTaskId, userToken: params.userToken }));
+      tasks.push(await mediaDispatcher.getTask({
+        mediaTaskId,
+        userToken: params.userToken,
+        tenantId: params.tenantId,
+        userId: params.userId,
+      }));
     }
   }
   const taskById = new Map(tasks.map((task) => [task.id, task]));

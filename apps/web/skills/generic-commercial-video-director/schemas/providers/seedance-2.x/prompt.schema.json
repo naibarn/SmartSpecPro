@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/providers/seedance-2.x/prompt.schema.json",
+  "title": "Seedance 2.x Compiled Prompt",
+  "type": "object",
+  "required": [
+    "model",
+    "mode",
+    "durationSeconds",
+    "promptText",
+    "timeline",
+    "referenceBindings",
+    "dialogueLines",
+    "warnings"
+  ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "enum": [
+        "dreamina-seedance-2-0-260128",
+        "dreamina-seedance-2-5-260628"
+      ]
+    },
+    "mode": {
+      "type": "string"
+    },
+    "durationSeconds": {
+      "type": "integer",
+      "minimum": 4,
+      "maximum": 30
+    },
+    "promptText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "startSeconds",
+          "endSeconds",
+          "description"
+        ],
+        "properties": {
+          "startSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "endSeconds": {
+            "type": "number",
+            "minimum": 0
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "referenceBindings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "label",
+          "meaning"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "preserve": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dialogueLines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "speakerId",
+          "text"
+        ],
+        "properties": {
+          "speakerId": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "lipSyncRequired": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

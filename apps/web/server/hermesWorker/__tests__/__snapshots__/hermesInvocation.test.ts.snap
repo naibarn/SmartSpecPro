@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildPromptEnvelope > is deterministic for a fixed contract 1`] = `
+"SmartSpecPro Hermes media job
+Job ID: job-123
+Operation: image.edit
+Output directory: /var/lib/smartspec-hermes-worker/jobs/job-123/output
+References (in this exact order — do not reorder, substitute, or drop any reference):
+  1. [subject] Character A (asset asset-1)
+  2. [style] Reference style (asset asset-2)
+
+Tool-call rules (follow ALL of them):
+- Call the media generation tool EXACTLY ONCE. Do not retry, do not experiment with alternative parameters, and never generate more than one result.
+- When a reference lists a "Download URL", pass that URL VERBATIM as the tool's image_url/reference parameter. NEVER invent file:// paths, local filesystem paths, or placeholder URLs — the provider fetches the URL itself and anything else fails with HTTP 404.
+- If the tool call fails, do NOT retry — immediately print the final result line with status "error" and the tool's error text as the message.
+- The tool returns hosted result URL(s). For EACH result URL, print it on its own line as MEDIA:<url> (no spaces around the colon) BEFORE the final result line. In the final result line's files array, list those same https URLs (or file names you actually wrote inside the output directory, if any).
+
+Prompt:
+A cat wearing a hat
+
+When generation is complete, print EXACTLY one line in this form (no other text on that line):
+SMARTSPECPRO_RESULT_BEGIN {"status":"ok"|"error","files":["..."],"message":"..."} SMARTSPECPRO_RESULT_END"
+`;

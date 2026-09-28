@@ -22,6 +22,7 @@ const { mockStoragePut } = vi.hoisted(() => ({
 }));
 
 vi.mock("../storage", () => ({
+  assertR2StorageActive: vi.fn().mockResolvedValue(undefined),
   storagePut: mockStoragePut,
   storageDelete: vi.fn().mockResolvedValue(true),
 }));
@@ -94,6 +95,7 @@ import {
   createLibraryItem,
   getPublicShareLinkState,
   getLibraryItemById,
+  publishLibraryItemToGallery,
   listLibraryDocuments,
   normalizeLibraryMetadata,
   replaceLibraryFile,
@@ -493,6 +495,78 @@ describe("tenant boundaries", () => {
     } satisfies Partial<LibraryUrlValidationError>);
 
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("Library Gallery publication", () => {
+  it("publishes image media with managed keys and a stable public URL", async () => {
+    const item = {
+      id: 501,
+      tenantId: "tenant-a",
+      ownerUserId: 9,
+      itemType: "image",
+      source: "document_upload",
+      title: "Hero image",
+      description: null,
+      status: "ready",
+      visibility: "private",
+      metadata: { source_key: "library/uploads/tenant-a/9/hero.png" },
+      sourceUrl: "/api/storage/files/library/uploads/tenant-a/9/hero.png",
+      thumbnailUrl: null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const galleryInsertValues = vi.fn().mockReturnValue({
+      returning: vi.fn().mockResolvedValue([{ id: 701 }]),
+    });
+    const linkInsertValues = vi.fn().mockResolvedValue(undefined);
+    const tx = {
+      select: vi.fn().mockReturnValue({
+        from: () => ({
+          leftJoin: () => ({
+            where: () => ({ limit: () => Promise.resolve([]) }),
+          }),
+        }),
+      }),
+      insert: vi.fn()
+        .mockReturnValueOnce({ values: galleryInsertValues })
+        .mockReturnValueOnce({ values: linkInsertValues }),
+    };
+
+    mockDb.select
+      .mockReturnValueOnce({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve([item]) }) }),
+      })
+      .mockReturnValueOnce({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve([item]) }) }),
+      })
+      .mockReturnValueOnce({
+        from: () => ({ where: () => Promise.resolve([]) }),
+      });
+    (mockDb as any).transaction = vi.fn(async (callback: (db: typeof tx) => Promise<unknown>) => callback(tx));
+
+    const result = await publishLibraryItemToGallery(501, {
+      userId: 1,
+      tenantId: "tenant-a",
+      role: "admin",
+    });
+
+    expect(result).toEqual({
+      success: true,
+      galleryItemId: 701,
+      created: true,
+      publicUrl: "/api/gallery/media/701/file",
+    });
+    expect(galleryInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileKey: "library/uploads/tenant-a/9/hero.png",
+        thumbnailKey: "library/uploads/tenant-a/9/hero.png",
+        fileUrl: "/api/storage/files/library/uploads/tenant-a/9/hero.png",
+        isPublished: true,
+      }),
+    );
+    expect(linkInsertValues).toHaveBeenCalled();
   });
 });
 

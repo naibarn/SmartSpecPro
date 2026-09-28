@@ -96,6 +96,19 @@ describe("useSSEReconnect", () => {
     expect(onMessage).toHaveBeenCalledTimes(1);
   });
 
+  it("forwards the MessageEvent payload to the listener", () => {
+    const onMessage = vi.fn();
+    renderHook(() =>
+      useSSEReconnect({
+        url: "/api/test",
+        onMessage,
+      }),
+    );
+    const event = { data: JSON.stringify({ id: 17, title: "done" }) };
+    latestES()._emit("notification", event);
+    expect(onMessage).toHaveBeenCalledWith(event);
+  });
+
   it("reconnects with exponential backoff (1s, 2s, 4s...)", () => {
     renderHook(() =>
       useSSEReconnect({

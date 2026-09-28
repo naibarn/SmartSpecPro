@@ -1,0 +1,368 @@
+{
+  "type": "Categorization",
+  "label": "Idea to Video Prompt",
+  "description": "ฟอร์มสำหรับส่งไอเดีย ภาพอ้างอิง และตัวเลือกการสร้าง prompt วิดีโอ",
+  "elements": [
+    {
+      "type": "Category",
+      "label": "ไอเดียและภาพอ้างอิง",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "ไอเดียหรือข้อความบรรยาย",
+          "scope": "#/properties/idea",
+          "options": {
+            "multi": true,
+            "rows": 7,
+            "placeholder": "อธิบายสิ่งที่ต้องการให้เกิดในวิดีโอ เช่น ใครทำอะไรกับสินค้า ที่ไหน และต้องการสื่อประโยชน์อะไร"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "ภาพอ้างอิง คน สินค้า ฉาก หรือพร็อพ",
+          "scope": "#/properties/reference_images",
+          "options": {
+            "component": "image-uploader",
+            "accept": [
+              "image/png",
+              "image/jpeg",
+              "image/webp"
+            ],
+            "multiple": true,
+            "maxItems": 50,
+            "itemFields": [
+              "id",
+              "role",
+              "label",
+              "description",
+              "lock_identity",
+              "lock_wardrobe"
+            ],
+            "help": "ใส่รหัสภาพไม่ซ้ำกัน เช่น person_01, product_01, location_01"
+          }
+        }
+      ]
+    },
+    {
+      "type": "Category",
+      "label": "ความยาวและรูปแบบวิดีโอ",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "ความยาวต่อช็อต",
+          "scope": "#/properties/shot_duration_seconds",
+          "options": {
+            "format": "radio",
+            "choices": [
+              {
+                "value": 8,
+                "label": "8 วินาที"
+              },
+              {
+                "value": 10,
+                "label": "10 วินาที"
+              },
+              {
+                "value": 12,
+                "label": "12 วินาที"
+              },
+              {
+                "value": 15,
+                "label": "15 วินาที"
+              },
+              {
+                "value": 20,
+                "label": "20 วินาที"
+              },
+              {
+                "value": 24,
+                "label": "24 วินาที"
+              },
+              {
+                "value": 30,
+                "label": "30 วินาที"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Control",
+          "label": "ภาษาของ prompt",
+          "scope": "#/properties/prompt_language",
+          "options": {
+            "format": "radio",
+            "choices": [
+              {
+                "value": "bilingual",
+                "label": "สองภาษา: คำสั่งผลิต EN / บทพูดตามภาษา"
+              },
+              {
+                "value": "th",
+                "label": "ไทย"
+              },
+              {
+                "value": "en",
+                "label": "English"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Control",
+          "label": "บทพูดของตัวละคร",
+          "scope": "#/properties/dialogue_mode",
+          "options": {
+            "format": "radio",
+            "choices": [
+              {
+                "value": "none",
+                "label": "ไม่สร้างบทพูด"
+              },
+              {
+                "value": "character_dialogue",
+                "label": "สร้างบทพูดให้ตัวละครในภาพ"
+              }
+            ],
+            "help": "ถ้าเลือกสร้างบทพูด ตัวละครจากภาพอ้างอิงจะเป็นผู้พูด และจะกำหนดจังหวะปากตรงกับเสียงในแต่ละช็อต"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "จำนวนผู้พูด",
+          "scope": "#/properties/speaker_count",
+          "options": {
+            "format": "radio",
+            "choices": [
+              {
+                "value": "auto",
+                "label": "อัตโนมัติ ตามจำนวนคนและเนื้อเรื่อง"
+              },
+              {
+                "value": 1,
+                "label": "พูดคนเดียว"
+              },
+              {
+                "value": 2,
+                "label": "พูดสองคน"
+              },
+              {
+                "value": 3,
+                "label": "พูดสามคน"
+              }
+            ],
+            "help": "ผู้พูดสูงสุด 3 คนต่อเรื่องเพื่อควบคุม lip-sync; คนอื่นที่อยู่ในภาพต้องเงียบ"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "รหัสภาพผู้พูดที่อนุญาต (ถ้ามี)",
+          "scope": "#/properties/speaker_reference_ids",
+          "options": {
+            "component": "tag-input",
+            "maxItems": 3,
+            "placeholder": "เช่น person_01, person_02",
+            "help": "ถ้าว่าง ให้เลือกจากภาพคนที่แนบโดยอัตโนมัติ"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "ภาษาบทพูดของตัวละคร",
+          "scope": "#/properties/dialogue_language",
+          "options": {
+            "format": "radio",
+            "choices": [
+              {
+                "value": "th",
+                "label": "ไทย"
+              },
+              {
+                "value": "en",
+                "label": "English"
+              },
+              {
+                "value": "same_as_prompt",
+                "label": "ตามภาษาของ prompt"
+              },
+              {
+                "value": "none",
+                "label": "ไม่มีบทพูด"
+              }
+            ],
+            "help": "ใช้เมื่อเปิดสร้างบทพูด; skill จะให้ตัวละครในภาพพูดตรงตามข้อความ ไม่สร้าง voice-over แยก"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "สไตล์บทพูด",
+          "scope": "#/properties/dialogue_style",
+          "options": {
+            "format": "select",
+            "choices": [
+              {
+                "value": "natural",
+                "label": "เป็นธรรมชาติ"
+              },
+              {
+                "value": "conversational",
+                "label": "สนทนา"
+              },
+              {
+                "value": "dramatic",
+                "label": "ดราม่า"
+              },
+              {
+                "value": "commercial",
+                "label": "โฆษณา"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Control",
+          "label": "ข้อกำหนดบทพูดเพิ่มเติม",
+          "scope": "#/properties/dialogue_constraints",
+          "options": {
+            "multi": true,
+            "rows": 3,
+            "placeholder": "เช่น ต้องพูดคำนี้ ห้ามใช้คำนี้ พูดด้วยน้ำเสียงอบอุ่น"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "สัดส่วนภาพ",
+          "scope": "#/properties/aspect_ratio",
+          "options": {
+            "format": "select",
+            "choices": [
+              {
+                "value": "9:16",
+                "label": "9:16 แนวตั้ง"
+              },
+              {
+                "value": "16:9",
+                "label": "16:9 แนวนอน"
+              },
+              {
+                "value": "1:1",
+                "label": "1:1 จัตุรัส"
+              },
+              {
+                "value": "4:5",
+                "label": "4:5"
+              }
+            ]
+          }
+        },
+        {
+          "type": "Control",
+          "label": "แพลตฟอร์มเป้าหมาย",
+          "scope": "#/properties/target_platform",
+          "options": {
+            "format": "select",
+            "choices": [
+              {
+                "value": "generic",
+                "label": "ทั่วไป"
+              },
+              {
+                "value": "facebook_reels",
+                "label": "Facebook Reels"
+              },
+              {
+                "value": "instagram_reels",
+                "label": "Instagram Reels"
+              },
+              {
+                "value": "youtube_shorts",
+                "label": "YouTube Shorts"
+              },
+              {
+                "value": "tiktok",
+                "label": "TikTok"
+              },
+              {
+                "value": "advertising",
+                "label": "โฆษณา"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "type": "Category",
+      "label": "การขยายเรื่องและข้อกำหนด",
+      "elements": [
+        {
+          "type": "Control",
+          "label": "โหมด research",
+          "scope": "#/properties/research_mode"
+        },
+        {
+          "type": "Control",
+          "label": "ระดับ customer journey",
+          "scope": "#/properties/customer_journey_depth"
+        },
+        {
+          "type": "Control",
+          "label": "ความเด่นของสินค้า",
+          "scope": "#/properties/product_priority"
+        },
+        {
+          "type": "Control",
+          "label": "กลุ่มผู้ชม",
+          "scope": "#/properties/audience",
+          "options": {
+            "multi": true,
+            "rows": 2
+          }
+        },
+        {
+          "type": "Control",
+          "label": "สไตล์ภาพและอารมณ์",
+          "scope": "#/properties/visual_style",
+          "options": {
+            "multi": true,
+            "rows": 3
+          }
+        },
+        {
+          "type": "Control",
+          "label": "ข้อกำหนดแบรนด์",
+          "scope": "#/properties/brand_constraints",
+          "options": {
+            "multi": true,
+            "rows": 3
+          }
+        },
+        {
+          "type": "Control",
+          "label": "CTA",
+          "scope": "#/properties/cta"
+        },
+        {
+          "type": "Control",
+          "label": "สิ่งที่ไม่ต้องการให้เกิดขึ้น",
+          "scope": "#/properties/avoid",
+          "options": {
+            "component": "tag-input"
+          }
+        },
+        {
+          "type": "Control",
+          "label": "จำนวนช็อตสูงสุด",
+          "scope": "#/properties/max_shots",
+          "options": {
+            "minimum": 1,
+            "maximum": 5
+          }
+        },
+        {
+          "type": "Control",
+          "label": "แสดงสรุป workflow",
+          "scope": "#/properties/show_workflow_summary"
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,13 @@ function validateExistingRuntimePack() {
       throw new Error(`Runtime verification file is missing: ${requiredPath}`);
     }
   }
+  const signaturePath = resolve(runtimePackDir, manifest.signatureFile);
+  const signatureContents = readFileSync(signaturePath, "utf8").trim();
+  if (!signatureContents || signatureContents.includes("placeholder-signature-required-before-release")) {
+    throw new Error(
+      "Runtime signature is a placeholder. Supply the official release signature before packaging or publishing.",
+    );
+  }
   for (const notice of notices) {
     const noticePath = resolve(runtimePackDir, notice);
     if (!existsSync(noticePath)) {

@@ -4,6 +4,7 @@ import { db, getDb } from "../db";
 import { mediaProviders } from "../../drizzle/schema";
 import { eq, asc, desc, sql } from "drizzle-orm";
 import { encrypt, decrypt } from "../services/crypto";
+import { clearModelCache } from "../services/modelRegistry";
 import {
   assertPublicSafeHttpUrl,
   ELEVENLABS_BASE_URL,
@@ -12,6 +13,7 @@ import {
   getElevenLabsProviderAvailableModels,
   getMagnificProviderAvailableModels,
   getWaveSpeedProviderAvailableModels,
+  normalizeKieBaseUrl,
   MAGNIFIC_BASE_URL,
   MAGNIFIC_DEFAULT_MODEL_ID,
   MAGNIFIC_PROVIDER,
@@ -299,6 +301,8 @@ export const mediaProvidersRouter = router({
         })
         .returning();
 
+      clearModelCache();
+
       return { id: provider.id };
     }),
 
@@ -378,6 +382,8 @@ export const mediaProvidersRouter = router({
         .set(updateData)
         .where(eq(mediaProviders.id, id));
 
+      clearModelCache();
+
       return { success: true };
     }),
 
@@ -388,6 +394,8 @@ export const mediaProvidersRouter = router({
       await db
         .delete(mediaProviders)
         .where(eq(mediaProviders.id, input.id));
+
+      clearModelCache();
 
       return { success: true };
     }),
@@ -568,8 +576,8 @@ function validateExternalUrl(url: string): void {
 export async function testKieAI(apiKey: string, baseUrl: string): Promise<{ success: boolean; message: string }> {
   // Kie AI uses a jobs API. Probe createTask with an intentionally invalid payload:
   // 400/422 means auth + endpoint are reachable without spending credits.
-  validateExternalUrl(baseUrl);
-  const response = await fetch(`${baseUrl}/jobs/createTask`, {
+  const normalizedBaseUrl = normalizeKieBaseUrl(baseUrl);
+  const response = await fetch(`${normalizedBaseUrl}/jobs/createTask`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,

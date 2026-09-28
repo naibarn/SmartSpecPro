@@ -49,17 +49,17 @@ describe("derivePerShotSpeechBudgets", () => {
     }
   });
 
-  it("matches the spec-quoted 8s and trailing-4s bands (~5.4s/3.6s min, ~2.7s)", () => {
+  it("matches the spec-quoted 8s and trailing-4s bands (~2.7s/1.8s min, ~1.4s) — rescaled 2026-07-15 (x0.5) alongside THAI_CHARS_PER_SECOND 8.5->17", () => {
     const budgets = derivePerShotSpeechBudgets(DEFAULT_CLIP_DURATIONS);
     const eightSecondShot = budgets[0];
     const fourSecondShot = budgets[7];
 
     expect(eightSecondShot.clipDurationSeconds).toBe(8);
-    expect(eightSecondShot.targetSpeechSeconds).toBeCloseTo(5.44, 2);
-    expect(eightSecondShot.minSpeechSeconds).toBeCloseTo(3.6, 2);
+    expect(eightSecondShot.targetSpeechSeconds).toBeCloseTo(2.72, 2);
+    expect(eightSecondShot.minSpeechSeconds).toBeCloseTo(1.8, 2);
 
     expect(fourSecondShot.clipDurationSeconds).toBe(4);
-    expect(fourSecondShot.targetSpeechSeconds).toBeCloseTo(2.72, 2);
+    expect(fourSecondShot.targetSpeechSeconds).toBeCloseTo(1.36, 2);
   });
 
   it("defaults sourceBeatIndexes to [] and omits silenceIntent when no options are given", () => {

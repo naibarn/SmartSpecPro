@@ -30,8 +30,6 @@ import {
   Loader2,
   ChevronLeft,
   Wand2,
-  Bot,
-  GitBranch,
   Clock,
 } from "lucide-react";
 
@@ -44,20 +42,10 @@ const TYPE_META: Record<
     icon: Wand2,
     style: "bg-purple-100 text-purple-700",
   },
-  agency: {
-    label: "Agency",
-    icon: Bot,
-    style: "bg-indigo-100 text-indigo-700",
-  },
-  template: {
-    label: "Template",
-    icon: GitBranch,
-    style: "bg-teal-100 text-teal-700",
-  },
 };
 
 interface PendingItem {
-  type: "skill" | "agency" | "template";
+  type: "skill";
   id: string;
   name: string;
   description: string | null;
@@ -98,17 +86,6 @@ export default function AdminApprovals() {
       { limit: 100, offset: 0, type: "skill" },
       { enabled: !!isAdmin && activeTab === "skills" }
     );
-  const { data: agenciesData, isLoading: agenciesLoading } =
-    trpc.adminOps.pendingApprovalList.useQuery(
-      { limit: 100, offset: 0, type: "agency" },
-      { enabled: !!isAdmin && activeTab === "agencies" }
-    );
-  const { data: templatesData, isLoading: templatesLoading } =
-    trpc.adminOps.pendingApprovalList.useQuery(
-      { limit: 100, offset: 0, type: "template" },
-      { enabled: !!isAdmin && activeTab === "templates" }
-    );
-
   // Mutations
   const approveSkillMut = trpc.skills.approveSkill.useMutation({
     onSuccess: invalidateAll,
@@ -116,25 +93,10 @@ export default function AdminApprovals() {
   const rejectSkillMut = trpc.skills.rejectSkill.useMutation({
     onSuccess: invalidateAll,
   });
-  const approveAgencyMut = trpc.agency.adminApproveAgency.useMutation({
-    onSuccess: invalidateAll,
-  });
-  const rejectAgencyMut = trpc.agency.adminRejectAgency.useMutation({
-    onSuccess: invalidateAll,
-  });
-  const approveTemplateMut = trpc.workflow.adminApproveTemplate.useMutation({
-    onSuccess: invalidateAll,
-  });
-  const rejectTemplateMut = trpc.workflow.adminRejectTemplate.useMutation({
-    onSuccess: invalidateAll,
-  });
-
   function invalidateAll() {
     utils.adminOps.pendingApprovalCounts.invalidate();
     utils.adminOps.pendingApprovalList.invalidate();
     utils.skills.listPending.invalidate();
-    utils.agency.adminListPendingAgencies.invalidate();
-    utils.workflow.adminListPendingTemplates.invalidate();
     setRejectTarget(null);
     setRejectReason("");
   }
@@ -142,10 +104,6 @@ export default function AdminApprovals() {
   function handleApprove(item: PendingItem) {
     if (item.type === "skill")
       approveSkillMut.mutate({ skillId: Number(item.id) });
-    else if (item.type === "agency")
-      approveAgencyMut.mutate({ agencyId: item.id });
-    else if (item.type === "template")
-      approveTemplateMut.mutate({ templateId: Number(item.id) });
   }
 
   function handleRejectConfirm() {
@@ -153,19 +111,11 @@ export default function AdminApprovals() {
     const reason = rejectReason.trim() || undefined;
     if (rejectTarget.type === "skill")
       rejectSkillMut.mutate({ skillId: Number(rejectTarget.id), reason });
-    else if (rejectTarget.type === "agency")
-      rejectAgencyMut.mutate({ agencyId: rejectTarget.id, reason });
-    else if (rejectTarget.type === "template")
-      rejectTemplateMut.mutate({ templateId: Number(rejectTarget.id), reason });
   }
 
   const isAnyMutating =
     approveSkillMut.isPending ||
-    rejectSkillMut.isPending ||
-    approveAgencyMut.isPending ||
-    rejectAgencyMut.isPending ||
-    approveTemplateMut.isPending ||
-    rejectTemplateMut.isPending;
+    rejectSkillMut.isPending;
 
   function getTabData(): { items: PendingItem[]; loading: boolean } {
     switch (activeTab) {
@@ -173,16 +123,6 @@ export default function AdminApprovals() {
         return {
           items: (skillsData?.items ?? []) as PendingItem[],
           loading: skillsLoading,
-        };
-      case "agencies":
-        return {
-          items: (agenciesData?.items ?? []) as PendingItem[],
-          loading: agenciesLoading,
-        };
-      case "templates":
-        return {
-          items: (templatesData?.items ?? []) as PendingItem[],
-          loading: templatesLoading,
         };
       default:
         return {
@@ -201,6 +141,7 @@ export default function AdminApprovals() {
   }
 
   const { items, loading } = getTabData();
+  const visibleItems = items.filter(item => item.type === "skill");
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-amber-50/20 to-orange-50/10">
@@ -269,40 +210,16 @@ export default function AdminApprovals() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="agencies" className="gap-1.5">
-              <Bot className="h-3.5 w-3.5" />
-              Agencies
-              {(counts?.agencies ?? 0) > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 h-5 px-1.5 text-[10px]"
-                >
-                  {counts!.agencies}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-1.5">
-              <GitBranch className="h-3.5 w-3.5" />
-              Templates
-              {(counts?.templates ?? 0) > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 h-5 px-1.5 text-[10px]"
-                >
-                  {counts!.templates}
-                </Badge>
-              )}
-            </TabsTrigger>
           </TabsList>
 
           {/* Shared content for all tabs */}
-          {["all", "skills", "agencies", "templates"].map(tab => (
+          {["all", "skills"].map(tab => (
             <TabsContent key={tab} value={tab} className="mt-4">
               {loading ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
-              ) : items.length === 0 ? (
+              ) : visibleItems.length === 0 ? (
                 <div className="py-16 text-center border-2 border-dashed border-slate-200 rounded-xl bg-white/50">
                   <CheckCircle2 className="mx-auto mb-3 h-12 w-12 text-emerald-300" />
                   <p className="text-lg font-medium text-slate-600">
@@ -327,7 +244,7 @@ export default function AdminApprovals() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {items.map(item => {
+                      {visibleItems.map(item => {
                         const meta = TYPE_META[item.type] ?? TYPE_META.skill;
                         const TypeIcon = meta.icon;
                         return (

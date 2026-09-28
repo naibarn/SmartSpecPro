@@ -3,6 +3,10 @@
 # One-shot script to provision all GCP resources for SmartAIHub MVP.
 # Usage: ./scripts/bootstrap-gcp.sh PROJECT_ID REGION BILLING_ACCOUNT_ID [ORG_ID]
 #
+# Retired: the production runtime target is Cloudflare.
+echo "ERROR: bootstrap-gcp.sh is retired; use the approved Cloudflare deployment pipeline." >&2
+exit 1
+
 # Prerequisites:
 #   - gcloud CLI installed and authenticated
 #   - Billing account ID available

@@ -10,6 +10,7 @@ import {
   type SharedSkillRuntimeTextResult,
 } from "./agentRuntime/skillRuntimeOrchestrator";
 import { executeWithFallback, getProviderForModel } from "./llmRouter";
+import type { ExecuteResult } from "./llmRouter";
 import {
   getSkillByIdAsync,
   syncSingleSkillIfChanged,
@@ -26,6 +27,9 @@ import {
   type ProductReferenceStoryboardCategoryRuleAudit,
 } from "./productReferenceStoryboardCategoryRules";
 import { resolveSkillExecutionPolicy } from "./skillExecutionPolicy";
+import { loadEnabledLlmModelRows } from "./enabledLlmModels";
+import { selectLlmModelCandidates } from "./intelligentModelSelector";
+import { resolveExternalMediaReferenceUrls } from "./mediaGenerationService";
 
 export const PRODUCT_REFERENCE_STORYBOARD_SKILL_ID =
   "product-reference-storyboard";
@@ -33,6 +37,16 @@ export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_OPTIMIZER_SKILL_ID =
   "product-reference-storyboard-prompt-optimizer";
 export const PRODUCT_REFERENCE_STORYBOARD_PROMPT_MAX_CHARS = 3800;
 const PRODUCT_REFERENCE_STORYBOARD_PROMPT_PREFERRED_CHARS = 3600;
+/**
+ * Feature 136 (section 04) — frozen cross-file literal, duplicated (not
+ * imported) from `productReviewSequentialStoryboardSkillRunner.ts`'s
+ * `SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER`: that module imports
+ * `optimizeProductReferenceStoryboardPrompt` FROM this file, so this file
+ * cannot import back from it without a circular dependency. Must stay
+ * byte-identical to that module's exported constant.
+ */
+const SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER_FOR_OPTIMIZER =
+  "Use @Image1 as the absolute product identity reference";
 const PRODUCT_REFERENCE_STORYBOARD_MIN_COMPLETION_TOKENS = 4000;
 const PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS = 500;
 const PRODUCT_REFERENCE_STORYBOARD_FULL_OUTPUT_LOG_DIR = (
@@ -1566,6 +1580,189 @@ function buildVisionMessages(input: {
   ];
 }
 
+/**
+ * Resilience — Layer 1 (vision model retry + text-only fallback).
+ *
+ * The product-reference-storyboard prompt LLM call is an enhancer, not a
+ * gate: whatever fails mid-way, once a prompt exists the run must proceed
+ * to image generation. See
+ * planning/marketplace-auto-review-storyboard-resilience/plan.md.
+ */
+const PRODUCT_REFERENCE_STORYBOARD_VISION_MODEL_MAX_ATTEMPTS = 3;
+const PRODUCT_REFERENCE_STORYBOARD_VISION_REQUIREMENTS_CONTEXT_LENGTH =
+  1_000_000;
+
+export type ProductReferenceStoryboardVisionModelAttempt = {
+  modelId: string;
+  error: string;
+};
+
+/** Same messages as buildVisionMessages, but with image_url parts dropped
+ * and a text note describing the unavailable reference images appended. */
+function buildTextOnlyVisionFallbackMessages(input: {
+  systemPrompt: string;
+  userPrompt: string;
+  productImageCount: number;
+  characterImageCount: number;
+  environmentImageCount: number;
+}): Message[] {
+  const note =
+    `Reference images unavailable to the model; ` +
+    `${input.productImageCount} product / ${input.characterImageCount} character / ` +
+    `${input.environmentImageCount} environment reference images exist — write prompts ` +
+    `that preserve product fidelity from the textual facts.`;
+  return [
+    {
+      role: "system",
+      content: input.systemPrompt,
+    },
+    {
+      role: "user",
+      content: `${input.userPrompt}\n\n${note}`,
+    },
+  ];
+}
+
+function describeExecuteResultFailure(
+  result: Exclude<ExecuteResult, { type: "success" }>,
+): string {
+  if (result.type === "error") {
+    return result.error;
+  }
+  return `provider fallback required from ${result.from.providerName} to ${result.to.providerName}, but provider fallback is disabled`;
+}
+
+/**
+ * Resolve up to N distinct vision-capable candidate model IDs, primary
+ * model first, deduped, ranked by the same priority ordering as
+ * `resolveSkillExecutionPolicy`.
+ */
+async function resolveProductReferenceStoryboardVisionCandidateModelIds(
+  primaryModelId: string,
+): Promise<string[]> {
+  const rows = await loadEnabledLlmModelRows();
+  const ranked = selectLlmModelCandidates(
+    {
+      supportsVision: true,
+      contextLength:
+        PRODUCT_REFERENCE_STORYBOARD_VISION_REQUIREMENTS_CONTEXT_LENGTH,
+    },
+    rows,
+    PRODUCT_REFERENCE_STORYBOARD_VISION_MODEL_MAX_ATTEMPTS + 1,
+  );
+  const deduped: string[] = [];
+  for (const modelId of [primaryModelId, ...ranked]) {
+    if (!deduped.includes(modelId)) {
+      deduped.push(modelId);
+    }
+    if (deduped.length >= PRODUCT_REFERENCE_STORYBOARD_VISION_MODEL_MAX_ATTEMPTS) {
+      break;
+    }
+  }
+  return deduped;
+}
+
+/** Resolve the best large-context model for the final text-only attempt,
+ * ignoring the vision requirement entirely. */
+async function resolveProductReferenceStoryboardTextOnlyFallbackModelId(
+  fallbackModelId: string,
+): Promise<string> {
+  const rows = await loadEnabledLlmModelRows();
+  const ranked = selectLlmModelCandidates(
+    {
+      contextLength:
+        PRODUCT_REFERENCE_STORYBOARD_VISION_REQUIREMENTS_CONTEXT_LENGTH,
+    },
+    rows,
+    1,
+  );
+  return ranked[0] ?? fallbackModelId;
+}
+
+/**
+ * Attempt the vision LLM call against a ranked list of candidate models
+ * (max `PRODUCT_REFERENCE_STORYBOARD_VISION_MODEL_MAX_ATTEMPTS`), then —
+ * if every vision-capable model fails — fall back once to a text-only
+ * call on the best available large-context model. Never throws unless
+ * every attempt (including the text-only fallback) fails.
+ *
+ * `callModel` is injected so this function is testable without a live DB
+ * or network: it should call `executeWithFallback` (or an equivalent) for
+ * a single model + messages pair.
+ */
+export async function runProductReferenceStoryboardVisionLlmCallWithFallback(input: {
+  primaryModelId: string;
+  candidateModelIds: string[];
+  textOnlyModelId: string;
+  visionMessages: Message[];
+  buildTextOnlyMessages: () => Message[];
+  callModel: (modelId: string, messages: Message[]) => Promise<ExecuteResult>;
+  onHop?: (hop: {
+    modelId: string;
+    error: string;
+    mode: "vision" | "text_only";
+  }) => void;
+}): Promise<{
+  llmResult: Extract<ExecuteResult, { type: "success" }>;
+  usedModelId: string;
+  visionFallback: "next_model" | "text_only" | null;
+  visionModelAttempts: ProductReferenceStoryboardVisionModelAttempt[];
+}> {
+  const visionModelAttempts: ProductReferenceStoryboardVisionModelAttempt[] =
+    [];
+  const candidateModelIds = input.candidateModelIds.length
+    ? input.candidateModelIds
+    : [input.primaryModelId];
+
+  for (let i = 0; i < candidateModelIds.length; i++) {
+    const candidateModelId = candidateModelIds[i];
+    const attempt = await input.callModel(
+      candidateModelId,
+      input.visionMessages,
+    );
+    if (attempt.type === "success") {
+      return {
+        llmResult: attempt,
+        usedModelId: candidateModelId,
+        visionFallback: i > 0 ? "next_model" : null,
+        visionModelAttempts,
+      };
+    }
+    const error = describeExecuteResultFailure(attempt);
+    visionModelAttempts.push({ modelId: candidateModelId, error });
+    input.onHop?.({ modelId: candidateModelId, error, mode: "vision" });
+  }
+
+  // All vision-capable candidates failed: one final text-only attempt.
+  const textOnlyMessages = input.buildTextOnlyMessages();
+  const textOnlyAttempt = await input.callModel(
+    input.textOnlyModelId,
+    textOnlyMessages,
+  );
+  if (textOnlyAttempt.type === "success") {
+    return {
+      llmResult: textOnlyAttempt,
+      usedModelId: input.textOnlyModelId,
+      visionFallback: "text_only",
+      visionModelAttempts,
+    };
+  }
+  const textOnlyError = describeExecuteResultFailure(textOnlyAttempt);
+  visionModelAttempts.push({
+    modelId: input.textOnlyModelId,
+    error: textOnlyError,
+  });
+  input.onHop?.({
+    modelId: input.textOnlyModelId,
+    error: textOnlyError,
+    mode: "text_only",
+  });
+  throw new Error(
+    `product-reference-storyboard LLM call failed after ${visionModelAttempts.length} attempt(s) ` +
+      `(${candidateModelIds.length} vision model(s) + text-only fallback): ${textOnlyError}`,
+  );
+}
+
 export async function optimizeProductReferenceStoryboardPrompt(input: {
   tenantId: string;
   userId: number;
@@ -1586,6 +1783,17 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
   promptAttempt?: number | null;
   model?: string | null;
   maxOutputChars: number;
+  /**
+   * Feature 136 (section 04, §5.3 deliverable) — optional. When set, the
+   * source prompt is a Marketplace Auto Review SEQUENTIAL mode per-shot
+   * prompt (one photorealistic start frame, or one self-contained video
+   * prompt), not a 3x3 grid prompt. Absent = legacy 3x3 behavior,
+   * byte-identical output for every existing caller (the extra system-prompt
+   * line and `optimizerInputs.prompt_kind` key are only added when this is
+   * present; `sanitizeUserInputs` already drops `undefined`-valued keys, and
+   * `.filter(Boolean)` already drops an empty system-prompt line).
+   */
+  promptKind?: "sequential_image" | "sequential_video" | null;
 }): Promise<{
   execution: Awaited<ReturnType<typeof executeSharedSkillTextRuntime>>;
   value: SharedSkillRuntimeTextResult;
@@ -1623,20 +1831,36 @@ export async function optimizeProductReferenceStoryboardPrompt(input: {
     preferred_target_chars: preferredTargetChars,
     preserve_storyboard_contract: true,
     optimization_strength: "auto",
+    // Feature 136 (section 04) — additive; `sanitizeUserInputs` drops
+    // `undefined` values, so an absent `input.promptKind` leaves this key
+    // out entirely (byte-identical to today for every existing 3x3 caller).
+    prompt_kind: input.promptKind ?? undefined,
   });
   const promptLengthPlan = buildPromptLengthPlan(
     input.maxOutputChars,
     resolvePromptLanguageHintFromInputs(optimizerInputs)
   );
+  const sequentialPromptKindDirective =
+    input.promptKind === "sequential_image"
+      ? "This source prompt is a Marketplace Auto Review SEQUENTIAL mode single-shot START-FRAME IMAGE prompt (Feature 136), not a 3x3 grid prompt: it describes exactly ONE photorealistic frame, not nine `Frame N:` lines. Do not impose 3x3 grid structure or invent Frame 1-9 lines; preserve the single-shot reference-lock block (`@ImageN` bindings), product/character continuity, camera framing, and negative constraints, compressed to fit the budget."
+      : input.promptKind === "sequential_video"
+        ? `This source prompt is a Marketplace Auto Review SEQUENTIAL mode single-shot SELF-CONTAINED VIDEO prompt (Feature 136): it MUST keep the mandatory global identity block beginning with the exact sentence "${SEQUENTIAL_VIDEO_GLOBAL_BLOCK_MARKER_FOR_OPTIMIZER}" verbatim and unparaphrased, keep the scene/camera/one clear action/dialogue/audio content, and must NOT impose 3x3 grid \`Frame N:\` structure.`
+        : "";
   const systemPrompt = [
     loadPromptTemplate(optimizerSkill),
     promptLengthPlan?.directive,
     "## Product Reference Storyboard Optimizer Runtime Contract",
     `Return only the optimized image-generation prompt text at or below ${input.maxOutputChars} characters.`,
+    // G10 fix (planning/fix-marketplace-preflight-lock-optimizer): the
+    // downstream fail-closed preflight matches these headers literally.
+    // Run mar_829542bb… failed because the optimizer paraphrased
+    // MINOR SAFETY CLOTHING LOCK away while compressing.
+    "SAFETY AND EVIDENCE LOCK PRESERVATION (highest priority): if the source prompt contains any of the blocks MINOR SAFETY CLOTHING LOCK:, GUARDIAN PRESENCE LOCK:, DEMONSTRATION EVIDENCE LOCK:, or CLAIM SAFETY EXCLUSIONS:, reproduce each of those headers and their directive sentences VERBATIM in the output. Never delete, rename, merge, translate, summarize, or paraphrase them, and never move their wording into another sentence. Compress frame prose and every other section first; if the budget still does not fit, keep these blocks and shorten the frames further.",
     "Preserve complete Frame 1 through Frame 9 with non-empty visual-only frame prose.",
     "Use one shared CAMERA/LIGHT/DEPTH: block and one shared PRODUCT VERIFY: block. Do not repeat those blocks in every frame.",
     "Remove VISUAL:, STORY MATCH:, HUMAN REALISM:, quoted voiceover lines, timecodes, subtitles, captions, and any frame labels likely to render as visible text.",
     "Never return JSON, markdown fences, analysis, character counts, or a partial prompt.",
+    sequentialPromptKindDirective,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -1864,6 +2088,11 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     ...inputStringArray(mergedUserInputs.reference_character_images),
     ...inputStringArray(mergedUserInputs.reference_environment_images),
   ]);
+  const providerReferenceImages = await resolveExternalMediaReferenceUrls(
+    referenceImages,
+    { userId: input.userId, tenantId: input.tenantId },
+    input.publicUrl,
+  ) ?? [];
   const inputSchema = loadSkillInputSchema(skill);
   const schemaAudit = buildSkillInputSchemaAudit({
     schema: inputSchema,
@@ -2065,31 +2294,83 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       validationMode: "text_output",
     },
     legacyExecute: async () => {
-      const llmResult = await executeWithFallback({
-        model: policy.modelId!,
-        messages: buildVisionMessages({
-          systemPrompt,
-          userPrompt,
-          referenceImages,
-        }),
-        stream: false,
-        userId: input.userId,
-        preferredProvider: policy.preferredProviderId,
-        strictProviderPin: policy.strictProviderPin,
-        maxTokens: llmMaxTokens,
-        temperature: 0.45,
-        disableProviderFallbacks: true,
-        allowFreeModels: policy.allowFreeModels,
-      });
-      if (llmResult.type !== "success") {
-        const errorMessage =
-          llmResult.type === "error"
-            ? llmResult.error
-            : `provider fallback required from ${llmResult.from.providerName} to ${llmResult.to.providerName}, but provider fallback is disabled`;
-        throw new Error(
-          `product-reference-storyboard LLM call failed: ${errorMessage}`
+      const visionCandidateModelIds =
+        await resolveProductReferenceStoryboardVisionCandidateModelIds(
+          policy.modelId!
         );
-      }
+      const textOnlyModelId =
+        await resolveProductReferenceStoryboardTextOnlyFallbackModelId(
+          policy.modelId!
+        );
+      const productImageCount = Array.isArray(
+        mergedUserInputs.reference_product_images
+      )
+        ? mergedUserInputs.reference_product_images.length
+        : 0;
+      const characterImageCount = Array.isArray(
+        mergedUserInputs.reference_character_images
+      )
+        ? mergedUserInputs.reference_character_images.length
+        : 0;
+      const environmentImageCount = Array.isArray(
+        mergedUserInputs.reference_environment_images
+      )
+        ? mergedUserInputs.reference_environment_images.length
+        : 0;
+
+      const { llmResult, usedModelId, visionFallback, visionModelAttempts } =
+        await runProductReferenceStoryboardVisionLlmCallWithFallback({
+          primaryModelId: policy.modelId!,
+          candidateModelIds: visionCandidateModelIds,
+          textOnlyModelId,
+          visionMessages: buildVisionMessages({
+            systemPrompt,
+            userPrompt,
+            referenceImages: providerReferenceImages,
+          }),
+          buildTextOnlyMessages: () =>
+            buildTextOnlyVisionFallbackMessages({
+              systemPrompt,
+              userPrompt,
+              productImageCount,
+              characterImageCount,
+              environmentImageCount,
+            }),
+          callModel: (modelId, messages) =>
+            executeWithFallback({
+              model: modelId,
+              messages,
+              stream: false,
+              userId: input.userId,
+              preferredProvider:
+                modelId === policy.modelId
+                  ? policy.preferredProviderId
+                  : undefined,
+              strictProviderPin:
+                modelId === policy.modelId
+                  ? policy.strictProviderPin
+                  : undefined,
+              maxTokens: llmMaxTokens,
+              temperature: 0.45,
+              disableProviderFallbacks: true,
+              allowFreeModels: policy.allowFreeModels,
+            }),
+          onHop: (hop) => {
+            console.warn(
+              "[productReferenceStoryboardSkillRunner] vision_model_retry",
+              {
+                skillId: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
+                runId: input.runId ?? null,
+                unitId: input.unitId ?? null,
+                attempt: input.attempt ?? null,
+                promptAttempt: input.promptAttempt ?? null,
+                failedModelId: hop.modelId,
+                error: hop.error,
+                mode: hop.mode,
+              }
+            );
+          },
+        });
       const rawContent = extractLlmContent(llmResult.response);
       if (!rawContent) {
         throw new Error("product-reference-storyboard returned empty output");
@@ -2108,7 +2389,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
         unitId: input.unitId ?? null,
         attempt: input.attempt ?? null,
         promptAttempt: input.promptAttempt ?? null,
-        modelId: policy.modelId,
+        modelId: usedModelId,
         providerName: llmResult.providerName,
         finishReason,
         usage,
@@ -2142,7 +2423,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
       const creditsUsed = calculateCreditsForLLM(
         usage.promptTokens,
         usage.completionTokens,
-        policy.modelId!
+        usedModelId
       );
       await deductCredits({
         userId: input.userId,
@@ -2167,7 +2448,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
           runtimeKind: "llm",
           originSurface: "marketplace_capture",
           entryPoint: "marketplace_auto_review_stage",
-          model: policy.modelId ?? undefined,
+          model: usedModelId ?? undefined,
           provider: llmResult.providerName,
           tokensUsed: usage.promptTokens + usage.completionTokens,
           promptTokens: usage.promptTokens,
@@ -2189,6 +2470,8 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
           promptAttempt: input.promptAttempt ?? null,
           schemaAudit,
           fallbackUsed: false,
+          visionFallback,
+          visionModelAttempts,
         },
       });
       console.info("[productReferenceStoryboardSkillRunner] llm_response", {
@@ -2197,7 +2480,7 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
         unitId: input.unitId ?? null,
         attempt: input.attempt ?? null,
         promptAttempt: input.promptAttempt ?? null,
-        modelId: policy.modelId,
+        modelId: usedModelId,
         providerName: llmResult.providerName,
         llmMaxTokens,
         finishReason,
@@ -2208,22 +2491,30 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
           0,
           PRODUCT_REFERENCE_STORYBOARD_OUTPUT_AUDIT_PREVIEW_CHARS
         ),
+        visionFallback,
+        visionModelAttempts,
       });
       return {
         rawContent,
         usage,
         creditsUsed,
         providerName: llmResult.providerName,
-        modelId: policy.modelId,
+        modelId: usedModelId,
         rawResponse: llmResult.response,
         fullOutputLogPath,
+        visionFallback,
+        visionModelAttempts,
       };
     },
   });
 
   const executionValue = execution.value as typeof execution.value & {
     fullOutputLogPath?: string | null;
+    visionFallback?: "next_model" | "text_only" | null;
+    visionModelAttempts?: ProductReferenceStoryboardVisionModelAttempt[];
   };
+  const visionFallback = executionValue.visionFallback ?? null;
+  const visionModelAttempts = executionValue.visionModelAttempts ?? [];
   const usageValue = (executionValue.usage ?? {}) as unknown as Record<
     string,
     unknown
@@ -2518,6 +2809,8 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     layoutContract: schemaAudit.layoutContract,
     promptOptimizer: promptOptimizerAudit,
     inputKeys: Object.keys(mergedUserInputs).sort(),
+    visionModelAttempts,
+    visionFallback,
   };
   console.info("[productReferenceStoryboardSkillRunner] completed", {
     skillId: PRODUCT_REFERENCE_STORYBOARD_SKILL_ID,
@@ -2538,6 +2831,8 @@ export async function runProductReferenceStoryboardPromptSkill(input: {
     categoryRuleAudit: systemPromptBuild.categoryRuleAudit,
     schemaAudit,
     completenessWarnings,
+    visionFallback,
+    visionModelAttempts,
   });
 
   return {

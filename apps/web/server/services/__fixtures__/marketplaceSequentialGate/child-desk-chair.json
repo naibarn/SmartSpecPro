@@ -1,0 +1,56 @@
+{
+  "fixtureId": "child_desk_chair",
+  "description": "spec §11.4 — children's desk chair, 4 angle reference images + 1 adult character reference; evidence text has no assembly documentation and no medical claims.",
+  "loopInput": {
+    "productName": "Adjustable Kids Study Desk Chair",
+    "productDescription": "Height-adjustable desk chair designed for children aged 4-10, ergonomic backrest, non-slip base.",
+    "productSpecs": "Height range 30-42cm; weight capacity 40kg; material: powder-coated steel + molded plastic.",
+    "productTruthText": "ผู้ผลิตยืนยันว่าเก้าอี้ปรับความสูงได้ระหว่าง 30-42 ซม. รับน้ำหนักได้สูงสุด 40 กก. ไม่มีเอกสารขั้นตอนการประกอบและไม่มีการอ้างสิทธิ์ทางการแพทย์ใดๆ",
+    "referenceManifest": [
+      {
+        "index": 1,
+        "role": "product",
+        "angleLabel": "front",
+        "url": "asset-ref:product-front"
+      },
+      {
+        "index": 2,
+        "role": "product",
+        "angleLabel": "side",
+        "url": "asset-ref:product-side"
+      },
+      {
+        "index": 3,
+        "role": "product",
+        "angleLabel": "back",
+        "url": "asset-ref:product-back"
+      },
+      {
+        "index": 4,
+        "role": "product",
+        "angleLabel": "detail",
+        "url": "asset-ref:product-detail"
+      },
+      {
+        "index": 5,
+        "role": "character",
+        "angleLabel": "adult_guardian",
+        "url": "asset-ref:adult-guardian"
+      }
+    ],
+    "childSubjectPolicy": {
+      "productChildRelated": true,
+      "childDepictionPlanned": true,
+      "guardianReferenceIndex": 5
+    }
+  },
+  "expectations": {
+    "fixtureId": "child_desk_chair",
+    "expectShotCount": 9,
+    "childSubjectPolicyActive": true,
+    "assemblyDocumented": false,
+    "imagePromptMaxChars": 4000,
+    "videoPromptMaxChars": 2000,
+    "globalBlockMarker": "Use @Image1 as the absolute product identity reference"
+  }
+}

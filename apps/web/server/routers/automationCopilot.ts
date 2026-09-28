@@ -156,7 +156,7 @@ export const automationCopilotRouter = router({
 
       const data = (await res.json()) as Record<string, unknown>;
 
-      await finalizeAutomationCopilotTaskReservation(input.taskId, String(data.status ?? ""));
+      await finalizeAutomationCopilotTaskReservation(input.taskId, String(data.status ?? ""), tenantId);
 
       return data;
     }),
@@ -204,6 +204,9 @@ export const automationCopilotRouter = router({
         CREDIT_RESERVE_AMOUNT,
         "browser_automation",
         { taskId: input.taskId, executionId: input.executionId },
+        `automation:reservation:${tenantId}:${input.taskId}`,
+        undefined,
+        { allowWithoutRedis: true },
       );
 
       const { allowedDomains, visionModel } = await loadLegacyAutomationSettings();
@@ -234,7 +237,7 @@ export const automationCopilotRouter = router({
 
       if (!res.ok) {
         // Refund unused reservation on failure to enqueue
-        await refundReservation(reservation.reservationId);
+        await refundReservation(reservation.reservationId, false, reservation);
         const msg = await readPythonError(res);
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: msg });
       }

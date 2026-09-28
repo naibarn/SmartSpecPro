@@ -1,184 +1,185 @@
 /**
- * Home Page - SmartAIHub landing pitch deck
- * Database-driven copy for smartaihub.app
+ * SmartAIHub public homepage.
+ *
+ * The homepage keeps tenant-page loading for the public content contract, but
+ * uses the publicSite locale namespace as the complete, bilingual baseline so
+ * stale or incomplete database copy cannot make the landing page empty.
  */
 
-import React from "react";
-import { Link } from "wouter";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
+import type { LucideIcon } from "lucide-react";
 import {
+  Activity,
   ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  Blocks,
   Bot,
-  Boxes,
+  Check,
+  Clapperboard,
+  CreditCard,
+  Film,
+  History,
+  Library,
+  Lock,
   MessageSquareText,
+  Play,
   Presentation,
   Sparkles,
   Store,
   Video,
+  Wallet,
   Workflow,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Footer } from "@/components/Footer";
 import { Navbar } from "@/components/Navbar";
 import { Seo } from "@/components/Seo";
-import { PitchDeck, Slide, VideoBackground } from "@/components/PitchDeck";
 import { useTenantPage } from "@/hooks/useTenantPage";
+import {
+  HOME_FEATURE_GROUPS,
+  HOME_FEATURES,
+  HOME_PUBLIC_ASSETS,
+  getHomeFeatureTranslationKey,
+  type HomeFeature,
+} from "./homeContent";
 
-type HomeButton = {
-  text: string;
-  link: string;
-  style?: string;
+const ICONS: Record<string, LucideIcon> = {
+  activity: Activity,
+  blocks: Blocks,
+  chart: BarChart3,
+  clapperboard: Clapperboard,
+  credit: CreditCard,
+  film: Film,
+  history: History,
+  library: Library,
+  lock: Lock,
+  message: MessageSquareText,
+  presentation: Presentation,
+  sparkles: Sparkles,
+  store: Store,
+  video: Video,
+  wallet: Wallet,
 };
 
-type HomeSectionItem = {
-  [key: string]: unknown;
-  title?: string;
-  subtitle?: string;
-  description?: string;
-  content?: string;
-  value?: string;
-  label?: string;
-  text?: string;
-  points?: string[];
-};
+const proofKeys = ["proof.1", "proof.2", "proof.3", "proof.4", "proof.5"];
+const verticalPoints = [1, 2, 3, 4];
+const productPoints = [1, 2, 3, 4];
+const workhubPoints = [1, 2, 3, 4];
+const capturePoints = [1, 2, 3, 4];
+const runtimePoints = [1, 2, 3, 4];
+const chatPoints = [1, 2, 3, 4];
+const skillsChips = [1, 2, 3, 4, 5];
+const workflowSteps = [1, 2, 3, 4];
 
 type HomeSection = {
-  id: string;
-  type: string;
-  title?: string;
-  subtitle?: string;
-  content?: string;
-  buttons?: HomeButton[];
-  items?: Array<HomeSectionItem | string>;
+  type?: string;
   settings?: Record<string, unknown>;
 };
 
-const featureIcons = [Store, Workflow, Zap];
-const outputIcons = [MessageSquareText, Presentation, Video];
-
-const featureCardAccents = [
-  "from-blue-400/20 to-cyan-400/20",
-  "from-cyan-400/20 to-teal-400/20",
-  "from-emerald-400/20 to-lime-400/20",
-];
-
-const featureCardIcons = ["text-blue-400", "text-cyan-400", "text-emerald-400"];
-
-const outputCardAccents = [
-  "from-cyan-400/20 to-blue-400/20",
-  "from-cyan-400/20 to-teal-400/20",
-  "from-emerald-400/20 to-teal-400/20",
-];
-
-const outputCardIcons = ["text-cyan-300", "text-cyan-300", "text-emerald-300"];
-
-function toText(value: unknown): string {
-  if (typeof value === "string") return value.trim();
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  return "";
+function getTenantBackgroundVideo(
+  sections: Array<HomeSection> | undefined
+): string | null {
+  const hero = sections?.find(section => section.type === "hero");
+  const value = hero?.settings?.backgroundVideo;
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
-function normalizeItems(
-  items?: Array<HomeSectionItem | string> | null
-): HomeSectionItem[] {
-  if (!Array.isArray(items)) return [];
-  return items.map(item =>
-    typeof item === "string" ? { title: item } : (item ?? {})
-  );
-}
-
-function getTextFromItem(
-  item: HomeSectionItem | undefined,
-  fields: Array<keyof HomeSectionItem>
-): string {
-  if (!item) return "";
-  for (const field of fields) {
-    const value = toText(item[field]);
-    if (value) return value;
-  }
-  return "";
-}
-
-function getPointsFromItem(item: HomeSectionItem | undefined): string[] {
-  const points = item?.points;
-  if (!Array.isArray(points)) return [];
-  return points.map(toText).filter(Boolean);
-}
-
-function findSection(
-  sections: HomeSection[],
-  type: string,
-  predicate?: (section: HomeSection) => boolean
-): HomeSection | undefined {
-  return sections.find(
-    section => section.type === type && (!predicate || predicate(section))
-  );
-}
-
-function isExternalLink(link: string): boolean {
-  return /^https?:\/\//i.test(link);
-}
-
-function HomeActionButton({
-  button,
-  className,
-  showArrow = false,
+function ImageFrame({
+  src,
+  alt,
+  className = "",
+  priority = false,
 }: {
-  button: HomeButton;
-  className: string;
-  showArrow?: boolean;
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
 }) {
-  const isOutline = button.style === "outline";
-  const buttonContent = (
-    <>
-      {button.text}
-      {showArrow && !isOutline ? <ArrowRight className="ml-2 h-5 w-5" /> : null}
-    </>
-  );
+  const [hasError, setHasError] = useState(false);
 
-  return isExternalLink(button.link) ? (
-    <Button
-      asChild
-      size="lg"
-      variant={isOutline ? "outline" : "default"}
-      className={className}
+  return (
+    <figure
+      className={`relative isolate overflow-hidden rounded-[2rem] border border-white/15 bg-slate-950/80 shadow-[0_30px_100px_rgba(15,23,42,0.28)] ${className}`}
     >
-      <a href={button.link} target="_blank" rel="noreferrer">
-        {buttonContent}
-      </a>
-    </Button>
-  ) : (
-    <Button
-      asChild
-      size="lg"
-      variant={isOutline ? "outline" : "default"}
-      className={className}
-    >
-      <Link href={button.link}>{buttonContent}</Link>
-    </Button>
+      <div className="absolute inset-0 bg-gradient-to-br from-cyan-400/15 via-transparent to-fuchsia-500/20" />
+      {hasError ? (
+        <div
+          className="flex aspect-[16/9] items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgba(34,211,238,0.34),transparent_38%),linear-gradient(135deg,#071326,#111827_55%,#312e81)]"
+          role="img"
+          aria-label={alt}
+        >
+          <Sparkles className="h-12 w-12 text-cyan-200/70" aria-hidden="true" />
+        </div>
+      ) : (
+        <img
+          src={src}
+          alt={alt}
+          width={1672}
+          height={941}
+          loading={priority ? "eager" : "lazy"}
+          decoding="async"
+          onError={() => setHasError(true)}
+          className="relative z-10 aspect-[16/9] w-full object-cover"
+        />
+      )}
+      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-t from-slate-950/35 via-transparent to-white/5" />
+    </figure>
+  );
+}
+
+function SectionKicker({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary sm:text-sm">
+      <Sparkles className="h-4 w-4" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
+function ActionLink({
+  href,
+  children,
+  variant = "default",
+  className = "",
+}: {
+  href: string;
+  children: React.ReactNode;
+  variant?: "default" | "outline";
+  className?: string;
+}) {
+  return (
+    <Link href={href}>
+      <Button
+        size="lg"
+        variant={variant}
+        className={`h-auto min-h-12 w-full rounded-full px-6 py-3 text-base sm:w-auto sm:px-8 ${className}`}
+      >
+        {children}
+        {variant === "default" ? (
+          <ArrowRight className="ml-2 h-5 w-5" aria-hidden="true" />
+        ) : null}
+      </Button>
+    </Link>
   );
 }
 
 function LoadingState() {
   return (
     <div className="min-h-screen bg-background">
-      <Seo
-        title="SmartAIHub"
-        description="Loading SmartAIHub homepage content..."
-        canonicalPath="/"
-        fetchTenantSeo={false}
-      />
       <Navbar />
-
-      <main className="px-4 pt-24 sm:pt-32">
-        <div className="container mx-auto max-w-5xl animate-pulse">
-          <div className="mx-auto mb-6 h-6 w-48 rounded-full bg-muted/60" />
-          <div className="mx-auto h-20 rounded-3xl bg-muted/60" />
-          <div className="mx-auto mt-6 h-10 rounded-2xl bg-muted/50" />
-          <div className="mx-auto mt-8 grid gap-4 sm:grid-cols-2">
-            <div className="h-14 rounded-full bg-muted/50" />
-            <div className="h-14 rounded-full bg-muted/50" />
+      <main className="px-4 pb-24 pt-32 sm:px-6">
+        <div className="mx-auto max-w-7xl animate-pulse space-y-10">
+          <div className="grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="space-y-5">
+              <div className="h-7 w-52 rounded-full bg-muted/60" />
+              <div className="h-24 rounded-3xl bg-muted/60" />
+              <div className="h-16 rounded-2xl bg-muted/50" />
+            </div>
+            <div className="aspect-[16/9] rounded-[2rem] bg-muted/50" />
           </div>
         </div>
       </main>
@@ -186,100 +187,146 @@ function LoadingState() {
   );
 }
 
-function UnavailableState() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Seo
-        title="SmartAIHub"
-        description="SmartAIHub homepage content is unavailable."
-        canonicalPath="/"
-        fetchTenantSeo={false}
-      />
-      <Navbar />
+function FeatureCard({
+  feature,
+  t,
+}: {
+  feature: HomeFeature;
+  t: (key: string) => string;
+}) {
+  const Icon = ICONS[feature.icon] ?? Sparkles;
 
-      <main className="px-4 pt-24 sm:pt-32">
-        <div className="container mx-auto max-w-3xl">
-          <div className="glass-card rounded-3xl border border-border/60 p-8 text-center">
-            <Sparkles className="mx-auto mb-4 h-10 w-10 text-cyan-400" />
-            <h1 className="text-3xl font-bold text-foreground">
-              Homepage content is not published yet.
-            </h1>
-            <p className="mt-4 text-muted-foreground">
-              The public tenant page is waiting for DB content to be published.
-            </p>
+  return (
+    <article className="group rounded-3xl border border-border/60 bg-card/80 p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-xl sm:p-6">
+      <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-cyan-400/20 text-primary transition-colors group-hover:from-primary group-hover:to-cyan-400 group-hover:text-white">
+        <Icon className="h-6 w-6" aria-hidden="true" />
+      </div>
+      <h3 className="text-lg font-semibold text-foreground">
+        {t(getHomeFeatureTranslationKey(feature, "title"))}
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+        {t(getHomeFeatureTranslationKey(feature, "description"))}
+      </p>
+    </article>
+  );
+}
+
+function SpotlightSection({
+  id,
+  tone,
+  eyebrow,
+  title,
+  body,
+  points,
+  cta,
+  href,
+  image,
+  alt,
+  workflowLabel,
+  dark = false,
+  reverse = false,
+}: {
+  id: string;
+  tone: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  points: string[];
+  cta: string;
+  href: string;
+  image: string;
+  alt: string;
+  workflowLabel: string;
+  dark?: boolean;
+  reverse?: boolean;
+}) {
+  return (
+    <section
+      id={id}
+      className={`relative overflow-hidden py-20 sm:py-28 ${tone}`}
+    >
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-1/4 h-72 w-72 rounded-full bg-fuchsia-400/10 blur-3xl" />
+      <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+        <motion.div
+          initial={{ opacity: 0, x: reverse ? 24 : -24 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.18 }}
+          transition={{ duration: 0.55 }}
+          className={reverse ? "lg:order-2" : ""}
+        >
+          <SectionKicker>{eyebrow}</SectionKicker>
+          <h2
+            className={`mt-6 max-w-2xl text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl ${dark ? "text-white" : "text-foreground"}`}
+          >
+            {title}
+          </h2>
+          <p
+            className={`mt-6 max-w-2xl text-base leading-8 sm:text-lg ${dark ? "text-slate-300" : "text-muted-foreground"}`}
+          >
+            {body}
+          </p>
+          <ul className="mt-7 grid gap-3 sm:grid-cols-2">
+            {points.map(point => (
+              <li
+                key={point}
+                className={`flex items-start gap-3 text-sm leading-6 sm:text-base ${dark ? "text-slate-200" : "text-foreground/85"}`}
+              >
+                <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
+                {point}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-8">
+            <ActionLink href={href}>{cta}</ActionLink>
           </div>
-        </div>
-      </main>
-    </div>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, x: reverse ? -24 : 24 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          viewport={{ once: true, amount: 0.18 }}
+          transition={{ duration: 0.55, delay: 0.08 }}
+          className={reverse ? "lg:order-1" : ""}
+        >
+          <ImageFrame src={image} alt={alt} className="lg:rounded-[2.5rem]" />
+          <div
+            className={`mt-4 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] ${dark ? "text-slate-400" : "text-muted-foreground"}`}
+          >
+            <span className="h-px w-8 bg-primary/50" />
+            {workflowLabel}
+          </div>
+        </motion.div>
+      </div>
+    </section>
   );
 }
 
 export default function Home() {
+  const { t } = useTranslation("publicSite");
   const { page: tenantPage, isLoading } = useTenantPage("home");
 
-  if (isLoading) {
-    return <LoadingState />;
-  }
+  if (isLoading) return <LoadingState />;
 
-  if (!tenantPage) {
-    return <UnavailableState />;
-  }
-
-  const sections = (tenantPage.sections ?? []) as HomeSection[];
-  const heroSection = findSection(sections, "hero");
-  const statsSection = findSection(sections, "stats");
-  const featuresSection = findSection(sections, "features");
-  const outputsSection = findSection(
-    sections,
-    "content",
-    section => toText(section.settings?.sectionType) === "outputs"
+  const tenantBackgroundVideo = getTenantBackgroundVideo(
+    tenantPage?.sections as Array<HomeSection> | undefined
   );
-  const ctaSection = findSection(sections, "cta");
-
-  const heroSettings = (heroSection?.settings ?? {}) as Record<string, unknown>;
-  const featureSettings = (featuresSection?.settings ?? {}) as Record<
-    string,
-    unknown
-  >;
-  const outputSettings = (outputsSection?.settings ?? {}) as Record<
-    string,
-    unknown
-  >;
-
-  const heroTitle = heroSection?.title || "SmartAIHub";
-  const heroSubtitle =
-    heroSection?.subtitle || tenantPage.metadata?.description || "";
-  const heroBadge = toText(heroSettings.badge);
-  const heroTrustLine = toText(heroSettings.trustLine);
-  const heroBackgroundVideo = toText(heroSettings.backgroundVideo);
-  const heroBackgroundOpacity =
-    typeof heroSettings.backgroundOpacity === "number"
-      ? heroSettings.backgroundOpacity
-      : 0.18;
-  const heroButtons = heroSection?.buttons?.length
-    ? heroSection.buttons
-    : (ctaSection?.buttons ?? []);
-  const featureCards = normalizeItems(featuresSection?.items);
-  const outputCards = normalizeItems(outputsSection?.items);
-  const trustItems = normalizeItems(statsSection?.items)
-    .map(item => getTextFromItem(item, ["value", "label", "text"]))
+  const featureGroups = HOME_FEATURE_GROUPS.map(group => ({
+    ...group,
+    features: HOME_FEATURES.filter(feature => feature.group === group.id),
+  }));
+  const keywords = t("meta.keywords")
+    .split(",")
+    .map(keyword => keyword.trim())
     .filter(Boolean);
 
-  const featureBadge = toText(featureSettings.badge);
-  const outputBadge = toText(outputSettings.badge);
-  const seoTitle = toText(heroSettings.seoTitle) || heroTitle;
-  const seoDescription = toText(heroSettings.seoDescription) || heroSubtitle;
-  const seoKeywords = tenantPage.metadata?.keywords || [];
-  const ctaButtons = ctaSection?.buttons?.length
-    ? ctaSection.buttons
-    : heroButtons;
-
   return (
-    <>
+    <div className="min-h-screen overflow-x-hidden bg-background text-foreground">
       <Seo
-        title={seoTitle}
-        description={seoDescription}
-        keywords={seoKeywords}
+        title={t("meta.title")}
+        description={t("meta.description")}
+        keywords={keywords}
         canonicalPath="/"
         jsonLd={[
           {
@@ -287,380 +334,394 @@ export default function Home() {
             "@type": "Organization",
             name: "SmartAIHub",
             url: "/",
-            description: seoDescription,
+            description: t("meta.description"),
           },
           {
             "@context": "https://schema.org",
-            "@type": "WebSite",
+            "@type": "SoftwareApplication",
             name: "SmartAIHub",
-            url: "/",
-            potentialAction: {
-              "@type": "SearchAction",
-              target: "/marketplace?search={search_term_string}",
-              "query-input": "required name=search_term_string",
-            },
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description: t("meta.description"),
           },
         ]}
       />
       <Navbar />
 
-      <PitchDeck>
-        <Slide isActive={false} direction={0}>
-          <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
-            {heroBackgroundVideo ? (
-              <VideoBackground
-                url={heroBackgroundVideo}
-                opacity={heroBackgroundOpacity}
-              />
-            ) : (
-              <>
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-background to-blue-50/40" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(255,255,255,0.72)_100%)]" />
-              </>
-            )}
-
-            <div className="relative z-10 flex max-w-5xl flex-col items-center">
-              {heroBadge ? (
-                <motion.div
-                  initial={{ scale: 0.92, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.12, duration: 0.4 }}
-                  className="mb-5 inline-flex max-w-full items-center justify-center gap-2 rounded-full border border-border/60 bg-white/75 px-4 py-2.5 text-xs font-medium leading-snug text-foreground shadow-[0_0_30px_rgba(59,130,246,0.12)] backdrop-blur-md sm:mb-8 sm:px-6 sm:py-3 sm:text-sm"
-                >
-                  <Sparkles className="h-4 w-4 shrink-0 text-teal-400 sm:h-5 sm:w-5" />
-                  <span>{heroBadge}</span>
-                </motion.div>
-              ) : null}
-
-              <motion.h1
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.18, duration: 0.5 }}
-                className="mb-5 max-w-6xl text-4xl font-black leading-[1.02] text-foreground drop-shadow-2xl sm:text-5xl md:text-6xl lg:mb-8 lg:text-8xl"
-              >
-                {heroTitle}
-              </motion.h1>
-
-              <motion.p
-                initial={{ y: 18, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.28, duration: 0.5 }}
-                className="mb-8 max-w-4xl text-base leading-7 text-muted-foreground drop-shadow-lg sm:text-lg md:text-xl lg:mb-12 lg:text-2xl"
-              >
-                {heroSubtitle}
-              </motion.p>
-
-              <motion.div
-                initial={{ y: 16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.36, duration: 0.5 }}
-                className="flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4"
-              >
-                {heroButtons.slice(0, 2).map(button => (
-                  <HomeActionButton
-                    key={`${button.text}-${button.link}`}
-                    button={button}
-                    className={
-                      button.style === "outline"
-                        ? "h-auto min-h-12 w-full whitespace-normal rounded-full border-border/70 bg-white/60 px-5 py-3 text-center text-base leading-snug text-foreground backdrop-blur-md transition-colors hover:bg-white/80 sm:h-14 sm:w-auto sm:px-8 sm:text-lg"
-                        : "h-auto min-h-12 w-full whitespace-normal rounded-full border-0 bg-primary px-5 py-3 text-center text-base leading-snug text-primary-foreground shadow-[0_0_40px_rgba(59,130,246,0.22)] transition-all hover:bg-primary/90 sm:h-14 sm:w-auto sm:px-8 sm:text-lg sm:hover:scale-105"
-                    }
-                    showArrow
-                  />
-                ))}
-              </motion.div>
-
-              {heroTrustLine ? (
-                <motion.p
-                  initial={{ y: 12, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.46, duration: 0.45 }}
-                  className="mt-8 text-xs font-medium uppercase leading-5 tracking-[0.2em] text-muted-foreground/90 sm:mt-10 sm:text-sm sm:tracking-[0.28em]"
-                >
-                  {heroTrustLine}
-                </motion.p>
-              ) : null}
-
-              {trustItems.length > 0 ? (
-                <motion.div
-                  initial={{ y: 12, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.54, duration: 0.45 }}
-                  className="mt-4 flex flex-wrap items-center justify-center gap-2 text-xs text-foreground/80 sm:gap-3 sm:text-sm"
-                >
-                  {trustItems.slice(0, 5).map(item => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-border/60 bg-white/70 px-3 py-1.5 backdrop-blur-md sm:px-4 sm:py-2"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </motion.div>
-              ) : null}
-            </div>
-          </div>
-        </Slide>
-
-        <Slide isActive={false} direction={0}>
-          <div className="relative z-10 flex h-full flex-col justify-center">
-            <div className="absolute top-20 left-1/4 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
-            <div className="absolute top-40 right-1/4 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
-
-            <div className="relative z-10 mb-8 text-center sm:mb-12 lg:mb-16">
-              {featureBadge ? (
-                <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                  <Store className="h-4 w-4" />
-                  {featureBadge}
-                </span>
-              ) : null}
-              <h2 className="mb-4 text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl lg:mb-6 lg:text-6xl">
-                {featuresSection?.title ||
-                  "Reusable AI workflows from a shared marketplace"}
-              </h2>
-              <p className="mx-auto max-w-3xl text-base leading-7 text-muted-foreground sm:text-lg lg:text-xl">
-                {featuresSection?.subtitle ||
-                  "Publish once, reuse everywhere, and keep every team moving from the same source of truth."}
+      <main>
+        <section className="relative overflow-hidden pb-16 pt-28 sm:pb-24 sm:pt-36">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(139,92,246,0.14),transparent_32%),linear-gradient(180deg,rgba(248,250,252,0.9),transparent_58%)] dark:bg-[radial-gradient(circle_at_18%_12%,rgba(34,211,238,0.12),transparent_30%),radial-gradient(circle_at_85%_18%,rgba(139,92,246,0.16),transparent_32%),linear-gradient(180deg,rgba(2,6,23,0.95),transparent_58%)]" />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
+            <motion.div
+              initial={{ opacity: 0, y: 22 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              <SectionKicker>{t("hero.eyebrow")}</SectionKicker>
+              <h1 className="mt-6 max-w-3xl text-4xl font-black leading-[1.02] tracking-tight text-foreground sm:text-5xl lg:text-7xl">
+                {t("hero.title")}
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground sm:text-lg">
+                {t("hero.subtitle")}
               </p>
-            </div>
-
-            <div className="relative z-10 grid gap-4 sm:gap-6 md:grid-cols-3 lg:gap-8">
-              {featureCards.slice(0, 3).map((item, index) => {
-                const Icon = featureIcons[index % featureIcons.length];
-                const points = getPointsFromItem(item);
-
-                return (
-                  <motion.div
-                    key={
-                      getTextFromItem(item, [
-                        "title",
-                        "text",
-                        "label",
-                        "value",
-                      ]) || `feature-${index}`
-                    }
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.08 }}
-                  >
-                    <div
-                      className={`glass-card rounded-2xl border border-border/60 bg-gradient-to-b ${featureCardAccents[index % featureCardAccents.length]} bg-white/80 p-5 shadow-xl backdrop-blur-xl transition-transform duration-300 sm:p-6 md:hover:-translate-y-2 lg:rounded-3xl lg:p-8`}
-                    >
-                      <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-white/80 sm:h-14 sm:w-14 lg:h-16 lg:w-16 lg:rounded-2xl">
-                          <Icon
-                            className={`h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 ${featureCardIcons[index % featureCardIcons.length]}`}
-                          />
-                        </div>
-                        <span className="text-[0.68rem] uppercase tracking-[0.2em] text-muted-foreground sm:text-xs sm:tracking-[0.3em]">
-                          Layer 0{index + 1}
-                        </span>
-                      </div>
-
-                      <h3 className="mb-3 text-xl font-bold leading-tight text-foreground sm:mb-4 sm:text-2xl">
-                        {getTextFromItem(item, [
-                          "title",
-                          "text",
-                          "label",
-                          "value",
-                        ])}
-                      </h3>
-                      <p className="text-base leading-7 text-muted-foreground sm:text-lg sm:leading-relaxed">
-                        {getTextFromItem(item, [
-                          "description",
-                          "content",
-                          "subtitle",
-                        ])}
-                      </p>
-
-                      {points.length > 0 ? (
-                        <div className="mt-5 flex flex-wrap gap-2 sm:mt-6">
-                          {points.map(point => (
-                            <span
-                              key={point}
-                              className="rounded-full border border-border/60 bg-white/80 px-3 py-1 text-xs font-medium text-foreground/80"
-                            >
-                              {point}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          </div>
-        </Slide>
-
-        <Slide isActive={false} direction={0}>
-          <div className="relative z-10 flex h-full flex-col justify-center gap-8 lg:gap-12">
-            <div className="absolute inset-x-0 top-12 mx-auto h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
-
-            <div className="relative z-10 mx-auto max-w-3xl text-center">
-              {outputBadge ? (
-                <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                  <Zap className="h-4 w-4" />
-                  {outputBadge}
-                </span>
-              ) : null}
-              <h2 className="mb-4 text-3xl font-bold leading-tight text-foreground sm:text-4xl md:text-5xl lg:mb-8 lg:text-7xl">
-                {outputsSection?.title || "One workflow, three outputs"}
-              </h2>
-              <p className="text-base leading-7 text-muted-foreground sm:text-xl lg:text-2xl">
-                {outputsSection?.subtitle ||
-                  "The same source material can become grounded answers, slide-ready decks, or video briefs."}
-              </p>
-            </div>
-
-            <div className="relative z-10 grid gap-4 sm:gap-6 md:grid-cols-3 lg:gap-8">
-              {outputCards.slice(0, 3).map((item, index) => {
-                const Icon = outputIcons[index % outputIcons.length];
-
-                return (
-                  <motion.div
-                    key={
-                      getTextFromItem(item, [
-                        "title",
-                        "text",
-                        "label",
-                        "value",
-                      ]) || `output-${index}`
-                    }
-                    initial={{ opacity: 0, y: 24 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.08 }}
-                  >
-                    <div
-                      className={`glass-card rounded-2xl border border-border/60 bg-gradient-to-b ${outputCardAccents[index % outputCardAccents.length]} bg-white/75 p-5 shadow-xl backdrop-blur-xl sm:p-6 lg:rounded-3xl lg:p-8`}
-                    >
-                      <div className="mb-5 flex items-center gap-3 sm:gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-white/80 sm:h-14 sm:w-14 sm:rounded-2xl">
-                          <Icon
-                            className={`h-6 w-6 sm:h-7 sm:w-7 ${outputCardIcons[index % outputCardIcons.length]}`}
-                          />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground sm:text-sm sm:tracking-[0.25em]">
-                            Output Surface
-                          </div>
-                          <h3 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">
-                            {getTextFromItem(item, [
-                              "title",
-                              "text",
-                              "label",
-                              "value",
-                            ])}
-                          </h3>
-                        </div>
-                      </div>
-
-                      <p className="text-base leading-7 text-muted-foreground sm:text-lg sm:leading-relaxed">
-                        {getTextFromItem(item, [
-                          "description",
-                          "content",
-                          "subtitle",
-                        ])}
-                      </p>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {featureCards.length > 0 ? (
-              <div className="relative z-10 rounded-2xl border border-border/60 bg-white/80 px-4 py-4 backdrop-blur-xl sm:px-6 sm:py-5 lg:rounded-3xl">
-                <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-foreground/80 sm:gap-3 sm:text-sm">
-                  {featureCards.slice(0, 3).map((item, index) => {
-                    const title = getTextFromItem(item, [
-                      "title",
-                      "text",
-                      "label",
-                      "value",
-                    ]);
-                    return (
-                      <span
-                        key={`${title}-${index}`}
-                        className="rounded-full border border-border/60 bg-white/80 px-3 py-1.5 sm:px-4 sm:py-2"
-                      >
-                        {title}
-                      </span>
-                    );
-                  })}
-                </div>
+              <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+                <ActionLink href="/signup">{t("hero.primaryCta")}</ActionLink>
+                <ActionLink href="/gallery" variant="outline">
+                  <Play className="mr-2 h-5 w-5" aria-hidden="true" />
+                  {t("hero.secondaryCta")}
+                </ActionLink>
               </div>
-            ) : null}
+              <p className="mt-7 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-sm">
+                {t("hero.trust")}
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.75, delay: 0.1 }}
+              className="relative"
+            >
+              <ImageFrame
+                src={HOME_PUBLIC_ASSETS.hero}
+                alt={t("a11y.heroImage")}
+                priority
+                className="rounded-[2rem] lg:rounded-[2.75rem]"
+              />
+              {tenantBackgroundVideo ? (
+                <span className="absolute bottom-4 left-4 rounded-full border border-white/20 bg-slate-950/65 px-3 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur-md">
+                  {t("label.livePreview")}
+                </span>
+              ) : null}
+            </motion.div>
           </div>
-        </Slide>
+        </section>
 
-        <Slide isActive={false} direction={0}>
-          <div className="relative z-10 flex h-full flex-col items-center justify-center text-center">
-            <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/15 blur-[100px] pointer-events-none" />
+        <section className="border-y border-border/60 bg-card/60 py-5">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-2 px-4 sm:gap-3 sm:px-6 lg:px-8">
+            {proofKeys.map(key => (
+              <span
+                key={key}
+                className="rounded-full border border-border/70 bg-background/70 px-4 py-2 text-xs font-medium text-foreground/80 sm:px-5 sm:text-sm"
+              >
+                {t(key)}
+              </span>
+            ))}
+          </div>
+        </section>
 
-            <Boxes className="mb-6 h-16 w-16 text-cyan-400 sm:mb-8 sm:h-20 sm:w-20 lg:h-24 lg:w-24" />
+        <SpotlightSection
+          id="ai-work-hub"
+          tone="bg-gradient-to-b from-background to-indigo-50/60 dark:to-indigo-950/25"
+          eyebrow={t("workhub.eyebrow")}
+          title={t("workhub.title")}
+          body={t("workhub.body")}
+          points={workhubPoints.map(point => t(`workhub.point.${point}`))}
+          cta={t("workhub.cta")}
+          href="/docs#idea-to-output"
+          image={HOME_PUBLIC_ASSETS.aiWorkHub}
+          alt={t("a11y.workhubImage")}
+          workflowLabel={t("label.workflow")}
+        />
 
-            <h2 className="mb-5 text-4xl font-black leading-tight text-foreground sm:text-5xl md:text-6xl lg:mb-8 lg:text-8xl">
-              {ctaSection?.title || "See SmartAIHub in action"}
-            </h2>
-
-            <p className="mb-8 max-w-4xl text-base leading-7 text-muted-foreground sm:text-xl lg:mb-10 lg:text-2xl">
-              {ctaSection?.subtitle ||
-                "Start with a sample workflow or watch the 2-minute demo to see the full loop."}
-            </p>
-
-            {trustItems.length > 0 ? (
-              <div className="mb-8 flex flex-wrap justify-center gap-2 sm:mb-12 sm:gap-3">
-                {trustItems.slice(0, 5).map(item => (
-                  <span
-                    key={item}
-                    className="rounded-full border border-border/60 bg-white/80 px-3 py-1.5 text-xs text-foreground/80 backdrop-blur-md sm:px-4 sm:py-2 sm:text-sm"
+        <section
+          id="harness-platform"
+          className="border-y border-border/60 bg-slate-950 py-20 text-white sm:py-28"
+        >
+          <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8">
+            <ImageFrame
+              src={HOME_PUBLIC_ASSETS.harnessPlatform}
+              alt={t("harness.imageAlt")}
+            />
+            <div>
+              <SectionKicker>{t("harness.eyebrow")}</SectionKicker>
+              <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+                {t("harness.title")}
+              </h2>
+              <p className="mt-6 text-base leading-8 text-slate-300 sm:text-lg">
+                {t("harness.body")}
+              </p>
+              <ul className="mt-7 grid gap-3 sm:grid-cols-2">
+                {[1, 2, 3, 4].map(point => (
+                  <li
+                    key={point}
+                    className="flex items-start gap-3 text-sm leading-6 text-slate-200 sm:text-base"
                   >
-                    {item}
+                    <span className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-cyan-400/15 text-cyan-200">
+                      <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                    </span>
+                    {t(`harness.point.${point}`)}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8">
+                <ActionLink
+                  href="/features"
+                  className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+                >
+                  {t("harness.cta")}
+                </ActionLink>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <SpotlightSection
+          id="vertical-series"
+          tone="bg-slate-950 text-white"
+          eyebrow={t("vertical.eyebrow")}
+          title={t("vertical.title")}
+          body={t("vertical.body")}
+          points={verticalPoints.map(point => t(`vertical.point.${point}`))}
+          cta={t("vertical.cta")}
+          href="/signup"
+          image={HOME_PUBLIC_ASSETS.verticalSeries}
+          alt={t("a11y.verticalImage")}
+          workflowLabel={t("label.workflow")}
+          dark
+        />
+
+        <SpotlightSection
+          id="product-review-video"
+          tone="bg-gradient-to-b from-background to-cyan-50/40 dark:to-cyan-950/20"
+          eyebrow={t("product.eyebrow")}
+          title={t("product.title")}
+          body={t("product.body")}
+          points={productPoints.map(point => t(`product.point.${point}`))}
+          cta={t("product.cta")}
+          href="/signup"
+          image={HOME_PUBLIC_ASSETS.productReview}
+          alt={t("a11y.productImage")}
+          workflowLabel={t("label.workflow")}
+          reverse
+        />
+
+        <SpotlightSection
+          id="marketplace-capture"
+          tone="bg-slate-950 text-white"
+          eyebrow={t("capture.eyebrow")}
+          title={t("capture.title")}
+          body={t("capture.body")}
+          points={capturePoints.map(point => t(`capture.point.${point}`))}
+          cta={t("capture.cta")}
+          href="/docs#marketplace-capture"
+          image={HOME_PUBLIC_ASSETS.marketplaceToContent}
+          alt={t("a11y.captureImage")}
+          workflowLabel={t("label.workflow")}
+          dark
+          reverse
+        />
+
+        <SpotlightSection
+          id="connected-ecosystem"
+          tone="bg-gradient-to-b from-background to-indigo-50/50 dark:to-indigo-950/20"
+          eyebrow={t("runtime.eyebrow")}
+          title={t("runtime.title")}
+          body={t("runtime.body")}
+          points={runtimePoints.map(point => t(`runtime.point.${point}`))}
+          cta={t("runtime.cta")}
+          href="/docs#worker-render"
+          image={HOME_PUBLIC_ASSETS.connectedEcosystem}
+          alt={t("a11y.runtimeImage")}
+          workflowLabel={t("label.workflow")}
+        />
+
+        <section
+          id="chat-skills"
+          className="relative overflow-hidden bg-slate-100/70 py-20 dark:bg-slate-900/70 sm:py-28"
+        >
+          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:px-8">
+            <ImageFrame
+              src={HOME_PUBLIC_ASSETS.chatSkills}
+              alt={t("a11y.chatImage")}
+            />
+            <div>
+              <SectionKicker>{t("chat.eyebrow")}</SectionKicker>
+              <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+                {t("chat.title")}
+              </h2>
+              <p className="mt-6 text-base leading-8 text-muted-foreground sm:text-lg">
+                {t("chat.body")}
+              </p>
+              <ul className="mt-7 space-y-3">
+                {chatPoints.map(point => (
+                  <li
+                    key={point}
+                    className="flex items-center gap-3 text-sm text-foreground/85 sm:text-base"
+                  >
+                    <Bot
+                      className="h-5 w-5 shrink-0 text-primary"
+                      aria-hidden="true"
+                    />
+                    {t(`chat.point.${point}`)}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8">
+                <ActionLink href="/signup">{t("chat.cta")}</ActionLink>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="skills"
+          className="relative overflow-hidden py-20 sm:py-28"
+        >
+          <div className="absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-primary/10 to-transparent" />
+          <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16 lg:px-8">
+            <div>
+              <SectionKicker>{t("skills.eyebrow")}</SectionKicker>
+              <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+                {t("skills.title")}
+              </h2>
+              <p className="mt-6 text-base leading-8 text-muted-foreground sm:text-lg">
+                {t("skills.body")}
+              </p>
+              <div className="mt-7 flex flex-wrap gap-2">
+                {skillsChips.map(chip => (
+                  <span
+                    key={chip}
+                    className="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
+                  >
+                    {t(`skills.chip.${chip}`)}
                   </span>
                 ))}
               </div>
-            ) : null}
-
-            {featureCards.length > 0 ? (
-              <div className="mb-8 flex flex-wrap justify-center gap-2 sm:mb-12 sm:gap-3">
-                {featureCards.slice(0, 3).map((item, index) => {
-                  const title = getTextFromItem(item, [
-                    "title",
-                    "text",
-                    "label",
-                    "value",
-                  ]);
-                  return (
-                    <span
-                      key={`${title}-${index}`}
-                      className="rounded-full border border-border/60 bg-white/80 px-3 py-1.5 text-xs text-foreground/80 backdrop-blur-md sm:px-4 sm:py-2 sm:text-sm"
-                    >
-                      {title}
-                    </span>
-                  );
-                })}
+              <div className="mt-8">
+                <ActionLink href="/marketplace">{t("skills.cta")}</ActionLink>
               </div>
-            ) : null}
+            </div>
+            <ImageFrame
+              src={HOME_PUBLIC_ASSETS.skillsLibrary}
+              alt={t("a11y.skillsImage")}
+            />
+          </div>
+        </section>
 
-            <div className="flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-6">
-              {ctaButtons.slice(0, 2).map(button => (
-                <HomeActionButton
-                  key={`${button.text}-${button.link}`}
-                  button={button}
-                  className={
-                    button.style === "outline"
-                      ? "h-auto min-h-12 w-full whitespace-normal rounded-full border-border/70 bg-white/60 px-5 py-3 text-center text-base leading-snug text-foreground backdrop-blur-md transition-colors hover:bg-white/80 sm:h-16 sm:w-auto sm:px-12 sm:text-xl"
-                      : "h-auto min-h-12 w-full whitespace-normal rounded-full border-0 bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-400 px-5 py-3 text-center text-base leading-snug text-white shadow-[0_0_40px_rgba(37,99,235,0.3)] transition-transform sm:h-16 sm:w-auto sm:px-12 sm:text-xl sm:hover:scale-105"
-                  }
-                  showArrow
-                />
+        <section id="features" className="bg-muted/35 py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-3xl text-center">
+              <SectionKicker>{t("catalog.eyebrow")}</SectionKicker>
+              <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-4xl lg:text-5xl">
+                {t("catalog.title")}
+              </h2>
+              <p className="mt-5 text-base leading-8 text-muted-foreground sm:text-lg">
+                {t("catalog.body")}
+              </p>
+            </div>
+            <div className="mt-12 space-y-12">
+              {featureGroups.map(group => (
+                <div key={group.id}>
+                  <div className="mb-5 flex items-center gap-3">
+                    <span className="h-px w-8 bg-primary" />
+                    <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-primary">
+                      {t(group.translationKey)}
+                    </h3>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {group.features.map(feature => (
+                      <FeatureCard key={feature.id} feature={feature} t={t} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
-        </Slide>
-      </PitchDeck>
-    </>
+        </section>
+
+        <section
+          id="workflow"
+          className="relative overflow-hidden py-20 sm:py-28"
+        >
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid items-end gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-16">
+              <div>
+                <SectionKicker>{t("workflow.eyebrow")}</SectionKicker>
+                <h2 className="mt-6 text-3xl font-black leading-tight tracking-tight sm:text-4xl">
+                  {t("workflow.title")}
+                </h2>
+              </div>
+              <p className="text-base leading-8 text-muted-foreground sm:text-lg">
+                {t("workflow.body")}
+              </p>
+            </div>
+            <div className="mt-12 grid gap-4 md:grid-cols-4">
+              {workflowSteps.map((step, index) => (
+                <article
+                  key={step}
+                  className="relative rounded-3xl border border-border/60 bg-card p-5 shadow-sm sm:p-6"
+                >
+                  <span className="text-sm font-bold text-primary">
+                    0{index + 1}
+                  </span>
+                  <Workflow
+                    className="mt-7 h-7 w-7 text-primary"
+                    aria-hidden="true"
+                  />
+                  <h3 className="mt-5 text-base font-semibold text-foreground">
+                    {t(`workflow.step.${step}`)}
+                  </h3>
+                  {index < workflowSteps.length - 1 ? (
+                    <ArrowRight
+                      className="absolute -right-3 top-1/2 z-10 hidden h-6 w-6 -translate-y-1/2 text-primary md:block"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-border/60 bg-card/70 py-16 sm:py-20">
+          <div className="mx-auto flex max-w-5xl flex-col items-start justify-between gap-6 px-4 sm:px-6 lg:flex-row lg:items-center lg:px-8">
+            <div>
+              <SectionKicker>{t("story.eyebrow")}</SectionKicker>
+              <h2 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl">
+                {t("story.title")}
+              </h2>
+              <p className="mt-3 max-w-2xl leading-7 text-muted-foreground">
+                {t("story.body")}
+              </p>
+            </div>
+            <ActionLink href="/docs#smartaihub-story" variant="outline">
+              {t("story.cta")}
+              <ArrowUpRight className="ml-2 h-5 w-5" aria-hidden="true" />
+            </ActionLink>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-slate-950 py-20 text-white sm:py-28">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.24),transparent_42%),radial-gradient(circle_at_80%_100%,rgba(168,85,247,0.22),transparent_38%)]" />
+          <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+            <SectionKicker>{t("cta.eyebrow")}</SectionKicker>
+            <h2 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              {t("cta.title")}
+            </h2>
+            <p className="mx-auto mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
+              {t("cta.body")}
+            </p>
+            <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+              <ActionLink
+                href="/signup"
+                className="bg-cyan-400 text-slate-950 hover:bg-cyan-300"
+              >
+                {t("cta.primary")}
+              </ActionLink>
+              <ActionLink
+                href="/features"
+                variant="outline"
+                className="border-white/30 bg-white/5 text-white hover:bg-white/10 hover:text-white"
+              >
+                {t("cta.secondary")}
+                <ArrowUpRight className="ml-2 h-5 w-5" aria-hidden="true" />
+              </ActionLink>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
   );
 }

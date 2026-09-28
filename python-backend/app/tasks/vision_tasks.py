@@ -20,7 +20,7 @@ import httpx
 import structlog
 from sqlalchemy import select, update
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.system_settings_loader import get_google_ai_api_key
@@ -280,7 +280,7 @@ async def _run_analysis(
     )
 
 
-@celery_app.task(
+@job_task_registry.task(
     bind=True,
     name="app.tasks.vision_tasks.analyze_image_task",
     max_retries=3,

@@ -3,6 +3,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { llmProviders, modelProviderMap } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { buildModelLookupCandidates } from "./modelLookup";
+import { isAvailable } from "./providerHealth";
 import { resolveProviderCatalogDefaults } from "../routers/llmProviders";
 import {
   buildProviderCatalogLookupKey,
@@ -13,6 +14,7 @@ import {
 } from "./llmProviderCatalog";
 
 export type EnabledLlmModelRow = {
+  modelMappingId?: number;
   providerId: number;
   providerName: string;
   modelId: string;
@@ -42,6 +44,8 @@ export type EnabledLlmModelRow = {
   contextLength: number | null;
   priority: number;
   priorityLocked: boolean | null;
+  /** Admin-curated quality flag (see modelProviderMap.isRecommended). */
+  isRecommended?: boolean | null;
   isFree: boolean;
   pricingInput?: string | null;
   pricingOutput?: string | null;
@@ -211,6 +215,37 @@ export function resolveEnabledLlmModelIdFromRows(input: {
   return rows[0]?.modelId ?? null;
 }
 
+/**
+ * Resolve only to a model that still has at least one provider outside the
+ * provider-health cooldown. "Enabled" is catalog state; this is the runtime
+ * admission check that prevents callers from selecting a model which cannot
+ * currently be routed.
+ */
+export function resolveRoutableLlmModelIdFromRows(input: {
+  rows: EnabledLlmModelRow[];
+  preferredModelIds?: Array<string | null | undefined>;
+}): string | null {
+  const routableRows = input.rows.filter((row) => isAvailable(row.providerId));
+  if (routableRows.length === 0) return null;
+
+  for (const preferredModelId of input.preferredModelIds ?? []) {
+    const match = routableRows.find((row) => rowMatchesModelId(row, preferredModelId));
+    if (match) return match.modelId;
+  }
+
+  return null;
+}
+
+export function hasRoutableLlmModelIdFromRows(
+  rows: EnabledLlmModelRow[],
+  modelId: string | null | undefined,
+): boolean {
+  return resolveRoutableLlmModelIdFromRows({
+    rows,
+    preferredModelIds: [modelId],
+  }) !== null;
+}
+
 export async function loadEnabledLlmModelRows(
   options?: { autoSelectionOnly?: boolean },
 ): Promise<EnabledLlmModelRow[]> {
@@ -222,6 +257,7 @@ export async function loadEnabledLlmModelRows(
 
     const rows = await db
       .select({
+        modelMappingId: modelProviderMap.id,
         providerId: llmProviders.id,
         providerName: llmProviders.providerName,
         modelId: modelProviderMap.modelId,
@@ -246,6 +282,7 @@ export async function loadEnabledLlmModelRows(
         contextLength: modelProviderMap.contextLength,
         priority: modelProviderMap.priority,
         priorityLocked: modelProviderMap.priorityLocked,
+        isRecommended: modelProviderMap.isRecommended,
         isFree: modelProviderMap.isFree,
         pricingInput: modelProviderMap.pricingInput,
         pricingOutput: modelProviderMap.pricingOutput,
@@ -260,6 +297,7 @@ export async function loadEnabledLlmModelRows(
       );
 
     return hydrateEnabledLlmModelRows(rows.map((row) => ({
+      modelMappingId: row.modelMappingId,
       providerId: row.providerId,
       providerName: row.providerName,
       modelId: row.modelId,
@@ -282,6 +320,7 @@ export async function loadEnabledLlmModelRows(
       contextLength: row.contextLength,
       priority: row.priority,
       priorityLocked: row.priorityLocked,
+      isRecommended: row.isRecommended,
       isFree: row.isFree,
       pricingInput: row.pricingInput,
       pricingOutput: row.pricingOutput,

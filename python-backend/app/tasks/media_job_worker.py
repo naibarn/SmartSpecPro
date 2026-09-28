@@ -6,6 +6,7 @@ handler, and reports progress via application-owned Redis keys.
 """
 
 import json
+import asyncio
 import os
 import re
 import shutil
@@ -17,14 +18,14 @@ from urllib.parse import urlparse
 
 import redis
 
-from app.core.celery_app import celery_app
+from app.core.job_task_registry import job_task_registry
 from app.core.media_job_validators import validate_job_spec_security, validate_uri_no_ssrf
 
 # ========================================
 # Redis client for progress reporting
 # ========================================
 
-_redis_url = os.getenv("CELERY_BROKER_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+_redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 redis_client = redis.from_url(_redis_url)
 
 JOB_TTL = 86400  # 24h
@@ -85,6 +86,43 @@ URI_QUERY_SHELL_METACHAR_RE = re.compile(r"[;|`$(){}><]")
 # Strip all ASCII control characters (0x00-0x1f, 0x7f) for safe log/error output
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")
 _HEX_COLOR_RE = re.compile(r"^#?([0-9a-fA-F]{6})$")
+
+
+def _safe_storage_component(value: str, field: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]+", "_", str(value).strip())
+    if not cleaned or cleaned in {".", ".."}:
+        raise ValueError(f"{field} is required for durable media storage")
+    return cleaned[:128]
+
+
+def _store_final_output_in_r2(
+    spec: dict,
+    output_path: str,
+    artifact_kind: str,
+    content_type: str,
+    extension: str,
+) -> tuple[str, str]:
+    """Upload a completed worker output and return the protected Node proxy URL.
+
+    Local disk is used only as FFmpeg's working area. A completed artifact is
+    never published as a Python FileResponse URL.
+    """
+    tenant_id = str(spec.get("tenantId") or spec.get("tenant_id") or "").strip()
+    user_id = str(spec.get("_userId") or "").strip()
+    job_id = str(spec.get("jobId") or "").strip()
+    if not tenant_id or not user_id or not job_id:
+        raise ValueError("tenantId, userId and jobId are required for durable media storage")
+    from app.services.generation.r2_storage import get_r2_storage
+
+    key = "/".join([
+        "media-jobs",
+        _safe_storage_component(tenant_id, "tenantId"),
+        _safe_storage_component(user_id, "userId"),
+        _safe_storage_component(job_id, "jobId"),
+        f"{_safe_storage_component(artifact_kind, 'artifactKind')}{extension}",
+    ])
+    asyncio.run(get_r2_storage().upload_file(output_path, key, content_type=content_type))
+    return f"/api/storage/files/{key}", key
 
 _RENDER_FONT_WHITELIST = {
     "Noto Sans": "Noto Sans",
@@ -188,6 +226,109 @@ def _clip_has_non_default_transform(clip: dict, eps: float = 1e-3) -> bool:
         or abs(scale_x - 1.0) > eps
         or abs(scale_y - 1.0) > eps
     )
+
+
+def _camera_motion_value_expression(plan: dict, axis: str) -> str:
+    """Build a bounded FFmpeg expression for the shared camera plan.
+
+    The browser and Worker App evaluate the same keyframes.  The hosted
+    Python renderer uses FFmpeg's frame-time expression support so a render
+    cannot silently fall back to a static crop when a plan is present.
+    """
+    keyframes = plan.get("keyframes") if isinstance(plan, dict) else None
+    if not isinstance(keyframes, list) or not keyframes or len(keyframes) > 512:
+        raise ValueError("camera_motion_plan_keyframes_invalid")
+    frames: list[dict[str, Any]] = []
+    for raw in keyframes:
+        if not isinstance(raw, dict):
+            raise ValueError("camera_motion_plan_keyframe_invalid")
+        time_ms = _to_int(raw.get("timeMs"), -1)
+        if time_ms < 0:
+            raise ValueError("camera_motion_plan_time_invalid")
+        values = {name: _to_float(raw.get(name), float("nan")) for name in ("x", "y", "scale")}
+        if not all(value == value for value in values.values()):
+            raise ValueError("camera_motion_plan_value_invalid")
+        if not 0 <= values["x"] <= 1 or not 0 <= values["y"] <= 1 or not 1 <= values["scale"] <= 2.5:
+            raise ValueError("camera_motion_plan_value_invalid")
+        frames.append({"timeMs": time_ms, **values, "easing": raw.get("easing")})
+    frames.sort(key=lambda frame: frame["timeMs"])
+    deduped: list[dict[str, Any]] = []
+    for frame in frames:
+        if deduped and frame["timeMs"] == deduped[-1]["timeMs"]:
+            deduped[-1] = frame
+        else:
+            deduped.append(frame)
+    if len(deduped) > 128:
+        frames = [deduped[round(index * (len(deduped) - 1) / 127)] for index in range(128)]
+    else:
+        frames = deduped
+    value = lambda frame: _safe_float_for_ffmpeg(float(frame[axis]), 4)
+    expression = value(frames[-1])
+    for first, second in zip(reversed(frames[:-1]), reversed(frames[1:])):
+        start = first["timeMs"] / 1000.0
+        end = second["timeMs"] / 1000.0
+        duration = max(0.001, end - start)
+        progress = f"max(0\\,min(1\\,(t-{start:.3f})/{duration:.3f}))"
+        easing = first.get("easing")
+        if easing == "linear":
+            eased = progress
+        elif easing == "ease-in":
+            eased = f"({progress})*({progress})"
+        elif easing == "ease-out":
+            eased = f"1-(1-({progress}))*(1-({progress}))"
+        else:
+            eased = f"if(lt({progress}\\,0.5)\\,4*({progress})*({progress})*({progress})\\,1-pow(-2*({progress})+2\\,3)/2)"
+        expression = f"if(lt(t\\,{end:.3})\\,{value(first)}+({value(second)}-{value(first)})*({eased})\\,{expression})"
+    return expression
+
+
+def _camera_motion_filter(plan: dict, width: int, height: int) -> str:
+    """Apply a normalized CameraMotionPlan to an already canvas-sized stream."""
+    if not isinstance(plan, dict):
+        raise ValueError("camera_motion_plan_invalid")
+    version = plan.get("version")
+    if version not in {"camera.motion.v1", "camera.motion.v2"}:
+        raise ValueError("camera_motion_plan_version_invalid")
+    x_expr = _camera_motion_value_expression(plan, "x")
+    y_expr = _camera_motion_value_expression(plan, "y")
+    scale_expr = _camera_motion_value_expression(plan, "scale")
+    crop_x = f"max(0\\,min(iw-{width}\\,iw*({x_expr})-{width}/2))"
+    crop_y = f"max(0\\,min(ih-{height}\\,ih*({y_expr})-{height}/2))"
+    return (
+        f"scale=w=trunc(iw*({scale_expr})/2)*2:h=trunc(ih*({scale_expr})/2)*2:eval=frame,"
+        f"crop={width}:{height}:{crop_x}:{crop_y},setsar=1,format=yuv420p"
+    )
+
+
+def _validate_silence_cut_map(cut_map: Any) -> None:
+    """Validate the persisted source-time cut map before rendering.
+
+    The timeline is already edited by the browser, so this renderer does not
+    apply ranges a second time. It still rejects malformed or overlapping
+    evidence instead of claiming that the render used the reviewed map.
+    """
+    if cut_map is None:
+        return
+    if not isinstance(cut_map, dict) or cut_map.get("version") != "silence.cut-map.v1":
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
+    source_duration = _to_int(cut_map.get("sourceDurationMs"), -1)
+    edited_duration = _to_int(cut_map.get("editedDurationMs"), -1)
+    ranges = cut_map.get("ranges")
+    if source_duration < 0 or edited_duration < 0 or not isinstance(ranges, list) or len(ranges) > 4096:
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
+    previous_end = 0
+    removed = 0
+    for raw in ranges:
+        if not isinstance(raw, dict):
+            raise ValueError("SILENCE_CUT_MAP_INVALID")
+        start = _to_int(raw.get("startMs"), -1)
+        end = _to_int(raw.get("endMs"), -1)
+        if start < previous_end or start < 0 or end <= start or end > source_duration:
+            raise ValueError("SILENCE_CUT_MAP_INVALID")
+        removed += end - start
+        previous_end = end
+    if edited_duration != max(0, source_duration - removed):
+        raise ValueError("SILENCE_CUT_MAP_INVALID")
 
 
 def _clip_playback_rate(clip: dict) -> float:
@@ -688,7 +829,7 @@ def report_progress(
     message: str = "",
     metrics: dict | None = None,
 ):
-    """Write progress to Redis and publish to real-time channel."""
+    """Write progress to the canonical ledger in hard cutover, else Redis."""
     status_data = {
         "jobId": job_id,
         "status": "running",
@@ -697,12 +838,22 @@ def report_progress(
         "message": message,
         "metrics": metrics or {},
     }
+    if True:
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, status_data)
+        return
     redis_client.set(f"media-job:{job_id}:status", json.dumps(status_data), ex=JOB_TTL)
     redis_client.publish(f"media-job-progress:{job_id}", json.dumps(status_data))
 
 
 def report_done(job_id: str, result: dict):
     """Report job completion. Skips writing if the job was already canceled."""
+    if True:
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, {"jobId": job_id, "status": "done", "progress": 1.0, "result": result})
+        return
     # Check if job was canceled — don't overwrite cancellation
     current_raw = redis_client.get(f"media-job:{job_id}:status")
     if current_raw:
@@ -720,6 +871,18 @@ def report_done(job_id: str, result: dict):
 
 def report_error(job_id: str, code: str, message: str, details: dict | None = None):
     """Report job failure."""
+    if True:
+        from app.services.job_execution_context import report_legacy_status
+
+        report_legacy_status(job_id, {
+            "jobId": job_id,
+            "status": "error",
+            "progress": 0,
+            "code": code,
+            "message": message,
+            "details": details or {},
+        })
+        return
     error_data = {"code": code, "message": message, "details": details or {}}
     redis_client.set(f"media-job:{job_id}:error", json.dumps(error_data), ex=JOB_TTL)
     error_status = {"jobId": job_id, "status": "error", "progress": 0, "message": message}
@@ -1025,6 +1188,7 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
 
     output_target = spec.get("output", {}).get("target", "/tmp/output.mp4")
     tracks = project.get("tracks", [])
+    _validate_silence_cut_map((spec.get("params") or {}).get("silenceCutMap"))
 
     # Collect input files from assets
     assets = spec.get("inputs", {}).get("assets", [])
@@ -1177,6 +1341,16 @@ def build_ffmpeg_command_for_render(spec: dict, runner=None) -> list[str]:
                     f"{audio_chain},apad,atrim=0:{clip_timeline_dur_s},"
                     f"asetpts=PTS-STARTPTS[a{i}]"
                 )
+
+            # A normalized camera plan is the shared browser/Worker crop
+            # contract. It takes precedence over the legacy static transform
+            # so preview and hosted render follow the same trajectory.
+            camera_plan = clip.get("cameraMotionPlan")
+            if camera_plan is not None:
+                filters.append(
+                    f"[vnorm{i}]{_camera_motion_filter(camera_plan, proj_w, proj_h)}[v{i}]"
+                )
+                continue
 
             # Clip transform (static pan/zoom per clip)
             # 1) Scale normalized clip by user zoom.
@@ -1352,8 +1526,13 @@ def build_ffmpeg_command_for_waveform(spec: dict) -> list[str]:
         raise ValueError("No assets for waveform")
     uri = assets[0]["uri"]
     path = _safe_uri_for_ffmpeg(uri)
+    params = spec.get("params", {})
+    stream_index = params.get("audioStreamIndex")
+    stream_map = []
+    if isinstance(stream_index, int) and stream_index >= 0:
+        stream_map = ["-map", f"0:{stream_index}"]
     return [
-        "ffmpeg", "-i", path,
+        "ffmpeg", "-i", path, *stream_map,
         "-af", "aformat=sample_fmts=s16:channel_layouts=mono",
         "-f", "s16le", "-",
     ]
@@ -1368,6 +1547,7 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     path = _safe_uri_for_ffmpeg(uri)
 
     params = spec.get("params", {})
+    stream_index = params.get("audioStreamIndex")
     # Cast to numeric to prevent FFmpeg filter injection via string values
     try:
         threshold_db = float(params.get("thresholdDb", -30))
@@ -1380,7 +1560,10 @@ def build_ffmpeg_command_for_silence(spec: dict) -> list[str]:
     min_duration = min_silence_ms / 1000.0
 
     af = f"silencedetect=noise={threshold_db}dB:d={min_duration}"
-    return ["ffmpeg", "-i", path, "-af", af, "-f", "null", "-"]
+    stream_map = []
+    if isinstance(stream_index, int) and stream_index >= 0:
+        stream_map = ["-map", f"0:{stream_index}"]
+    return ["ffmpeg", "-i", path, *stream_map, "-af", af, "-f", "null", "-"]
 
 
 def parse_ffmpeg_progress(line: str, total_duration_us: int) -> float | None:
@@ -1488,9 +1671,10 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
     if not safe_filename.lower().endswith(".mp4"):
         safe_filename += ".mp4"
 
-    # Write to media_storage/renders/{userId}/{jobId}/{filename}
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    render_dir = os.path.join(media_storage_path, "renders", user_id, job_id)
+    # FFmpeg working files are temporary only. The completed artifact is
+    # uploaded by `_store_final_output_in_r2`; never persist media output on
+    # the Python server filesystem.
+    render_dir = os.path.join(tmp_dir, "render")
     os.makedirs(render_dir, exist_ok=True)
     output_path = os.path.join(render_dir, safe_filename)
 
@@ -1651,10 +1835,15 @@ def handle_render_mp4(spec: dict, tmp_dir: str, runner=None) -> dict:
             job_id=job_id,
         )
 
-    # Return serveable URL (Python backend serves this via /api/v1/media/files/renders/)
-    serve_url = f"/api/v1/media/files/renders/{user_id}/{job_id}/{safe_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "render",
+        "video/mp4",
+        ".mp4",
+    )
     result: dict[str, Any] = {
-        "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
+        "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
     }
     if text_render_derived:
         result["derived"] = {"textRender": text_render_derived}
@@ -2236,7 +2425,7 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     without re-encoding (no quality loss). Otherwise, transcodes to
     H.264 High profile with CRF 23 (good quality/size balance).
 
-    Output is stored in media_storage/transcoded/{userId}/{jobId}/.
+    Output is stored in a tenant-scoped directory when tenant metadata is present.
     """
     job_id = spec["jobId"]
     user_id = str(spec.get("_userId", "unknown"))
@@ -2252,10 +2441,21 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     codec = _detect_video_codec(asset_uri, runner=runner)
 
     if codec and codec in _BROWSER_COMPATIBLE_VIDEO_CODECS:
-        # Already browser-compatible — return original URI
-        report_progress(job_id, 1.0, "done", f"Already {codec} — no transcode needed")
+        # Keep the no-reencode optimization, but still make the final output
+        # durable. Provider/local input URLs must never become the playback
+        # contract for a completed media job.
+        report_progress(job_id, 0.1, "downloading", "Preparing input file")
+        input_path = _resolve_asset_path(asset_uri, tmp_dir)
+        serve_url, storage_key = _store_final_output_in_r2(
+            spec,
+            input_path,
+            "transcoded",
+            "video/mp4",
+            ".mp4",
+        )
+        report_progress(job_id, 1.0, "done", f"Already {codec} — stored in R2")
         return {
-            "artifacts": [{"kind": "video", "uri": asset_uri, "mime": "video/mp4"}],
+            "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
             "derived": {"transcoded": False, "originalCodec": codec},
         }
 
@@ -2268,9 +2468,8 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
     media_info = _probe_media_info(input_path, runner=runner)
     total_duration_us = int(media_info["duration_s"] * 1_000_000)
 
-    # Build output path
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    transcode_dir = os.path.join(media_storage_path, "transcoded", user_id, job_id)
+    # FFmpeg working files are temporary only; final output is copied to R2.
+    transcode_dir = os.path.join(tmp_dir, "transcoded")
     os.makedirs(transcode_dir, exist_ok=True)
 
     # Use original filename with _h264 suffix
@@ -2330,10 +2529,15 @@ def handle_transcode_h264(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.95, "finalizing", "Finalizing transcoded file")
 
-    # Return serveable URL
-    serve_url = f"/api/v1/media/files/transcoded/{user_id}/{job_id}/{output_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "transcoded",
+        "video/mp4",
+        ".mp4",
+    )
     return {
-        "artifacts": [{"kind": "video", "uri": serve_url, "mime": "video/mp4"}],
+        "artifacts": [{"kind": "video", "uri": serve_url, "storageKey": storage_key, "mime": "video/mp4"}],
         "derived": {
             "transcoded": True,
             "originalCodec": codec or "unknown",
@@ -2351,7 +2555,7 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
     """Extract audio track from a video file to AAC/M4A.
 
     Uses FFmpeg to copy or re-encode the audio stream without the video.
-    Output is stored in media_storage/audio_extracts/{userId}/{jobId}/.
+    Output is stored in a tenant-scoped directory when tenant metadata is present.
     """
     job_id = spec["jobId"]
     user_id = str(spec.get("_userId", "unknown"))
@@ -2373,9 +2577,8 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.2, "extracting", "Extracting audio stream")
 
-    # Build output path
-    media_storage_path = os.getenv("MEDIA_STORAGE_PATH", "./media_storage")
-    extract_dir = os.path.join(media_storage_path, "audio_extracts", user_id, job_id)
+    # FFmpeg working files are temporary only; final output is copied to R2.
+    extract_dir = os.path.join(tmp_dir, "audio_extracts")
     os.makedirs(extract_dir, exist_ok=True)
     output_filename = "audio.m4a"
     output_path = os.path.join(extract_dir, output_filename)
@@ -2417,9 +2620,15 @@ def handle_extract_audio(spec: dict, tmp_dir: str, runner=None) -> dict:
 
     report_progress(job_id, 0.95, "finalizing", "Finalizing extracted audio")
 
-    serve_url = f"/api/v1/media/files/audio_extracts/{user_id}/{job_id}/{output_filename}"
+    serve_url, storage_key = _store_final_output_in_r2(
+        spec,
+        output_path,
+        "audio",
+        "audio/mp4",
+        ".m4a",
+    )
     return {
-        "artifacts": [{"kind": "audio", "uri": serve_url, "mime": "audio/mp4"}],
+        "artifacts": [{"kind": "audio", "uri": serve_url, "storageKey": storage_key, "mime": "audio/mp4"}],
         "derived": {
             "duration": output_duration,
             "format": "m4a",
@@ -2470,10 +2679,13 @@ async def _persist_render_to_db(
     """
     from app.core.database import AsyncSessionLocal
     from app.models.media_task import MediaTask
+    from app.models.vision import MediaAsset
+    from sqlalchemy import select
     from datetime import datetime
 
     artifacts = result.get("artifacts", [])
     result_url = artifacts[0]["uri"] if artifacts else None
+    storage_key = artifacts[0].get("storageKey") if artifacts else None
     original_filename = spec.get("output", {}).get("target", "render")
 
     # DB column id is varchar(36) — strip the "mj-" prefix to fit
@@ -2482,9 +2694,33 @@ async def _persist_render_to_db(
         db_id = db_id[:36]
 
     async with AsyncSessionLocal() as db:
+        if storage_key:
+            existing_asset = await db.scalar(
+                select(MediaAsset).where(
+                    MediaAsset.tenantId == str(spec.get("tenantId") or spec.get("tenant_id") or ""),
+                    MediaAsset.userId == int(user_id),
+                    MediaAsset.storageKey == storage_key,
+                ).limit(1)
+            )
+            if existing_asset:
+                result.setdefault("mediaAssetId", existing_asset.id)
+            else:
+                asset = MediaAsset(
+                    tenantId=str(spec.get("tenantId") or spec.get("tenant_id") or ""),
+                    userId=int(user_id),
+                    sourceType="video_editor_render",
+                    status="ready",
+                    storageKey=storage_key,
+                    originalUrl=result_url,
+                    mimeType="video/mp4",
+                )
+                db.add(asset)
+                await db.flush()
+                result["mediaAssetId"] = asset.id
         task = MediaTask(
             id=db_id,
             user_id=int(user_id),
+            tenant_id=spec.get("tenantId") or spec.get("tenant_id"),
             media_type="video",
             status="completed",
             model="ffmpeg-render",
@@ -2501,19 +2737,9 @@ async def _persist_render_to_db(
         await db.commit()
 
 
-@celery_app.task(bind=True, max_retries=2, time_limit=1800, soft_time_limit=1740)
+@job_task_registry.task(bind=True, max_retries=2, time_limit=1800, soft_time_limit=1740)
 def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
     """Execute a media job based on the Media Job Spec v0.1 contract."""
-
-    # Skip jobs that were already canceled or errored (e.g., stale queue drain)
-    try:
-        current_raw = redis_client.get(f"media-job:{job_id}:status")
-        if current_raw:
-            current = json.loads(current_raw)
-            if current.get("status") in ("canceled", "error", "done"):
-                return {"skipped": True, "reason": f"Job already {current['status']}"}
-    except Exception:
-        pass  # If Redis check fails, proceed with the job
 
     tmp_dir = tempfile.mkdtemp(prefix=f"mediajob_{job_id}_")
 
@@ -2531,14 +2757,9 @@ def execute_media_job(self, spec_json: str, user_id: str, job_id: str) -> dict:
         if not handler:
             raise ValueError(f"Unsupported job type: {job_type}")
 
-        # Route through sandbox when enabled
-        from app.integrations.opensandbox.config import opensandbox_settings as _osb_settings
-        if _osb_settings.is_enabled:
-            from app.video.sandbox_runner import SandboxMediaRunner
-            with SandboxMediaRunner.session(profile="media-processing", job_id=job_id) as runner:
-                result = handler(spec, tmp_dir, runner=runner)
-        else:
-            result = handler(spec, tmp_dir)
+        # OpenSandbox execution is retired. Isolation for risky work belongs to
+        # the approved external worker/container boundary, not this worker.
+        result = handler(spec, tmp_dir)
         report_done(job_id, result)
 
         # Persist render to media_tasks DB for permanent Media Library visibility

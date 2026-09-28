@@ -60,6 +60,12 @@ export function isProtectedAutoTeamMediaKey(key: string | null | undefined): boo
   return Boolean(normalized?.startsWith(FINAL_MEDIA_STORAGE_PREFIX));
 }
 
+export function isManagedMediaFileKey(key: string | null | undefined): boolean {
+  const normalized = typeof key === "string" ? normalizeManagedMediaKey(key) : null;
+  if (!normalized) return false;
+  return /\.(avif|gif|heic|heif|jpe?g|m4a|mkv|mov|mp3|mp4|oga|ogg|png|svg|wav|webm|webp)$/i.test(normalized);
+}
+
 export function resolveUploadsManagedPath(key: string): string | null {
   const normalized = normalizeManagedMediaKey(key);
   if (!normalized) return null;
@@ -194,6 +200,10 @@ export async function streamManagedMediaAccessToken(
   res.setHeader("X-Content-Type-Options", "nosniff");
 
   if (kind === "upload") {
+    if (isManagedMediaFileKey(key)) {
+      res.status(410).json({ error: "Legacy local media playback is disabled; durable R2 media is required" });
+      return;
+    }
     const filePath = resolveUploadsManagedPath(key);
     if (!filePath) {
       res.status(400).json({ error: "Invalid media path" });

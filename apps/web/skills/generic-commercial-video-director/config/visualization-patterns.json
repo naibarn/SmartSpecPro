@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "patterns": [
+    {
+      "id": "airflow_streamlines",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "air conditioner",
+        "fan",
+        "purifier"
+      ]
+    },
+    {
+      "id": "thermal_gradient",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "air conditioner",
+        "heater",
+        "cooling"
+      ]
+    },
+    {
+      "id": "cleaning_lift",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "hybrid",
+      "useFor": [
+        "surface cleaner",
+        "vacuum",
+        "detergent"
+      ]
+    },
+    {
+      "id": "cutaway",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "image_keyframe_or_post",
+      "useFor": [
+        "washing machine",
+        "appliance",
+        "mechanism"
+      ]
+    },
+    {
+      "id": "motion_trace",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "rotating drum",
+        "fan",
+        "tool",
+        "vehicle"
+      ]
+    },
+    {
+      "id": "virtual_screen",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "phone",
+        "tablet",
+        "computer",
+        "app"
+      ]
+    },
+    {
+      "id": "ui_composite",
+      "truthMode": "literal_observed",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "exact screen UI",
+        "readable text"
+      ]
+    },
+    {
+      "id": "before_after",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "post_composite",
+      "useFor": [
+        "cleaning",
+        "beauty",
+        "restoration"
+      ],
+      "note": "Requires evidence and must avoid unsupported efficacy claims."
+    },
+    {
+      "id": "water_flow",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "hybrid",
+      "useFor": [
+        "water purifier",
+        "pump",
+        "washing appliance",
+        "faucet",
+        "shower"
+      ]
+    },
+    {
+      "id": "steam_flow",
+      "truthMode": "supported_explanatory",
+      "preferredRenderStage": "hybrid",
+      "useFor": [
+        "kettle",
+        "coffee machine",
+        "steamer",
+        "cooking appliance"
+      ],
+      "note": "Only visualize steam when supported by actual product operation and scene conditions."
+    }
+  ]
+}

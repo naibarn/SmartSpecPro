@@ -27,8 +27,13 @@ import {
   type PresentationRouteGuardResult,
 } from "@shared/presentation/contracts";
 import { getDb } from "../db";
-import { getExportsByDeckId } from "../services/presentationExportService";
+import {
+  getExportsByDeckId,
+  getPresentationExportDownloadUrl,
+} from "../services/presentationExportService";
 import { resolveTenantIdVarchar } from "../services/tenantContext";
+import { getUnifiedMediaTask } from "../services/mediaTaskPollingService";
+import { ensurePresentationTaskResultDurable } from "../services/presentationMediaAssetService";
 import {
   PresentationServiceError,
   addSlideToDeck,
@@ -80,6 +85,7 @@ import {
   generatePresentationSlideDraft,
   preparePresentationSlideBundle,
 } from "../services/presentationArticleGenerator";
+import { listPresentationBuilderImageJobs } from "../services/presentationBuilderImageJobService";
 import { resolveAutoDraftParams } from "../services/autoDraftResolver";
 import { createLibraryItem } from "../services/libraryService";
 import {
@@ -119,8 +125,8 @@ const DOCUMENT_MANAGEMENT_ROUTE_BASE =
 // 50MB binary file + base64 overhead.
 const MAX_PRESENTATION_UPLOAD_BASE64_LENGTH = 68_000_000;
 const presentationEditorialPlannerOptionsSchema = z.object({
-  targetAudience: z.enum(["parents", "educators", "healthcare"]).optional(),
-  tonePreset: z.enum(["warm_parenting", "premium_editorial", "clinical_guidance"]).optional(),
+  targetAudience: z.enum(["general", "parents", "educators", "healthcare"]).optional(),
+  tonePreset: z.enum(["neutral", "warm_parenting", "premium_editorial", "clinical_guidance"]).optional(),
   fitPreset: z.enum(["balanced", "image_forward", "text_safe"]).optional(),
   pageCountMode: z.enum(["auto", "fixed"]).optional(),
   requestedPageCount: z.number().int().min(1).max(20).optional(),
@@ -390,10 +396,11 @@ function toPresentationActor(ctx: {
   };
 }
 
-function createPresentationToken(userId: number, scopes: string[]): string {
+function createPresentationToken(userId: number, scopes: string[], tenantId?: string): string {
   return signBearerToken(
     {
       sub: String(userId),
+      ...(tenantId ? { tenantId } : {}),
       type: "access",
       scopes,
       jti: `presentation_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -425,6 +432,49 @@ export const presentationRouter = router({
   availability: protectedProcedure.query(() => {
     return presentationAvailabilitySchema.parse(getAvailability());
   }),
+
+  getMediaTask: protectedProcedure
+    .input(z.object({
+      deckId: z.number().int().positive(),
+      taskId: z.string().min(1),
+      mediaType: z.enum(["image", "video"]),
+      slotId: z.string().max(160).optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      ensureFeatureEnabled();
+      ensureAIGenerationEnabled();
+      const actor = toPresentationActor(ctx);
+      await getPresentationDeckDetail(input.deckId, actor);
+      const task = await getUnifiedMediaTask({
+        taskId: input.taskId,
+        userId: actor.userId,
+        userToken: getPresentationToken(ctx, ["media:generate"]),
+        tenantId: actor.tenantId,
+        auditContext: {
+          userId: actor.userId,
+          tenantId: actor.tenantId,
+          source: "trpc.presentation.getMediaTask",
+          stage: "poll",
+          deckId: input.deckId,
+        },
+      });
+      if (task.status !== "completed") return task;
+      const durable = await ensurePresentationTaskResultDurable({
+        tenantId: actor.tenantId,
+        userId: actor.userId,
+        deckId: input.deckId,
+        task,
+        mediaType: input.mediaType,
+        slotId: input.slotId,
+      });
+      if (!durable) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "งานสร้างสื่อเสร็จแล้วแต่ไม่พบไฟล์สำหรับจัดเก็บบน R2",
+        });
+      }
+      return durable.task;
+    }),
 
   ai: router({
     generateDraft: protectedProcedure
@@ -542,6 +592,20 @@ export const presentationRouter = router({
           }
           throw err;
         }
+      }),
+
+    listBuilderImageJobs: protectedProcedure
+      .input(z.object({ deckId: z.number().int().positive() }))
+      .query(async ({ input, ctx }) => {
+        ensureFeatureEnabled();
+        ensureAIGenerationEnabled();
+        const actor = toPresentationActor(ctx);
+        await getPresentationDeckDetail(input.deckId, actor);
+        return listPresentationBuilderImageJobs({
+          tenantId: actor.tenantId,
+          userId: actor.userId,
+          deckId: input.deckId,
+        });
       }),
 
     relayoutSlide: protectedProcedure
@@ -899,6 +963,7 @@ export const presentationRouter = router({
 
           return await preparePresentationSlideBundle({
             userId: actor.userId,
+            tenantId: actor.tenantId,
             topic: input.topic,
             article: input.article,
             slideSkillId: input.slideSkillId,
@@ -1484,8 +1549,13 @@ export const presentationRouter = router({
       try {
         ensureFeatureEnabled();
         ensureExportWriteEnabled();
-        const userToken = getPresentationToken(ctx, ["presentation:export"]);
-        return await triggerPresentationExport(input, toPresentationActor(ctx), {
+        const actor = toPresentationActor(ctx);
+        const userToken = createPresentationToken(
+          actor.userId,
+          ["presentation:export"],
+          actor.tenantId,
+        );
+        return await triggerPresentationExport(input, actor, {
           userToken,
         });
       } catch (error) {
@@ -1549,7 +1619,7 @@ export const presentationRouter = router({
           exportId: r.id,
           format: r.format,
           status: r.status,
-          downloadUrl: r.outputUrl ?? null,
+          downloadUrl: getPresentationExportDownloadUrl(r),
           createdAt: r.createdAt,
           progressPct: r.progressPct,
           errorMessage: r.errorMessage ?? null,

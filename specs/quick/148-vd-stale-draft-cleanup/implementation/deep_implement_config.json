@@ -1,0 +1,31 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/148-vd-stale-draft-cleanup/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/148-vd-stale-draft-cleanup/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "npm run test --workspace @smartspec/web -- <focused-files>",
+  "sections": ["section-01-server-contract", "section-02-client-dialog"],
+  "sections_state": {
+    "section-01-server-contract": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped_reason": "Dirty shared target files; user did not request a commit"
+    },
+    "section-02-client-dialog": {
+      "status": "complete",
+      "commit_hash": null,
+      "commit_skipped_reason": "Dirty shared target files; user did not request a commit"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-08-17T14:43:55.301492+00:00"
+}

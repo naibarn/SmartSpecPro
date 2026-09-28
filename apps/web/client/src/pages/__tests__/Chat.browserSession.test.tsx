@@ -72,6 +72,7 @@ function translate(key: string, params?: Record<string, string | number>) {
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/chat", mockSetLocation],
+  useSearch: () => window.location.search.replace(/^\?/, ""),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
@@ -185,6 +186,14 @@ vi.mock("@/components/chat", () => ({
 
 vi.mock("@/components/chat/canvas/CanvasPane", () => ({
   CanvasPane: () => <div>Canvas Pane</div>,
+}));
+
+vi.mock("@/components/chat/UniversalControlPlanePanel", () => ({
+  UniversalControlPlanePanel: ({ onClose }: { onClose: () => void }) => (
+    <aside data-testid="mock-control-plane">
+      <button type="button" onClick={onClose}>Close Task Control Center</button>
+    </aside>
+  ),
 }));
 
 vi.mock("@/components/finance/FinanceHub", () => ({
@@ -365,10 +374,26 @@ describe("Chat Browser Session entry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Memory" }));
 
     expect(rightPanel).toHaveAttribute("aria-hidden", "false");
-    expect(rightPanel).toHaveClass("w-full");
-    expect(rightPanel).toHaveClass("sm:w-[26rem]");
-    expect(rightPanel).toHaveClass("lg:w-[36rem]");
-    expect(rightPanel).toHaveClass("xl:w-[40rem]");
+    expect(rightPanel).toHaveClass("fixed");
+    expect(rightPanel).toHaveClass("lg:w-[32rem]");
+    expect(rightPanel).toHaveClass("xl:w-[38rem]");
+  });
+
+  it("opens the Task Control Center from the Chat toolbar", () => {
+    render(<Chat />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open Task Control Center" }));
+
+    expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
+  });
+
+  it("opens the Task Control Center from its deep link", () => {
+    window.history.replaceState({}, "", "/chat?panel=control-plane");
+
+    render(<Chat />);
+
+    expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
   });
 
   it("opens the finance panel from the chat toolbar", () => {

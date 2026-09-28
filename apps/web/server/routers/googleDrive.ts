@@ -20,7 +20,7 @@ import {
   creditTransactions,
   systemSettings,
 } from "../../drizzle/schema";
-import { storageGet, storagePut } from "../storage";
+import { assertR2StorageActive, storagePut, storageReadBuffer } from "../storage";
 import {
   gdriveSearchLimiter,
   gdriveReadLimiter,
@@ -410,14 +410,8 @@ export const googleDriveRouter = router({
       }
 
       // Download file from storage
-      const storageInfo = await storageGet(item.sourceUrl);
-      const fileResp = await fetch(storageInfo.url);
-      if (!fileResp.ok) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to download file from storage" });
-      const contentLength = Number(fileResp.headers.get("content-length") ?? "0");
-      if (contentLength > MAX_EDIT_FILE_BYTES) {
-        throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File too large for Drive editing (max 50 MB)" });
-      }
-      const fileBuffer = Buffer.from(await fileResp.arrayBuffer());
+      const fileBuffer = await storageReadBuffer(item.sourceUrl);
+      if (!fileBuffer) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to download file from storage" });
       if (fileBuffer.length > MAX_EDIT_FILE_BYTES) {
         throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "File too large for Drive editing (max 50 MB)" });
       }
@@ -561,6 +555,9 @@ export const googleDriveRouter = router({
       // Upload to storage with new key
       const timestamp = Date.now();
       const newKey = `library/${ctx.tenantId}/${session.libraryItemId}/edited-${timestamp}.${ext}`;
+      if (/^(image|video|audio)\//i.test(exportMime)) {
+        await assertR2StorageActive();
+      }
       const { url: newSourceUrl } = await storagePut(newKey, fileBuffer, exportMime);
 
       // Update library item source URL (tenant + owner scoped)

@@ -1,0 +1,44 @@
+{
+  "model": "dreamina-seedance-2-5-260628",
+  "mode": "reference_to_video",
+  "hardFrames": {
+    "firstFrameAssetId": null,
+    "lastFrameAssetId": null
+  },
+  "referenceImages": [
+    {
+      "assetId": "person",
+      "label": "@Image 1",
+      "semanticRoles": [
+        "identity"
+      ],
+      "entityId": "host"
+    }
+  ],
+  "referenceVideos": [
+    {
+      "assetId": "motion",
+      "label": "@Video 1",
+      "semanticRoles": [
+        "motion"
+      ],
+      "entityId": "host"
+    }
+  ],
+  "referenceAudios": [
+    {
+      "assetId": "voice",
+      "label": "@Audio 1",
+      "semanticRoles": [
+        "voice_timbre"
+      ],
+      "entityId": "host"
+    }
+  ],
+  "conflictDetected": false,
+  "conflictResolution": "none",
+  "materialLibraryRequirements": [],
+  "derivedReferences": [],
+  "nonProviderReferences": [],
+  "warnings": []
+}

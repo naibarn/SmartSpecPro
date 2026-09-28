@@ -20,6 +20,40 @@ import {
   buildKRouterLlmAvailableModels,
   type AvailableLlmProviderModel,
 } from "../services/llmProviderCatalog";
+import { listVisibleWorkerLlmModels } from "../services/workerLlmCatalog";
+import {
+  createInferenceRevocation,
+  createInferenceRevocationInputSchema,
+  listInferenceRevocations,
+  listInferenceRevocationsInputSchema,
+  listInferencePolicyHeads,
+  listInferencePolicyRevisions,
+  inferencePolicyRevisionScopeSchema,
+  publishInferencePolicy,
+  publishInferencePolicyInputSchema,
+  rollbackInferencePolicy,
+  rollbackInferencePolicyInputSchema,
+} from "../services/inference/policyAdministration";
+import {
+  loadInferenceProfileCandidates,
+  loadInferenceProfileRegistry,
+  publishInferenceProfileVersion,
+  publishInferenceProfileInputSchema,
+} from "../services/inference/profileRegistry";
+import {
+  listInferenceConnectivityProbeRuns,
+  runInferenceConnectivityProbe,
+} from "../services/inference/connectivityProbe";
+import { runInferenceCapabilityProbe } from "../services/inference/capabilityProbe";
+import { certifyStoredInferenceProfileCandidate } from "../services/inference/profileCertification";
+import { assessInferenceCapabilityRecheck } from "../services/inference/capabilityRecheck";
+import {
+  activateInferenceRolloutBundle,
+  activateInferenceRolloutBundleInputSchema,
+  getInferenceRolloutBundleStatus,
+  publishInferenceRolloutBundle,
+  publishInferenceRolloutBundleInputSchema,
+} from "../services/inference/rolloutBundle";
 
 interface EnabledProviderRow {
   id: number;
@@ -37,21 +71,26 @@ interface EnabledMappedModelRow {
   modelId: string;
   modelName: string;
   contextLength: number | null;
+  /** Admin-curated quality flag (model_provider_map.isRecommended). */
+  isRecommended?: boolean | null;
 }
 
 function findProviderTemplate(providerName: string) {
-  return PROVIDER_TEMPLATES.find((template) => template.providerName === providerName);
+  return PROVIDER_TEMPLATES.find(
+    template => template.providerName === providerName
+  );
 }
 
 const ROUTING_GATEWAY_CONFIG = {
   trustTier: "routing-gateway",
   thirdPartyRelay: true,
-  dataPolicyDisclosure: "Requests are routed through a third-party model gateway before reaching upstream model providers.",
+  dataPolicyDisclosure:
+    "Requests are routed through a third-party model gateway before reaching upstream model providers.",
 } as const;
 
 function mergeProviderAvailableModels(
   currentModels: AvailableLlmProviderModel[] | null | undefined,
-  templateModels: AvailableLlmProviderModel[] | null | undefined,
+  templateModels: AvailableLlmProviderModel[] | null | undefined
 ): AvailableLlmProviderModel[] | null {
   if (!Array.isArray(currentModels) || currentModels.length === 0) {
     return templateModels ?? null;
@@ -60,7 +99,7 @@ function mergeProviderAvailableModels(
     return currentModels;
   }
 
-  const currentById = new Map(currentModels.map((model) => [model.id, model]));
+  const currentById = new Map(currentModels.map(model => [model.id, model]));
   const merged: AvailableLlmProviderModel[] = [];
 
   for (const templateModel of templateModels) {
@@ -88,14 +127,18 @@ function mergeProviderAvailableModels(
   return merged;
 }
 
-export function resolveProviderCatalogDefaults<T extends {
-  providerName: string;
-  displayName?: string | null;
-  description?: string | null;
-  baseUrl?: string | null;
-  defaultModel?: string | null;
-  availableModels?: AvailableLlmProviderModel[] | null;
-}>(provider: T): T & {
+export function resolveProviderCatalogDefaults<
+  T extends {
+    providerName: string;
+    displayName?: string | null;
+    description?: string | null;
+    baseUrl?: string | null;
+    defaultModel?: string | null;
+    availableModels?: AvailableLlmProviderModel[] | null;
+  },
+>(
+  provider: T
+): T & {
   displayName?: string | null;
   description?: string | null;
   baseUrl?: string | null;
@@ -105,13 +148,15 @@ export function resolveProviderCatalogDefaults<T extends {
   const template = findProviderTemplate(provider.providerName);
   const mergedAvailableModels = mergeProviderAvailableModels(
     provider.availableModels,
-    template?.availableModels,
+    template?.availableModels
   );
 
   return {
     ...provider,
-    displayName: provider.displayName ?? template?.displayName ?? provider.displayName,
-    description: provider.description ?? template?.description ?? provider.description,
+    displayName:
+      provider.displayName ?? template?.displayName ?? provider.displayName,
+    description:
+      provider.description ?? template?.description ?? provider.description,
     baseUrl: provider.baseUrl ?? template?.baseUrl ?? provider.baseUrl,
     defaultModel: provider.defaultModel ?? template?.defaultModel ?? null,
     availableModels: mergedAvailableModels,
@@ -128,16 +173,23 @@ export function mergeAvailableLlmModels(input: {
   providerDisplayName: string;
   contextLength?: number;
   isDefault?: boolean;
+  isRecommended?: boolean;
 }> {
-  const providersById = new Map(input.providers.map((provider) => [provider.id, provider]));
-  const merged = new Map<string, {
-    id: string;
-    name: string;
-    provider: string;
-    providerDisplayName: string;
-    contextLength?: number;
-    isDefault?: boolean;
-  }>();
+  const providersById = new Map(
+    input.providers.map(provider => [provider.id, provider])
+  );
+  const merged = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      provider: string;
+      providerDisplayName: string;
+      contextLength?: number;
+      isDefault?: boolean;
+      isRecommended?: boolean;
+    }
+  >();
 
   for (const mappedModel of input.mappedModels ?? []) {
     const provider = providersById.get(mappedModel.providerId);
@@ -153,6 +205,10 @@ export function mergeAvailableLlmModels(input: {
       providerDisplayName: mappedModel.providerDisplayName,
       contextLength: mappedModel.contextLength ?? undefined,
       isDefault: mappedModel.modelId === provider.defaultModel,
+      // Carried so quality-critical pickers can filter to the curated set.
+      // (Row-rebuild trap: this literal is the ONLY place the merged shape is
+      // constructed — a new column silently vanishes if not added here.)
+      isRecommended: mappedModel.isRecommended === true,
     });
   }
 
@@ -177,8 +233,11 @@ function validateExternalUrl(url: string): void {
     /^169\.254\.\d+\.\d+$/,
     /^0\.0\.0\.0$/,
     /^\[::1?\]$/,
-    /^::1$/, /^::ffff:127\./i, /^fe80:/i,
-    /^fc[0-9a-f]{2}:/i, /^fd[0-9a-f]{2}:/i,
+    /^::1$/,
+    /^::ffff:127\./i,
+    /^fe80:/i,
+    /^fc[0-9a-f]{2}:/i,
+    /^fd[0-9a-f]{2}:/i,
     /\.internal$/i,
     /\.local$/i,
   ];
@@ -195,7 +254,8 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "kie_ai",
     displayName: "Kie AI",
-    description: "Kie AI marketplace gateway for GPT, Claude, Gemini, and Codex chat models",
+    description:
+      "Kie AI marketplace gateway for GPT, Claude, Gemini, and Codex chat models",
     baseUrl: "https://api.kie.ai",
     defaultModel: "gpt-5-4",
     availableModels: buildKieLlmAvailableModels(),
@@ -224,21 +284,24 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "groq",
     displayName: "Groq",
-    description: "Ultra-fast LLM inference with Llama, Mixtral, and Gemma models",
+    description:
+      "Ultra-fast LLM inference with Llama, Mixtral, and Gemma models",
     baseUrl: "https://api.groq.com/openai/v1",
     defaultModel: "llama-3.3-70b-versatile",
   },
   {
     providerName: "nvidia_nim",
     displayName: "NVIDIA NIM (Hosted)",
-    description: "Hosted NVIDIA Integrate API for chat, retrieval, guardrail, and multimodal models",
+    description:
+      "Hosted NVIDIA Integrate API for chat, retrieval, guardrail, and multimodal models",
     baseUrl: "https://integrate.api.nvidia.com",
     defaultModel: "nvidia/llama-3.3-nemotron-super-49b-v1.5",
   },
   {
     providerName: "openrouter",
     displayName: "OpenRouter",
-    description: "Access 420+ models with unified API (Primary gateway with fallback)",
+    description:
+      "Access 420+ models with unified API (Primary gateway with fallback)",
     baseUrl: "https://openrouter.ai/api/v1",
     defaultModel: "anthropic/claude-3.5-sonnet",
     configDefaults: {
@@ -252,7 +315,8 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "krouter",
     displayName: "KRouter",
-    description: "Third-party AI relay with a unified OpenAI-compatible endpoint for routed GPT and Codex models",
+    description:
+      "Third-party AI relay with a unified OpenAI-compatible endpoint for routed GPT and Codex models",
     baseUrl: "https://api.krouter.net/v1",
     defaultModel: "gpt-5.5",
     availableModels: buildKRouterLlmAvailableModels(),
@@ -308,21 +372,24 @@ export const PROVIDER_TEMPLATES = [
   {
     providerName: "together",
     displayName: "Together AI",
-    description: "Fast inference for open-source models including Llama, Mistral, and more",
+    description:
+      "Fast inference for open-source models including Llama, Mistral, and more",
     baseUrl: "https://api.together.xyz/v1",
     defaultModel: "meta-llama/Llama-3.3-70B-Instruct-Turbo",
   },
   {
     providerName: "fireworks",
     displayName: "Fireworks AI",
-    description: "High-performance inference for open models with function calling support",
+    description:
+      "High-performance inference for open models with function calling support",
     baseUrl: "https://api.fireworks.ai/inference/v1",
     defaultModel: "accounts/fireworks/models/llama-v3p3-70b-instruct",
   },
   {
     providerName: "knplabai",
     displayName: "KNPLabs AI",
-    description: "Multi-provider AI gateway for chat model routing, media generation, speech, and embeddings",
+    description:
+      "Multi-provider AI gateway for chat model routing, media generation, speech, and embeddings",
     baseUrl: "https://api.knplabai.com/ai/v1",
     defaultModel: "deepseek-v3.2",
   },
@@ -330,7 +397,7 @@ export const PROVIDER_TEMPLATES = [
 
 export const llmProvidersRouter = router({
   // Get all enabled mapped models from enabled providers (for Desktop App model selector)
-  availableModels: protectedProcedure.query(async () => {
+  availableModels: protectedProcedure.query(async ({ ctx }) => {
     try {
       const dbInstance = await getDb();
       if (!dbInstance) return { models: [], providers: [] };
@@ -355,56 +422,116 @@ export const llmProvidersRouter = router({
             modelId: modelProviderMap.modelId,
             modelName: modelProviderMap.modelName,
             contextLength: modelProviderMap.contextLength,
+            isRecommended: modelProviderMap.isRecommended,
           })
           .from(modelProviderMap)
-          .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-          .where(and(eq(modelProviderMap.isEnabled, true), eq(llmProviders.isEnabled, true)))
-          .orderBy(asc(modelProviderMap.modelName), asc(modelProviderMap.priority)),
+          .innerJoin(
+            llmProviders,
+            eq(modelProviderMap.providerId, llmProviders.id)
+          )
+          .where(
+            and(
+              eq(modelProviderMap.isEnabled, true),
+              eq(llmProviders.isEnabled, true)
+            )
+          )
+          .orderBy(
+            asc(modelProviderMap.modelName),
+            asc(modelProviderMap.priority)
+          ),
       ]);
 
-      const enabledProviders = (providers as EnabledProviderRow[]).map((provider) =>
-        resolveProviderCatalogDefaults(provider),
+      const enabledProviders = (providers as EnabledProviderRow[]).map(
+        provider => resolveProviderCatalogDefaults(provider)
       );
       const models = mergeAvailableLlmModels({
         providers: enabledProviders,
-        mappedModels: mappedModels.filter((row) =>
-          enabledProviders.some((provider) => provider.id === row.providerId),
+        mappedModels: mappedModels.filter(row =>
+          enabledProviders.some(provider => provider.id === row.providerId)
         ) as EnabledMappedModelRow[],
       });
 
+      const workerModels = ctx.tenantId
+        ? await listVisibleWorkerLlmModels({
+            tenantId: ctx.tenantId,
+            userId: ctx.user.id,
+            task: "chat",
+          })
+        : [];
       return {
-        models,
-        providers: enabledProviders.map(p => ({
-          name: p.providerName,
-          displayName: p.displayName,
-          isPrimary: (p.configJson as any)?.isPrimary === true,
-          isFallback: (p.configJson as any)?.isFallback === true,
-        })),
+        models: [...models, ...workerModels],
+        providers: [
+          ...enabledProviders.map(p => ({
+            name: p.providerName,
+            displayName: p.displayName,
+            isPrimary: (p.configJson as any)?.isPrimary === true,
+            isFallback: (p.configJson as any)?.isFallback === true,
+          })),
+          ...(workerModels.length > 0
+            ? [
+                {
+                  name: "worker_app",
+                  displayName: "Worker Local AI",
+                  isPrimary: false,
+                  isFallback: false,
+                },
+              ]
+            : []),
+        ],
       };
     } catch (error) {
-      console.warn("[llmProviders.availableModels] falling back after query failure", error);
+      console.warn(
+        "[llmProviders.availableModels] falling back after query failure",
+        error
+      );
       const fallbackModels = buildKieLlmAvailableModels()
-        .filter((model) => model.surface === "chat" || model.surface == null)
-        .map((model) => ({
+        .filter(model => model.surface === "chat" || model.surface == null)
+        .map(model => ({
           id: model.id,
           name: model.name,
           provider: "kie_ai",
           providerDisplayName: "Kie AI",
           contextLength: model.contextLength,
           isDefault: model.id === "gpt-5-4",
+          // Keep both return branches structurally identical — a shape that
+          // differs only in the fallback path turns this procedure's result
+          // into a union that downstream consumers (ChatView) cannot accept.
+          isRecommended: false,
         }));
 
       return {
         models: fallbackModels,
-        providers: [{
-          name: "kie_ai",
-          displayName: "Kie AI",
-          isPrimary: true,
-          isFallback: true,
-        }],
+        providers: [
+          {
+            name: "kie_ai",
+            displayName: "Kie AI",
+            isPrimary: true,
+            isFallback: true,
+          },
+        ],
       };
     }
   }),
+
+  workerLocalModels: protectedProcedure
+    .input(
+      z
+        .object({
+          task: z
+            .enum(["chat", "completion", "vision", "embedding"])
+            .default("chat"),
+        })
+        .optional()
+    )
+    .query(async ({ ctx, input }) =>
+      ctx.tenantId
+        ? listVisibleWorkerLlmModels({
+            tenantId: ctx.tenantId,
+            userId: ctx.user.id,
+            task: input?.task ?? "chat",
+          })
+        : []
+    ),
 
   // Get all enabled providers (for users)
   list: protectedProcedure.query(async () => {
@@ -423,8 +550,10 @@ export const llmProvidersRouter = router({
       .from(llmProviders)
       .where(eq(llmProviders.isEnabled, true))
       .orderBy(asc(llmProviders.sortOrder));
-    
-    return providers.map((provider: typeof providers[number]) => resolveProviderCatalogDefaults(provider as any));
+
+    return providers.map((provider: (typeof providers)[number]) =>
+      resolveProviderCatalogDefaults(provider as any)
+    );
   }),
 
   // Get all providers (admin)
@@ -459,17 +588,150 @@ export const llmProvidersRouter = router({
       .where(eq(modelProviderMap.isEnabled, true))
       .groupBy(modelProviderMap.providerId);
 
-    const countMap = new Map(modelCounts.map((c: (typeof modelCounts)[number]) => [c.providerId, Number(c.count)]));
+    const countMap = new Map(
+      modelCounts.map((c: (typeof modelCounts)[number]) => [
+        c.providerId,
+        Number(c.count),
+      ])
+    );
 
     // Merge routed model count into providers
     return providers.map((p: (typeof providers)[number]) => {
       const hydrated = resolveProviderCatalogDefaults(p as any);
       return {
-      ...hydrated,
-      routedModelCount: countMap.get(p.id) ?? 0,
+        ...hydrated,
+        routedModelCount: countMap.get(p.id) ?? 0,
       };
     });
   }),
+
+  /** Versioned authority configuration for Spec 231 automatic route selection. */
+  listInferencePolicies: adminProcedure.query(async () => {
+    return listInferencePolicyHeads();
+  }),
+
+  listInferencePolicyRevisions: adminProcedure
+    .input(inferencePolicyRevisionScopeSchema)
+    .query(async ({ input }) => listInferencePolicyRevisions(input)),
+
+  publishInferencePolicy: adminProcedure
+    .input(publishInferencePolicyInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      return publishInferencePolicy({
+        policyInput: input,
+        actorUserId: ctx.user.id,
+      });
+    }),
+
+  rollbackInferencePolicy: adminProcedure
+    .input(rollbackInferencePolicyInputSchema)
+    .mutation(async ({ input, ctx }) =>
+      rollbackInferencePolicy({
+        rollbackInput: input,
+        actorUserId: ctx.user.id,
+      })
+    ),
+
+  createInferenceRevocation: adminProcedure
+    .input(createInferenceRevocationInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      return createInferenceRevocation({
+        revocationInput: input,
+        actorUserId: ctx.user.id,
+      });
+    }),
+
+  listInferenceRevocations: adminProcedure
+    .input(listInferenceRevocationsInputSchema)
+    .query(async ({ input }) => listInferenceRevocations(input)),
+
+  listInferenceProfiles: adminProcedure.query(async () => {
+    return loadInferenceProfileRegistry();
+  }),
+
+  listInferenceProfileCandidates: adminProcedure.query(async () => {
+    return loadInferenceProfileCandidates();
+  }),
+
+  publishInferenceProfile: adminProcedure
+    .input(publishInferenceProfileInputSchema)
+    .mutation(async ({ input, ctx }) => {
+      return publishInferenceProfileVersion({
+        profileInput: input,
+        actorUserId: ctx.user.id,
+      });
+    }),
+
+  certifyInferenceProfileCandidate: adminProcedure
+    .input(
+      z.object({ deploymentId: z.string().trim().min(1).max(256) }).strict()
+    )
+    .mutation(async ({ input, ctx }) =>
+      certifyStoredInferenceProfileCandidate({
+        deploymentId: input.deploymentId,
+        actorUserId: ctx.user.id,
+      })
+    ),
+
+  publishInferenceRolloutBundle: adminProcedure
+    .input(publishInferenceRolloutBundleInputSchema)
+    .mutation(async ({ input, ctx }) =>
+      publishInferenceRolloutBundle({
+        bundle: input,
+        actorUserId: ctx.user.id,
+      })
+    ),
+
+  getInferenceRolloutBundleStatus: adminProcedure.query(() =>
+    getInferenceRolloutBundleStatus()
+  ),
+
+  activateInferenceRolloutBundle: adminProcedure
+    .input(activateInferenceRolloutBundleInputSchema)
+    .mutation(async ({ input, ctx }) =>
+      activateInferenceRolloutBundle({
+        bundleHash: input.bundleHash,
+        actorUserId: ctx.user.id,
+      })
+    ),
+
+  getInferenceCapabilityRecheckStatus: adminProcedure.query(async () => {
+    const registry = await loadInferenceProfileRegistry();
+    return assessInferenceCapabilityRecheck(registry, Date.now());
+  }),
+
+  runInferenceConnectivityProbe: adminProcedure
+    .input(
+      z.object({ deploymentId: z.string().trim().min(1).max(256) }).strict()
+    )
+    .mutation(async ({ input, ctx }) => {
+      return runInferenceConnectivityProbe({
+        deploymentId: input.deploymentId,
+        actorUserId: ctx.user.id,
+      });
+    }),
+
+  runInferenceCapabilityProbe: adminProcedure
+    .input(
+      z.object({ deploymentId: z.string().trim().min(1).max(256) }).strict()
+    )
+    .mutation(async ({ input, ctx }) => {
+      return runInferenceCapabilityProbe({
+        deploymentId: input.deploymentId,
+        actorUserId: ctx.user.id,
+      });
+    }),
+
+  listInferenceConnectivityProbeRuns: adminProcedure
+    .input(
+      z
+        .object({
+          deploymentId: z.string().trim().min(1).max(256),
+          limit: z.number().int().min(1).max(100).optional(),
+        })
+        .strict()
+    )
+    .query(async ({ input }) => listInferenceConnectivityProbeRuns(input)),
 
   // Get provider templates
   templates: adminProcedure.query(() => {
@@ -485,11 +747,11 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.id, input.id))
         .limit(1);
-      
+
       if (!provider) {
         throw new Error("Provider not found");
       }
-      
+
       // Don't return the encrypted API key
       return {
         ...provider,
@@ -499,17 +761,19 @@ export const llmProvidersRouter = router({
 
   // Create provider (admin)
   create: adminProcedure
-    .input(z.object({
-      providerName: z.string().min(1).max(64),
-      displayName: z.string().min(1).max(128),
-      description: z.string().optional(),
-      baseUrl: z.string().optional(),
-      apiKey: z.string().optional(),
-      defaultModel: z.string().optional(),
-      availableModels: z.array(availableLlmProviderModelSchema).optional(),
-      configJson: z.record(z.any()).optional(),
-      isEnabled: z.boolean().default(false),
-    }))
+    .input(
+      z.object({
+        providerName: z.string().min(1).max(64),
+        displayName: z.string().min(1).max(128),
+        description: z.string().optional(),
+        baseUrl: z.string().optional(),
+        apiKey: z.string().optional(),
+        defaultModel: z.string().optional(),
+        availableModels: z.array(availableLlmProviderModelSchema).optional(),
+        configJson: z.record(z.any()).optional(),
+        isEnabled: z.boolean().default(false),
+      })
+    )
     .mutation(async ({ input }) => {
       // Check if provider already exists
       const existing = await db
@@ -517,57 +781,63 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.providerName, input.providerName))
         .limit(1);
-      
+
       if (existing.length > 0) {
         throw new Error("Provider with this name already exists");
       }
-      
+
       // Get max sort order
       const [maxOrder] = await db
         .select({ max: sql<number>`MAX(${llmProviders.sortOrder})` })
         .from(llmProviders);
-      
-      const [created] = await db.insert(llmProviders).values({
-        ...(() => {
-          const template = findProviderTemplate(input.providerName);
-          return {
-            configJson: input.configJson || (template as any)?.configDefaults || null,
-          };
-        })(),
-        providerName: input.providerName,
-        displayName: input.displayName,
-        description: input.description || null,
-        baseUrl: input.baseUrl || null,
-        apiKeyEncrypted: input.apiKey ? encrypt(input.apiKey) : null,
-        hasApiKey: !!input.apiKey,
-        defaultModel: input.defaultModel || null,
-        availableModels: input.availableModels || null,
-        isEnabled: input.isEnabled,
-        sortOrder: (maxOrder?.max || 0) + 1,
-      }).returning({ id: llmProviders.id });
-      
+
+      const [created] = await db
+        .insert(llmProviders)
+        .values({
+          ...(() => {
+            const template = findProviderTemplate(input.providerName);
+            return {
+              configJson:
+                input.configJson || (template as any)?.configDefaults || null,
+            };
+          })(),
+          providerName: input.providerName,
+          displayName: input.displayName,
+          description: input.description || null,
+          baseUrl: input.baseUrl || null,
+          apiKeyEncrypted: input.apiKey ? encrypt(input.apiKey) : null,
+          hasApiKey: !!input.apiKey,
+          defaultModel: input.defaultModel || null,
+          availableModels: input.availableModels || null,
+          isEnabled: input.isEnabled,
+          sortOrder: (maxOrder?.max || 0) + 1,
+        })
+        .returning({ id: llmProviders.id });
+
       return { id: created.id };
     }),
 
   // Update provider (admin)
   update: adminProcedure
-    .input(z.object({
-      id: z.number(),
-      displayName: z.string().min(1).max(128).optional(),
-      description: z.string().optional(),
-      baseUrl: z.string().optional(),
-      apiKey: z.string().optional(), // If provided, update the key
-      defaultModel: z.string().optional(),
-      availableModels: z.array(availableLlmProviderModelSchema).optional(),
-      configJson: z.record(z.any()).optional(),
-      isEnabled: z.boolean().optional(),
-      sortOrder: z.number().optional(),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        displayName: z.string().min(1).max(128).optional(),
+        description: z.string().optional(),
+        baseUrl: z.string().optional(),
+        apiKey: z.string().optional(), // If provided, update the key
+        defaultModel: z.string().optional(),
+        availableModels: z.array(availableLlmProviderModelSchema).optional(),
+        configJson: z.record(z.any()).optional(),
+        isEnabled: z.boolean().optional(),
+        sortOrder: z.number().optional(),
+      })
+    )
     .mutation(async ({ input }) => {
       const { id, apiKey, ...updates } = input;
-      
+
       const updateData: any = { ...updates };
-      
+
       // Handle API key update
       if (apiKey !== undefined) {
         if (apiKey === "") {
@@ -580,12 +850,12 @@ export const llmProvidersRouter = router({
           updateData.hasApiKey = true;
         }
       }
-      
+
       await db
         .update(llmProviders)
         .set(updateData)
         .where(eq(llmProviders.id, id));
-      
+
       return { success: true };
     }),
 
@@ -611,43 +881,48 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.id, input.id))
         .limit(1);
-      
+
       if (!providerDetails) {
         throw new Error("Provider not found");
       }
 
       const nextEnabled = !providerDetails.isEnabled;
       const hydrated = resolveProviderCatalogDefaults(providerDetails as any);
-      
+
       await db
         .update(llmProviders)
         .set({
           isEnabled: nextEnabled,
           availableModels:
-            nextEnabled
-            && (!Array.isArray(providerDetails.availableModels) || providerDetails.availableModels.length === 0)
+            nextEnabled &&
+            (!Array.isArray(providerDetails.availableModels) ||
+              providerDetails.availableModels.length === 0)
               ? hydrated.availableModels
               : undefined,
           defaultModel:
-            nextEnabled
-            && !providerDetails.defaultModel
-            && hydrated.defaultModel
+            nextEnabled &&
+            !providerDetails.defaultModel &&
+            hydrated.defaultModel
               ? hydrated.defaultModel
               : undefined,
         })
         .where(eq(llmProviders.id, input.id));
-      
+
       return { isEnabled: nextEnabled };
     }),
 
   // Update sort order (admin)
   updateSortOrder: adminProcedure
-    .input(z.object({
-      updates: z.array(z.object({
-        id: z.number(),
-        sortOrder: z.number(),
-      })),
-    }))
+    .input(
+      z.object({
+        updates: z.array(
+          z.object({
+            id: z.number(),
+            sortOrder: z.number(),
+          })
+        ),
+      })
+    )
     .mutation(async ({ input }) => {
       for (const update of input.updates) {
         await db
@@ -667,25 +942,25 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.id, input.id))
         .limit(1);
-      
+
       if (!provider) {
         throw new Error("Provider not found");
       }
-      
+
       if (!provider.apiKeyEncrypted) {
         throw new Error("No API key configured");
       }
-      
+
       const apiKey = decrypt(provider.apiKeyEncrypted);
       if (!apiKey) {
         throw new Error("Failed to decrypt API key");
       }
-      
+
       // Test based on provider type
       try {
         let testUrl = provider.baseUrl || "";
         let headers: Record<string, string> = {};
-        
+
         switch (provider.providerName) {
           case "openai":
           case "groq":
@@ -720,24 +995,30 @@ export const llmProvidersRouter = router({
             testUrl = `${provider.baseUrl}/models`;
             headers = { Authorization: `Bearer ${apiKey}` };
         }
-        
+
         // SSRF protection: block private/internal URLs
         validateExternalUrl(testUrl);
 
         const response = await fetch(testUrl, {
           method: "GET",
           headers,
-          redirect: "manual",  // Don't follow redirects to internal IPs
+          redirect: "manual", // Don't follow redirects to internal IPs
           signal: AbortSignal.timeout(10000),
         });
 
         if (response.ok) {
           return { success: true, message: "Connection successful" };
         } else {
-          return { success: false, message: `Connection failed: HTTP ${response.status}` };
+          return {
+            success: false,
+            message: `Connection failed: HTTP ${response.status}`,
+          };
         }
       } catch (error: any) {
-        return { success: false, message: `Connection failed: ${error.message}` };
+        return {
+          success: false,
+          message: `Connection failed: ${error.message}`,
+        };
       }
     }),
 
@@ -772,18 +1053,26 @@ export const llmProvidersRouter = router({
         availableModels: llmProviders.availableModels,
       })
       .from(llmProviders);
-    
-    const totalModels = providers.reduce((sum: number, p: (typeof providers)[number]) => {
-      const hydrated = resolveProviderCatalogDefaults(p as any);
-      const models = (hydrated.availableModels as any[]) || [];
-      return sum + models.length;
-    }, 0);
-    
+
+    const totalModels = providers.reduce(
+      (sum: number, p: (typeof providers)[number]) => {
+        const hydrated = resolveProviderCatalogDefaults(p as any);
+        const models = (hydrated.availableModels as any[]) || [];
+        return sum + models.length;
+      },
+      0
+    );
+
     return {
       total: providers.length,
-      enabled: providers.filter((p: (typeof providers)[number]) => p.isEnabled).length,
-      configured: providers.filter((p: (typeof providers)[number]) => p.hasApiKey).length,
-      ready: providers.filter((p: (typeof providers)[number]) => p.isEnabled && p.hasApiKey).length,
+      enabled: providers.filter((p: (typeof providers)[number]) => p.isEnabled)
+        .length,
+      configured: providers.filter(
+        (p: (typeof providers)[number]) => p.hasApiKey
+      ).length,
+      ready: providers.filter(
+        (p: (typeof providers)[number]) => p.isEnabled && p.hasApiKey
+      ).length,
       totalModels,
     };
   }),
@@ -798,9 +1087,11 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.providerName, "openrouter"))
         .limit(1);
-      
-      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
-      
+
+      const apiKey = openRouter?.apiKeyEncrypted
+        ? decrypt(openRouter.apiKeyEncrypted)
+        : undefined;
+
       return syncProviderModels(input.id, apiKey);
     }),
 
@@ -812,18 +1103,24 @@ export const llmProvidersRouter = router({
       .from(llmProviders)
       .where(eq(llmProviders.providerName, "openrouter"))
       .limit(1);
-    
-    const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
-    
+
+    const apiKey = openRouter?.apiKeyEncrypted
+      ? decrypt(openRouter.apiKeyEncrypted)
+      : undefined;
+
     return syncAllProviderModels(apiKey);
   }),
 
   // Browse all available models from OpenRouter
   browseOpenRouterModels: adminProcedure
-    .input(z.object({
-      search: z.string().optional(),
-      provider: z.string().optional(),
-    }).optional())
+    .input(
+      z
+        .object({
+          search: z.string().optional(),
+          provider: z.string().optional(),
+        })
+        .optional()
+    )
     .query(async ({ input }) => {
       // Get OpenRouter API key if configured
       const [openRouter] = await db
@@ -831,30 +1128,34 @@ export const llmProvidersRouter = router({
         .from(llmProviders)
         .where(eq(llmProviders.providerName, "openrouter"))
         .limit(1);
-      
-      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
-      
+
+      const apiKey = openRouter?.apiKeyEncrypted
+        ? decrypt(openRouter.apiKeyEncrypted)
+        : undefined;
+
       const result = await fetchAllOpenRouterModels(apiKey);
-      
+
       let filteredModels = result.models;
-      
+
       // Filter by provider
       if (input?.provider) {
-        filteredModels = filteredModels.filter(m => 
-          m.provider?.toLowerCase() === input.provider?.toLowerCase() ||
-          m.id.toLowerCase().startsWith(input.provider?.toLowerCase() + "/")
+        filteredModels = filteredModels.filter(
+          m =>
+            m.provider?.toLowerCase() === input.provider?.toLowerCase() ||
+            m.id.toLowerCase().startsWith(input.provider?.toLowerCase() + "/")
         );
       }
-      
+
       // Filter by search
       if (input?.search) {
         const search = input.search.toLowerCase();
-        filteredModels = filteredModels.filter(m =>
-          m.id.toLowerCase().includes(search) ||
-          m.name.toLowerCase().includes(search)
+        filteredModels = filteredModels.filter(
+          m =>
+            m.id.toLowerCase().includes(search) ||
+            m.name.toLowerCase().includes(search)
         );
       }
-      
+
       return {
         models: filteredModels,
         providers: result.providers,
@@ -872,10 +1173,12 @@ export const llmProvidersRouter = router({
 
   // Import specific models from OpenRouter to a provider
   importModels: adminProcedure
-    .input(z.object({
-      providerId: z.number(),
-      modelIds: z.array(z.string()),
-    }))
+    .input(
+      z.object({
+        providerId: z.number(),
+        modelIds: z.array(z.string()),
+      })
+    )
     .mutation(async ({ input }) => {
       // Get OpenRouter API key if configured
       const [openRouter] = await db
@@ -884,9 +1187,15 @@ export const llmProvidersRouter = router({
         .where(eq(llmProviders.providerName, "openrouter"))
         .limit(1);
 
-      const apiKey = openRouter?.apiKeyEncrypted ? decrypt(openRouter.apiKeyEncrypted) : undefined;
+      const apiKey = openRouter?.apiKeyEncrypted
+        ? decrypt(openRouter.apiKeyEncrypted)
+        : undefined;
 
-      return importModelsFromOpenRouter(input.providerId, input.modelIds, apiKey);
+      return importModelsFromOpenRouter(
+        input.providerId,
+        input.modelIds,
+        apiKey
+      );
     }),
 
   // Get cleanup preview - shows what would be deleted

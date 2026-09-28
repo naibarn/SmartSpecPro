@@ -109,6 +109,7 @@ function baseParams(over: Record<string, unknown> = {}) {
     tenantId: "tenant-1",
     seriesId: 10,
     episodeId: 100,
+    episodeGenerationSettings: {},
     episodeTitle: "Episode 3",
     episodeNumber: 3,
     locale: "th" as const,
@@ -205,5 +206,23 @@ describe("generateEpisodeScript — opts.dialogueRulesV2Enabled (spec §11, F132
     expect(content).toMatch(/VD_QUALITY_CRITERIA_V\d+/);
     expect(content).toContain("Anchor lines");
     expect(content).toContain("Clue budget");
+  });
+});
+
+describe("generateEpisodeScript — dialogue language profile", () => {
+  it("injects the exact contemporary spoken-English contract for an Auto English series", async () => {
+    await generateEpisodeScript(
+      baseParams({
+        locale: "en",
+        dialogueLanguageProfile: { version: 1, marketMode: "auto" },
+      }),
+    );
+
+    const content = userMessageContent();
+    expect(content).toContain(
+      "Natural contemporary American English, spoken dialogue, not translated English.",
+    );
+    expect(content).toContain("dialogue_language_profile");
+    expect(content).toContain("United States / General American English");
   });
 });

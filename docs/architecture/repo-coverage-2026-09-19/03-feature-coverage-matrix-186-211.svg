@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1280" viewBox="0 0 1600 1280">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#08111f"/><stop offset="1" stop-color="#1a2037"/></linearGradient>
+    <filter id="shadow3" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#000" flood-opacity=".25"/></filter>
+    <style>
+      .font { font-family: 'Noto Sans Thai', 'Inter', Arial, sans-serif; fill: #eef5ff; }
+      .title { font-size: 34px; font-weight: 700; }
+      .sub { font-size: 17px; fill: #b7c9e6; }
+      .panel { fill: #101d30; stroke: #304865; stroke-width: 2; }
+      .panelTitle { font-size: 19px; font-weight: 700; fill: #9ed6ff; }
+      .head { font-size: 12px; font-weight: 700; fill: #8da5c6; }
+      .id { font-size: 14px; font-weight: 700; fill: #f4f8ff; }
+      .cell { font-size: 12px; fill: #d0dced; }
+      .state { font-size: 11px; font-weight: 700; }
+      .foot { font-size: 13px; fill: #9dafc9; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1280" fill="url(#bg3)"/>
+  <rect x="30" y="24" width="1540" height="112" rx="22" fill="#142c4e" stroke="#3b628e" filter="url(#shadow3)"/>
+  <text x="65" y="69" class="font title">Feature Coverage Matrix — 186 → 211</text>
+  <text x="65" y="101" class="font sub">อ่านสถานะจาก spec + source ปัจจุบัน • ไม่มีการแปลงเป็นเปอร์เซ็นต์ เพราะ production proof และ external gates แยกจาก local code</text>
+
+  <rect x="50" y="170" width="735" height="925" rx="18" class="panel" filter="url(#shadow3)"/>
+  <rect x="815" y="170" width="735" height="925" rx="18" class="panel" filter="url(#shadow3)"/>
+  <text x="75" y="210" class="font panelTitle">Platform foundation / local runtime</text>
+  <text x="840" y="210" class="font panelTitle">Interoperability / product target</text>
+
+  <!-- column headers -->
+  <g class="font">
+    <text x="75" y="244" class="head">ID</text><text x="125" y="244" class="head">SCOPE</text><text x="270" y="244" class="head">CURRENT EVIDENCE</text><text x="535" y="244" class="head">STATE</text><text x="640" y="244" class="head">REMAINING GAP</text>
+    <text x="840" y="244" class="head">ID</text><text x="890" y="244" class="head">SCOPE</text><text x="1035" y="244" class="head">CURRENT EVIDENCE</text><text x="1300" y="244" class="head">STATE</text><text x="1405" y="244" class="head">REMAINING GAP</text>
+  </g>
+  <line x1="70" y1="258" x2="765" y2="258" stroke="#2c4565"/><line x1="835" y1="258" x2="1530" y2="258" stroke="#2c4565"/>
+
+  <!-- left rows -->
+  <g>
+    <rect x="70" y="273" width="695" height="54" fill="#142439"/><rect x="70" y="273" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="295" class="font id">186</text><text x="125" y="294" class="font cell">job adapters</text><text x="270" y="294" class="font cell">canonical outbox + Worker/CF ports</text><text x="535" y="294" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="294" class="font cell">target account / recovery</text>
+    <rect x="70" y="333" width="695" height="54" fill="#101d30"/><rect x="70" y="333" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="355" class="font id">187</text><text x="125" y="354" class="font cell">migration parity</text><text x="270" y="354" class="font cell">local readiness manifest</text><text x="535" y="354" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="354" class="font cell">staging / target sync</text>
+    <rect x="70" y="393" width="695" height="54" fill="#142439"/><rect x="70" y="393" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="415" class="font id">188</text><text x="125" y="414" class="font cell">admin cutover</text><text x="270" y="414" class="font cell">schema + gates + admin UI local</text><text x="535" y="414" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="414" class="font cell">external activation</text>
+    <rect x="70" y="453" width="695" height="54" fill="#101d30"/><rect x="70" y="453" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="475" class="font id">189</text><text x="125" y="474" class="font cell">tenant transfer</text><text x="270" y="474" class="font cell">identity + transfer services/tests</text><text x="535" y="474" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="474" class="font cell">staging / production evidence</text>
+    <rect x="70" y="513" width="695" height="54" fill="#101923"/><rect x="70" y="513" width="5" height="54" fill="#75849b"/>
+    <text x="84" y="535" class="font id">190</text><text x="125" y="534" class="font cell">not mapped</text><text x="270" y="534" class="font cell">ไม่พบ feature directory ใน scan</text><text x="535" y="534" class="font state" fill="#9aa8ba">UNMAPPED</text><text x="640" y="534" class="font cell">confirm lineage if needed</text>
+    <rect x="70" y="573" width="695" height="54" fill="#142439"/><rect x="70" y="573" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="595" class="font id">191</text><text x="125" y="594" class="font cell">smart director</text><text x="270" y="594" class="font cell">planner + canonical scan job</text><text x="535" y="594" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="594" class="font cell">real detector / deploy</text>
+    <rect x="70" y="633" width="695" height="54" fill="#142f2e"/><rect x="70" y="633" width="5" height="54" fill="#42c2a0"/>
+    <text x="84" y="655" class="font id">192</text><text x="125" y="654" class="font cell">CF readiness</text><text x="270" y="654" class="font cell">local contract + readiness evidence</text><text x="535" y="654" class="font state" fill="#58d1af">LOCAL READY</text><text x="640" y="654" class="font cell">account / production proof</text>
+    <rect x="70" y="693" width="695" height="54" fill="#142f2e"/><rect x="70" y="693" width="5" height="54" fill="#42c2a0"/>
+    <text x="84" y="715" class="font id">193</text><text x="125" y="714" class="font cell">editor parity</text><text x="270" y="714" class="font cell">browser path + render handoff</text><text x="535" y="714" class="font state" fill="#58d1af">LOCAL READY</text><text x="640" y="714" class="font cell">Worker / browser fixtures</text>
+    <rect x="70" y="753" width="695" height="54" fill="#142439"/><rect x="70" y="753" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="775" class="font id">194</text><text x="125" y="774" class="font cell">vector retirement</text><text x="270" y="774" class="font cell">provider + gate-controlled cutover</text><text x="535" y="774" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="774" class="font cell">target proof / legacy drain</text>
+    <rect x="70" y="813" width="695" height="54" fill="#142439"/><rect x="70" y="813" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="835" class="font id">195</text><text x="125" y="834" class="font cell">async job plane</text><text x="270" y="834" class="font cell">jobs + outbox + attempts/events</text><text x="535" y="834" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="834" class="font cell">CF activation / recovery</text>
+    <rect x="70" y="873" width="695" height="54" fill="#142439"/><rect x="70" y="873" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="895" class="font id">196</text><text x="125" y="894" class="font cell">goal orchestration</text><text x="270" y="894" class="font cell">compiler + LangGraph building blocks</text><text x="535" y="894" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="894" class="font cell">registry / durable user flow</text>
+    <rect x="70" y="933" width="695" height="54" fill="#142439"/><rect x="70" y="933" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="955" class="font id">197</text><text x="125" y="954" class="font cell">Runner fabric</text><text x="270" y="954" class="font cell">discovery + protocol + release</text><text x="535" y="954" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="954" class="font cell">connected nodes / reconnect</text>
+    <rect x="70" y="993" width="695" height="54" fill="#142439"/><rect x="70" y="993" width="5" height="54" fill="#d7a647"/>
+    <text x="84" y="1015" class="font id">198</text><text x="125" y="1014" class="font cell">intelligent chat</text><text x="270" y="1014" class="font cell">Chat / runtime / RAG surfaces</text><text x="535" y="1014" class="font state" fill="#e1ae50">PARTIAL</text><text x="640" y="1014" class="font cell">full capability routing</text>
+  </g>
+
+  <!-- right rows -->
+  <g>
+    <rect x="835" y="273" width="695" height="54" fill="#142439"/><rect x="835" y="273" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="295" class="font id">199</text><text x="890" y="294" class="font cell">MCP gateway</text><text x="1035" y="294" class="font cell">routes + connections + hosted surface</text><text x="1300" y="294" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="294" class="font cell">multi-upstream lifecycle</text>
+    <rect x="835" y="333" width="695" height="54" fill="#142439"/><rect x="835" y="333" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="355" class="font id">200</text><text x="890" y="354" class="font cell">external agents</text><text x="1035" y="354" class="font cell">Agent runtime + Task Control slice</text><text x="1300" y="354" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="354" class="font cell">provider-neutral contract</text>
+    <rect x="835" y="393" width="695" height="54" fill="#1d2034"/><rect x="835" y="393" width="5" height="54" fill="#8153ac"/>
+    <text x="849" y="415" class="font id">201</text><text x="890" y="414" class="font cell">provenance</text><text x="1035" y="414" class="font cell">spec target; broad pipeline not proven</text><text x="1300" y="414" class="font state" fill="#b587db">TARGET</text><text x="1405" y="414" class="font cell">evidence / rights flow</text>
+    <rect x="835" y="453" width="695" height="54" fill="#142439"/><rect x="835" y="453" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="475" class="font id">202</text><text x="890" y="474" class="font cell">rough-cut editor</text><text x="1035" y="474" class="font cell">product + editor pieces exist</text><text x="1300" y="474" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="474" class="font cell">unified execution proof</text>
+    <rect x="835" y="513" width="695" height="54" fill="#142439"/><rect x="835" y="513" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="535" class="font id">203</text><text x="890" y="534" class="font cell">editor director</text><text x="1035" y="534" class="font cell">shared-runtime target + local pieces</text><text x="1300" y="534" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="534" class="font cell">evidence / render gates</text>
+    <rect x="835" y="573" width="695" height="54" fill="#1d2034"/><rect x="835" y="573" width="5" height="54" fill="#8153ac"/>
+    <text x="849" y="595" class="font id">204</text><text x="890" y="594" class="font cell">CF containers</text><text x="1035" y="594" class="font cell">target runtime boundary defined</text><text x="1300" y="594" class="font state" fill="#b587db">TARGET</text><text x="1405" y="594" class="font cell">activation / live container</text>
+    <rect x="835" y="633" width="695" height="54" fill="#142f2e"/><rect x="835" y="633" width="5" height="54" fill="#42c2a0"/>
+    <text x="849" y="655" class="font id">205</text><text x="890" y="654" class="font cell">cross-platform Runner</text><text x="1035" y="654" class="font cell">runtime + release portal in repo</text><text x="1300" y="654" class="font state" fill="#58d1af">LOCAL READY</text><text x="1405" y="654" class="font cell">signing / native / provider</text>
+    <rect x="835" y="693" width="695" height="54" fill="#1d2034"/><rect x="835" y="693" width="5" height="54" fill="#8153ac"/>
+    <text x="849" y="715" class="font id">206</text><text x="890" y="714" class="font cell">A2A layer</text><text x="1035" y="714" class="font cell">planning-only; no A2A adapter found</text><text x="1300" y="714" class="font state" fill="#b587db">SPEC ONLY</text><text x="1405" y="714" class="font cell">router / schema / conformance</text>
+    <rect x="835" y="753" width="695" height="54" fill="#142439"/><rect x="835" y="753" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="775" class="font id">207</text><text x="890" y="774" class="font cell">economic plane</text><text x="1035" y="774" class="font cell">Credits rail + partial control slices</text><text x="1300" y="774" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="774" class="font cell">canonical ledger / settlement</text>
+    <rect x="835" y="813" width="695" height="54" fill="#142439"/><rect x="835" y="813" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="835" class="font id">208</text><text x="890" y="834" class="font cell">computer use</text><text x="1035" y="834" class="font cell">browser policy/session building blocks</text><text x="1300" y="834" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="834" class="font cell">production CUA targets</text>
+    <rect x="835" y="873" width="695" height="54" fill="#142439"/><rect x="835" y="873" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="895" class="font id">209</text><text x="890" y="894" class="font cell">Workflow Studio</text><text x="1035" y="894" class="font cell">router / contracts / compiler / UI</text><text x="1300" y="894" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="894" class="font cell">option discovery / selection</text>
+    <rect x="835" y="933" width="695" height="54" fill="#142439"/><rect x="835" y="933" width="5" height="54" fill="#d7a647"/>
+    <text x="849" y="955" class="font id">210</text><text x="890" y="954" class="font cell">Orca bridge</text><text x="1035" y="954" class="font cell">projection/job/session pieces; route off</text><text x="1300" y="954" class="font state" fill="#e1ae50">PARTIAL</text><text x="1405" y="954" class="font cell">adapter production path</text>
+    <rect x="835" y="993" width="695" height="54" fill="#1d2034"/><rect x="835" y="993" width="5" height="54" fill="#8153ac"/>
+    <text x="849" y="1015" class="font id">211</text><text x="890" y="1014" class="font cell">ACP / Gas City</text><text x="1035" y="1014" class="font cell">no adapter / bridge / dependency</text><text x="1300" y="1014" class="font state" fill="#b587db">SPEC ONLY</text><text x="1405" y="1014" class="font cell">protocol + runtime fabric</text>
+  </g>
+
+  <rect x="50" y="1130" width="1500" height="90" rx="16" fill="#0d1728" stroke="#304865"/>
+  <circle cx="78" cy="1160" r="8" fill="#42c2a0"/><text x="96" y="1165" class="font foot">LOCAL READY / มีหลักฐานใน repo</text>
+  <circle cx="330" cy="1160" r="8" fill="#d7a647"/><text x="348" y="1165" class="font foot">PARTIAL / มีบางส่วน</text>
+  <circle cx="545" cy="1160" r="8" fill="#8153ac"/><text x="563" y="1165" class="font foot">TARGET / SPEC ONLY</text>
+  <text x="80" y="1195" class="font foot">แหล่งข้อมูล: specs/feature/*/spec.md + current source paths • 190 ไม่พบ feature directory ใน scan นี้ • retired systems ไม่ถูกนับเป็น coverage ใหม่</text>
+</svg>

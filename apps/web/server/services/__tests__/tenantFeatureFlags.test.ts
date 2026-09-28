@@ -63,6 +63,11 @@ describe("resolveFeatureFlags", () => {
     expect(result).toEqual(FEATURE_FLAG_DEFAULTS);
   });
 
+  it("enables special tie-in episodes for tenants without an explicit override", () => {
+    expect(resolveFeatureFlags(null).verticalDramaSpecialEpisodes).toBe(true);
+    expect(resolveFeatureFlags({}).verticalDramaSpecialEpisodes).toBe(true);
+  });
+
   it("merges stored flags with defaults", () => {
     const result = resolveFeatureFlags({ canvas: true });
     expect(result.canvas).toBe(true);

@@ -16,17 +16,24 @@ export async function logPublicApiRequest(entry: {
   creditsUsed?: number;
   durationMs?: number;
   errorCode?: string | null;
+  traceId?: string;
+  ip?: string;
+  userAgent?: string;
+  requestMeta?: Record<string, unknown>;
 }): Promise<void> {
   try {
     const db = await getDb();
     if (!db) return;
 
-    const requestMeta: Record<string, unknown> | null =
-      entry.errorCode != null ? { errorCode: entry.errorCode } : null;
+    const requestMeta: Record<string, unknown> = {
+      ...(entry.requestMeta ?? {}),
+      ...(entry.errorCode != null ? { errorCode: entry.errorCode } : {}),
+    };
 
     await db.insert(publicApiAuditLog).values({
       tenantId: entry.tenantId,
       apiKeyId: entry.apiKeyId,
+      traceId: entry.traceId ?? null,
       // userId is required (NOT NULL) by schema; fall back to 0 for service-account style calls
       userId: entry.userId ?? 0,
       method: entry.method.toUpperCase().slice(0, 10),
@@ -34,7 +41,9 @@ export async function logPublicApiRequest(entry: {
       statusCode: entry.statusCode,
       creditsUsed: entry.creditsUsed ?? 0,
       latencyMs: entry.durationMs ?? null,
-      requestMeta: requestMeta ?? undefined,
+      ip: entry.ip ?? null,
+      userAgent: entry.userAgent ?? null,
+      requestMeta: Object.keys(requestMeta).length > 0 ? requestMeta : undefined,
     });
   } catch {
     // Intentionally swallowed — audit failures must not propagate

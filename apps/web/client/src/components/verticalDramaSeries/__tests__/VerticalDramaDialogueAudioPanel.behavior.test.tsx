@@ -153,7 +153,7 @@ describe("VerticalDramaDialogueAudioPanel — W12-B batch UI (flag on)", () => {
     );
     const cta = screen.getByTestId("vd-dialogue-audio-generate-batch");
     expect(cta).not.toBeDisabled();
-    expect(cta).toHaveTextContent("สร้างเสียงพูดทั้งตอน (มีค่าใช้จ่าย ≈ ตามจำนวนบรรทัดที่ยังไม่มีเสียง)");
+    expect(cta).toHaveTextContent("สร้างเสียงพูดทั้งตอนย่อย (มีค่าใช้จ่าย ≈ ตามจำนวนบรรทัดที่ยังไม่มีเสียง)");
 
     fireEvent.click(cta);
     expect(onGenerateBatch).not.toHaveBeenCalled();

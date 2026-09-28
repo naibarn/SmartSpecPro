@@ -14,12 +14,10 @@ import { getAvailableSkillsAsync } from "./skillRegistry";
 import type { SkillDefinition } from "@smartspec/skills";
 import { getDb } from "../db";
 import {
-  agencies,
   libraryContextPacks,
   mediaModels,
-  workflowTemplates,
 } from "../../drizzle/schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export interface BuildCapabilityCatalogInput {
   actorContext: WorkIntakeActorContext;
@@ -44,8 +42,6 @@ function describeSurface(surface: WorkOrchestratorSurface): string {
   switch (surface) {
     case "skill":
       return "Run a registered skill or native OpenAI Agents/Python skill bundle.";
-    case "agency":
-      return "Delegate complex multi-agent work to the agency swarm runtime.";
     case "document_management":
       return "Create, update, search, and cite document/RAG/vector-backed workspace artifacts.";
     case "media_studio":
@@ -54,8 +50,6 @@ function describeSurface(surface: WorkOrchestratorSurface): string {
       return "Generate video clips, assemble timelines, concatenate clips, and render final videos.";
     case "browser":
       return "Run browser automation in a governed sandbox.";
-    case "workflow":
-      return "Execute a preconfigured workflow graph or automation workflow.";
     case "skill_studio":
       return "Create or modify skills under Skill Studio governance.";
     case "work_os":
@@ -131,9 +125,11 @@ function buildCatalogEntry(
 export function buildCapabilityCatalog(
   input: BuildCapabilityCatalogInput,
 ): CapabilityCatalogEntry[] {
-  return workOrchestratorSurfaceValues.flatMap(surface =>
+  return workOrchestratorSurfaceValues
+    .filter(surface => surface !== "agency" && surface !== "workflow")
+    .flatMap(surface =>
     buildEntriesForSurface(surface, input),
-  );
+    );
 }
 
 function classifySkillSurface(skill: SkillDefinition): WorkOrchestratorSurface {
@@ -321,34 +317,12 @@ async function buildInventoryCapabilityEntries(
   const tenantId = input.actorContext.tenantId;
   const entries: CapabilityCatalogEntry[] = [];
 
-  const [models, agencyRows, workflowRows, contextPacks] = await Promise.all([
+  const [models, contextPacks] = await Promise.all([
     db
       .select()
       .from(mediaModels)
       .where(eq(mediaModels.isEnabled, true))
       .limit(40)
-      .catch(() => []),
-    db
-      .select()
-      .from(agencies)
-      .where(
-        and(
-          eq(agencies.tenantId, tenantId),
-          or(eq(agencies.status, "approved"), eq(agencies.isPublished, true)),
-        ),
-      )
-      .limit(30)
-      .catch(() => []),
-    db
-      .select()
-      .from(workflowTemplates)
-      .where(
-        and(
-          or(eq(workflowTemplates.tenantId, tenantId), eq(workflowTemplates.isPublic, true)),
-          eq(workflowTemplates.status, "published"),
-        ),
-      )
-      .limit(30)
       .catch(() => []),
     db
       .select()
@@ -387,48 +361,6 @@ async function buildInventoryCapabilityEntries(
             expectedArtifacts:
               model.modelType === "video" ? ["video_clip"] : ["image_asset"],
           },
-        },
-      }),
-    );
-  }
-
-  for (const agency of agencyRows) {
-    entries.push(
-      buildRuntimeInventoryEntry({
-        id: `agency:${agency.id}`,
-        surface: "agency",
-        title: `Agency: ${agency.name}`,
-        description: agency.description,
-        catalogInput: input,
-        metadata: {
-          inventoryType: "agency",
-          agencyId: agency.id,
-          slug: agency.slug,
-          defaultModel: agency.defaultModel,
-          maxAgents: agency.maxAgents,
-          maxRunTimeSeconds: agency.maxRunTimeSeconds,
-          visibility: agency.visibility,
-        },
-      }),
-    );
-  }
-
-  for (const workflow of workflowRows) {
-    entries.push(
-      buildRuntimeInventoryEntry({
-        id: `workflow:${workflow.id}`,
-        surface: "workflow",
-        title: `Workflow: ${workflow.name}`,
-        description: workflow.description,
-        catalogInput: input,
-        metadata: {
-          inventoryType: "workflow_template",
-          workflowTemplateId: workflow.id,
-          templateKey: workflow.templateKey,
-          stepCount: workflow.stepCount,
-          estimatedSetupMinutes: workflow.estimatedSetupMinutes,
-          tags: workflow.tags ?? [],
-          industry: workflow.industry ?? [],
         },
       }),
     );

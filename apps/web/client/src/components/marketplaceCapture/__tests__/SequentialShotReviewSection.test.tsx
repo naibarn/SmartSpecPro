@@ -1,0 +1,523 @@
+/**
+ * Feature 136 (Marketplace Auto Review: Sequential Shot Storyboard) —
+ * section 11 §5.7.
+ */
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+import type {
+  SequentialLoopReportModel,
+  SequentialShotCardModel,
+} from "@/lib/marketplaceSequentialStoryboardUi";
+import { SequentialShotReviewSection } from "../SequentialShotReviewSection";
+
+function shotCardFixture(
+  overrides: Partial<SequentialShotCardModel> = {}
+): SequentialShotCardModel {
+  const imagePrompt = "A clean hero shot of the product on a wooden table.";
+  const videoPrompt =
+    "Use @Image1 as the absolute product identity reference. Slow push-in.";
+  return {
+    shotId: 1,
+    purpose: "hook_open",
+    visualSummary: "เปิดเรื่องและโชว์สินค้า",
+    demonstrationType: "finished_product_showcase",
+    depictsMinor: false,
+    guardianRequired: false,
+    dialogue: "สวัสดีค่ะ วันนี้มารีวิวสินค้าตัวนี้กัน",
+    imagePrompt,
+    imagePromptChars: imagePrompt.length,
+    videoPrompt,
+    videoPromptChars: videoPrompt.length,
+    claimSources: [{ text: "waterproof", support: "text_verified" }],
+    qcStatus: "passed",
+    frameUrl: null,
+    alternates: [],
+    edited: false,
+    editedAt: null,
+    ...overrides,
+  };
+}
+
+function nineShotCards(): SequentialShotCardModel[] {
+  return Array.from({ length: 9 }, (_, index) =>
+    shotCardFixture({ shotId: index + 1, purpose: `shot_${index + 1}` })
+  );
+}
+
+const budgets = { imageMaxChars: 4000, videoMaxChars: 2000 };
+
+describe("SequentialShotReviewSection", () => {
+  it("renders null when shots is empty (legacy 3x3 run)", () => {
+    const { container } = render(
+      <SequentialShotReviewSection
+        shots={[]}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+      />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("renders 9 cards with shot number, demonstration_type, dialogue, both prompts, both char counts, claim sources, QC status", () => {
+    render(
+      <SequentialShotReviewSection
+        shots={nineShotCards()}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="en"
+      />
+    );
+
+    expect(screen.getAllByText(/finished_product_showcase/)).toHaveLength(9);
+    expect(
+      screen.getAllByDisplayValue("สวัสดีค่ะ วันนี้มารีวิวสินค้าตัวนี้กัน")
+    ).toHaveLength(9);
+    expect(screen.getAllByDisplayValue(/A clean hero shot/)).toHaveLength(9);
+    expect(screen.getAllByDisplayValue(/Use @Image1/)).toHaveLength(9);
+    expect(screen.getAllByText("waterproof")).toHaveLength(9);
+    expect(screen.getAllByText(/text_verified/)).toHaveLength(9);
+    expect(screen.getAllByText(/passed/)).toHaveLength(9);
+  });
+
+  it("shows the guardian badge only on shots with guardianRequired: true", () => {
+    const shots = [
+      shotCardFixture({ shotId: 1, guardianRequired: true }),
+      shotCardFixture({ shotId: 2, guardianRequired: false }),
+    ];
+    render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getAllByText("มีผู้ปกครองในเฟรม")).toHaveLength(1);
+  });
+
+  it("shows an over-budget hint without truncating the rendered prompt text", () => {
+    const longPrompt = "x".repeat(50);
+    const shots = [shotCardFixture({ shotId: 1, imagePrompt: longPrompt, imagePromptChars: 50 })];
+    render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={{ imageMaxChars: 10, videoMaxChars: 2000 }}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="en"
+      />
+    );
+    const textarea = screen.getByDisplayValue(longPrompt) as HTMLTextAreaElement;
+    expect(textarea.value).toBe(longPrompt);
+    expect(screen.getByText(/50\/10/)).toBeTruthy();
+  });
+
+  it("invokes onRegenerateShot with the exact shotId once and disables while busy", () => {
+    const onRegenerateShot = vi.fn();
+    const shots = [shotCardFixture({ shotId: 3 })];
+    const { rerender } = render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={onRegenerateShot}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    const regenerateButton = screen.getByRole("button", { name: "สร้างภาพนี้ใหม่" });
+    fireEvent.click(regenerateButton);
+    expect(onRegenerateShot).toHaveBeenCalledTimes(1);
+    expect(onRegenerateShot).toHaveBeenCalledWith(3);
+
+    rerender(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        busyShotId={3}
+        onRegenerateShot={onRegenerateShot}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByRole("button", { name: "สร้างภาพนี้ใหม่" })).toBeDisabled();
+  });
+
+  it("invokes onSaveShotEdits with the edited fields and disables the save control while saving", () => {
+    const onSaveShotEdits = vi.fn();
+    const shots = [shotCardFixture({ shotId: 5 })];
+    const { rerender } = render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={onSaveShotEdits}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+
+    const dialogueField = screen.getByDisplayValue("สวัสดีค่ะ วันนี้มารีวิวสินค้าตัวนี้กัน");
+    fireEvent.change(dialogueField, { target: { value: "บทพูดใหม่" } });
+    fireEvent.click(screen.getByRole("button", { name: "บันทึกการแก้ไข" }));
+    expect(onSaveShotEdits).toHaveBeenCalledWith({
+      shotId: 5,
+      storySummary: shots[0].visualSummary,
+      dialogue: "บทพูดใหม่",
+      imagePrompt: shots[0].imagePrompt,
+      videoPrompt: shots[0].videoPrompt,
+    });
+
+    rerender(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        savingShotId={5}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={onSaveShotEdits}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByRole("button", { name: "บันทึกการแก้ไข" })).toBeDisabled();
+  });
+
+  it("keeps image/video prompt generation as separate per-shot actions", () => {
+    const onGenerateShotPrompt = vi.fn();
+    const shots = [shotCardFixture({ shotId: 7 })];
+    const { rerender } = render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onGenerateShotPrompt={onGenerateShotPrompt}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt ภาพใหม่" }));
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอใหม่" }));
+    expect(onGenerateShotPrompt).toHaveBeenNthCalledWith(1, {
+      shotId: 7,
+      stage: "image",
+    });
+    expect(onGenerateShotPrompt).toHaveBeenNthCalledWith(2, {
+      shotId: 7,
+      stage: "video",
+    });
+
+    rerender(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        generatingPrompt={{ shotId: 7, stage: "image" }}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onGenerateShotPrompt={onGenerateShotPrompt}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByRole("button", { name: "กำลังสร้าง Prompt ภาพ…" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "สร้าง Prompt วิดีโอใหม่" })).toBeDisabled();
+  });
+
+  it("surfaces a preflight rejection on the affected card only, retaining the user's edited text", () => {
+    const shots = [shotCardFixture({ shotId: 3 }), shotCardFixture({ shotId: 4 })];
+    render(
+      <SequentialShotReviewSection
+        shots={shots}
+        loopReport={null}
+        budgets={budgets}
+        shotError={{
+          shotId: 3,
+          blockerId: "prompt_too_long_for_image_provider",
+          message: "prompt ภาพยาวเกินขีดจำกัดของโมเดล กรุณาย่อข้อความให้สั้นลง",
+        }}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+
+    const cards = screen.getAllByTestId(/sequential-shot-card-/);
+    expect(cards).toHaveLength(2);
+    const card3 = screen.getByTestId("sequential-shot-card-3");
+    const card4 = screen.getByTestId("sequential-shot-card-4");
+
+    expect(
+      within(card3).getByText(
+        "prompt ภาพยาวเกินขีดจำกัดของโมเดล กรุณาย่อข้อความให้สั้นลง"
+      )
+    ).toBeTruthy();
+    expect(within(card3).getByText("prompt_too_long_for_image_provider")).toBeTruthy();
+    expect(
+      within(card4).queryByText("prompt ภาพยาวเกินขีดจำกัดของโมเดล กรุณาย่อข้อความให้สั้นลง")
+    ).toBeNull();
+
+    // Edit the prompt on the errored card, then confirm the text is what the
+    // user typed (never reverted or rewritten by the error path).
+    const imagePromptField = within(card3).getByDisplayValue(shots[0].imagePrompt);
+    fireEvent.change(imagePromptField, { target: { value: "ข้อความที่ผู้ใช้แก้เอง" } });
+    expect((imagePromptField as HTMLTextAreaElement).value).toBe("ข้อความที่ผู้ใช้แก้เอง");
+  });
+
+  it("renders the loop report with round scores, candidate counts, selected version, and a degraded-fallback note", () => {
+    const loopReport: SequentialLoopReportModel = {
+      rounds: [
+        { round: 1, totalScore: 640, candidateCount: 2, disqualified: true },
+        { round: 2, totalScore: 720, candidateCount: 1, disqualified: false },
+      ],
+      selectedVersion: 2,
+      degradedFallback: false,
+    };
+    render(
+      <SequentialShotReviewSection
+        shots={nineShotCards()}
+        loopReport={loopReport}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByText("รอบที่ 1")).toBeTruthy();
+    expect(screen.getByText("รอบที่ 2")).toBeTruthy();
+    expect(screen.getByText("เวอร์ชันที่เลือก: 2")).toBeTruthy();
+    expect(screen.queryByText(/สำรองแบบอัตโนมัติ/)).toBeNull();
+  });
+
+  it("renders a degraded-fallback note when the loop report flag is set", () => {
+    const loopReport: SequentialLoopReportModel = {
+      rounds: [],
+      selectedVersion: null,
+      degradedFallback: true,
+    };
+    render(
+      <SequentialShotReviewSection
+        shots={nineShotCards()}
+        loopReport={loopReport}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.getByText(/สำรองแบบอัตโนมัติ/)).toBeTruthy();
+  });
+
+  it("renders no loop report block when loopReport is absent", () => {
+    render(
+      <SequentialShotReviewSection
+        shots={nineShotCards()}
+        loopReport={null}
+        budgets={budgets}
+        onRegenerateShot={vi.fn()}
+        onSaveShotEdits={vi.fn()}
+        onSelectShotAlternate={vi.fn()}
+        locale="th"
+      />
+    );
+    expect(screen.queryByText("รายงานรอบตรวจสอบ")).toBeNull();
+  });
+
+  describe("spare-image alternates (marketplace spare-image repair)", () => {
+    function alternateFixture(
+      overrides: Partial<{
+        attempt: number;
+        qualityScore: number | null;
+        imageUrl: string;
+        isSelected: boolean;
+      }> = {}
+    ) {
+      return {
+        attempt: 1,
+        qualityScore: 80,
+        imageUrl: "https://cdn.example.com/alt-1.png",
+        isSelected: false,
+        ...overrides,
+      };
+    }
+
+    it("renders no spare-images strip and no layout shift when a shot has 0 or 1 alternates", () => {
+      const shots = [
+        shotCardFixture({ shotId: 1, alternates: [] }),
+        shotCardFixture({
+          shotId: 2,
+          alternates: [alternateFixture({ attempt: 1, isSelected: true })],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="en"
+        />
+      );
+      expect(screen.queryByText("Spare images (no extra credit)")).toBeNull();
+      expect(
+        screen.queryByTestId("sequential-shot-alternates-1")
+      ).toBeNull();
+      expect(
+        screen.queryByTestId("sequential-shot-alternates-2")
+      ).toBeNull();
+    });
+
+    it("renders a labelled thumbnail strip with attempt + quality score when a shot has 2+ alternates, marking the selected one current and non-clickable", () => {
+      const shots = [
+        shotCardFixture({
+          shotId: 4,
+          alternates: [
+            alternateFixture({
+              attempt: 1,
+              qualityScore: 72,
+              imageUrl: "https://cdn.example.com/alt-1.png",
+              isSelected: false,
+            }),
+            alternateFixture({
+              attempt: 2,
+              qualityScore: 91,
+              imageUrl: "https://cdn.example.com/alt-2.png",
+              isSelected: true,
+            }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="th"
+        />
+      );
+
+      expect(screen.getByText("ภาพสำรอง (ไม่เสียเครดิตเพิ่ม)")).toBeTruthy();
+      const card = screen.getByTestId("sequential-shot-card-4");
+
+      const currentThumb = within(card).getByTestId(
+        "sequential-shot-alternate-4-2"
+      );
+      expect(within(currentThumb).getByText("กำลังใช้")).toBeTruthy();
+      expect(currentThumb).toBeDisabled();
+
+      const otherThumb = within(card).getByTestId(
+        "sequential-shot-alternate-4-1"
+      );
+      expect(otherThumb).not.toBeDisabled();
+      expect(within(card).getByText(/ครั้งที่ 1/)).toBeTruthy();
+      expect(within(card).getByText(/คะแนน 72/)).toBeTruthy();
+    });
+
+    it("invokes onSelectShotAlternate with the exact shotId + attempt when a non-selected thumbnail is clicked, and never for the selected one", () => {
+      const onSelectShotAlternate = vi.fn();
+      const shots = [
+        shotCardFixture({
+          shotId: 6,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+            alternateFixture({
+              attempt: 3,
+              isSelected: false,
+              imageUrl: "https://cdn.example.com/alt-3.png",
+            }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={onSelectShotAlternate}
+          locale="th"
+        />
+      );
+
+      fireEvent.click(screen.getByTestId("sequential-shot-alternate-6-3"));
+      expect(onSelectShotAlternate).toHaveBeenCalledTimes(1);
+      expect(onSelectShotAlternate).toHaveBeenCalledWith({
+        shotId: 6,
+        attempt: 3,
+      });
+
+      // Clicking the already-selected (current) thumbnail is a no-op — it
+      // is rendered disabled, so `fireEvent.click` must not invoke the
+      // callback at all.
+      fireEvent.click(screen.getByTestId("sequential-shot-alternate-6-2"));
+      expect(onSelectShotAlternate).toHaveBeenCalledTimes(1);
+    });
+
+    it("disables only the swapping shot's alternate thumbnails while swappingShotId matches, leaving other shots clickable", () => {
+      const shots = [
+        shotCardFixture({
+          shotId: 2,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+          ],
+        }),
+        shotCardFixture({
+          shotId: 7,
+          alternates: [
+            alternateFixture({ attempt: 1, isSelected: false }),
+            alternateFixture({ attempt: 2, isSelected: true }),
+          ],
+        }),
+      ];
+      render(
+        <SequentialShotReviewSection
+          shots={shots}
+          loopReport={null}
+          budgets={budgets}
+          swappingShotId={2}
+          onRegenerateShot={vi.fn()}
+          onSaveShotEdits={vi.fn()}
+          onSelectShotAlternate={vi.fn()}
+          locale="th"
+        />
+      );
+
+      expect(
+        screen.getByTestId("sequential-shot-alternate-2-1")
+      ).toBeDisabled();
+      expect(
+        screen.getByTestId("sequential-shot-alternate-7-1")
+      ).not.toBeDisabled();
+    });
+  });
+});

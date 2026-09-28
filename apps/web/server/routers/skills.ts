@@ -4,7 +4,7 @@
  */
 
 import { z } from "zod";
-import { router, protectedProcedure, adminProcedure } from "../_core/trpc";
+import { router, protectedProcedure, adminProcedure, domainAdminProcedure } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
 import {
   autoSyncSkillsFromFolder,
@@ -36,18 +36,21 @@ import {
   skillImprovementRecommendations,
   skillImprovementRuns,
   skillMaintenanceSchedules,
+  skillRevenueSettlements,
   skillPermissions,
   userGroups,
   users as usersTable,
   type Skill,
   type InsertSkill,
 } from "../../drizzle/schema";
-import { eq, asc, desc, like, ilike, or, and, sql, inArray } from "drizzle-orm";
+import { aliasedTable, eq, asc, desc, gte, lte, like, ilike, or, and, sql, inArray } from "drizzle-orm";
 import { deductCredits, calculateCreditsForLLM, hasEnoughCredits } from "../services/creditService";
+import { getSkillBillingReconciliation, normalizeSkillRevenuePricing, resolveSkillRevenueReportTenantScope } from "../services/skillRevenueBilling";
 import { executeWithFallback, getProviderForModel } from "../services/llmRouter";
 import { buildModelLookupCandidates } from "../services/modelLookup";
 import { getUploadsDir } from "../storage";
 import { getCachedPublicAppUrl } from "../services/appRuntimeConfig";
+import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -410,11 +413,6 @@ const SKILL_EXECUTION_MODE_VALUES = [
   "media-generate",
   "enhance-prompt",
   "python",
-  "sandbox-code",
-  "sandbox-command",
-  "sandbox-browser",
-  "sandbox-file",
-  "sandbox-media",
 ] as const;
 const skillExecutionModeSchema = z.enum(SKILL_EXECUTION_MODE_VALUES);
 const nativeBundleRelativePathSchema = z
@@ -495,36 +493,11 @@ const localSkillOriginSchema = z
     "chat",
     "team_room",
     "team_run",
-    "agency",
     "public_api",
     "scheduler",
-    "workflow_background",
     "channel_bridge",
   ])
   .default("chat");
-
-function isSandboxExecutionMode(mode: string | null | undefined): boolean {
-  return typeof mode === "string" && mode.startsWith("sandbox-");
-}
-
-function getDefaultSandboxProfileSlug(
-  executionMode: string | null | undefined,
-  category: string,
-): string {
-  if (executionMode === "sandbox-browser" || executionMode === "sandbox-command") {
-    return "browser-default";
-  }
-  if (executionMode === "sandbox-file") {
-    return "file-parser";
-  }
-  if (executionMode === "sandbox-media") {
-    return "media-processing";
-  }
-  if (category === "slide_generation") {
-    return "browser-default";
-  }
-  return "code-default";
-}
 
 function attachLocalExecutionPolicy<T extends Record<string, unknown>>(
   data: T,
@@ -1084,6 +1057,7 @@ function isGenericStoryboardTransitionPrompt(content: string): boolean {
 
 async function repairStoryboardSlotVideoPrompt(input: {
   userId: number;
+  tenantId?: string;
   visionModel: string;
   slotIndex: number;
   currentPrompt: string;
@@ -1157,7 +1131,7 @@ async function repairStoryboardSlotVideoPrompt(input: {
     [input.startFrameUrl, input.endFrameUrl],
     input.visionModel,
     900,
-    { publicUrl: input.publicUrl ?? null },
+    { tenantId: input.tenantId, publicUrl: input.publicUrl ?? null },
   );
   const rawPrompt = result.content
     .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
@@ -1250,6 +1224,8 @@ function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "image_prompt_generation": "image_prompt_generation",
     "image-prompt-generation": "image_prompt_generation",
+    "character_prompt_generation": "character_prompt_generation",
+    "character-prompt-generation": "character_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
     "video_prompt_generation": "video_prompt_generation",
@@ -1266,6 +1242,14 @@ function mapCategoryToEnum(category?: string): string {
     "slide-generation": "slide_generation",
     "product_review": "product_review",
     "product-review": "product_review",
+    "quality_control": "product_review",
+    "quality-control": "product_review",
+    "video_prompting": "video_prompt_generation",
+    "video-prompting": "video_prompt_generation",
+    "story_planning": "article_generation",
+    "story-planning": "article_generation",
+    "video_prompt_qa": "video_prompt_generation",
+    "video-prompt-qa": "video_prompt_generation",
     "sound_effects": "sound_effects",
     "sound-effects": "sound_effects",
     "code_assistant": "code_assistant",
@@ -1286,6 +1270,7 @@ function mapCategoryToEnum(category?: string): string {
   const cat = category?.toLowerCase() || "";
   if (categoryMap[cat]) return categoryMap[cat];
   // Fuzzy mapping for external skills with free-text categories
+  if (cat.includes("character") && cat.includes("prompt")) return "character_prompt_generation";
   if ((cat.includes("image") || cat.includes("photo") || cat.includes("visual")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film") || cat.includes("movie")) && cat.includes("prompt")) return "video_prompt_generation";
   if ((cat.includes("audio") || cat.includes("music") || cat.includes("sound")) && cat.includes("prompt")) return "audio_prompt_generation";
@@ -1640,14 +1625,14 @@ export async function convertImageUrlForLLM(url: string, publicUrl?: string | nu
  * Call LLM with vision support
  * @param maxTokens - Maximum tokens for response. Default 2000. For multi-prompt, use ~500 per prompt.
  */
-async function callLLMWithVision(
+export async function callLLMWithVision(
   systemPrompt: string,
   userPrompt: string,
   userId: number,
   imageUrls: string[] = [],
   model?: string,
   maxTokens: number = 2000,
-  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null },
+  options?: { extraBodyParams?: Record<string, unknown>; systemPromptSuffix?: string; publicUrl?: string | null; tenantId?: string | null },
 ): Promise<{ content: string; usage: { promptTokens: number; completionTokens: number }; rawResponse?: any }> {
   const useModel = resolveVisionModelId(await getVisionModelOptions(), model);
   if (!useModel) {
@@ -1659,7 +1644,14 @@ async function callLLMWithVision(
 
   // Add images if provided (for vision analysis)
   // Convert relative URLs to base64 data URLs so LLM can access them
-  for (const imageUrl of imageUrls) {
+  const resolvedImageUrls = await resolveExternalMediaReferenceUrls(
+    imageUrls,
+    options?.tenantId
+      ? { userId, tenantId: options.tenantId }
+      : undefined,
+    options?.publicUrl,
+  ) ?? [];
+  for (const imageUrl of resolvedImageUrls) {
     const convertedUrl = await convertImageUrlForLLM(imageUrl, options?.publicUrl);
     userContent.push({ type: "image_url", image_url: { url: convertedUrl, detail: "high" } });
   }
@@ -2742,9 +2734,6 @@ export const skillsRouter = router({
             enabledByDefault: skill.enabledByDefault,
             priority: skill.priority,
             hasSkillFile: !!skill.skillFilePath,
-            // Sandbox metadata
-            sandboxRequired: !!skill.executionMode?.startsWith("sandbox-"),
-            sandboxProfileSlug: skill.sandboxProfileSlug ?? null,
             executionMode: skill.executionMode ?? null,
           },
           skill,
@@ -2977,9 +2966,13 @@ export const skillsRouter = router({
       if (skill.skillFilePath) {
         possiblePaths.push(
           path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "ui.json"),
           path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "ui.json"),
           path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "..", path.dirname(skill.skillFilePath), "schemas", "input.json"),
           path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), path.dirname(skill.skillFilePath), "schemas", "input.json"),
         );
       }
 
@@ -2987,11 +2980,17 @@ export const skillsRouter = router({
       for (const skillIdVariant of skillIdVariations) {
         possiblePaths.push(
           path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "ui.json"),
           path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "ui.json"),
           path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "ui.schema.json"),
+          path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "ui.json"),
           path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(SKILLS_DIR, skillIdVariant, "schemas", "input.json"),
           path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "..", "skills", skillIdVariant, "schemas", "input.json"),
           path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "input.schema.json"),
+          path.resolve(process.cwd(), "skills", skillIdVariant, "schemas", "input.json"),
         );
       }
 
@@ -3003,9 +3002,11 @@ export const skillsRouter = router({
             const folders = fs.readdirSync(skillsDir);
             for (const folder of folders) {
               possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "ui.schema.json"));
+              possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "ui.json"));
             }
             for (const folder of folders) {
               possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "input.schema.json"));
+              possiblePaths.push(path.resolve(skillsDir, folder, "schemas", "input.json"));
             }
           }
         }
@@ -3039,12 +3040,16 @@ export const skillsRouter = router({
               break;
             } else if (schema.properties) {
               let siblingUiSchema: any | undefined;
-              const siblingUiSchemaPath = path.resolve(path.dirname(schemaPath), "ui.schema.json");
-              if (path.basename(schemaPath) !== "ui.schema.json" && fs.existsSync(siblingUiSchemaPath)) {
-                try {
-                  siblingUiSchema = JSON.parse(fs.readFileSync(siblingUiSchemaPath, "utf-8"));
-                } catch {
-                  siblingUiSchema = undefined;
+              if (path.basename(schemaPath) !== "ui.schema.json" && path.basename(schemaPath) !== "ui.json") {
+                for (const uiFileName of ["ui.schema.json", "ui.json"]) {
+                  const siblingUiSchemaPath = path.resolve(path.dirname(schemaPath), uiFileName);
+                  if (!fs.existsSync(siblingUiSchemaPath)) continue;
+                  try {
+                    siblingUiSchema = JSON.parse(fs.readFileSync(siblingUiSchemaPath, "utf-8"));
+                    break;
+                  } catch {
+                    siblingUiSchema = undefined;
+                  }
                 }
               }
               foundSchema = convertJsonSchemaToSkillSchema(schema, input.skillId, siblingUiSchema);
@@ -3220,7 +3225,7 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3307,7 +3312,7 @@ export const skillsRouter = router({
           [input.startFrameUrl, input.endFrameUrl],
           visionModel,
           900,
-          { publicUrl: ctx.publicUrl ?? null },
+          { tenantId: ctx.tenantId, publicUrl: ctx.publicUrl ?? null },
         );
         let prompt = result.content
           .replace(/^```(?:text|prompt|markdown)?\s*/i, "")
@@ -3337,7 +3342,9 @@ export const skillsRouter = router({
           userId,
           amount: creditsUsed,
           description: "Storyboard video prompt from start/end frames",
+          skillSlug: "storyboard-video-customer-journey-prompt",
           sourceType: "skill",
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -3398,7 +3405,7 @@ export const skillsRouter = router({
         throw new TRPCError({ code: "UNAUTHORIZED", message: "User not authenticated" });
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3508,7 +3515,7 @@ export const skillsRouter = router({
           referenceImages,
           visionModel,
           7000,
-          { publicUrl: ctx.publicUrl ?? null },
+          { tenantId: ctx.tenantId, publicUrl: ctx.publicUrl ?? null },
         );
         const parsed = parseLlmJsonObject(result.content);
         let totalPromptTokens = result.usage.promptTokens;
@@ -3618,6 +3625,7 @@ export const skillsRouter = router({
               durationSeconds: inputSlot.durationSeconds ?? null,
               model: inputSlot.model ?? null,
               productMetadata: input.productMetadata ?? null,
+              tenantId: ctx.tenantId ?? undefined,
               publicUrl: ctx.publicUrl ?? null,
             });
             return { slotId: slot.id, repaired };
@@ -3786,6 +3794,7 @@ export const skillsRouter = router({
           description: "Storyboard customer journey video prompt plan",
           skillSlug,
           sourceType: "skill",
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             model: visionModel,
             llmModel: visionModel,
@@ -3853,7 +3862,7 @@ export const skillsRouter = router({
         };
       }
 
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({ code: "FORBIDDEN", message: "Insufficient credits" });
       }
@@ -3917,7 +3926,7 @@ export const skillsRouter = router({
       }
 
       // Check if user has enough credits
-      const hasCredits = await hasEnoughCredits(userId, 1);
+      const hasCredits = await hasEnoughCredits(userId, normalizeSkillRevenuePricing({}).totalCredits);
       if (!hasCredits) {
         throw new TRPCError({
           code: "FORBIDDEN",
@@ -4010,6 +4019,7 @@ export const skillsRouter = router({
               visionModel,
               promptLengthPlan.maxTokens,
               {
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               }
             );
@@ -4026,6 +4036,7 @@ export const skillsRouter = router({
               description: `Auto Prompt enhancement (${skillName})`,
               skillSlug: resolvedSkillId,
               sourceType: "skill",
+              tenantId: ctx.tenantId ?? undefined,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,
@@ -4159,15 +4170,6 @@ export const skillsRouter = router({
         });
       }
 
-      // Check credits
-      const hasCredits = await hasEnoughCredits(userId, 1);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "Insufficient credits",
-        });
-      }
-
       // Sync skill if contentHash changed (ensures latest skill.md is used)
       const syncResult = await syncSingleSkillIfChanged(input.skillId);
       if (syncResult.synced) {
@@ -4195,6 +4197,8 @@ export const skillsRouter = router({
           strictProviderPin: skills.strictProviderPin,
           executionMode: skills.executionMode,
           executionPolicyJson: skills.executionPolicyJson,
+          tenantCreditCost: skills.tenantCreditCost,
+          skillOwnerCreditCost: skills.skillOwnerCreditCost,
         })
         .from(skills)
         .where(and(eq(skills.slug, input.skillId), eq(skills.isEnabled, true)))
@@ -4204,6 +4208,15 @@ export const skillsRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: `Skill '${input.skillId}' not found`,
+        });
+      }
+
+      const fixedSkillCredits = normalizeSkillRevenuePricing(skill).totalCredits;
+      const hasCredits = await hasEnoughCredits(userId, fixedSkillCredits);
+      if (!hasCredits) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: `Insufficient credits. Need ${fixedSkillCredits} credits to run this skill.`,
         });
       }
 
@@ -4343,6 +4356,7 @@ export const skillsRouter = router({
           description: `Skill execution: ${skill.name}`,
           skillSlug: input.skillId,
           sourceType: "skill",
+          tenantId: ctx.tenantId ?? undefined,
           metadata: {
             skill: input.skillId,
             skillName: skill.name,
@@ -4539,6 +4553,7 @@ export const skillsRouter = router({
               promptLengthPlan?.maxTokens ?? (isMultiPromptPackage ? 9000 : 4000),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -4555,6 +4570,7 @@ export const skillsRouter = router({
               description: `Skill execution: ${skill.name}`,
               skillSlug: input.skillId,
               sourceType: "skill",
+              tenantId: ctx.tenantId ?? undefined,
               metadata: {
                 model: visionModel,
                 llmModel: visionModel,
@@ -4720,6 +4736,7 @@ export const skillsRouter = router({
               Math.max(6000, Math.min(16000, audioFirstRepair.expectedPromptCount * 900)),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -4762,6 +4779,7 @@ export const skillsRouter = router({
               resolveElevenLabsProductVoiceoverDialogueRepairMaxTokens(mergedUserInputs),
               {
                 ...webSearchOptions,
+                tenantId: ctx.tenantId,
                 publicUrl: ctx.publicUrl ?? null,
               },
             );
@@ -5144,6 +5162,8 @@ export const skillsRouter = router({
         author: sanitizeBrandText(skill.author || ""),
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
         hasLocalFolder: hasRelativeSkillManifest(path.join("skills", skill.slug)),
@@ -5155,6 +5175,93 @@ export const skillsRouter = router({
           (getSkillById(skill.slug) as Record<string, unknown> | undefined)?.nativeSubagentNames ??
           [],
       }));
+    }),
+
+  /** Admin-only, read-only view of unmapped and refund-debt billing gaps. */
+  getBillingReconciliation: adminProcedure.query(async () => {
+    try {
+      return await getSkillBillingReconciliation();
+    } catch (error) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: error instanceof Error ? error.message : "Failed to read skill billing reconciliation",
+      });
+    }
+  }),
+
+  /** Revenue ledger scoped to the current admin surface. */
+  getRevenueReport: domainAdminProcedure
+    .input(z.object({
+      startDate: z.string().date().optional(),
+      endDate: z.string().date().optional(),
+      limit: z.number().int().min(1).max(200).default(100),
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const conditions = [];
+      const scopedTenantId = resolveSkillRevenueReportTenantScope({
+        role: ctx.user.role,
+        tenantId: ctx.tenantId,
+        currentTenantId: ctx.user.currentTenantId,
+      });
+      if (ctx.user.role === "domain_admin" && !scopedTenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Tenant context is required" });
+      }
+      if (scopedTenantId) conditions.push(eq(skillRevenueSettlements.tenantId, scopedTenantId));
+      if (input?.startDate) conditions.push(gte(skillRevenueSettlements.createdAt, new Date(`${input.startDate}T00:00:00.000Z`)));
+      if (input?.endDate) conditions.push(lte(skillRevenueSettlements.createdAt, new Date(`${input.endDate}T23:59:59.999Z`)));
+      const tenantOwnerUsers = aliasedTable(usersTable, "skill_revenue_tenant_owner");
+      const skillOwnerUsers = aliasedTable(usersTable, "skill_revenue_skill_owner");
+      let query = dbInstance
+        .select({
+          id: skillRevenueSettlements.id,
+          runId: skillRevenueSettlements.runId,
+          skillSlug: skillRevenueSettlements.skillSlug,
+          skillName: skills.name,
+          tenantId: skillRevenueSettlements.tenantId,
+          userId: skillRevenueSettlements.userId,
+          tenantOwnerId: skillRevenueSettlements.tenantOwnerId,
+          skillOwnerId: skillRevenueSettlements.skillOwnerId,
+          tenantOwnerName: tenantOwnerUsers.name,
+          tenantOwnerEmail: tenantOwnerUsers.email,
+          skillOwnerName: skillOwnerUsers.name,
+          skillOwnerEmail: skillOwnerUsers.email,
+          tenantCredits: skillRevenueSettlements.tenantCredits,
+          skillOwnerCredits: skillRevenueSettlements.skillOwnerCredits,
+          totalCredits: skillRevenueSettlements.totalCredits,
+          status: skillRevenueSettlements.status,
+          createdAt: skillRevenueSettlements.createdAt,
+        })
+        .from(skillRevenueSettlements)
+        .leftJoin(skills, eq(skillRevenueSettlements.skillId, skills.id))
+        .leftJoin(tenantOwnerUsers, eq(skillRevenueSettlements.tenantOwnerId, tenantOwnerUsers.id))
+        .leftJoin(skillOwnerUsers, eq(skillRevenueSettlements.skillOwnerId, skillOwnerUsers.id));
+      if (conditions.length > 0) query = query.where(and(...conditions)) as typeof query;
+      query = query.orderBy(desc(skillRevenueSettlements.createdAt)).limit(input?.limit ?? 100) as typeof query;
+      const rows = await query;
+      let summaryQuery = dbInstance
+        .select({
+          runCount: sql<number>`COUNT(*)`,
+          tenantCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.tenantCredits} ELSE ${skillRevenueSettlements.tenantCredits} END), 0)`,
+          skillOwnerCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.skillOwnerCredits} ELSE ${skillRevenueSettlements.skillOwnerCredits} END), 0)`,
+          totalCredits: sql<number>`COALESCE(SUM(CASE WHEN ${skillRevenueSettlements.status} = 'reversed' THEN -${skillRevenueSettlements.totalCredits} ELSE ${skillRevenueSettlements.totalCredits} END), 0)`,
+        })
+        .from(skillRevenueSettlements);
+      if (conditions.length > 0) summaryQuery = summaryQuery.where(and(...conditions)) as typeof summaryQuery;
+      const [summaryRow] = await summaryQuery;
+      const summary = {
+        runCount: Number(summaryRow?.runCount) || 0,
+        tenantCredits: Number(summaryRow?.tenantCredits) || 0,
+        skillOwnerCredits: Number(summaryRow?.skillOwnerCredits) || 0,
+        totalCredits: Number(summaryRow?.totalCredits) || 0,
+      };
+      return {
+        scope: scopedTenantId ? "tenant" as const : "system" as const,
+        tenantId: scopedTenantId,
+        rows,
+        summary,
+      };
     }),
 
   /**
@@ -5187,6 +5294,8 @@ export const skillsRouter = router({
         author: sanitizeBrandText(skill.author || ""),
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
         nativeBundleReady: getSkillById(skill.slug)?.nativeBundleReady ?? false,
@@ -5225,6 +5334,8 @@ export const skillsRouter = router({
           enabledByDefault: skills.enabledByDefault,
           visibleByDefault: skills.visibleByDefault,
           creditMultiplier: skills.creditMultiplier,
+          tenantCreditCost: skills.tenantCreditCost,
+          skillOwnerCreditCost: skills.skillOwnerCreditCost,
           priority: skills.priority,
           availableModels: skills.availableModels,
           defaultModel: skills.defaultModel,
@@ -5263,6 +5374,8 @@ export const skillsRouter = router({
         marketplaceContent: skill.marketplaceContent ? sanitizeBrandText(skill.marketplaceContent) : null,
         ownerName: skill.ownerName ? sanitizeBrandText(skill.ownerName) : null,
         creditMultiplier: Number(skill.creditMultiplier) || 1,
+        tenantCreditCost: Number.isInteger(skill.tenantCreditCost) ? skill.tenantCreditCost : 2,
+        skillOwnerCreditCost: Number.isInteger(skill.skillOwnerCreditCost) ? skill.skillOwnerCreditCost : 0,
         tags: skill.tags || [],
         triggerPatterns: skill.triggerPatterns || [],
       }));
@@ -5545,6 +5658,8 @@ export const skillsRouter = router({
         enabledByDefault: z.boolean().optional(),
         visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
+        tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+        skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
         priority: z.number().min(0).max(100).optional(),
         systemPrompt: z.string().optional(),
         skillContent: z.string().optional(),
@@ -5556,11 +5671,6 @@ export const skillsRouter = router({
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
         executionMode: skillExecutionModeSchema.optional(),
-        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
-        requiresNetwork: z.boolean().nullable().optional(),
-        requiresBrowser: z.boolean().nullable().optional(),
-        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
-        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         bundleType: z.enum(["native", "legacy"]).default("native"),
         bundleProfile: z.enum(["general", "research", "workflow", "media", "custom"]).default("general"),
         subagents: z.array(nativeSubagentInputSchema).optional(),
@@ -5611,8 +5721,6 @@ export const skillsRouter = router({
           message: `Category '${normalizedCategory}' is not compatible with executionMode '${effectiveExecutionMode}'.`,
         });
       }
-      const shouldUseSandbox = isSandboxExecutionMode(effectiveExecutionMode);
-
       // Check if slug already exists
       const [existing] = await dbInstance
         .select({ id: skills.id })
@@ -5680,6 +5788,9 @@ export const skillsRouter = router({
             enabledByDefault: input.enabledByDefault ?? true,
             visibleByDefault: input.visibleByDefault ?? true,
             creditMultiplier: String(input.creditMultiplier ?? 1.0),
+            tenantCreditCost: input.tenantCreditCost ?? 2,
+            tenantCreditPricingSource: input.tenantCreditCost !== undefined ? "admin_override" : "default",
+            skillOwnerCreditCost: input.skillOwnerCreditCost ?? 0,
             priority: input.priority ?? 50,
             systemPrompt: input.systemPrompt,
             skillContent: input.skillContent,
@@ -5689,25 +5800,11 @@ export const skillsRouter = router({
             preferredProviderId: input.preferredProviderId ?? null,
             strictProviderPin: input.strictProviderPin ?? false,
             executionMode: effectiveExecutionMode,
-            sandboxProfileSlug: shouldUseSandbox
-              ? (input.sandboxProfileSlug ?? getDefaultSandboxProfileSlug(effectiveExecutionMode, normalizedCategory))
-              : null,
-            requiresNetwork: shouldUseSandbox
-              ? (input.requiresNetwork ?? (
-                  effectiveExecutionMode === "sandbox-command"
-                  || effectiveExecutionMode === "sandbox-browser"
-                  || normalizedCategory === "slide_generation"
-                ))
-              : null,
-            requiresBrowser: shouldUseSandbox
-              ? (input.requiresBrowser ?? (effectiveExecutionMode === "sandbox-browser"))
-              : null,
-            maxRuntimeSeconds: shouldUseSandbox
-              ? (input.maxRuntimeSeconds ?? (normalizedCategory === "slide_generation" ? 600 : 300))
-              : null,
-            maxInputMb: shouldUseSandbox
-              ? (input.maxInputMb ?? (normalizedCategory === "slide_generation" ? 50 : 25))
-              : null,
+            sandboxProfileSlug: null,
+            requiresNetwork: null,
+            requiresBrowser: null,
+            maxRuntimeSeconds: null,
+            maxInputMb: null,
             configJson: nextConfigJson,
             folderPath: createNativeBundle ? `skills/${input.slug}` : null,
             importSource: createNativeBundle ? "native_bundle" : "manual",
@@ -5776,17 +5873,14 @@ export const skillsRouter = router({
         enabledByDefault: z.boolean().optional(),
         visibleByDefault: z.boolean().optional(),
         creditMultiplier: z.number().min(0).max(100).optional(),
+        tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+        skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
         priority: z.number().min(0).max(100).optional(),
         defaultModel: z.string().nullable().optional(),
         llmModelId: z.string().nullable().optional(),
         preferredProviderId: z.number().int().positive().nullable().optional(),
         strictProviderPin: z.boolean().optional(),
         executionMode: skillExecutionModeSchema.optional(),
-        sandboxProfileSlug: z.string().trim().min(1).max(64).nullable().optional(),
-        requiresNetwork: z.boolean().nullable().optional(),
-        requiresBrowser: z.boolean().nullable().optional(),
-        maxRuntimeSeconds: z.number().int().min(1).max(3600).nullable().optional(),
-        maxInputMb: z.number().int().min(1).max(2048).nullable().optional(),
         systemPrompt: z.string().nullable().optional(),
         skillContent: z.string().nullable().optional(),
         marketplaceContent: z.string().nullable().optional(),
@@ -5892,6 +5986,13 @@ export const skillsRouter = router({
         ? updateData.executionMode
         : currentSkill.executionMode;
 
+      if (typeof effectiveExecutionMode === "string" && effectiveExecutionMode.startsWith("sandbox-")) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Retired sandbox skill runtimes cannot be enabled or retained; migrate the skill to an approved worker runtime.",
+        });
+      }
+
       if (
         effectiveExecutionMode
         && !isExecutionModeCompatibleWithSkillCategory(effectiveCategory, effectiveExecutionMode)
@@ -5921,6 +6022,11 @@ export const skillsRouter = router({
       if (updateData.enabledByDefault !== undefined) updateObj.enabledByDefault = updateData.enabledByDefault;
       if (updateData.visibleByDefault !== undefined) updateObj.visibleByDefault = updateData.visibleByDefault;
       if (updateData.creditMultiplier !== undefined) updateObj.creditMultiplier = String(updateData.creditMultiplier);
+      if (updateData.tenantCreditCost !== undefined) {
+        updateObj.tenantCreditCost = updateData.tenantCreditCost;
+        updateObj.tenantCreditPricingSource = "admin_override";
+      }
+      if (updateData.skillOwnerCreditCost !== undefined) updateObj.skillOwnerCreditCost = updateData.skillOwnerCreditCost;
       if (updateData.priority !== undefined) updateObj.priority = updateData.priority;
       if (updateData.defaultModel !== undefined) updateObj.defaultModel = updateData.defaultModel;
       if (updateData.llmModelId !== undefined) updateObj.llmModelId = updateData.llmModelId;
@@ -5932,11 +6038,6 @@ export const skillsRouter = router({
       }
       if (updateData.strictProviderPin !== undefined) updateObj.strictProviderPin = updateData.strictProviderPin;
       if (updateData.executionMode !== undefined) updateObj.executionMode = updateData.executionMode;
-      if (updateData.sandboxProfileSlug !== undefined) updateObj.sandboxProfileSlug = updateData.sandboxProfileSlug;
-      if (updateData.requiresNetwork !== undefined) updateObj.requiresNetwork = updateData.requiresNetwork;
-      if (updateData.requiresBrowser !== undefined) updateObj.requiresBrowser = updateData.requiresBrowser;
-      if (updateData.maxRuntimeSeconds !== undefined) updateObj.maxRuntimeSeconds = updateData.maxRuntimeSeconds;
-      if (updateData.maxInputMb !== undefined) updateObj.maxInputMb = updateData.maxInputMb;
       if (updateData.systemPrompt !== undefined) updateObj.systemPrompt = updateData.systemPrompt;
       if (updateData.skillContent !== undefined) updateObj.skillContent = updateData.skillContent;
       if (updateData.marketplaceContent !== undefined) updateObj.marketplaceContent = updateData.marketplaceContent;
@@ -5949,30 +6050,7 @@ export const skillsRouter = router({
         }
       }
 
-      if (isSandboxExecutionMode(effectiveExecutionMode)) {
-        if (updateData.sandboxProfileSlug === undefined && currentSkill.sandboxProfileSlug == null) {
-          updateObj.sandboxProfileSlug = getDefaultSandboxProfileSlug(
-            effectiveExecutionMode,
-            effectiveCategory,
-          );
-        }
-        if (updateData.requiresNetwork === undefined && currentSkill.requiresNetwork == null) {
-          updateObj.requiresNetwork = (
-            effectiveExecutionMode === "sandbox-command"
-            || effectiveExecutionMode === "sandbox-browser"
-            || effectiveCategory === "slide_generation"
-          );
-        }
-        if (updateData.requiresBrowser === undefined && currentSkill.requiresBrowser == null) {
-          updateObj.requiresBrowser = effectiveExecutionMode === "sandbox-browser";
-        }
-        if (updateData.maxRuntimeSeconds === undefined && currentSkill.maxRuntimeSeconds == null) {
-          updateObj.maxRuntimeSeconds = effectiveCategory === "slide_generation" ? 600 : 300;
-        }
-        if (updateData.maxInputMb === undefined && currentSkill.maxInputMb == null) {
-          updateObj.maxInputMb = effectiveCategory === "slide_generation" ? 50 : 25;
-        }
-      } else if (updateData.executionMode !== undefined) {
+      if (updateData.executionMode !== undefined) {
         updateObj.sandboxProfileSlug = null;
         updateObj.requiresNetwork = null;
         updateObj.requiresBrowser = null;
@@ -6036,10 +6114,6 @@ export const skillsRouter = router({
           .find((candidate) => !!resolveSkillManifestPath(candidate));
 
         if (skillDir) {
-          const shouldClearSandboxManifestFields = (
-            updateData.executionMode !== undefined
-            && !isSandboxExecutionMode(updateData.executionMode)
-          );
           const manifestResult = updateSkillManifestFiles(
             skillDir,
             {
@@ -6056,11 +6130,11 @@ export const skillsRouter = router({
               credit_multiplier: updateData.creditMultiplier,
               priority: updateData.priority,
               execution_mode: updateData.executionMode,
-              sandbox_profile: shouldClearSandboxManifestFields ? null : updateData.sandboxProfileSlug,
-              requires_network: shouldClearSandboxManifestFields ? null : updateData.requiresNetwork,
-              requires_browser: shouldClearSandboxManifestFields ? null : updateData.requiresBrowser,
-              max_runtime_seconds: shouldClearSandboxManifestFields ? null : updateData.maxRuntimeSeconds,
-              max_input_mb: shouldClearSandboxManifestFields ? null : updateData.maxInputMb,
+              sandbox_profile: null,
+              requires_network: null,
+              requires_browser: null,
+              max_runtime_seconds: null,
+              max_input_mb: null,
               default_model: updateData.defaultModel,
               llm_model_id: updateData.llmModelId,
               preferred_provider_id: updateData.preferredProviderId,
@@ -6091,6 +6165,69 @@ export const skillsRouter = router({
       await refreshSkillCache();
 
       return updated;
+    }),
+
+  /**
+   * Update pricing for multiple skills in one atomic request (admin only).
+   * Each row may provide either pricing field independently.
+   */
+  bulkUpdatePricing: adminProcedure
+    .input(
+      z.object({
+        updates: z.array(
+          z.object({
+            id: z.number().int().positive(),
+            tenantCreditCost: z.number().int().min(0).max(100000).optional(),
+            skillOwnerCreditCost: z.number().int().min(0).max(100000).optional(),
+          }).refine(
+            (value) => value.tenantCreditCost !== undefined || value.skillOwnerCreditCost !== undefined,
+            { message: "Each skill update must include at least one pricing field" },
+          ),
+        ).min(1).max(500),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const dbInstance = await getDb();
+      if (!dbInstance) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+
+      const updatesById = new Map(input.updates.map((update) => [update.id, update]));
+      const updates = [...updatesById.values()];
+      const ids = updates.map((update) => update.id);
+      const tenantUpdates = updates.filter((update) => update.tenantCreditCost !== undefined);
+      const skillOwnerUpdates = updates.filter((update) => update.skillOwnerCreditCost !== undefined);
+      const updateSet: Record<string, any> = { updatedAt: new Date() };
+
+      if (tenantUpdates.length > 0) {
+        updateSet.tenantCreditPricingSource = "admin_override";
+      }
+
+      if (tenantUpdates.length > 0) {
+        updateSet.tenantCreditCost = sql`case ${sql.join(
+          tenantUpdates.map((update) => sql`when ${skills.id} = ${update.id} then ${update.tenantCreditCost}`),
+          sql.raw(" "),
+        )} else ${skills.tenantCreditCost} end`;
+      }
+
+      if (skillOwnerUpdates.length > 0) {
+        updateSet.skillOwnerCreditCost = sql`case ${sql.join(
+          skillOwnerUpdates.map((update) => sql`when ${skills.id} = ${update.id} then ${update.skillOwnerCreditCost}`),
+          sql.raw(" "),
+        )} else ${skills.skillOwnerCreditCost} end`;
+      }
+
+      const updated = await dbInstance.transaction(async (tx) => tx
+        .update(skills)
+        .set(updateSet)
+        .where(inArray(skills.id, ids))
+        .returning({ id: skills.id }));
+
+      await refreshSkillCache();
+
+      return {
+        requestedCount: ids.length,
+        updatedCount: updated.length,
+        missingSkillIds: ids.filter((id) => !updated.some((row) => row.id === id)),
+      };
     }),
 
   /**

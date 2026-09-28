@@ -78,6 +78,17 @@ class StorageService:
         """
         file_path = self._generate_file_path(user_id, task_id, media_type, extension)
 
+        # This legacy service is retained only for non-media compatibility.
+        # Generated media must use the authenticated R2 storage services so a
+        # stale STORAGE_TYPE=s3/local configuration cannot bypass the durable
+        # media boundary.
+        media_kind = media_type.lower().split("/", 1)[0]
+        if media_kind in {"image", "video", "audio"}:
+            raise RuntimeError(
+                "Persistent image/video/audio storage requires Cloudflare R2; "
+                "use app.services.r2_storage_service instead"
+            )
+
         if self.storage_type == "local":
             return await self._save_local(file_content, file_path)
         elif self.storage_type == "s3":

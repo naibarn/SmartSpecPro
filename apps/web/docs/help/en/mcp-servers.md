@@ -27,7 +27,7 @@ Navigate to **Admin > MCP Servers** and click **Add Server**.
 |-----------|-------------|----------|
 | **HTTP** | Standard JSON-RPC over HTTP/HTTPS | Most common, works with any MCP server |
 | **Streamable HTTP** | SSE-based transport with session management | Real-time streaming responses |
-| **stdio** | Process-based via OpenSandbox containers | Local tools that run as CLI processes |
+| **stdio** | Retired | Use an approved external MCP worker such as Hermes, Claude, or Codex |
 
 ### HTTP Server Setup
 
@@ -46,15 +46,12 @@ For servers requiring OAuth 2.1:
 
 ### stdio Server Setup
 
-Requires OpenSandbox to be enabled. The server runs inside an isolated container:
-1. Specify the command (e.g., `npx`)
-2. Add arguments (e.g., `@modelcontextprotocol/server-github`)
-3. Configure environment variables (secrets are encrypted)
-4. The container has no network access for security
+The local stdio transport is retired. Use an approved external MCP worker for
+process-based tools; HTTP and Streamable HTTP MCP servers remain supported.
 
 ## How Tools Appear in Agents
 
-Once an MCP server is enabled and assigned to an agency/agent:
+Once an MCP server is enabled and assigned to an agent:
 - Tools from the server appear in the agent's available tool list
 - The agent can invoke them during conversations
 - Tool calls are logged in the audit trail
@@ -79,15 +76,15 @@ The health status of each server is shown on the MCP Servers page:
 - Check if the OAuth provider has revoked access
 
 ### stdio Server Unavailable
-- Verify OpenSandbox is enabled (`OPENSANDBOX_ENABLED=true`)
-- Check the maximum concurrent containers limit per tenant (default: 2)
+- The local stdio transport is intentionally disabled.
+- Connect the MCP server through an approved external worker instead.
 
 ## Security
 
 - All server URLs undergo SSRF validation (private IPs blocked)
 - DNS rebinding prevention is active for HTTP connections
 - OAuth tokens are encrypted at rest using AES-256-GCM
-- stdio containers run with no network access
+- External workers must enforce their own process and network isolation policy.
 - Response size is limited to 1MB per tool call
 - All tool calls are audit-logged with duration and cost
 

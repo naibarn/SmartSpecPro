@@ -91,4 +91,85 @@ describe("extractJson", () => {
       expect((error as VdSchemaValidationError).issues).toEqual({ rawResponse: truncated });
     }
   });
+
+  // Ticket #61 (trace `zKiR56XQGSE1KpCJewzGI`, path
+  // `verticalDramaCharacters.previewCharacterPrompt`): `google/gemini-3.1-flash-lite`
+  // (the weak model picked by cost policy) emitted a COMPLETE, well-under-the-
+  // token-ceiling JSON object with a missing comma between two array
+  // elements — "Expected ',' or ']' after array element in JSON at position
+  // 3551" — which was not truncation, survived all `VD_SCHEMA_MAX_RETRIES`
+  // retries unchanged, and threw `VdSchemaValidationError`. `extractJson` now
+  // makes one last-resort `jsonrepair` attempt in the catch path only.
+  describe("jsonrepair fallback (ticket #61)", () => {
+    it("repairs a missing comma between array elements (the reported live failure)", () => {
+      const malformed = '{"a":1,"list":["x","y" "z"],"b":2}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({ a: 1, list: ["x", "y", "z"], b: 2 });
+    });
+
+    it("repairs a trailing comma before a closing brace/bracket", () => {
+      const malformed = '{"a":1,"list":["x","y",],"b":2,}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({ a: 1, list: ["x", "y"], b: 2 });
+    });
+
+    it("still throws VdSchemaValidationError for genuinely un-repairable garbage", () => {
+      const garbage = "{{{ not json at all, just } broken [ tokens }}}";
+      expect(() => extractJson(garbage)).toThrow(VdSchemaValidationError);
+      try {
+        extractJson(garbage);
+        expect.fail("expected extractJson to throw");
+      } catch (error) {
+        expect((error as VdSchemaValidationError).message).toMatch(
+          /^LLM response was not valid JSON:/,
+        );
+      }
+    });
+
+    it("still throws (does NOT repair) genuinely truncated/unterminated JSON, so the higher-token-ceiling schema retry still fires", () => {
+      // `jsonrepair` CAN "fix" truncation by fabricating closing brackets —
+      // that would silently accept an incomplete response instead of
+      // surfacing the failure to `executeJsonPlanningCallWithRetry`'s
+      // schema-retry path, so `extractJson` must deliberately NOT repair
+      // this case (see the `balancedSlice` check in the implementation).
+      const truncated = '{"items":["a","b"';
+      expect(() => extractJson(truncated)).toThrow(VdSchemaValidationError);
+    });
+
+    // 2026-07-22 (`google/gemini-3.5-flash`, "Episode script" stage —
+    // journalctl smartspec-web 08:57-08:58 UTC): all 3 attempts failed with
+    // `Expected ',' or ']' after array element` / `Expected ',' or '}' after
+    // property value` at positions 7401/9082/9659 — far under the
+    // 12000/24000-token ceilings, so NOT truncation. Cause: an UNESCAPED `"`
+    // inside a Thai dialogue string desyncs the string-aware balanced scan,
+    // so `findBalancedJsonEnd` returned -1, `balancedSlice` stayed null, and
+    // the repair path was skipped entirely even though `jsonrepair` fixes
+    // exactly this input.
+    it("repairs an unescaped quote inside a string value when the balanced scan cannot find an envelope", () => {
+      const malformed =
+        '{"title":"ตอน 1","beats":[{"line":"เขาพูดว่า "อย่ามา แล้วเดินออกไป","id":1}],"end":true}';
+      const result = extractJson(malformed);
+      expect(result).toEqual({
+        title: "ตอน 1",
+        beats: [{ line: 'เขาพูดว่า "อย่ามา แล้วเดินออกไป', id: 1 }],
+        end: true,
+      });
+    });
+
+    it("does NOT repair an unescaped-quote response that is ALSO truncated (schema retry must still fire)", () => {
+      const truncated =
+        '{"title":"ตอน 1","beats":[{"line":"เขาพูดว่า "อย่ามา แล้วเดิน';
+      expect(() => extractJson(truncated)).toThrow(VdSchemaValidationError);
+    });
+
+    it("leaves already-valid JSON untouched (happy path unaffected by the repair fallback)", () => {
+      const valid = '{"episode_title":"Test","hook":"A hook","list":["x","y","z"]}';
+      const result = extractJson(valid);
+      expect(result).toEqual({
+        episode_title: "Test",
+        hook: "A hook",
+        list: ["x", "y", "z"],
+      });
+    });
+  });
 });

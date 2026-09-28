@@ -10,6 +10,7 @@ import {
   HERMES_SUPPORTED_JOB_TYPES,
   OPENCLAW_SUPPORTED_JOB_TYPES,
   queueWorkerJobByRuntime,
+  queueDesktopComfyVideoGenerationJob,
   WorkerSchedulerError,
 } from "./workerSchedulerService";
 import { publishWorkerArtifacts, type WorkerArtifactPublicationResult } from "./workerArtifactService";
@@ -217,6 +218,7 @@ function resolveRuntimeType(jobType: string, runtimeType?: WorkerRuntimeType): W
     jobType === "video_assembly"
     || jobType === "local_folder_ingest"
     || jobType === "comfy_image_generation"
+    || jobType === "comfy_video_generation"
     || jobType === "comfy_workflow_run"
   ) {
     return "desktop_zeroclaw_managed";
@@ -259,9 +261,11 @@ export async function dispatchWorkflowWorkerJob(
   },
   deps: {
     queueWorkerJobByRuntime?: typeof queueWorkerJobByRuntime;
+    queueComfyVideoJob?: typeof queueDesktopComfyVideoGenerationJob;
   } = {},
 ): Promise<Record<string, unknown>> {
   const queueJob = deps.queueWorkerJobByRuntime ?? queueWorkerJobByRuntime;
+  const queueComfyVideoJob = deps.queueComfyVideoJob ?? queueDesktopComfyVideoGenerationJob;
   const runtimeType = resolveRuntimeType(input.payload.jobType, input.payload.runtimeType);
 
   try {
@@ -270,22 +274,42 @@ export async function dispatchWorkflowWorkerJob(
         input.payload.jobType !== "video_assembly"
         && input.payload.jobType !== "local_folder_ingest"
         && input.payload.jobType !== "comfy_image_generation"
+        && input.payload.jobType !== "comfy_video_generation"
         && input.payload.jobType !== "comfy_workflow_run"
       ) {
         throw new WorkflowWorkerRuntimeError(
           "unsupported_job_type",
           400,
-          "Desktop workflow dispatch currently supports only video_assembly, local_folder_ingest, comfy_image_generation, and comfy_workflow_run jobs",
+          "Desktop workflow dispatch currently supports video_assembly, local_folder_ingest, comfy_image_generation, comfy_video_generation, and comfy_workflow_run jobs",
         );
       }
 
       const jobRequest = input.payload.jobRequest ?? input.payload.inputJson ?? {};
+      if (input.payload.jobType === "comfy_video_generation") {
+        const result = await queueComfyVideoJob({
+          jobType: "comfy_video_generation",
+          inputJson: jobRequest as Record<string, unknown>,
+          tenantId: input.actor.tenantId,
+          teamId: input.payload.teamId ?? null,
+          workflowRunId: input.payload.workflowRunId ?? null,
+          requestedByUserId: input.actor.userId,
+          requestedByPersonaId: input.payload.requestedByPersonaId ?? null,
+          requestedBySystemComponent: input.payload.requestedBySystemComponent ?? "workflow_runtime_node",
+          priority: input.payload.priority,
+          timeoutSeconds: input.payload.timeoutSeconds,
+          idempotencyKey: input.payload.idempotencyKey ?? null,
+          preferredWorkerId: input.payload.preferredWorkerId ?? null,
+          reservedCredits: input.payload.reservedCredits ?? null,
+        });
+        return { created: result.created, workerJobId: result.job.id, status: result.job.status, runtimeType: result.job.runtimeType, jobType: result.job.jobType, workerJob: simplifyJobRecord(result.job) };
+      }
       const result = await queueJob({
         runtimeType,
         jobType: input.payload.jobType as
           | "video_assembly"
           | "local_folder_ingest"
           | "comfy_image_generation"
+          | "comfy_video_generation"
           | "comfy_workflow_run",
         ...(jobRequest as Record<string, unknown>),
         tenantId: input.actor.tenantId,

@@ -35,10 +35,15 @@ import {
   type VerticalDramaSeriesLocale,
 } from "@shared/verticalDramaSeries";
 import {
+  buildVerticalDramaDialogueLanguageProfilePrompt,
+  type VerticalDramaDialogueLanguageProfile,
+} from "@shared/verticalDramaSeries/dialogueLanguageProfile";
+import {
   executeJsonPlanningCallWithRetry,
   InsufficientCreditsError,
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
+  type JsonPlanningAttemptEvent,
   // Deep story drafts hydration (W10-B, added 2026-07-08) — TYPE-ONLY (erased
   // at compile time, zero runtime import), safe regardless of any test's
   // mocking of this module: this file already has a REAL, static VALUE
@@ -62,7 +67,25 @@ import {
   type VdSceneContract,
 } from "./verticalDramaStoryBible";
 import { resolveStoryboardModel } from "./verticalDramaImproveScript";
+import {
+  analyzeVerticalDramaStorySafety,
+  isBlockingVerticalDramaStorySafety,
+  rewriteVerticalDramaStoryForSafeMedia,
+  type VerticalDramaStorySafetyResult,
+} from "./verticalDramaStorySafety";
 import { VD_CHARACTER_LOCK_INSTRUCTION } from "@shared/verticalDramaSeries/characterLock";
+import { resolveVerticalDramaSupportingPresenceForShot } from "@shared/verticalDramaSeries/supportingPresence";
+import { canonicalizeStoryboardLocationGroups } from "@shared/verticalDramaSeries/locationGrouping";
+import { classifyDeviceMediatedCharacterRefs } from "@shared/verticalDramaSeries/characterPresence";
+import {
+  deriveVerticalDramaEpisodeRuntimeSeconds,
+  getActiveVerticalDramaShotDurations,
+  type VerticalDramaDurationPlan,
+} from "@shared/verticalDramaSeries/durationProfiles";
+import {
+  renderCrossEpisodeWardrobeHandoff,
+  type CrossEpisodeWardrobeHandoff,
+} from "@shared/verticalDramaSeries/crossEpisodeWardrobeContinuity";
 
 // Re-exported so callers only need to import from this one module.
 export { InsufficientCreditsError, VdSchemaValidationError };
@@ -86,10 +109,75 @@ export class RateLimitExceededError extends Error {
   }
 }
 
+export const VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS = 3;
+
+export class VerticalDramaStoryboardPolicyRecoveryError extends Error {
+  readonly code = "VD_STORY_POLICY_RISK" as const;
+
+  constructor(
+    readonly safety: VerticalDramaStorySafetyResult,
+    readonly candidate: StoryboardShotgridOutput,
+    readonly repairAttempts: number
+  ) {
+    super(
+      "Storyboard contains a high-risk policy context after automatic repair; review the preserved candidate before media generation."
+    );
+    this.name = "VerticalDramaStoryboardPolicyRecoveryError";
+  }
+}
+
 const SKILL_FOLDER_PATH = path.join(
   "skills",
   "vertical-drama-storyboard-shotgrid"
 );
+
+/**
+ * Slugify a location name into a `locationKey` candidate — byte-identical
+ * convention to `verticalDramaLocationReconciliation.ts`'s own
+ * `slugifyForLocationKey` (duplicated here rather than imported: this
+ * codebase's established convention for the location system is "duplicate
+ * small helpers per file to keep systems decoupled", per that file's own
+ * doc comment). Falls back to `"location"` for a name that's entirely
+ * non-alphanumeric (e.g. Thai-only text).
+ *
+ * Used ONLY by the `distinct_locations` mechanical fallback below — see that
+ * block's doc comment for why a content-derived slug replaced the previous
+ * positional `location-${index + 1}` key (root cause of episode 59's
+ * shophouse-stairhall/irin-cafe reference-image swap, confirmed against
+ * production data).
+ */
+function slugifyForLocationKey(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "location";
+}
+
+/**
+ * Appends `-2`, `-3`, ... until `baseKey` is not already present in
+ * `usedKeys`; mutates nothing, caller adds the result to `usedKeys` itself.
+ * Byte-identical convention to `verticalDramaLocationReconciliation.ts`'s
+ * own `generateUniqueLocationKey` (duplicated here per this file's
+ * decoupling convention — see `slugifyForLocationKey` above). No column
+ * length truncation here (unlike that file's copy): every key minted by
+ * this fallback is already a short slug of a shot's own `location` string,
+ * never a raw pass-through of untrusted LLM-supplied text.
+ */
+function generateUniqueLocationKey(
+  baseKey: string,
+  usedKeys: Set<string>
+): string {
+  const base = baseKey.trim() || "location";
+  let key = base;
+  let suffix = 2;
+  while (usedKeys.has(key)) {
+    key = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return key;
+}
 
 let cachedSystemPrompt: string | null = null;
 let cachedSystemPromptTime = 0;
@@ -180,7 +268,11 @@ const storyboardContractSchema = z
   })
   .passthrough();
 
-type AssertShapesMatch<A, B> = A extends B ? (B extends A ? true : never) : never;
+type AssertShapesMatch<A, B> = A extends B
+  ? B extends A
+    ? true
+    : never
+  : never;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _storyboardContractShapeMatchesShotContractSchema: AssertShapesMatch<
   z.infer<typeof storyboardContractSchema>,
@@ -195,6 +287,54 @@ const storyboardShotSchema = z
     narrative_purpose: z.string().min(1),
     characters: z.array(z.string()),
     required_character_refs: z.array(z.string()),
+    screen_caller_refs: z.array(z.string()).default([]),
+    /** Generic visible people/groups; never identity-locked character refs. */
+    supporting_presence: z
+      .array(
+        z
+          .object({
+            id: z.string().optional(),
+            role: z.string().min(1),
+            count: z
+              .union([
+                z.number().int().positive(),
+                z.object({
+                  min: z.number().int().positive(),
+                  max: z.number().int().positive(),
+                }),
+              ])
+              .optional(),
+            countMin: z.number().int().positive().optional(),
+            countMax: z.number().int().positive().optional(),
+            count_min: z.number().int().positive().optional(),
+            count_max: z.number().int().positive().optional(),
+            visibility: z.enum(["visible", "background"]).optional(),
+            action: z.string().optional(),
+            evidence: z.string().optional(),
+            confidence: z.enum(["high", "medium", "low"]).optional(),
+            status: z
+              .enum(["suggestion", "auto_confirmed", "accepted"])
+              .optional(),
+          })
+          .passthrough()
+      )
+      .default([]),
+    view_mode: z.enum(["single", "dual"]).optional(),
+    dual_view: z
+      .object({
+        scenario: z.enum([
+          "physical_barrier",
+          "remote_call",
+          "separate_locations",
+        ]),
+        primary_character_refs: z.array(z.string()).min(1),
+        secondary_character_refs: z.array(z.string()).min(1),
+        primary_location_key: z.string(),
+        secondary_location_key: z.string(),
+        confidence: z.number().min(0).max(1),
+        reason_codes: z.array(z.string()).default([]),
+      })
+      .optional(),
     camera: storyboardCameraSchema,
     visual_description: z.string().min(1),
     image_prompt: z.string().min(1),
@@ -226,6 +366,26 @@ const storyboardShotSchema = z
   })
   .passthrough();
 
+/**
+ * Phase 1 of `planning/polished-toasting-gadget.md` (location visual bible)
+ * — see skill.md's "Location continuity and scene grouping" section. Each
+ * entry groups the contiguous shots that share one physical setting.
+ * Validated (not `.passthrough()`-only survival like each shot's own
+ * `location` string field) because `shot_numbers` coverage must be
+ * deterministically checkable server-side — see
+ * `verticalDramaEpisodePipeline.ts`'s `validateStagePayload` partition
+ * check, which never trusts the LLM's own grouping claim without verifying
+ * it covers all 9 shots with no gaps/overlaps.
+ */
+const distinctLocationSchema = z
+  .object({
+    location_key: z.string().min(1),
+    location_name: z.string().min(1),
+    description: z.string().min(1),
+    shot_numbers: z.array(z.number().int().min(1).max(9)).min(1),
+  })
+  .passthrough();
+
 export const storyboardShotgridOutputSchema = z
   .object({
     contract_version: z.literal(1).optional(),
@@ -233,7 +393,28 @@ export const storyboardShotgridOutputSchema = z
     canonical_style_bible: z.object({}).passthrough(),
     shot_grid_plan: z.object({}).passthrough(),
     shots: z.array(storyboardShotSchema).length(9),
-    plain_text_storyboard: z.string().min(1),
+    /**
+     * Root-cause fix (2026-07-12, traceId `5Yk54Y8NLgrH4kr6A-GwD`) — this
+     * field was unconditionally required, but was observed live to be the
+     * one the LLM most often drops from an otherwise-valid 9-shot response
+     * (not a truncation issue — same symptom class as
+     * `storyboard_handoff_json` below, which got the identical treatment
+     * for the identical reason). Made optional here; `generateStoryboardShotgrid`
+     * below deterministically fills it in from the already-validated `shots`
+     * array when the LLM omits it, same "never trust the model's own
+     * compliance for data the code can derive from ground truth" precedent.
+     * Confirmed nothing outside this file's own schema/prompt-instruction
+     * reads this field, so a mechanical fallback is safe.
+     */
+    plain_text_storyboard: z.string().min(1).optional(),
+    /**
+     * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+     * bible) — see `distinctLocationSchema`'s own doc comment. Optional at
+     * the zod level so any call whose LLM response omits it (every response
+     * before this field existed, or a legacy/flag-off episode) stays
+     * byte-identical — this is purely additive.
+     */
+    distinct_locations: z.array(distinctLocationSchema).min(1).optional(),
     // Optional at the schema level: `generateStoryboardShotgrid` below
     // deterministically constructs this field's required inner shape
     // (`schema_version` / `handoff_type` / `grid_layout` / `shots`) from the
@@ -253,6 +434,103 @@ export type StoryboardShotgridOutput = z.infer<
   typeof storyboardShotgridOutputSchema
 >;
 
+const STORYBOARD_SAFETY_SHOT_KEYS = [
+  "narrative_purpose",
+  "visual_description",
+  "image_prompt",
+  "description",
+  "action",
+  "dialogue",
+  "dialogue_lines",
+  "supporting_presence",
+  "facial_expression",
+  "body_language",
+  "gaze_direction",
+  "contract",
+] as const;
+
+/**
+ * Project only fields that can become visible story/media content. Transport
+ * metadata and `storyboard_handoff_json` duplicate the same nine shots and
+ * can exceed the bounded safety scanner even when the actual story is safe.
+ */
+function analyzeStoryboardSafety(
+  storyboard: StoryboardShotgridOutput
+): VerticalDramaStorySafetyResult {
+  const results = storyboard.shots.map(shot => {
+    const source = shot as unknown as Record<string, unknown>;
+    const safetyInput = Object.fromEntries(
+      [
+        ["shot_number", shot.shot_number],
+        ...STORYBOARD_SAFETY_SHOT_KEYS.map(
+          key => [key, source[key]] as const
+        ),
+      ].filter(([, value]) => value !== undefined && value !== null)
+    );
+    return analyzeVerticalDramaStorySafety(safetyInput);
+  });
+  const findings = Array.from(
+    new Map(
+      results
+        .flatMap((result, index) =>
+          result.findings.map(finding => ({
+            ...finding,
+            message: `Shot ${storyboard.shots[index]!.shot_number}: ${finding.message}`,
+          }))
+        )
+        .map(finding => [`${finding.code}:${finding.message}`, finding])
+    ).values()
+  );
+  const level = findings.some(finding => finding.level === "high")
+    ? "high"
+    : findings.length > 0
+      ? "medium"
+      : "low";
+  const instruction =
+    results.find(result => result.level === "high")?.instruction ??
+    results.find(result => result.level === "medium")?.instruction ??
+    analyzeVerticalDramaStorySafety(null).instruction;
+  return { level, findings, instruction };
+}
+
+function applyAuthoritativeStoryboardDurations(
+  storyboard: StoryboardShotgridOutput,
+  durationPlan?: VerticalDramaDurationPlan
+): void {
+  const durations = durationPlan
+    ? getActiveVerticalDramaShotDurations(durationPlan)
+    : null;
+  if (!durations) return;
+  storyboard.shots.forEach((shot, index) => {
+    shot.duration_seconds = durations[index]!;
+  });
+}
+
+function buildStoryboardPolicyRepairInstruction(
+  safety: VerticalDramaStorySafetyResult,
+  attempt: number
+): string {
+  const findings = safety.findings
+    .map(finding => `${finding.code}: ${finding.message}`)
+    .join("; ");
+  return [
+    `SAFE REWRITE REQUIRED: policy repair attempt ${attempt} of ${VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS}.`,
+    `Repair the current storyboard candidate, targeting only these findings: ${findings}.`,
+    "Preserve all established episode facts, plot purpose, shot numbering, timing, character identity, and every unrelated safe shot.",
+    "Use neutral, non-graphic actions. Do not include sexual content, nudity, abuse, coercion, graphic injury, surveillance, or a child in danger.",
+  ].join(" ");
+}
+
+function buildStoryboardPolicyRepairBase(
+  storyboard: StoryboardShotgridOutput
+): Record<string, unknown> {
+  const {
+    storyboard_handoff_json: _derivedHandoff,
+    ...repairBase
+  } = storyboard;
+  return repairBase;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Prompt building                                                            */
 /* -------------------------------------------------------------------------- */
@@ -262,10 +540,22 @@ export interface GenerateStoryboardShotgridParams {
   tenantId?: string;
   seriesId: number;
   episodeId: number;
+  episodeGenerationSettings?: unknown;
   episodeTitle: string;
   episodeNumber: number;
   locale: VerticalDramaSeriesLocale;
+  /** Shared series-level spoken-language/market contract for dialogue excerpts and subtitles. */
+  dialogueLanguageProfile?: VerticalDramaDialogueLanguageProfile;
   durationSeconds: number;
+  /** Optional authoritative vector for the 9 logical storyboard shots. */
+  durationPlan?: VerticalDramaDurationPlan;
+  /** Flag-authorized compact look facts; raw provider fragments never enter storyboard authoring. */
+  seriesLookRegister?: {
+    styleName: string;
+    palette: string[];
+    lighting: string;
+    cameraGrammar: string;
+  };
   storySource: {
     logline?: string;
     keyBeats?: string[];
@@ -299,6 +589,30 @@ export interface GenerateStoryboardShotgridParams {
     summary?: string;
     keyLine?: string;
   }>;
+  /**
+   * Phase 1 of `planning/polished-toasting-gadget.md` (location visual
+   * bible) — the series' already-established locations (a future roster
+   * table, Phase 2 of that plan), supplied as input FACTS only. Code never
+   * decides which location a shot belongs to — skill.md's "Location
+   * continuity and scene grouping" section teaches the LLM to read the
+   * episode's own scene list (`sceneBeats` above) and default to ONE
+   * location for the whole episode, only splitting into more than one
+   * `distinct_locations[]` group when the scene list genuinely establishes
+   * a scripted move/flashback/time-skip, and to reuse an existing
+   * location's `locationKey` verbatim (mirrors `characters[].variants`'
+   * reuse-by-id convention) when a shot's setting matches one of these.
+   * Optional/empty for every caller today — Phase 1 has no roster table yet
+   * (every current call site omits this param entirely), so
+   * `buildUserPrompt` renders nothing new when empty/absent and the prompt
+   * stays byte-identical to before this field existed.
+   */
+  existingLocations?: Array<{
+    locationKey: string;
+    name: string;
+    description: string;
+  }>;
+  /** Structured wardrobe handoff from the nearest previous normal episode. */
+  crossEpisodeWardrobeHandoff?: CrossEpisodeWardrobeHandoff;
   /**
    * `referenceImageUrl` closes an upstream parity gap: the pinned
    * `storyboard-shotgrid-skill`'s `skill.json` is explicitly
@@ -339,7 +653,36 @@ export interface GenerateStoryboardShotgridParams {
       variantType: "outfit" | "age_stage";
       description: string;
       referenceImageUrl: string;
+      ageRange?: { min: number; max: number };
     }>;
+    /**
+     * `vertical_drama_character_aliases` rows for this BASE character
+     * (planning/vd-character-identity-repair/plan.md — closes the plan's
+     * last-remaining gap: the alias table existed and was populated by
+     * auto-register/merge, but nothing outside those two call sites ever
+     * READ it, so an aliased spelling like "Kirin"/"คีริน" a story writes
+     * for a merged character's canonical name "คิริน วัฒนเมธา" resolved to
+     * NOTHING here — the dialogue-speaker-coverage reconcile below
+     * (`speakerLookup`) would silently skip it as an "unknown speaker" and
+     * drop that reference-image attachment for the shot). Each entry is the
+     * DISPLAY form of the alias (`vertical_drama_character_aliases.alias`,
+     * not the normalized form) — `speakerLookup` below does its own
+     * `.trim()`, mirroring the existing `name`/`characterId` keys, so no
+     * extra normalization is needed here. Every alias maps to THIS base
+     * character's own `characterId` — never a variant's `characterKey` —
+     * exactly like `name` does today; this field carries no separate
+     * per-variant aliasing. Optional/empty for every character with no
+     * alias rows (the vast majority today, and every existing caller before
+     * this field existed) — `speakerLookup`'s registration loop only adds
+     * entries for a non-empty `aliases` array and, per that loop's own doc
+     * comment, an alias key is only registered when no existing name/
+     * characterId/variant key already claims that exact string, so passing
+     * this field never changes resolution for a shot whose speaker already
+     * matches a real name/id — the prompt/reconcile output for every caller
+     * omitting or emptying this field stays byte-identical to before it
+     * existed.
+     */
+    aliases?: string[];
   }>;
   /**
    * Twin-pair facts (planning/vertical-drama-twin-variant-completeness/
@@ -367,6 +710,7 @@ export interface GenerateStoryboardShotgridParams {
   twinPairs?: Array<{
     characterKeyA: string;
     characterKeyB: string;
+    ageRange?: { min: number; max: number };
   }>;
   /**
    * Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
@@ -419,6 +763,21 @@ export interface GenerateStoryboardShotgridParams {
     currentStoryboard: Record<string, unknown>;
     instruction: string;
   };
+  /** Whole-episode rebuild context; distinct from targeted Repair Mode. */
+  episodeRebuildContext?: {
+    currentStoryboard: Record<string, unknown>;
+    previousEpisodeContext: unknown;
+    futureEpisodeConstraint: unknown;
+    instruction: string;
+  };
+  /** Shared policy contract for fresh and repaired storyboard generation. */
+  policySafetyContext?: string;
+  /** Restricted forensic observer used by episode-scoped repair jobs only. */
+  planningAttemptObserver?: (
+    event: JsonPlanningAttemptEvent
+  ) => Promise<void> | void;
+  /** Repair candidates are charged only after the complete candidate passes all gates. */
+  deferCreditDeduction?: boolean;
   /**
    * Additive feature-flag bag (W10-B) — mirrors
    * `GenerateEpisodeScriptParams.opts`'s decoupled-payload-vs-flag
@@ -442,6 +801,8 @@ export interface GenerateStoryboardShotgridParams {
      * byte-identical prompt to before this flag existed.
      */
     sceneContractsEnabled?: boolean;
+    /** Feature 137 P1 — activates identity-safe shot-boundary guidance. */
+    motionContractsEnabled?: boolean;
     /**
      * Feature flag `verticalDramaRetentionHooks`
      * (`planning/vertical-drama-retention-hooks/plan.md` W3, added
@@ -462,6 +823,11 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     params.locale === "th"
       ? "Write all human-readable string values (summaries, narrative_purpose, visual_description, dialogue_excerpt, subtitle_text, plain_text_storyboard) in natural Thai."
       : `Write all human-readable string values in ${verticalDramaLocaleEnglishName(params.locale)}.`;
+  const dialogueLanguageProfilePrompt =
+    buildVerticalDramaDialogueLanguageProfilePrompt({
+      locale: params.locale,
+      profile: params.dialogueLanguageProfile,
+    });
 
   const { storySource } = params;
   const charactersWithRef = params.characters.filter(c => c.referenceImageUrl);
@@ -481,8 +847,12 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
           if (!c.variants?.length) return baseLine;
           const variantLines = c.variants
             .map(v => {
-              const typeLabel = v.variantType === "age_stage" ? "age-stage" : "outfit";
-              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description} [has an approved reference image]`;
+              const typeLabel =
+                v.variantType === "age_stage" ? "age-stage" : "outfit";
+              const ageNote = v.ageRange
+                ? ` [apparent age ${v.ageRange.min}–${v.ageRange.max}]`
+                : "";
+              return `  - ${v.characterKey} (${v.variantLabel}, ${typeLabel} variant of ${c.characterId}): ${v.description}${ageNote} [has an approved reference image]`;
             })
             .join("\n");
           return `${baseLine}\n  Variants available for ${c.characterId} — see "Character variant selection" below:\n${variantLines}`;
@@ -499,6 +869,9 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   const retentionHooksEnabled = params.opts?.retentionHooksEnabled === true;
   const genreSection =
     retentionHooksEnabled && params.genre ? `genre: ${params.genre}` : null;
+  const seriesLookRegisterSection = params.seriesLookRegister
+    ? `SERIES LOOK LOCK ACTIVE — keep shot-to-shot variation inside this register without copying these tokens verbatim: style="${params.seriesLookRegister.styleName}" palette=[${params.seriesLookRegister.palette.join(", ")}] lighting="${params.seriesLookRegister.lighting}" still_camera="${params.seriesLookRegister.cameraGrammar}"`
+    : null;
 
   const identityLockInstruction = charactersWithRef.length
     ? `Identity lock: ${charactersWithRef.map(c => c.characterId).join(", ")} ${
@@ -513,7 +886,10 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   // the per-shot instruction these lines feed.
   const twinPairLines = params.twinPairs?.length
     ? params.twinPairs
-        .map(p => `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people.`)
+        .map(
+          p =>
+            `- ${p.characterKeyA} and ${p.characterKeyB} are twins — they share an identical face but are different people. Keep them in the same apparent age/maturity range${p.ageRange ? ` (${p.ageRange.min}–${p.ageRange.max})` : ""} with visibly distinct styling.`
+        )
         .join("\n")
     : null;
   const twinPairInstruction = twinPairLines
@@ -538,6 +914,26 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
     ? `Episode scenes (this is what ACTUALLY happens in this episode's script — ground every shot in these, in order; do not invent generic mood shots disconnected from this list):\n${sceneBeatLines}\nDistribute the 9 shots across these scenes in order (multiple shots may cover the same scene). For any shot depicting a scene that has a "line", use that exact line (translated/adapted only if needed for length) as the shot's "dialogue_excerpt" and a short version as "subtitle_text" — do not invent unrelated dialogue.`
     : null;
 
+  // Existing series locations (Phase 1 of
+  // `planning/polished-toasting-gadget.md` — location visual bible) —
+  // additive; only rendered when `existingLocations` is non-empty, so a
+  // series with no location roster yet (every caller today, since the
+  // roster table does not exist until Phase 2) produces the exact same
+  // prompt as before this field existed. See skill.md "Location continuity
+  // and scene grouping" for the per-shot reuse instruction these lines
+  // feed — mirrors the "Characters" list's own reuse-by-id convention above.
+  const existingLocationLines = params.existingLocations?.length
+    ? params.existingLocations
+        .map(l => `- ${l.locationKey}: ${l.name} — ${l.description}`)
+        .join("\n")
+    : null;
+  const existingLocationsInstruction = existingLocationLines
+    ? `Existing series locations (reuse a location_key EXACTLY when a shot's setting matches one of these — see "Location continuity and scene grouping" below):\n${existingLocationLines}`
+    : null;
+  const crossEpisodeWardrobeInstruction = renderCrossEpisodeWardrobeHandoff(
+    params.crossEpisodeWardrobeHandoff
+  );
+
   // Deep story drafts hydration (W10-B, spec/section-16 refine-mode, added
   // 2026-07-08) — additive; only sent when `verticalDramaSeriesDeepStoryDrafts`
   // is enabled AND an `episodeDraft` was actually resolved for this episode,
@@ -546,7 +942,8 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
   // the instruction sentence travels with the actual `episode_draft` data in
   // the same message rather than living solely in the skill's system-prompt
   // brief, so it is directly verifiable by this function's own unit tests.
-  const episodeDraftEnabled = params.opts?.episodeDraftHydrationEnabled === true;
+  const episodeDraftEnabled =
+    params.opts?.episodeDraftHydrationEnabled === true;
   const episodeDraftSection =
     episodeDraftEnabled && params.episodeDraft
       ? [
@@ -571,27 +968,55 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
       ? 'Every shot in "shots" must ALSO include a "contract" object: when the matching draft shot above (in episode_draft) already has a "contract", copy it onto that SAME output shot VERBATIM — do not alter, drop, or re-derive it; for any shot with no draft contract, emit your own well-shaped "contract" object for that shot. A "contract" object has these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
       : 'Every shot in "shots" must ALSO include a "contract" object with these 6 required fields: "storyFunction" (one clear function for this shot), "emotionalBeat" (one beat), "audienceTakeaway" (what the viewer must retain), "tensionSource" (the conflict/pressure present in this shot), "newClueIds" (array of new important names/objects/dates/lore terms this shot introduces — at most 2 per shot), "dialoguePurpose" (what the dialogue in this shot is for); and these 3 optional fields when applicable: "characterDecision" (set when a decision happens in this shot), "continuityDependency" (the earlier fact this shot relies on, if any), "anchorLine" (true when this shot carries an anchor line — no run of 3 or more consecutive shots without anchorLine: true).'
     : null;
+  const identitySafeShotBoundariesSection = params.opts?.motionContractsEnabled
+    ? '- identity_safe_shot_boundaries: REQUIRED — apply the skill\'s "Identity-safe shot boundaries" section.'
+    : null;
 
   // Repair-mode framing — see `GenerateStoryboardShotgridParams.repairContext`'s
   // doc comment. Additive; only rendered when a caller explicitly supplies
   // `repairContext`, so every fresh-generation call site's prompt is
   // byte-identical to before this section existed.
-  const repairSection = params.repairContext
+  const episodeRebuildSection = params.episodeRebuildContext
     ? [
-        "REPAIR MODE: You are REPAIRING an existing storyboard shotgrid that was already generated — you are NOT creating a new one from scratch.",
-        "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other shot's camera, composition, timing, and description exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots. Still produce exactly 9 complete shots.",
-        `current_storyboard: ${JSON.stringify(params.repairContext.currentStoryboard)}`,
-        `repair_instruction: ${params.repairContext.instruction}`,
+        "FULL EPISODE REBUILD MODE: render exactly 9 shots from the newly rebuilt episode script supplied in the scene beats. This is a replacement storyboard for the same episode, not an unrelated new story.",
+        "Preserve established character identity, facts, setting, relationship state, prior-episode consequences, and the bounded setup toward the next episode. Do not copy unsafe wording or unsafe visual framing from the previous storyboard; use neutral, non-graphic cinematic alternatives while preserving the same narrative purpose.",
+        `previous_storyboard_reference: ${JSON.stringify(params.episodeRebuildContext.currentStoryboard)}`,
+        `previous_episode_context: ${JSON.stringify(params.episodeRebuildContext.previousEpisodeContext)}`,
+        `future_episode_constraint: ${JSON.stringify(params.episodeRebuildContext.futureEpisodeConstraint)}`,
+        `rebuild_instruction: ${params.episodeRebuildContext.instruction}`,
       ].join("\n")
     : null;
+  const repairSection =
+    !params.episodeRebuildContext && params.repairContext
+      ? [
+          "REPAIR MODE: You are REPAIRING an existing storyboard shotgrid that was already generated — you are NOT creating a new one from scratch.",
+          "Apply ONLY the targeted change(s) the instruction below calls for. Preserve every other shot's camera, composition, timing, and description exactly as-is unless the instruction specifically requires changing it — do not rewrite unrelated shots. Still produce exactly 9 complete shots.",
+          `current_storyboard: ${JSON.stringify(params.repairContext.currentStoryboard)}`,
+          `repair_instruction: ${params.repairContext.instruction}`,
+        ].join("\n")
+      : null;
+  const automaticSafety = analyzeVerticalDramaStorySafety({
+    storySource,
+    sceneBeats: params.sceneBeats,
+    episodeDraft: params.episodeDraft,
+    repairContext: params.repairContext,
+  });
+  const policySafetySection =
+    params.policySafetyContext || automaticSafety.level !== "low"
+      ? `policy_safety_contract:\n${params.policySafetyContext ?? automaticSafety.instruction}`
+      : null;
 
   return [
     `Episode title: ${params.episodeTitle}`,
     `Episode number: ${params.episodeNumber}`,
     `Episode duration: ${params.durationSeconds} seconds`,
     langInstruction,
+    dialogueLanguageProfilePrompt,
     genreSection,
-    storySource.workingTitle ? `Working title: ${storySource.workingTitle}` : null,
+    seriesLookRegisterSection,
+    storySource.workingTitle
+      ? `Working title: ${storySource.workingTitle}`
+      : null,
     storySource.logline ? `Logline: ${storySource.logline}` : null,
     storySource.mainPlot ? `Main plot: ${storySource.mainPlot}` : null,
     storySource.seasonArc ? `Season arc: ${storySource.seasonArc}` : null,
@@ -601,12 +1026,39 @@ function buildUserPrompt(params: GenerateStoryboardShotgridParams): string {
       : null,
     storySource.cliffhanger ? `Cliffhanger: ${storySource.cliffhanger}` : null,
     sceneBeatInstruction,
-    `Characters (reference these ids in "characters" and "required_character_refs"):\n${characterLines}`,
+    existingLocationsInstruction,
+    crossEpisodeWardrobeInstruction,
+    `Characters (reference these ids in "characters" and "required_character_refs"). "required_character_refs" means characters physically visible in the primary room/scene only. For a caller who is heard or shown only through a call, put the character id in "screen_caller_refs" instead; never put that caller in "required_character_refs". The caller's approved portrait will still be attached and the image prompt must show that portrait only inside a separate floating vertical virtual video-call screen/overlay, never on a real phone, tablet, monitor, or as a physical person in the scene:\n${characterLines}`,
+    [
+      "SHOT-LOCAL SUPPORTING PRESENCE (MANDATORY PER SHOT):",
+      "Use supporting_presence for generic visible people or groups who are present in THIS shot but are not identity-locked series characters, such as one police officer, local villagers, building members, staff, or customers.",
+      "Only add a supporting_presence entry when THIS shot's own action or visual description visibly places that role/group in the scene (for example: brings a police officer into the room, villagers gather to listen, building members sit together). Do not add one for a mere mention, a historical reference, a phone call, television/news, off-screen audio, or a person who stays outside the visible frame.",
+      "Use an exact count for a small named role (count: 1). Use a bounded count object such as {min: 3, max: 5} for a group. Keep the count as small as the shot requires, no more than 6 entries, and mark visibility as visible or background.",
+      "supporting_presence is shot-local: never copy it to another shot and never put generic roles into characters or required_character_refs. If a supporting person has a specific name and becomes a speaking/recurring character, keep the role generic for now and let the user promote it explicitly later.",
+    ].join("\n"),
+    [
+      "DUAL VIEW DETECTION (MANDATORY PER SHOT):",
+      "Set view_mode=dual only when this one logical shot must cut between TWO distinct physical views/environments; otherwise set view_mode=single and omit dual_view.",
+      "Dual scenarios: physical_barrier (opposite sides of a closed door/wall/glass), remote_call (phone/video call where the edit shows each participant physically in their own environment), separate_locations (cross-cut dialogue or parallel action in different places).",
+      "An ordinary caller shown only on a phone screen is NOT dual view; keep view_mode=single and use screen_caller_refs.",
+      "For view_mode=dual include dual_view={scenario,primary_character_refs,secondary_character_refs,primary_location_key,secondary_location_key,confidence,reason_codes}. Character sets must be non-empty and disjoint. Use exact character ids and exact location_key values when known.",
+      "If the text explicitly says to intercut, switch views, show both environments, or places speakers on opposite sides/in different locations, detect it even when the words 'dual view' are absent.",
+    ].join("\n"),
     twinPairInstruction,
-    `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
+    params.durationPlan &&
+    getActiveVerticalDramaShotDurations(params.durationPlan)
+      ? `Produce exactly 9 shots. The authoritative logical-shot duration vector is ${JSON.stringify(
+          getActiveVerticalDramaShotDurations(params.durationPlan)
+        )} seconds in shot order. Copy those values exactly into shots[].duration_seconds; their derived runtime is ${deriveVerticalDramaEpisodeRuntimeSeconds(
+          params.durationPlan
+        )} seconds. Do not redistribute or invent durations.`
+      : `Produce exactly 9 shots with duration_seconds summing to ${params.durationSeconds}.`,
     episodeDraftSection,
     sceneContractSection,
+    identitySafeShotBoundariesSection,
+    episodeRebuildSection,
     repairSection,
+    policySafetySection,
     VD_COMPACT_JSON_INSTRUCTION,
   ]
     .filter(Boolean)
@@ -631,6 +1083,14 @@ export async function generateStoryboardShotgrid(
   storyboard: StoryboardShotgridOutput;
   creditsUsed: number;
   model: string;
+  creditCharge?: {
+    amount: number;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    skillSlug: string;
+    description: string;
+  };
 }> {
   // Rate limiting — reuses the shared `mediaGenerationLimiter` (this is a
   // paid LLM call, same per-user cap as `media.ts`'s generation mutations).
@@ -664,18 +1124,97 @@ export async function generateStoryboardShotgrid(
   // same one-retry-on-truncated/invalid-JSON safety net as the sibling
   // start-frame/motion-prompt/script generators — see
   // `executeJsonPlanningCallWithRetry`'s doc comment.
-  const { data: storyboardData, response } = await executeJsonPlanningCallWithRetry({
-    model,
-    systemPrompt,
-    userPrompt,
-    temperature: 0.8,
-    userId: params.userId,
-    maxTokens: 16000,
-    schema: storyboardShotgridOutputSchema,
-    label: "Storyboard shotgrid",
-  });
+  let { data: storyboardData, response } =
+    await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt,
+      temperature: 0.8,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: storyboardShotgridOutputSchema,
+      label: "Storyboard shotgrid",
+      planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "storyboard_planning",
+        settings: params.episodeGenerationSettings,
+      },
+    });
 
-  // Normalize `characters` / `required_character_refs` per shot — the LLM is
+  // The selected profile is the production source of truth. Let the skill
+  // decide story meaning and shot content, but do not let a harmless numeric
+  // drift in one LLM field change the render contract. Legacy callers omit
+  // durationPlan and retain the historical sum-only behavior.
+  let storyboardSafety = analyzeStoryboardSafety(storyboardData);
+  let policyRepairAttempts = 0;
+  while (
+    isBlockingVerticalDramaStorySafety(storyboardSafety) &&
+    policyRepairAttempts < VERTICAL_DRAMA_STORYBOARD_POLICY_REPAIR_MAX_ATTEMPTS
+  ) {
+    policyRepairAttempts += 1;
+    // Keep the valid candidate as the repair base. Re-generating all nine
+    // shots from the original episode makes already-safe shots drift and
+    // loses the only resumable state when another policy phrase appears.
+    const repairInstruction = buildStoryboardPolicyRepairInstruction(
+      storyboardSafety,
+      policyRepairAttempts
+    );
+    const safetyRepairParams: GenerateStoryboardShotgridParams = {
+      ...params,
+      repairContext: {
+        currentStoryboard: buildStoryboardPolicyRepairBase(storyboardData),
+        instruction: repairInstruction,
+      },
+      policySafetyContext: [
+        params.policySafetyContext,
+        storyboardSafety.instruction,
+        repairInstruction,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    };
+    const repaired = await executeJsonPlanningCallWithRetry({
+      model,
+      systemPrompt,
+      userPrompt: buildUserPrompt(safetyRepairParams),
+      temperature: 0.2,
+      userId: params.userId,
+      maxTokens: 16000,
+      schema: storyboardShotgridOutputSchema,
+      label: `Storyboard shotgrid safe repair ${policyRepairAttempts}`,
+      planningAttemptObserver: params.planningAttemptObserver,
+      verticalDramaContext: {
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        taskClass: "storyboard_planning",
+        settings: params.episodeGenerationSettings,
+      },
+    });
+    storyboardData = repaired.data;
+    response = repaired.response;
+    storyboardSafety = analyzeStoryboardSafety(storyboardData);
+  }
+
+  const detectedPolicySafety = storyboardSafety;
+  if (detectedPolicySafety.findings.length > 0) {
+    const safeRewrite = rewriteVerticalDramaStoryForSafeMedia(storyboardData);
+    storyboardData = safeRewrite.value as StoryboardShotgridOutput;
+    storyboardSafety = analyzeStoryboardSafety(storyboardData);
+    (storyboardData as StoryboardShotgridOutput & {
+      policy_safety_warnings?: string[];
+    }).policy_safety_warnings = detectedPolicySafety.findings.map(
+      finding =>
+        `Storyboard safety advisory [${finding.code}]: ${finding.message}`,
+    );
+  }
+
+  // Apply the production duration profile after the final repair candidate
+  // wins so a model cannot drift timing during a targeted safety edit.
+  applyAuthoritativeStoryboardDurations(storyboardData, params.durationPlan);
+
+  // Normalize `characters` / `required_character_refs` / `screen_caller_refs` per shot — the LLM is
   // told to reference the exact `characterId`s listed in the prompt (see
   // `buildUserPrompt`'s "reference these ids" instruction), but in practice
   // it sometimes invents its own slug instead (observed live: emitting
@@ -700,6 +1239,63 @@ export async function generateStoryboardShotgrid(
       ...(c.variants?.map(v => v.characterKey) ?? []),
     ])
   );
+  const characterPresenceSources = params.characters.flatMap(c => [
+    { characterKey: c.characterId, name: c.name },
+    ...(c.variants ?? []).map(variant => ({
+      characterKey: variant.characterKey,
+      name: c.name,
+      parentCharacterKey: c.characterId,
+    })),
+  ]);
+  // Dialogue-speaker coverage (deterministic reconcile, added 2026-07-15) —
+  // guarantees every character who SPEAKS a `dialogue_lines[]` line in a
+  // shot's matching `episodeDraft` draft is present in that shot's
+  // `characters`/`required_character_refs`, so the reference-image
+  // attachment (and the downstream video step) never has to invent a
+  // stand-in for a speaker who wasn't given a face. `dialogue_lines[].speaker`
+  // is a freeform string a draft author may have written as a display name,
+  // a `characterId`, or a variant `characterKey` — resolved through the SAME
+  // roster facts (`name` / `characterId` / `variants[].characterKey`) the
+  // `nameMatches`/`validCharacterIds` logic above already keys off of, via a
+  // trimmed-exact lookup (mirroring, not replacing, that convention). A
+  // speaker string that doesn't resolve to any roster character is skipped —
+  // never added as a raw/unknown id, since that could never match a real
+  // reference image downstream anyway. Built once (not per-shot): O(characters)
+  // instead of O(shots * characters).
+  const speakerLookup = new Map<string, string>();
+  const characterFamilyById = new Map<string, string[]>();
+  for (const c of params.characters) {
+    const familyIds = [
+      c.characterId,
+      ...(c.variants?.map(v => v.characterKey) ?? []),
+    ];
+    for (const id of familyIds) {
+      characterFamilyById.set(id, familyIds);
+    }
+    speakerLookup.set(c.name.trim(), c.characterId);
+    speakerLookup.set(c.characterId.trim(), c.characterId);
+    for (const v of c.variants ?? []) {
+      speakerLookup.set(v.characterKey.trim(), v.characterKey);
+    }
+  }
+  // Alias registration (see `characters[].aliases` doc comment above) —
+  // deliberately a SEPARATE pass after every character's own name/
+  // characterId/variant keys are already in `speakerLookup`, so a real name
+  // or characterKey ALWAYS wins over an alias regardless of which
+  // character's turn came first/last in `params.characters` — an alias can
+  // only fill a key nobody else already claimed. Two merged characters can
+  // never collide here in practice (the alias table's own
+  // `UNIQUE(seriesId, normalizedAlias)` already guarantees one alias string
+  // resolves to one characterId before this code ever sees it), but the
+  // `.has()` guard is kept anyway as defense-in-depth and to make the
+  // precedence explicit without relying on that external invariant.
+  for (const c of params.characters) {
+    for (const alias of c.aliases ?? []) {
+      const trimmed = alias.trim();
+      if (!trimmed || speakerLookup.has(trimmed)) continue;
+      speakerLookup.set(trimmed, c.characterId);
+    }
+  }
   for (const shot of storyboardData.shots) {
     const shotRecord = shot as unknown as Record<string, unknown>;
     const narrativeText = [
@@ -711,8 +1307,26 @@ export async function generateStoryboardShotgrid(
     ]
       .filter((v): v is string => typeof v === "string" && v.length > 0)
       .join(" ");
-    const validLlmIds = [...shot.characters, ...shot.required_character_refs].filter(
-      id => validCharacterIds.has(id),
+    // The LLM skill is authoritative for presence role. Code only validates
+    // ids and honors the explicit `screen_caller_refs` field; it must never
+    // infer caller/scene membership from synopsis wording.
+    const explicitCallerIds = shot.screen_caller_refs.filter(id =>
+      validCharacterIds.has(id)
+    );
+    const candidateLlmIds = [
+      ...shot.characters,
+      ...shot.required_character_refs,
+    ].filter(id => validCharacterIds.has(id));
+    const explicitPresence = classifyDeviceMediatedCharacterRefs({
+      characterRefs: [...validCharacterIds],
+      characters: characterPresenceSources,
+      screenCallerCharacterRefs: explicitCallerIds,
+    });
+    const physicallyPresentCharacterKeys = new Set(
+      explicitPresence.sceneCharacterRefs,
+    );
+    const validLlmIds = candidateLlmIds.filter(id =>
+      physicallyPresentCharacterKeys.has(id)
     );
     // Character variants (Phase D) — a base character and its variants share
     // the SAME `name` (same person, different look), so the name-match
@@ -727,15 +1341,55 @@ export async function generateStoryboardShotgrid(
     // for a character with no variants, its "family" is just itself, so this
     // reduces to the exact original check and stays byte-identical.
     const nameMatches = params.characters
-      .filter(c => narrativeText.includes(c.name))
+      .filter(
+        c =>
+          narrativeText.includes(c.name) &&
+          physicallyPresentCharacterKeys.has(c.characterId)
+      )
       .filter(c => {
-        const familyIds = [c.characterId, ...(c.variants?.map(v => v.characterKey) ?? [])];
+        const familyIds = [
+          c.characterId,
+          ...(c.variants?.map(v => v.characterKey) ?? []),
+        ];
         return !familyIds.some(id => validLlmIds.includes(id));
       })
       .map(c => c.characterId);
     const resolvedIds = Array.from(new Set([...nameMatches, ...validLlmIds]));
+    const resolvedCallerIds = Array.from(new Set(explicitCallerIds));
+    // Dialogue-speaker coverage — see `speakerLookup`/`characterFamilyById`
+    // doc comment above. Additive only: a shot with no matching
+    // `episodeDraft` entry (legacy/non-deep-draft path, or `episodeDraft`
+    // absent entirely) leaves `dialogueLines` empty and this is a no-op, and
+    // a speaker whose family (base id + variants) is already in
+    // `resolvedIds` is never re-added — so a shot whose speakers are already
+    // covered stays byte-identical.
+    const draftShot = params.episodeDraft?.shots.find(
+      d => d.shot_number === shot.shot_number
+    );
+    for (const dialogueLine of draftShot?.dialogue_lines ?? []) {
+      const speakerCharacterId = speakerLookup.get(dialogueLine.speaker.trim());
+      if (!speakerCharacterId) continue; // unknown/junk speaker label — skip
+      const familyIds = characterFamilyById.get(speakerCharacterId) ?? [
+        speakerCharacterId,
+      ];
+      if (!familyIds.some(id => physicallyPresentCharacterKeys.has(id))) {
+        continue;
+      }
+      if (!familyIds.some(id => resolvedIds.includes(id))) {
+        resolvedIds.push(speakerCharacterId);
+      }
+    }
     shot.characters = resolvedIds;
     shot.required_character_refs = resolvedIds;
+    shot.screen_caller_refs = resolvedCallerIds;
+    // Generic people/groups are a separate text-only contract. Normalize the
+    // LLM output here so invalid ids/fields cannot leak into the persisted
+    // storyboard, while preserving the shot-local boundary.
+    shot.supporting_presence = resolveVerticalDramaSupportingPresenceForShot(
+      shot.supporting_presence,
+      shot,
+      { idPrefix: `shot-${shot.shot_number}-supporting` }
+    ) as unknown as typeof shot.supporting_presence;
   }
 
   // `storyboard_handoff_json` deterministic reconstruction (root-cause fix,
@@ -792,6 +1446,125 @@ export async function generateStoryboardShotgrid(
     };
   }
 
+  // See `plain_text_storyboard`'s doc comment on the schema above — mirrors
+  // the `storyboard_handoff_json` fallback immediately above this block.
+  // Deliberately mechanical (not another LLM call): nothing downstream
+  // reads this field today, so a compact, always-available summary is all
+  // the fallback needs to guarantee — the richer LLM-authored prose is
+  // still used whenever the model does provide it.
+  if (
+    !storyboardData.plain_text_storyboard ||
+    storyboardData.plain_text_storyboard.length === 0
+  ) {
+    storyboardData.plain_text_storyboard = storyboardData.shots
+      .map(s => `Shot ${s.shot_number}: ${s.narrative_purpose}.`)
+      .join(" ");
+  }
+
+  // Root-cause fix (2026-07-12, live episode #43 regenerate producing 0
+  // `distinct_locations` groups twice in a row despite skill.md's explicit
+  // "a single entry covering all 9 shot_numbers in the default one-location
+  // case" instruction) — same failure class as `plain_text_storyboard`
+  // above: the field is optional at the zod level (for legacy-response
+  // compatibility), so the LLM silently omitting it produces no validation
+  // error, just an empty Location Visual Bible. Unlike `plain_text_storyboard`
+  // this field IS read downstream (grounds the location reference-image
+  // prompt), so the fallback groups by each shot's own reliable `location`
+  // string (unlike `distinct_locations` itself, every shot has always
+  // carried this field) rather than emitting a placeholder, and seeds each
+  // group's `description` from the real `visual_description` text the model
+  // already committed to for those shots — mechanical, but grounded in
+  // actual model output, not invented. Only fires when the LLM's own
+  // grouping is absent entirely; a partial/malformed attempt from the model
+  // is left as-is (Zod already accepts anything satisfying
+  // `distinctLocationSchema`, malformed shapes fail validation upstream).
+  //
+  // Key generation (updated 2026-07-14, production evidence from series
+  // 16 / episode 59) — PREVIOUSLY minted a purely POSITIONAL key
+  // (`location-${index + 1}`), which is order-dependent: across
+  // regenerations the same index can land on a different physical location,
+  // so `reconcileEpisodeLocations`'s key-match-first logic would silently
+  // rebind an existing roster row's (frozen, correct) reference image to
+  // whatever the model now calls that position — a wrong/swapped location
+  // image with no error anywhere. Now derives the key from the location's
+  // own NAME via `slugifyForLocationKey` (content-derived, order-independent),
+  // deduped within this call via `generateUniqueLocationKey` so two
+  // distinct names appearing in the same episode never collide (including
+  // the Thai-only-name case, which both slug to `"location"` and dedup to
+  // `location-2`, `location-3`, ...). For the common case of an
+  // English-slug-shaped `location_name` this makes the fallback key EQUAL
+  // the series' existing canonical `locationKey` for that same place, so
+  // `reconcileEpisodeLocations` reuses the correct pre-existing roster row
+  // instead of minting/rebinding a positional one.
+  if (
+    !storyboardData.distinct_locations ||
+    storyboardData.distinct_locations.length === 0
+  ) {
+    const groupOrder: string[] = [];
+    const groupsByName = new Map<
+      string,
+      { shotNumbers: number[]; descriptions: string[] }
+    >();
+    for (const shot of storyboardData.shots) {
+      const shotRecord = shot as unknown as Record<string, unknown>;
+      const locationName =
+        typeof shotRecord.location === "string" &&
+        shotRecord.location.length > 0
+          ? shotRecord.location
+          : "ฉากหลัก";
+      if (!groupsByName.has(locationName)) {
+        groupsByName.set(locationName, { shotNumbers: [], descriptions: [] });
+        groupOrder.push(locationName);
+      }
+      const group = groupsByName.get(locationName)!;
+      group.shotNumbers.push(shot.shot_number);
+      group.descriptions.push(shot.visual_description);
+    }
+    const usedFallbackKeys = new Set<string>();
+    storyboardData.distinct_locations = groupOrder.map(locationName => {
+      const group = groupsByName.get(locationName)!;
+      const key = generateUniqueLocationKey(
+        slugifyForLocationKey(locationName),
+        usedFallbackKeys
+      );
+      usedFallbackKeys.add(key);
+      return {
+        location_key: key,
+        location_name: locationName,
+        description: group.descriptions.slice(0, 3).join(" "),
+        shot_numbers: group.shotNumbers,
+      };
+    });
+  }
+
+  // Physical-place identity is separate from camera coverage. A model can
+  // describe the same exterior as "หน้าคลินิก" and "ลานจอดรถหน้าคลินิก";
+  // those are two views of one place, not two location-stock rows. Fold only
+  // the shared, structural view-only prefixes in the pure shared helper. It
+  // deliberately keeps two different known roster keys separate, so this is
+  // not a broad fuzzy merge of locations.
+  if (storyboardData.distinct_locations?.length) {
+    const canonicalGroups = canonicalizeStoryboardLocationGroups(
+      storyboardData.distinct_locations.map(group => ({
+        locationKey: group.location_key,
+        locationName: group.location_name,
+        description: group.description,
+        shotNumbers: group.shot_numbers,
+      })),
+      {
+        knownLocationKeys: new Set(
+          (params.existingLocations ?? []).map(location => location.locationKey),
+        ),
+      },
+    );
+    storyboardData.distinct_locations = canonicalGroups.map(group => ({
+      location_key: group.locationKey,
+      location_name: group.locationName,
+      description: group.description,
+      shot_numbers: group.shotNumbers,
+    }));
+  }
+
   const usage = response.usage;
   const creditsUsed = calculateCreditsForLLM(
     usage?.prompt_tokens ?? 0,
@@ -799,22 +1572,38 @@ export async function generateStoryboardShotgrid(
     model
   );
 
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
+  const creditCharge = {
     amount: creditsUsed,
+    model,
+    inputTokens: usage?.prompt_tokens ?? 0,
+    outputTokens: usage?.completion_tokens ?? 0,
+    skillSlug: "vertical-drama-storyboard-shotgrid",
     description: `Vertical Drama — generate storyboard (episode #${params.episodeId})`,
-    sourceType: "skill",
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      seriesId: params.seriesId,
-      episodeId: params.episodeId,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
+  } as const;
+  if (!params.deferCreditDeduction) {
+    await deductCredits({
+      userId: params.userId,
+      tenantId: params.tenantId,
+      amount: creditCharge.amount,
+      description: creditCharge.description,
+      skillSlug: creditCharge.skillSlug,
+      sourceType: "skill",
+      metadata: {
+        model,
+        llmModel: model,
+        feature: "vertical_drama_series",
+        seriesId: params.seriesId,
+        episodeId: params.episodeId,
+        inputTokens: creditCharge.inputTokens,
+        outputTokens: creditCharge.outputTokens,
+      },
+    });
+  }
 
-  return { storyboard: storyboardData, creditsUsed, model };
+  return {
+    storyboard: storyboardData,
+    creditsUsed,
+    model,
+    ...(params.deferCreditDeduction ? { creditCharge } : {}),
+  };
 }

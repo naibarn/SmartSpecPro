@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "สาธิตเครื่องซักผ้าตั้งแต่ใส่ผ้า เลือกโปรแกรม จนเห็นการหมุนปั่นและผลลัพธ์",
+  "locale": "th-TH",
+  "contentMode": "tutorial",
+  "product": {
+    "name": "Washing Machine Example",
+    "category": "washing machine",
+    "targetSurfacesOrSystems": [
+      "laundry"
+    ],
+    "usageInstructions": [
+      "Load laundry",
+      "Close door",
+      "Select a supported program",
+      "Start cycle"
+    ],
+    "mechanismFacts": [
+      "Drum rotation may be visualized only if supported by product design/reference"
+    ],
+    "approvedClaims": []
+  },
+  "demonstrationPolicy": {
+    "mode": "hybrid",
+    "requireCorrectUsage": true,
+    "allowTimeCompression": true
+  },
+  "visualExplanationPolicy": {
+    "mode": "explicit",
+    "allowCutaway": true,
+    "allowIllustrativeEffects": true
+  }
+}

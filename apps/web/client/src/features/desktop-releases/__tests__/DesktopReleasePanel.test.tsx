@@ -13,6 +13,7 @@ import type {
 } from "@shared/desktopReleaseBuilds";
 
 const fetchMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 const catalogState = vi.hoisted(() => ({
   catalog: {
     generatedAt: "2026-04-10T10:00:00.000Z",
@@ -50,8 +51,12 @@ vi.mock("../useDesktopReleaseCatalog", () => ({
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn(),
+    error: toastErrorMock,
   },
+}));
+
+vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
+  useConfirm: () => ({ confirm: vi.fn() }),
 }));
 
 vi.stubGlobal("fetch", fetchMock);
@@ -61,7 +66,7 @@ import { DesktopReleasePanel } from "../DesktopReleasePanel";
 const BUILD_SESSION_KEY = "smartaihub.desktop-release.build-session.v1";
 
 function maybeHandleDashboardReleaseRequest(href: string): Response | null {
-  if (href.includes("/marketplace-extension/latest")) {
+  if (href.includes("/companion-extension/latest")) {
     return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
       status: 200,
       headers: {
@@ -86,10 +91,13 @@ describe("DesktopReleasePanel", () => {
   beforeEach(() => {
     sessionStorage.clear();
     fetchMock.mockReset();
+    toastErrorMock.mockReset();
     catalogState.refresh.mockReset();
   });
 
   it("rehydrates a persisted build and keeps polling until it completes", async () => {
+    const queuedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+    const workflowRunUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     const storedBuildResult: DesktopReleaseBuildResponse = {
       repository: "naibarn/SmartSpecPro",
       workflow: "desktop-release.yml",
@@ -98,7 +106,7 @@ describe("DesktopReleasePanel", () => {
       platform: "windows",
       bundleMode: "on-demand",
       releaseNotes: "Ship fixes",
-      queuedAt: "2026-04-10T10:00:00.000Z",
+      queuedAt,
       workflowRunId: "123",
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/123",
       workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
@@ -108,7 +116,7 @@ describe("DesktopReleasePanel", () => {
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/123",
       workflowRunStatus: "in_progress",
       workflowRunConclusion: null,
-      workflowRunUpdatedAt: "2026-04-10T10:01:00.000Z",
+      workflowRunUpdatedAt,
       portalSyncStatus: "idle",
       portalSyncUpdatedAt: null,
     };
@@ -261,6 +269,8 @@ describe("DesktopReleasePanel", () => {
   });
 
   it("hides portal sync retry alerts while the workflow is still running", async () => {
+    const queuedAt = new Date(Date.now() - 2 * 60_000).toISOString();
+    const workflowRunUpdatedAt = new Date(Date.now() - 60_000).toISOString();
     const storedBuildResult: DesktopReleaseBuildResponse = {
       repository: "naibarn/SmartSpecPro",
       workflow: "desktop-release.yml",
@@ -269,7 +279,7 @@ describe("DesktopReleasePanel", () => {
       platform: "windows",
       bundleMode: "e4b",
       releaseNotes: "Smart AI Hub - Alpha Version 0.1.3",
-      queuedAt: "2026-04-10T01:00:00.000Z",
+      queuedAt,
       workflowRunId: "777",
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/777",
       workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
@@ -279,7 +289,7 @@ describe("DesktopReleasePanel", () => {
       workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/777",
       workflowRunStatus: "in_progress",
       workflowRunConclusion: null,
-      workflowRunUpdatedAt: "2026-04-10T01:10:00.000Z",
+      workflowRunUpdatedAt,
       portalSyncStatus: "syncing",
       portalSyncUpdatedAt: "2026-04-10T01:11:00.000Z",
       portalSyncError: "desktop_release_github_release_not_ready",
@@ -397,10 +407,61 @@ describe("DesktopReleasePanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("marks a queued workflow as stalled after the status stops changing", async () => {
+    const storedBuildResult: DesktopReleaseBuildResponse = {
+      repository: "naibarn/SmartSpecPro",
+      workflow: "desktop-release.yml",
+      ref: "main",
+      version: "0.1.0",
+      platform: "windows",
+      bundleMode: "on-demand",
+      releaseNotes: "Queued too long",
+      queuedAt: new Date(Date.now() - 31 * 60_000).toISOString(),
+      workflowRunId: "1000",
+      workflowRunUrl: "https://github.com/naibarn/SmartSpecPro/actions/runs/1000",
+      workflowUrl: "https://github.com/naibarn/SmartSpecPro/actions/workflows/desktop-release.yml",
+    };
+    const storedBuildStatus: DesktopReleaseBuildRunStatus = {
+      workflowRunId: "1000",
+      workflowRunUrl: storedBuildResult.workflowRunUrl,
+      workflowRunStatus: "queued",
+      workflowRunConclusion: null,
+      workflowRunUpdatedAt: null,
+      portalSyncStatus: "idle",
+      portalSyncUpdatedAt: null,
+    };
+
+    sessionStorage.setItem(
+      BUILD_SESSION_KEY,
+      JSON.stringify({ buildResult: storedBuildResult, buildRunStatus: storedBuildStatus }),
+    );
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      const releaseResponse = maybeHandleDashboardReleaseRequest(href);
+      if (releaseResponse) {
+        return releaseResponse;
+      }
+      if (href.includes("/builds/1000/status")) {
+        return new Response(JSON.stringify({ buildRun: storedBuildStatus }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    expect(
+      await screen.findByText("dashboard:desktopReleases.admin.build.progress.stalled"),
+    ).toBeInTheDocument();
+  });
+
   it("shows the Smart AI Hub Worker App dashboard download when a Windows installer is available", async () => {
     fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
       const href = String(url);
-      if (href.includes("/marketplace-extension/latest")) {
+      if (href.includes("/companion-extension/latest")) {
         return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), {
           status: 200,
           headers: {
@@ -436,7 +497,7 @@ describe("DesktopReleasePanel", () => {
     render(<DesktopReleasePanel variant="dashboard" enabled />);
 
     expect(await screen.findByText("dashboard:desktopReleases.workerApp.title")).toBeInTheDocument();
-    expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.0-x64-setup\.exe/)).toBeInTheDocument();
+    expect(screen.getAllByText(/smart-ai-hub-worker-app-0\.1\.0-x64-setup\.exe/).length).toBeGreaterThan(0);
     const downloadLink = screen.getByRole("link", {
       name: /dashboard:desktopReleases\.workerApp\.download/,
     });
@@ -444,6 +505,128 @@ describe("DesktopReleasePanel", () => {
     expect(
       screen.queryByRole("link", { name: /dashboard:desktopReleases\.workerApp\.openJobs/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it("keeps Worker App version history collapsed and downloads a selected older version", async () => {
+    const history = Array.from({ length: 10 }, (_, index) => {
+      const version = `0.1.${210 - index}`;
+      return {
+        version,
+        fileName: `smart-ai-hub-worker-app-${version}-x64-setup.exe`,
+        fileSizeBytes: 2_000_000 + index,
+        updatedAt: `2026-04-${String(10 - index).padStart(2, "0")}T10:00:00.000Z`,
+        downloadUrl: `/api/desktop-releases/worker-app/download?version=${version}`,
+        installerFormat: "exe",
+        platform: "windows",
+        architecture: "x64",
+      };
+    });
+
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/companion-extension/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href === "/api/desktop-releases/worker-app/latest") {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          release: {
+            version: "0.1.211",
+            fileName: "smart-ai-hub-worker-app-0.1.211-x64-setup.exe",
+            fileSizeBytes: 2_100_000,
+            updatedAt: "2026-04-10T10:00:00.000Z",
+            downloadUrl: "/api/desktop-releases/worker-app/download",
+            installerFormat: "exe",
+            platform: "windows",
+            architecture: "x64",
+          },
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/history")) {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          latest: null,
+          history,
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest?platform=macos&architecture=arm64")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/worker-app/macos-source/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/api/workers/runtime-pack/manifest")) {
+        return new Response(JSON.stringify({ runtimeId: "hyperframes-macos-arm64", version: "0.0.0", allowed: false }), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    const historyTrigger = await screen.findByRole("button", {
+      name: /dashboard:desktopReleases\.workerApp\.history\.title/,
+    });
+    expect(historyTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/desktop-releases/worker-app/history?platform=windows&architecture=x64",
+      expect.anything(),
+    );
+
+    fireEvent.click(historyTrigger);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/desktop-releases/worker-app/history?platform=windows&architecture=x64",
+      expect.objectContaining({ credentials: "include" }),
+    ));
+    expect(await screen.findByText(/smart-ai-hub-worker-app-0\.1\.210-x64-setup\.exe/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", {
+      name: /dashboard:desktopReleases\.workerApp\.history\.download/,
+    })).toHaveLength(10);
+    expect(
+      screen.getAllByRole("link", {
+        name: /dashboard:desktopReleases\.workerApp\.history\.download/,
+      }).find((link) => link.getAttribute("href")?.includes("version=0.1.210")),
+    ).toHaveAttribute("href", "/api/desktop-releases/worker-app/download?version=0.1.210");
+  });
+
+  it("shows the native macOS Worker App installer separately from the source bundle", async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) => {
+      const href = String(url);
+      if (href.includes("/companion-extension/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest?platform=macos&architecture=arm64")) {
+        return new Response(JSON.stringify({
+          generatedAt: "2026-04-10T10:00:00.000Z",
+          release: {
+            version: "0.1.325",
+            fileName: "smart-ai-hub-worker-app-0.1.325-arm64-setup.dmg",
+            fileSizeBytes: 4_200_000,
+            updatedAt: "2026-04-10T10:00:00.000Z",
+            downloadUrl: "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+            installerFormat: "dmg",
+            platform: "macos",
+            architecture: "arm64",
+          },
+        }), { status: 200 });
+      }
+      if (href.includes("/worker-app/latest")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", release: null }), { status: 200 });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="dashboard" enabled />);
+
+    expect(await screen.findByText("dashboard:desktopReleases.workerAppMac.title")).toBeInTheDocument();
+    expect(screen.getByText(/smart-ai-hub-worker-app-0\.1\.325-arm64-setup\.dmg/)).toBeInTheDocument();
+    const downloadLink = screen.getByRole("link", {
+      name: /dashboard:desktopReleases\.workerAppMac\.download/,
+    });
+    expect(downloadLink).toHaveAttribute(
+      "href",
+      "/api/desktop-releases/worker-app/download?platform=macos&architecture=arm64",
+    );
   });
 
   it("shows a collapsible build history with persisted run details", async () => {
@@ -509,5 +692,45 @@ describe("DesktopReleasePanel", () => {
     expect(await screen.findByText("Run #789")).toBeInTheDocument();
     expect(screen.getByText("dashboard:desktopReleases.admin.build.history.portalSync.completed")).toBeInTheDocument();
     expect(screen.getByText("dashboard:desktopReleases.admin.build.progress.completedBadge")).toBeInTheDocument();
+  });
+
+  it("shows an actionable message when GitHub rejects the build token", async () => {
+    fetchMock.mockImplementation(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const href = String(url);
+      if (href.includes("/builds/history")) {
+        return new Response(JSON.stringify({ generatedAt: "2026-04-10T10:00:00.000Z", builds: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (href.endsWith("/builds") && init?.method === "POST") {
+        return new Response(JSON.stringify({
+          error: JSON.stringify({
+            message: "Bad credentials",
+            status: "401",
+          }),
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Unexpected fetch call: ${href}`);
+    });
+
+    render(<DesktopReleasePanel variant="admin" enabled canTriggerBuild />);
+
+    const versionInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(versionInput, { target: { value: "0.1.1" } });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "dashboard:desktopReleases.admin.build.trigger",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        "dashboard:desktopReleases.admin.build.progress.error.invalidGithubToken",
+      );
+    });
   });
 });

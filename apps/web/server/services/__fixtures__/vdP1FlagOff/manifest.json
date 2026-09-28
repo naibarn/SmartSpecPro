@@ -1,0 +1,13 @@
+{
+  "captureSha": "9eda150ce11fecdc673d8505095e76435219cc22",
+  "caseIds": [
+    "sfg-batchplan",
+    "sfg-policysafe",
+    "sfg-shotprompt",
+    "vp-factblock",
+    "merge-refs"
+  ],
+  "paramsSha256": "0a631ce503ff1f102e465c0371ead4bf64f40178db08b9c1c56a598512043604",
+  "node": "v22.22.3",
+  "exception": "merge-refs captures output semantics across the stable four-argument signature"
+}

@@ -108,4 +108,30 @@ describe("updateTenantFeatureFlags", () => {
       expect.anything(),
     );
   });
+
+  it("syncs the Meta Channels tenant flag to the Redis route guard", async () => {
+    const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
+
+    await updateTenantFeatureFlags("tenant-1", { META_CHANNELS_ENABLED: true });
+
+    expect(mockSetTenantFeatureFlag).toHaveBeenCalledWith(
+      "META_CHANNELS_ENABLED",
+      "tenant-1",
+      true,
+    );
+  });
+
+  it("syncs the special tie-in flag for legacy Redis-backed readers", async () => {
+    const { updateTenantFeatureFlags } = await import("../tenantFeatureFlagService");
+
+    await updateTenantFeatureFlags("tenant-special", {
+      verticalDramaSpecialEpisodes: false,
+    });
+
+    expect(mockSetTenantFeatureFlag).toHaveBeenCalledWith(
+      "verticalDramaSpecialEpisodes",
+      "tenant-special",
+      false,
+    );
+  });
 });

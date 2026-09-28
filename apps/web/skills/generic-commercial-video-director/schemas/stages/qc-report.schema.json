@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/qc-report.schema.json",
+  "title": "QC Report v5",
+  "type": "object",
+  "required": [
+    "passed",
+    "overallScore",
+    "scores",
+    "failures",
+    "evidence",
+    "recommendedAction"
+  ],
+  "properties": {
+    "passed": {
+      "type": "boolean"
+    },
+    "overallScore": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "scores": {
+      "type": "object",
+      "required": [
+        "productIntegrity",
+        "identity",
+        "motionPhysics",
+        "continuity",
+        "promptAdherence",
+        "audioDialogue",
+        "usageCorrectness",
+        "mechanismTruthfulness",
+        "visualizationAlignment",
+        "screenUiFidelity",
+        "multiShotContinuity",
+        "extensionSeamQuality",
+        "temporalCoverage",
+        "narrativeBeatCoverage",
+        "referenceRetention",
+        "hardFrameAdherence",
+        "audioVideoSync",
+        "regenerationPreservation"
+      ],
+      "properties": {
+        "productIntegrity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "identity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "motionPhysics": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "continuity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "promptAdherence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "audioDialogue": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "usageCorrectness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "mechanismTruthfulness": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "visualizationAlignment": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "screenUiFidelity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "comparisonIntegrity": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "multiShotContinuity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "extensionSeamQuality": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "temporalCoverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "narrativeBeatCoverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "referenceRetention": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "hardFrameAdherence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "audioVideoSync": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "regenerationPreservation": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "additionalProperties": false
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommendedAction": {
+      "type": "string"
+    },
+    "visualTruthFailures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "usageErrors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "temporalFailures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "seamFailures": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "providerSpecificEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "provider",
+          "check",
+          "status"
+        ],
+        "properties": {
+          "provider": {
+            "type": "string"
+          },
+          "check": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "warn",
+              "fail",
+              "not_applicable"
+            ]
+          },
+          "evidence": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

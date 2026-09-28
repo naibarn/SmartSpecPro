@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/concept.schema.json",
+  "title": "Creative Concept",
+  "type": "object",
+  "required": [
+    "concept",
+    "hook",
+    "tone",
+    "audiencePromise",
+    "ctaIntent"
+  ],
+  "properties": {
+    "concept": {
+      "type": "string"
+    },
+    "hook": {
+      "type": "string"
+    },
+    "tone": {
+      "type": "string"
+    },
+    "audiencePromise": {
+      "type": "string"
+    },
+    "ctaIntent": {
+      "type": "string"
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

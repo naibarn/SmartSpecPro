@@ -106,6 +106,27 @@ function validExpandedResponse(episodeBreakdownOverrides: Record<string, unknown
   };
 }
 
+const validStoryControlSeed = {
+  contractVersion: 1,
+  premiseAnchor: "A mystery must be paid for with trust",
+  canonicalCharacterKeys: ["aria"],
+  threadCandidates: [
+    {
+      threadId: "mystery-clip",
+      label: "Mystery clip sender",
+      scope: "arc_thread",
+      ownerCharacters: ["aria"],
+      plantEpisode: 1,
+      payoffWindow: { startEpisode: 1, endEpisode: 2 },
+      expectedEvidence: ["keychain in the clip"],
+      resolutionCost: "tell the truth",
+      status: "active",
+    },
+  ],
+  romancePhaseSkeleton: [],
+  advantageIntent: [],
+};
+
 function mockLlmResponse(payload: unknown) {
   mockExecuteWithFallback.mockResolvedValue({
     type: "success",
@@ -118,7 +139,9 @@ function mockLlmResponse(payload: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockLoadEnabledLlmModelRows.mockResolvedValue([]);
+  mockLoadEnabledLlmModelRows.mockResolvedValue([
+    { modelId: "active-llm-model", providerId: 1, priority: 1 } as any,
+  ]);
   mockHasEnoughCredits.mockResolvedValue(true);
   mockDeductCredits.mockResolvedValue(undefined);
   mockCalculateCreditsForLLM.mockReturnValue(3);
@@ -139,8 +162,9 @@ describe("generateStoryBible — speech-budget prompt (flag-gated)", () => {
     expect(systemMessage.content).toContain("conflictLevel");
     expect(systemMessage.content).toContain("reversalTarget");
     expect(systemMessage.content).toContain("arcThreads");
-    // MIN_EPISODE_COVERAGE_RATIO (0.58) * 60s = 34.8 -> ceil -> 35
-    expect(systemMessage.content).toContain("35");
+    // MIN_EPISODE_COVERAGE_RATIO (0.29) * 60s = 17.4 -> ceil -> 18 (rescaled
+    // 2026-07-15 x0.5 alongside THAI_CHARS_PER_SECOND 8.5->17; was 35)
+    expect(systemMessage.content).toContain("18");
   });
 
   it("omits the speech-budget text entirely when the flag is off (byte-identical to before)", async () => {
@@ -196,6 +220,41 @@ describe("generateStoryBible — episodeBreakdownItemSchema contentBudget supers
     const result = await generateStoryBible(baseParams({ targetEpisodeCount: 1 }));
 
     expect(result.expanded.episodeBreakdown[0].contentBudget).toBeUndefined();
+  });
+});
+
+describe("generateStoryBible — story-control seed contract", () => {
+  it("returns a valid seed for the router to persist", async () => {
+    mockLlmResponse({
+      ...validExpandedResponse(),
+      storyControlSeed: validStoryControlSeed,
+    });
+
+    const result = await generateStoryBible(baseParams());
+
+    expect(result.expanded.storyControlSeed).toEqual(
+      expect.objectContaining({
+        ...validStoryControlSeed,
+        threadCandidates: [
+          expect.objectContaining(validStoryControlSeed.threadCandidates[0]),
+        ],
+      }),
+    );
+  });
+
+  it("drops an invalid seed without corrupting the usable story bible", async () => {
+    mockLlmResponse({
+      ...validExpandedResponse(),
+      storyControlSeed: {
+        ...validStoryControlSeed,
+        canonicalCharacterKeys: [],
+      },
+    });
+
+    const result = await generateStoryBible(baseParams());
+
+    expect(result.expanded.episodeBreakdown).toHaveLength(2);
+    expect(result.expanded.storyControlSeed).toBeUndefined();
   });
 });
 

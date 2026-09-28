@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision",
+    "severity",
+    "confidence",
+    "summary",
+    "watchlist",
+    "riskPoints",
+    "recommendations",
+    "missingData"
+  ],
+  "properties": {
+    "decision": {
+      "enum": [
+        "continue_observe",
+        "optimize_home_server",
+        "upgrade_home_server",
+        "migrate_to_cloud",
+        "insufficient_data"
+      ]
+    },
+    "severity": {
+      "enum": ["healthy", "watch", "action", "critical", "insufficient_data"]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "summary": { "type": "string", "maxLength": 2000 },
+    "watchlist": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "area",
+          "metric",
+          "severity",
+          "current",
+          "threshold",
+          "unit",
+          "trend",
+          "horizon",
+          "evidence",
+          "action"
+        ],
+        "properties": {
+          "area": { "type": "string", "maxLength": 120 },
+          "metric": { "type": "string", "maxLength": 120 },
+          "severity": {
+            "enum": [
+              "healthy",
+              "watch",
+              "action",
+              "critical",
+              "insufficient_data"
+            ]
+          },
+          "current": { "type": ["number", "null"] },
+          "threshold": { "type": ["number", "null"] },
+          "unit": { "type": "string", "maxLength": 40 },
+          "trend": { "enum": ["rising", "stable", "falling", "unknown"] },
+          "horizon": { "enum": ["now", "24h", "3d", "7d", "unknown"] },
+          "evidence": { "type": "string", "maxLength": 500 },
+          "action": { "type": "string", "maxLength": 500 }
+        }
+      }
+    },
+    "riskPoints": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["area", "severity", "evidence", "action"],
+        "properties": {
+          "area": { "type": "string", "maxLength": 120 },
+          "severity": {
+            "enum": [
+              "healthy",
+              "watch",
+              "action",
+              "critical",
+              "insufficient_data"
+            ]
+          },
+          "evidence": { "type": "string", "maxLength": 500 },
+          "action": { "type": "string", "maxLength": 500 }
+        }
+      }
+    },
+    "recommendations": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "category", "title", "reason", "actions"],
+        "properties": {
+          "priority": { "enum": ["now", "next", "later"] },
+          "category": { "enum": ["observe", "optimize", "upgrade", "migrate"] },
+          "title": { "type": "string", "maxLength": 160 },
+          "reason": { "type": "string", "maxLength": 500 },
+          "actions": {
+            "type": "array",
+            "maxItems": 8,
+            "items": { "type": "string", "maxLength": 300 }
+          }
+        }
+      }
+    },
+    "missingData": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "type": "string", "maxLength": 250 }
+    }
+  }
+}

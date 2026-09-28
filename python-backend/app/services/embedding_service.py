@@ -13,10 +13,12 @@ Features:
 
 import os
 import hashlib
+import math
 from typing import Optional, List, Dict, Any, Union
 from abc import ABC, abstractmethod
 import structlog
 from functools import lru_cache
+import httpx
 
 logger = structlog.get_logger(__name__)
 
@@ -160,6 +162,68 @@ class OpenAIEmbedding(EmbeddingProvider):
     @property
     def model_name(self) -> str:
         return self._model
+
+
+class CloudflareWorkersAIEmbedding(EmbeddingProvider):
+    """Cloudflare Workers AI bge-base embedding provider for Vectorize parity."""
+
+    MODEL = "@cf/baai/bge-base-en-v1.5"
+    DIMENSION = 768
+
+    def __init__(
+        self,
+        account_id: Optional[str] = None,
+        api_token: Optional[str] = None,
+        timeout: float = 30.0,
+    ):
+        self._account_id = (account_id or os.getenv("CLOUDFLARE_ACCOUNT_ID") or "").strip()
+        self._api_token = (api_token or os.getenv("CLOUDFLARE_AI_API_KEY") or "").strip()
+        self._timeout = max(1.0, min(float(timeout), 120.0))
+        if not self._account_id or not self._api_token:
+            raise RuntimeError("Cloudflare Workers AI embedding credentials not configured")
+
+    def _embed(self, texts: List[str]) -> List[List[float]]:
+        url = f"https://api.cloudflare.com/client/v4/accounts/{self._account_id}/ai/run/{self.MODEL}"
+        try:
+            with httpx.Client(timeout=self._timeout) as client:
+                response = client.post(
+                    url,
+                    headers={
+                        "Authorization": f"Bearer {self._api_token}",
+                        "Content-Type": "application/json",
+                    },
+                    json={"text": texts},
+                )
+                response.raise_for_status()
+                data = response.json()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise RuntimeError("Cloudflare Workers AI embedding request failed") from exc
+        if not isinstance(data, dict) or data.get("success") is False:
+            raise RuntimeError("Cloudflare Workers AI embedding request rejected")
+        vectors = data.get("result", {}).get("data", []) if isinstance(data.get("result"), dict) else []
+        if not isinstance(vectors, list) or len(vectors) != len(texts) or any(
+            not isinstance(vector, list) or len(vector) != self.DIMENSION or any(
+                not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(float(value))
+                for value in vector
+            )
+            for vector in vectors
+        ):
+            raise RuntimeError("Cloudflare Workers AI embedding dimension mismatch")
+        return [[float(value) for value in vector] for vector in vectors]
+
+    def embed_text(self, text: str) -> List[float]:
+        return self._embed([text])[0]
+
+    def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        return self._embed(texts)
+
+    @property
+    def dimension(self) -> int:
+        return self.DIMENSION
+
+    @property
+    def model_name(self) -> str:
+        return self.MODEL
 
 
 class EmbeddingService:
@@ -306,6 +370,7 @@ class EmbeddingService:
 
 # Global embedding service instance
 _embedding_service: Optional[EmbeddingService] = None
+_cloudflare_embedding_service: Optional[EmbeddingService] = None
 
 
 def get_embedding_service(
@@ -330,8 +395,24 @@ def get_embedding_service(
     return _embedding_service
 
 
+def get_cloudflare_workers_ai_embedding_service(
+    *,
+    account_id: Optional[str] = None,
+    api_token: Optional[str] = None,
+    force_new: bool = False,
+) -> EmbeddingService:
+    """Return the 768D embedding service required by the Vectorize index contract."""
+    global _cloudflare_embedding_service
+    if _cloudflare_embedding_service is None or force_new:
+        _cloudflare_embedding_service = EmbeddingService(
+            provider=CloudflareWorkersAIEmbedding(account_id=account_id, api_token=api_token),
+        )
+    return _cloudflare_embedding_service
+
+
 def reset_embedding_service() -> None:
     """Reset the global embedding service."""
-    global _embedding_service
+    global _embedding_service, _cloudflare_embedding_service
     _embedding_service = None
+    _cloudflare_embedding_service = None
     logger.info("Embedding service reset")

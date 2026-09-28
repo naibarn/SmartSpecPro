@@ -7,6 +7,7 @@ import type {
   Track,
 } from "../../client/src/types/videoEditor";
 import { createEmptyProject } from "../../client/src/types/videoEditor";
+import { validateCameraMotionPlan, type CameraMotionPlan } from "@smartspec/shared";
 
 // ========================================
 // Asset Model
@@ -70,6 +71,8 @@ export interface MediaClip {
   inTransition?: { name: string; durationMs: number; alignment?: string };
   transform?: ClipTransform;
   textConfig?: TextConfig;
+  /** Normalized Feature 191 camera plan shared by browser preview and Worker render. */
+  cameraMotionPlan?: CameraMotionPlan;
   zOrder?: number;
 }
 
@@ -294,6 +297,11 @@ export function validateJobSpec(
             `Clip "${clip.clipId}": outMs (${clip.outMs}) must be greater than inMs (${clip.inMs})`,
           );
         }
+        if (clip.cameraMotionPlan) {
+          for (const error of validateCameraMotionPlan(clip.cameraMotionPlan)) {
+            errors.push(`Clip "${clip.clipId}": ${error}`);
+          }
+        }
       }
     }
   }
@@ -355,8 +363,11 @@ export function projectToTimeline(
             : track.type === "text"
               ? "subtitle"
               : track.type,
-        clips: track.clips.map(
-          (clip: Clip, index: number): MediaClip => ({
+        clips: track.clips.map((clip: Clip, index: number): MediaClip => {
+          if (clip.smartCamera?.plan && clip.smartCamera.analysisStatus === "stale") {
+            throw new Error(`CAMERA_PLAN_STALE_REANALYSIS_REQUIRED:${clip.id}`);
+          }
+          return {
             clipId: clip.id,
             assetId: clip.assetId,
             startMs: secondsToMs(clip.startTime),
@@ -368,9 +379,10 @@ export function projectToTimeline(
             inTransition: clip.inTransition,
             transform: clip.transform,
             textConfig: clip.textConfig,
+            ...(clip.smartCamera?.plan ? { cameraMotionPlan: clip.smartCamera.plan } : {}),
             zOrder: index,
-          }),
-        ),
+          };
+        }),
       }),
     ),
   };
@@ -434,6 +446,27 @@ export function timelineToProject(
           inTransition: clip.inTransition as ClipTransition | undefined,
           transform: clip.transform,
           textConfig: clip.textConfig,
+          smartCamera: clip.cameraMotionPlan
+            ? {
+                mode: clip.cameraMotionPlan.mode === "face_activity"
+                  ? "face_activity"
+                  : clip.cameraMotionPlan.mode === "product_focus"
+                    ? "auto_object"
+                    : "face_focus",
+                autoZoom: true,
+                autoPan: true,
+                intensity: 50,
+                safeMargin: 10,
+                analysisMode: clip.cameraMotionPlan.analysisMode,
+                analysisStatus: "browser_ready",
+                analysisProvenance: "worker",
+                plan: clip.cameraMotionPlan,
+                planFingerprint: clip.cameraMotionPlan.planFingerprint,
+                planRef: clip.cameraMotionPlan.planFingerprint,
+                planReference: clip.cameraMotionPlan.planFingerprint,
+                planHash: clip.cameraMotionPlan.planFingerprint,
+              }
+            : undefined,
         }),
       ),
       muted: false,

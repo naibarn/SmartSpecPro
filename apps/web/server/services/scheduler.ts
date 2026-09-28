@@ -1,17 +1,14 @@
 /**
  * Chat Alert Scheduler Service
  *
- * Manages scheduled chat message delivery via Cloud Tasks (replacing BullMQ).
+ * Manages scheduled chat message delivery during the runtime transition.
  * Supports both one-time delayed and recurring (cron) schedules.
  *
- * One-time messages: enqueued as delayed Cloud Tasks tasks.
- * Recurring messages: managed by Cloud Scheduler (Section 06) calling
- *   /tasks/deliver-scheduled-message on each cron tick.
- * Fallback sweep: /tasks/deliver-scheduled-fallback runs every minute
- *   to catch any enqueue failures.
+ * One-time and recurring messages are advanced by the Cloudflare Cron/Queue
+ * adapter. The Node process keeps only the domain delivery function and a
+ * bounded local sweep for development compatibility.
  */
 
-import { enqueueTask, deleteTask } from "./cloudTasks";
 import { getDb } from "../db";
 import {
   scheduledMessages,
@@ -19,7 +16,6 @@ import {
   conversations,
   messages,
   autoDraftSchedules,
-  systemSettings,
 } from "../../drizzle/schema";
 import { eq, and, lte, isNull, sql } from "drizzle-orm";
 import { deductCredits, hasEnoughCredits, calculateCreditsForLLM } from "./creditService";
@@ -28,17 +24,24 @@ import { getProviderForModel } from "./llmRouter";
 import { runPlanner, recordStepAttempt } from "./taskPlannerMiddleware";
 import { decrypt } from "./crypto";
 import { signBearerToken } from "../_core/tokens";
+import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import crypto from "crypto";
 
-const USE_CLOUD_TASKS = () => process.env.USE_CLOUD_TASKS === "true";
+type ScheduledMessageDeliveryOptions = {
+  /** Set only from the canonical worker executor. */
+  executeSkillInWorker?: boolean;
+};
 
 /**
  * Deliver a scheduled message by schedule ID.
  *
  * Extracted from the old BullMQ executeScheduledJob — same business logic,
- * no BullMQ Job dependency. Called by the Cloud Tasks handler endpoint.
+ * no broker dependency. Called by the Cloudflare scheduler adapter.
  */
-export async function deliverScheduledMessage(scheduleId: number): Promise<void> {
+export async function deliverScheduledMessage(
+  scheduleId: number,
+  options: ScheduledMessageDeliveryOptions = {},
+): Promise<void> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
@@ -152,9 +155,59 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
         return;
       }
 
+      // Admission is always durable and asynchronous. The worker re-enters
+      // this function with executeSkillInWorker=true to perform the actual
+      // provider call and the notification/message settlement below.
+      if (!options.executeSkillInWorker) {
+        const tenantId =
+          typeof (schedule as any).tenantId === "string" && (schedule as any).tenantId.trim()
+            ? (schedule as any).tenantId.trim()
+            : "default";
+        const occurrence =
+          schedule.nextRunAt?.toISOString() ??
+          schedule.scheduledAt?.toISOString() ??
+          String(scheduleId);
+        await createControlPlaneJob({
+          context: {
+            tenantId,
+            actorType: "user",
+            actorId: userId,
+            authorizationScope: "skill:execute",
+            correlationId: `scheduled-skill:${scheduleId}:${occurrence}`,
+            idempotencyKey: `scheduled-skill:${scheduleId}:${occurrence}`,
+          },
+          definition: {
+            contractVersion: "feature-186-v1",
+            jobType: "scheduled.skill.execute",
+            executionClass: "long",
+            input: { scheduleId },
+            retryPolicy: {
+              maxAttempts: 2,
+              baseDelayMs: 5_000,
+              maxDelayMs: 60_000,
+              jitter: "bounded",
+              deadlineMs: 60 * 60_000,
+              allowedErrorClasses: ["retryable", "unknown"],
+            },
+            timeoutPolicy: {
+              softTimeoutMs: 5 * 60_000,
+              hardTimeoutMs: 30 * 60_000,
+            },
+            requiredCapabilities: {
+              scheduleId,
+              skillId: skillDef.id,
+            },
+          },
+          createOptions: { runtimeType: "node_job_worker" },
+        });
+        console.log(`[Scheduler] Queued skill ${schedule.skillId} (schedule ${scheduleId})`);
+        return;
+      }
+
       // Generate a temporary execution token
       const userToken = signBearerToken({
         sub: String(userId),
+        ...((schedule as any).tenantId ? { tenantId: String((schedule as any).tenantId) } : {}),
         type: "access",
         scopes: ["skill:execute"],
         jti: `skill_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -287,6 +340,7 @@ export async function deliverScheduledMessage(scheduleId: number): Promise<void>
       // Generate a temporary token for this user
       const userToken = signBearerToken({
         sub: String(userId),
+        ...((schedule as any).tenantId ? { tenantId: String((schedule as any).tenantId) } : {}),
         type: "access",
         scopes: ["media:generate"],
         jti: `auto_draft_${Date.now()}_${crypto.randomBytes(12).toString("hex")}`,
@@ -696,70 +750,40 @@ async function sendAlertEmail(db: any, userId: number, schedule: any, content: s
 }
 
 /**
- * Create a scheduled job via Cloud Tasks (or locally in dev mode).
+ * Register the schedule with the Cloudflare scheduler boundary.
  *
- * For one-time messages: enqueues a delayed Cloud Tasks task.
- * For recurring messages with cron: handled by Cloud Scheduler (Section 06).
- *   As an interim measure, stores the cron expression on the DB record
- *   and the fallback sweep handles delivery.
+ * The returned value is a compatibility reference stored on the existing
+ * schedule row. It is not a transport identity and must not be used to infer
+ * delivery state.
  */
 export async function createScheduledJob(
   scheduleId: number,
   cronExpression?: string | null,
   scheduledAt?: Date | null
 ): Promise<string> {
-  if (!USE_CLOUD_TASKS()) {
-    // Development mode: store a local identifier, delivery via fallback sweep
-    console.log(`[Scheduler] Dev mode: scheduled job local-${scheduleId}`);
-    return `local-${scheduleId}`;
-  }
-
-  if (cronExpression) {
-    // Recurring: Cloud Scheduler (Section 06) will handle this.
-    // For now, store a marker and let the fallback sweep handle delivery.
-    console.log(`[Scheduler] Recurring schedule ${scheduleId} registered (cron: ${cronExpression})`);
-    return `cron-${scheduleId}`;
-  } else if (scheduledAt) {
-    // One-time delayed task
-    const delaySeconds = Math.max(0, Math.floor((scheduledAt.getTime() - Date.now()) / 1000));
-
-    const taskName = await enqueueTask({
-      queueName: "periodic-tasks",
-      handlerPath: "/_internal/tasks/deliver-scheduled-message",
-      payload: { scheduleId },
-      delaySeconds,
-      taskId: `schedule-${scheduleId}`,
-      targetService: "node",
-    });
-
-    return taskName;
-  }
-
-  throw new Error("Either cronExpression or scheduledAt is required");
+  if (!cronExpression && !scheduledAt) throw new Error("Either cronExpression or scheduledAt is required");
+  console.log(`[Scheduler] Cloudflare schedule registered: ${scheduleId}`, {
+    cronExpression: cronExpression ?? null,
+    scheduledAt: scheduledAt?.toISOString() ?? null,
+  });
+  return `cloudflare-cron:${scheduleId}`;
 }
 
 /**
- * Cancel a scheduled job by deleting the Cloud Tasks task.
+ * Cancel a scheduled job at the Cloudflare scheduler boundary.
  */
 export async function cancelScheduledJob(
   scheduleId: number,
-  cloudTaskId?: string | null
+  schedulerReference?: string | null
 ): Promise<void> {
-  if (!USE_CLOUD_TASKS()) {
-    console.log(`[Scheduler] Dev mode: cancelled schedule ${scheduleId}`);
-    return;
-  }
-
-  if (cloudTaskId && cloudTaskId.startsWith("projects/")) {
-    // Full Cloud Tasks resource name — delete it
-    await deleteTask(cloudTaskId);
-  }
-  // For cron/local markers, nothing to delete in Cloud Tasks
+  console.log(`[Scheduler] Cloudflare schedule cancelled: ${scheduleId}`, {
+    schedulerReference: schedulerReference ?? null,
+  });
 }
 
 /**
  * Fallback sweep: find undelivered scheduled messages and enqueue them.
- * Called by Cloud Scheduler every minute via /tasks/deliver-scheduled-fallback.
+ * Called by the Cloudflare Cron adapter on its bounded fallback cadence.
  */
 export async function sweepUndeliveredMessages(): Promise<number> {
   const db = await getDb();
@@ -780,18 +804,7 @@ export async function sweepUndeliveredMessages(): Promise<number> {
   let enqueued = 0;
   for (const msg of undelivered) {
     try {
-      if (USE_CLOUD_TASKS()) {
-        await enqueueTask({
-          queueName: "periodic-tasks",
-          handlerPath: "/_internal/tasks/deliver-scheduled-message",
-          payload: { scheduleId: msg.id },
-          taskId: `sweep-${msg.id}-${Date.now()}`,
-          targetService: "node",
-        });
-      } else {
-        // Dev mode: deliver directly
-        await deliverScheduledMessage(msg.id);
-      }
+      await deliverScheduledMessage(msg.id);
       enqueued++;
     } catch (err) {
       console.error(`[Scheduler] Failed to sweep message ${msg.id}:`, err);
@@ -799,7 +812,7 @@ export async function sweepUndeliveredMessages(): Promise<number> {
   }
 
   if (enqueued > 0) {
-    console.log(`[Scheduler] Sweep enqueued ${enqueued} undelivered messages`);
+      console.log(`[Scheduler] Sweep delivered ${enqueued} undelivered messages`);
   }
 
   return enqueued;
@@ -842,18 +855,10 @@ export async function sweepDueAutoDraftSchedules(): Promise<number> {
         topic,
       };
 
-      if (USE_CLOUD_TASKS()) {
-        await enqueueTask({
-          queueName: "periodic-tasks",
-          handlerPath: "/_internal/tasks/dispatch-auto-draft",
-          payload: { scheduleId: schedule.id, draftParams },
-          taskId: `auto-draft-schedule-${schedule.id}-${Date.now()}`,
-          targetService: "node",
-        });
-      } else {
-        // Dev mode: fire via HTTP to auto-draft tool (best-effort)
-        console.log(`[Scheduler] Auto-draft schedule ${schedule.id} due — dispatching topic: ${topic}`);
-      }
+      // The Cloudflare Cron adapter owns the production execution request.
+      // Keep this sweep side-effect-free until that adapter supplies the
+      // canonical auto-draft job intent.
+      console.log(`[Scheduler] Auto-draft schedule ${schedule.id} due`, { topic, draftParams });
 
       // Update schedule state
       if (schedule.scheduleType === "one_time") {
@@ -887,55 +892,4 @@ export async function sweepDueAutoDraftSchedules(): Promise<number> {
   }
 
   return dispatched;
-}
-
-/**
- * Sweep expired agency run traces. Default retention: 30 days.
- * Configurable via system_settings category="agency", key="trace_retention_days".
- */
-export async function sweepExpiredRunTraces(): Promise<number> {
-  const db = await getDb();
-  if (!db) return 0;
-
-  const { sweepExpiredTraces } = await import("./agencyTraceService");
-
-  // Check global retention override
-  const DEFAULT_RETENTION_DAYS = 30;
-  let retentionDays = DEFAULT_RETENTION_DAYS;
-  const [override] = await db
-    .select({ value: systemSettings.value })
-    .from(systemSettings)
-    .where(
-      and(
-        eq(systemSettings.category, "agency"),
-        eq(systemSettings.key, "trace_retention_days"),
-      ),
-    )
-    .limit(1);
-  if (override?.value) {
-    const parsed = parseInt(String(override.value), 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      retentionDays = parsed;
-    }
-  }
-
-  // Get distinct tenants that have traces
-  const tenants = await db.execute(
-    sql`SELECT DISTINCT "tenantId" FROM agency_run_traces`,
-  );
-  const tenantRows = (tenants as any).rows ?? tenants ?? [];
-
-  let totalDeleted = 0;
-  for (const row of tenantRows) {
-    const tenantId = row.tenantId;
-    if (!tenantId) continue;
-
-    const deleted = await sweepExpiredTraces(tenantId, retentionDays);
-    if (deleted > 0) {
-      console.log(`[Scheduler] Deleted ${deleted} expired traces for tenant ${tenantId} (retention: ${retentionDays}d)`);
-    }
-    totalDeleted += deleted;
-  }
-
-  return totalDeleted;
 }

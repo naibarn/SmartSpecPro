@@ -2,9 +2,20 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import sanitizeHtml from "sanitize-html";
 
-import { blogPosts, contentComposerDrafts, libraryItems, socialPages, socialProviderConnections, tenantPages, type ContentComposerDraft } from "../../drizzle/schema";
+import {
+  blogPosts,
+  contentComposerDrafts,
+  libraryItems,
+  socialPages,
+  socialProviderConnections,
+  tenantPages,
+  type ContentComposerDraft,
+} from "../../drizzle/schema";
 import { type DrizzleDB, getDb } from "../db";
-import { createPublishingDraft, publishPublishingPostNow } from "./socialPublishingService";
+import {
+  createPublishingDraft,
+  publishPublishingPostNow,
+} from "./socialPublishingService";
 import { publishUploadPostNow } from "./uploadPostService";
 
 const CONTENT_HTML_SANITIZE: sanitizeHtml.IOptions = {
@@ -37,7 +48,17 @@ const CONTENT_HTML_SANITIZE: sanitizeHtml.IOptions = {
   allowedAttributes: {
     a: ["href", "title", "target", "rel"],
     img: ["src", "alt", "title", "width", "height", "loading"],
-    video: ["src", "controls", "autoplay", "loop", "muted", "playsinline", "poster", "width", "height"],
+    video: [
+      "src",
+      "controls",
+      "autoplay",
+      "loop",
+      "muted",
+      "playsinline",
+      "poster",
+      "width",
+      "height",
+    ],
     source: ["src", "type"],
     "*": ["class", "id"],
   },
@@ -65,12 +86,14 @@ export interface ContentComposerPublishResult {
 }
 
 function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 120) || "article";
+  return (
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || "article"
+  );
 }
 
 function stripHtml(html: string): string {
@@ -79,7 +102,9 @@ function stripHtml(html: string): string {
     allowedAttributes: {},
     allowedSchemes: ["http", "https", "mailto", "tel"],
     disallowedTagsMode: "discard",
-  }).replace(/\s+/g, " ").trim();
+  })
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function sanitizeComposerHtml(html: string): string {
@@ -91,10 +116,12 @@ function firstParagraph(html: string): string {
   return text.length > 280 ? `${text.slice(0, 277)}...` : text;
 }
 
-function buildAttachmentGalleryHtml(items: ContentComposerLibraryItem[]): string {
+function buildAttachmentGalleryHtml(
+  items: ContentComposerLibraryItem[]
+): string {
   if (items.length === 0) return "";
 
-  const cards = items.map((item) => {
+  const cards = items.map(item => {
     const url = item.sourceUrl ?? item.thumbnailUrl ?? "";
     const escapedUrl = url.replace(/"/g, "&quot;");
     const escapedTitle = item.title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -107,7 +134,10 @@ function buildAttachmentGalleryHtml(items: ContentComposerLibraryItem[]): string
   return `<section><h2>Attachments</h2>${cards.join("")}</section>`;
 }
 
-function buildArticleHtml(draft: ContentComposerDraft, libraryItems: ContentComposerLibraryItem[]): string {
+function buildArticleHtml(
+  draft: ContentComposerDraft,
+  libraryItems: ContentComposerLibraryItem[]
+): string {
   const title = draft.topic?.trim() || "Untitled article";
   const body = sanitizeComposerHtml(draft.articleBody ?? "");
   const gallery = buildAttachmentGalleryHtml(libraryItems);
@@ -121,20 +151,24 @@ function buildArticleHtml(draft: ContentComposerDraft, libraryItems: ContentComp
   return sections.join("");
 }
 
-function buildDocsSections(draft: ContentComposerDraft, libraryItems: ContentComposerLibraryItem[]) {
-  const mediaSection = libraryItems.length > 0
-    ? {
-        id: "composer-media",
-        type: "gallery" as const,
-        title: "Attached Media",
-        items: libraryItems.map((item) => ({
-          id: item.id,
-          type: item.itemType,
-          title: item.title,
-          src: item.sourceUrl ?? item.thumbnailUrl,
-        })),
-      }
-    : null;
+function buildDocsSections(
+  draft: ContentComposerDraft,
+  libraryItems: ContentComposerLibraryItem[]
+) {
+  const mediaSection =
+    libraryItems.length > 0
+      ? {
+          id: "composer-media",
+          type: "gallery" as const,
+          title: "Attached Media",
+          items: libraryItems.map(item => ({
+            id: item.id,
+            type: item.itemType,
+            title: item.title,
+            src: item.sourceUrl ?? item.thumbnailUrl,
+          })),
+        }
+      : null;
 
   return [
     {
@@ -157,41 +191,58 @@ function buildSocialCaption(params: {
 }): string {
   const topic = params.topic.trim() || "New content";
   const summary = stripHtml(params.articleBody).slice(0, 220);
-  const platformTag = params.socialPlatform === "youtube"
-    ? "#YouTube"
-    : params.socialPlatform === "facebook"
-      ? "#Facebook"
-      : params.socialPlatform === "tiktok"
-        ? "#TikTok"
-        : "#UploadPost";
+  const platformTag =
+    params.socialPlatform === "youtube"
+      ? "#YouTube"
+      : params.socialPlatform === "facebook"
+        ? "#Facebook"
+        : params.socialPlatform === "tiktok"
+          ? "#TikTok"
+          : "#UploadPost";
   const hints = [
     params.requiresWebSearch ? "web search on" : null,
     params.requiresThinking ? "thinking on" : null,
-    params.attachmentCount > 0 ? `${params.attachmentCount} media asset${params.attachmentCount === 1 ? "" : "s"}` : null,
-  ].filter(Boolean).join(" • ");
+    params.attachmentCount > 0
+      ? `${params.attachmentCount} media asset${params.attachmentCount === 1 ? "" : "s"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
-  return [
-    topic,
-    summary,
-    hints,
-    platformTag,
-  ].filter((part) => part && part.length > 0).join("\n\n").slice(0, 2000);
+  return [topic, summary, hints, platformTag]
+    .filter(part => part && part.length > 0)
+    .join("\n\n")
+    .slice(0, 2000);
 }
 
 async function resolveDb(db?: DrizzleDB | null): Promise<DrizzleDB> {
-  const resolved = db ?? await getDb();
+  const resolved = db ?? (await getDb());
   if (!resolved) {
-    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Database not available",
+    });
   }
   return resolved;
 }
 
-async function loadDraft(db: DrizzleDB, draftId: string): Promise<ContentComposerDraft | null> {
-  const rows = await db.select().from(contentComposerDrafts).where(eq(contentComposerDrafts.id, draftId)).limit(1);
+async function loadDraft(
+  db: DrizzleDB,
+  draftId: string
+): Promise<ContentComposerDraft | null> {
+  const rows = await db
+    .select()
+    .from(contentComposerDrafts)
+    .where(eq(contentComposerDrafts.id, draftId))
+    .limit(1);
   return rows[0] ?? null;
 }
 
-async function loadLibraryItems(tenantId: string, attachmentIds: number[], db: DrizzleDB): Promise<ContentComposerLibraryItem[]> {
+async function loadLibraryItems(
+  tenantId: string,
+  attachmentIds: number[],
+  db: DrizzleDB
+): Promise<ContentComposerLibraryItem[]> {
   const ids = Array.from(new Set(attachmentIds));
   if (ids.length === 0) {
     throw new TRPCError({
@@ -215,12 +266,14 @@ async function loadLibraryItems(tenantId: string, attachmentIds: number[], db: D
       thumbnailUrl: libraryItems.thumbnailUrl,
     })
     .from(libraryItems)
-    .where(and(
-      eq(libraryItems.tenantId, tenantId),
-      inArray(libraryItems.id, ids),
-      eq(libraryItems.status, "ready"),
-      isNull(libraryItems.deletedAt),
-    ));
+    .where(
+      and(
+        eq(libraryItems.tenantId, tenantId),
+        inArray(libraryItems.id, ids),
+        eq(libraryItems.status, "ready"),
+        isNull(libraryItems.deletedAt)
+      )
+    );
 
   if (rows.length !== ids.length) {
     throw new TRPCError({
@@ -243,24 +296,36 @@ function assertPublishRole(role: string | null | undefined): void {
 
 function assertDraftReady(draft: ContentComposerDraft): void {
   if (!draft.articleBody || !draft.articleBody.trim()) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Article body is required before publishing" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Article body is required before publishing",
+    });
   }
   if (!draft.destinationKind) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Destination is required before publishing" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Destination is required before publishing",
+    });
   }
   if (draft.destinationKind === "social" && !draft.socialPlatform) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Social platform is required before publishing" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Social platform is required before publishing",
+    });
   }
 }
 
 async function validateSocialTarget(
   db: DrizzleDB,
   tenantId: string,
-  draft: ContentComposerDraft,
+  draft: ContentComposerDraft
 ): Promise<void> {
   if (draft.destinationKind !== "social") return;
   if (!draft.socialTargetId) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Social platform and target are required" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Social platform and target are required",
+    });
   }
 
   if (draft.socialPlatform === "upload_post") {
@@ -276,18 +341,35 @@ async function validateSocialTarget(
       provider: socialProviderConnections.provider,
     })
     .from(socialPages)
-    .innerJoin(socialProviderConnections, eq(socialPages.connectionId, socialProviderConnections.id))
-    .where(and(eq(socialPages.id, draft.socialTargetId), eq(socialPages.tenantId, tenantId)))
+    .innerJoin(
+      socialProviderConnections,
+      eq(socialPages.connectionId, socialProviderConnections.id)
+    )
+    .where(
+      and(
+        eq(socialPages.id, draft.socialTargetId),
+        eq(socialPages.tenantId, tenantId)
+      )
+    )
     .limit(1);
 
   if (!page) {
-    throw new TRPCError({ code: "NOT_FOUND", message: "Social target not found" });
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Social target not found",
+    });
   }
   if (page.status !== "active" || !page.selectedForPublishing) {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Social target is not ready for publishing" });
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Social target is not ready for publishing",
+    });
   }
   if (draft.socialPlatform && page.provider !== draft.socialPlatform) {
-    throw new TRPCError({ code: "BAD_REQUEST", message: "Social platform does not match the selected target" });
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "Social platform does not match the selected target",
+    });
   }
 }
 
@@ -322,14 +404,21 @@ export async function publishContentComposerDraft(params: {
     throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
   }
   if (draft.userId !== params.userId) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this draft" });
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "You do not own this draft",
+    });
   }
   if (draft.status === "deleted") {
     throw new TRPCError({ code: "NOT_FOUND", message: "Draft not found" });
   }
   assertDraftReady(draft);
 
-  const attachments = await loadLibraryItems(params.tenantId, draft.attachmentIds ?? [], db);
+  const attachments = await loadLibraryItems(
+    params.tenantId,
+    draft.attachmentIds ?? [],
+    db
+  );
   await validateSocialTarget(db, params.tenantId, draft);
   const articleHtml = buildArticleHtml(draft, attachments);
   const summary = firstParagraph(draft.articleBody ?? draft.topic ?? "");
@@ -349,16 +438,31 @@ export async function publishContentComposerDraft(params: {
       const pageSlug = slug;
       const pageKey = `docs-${slug}`;
       const sections = buildDocsSections(draft, attachments);
-      const mediaCover = attachments.find((item) => (item.itemType || "").toLowerCase() !== "video" && (item.sourceUrl || item.thumbnailUrl)) ?? attachments[0] ?? null;
+      const mediaCover =
+        attachments.find(
+          item =>
+            (item.itemType || "").toLowerCase() !== "video" &&
+            (item.sourceUrl || item.thumbnailUrl)
+        ) ??
+        attachments[0] ??
+        null;
 
       if (draft.docsTargetId) {
         const [existing] = await db
           .select()
           .from(tenantPages)
-          .where(and(eq(tenantPages.id, draft.docsTargetId), eq(tenantPages.tenantId as any, params.tenantId as any)))
+          .where(
+            and(
+              eq(tenantPages.id, draft.docsTargetId),
+              eq(tenantPages.tenantId as any, params.tenantId as any)
+            )
+          )
           .limit(1);
         if (!existing) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Docs target not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Docs target not found",
+          });
         }
 
         const [updated] = await db
@@ -372,7 +476,10 @@ export async function publishContentComposerDraft(params: {
               ...(existing.metadata ?? {}),
               description: summary,
               author,
-              ogImage: mediaCover?.sourceUrl ?? mediaCover?.thumbnailUrl ?? existing.metadata?.ogImage,
+              ogImage:
+                mediaCover?.sourceUrl ??
+                mediaCover?.thumbnailUrl ??
+                existing.metadata?.ogImage,
             },
             isPublished: true,
             updatedAt: now,
@@ -382,7 +489,9 @@ export async function publishContentComposerDraft(params: {
 
         targetId = updated.id;
         targetSlug = updated.slug;
-        targetPath = updated.pageKey.startsWith("docs-") ? `/docs/${updated.slug.replace(/^\/+/, "")}` : `/${updated.slug.replace(/^\/+/, "")}`;
+        targetPath = updated.pageKey.startsWith("docs-")
+          ? `/docs/${updated.slug.replace(/^\/+/, "")}`
+          : `/${updated.slug.replace(/^\/+/, "")}`;
         result = { page: updated };
       } else {
         const [created] = await db
@@ -397,7 +506,8 @@ export async function publishContentComposerDraft(params: {
             metadata: {
               description: summary,
               author,
-              ogImage: mediaCover?.sourceUrl ?? mediaCover?.thumbnailUrl ?? null,
+              ogImage:
+                mediaCover?.sourceUrl ?? mediaCover?.thumbnailUrl ?? null,
             },
             isPublished: true,
             sortOrder: 0,
@@ -408,21 +518,38 @@ export async function publishContentComposerDraft(params: {
 
         targetId = created.id;
         targetSlug = created.slug;
-        targetPath = created.pageKey.startsWith("docs-") ? `/docs/${created.slug.replace(/^\/+/, "")}` : `/${created.slug.replace(/^\/+/, "")}`;
+        targetPath = created.pageKey.startsWith("docs-")
+          ? `/docs/${created.slug.replace(/^\/+/, "")}`
+          : `/${created.slug.replace(/^\/+/, "")}`;
         result = { page: created };
       }
     } else if (draft.destinationKind === "blog") {
       assertPublishRole(params.userRole);
-      const coverImage = attachments.find((item) => (item.itemType || "").toLowerCase() === "image" && (item.sourceUrl || item.thumbnailUrl)) ?? attachments[0] ?? null;
+      const coverImage =
+        attachments.find(
+          item =>
+            (item.itemType || "").toLowerCase() === "image" &&
+            (item.sourceUrl || item.thumbnailUrl)
+        ) ??
+        attachments[0] ??
+        null;
       const existingPostId = draft.blogTargetId ?? null;
       if (existingPostId) {
         const [existing] = await db
           .select()
           .from(blogPosts)
-          .where(and(eq(blogPosts.id, existingPostId), eq(blogPosts.tenantId, params.tenantId)))
+          .where(
+            and(
+              eq(blogPosts.id, existingPostId),
+              eq(blogPosts.tenantId, params.tenantId)
+            )
+          )
           .limit(1);
         if (!existing) {
-          throw new TRPCError({ code: "NOT_FOUND", message: "Blog target not found" });
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Blog target not found",
+          });
         }
 
         const [updated] = await db
@@ -432,8 +559,11 @@ export async function publishContentComposerDraft(params: {
             title,
             excerpt: summary,
             content: articleHtml,
-            coverImage: coverImage?.sourceUrl ?? coverImage?.thumbnailUrl ?? existing.coverImage,
-            mediaAttachments: attachments.map((item) => item.id),
+            coverImage:
+              coverImage?.sourceUrl ??
+              coverImage?.thumbnailUrl ??
+              existing.coverImage,
+            mediaAttachments: attachments.map(item => item.id),
             author,
             updatedAt: now,
           })
@@ -453,8 +583,9 @@ export async function publishContentComposerDraft(params: {
             title,
             excerpt: summary,
             content: articleHtml,
-            coverImage: coverImage?.sourceUrl ?? coverImage?.thumbnailUrl ?? null,
-            mediaAttachments: attachments.map((item) => item.id),
+            coverImage:
+              coverImage?.sourceUrl ?? coverImage?.thumbnailUrl ?? null,
+            mediaAttachments: attachments.map(item => item.id),
             author,
             isPublished: true,
             publishedAt: now,
@@ -469,18 +600,25 @@ export async function publishContentComposerDraft(params: {
       }
     } else if (draft.destinationKind === "social") {
       if (!draft.socialPlatform || !draft.socialTargetId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Social platform and target are required" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Social platform and target are required",
+        });
       }
 
-      const contentText = (draft.socialCaption ?? "").trim() || buildSocialCaption({
-        topic: draft.topic ?? "",
-        articleBody: draft.articleBody ?? "",
-        socialPlatform: draft.socialPlatform,
-        attachmentCount: attachments.length,
-        requiresWebSearch: draft.requiresWebSearch ?? false,
-        requiresThinking: draft.requiresThinking ?? false,
-      });
-      const mediaRefs = attachments.map((item) => item.sourceUrl ?? item.thumbnailUrl ?? "").filter(Boolean);
+      const contentText =
+        (draft.socialCaption ?? "").trim() ||
+        buildSocialCaption({
+          topic: draft.topic ?? "",
+          articleBody: draft.articleBody ?? "",
+          socialPlatform: draft.socialPlatform,
+          attachmentCount: attachments.length,
+          requiresWebSearch: draft.requiresWebSearch ?? false,
+          requiresThinking: draft.requiresThinking ?? false,
+        });
+      const mediaRefs = attachments
+        .map(item => item.sourceUrl ?? item.thumbnailUrl ?? "")
+        .filter(Boolean);
 
       if (draft.socialPlatform === "upload_post") {
         const published = await publishUploadPostNow({
@@ -516,7 +654,10 @@ export async function publishContentComposerDraft(params: {
         targetId = published.id;
       }
     } else {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "Unsupported destination" });
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Unsupported destination",
+      });
     }
 
     await db
@@ -548,18 +689,19 @@ export async function publishContentComposerDraft(params: {
         updatedAt: now,
       })
       .where(eq(contentComposerDrafts.id, draft.id));
-    throw error instanceof TRPCError ? error : new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: error instanceof Error ? error.message : "Publish failed",
-    });
+    throw error instanceof TRPCError
+      ? error
+      : new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: error instanceof Error ? error.message : "Publish failed",
+        });
   }
 }
 
 export function buildComposerStreamPayload(params: {
   topic: string;
-  executionSource: "skill" | "agency";
+  executionSource: "skill";
   skillId: string | null;
-  agencyName: string | null;
   requiresWebSearch: boolean;
   requiresThinking: boolean;
   articleBody: string;
@@ -567,18 +709,18 @@ export function buildComposerStreamPayload(params: {
   attachmentCount: number;
 }): { articleHtml: string; caption: string } {
   const escapedTopic = params.topic.trim() || "Untitled article";
-  const sourceLabel = params.executionSource === "agency"
-    ? (params.agencyName || "Agency")
-    : (params.skillId || "Skill");
-  const articleHtml = sanitizeComposerHtml([
-    `<article>`,
-    `<h1>${escapedTopic.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</h1>`,
-    `<p>Draft generated with <strong>${sourceLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</strong>.</p>`,
-    `<p>Web search: ${params.requiresWebSearch ? "enabled" : "disabled"}.</p>`,
-    `<p>Thinking: ${params.requiresThinking ? "enabled" : "disabled"}.</p>`,
-    sanitizeComposerHtml(params.articleBody || ""),
-    `</article>`,
-  ].join(""));
+  const sourceLabel = params.skillId || "Skill";
+  const articleHtml = sanitizeComposerHtml(
+    [
+      `<article>`,
+      `<h1>${escapedTopic.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</h1>`,
+      `<p>Draft generated with <strong>${sourceLabel.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</strong>.</p>`,
+      `<p>Web search: ${params.requiresWebSearch ? "enabled" : "disabled"}.</p>`,
+      `<p>Thinking: ${params.requiresThinking ? "enabled" : "disabled"}.</p>`,
+      sanitizeComposerHtml(params.articleBody || ""),
+      `</article>`,
+    ].join("")
+  );
 
   return {
     articleHtml,

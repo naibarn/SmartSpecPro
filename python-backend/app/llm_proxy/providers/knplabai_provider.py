@@ -17,7 +17,7 @@ from typing import Any, Optional
 import httpx
 import structlog
 
-from app.core.media_job_validators import validate_uri_strict
+from app.core.media_job_validators import validate_provider_reference_url
 
 logger = structlog.get_logger()
 
@@ -295,7 +295,7 @@ class KNPLabsProvider:
         }
         if images:
             for url in images:
-                validate_uri_strict(url)
+                validate_provider_reference_url(url)
             payload["images"] = images
 
         response = await self.client.post(

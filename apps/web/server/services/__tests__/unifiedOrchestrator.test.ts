@@ -39,6 +39,10 @@ vi.mock("../creditService", () => ({
   calculateCreditsForLLMDynamic: vi.fn(),
 }));
 
+vi.mock("../skillRevenueBilling", () => ({
+  settleSkillRun: vi.fn(),
+}));
+
 vi.mock("../monitoringService", () => ({
   recordContextEngineMetric: vi.fn().mockResolvedValue({ checkId: 1 }),
 }));
@@ -102,6 +106,7 @@ import {
   deductCreditsForModel,
   calculateCreditsForLLMDynamic,
 } from "../creditService";
+import { settleSkillRun } from "../skillRevenueBilling";
 import { auditLogger } from "../auditLogger";
 import type {
   UnifiedExecutionRequest,
@@ -128,6 +133,7 @@ const mockClassifyArtifact = vi.mocked(classifyArtifactIntent);
 const mockSelectRoute = vi.mocked(selectExecutionRoute);
 const mockDeductCredits = vi.mocked(deductCreditsForModel);
 const mockCalculateCredits = vi.mocked(calculateCreditsForLLMDynamic);
+const mockSettleSkillRun = vi.mocked(settleSkillRun);
 const mockAuditLog = vi.mocked(auditLogger.log);
 
 // --- Default state ---
@@ -221,6 +227,7 @@ beforeEach(() => {
   mockClassifyArtifact.mockReturnValue("chat_reply" as any);
   mockSelectRoute.mockReturnValue({ route: "chat" } as any);
   mockDeductCredits.mockResolvedValue({ creditsUsed: 5 } as any);
+  mockSettleSkillRun.mockResolvedValue({ totalCredits: 5 } as any);
   mockCalculateCredits.mockResolvedValue(5);
 
   // Reset the mock executor's execute fn
@@ -566,15 +573,15 @@ describe("unifiedOrchestrator", () => {
 
     // ─── Credit Handling ──────────────────────────────────
     describe("Credit Handling", () => {
-      it("creditMode 'deduct' calls deductCreditsForModel", async () => {
+      it("creditMode 'deduct' settles the fixed skill price", async () => {
         const result = await executeUnified(
           buildRequest({ creditMode: "deduct" }),
         );
 
-        expect(mockDeductCredits).toHaveBeenCalledWith(
+        expect(mockSettleSkillRun).toHaveBeenCalledWith(
           expect.objectContaining({
             userId: 1,
-            model: "gpt-4o-mini",
+            skillSlug: "general-article-writer",
           }),
         );
         expect(result.creditsDeducted).toBe(5);
@@ -583,7 +590,7 @@ describe("unifiedOrchestrator", () => {
       it("default creditMode is 'deduct'", async () => {
         await executeUnified(buildRequest());
 
-        expect(mockDeductCredits).toHaveBeenCalled();
+        expect(mockSettleSkillRun).toHaveBeenCalled();
       });
 
       it("creditMode 'calculate_only' calls calculateCreditsForLLMDynamic", async () => {
@@ -606,14 +613,11 @@ describe("unifiedOrchestrator", () => {
         expect(result.costCredits).toBe(0);
       });
 
-      it("credit deduction failure does not block result return", async () => {
-        mockDeductCredits.mockRejectedValue(new Error("credit service down"));
+      it("fixed-credit settlement failure blocks the skill result", async () => {
+        mockSettleSkillRun.mockRejectedValue(new Error("credit service down"));
 
         const result = await executeUnified(buildRequest());
-
-        expect(result.result.type).toBe("text");
-        expect((result.result as any).content).toBe("Generated response.");
-        expect(result.creditsDeducted).toBe(0);
+        expect(result.metadata?.error).toBe("orchestrator_error");
       });
     });
 
@@ -848,9 +852,9 @@ describe("unifiedOrchestrator", () => {
           callOrder.push("execute");
           return defaultExecutorResult;
         });
-        mockDeductCredits.mockImplementation(async () => {
-          callOrder.push("deductCredits");
-          return { creditsUsed: 5 } as any;
+        mockSettleSkillRun.mockImplementation(async () => {
+          callOrder.push("settleSkillRun");
+          return { totalCredits: 5 } as any;
         });
 
         await executeUnified(buildRequest());
@@ -865,7 +869,7 @@ describe("unifiedOrchestrator", () => {
           "runPlanner",
           "injectWebSearch",
           "execute",
-          "deductCredits",
+          "settleSkillRun",
         ]);
       });
     });

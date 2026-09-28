@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "11.0.0",
+  "idea": "ต่อจากภาพเริ่มต้นแล้วสาธิตสินค้า 10 วินาที",
+  "locale": "th-TH",
+  "assets": [
+    {
+      "assetId": "start",
+      "role": "start_frame",
+      "mediaType": "image",
+      "sourceOfTruth": true,
+      "providerUsePolicy": "must_use_raw",
+      "referencePurposes": [
+        "first_frame"
+      ]
+    }
+  ],
+  "providerOptions": {
+    "wan3": {
+      "model": "wan3.0-video",
+      "mode": "image_to_video",
+      "resolution": "1080P",
+      "durationPolicy": "exact"
+    }
+  }
+}

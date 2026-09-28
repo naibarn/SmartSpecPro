@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetTenantFeatureFlag,
@@ -15,6 +15,7 @@ const {
   mockLaunchSkillStudioTask,
   mockSignBearerToken,
   mockVerifyLiveBrowserTakeoverMfa,
+  mockCreateCanonicalComputerUseBrowserJob,
 } = vi.hoisted(() => ({
   mockGetTenantFeatureFlag: vi.fn(),
   mockAssertBrowserPolicySurfaceReady: vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockLaunchSkillStudioTask: vi.fn(),
   mockSignBearerToken: vi.fn(),
   mockVerifyLiveBrowserTakeoverMfa: vi.fn(),
+  mockCreateCanonicalComputerUseBrowserJob: vi.fn(),
 }));
 
 vi.mock("../../services/featureFlags", () => ({
@@ -82,8 +84,22 @@ vi.mock("../../services/skillStudioService", () => ({
   launchSkillStudioTask: mockLaunchSkillStudioTask,
 }));
 
+vi.mock("../../services/computerUseFeature195Gateway", async () => {
+  const actual = await vi.importActual<typeof import("../../services/computerUseFeature195Gateway")>(
+    "../../services/computerUseFeature195Gateway",
+  );
+  return {
+    ...actual,
+    createCanonicalComputerUseBrowserJob: mockCreateCanonicalComputerUseBrowserJob,
+  };
+});
+
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("liveBrowserRouter", () => {
   beforeEach(() => {
@@ -147,15 +163,18 @@ describe("liveBrowserRouter", () => {
 
   async function createCaller(options?: {
     lastSignedIn?: Date;
+    userId?: number;
+    role?: string;
+    tenantId?: string;
   }) {
     const { liveBrowserRouter } = await import("../liveBrowser");
     return liveBrowserRouter.createCaller({
       user: {
-        id: 7,
+        id: options?.userId ?? 7,
         openId: "user-7",
         email: "user@example.com",
         name: "User Seven",
-        role: "user",
+        role: options?.role ?? "user",
         registeredDomain: "example.com",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -164,7 +183,7 @@ describe("liveBrowserRouter", () => {
         twoFactorSecret: "encrypted-secret",
         recoveryCodes: [],
       },
-      tenantId: "tenant-1",
+      tenantId: options?.tenantId ?? "tenant-1",
       userToken: "user-jwt-token",
       publicUrl: "https://example.com",
       req: {
@@ -194,6 +213,65 @@ describe("liveBrowserRouter", () => {
         },
       }),
     ).rejects.toThrow("Live Browser is disabled for this tenant");
+  });
+
+  it("allows only the configured authenticated requester through the C03 certification route", async () => {
+    vi.stubEnv("P213_CERTIFICATION_MODE", "true");
+    vi.stubEnv("P213_CERTIFICATION_TENANT_ID", "tenant-1");
+    vi.stubEnv("P213_CERTIFICATION_REQUESTER_USER_ID", "109");
+    vi.stubEnv("P213_CERTIFICATION_APPROVER_USER_ID", "1");
+    vi.stubEnv("P213_CERTIFICATION_PROJECT_REF", "p213-certification");
+    vi.stubEnv("P213_CERTIFICATION_FIXTURE_URL", "https://smartaihub.app/__p213/certification/approval-required");
+    mockCreateCanonicalComputerUseBrowserJob.mockResolvedValueOnce({
+      jobId: "job-p213",
+      created: true,
+    });
+
+    const caller = await createCaller({ userId: 109, role: "user" });
+    await expect(caller.runP213ApprovalCertification({
+      runnerId: "runner-p213",
+      idempotencyKey: "c03-route-1",
+      operation: "observe",
+      action: "none",
+      projectRef: "p213-certification",
+    })).resolves.toMatchObject({ jobId: "job-p213" });
+
+    expect(mockCreateCanonicalComputerUseBrowserJob).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "tenant-1", user: expect.objectContaining({ id: 109 }) }),
+      expect.objectContaining({ projectRef: "p213-certification", operation: "observe", action: "none" }),
+      expect.objectContaining({
+        certificationDescriptor: expect.objectContaining({ requesterId: 109, tenantId: "tenant-1" }),
+      }),
+    );
+  });
+
+  it("fails closed for mode-off and non-configured requester identities", async () => {
+    vi.stubEnv("P213_CERTIFICATION_MODE", "false");
+    vi.stubEnv("P213_CERTIFICATION_TENANT_ID", "tenant-1");
+    vi.stubEnv("P213_CERTIFICATION_REQUESTER_USER_ID", "109");
+    vi.stubEnv("P213_CERTIFICATION_APPROVER_USER_ID", "1");
+    vi.stubEnv("P213_CERTIFICATION_PROJECT_REF", "p213-certification");
+    vi.stubEnv("P213_CERTIFICATION_FIXTURE_URL", "https://smartaihub.app/__p213/certification/approval-required");
+
+    const requester = await createCaller({ userId: 109, role: "user" });
+    await expect(requester.runP213ApprovalCertification({
+      runnerId: "runner-p213",
+      idempotencyKey: "c03-route-off",
+      operation: "observe",
+      action: "none",
+      projectRef: "p213-certification",
+    })).rejects.toThrow("P213_CERTIFICATION_REQUESTER_NOT_AUTHORIZED");
+
+    vi.stubEnv("P213_CERTIFICATION_MODE", "true");
+    const arbitraryUser = await createCaller({ userId: 110, role: "user" });
+    await expect(arbitraryUser.runP213ApprovalCertification({
+      runnerId: "runner-p213",
+      idempotencyKey: "c03-route-user",
+      operation: "observe",
+      action: "none",
+      projectRef: "p213-certification",
+    })).rejects.toThrow("P213_CERTIFICATION_REQUESTER_NOT_AUTHORIZED");
+    expect(mockCreateCanonicalComputerUseBrowserJob).not.toHaveBeenCalled();
   });
 
   it("forwards sessionVersion, idempotencyKey, and actor identity unchanged for sendCommand", async () => {

@@ -215,7 +215,11 @@ export function VerticalDramaArcReplanCard({ lang, seriesId, readOnly }: Vertica
     return <Skeleton className="h-32 w-full" aria-busy="true" />;
   }
 
-  if (memoryQuery.isError) {
+  // Fatal only on a FIRST-load failure — see the same guard in
+  // `VerticalDramaSeriesMemoryTab`: a failed background refetch still reports
+  // `isError` while cached `data` is present, and replacing the card there
+  // hides proposals that are perfectly renderable.
+  if (memoryQuery.isError && !memoryQuery.data) {
     return (
       <Card className="border-dashed">
         <CardContent className="py-6 text-center text-sm text-muted-foreground">
@@ -396,13 +400,13 @@ function ArcReplanProposalItem({
         {tieInMove ? (
           <ul className="rounded-md border text-xs" data-testid="vd-arc-replan-tie-in-diff">
             <li className="flex items-center justify-between gap-2 border-b p-2.5 last:border-b-0">
-              <span>{lang === "th" ? `ตอนที่ ${tieInMove.fromEpisodeNumber}` : `Episode ${tieInMove.fromEpisodeNumber}`}</span>
+              <span>{lang === "th" ? `ตอนย่อยที่ ${tieInMove.fromEpisodeNumber}` : `Sub-episode ${tieInMove.fromEpisodeNumber}`}</span>
               <span className="text-muted-foreground">
                 {pickCopy(lang, verticalDramaCopy.arcReplanTieInLosesPlacement)}
               </span>
             </li>
             <li className="flex items-center justify-between gap-2 p-2.5">
-              <span>{lang === "th" ? `ตอนที่ ${tieInMove.toEpisodeNumber}` : `Episode ${tieInMove.toEpisodeNumber}`}</span>
+              <span>{lang === "th" ? `ตอนย่อยที่ ${tieInMove.toEpisodeNumber}` : `Sub-episode ${tieInMove.toEpisodeNumber}`}</span>
               <span className="text-emerald-700 dark:text-emerald-400">
                 {pickCopy(lang, verticalDramaCopy.arcReplanTieInGainsPlacement)}
               </span>
@@ -482,7 +486,7 @@ function BreakdownDiffRow({
   const th = lang === "th";
   return (
     <div className="border-b p-2.5 last:border-b-0">
-      <p className="mb-1.5 text-xs font-semibold">{th ? `ตอนที่ ${episodeNumber}` : `Episode ${episodeNumber}`}</p>
+      <p className="mb-1.5 text-xs font-semibold">{th ? `ตอนย่อยที่ ${episodeNumber}` : `Sub-episode ${episodeNumber}`}</p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <BreakdownDiffSide
           label={pickCopy(lang, verticalDramaCopy.arcReplanOldPlanLabel)}

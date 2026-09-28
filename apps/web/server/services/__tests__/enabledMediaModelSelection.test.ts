@@ -61,6 +61,15 @@ describe("enabledMediaModelSelection", () => {
     mockGetDb.mockReset();
   });
 
+  it.each([
+    ["GPT Image 2.5 Flare", "gpt-image-2-5-flare-text-to-image"],
+    ["gpt-image-2-5-sunburst-image-to-image", "gpt-image-2-5-sunburst-text-to-image"],
+  ])("keeps GPT Image 2.5 %s natural-language hints on the unified row", async (hint, expectedModel) => {
+    const { inferMediaModelHintFromText } = await import("../enabledMediaModelSelection");
+
+    expect(inferMediaModelHintFromText("image", hint)).toBe(expectedModel);
+  });
+
   it("routes a legacy Veo 3.1 hint to an enabled provider/model instead of disabled KNPLabs", async () => {
     mockGetDb.mockResolvedValue(makeDb({
       providers: [
@@ -125,6 +134,51 @@ describe("enabledMediaModelSelection", () => {
     expect(selection).toMatchObject({
       ok: false,
       reasonCode: "media_model_disabled",
+    });
+  });
+
+  it("routes the disabled legacy GPT Image 2 I2I id through the enabled unified alias", async () => {
+    mockGetDb.mockResolvedValue(makeDb({
+      providers: [provider()],
+      models: [
+        model({
+          id: 1,
+          modelId: "gpt-image-2-text-to-image",
+          name: "GPT Image 2",
+          modelType: "image",
+          aliases: [
+            "gpt-image-2",
+            "gpt-image-2-image-to-image",
+          ],
+          isEnabled: true,
+          priority: 7,
+          sortOrder: 7,
+        }),
+        model({
+          id: 2,
+          modelId: "gpt-image-2-image-to-image",
+          name: "GPT Image 2 Image-to-Image",
+          modelType: "image",
+          aliases: [],
+          isEnabled: false,
+          priority: 8,
+          sortOrder: 8,
+        }),
+      ],
+    }));
+
+    const { resolveEnabledMediaModelSelection } = await import("../enabledMediaModelSelection");
+    const selection = await resolveEnabledMediaModelSelection({
+      mediaType: "image",
+      requestedModel: "gpt-image-2-image-to-image",
+    });
+
+    expect(selection).toMatchObject({
+      ok: true,
+      modelId: "gpt-image-2-text-to-image",
+      provider: "kie_ai",
+      reason: "enabled_model_alias_match",
+      substituted: true,
     });
   });
 

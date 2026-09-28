@@ -39,6 +39,7 @@ import {
   updateExportRecord,
   getExportRecord,
   getExportRecordByIdempotencyKey,
+  getPresentationExportDownloadUrl,
   type CreateExportRecordInput,
 } from "./presentationExportService";
 import {
@@ -90,6 +91,12 @@ interface PresentationExportResultStateRecord {
   value: PresentationExportResult;
 }
 
+interface PresentationRenderActor {
+  userId: number;
+  tenantId: string;
+  role?: string | null;
+}
+
 interface TriggerPresentationExportDependencies {
   getDeckDetail?: (deckId: number, actor: PresentationActor) => Promise<PresentationDeckDetail>;
   enqueueExportJob?: (
@@ -97,6 +104,7 @@ interface TriggerPresentationExportDependencies {
     format: "png" | "jpg" | "pdf" | "mp4",
     quality?: "draft" | "standard" | "high",
     userToken?: string,
+    renderActor?: PresentationRenderActor,
   ) => Promise<{ jobId: string }>;
   userToken?: string;
   now?: () => number;
@@ -835,6 +843,7 @@ async function defaultEnqueueExportJob(
   format: "png" | "jpg" | "pdf" | "mp4",
   quality?: "draft" | "standard" | "high",
   userToken?: string,
+  renderActor?: PresentationRenderActor,
 ): Promise<{ jobId: string }> {
   const db = await getDb();
   if (!db) {
@@ -848,12 +857,43 @@ async function defaultEnqueueExportJob(
     render_spec: resolvedSpec,
     format,
     quality: quality ?? "standard",
+    ...(renderActor
+      ? {
+          render_auth: {
+            user_id: renderActor.userId,
+            tenant_id: renderActor.tenantId,
+          },
+        }
+      : {}),
   };
 
-  const token = userToken?.trim() || signBearerToken(
-    { sub: "internal-render-service", scopes: ["internal:render"] },
-    "30m",
-  );
+  const renderAuthToken = renderActor
+    ? signBearerToken(
+        {
+          sub: String(renderActor.userId),
+          userId: renderActor.userId,
+          tenantId: renderActor.tenantId,
+          tokenUse: "presentation_render",
+          scopes: ["presentation:export"],
+          type: "access",
+        },
+        "5m",
+      )
+    : null;
+  const token = renderActor
+    ? signBearerToken(
+        {
+          sub: String(renderActor.userId),
+          userId: renderActor.userId,
+          type: "access",
+          scopes: ["presentation:export"],
+        },
+        "30m",
+      )
+    : userToken?.trim() || signBearerToken(
+        { sub: "internal-render-service", scopes: ["internal:render"] },
+        "30m",
+      );
 
   const pythonBackendBaseUrl = resolvePythonBackendBaseUrl();
   const response = await fetch(`${pythonBackendBaseUrl}/api/v1/presentations/export`, {
@@ -861,6 +901,7 @@ async function defaultEnqueueExportJob(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
+      ...(renderAuthToken ? { "X-Presentation-Render-Token": renderAuthToken } : {}),
     },
     body: JSON.stringify(requestBody),
   });
@@ -1398,7 +1439,17 @@ export async function triggerPresentationExport(
 
     let queued: { jobId: string };
     try {
-      queued = await resolved.enqueueExportJob(renderSpec, input.format, input.quality, resolved.userToken);
+      queued = await resolved.enqueueExportJob(
+        renderSpec,
+        input.format,
+        input.quality,
+        resolved.userToken,
+        {
+          userId: actor.userId,
+          tenantId: String(actor.tenantId),
+          role: actor.role,
+        },
+      );
     } catch (enqueueError) {
       // Mark DB record as error if enqueue fails
       if (dbRecordId !== null && db) {
@@ -1537,14 +1588,23 @@ export async function getPresentationExportStatus(
           const json = await readPresentationBridgeJson<{
             state?: string;
             output_url?: string;
+            output_storage_key?: string;
             error_message?: string;
             percent?: number;
             stage?: string;
           }>(response, "Python export status bridge");
-          if (json.state === "done" && json.output_url) {
+          if (json.state === "done" && (json.output_url || json.output_storage_key)) {
             const updated = await updateExportRecord(
               record.id,
-              { status: "done", outputUrl: json.output_url, progressPct: 100 },
+              {
+                status: "done",
+                outputUrl: json.output_storage_key
+                  ? `/api/storage/files/${encodeURI(json.output_storage_key)}`
+                  : json.output_url,
+                ...(json.output_url ? { outputOriginalUrl: json.output_url } : {}),
+                ...(json.output_storage_key ? { outputStorageKey: json.output_storage_key } : {}),
+                progressPct: 100,
+              },
               db,
             );
             if (updated) current = updated;
@@ -1590,7 +1650,7 @@ export async function getPresentationExportStatus(
       format: current.format,
       progressPct: current.progressPct,
       stage: current.stage,
-      downloadUrl: current.outputUrl,
+      downloadUrl: getPresentationExportDownloadUrl(current),
       errorMessage: current.errorMessage,
       outputBytes: current.outputBytes,
       updatedAt: current.updatedAt,

@@ -27,7 +27,6 @@ from app.api import (
     virtual_admin,
     llm_proxy,
     orchestrator,
-    workflows,
     autopilot,
     auth,
     credits,
@@ -68,7 +67,6 @@ from app.api import (
     meta_comments,  # Meta internal comment moderation API
     meta_webhooks,  # Meta webhook ingestion
     social_publish,  # Provider-aware social publishing API
-    agency_review,  # On-demand agency review analysis
     internal_mcp,  # Internal MCP tools API (Google Drive)
     internal_embeddings,  # Internal embeddings API for chat memory vectors
      internal_gdrive,  # Internal Google Drive sync API
@@ -76,12 +74,9 @@ from app.api import (
      internal_onedrive,  # Internal OneDrive sync API
      admin_alerts,  # Admin alert threshold checking
      internal_library,  # Internal library scope propagation API
-    internal_sandbox,  # Internal sandbox dispatch/cancel API
+    internal_vertical_drama,  # Vertical Drama clip QC media-worker API
     internal_guardrails,  # Internal guardrails test API
     internal_openai_agents_runtime,  # Internal OpenAI Agents runtime API
-    agencies,  # Agency-Swarm multi-agent endpoints
-    agency_creator,  # AI Agency Creator task endpoints
-    agency_feedback,  # Agency feedback analysis (internal)
     scheduled_jobs,  # Scheduled job monitoring (internal)
     stt,  # Internal STT/TTS voice endpoints
     browser,  # Browser automation API
@@ -89,6 +84,7 @@ from app.api import (
     live_browser,  # Live browser runtime API
     vision,  # Vision analysis pipeline (multimodal memory)
     team_orchestrator_api,  # Team orchestrator internal API
+    internal_job_control_plane,  # Feature 186 canonical Python transport adapter
  )
 from app.api.v1 import (
     skills,
@@ -415,7 +411,6 @@ app.include_router(system_health.router, tags=["System Health"])
 app.include_router(audit_logs.router, tags=["Audit Logs"])
 app.include_router(support_tickets.router, tags=["Support Tickets"])
 app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["Orchestrator"])
-app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["Workflows"])
 app.include_router(autopilot.router, prefix="/api/v1/autopilot", tags=["Autopilot"])
 app.include_router(skills.router, prefix="/api/v1", tags=["Skills"])
 app.include_router(admin_skills.router, prefix="/api/v1", tags=["Admin - Skills"])
@@ -430,7 +425,6 @@ app.include_router(meta_webhooks.router, tags=["Meta Webhooks"])
 app.include_router(meta_posts.router, tags=["Meta Posts"])
 app.include_router(meta_comments.router, tags=["Meta Comments"])
 app.include_router(social_publish.router, tags=["Social Publishing"])
-app.include_router(agency_review.router, tags=["Agency Review"])
 app.include_router(prompt_enhancement.router, prefix="/api/v1/prompt", tags=["Prompt Enhancement"])
 app.include_router(skill_customization.router, prefix="/api/v1", tags=["Skill Customization"])
 app.include_router(assets.router, prefix="/api/v1/assets", tags=["Asset Management"])
@@ -449,9 +443,10 @@ app.include_router(
 from app.api.v1 import media_jobs as media_jobs_api
 app.include_router(media_jobs_api.router, prefix="/api/v1", tags=["Media Jobs"])
 
-# Cloud Tasks handler endpoints (replaces Celery tasks)
-from app.api.v1 import task_handlers as cloud_tasks_api
-app.include_router(cloud_tasks_api.router, tags=["Cloud Tasks"])
+# The former provider-specific task-handler router is intentionally not
+# mounted. Cloudflare consumers deliver canonical worker_jobs envelopes;
+# legacy /tasks/* requests must fail closed rather than reactivating a Google
+# runtime path.
 
 # Kie AI webhook handler (public endpoint, HMAC-authenticated)
 from app.api.v1 import kie_webhooks
@@ -486,19 +481,17 @@ app.include_router(onedrive.router, tags=["OneDrive"])
 app.include_router(internal_onedrive.router, tags=["Internal OneDrive"])
 app.include_router(admin_alerts.router, tags=["Admin Alerts"])
 app.include_router(internal_library.router, tags=["Internal Library"])
-app.include_router(internal_sandbox.router, tags=["Internal Sandbox"])
+app.include_router(internal_vertical_drama.router, tags=["Internal Vertical Drama"])
 app.include_router(internal_guardrails.router, tags=["Internal Guardrails"])
 app.include_router(internal_openai_agents_runtime.router, tags=["Internal OpenAI Agents Runtime"])
 app.include_router(stt.router, tags=["Internal STT/TTS"])
-app.include_router(agencies.router, tags=["Agencies"])
-app.include_router(agency_creator.router, prefix="/api/v1/agency-creator", tags=["Agency Creator"])
-app.include_router(agency_feedback.router, tags=["Agency Feedback"])
 app.include_router(scheduled_jobs.router, tags=["Scheduled Jobs"])
 app.include_router(browser.router, tags=["Browser Automation"])
 app.include_router(automation_copilot.router, prefix="/api/v1/automation-copilot", tags=["Automation Copilot"])
 app.include_router(live_browser.router)
 app.include_router(vision.router)
 app.include_router(team_orchestrator_api.router, tags=["Team Orchestrator"])
+app.include_router(internal_job_control_plane.router)
 
 @app.get("/")
 async def root():

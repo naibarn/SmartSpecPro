@@ -397,12 +397,14 @@ async def test_recover_stuck_tasks_repolls_recent_failed_wavespeed_terminal_bug(
     processing_result.scalars.return_value.all.return_value = []
     failed_result = MagicMock()
     failed_result.scalars.return_value.all.return_value = [task]
+    kie_failed_result = MagicMock()
+    kie_failed_result.scalars.return_value.all.return_value = []
 
     session = AsyncMock()
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
     session.commit = AsyncMock()
-    session.execute = AsyncMock(side_effect=[processing_result, failed_result])
+    session.execute = AsyncMock(side_effect=[processing_result, failed_result, kie_failed_result])
 
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session), \
          patch("app.tasks.media_tasks._poll_wavespeed_video_task_async", new_callable=AsyncMock, return_value={"status": "completed"}) as poll_mock:
@@ -425,8 +427,10 @@ async def test_recover_stuck_tasks_fails_processing_task_without_provider_task_i
     processing_result.scalars.return_value.all.return_value = [task]
     failed_result = MagicMock()
     failed_result.scalars.return_value.all.return_value = []
+    kie_failed_result = MagicMock()
+    kie_failed_result.scalars.return_value.all.return_value = []
 
-    session = _make_async_session(processing_result, failed_result)
+    session = _make_async_session(processing_result, failed_result, kie_failed_result)
 
     with patch("app.tasks.media_tasks.AsyncSessionLocal", return_value=session):
         result = await _recover_stuck_tasks_async()

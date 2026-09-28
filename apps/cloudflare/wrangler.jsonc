@@ -1,0 +1,16 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "smartspec-cloudflare-runtime",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "CLOUDFLARE_ACTIVATION": "disabled",
+    "CLOUDFLARE_ENVIRONMENT": "local"
+  }
+  // Resource bindings are deliberately not declared here. Account-specific
+  // IDs and names are injected by the approved deployment pipeline only after
+  // the target-account preflight and Feature 187 handoff gates pass.
+}

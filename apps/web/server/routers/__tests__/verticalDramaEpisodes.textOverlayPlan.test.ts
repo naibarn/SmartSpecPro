@@ -121,6 +121,21 @@ vi.mock("../../services/verticalDramaCharacterStock", () => ({
   verticalDramaCharacterStockService: { getPrimaryPortraitUrl: vi.fn() },
 }));
 
+// Location visual bible, Phase D (planning/polished-toasting-gadget.md) —
+// `getEpisodeDetail`'s new `episodeLocations` field resolves through
+// `verticalDramaLocationStockService.listRows`, mocked here the same way as
+// `verticalDramaCharacterStockService` above (its real implementation uses
+// `.innerJoin(...)`, not implemented by this file's `selectChain` helper).
+// Defaults to an empty roster — every pre-existing test in this file never
+// asserts on `episodeLocations`, so this is purely additive.
+vi.mock("../../services/verticalDramaLocationStock", () => ({
+  verticalDramaLocationStockService: {
+    getPrimaryReferenceUrl: vi.fn(),
+    getPrimaryReferenceAssetId: vi.fn(),
+    listRows: vi.fn(() => Promise.resolve([])),
+  },
+}));
+
 const { mockGetTenantFeatureFlags } = vi.hoisted(() => ({
   mockGetTenantFeatureFlags: vi.fn(),
 }));
@@ -129,6 +144,14 @@ vi.mock("../../services/tenantFeatureFlagService", () => ({
 }));
 
 vi.mock("../../services/verticalDramaEpisodePipeline", () => ({
+  // Async stage set + generalized submit
+  // (`planning/vd-async-stage-jobs-generalization/plan.md`) — the router
+  // reads both on every runStage call, so a factory without them throws
+  // before the behavior under test is reached.
+  VERTICAL_DRAMA_ASYNC_STAGES: new Set([
+    "storyboard_shotgrid",
+    "plan_episode_script",
+  ]),
   verticalDramaEpisodePipeline: {},
   VerticalDramaEpisodePipeline: class {},
   VERTICAL_DRAMA_PIPELINE_STAGES: ["plan_episode_script"],
@@ -212,19 +235,67 @@ vi.mock("../../services/verticalDramaPromptQc", () => ({
 vi.mock("../../services/verticalDramaEpisodeVideoAssembly", () => ({
   extractClipSourcesFromMotionPromptPack: vi.fn(() => []),
   resolveClipsForAssembly: vi.fn(() => ({ ordered: [], missing: [] })),
+  // no longer the primary path — see queueVerticalDramaFfmpegAssemblyJob
   submitAssemblyJob: vi.fn(async () => ({ jobId: "job-1" })),
+  // Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+  // persists `assemblyManifest.compiledVideo = {status:"pending", pendingJobId}`
+  // right after enqueueing.
+  persistCompiledVideoState: vi.fn(async () => undefined),
   compiledVideoFilename: vi.fn(() => "compiled.mp4"),
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs: vi.fn(() => ({
     dialogueAudioSegmentsIncluded: 0,
     subtitleLinesIncluded: 0,
   })),
+  repairVerticalDramaVideoAssetUrls: vi.fn((pack: unknown) => pack),
+}));
+
+// Vertical Drama Render Queue plan §4.2 Wave 3 — `assembleEpisodeVideo`
+// enqueues via this lazily-imported service instead of calling
+// `submitAssemblyJob` in-process; mocked here the SAME way so
+// `assembleEpisodeVideo`'s dynamic `await import(...)` resolves to this
+// stub instead of the real module (which calls `createRateLimiter(...)` at
+// load time — see that router file's own import-block doc comment).
+const { mockQueueVerticalDramaFfmpegAssemblyJob } = vi.hoisted(() => ({
+  mockQueueVerticalDramaFfmpegAssemblyJob: vi.fn(async () => ({
+    created: true,
+    job: { id: "job-1" },
+  })),
+}));
+vi.mock("../../services/workerSchedulerService", () => ({
+  queueVerticalDramaFfmpegAssemblyJob: mockQueueVerticalDramaFfmpegAssemblyJob,
+}));
+
+// `planning/vd-remotion-render-option/plan.md` wave 1 (2026-07-31) — Remotion
+// is now the DEFAULT engine `assembleEpisodeVideo` tries FIRST (only an
+// explicit `renderEngine: "ffmpeg"`, or a Remotion failure, falls through to
+// `queueVerticalDramaFfmpegAssemblyJob` above). Mocked the same lazy-import
+// way so the router's `await import("../services/verticalDramaRemotionRender")`
+// resolves to this stub instead of the real module (which statically imports
+// `queueRemotionRenderVideoJob` from `workerSchedulerService` — an export the
+// mock above deliberately doesn't carry, since nothing in this suite exercises
+// the real Remotion submission plumbing). Every `assembleEpisodeVideo` test in
+// this file takes the DEFAULT path, so asserting on THIS mock's call args is
+// what proves the overlay/watermark feed actually reaches production's real
+// (Remotion) engine — not a dead ffmpeg fallback nobody hits.
+const { mockSubmitVdRemotionAssembly } = vi.hoisted(() => ({
+  mockSubmitVdRemotionAssembly: vi.fn(async () => ({
+    jobId: "job-1",
+    created: true,
+    layerCount: 1,
+    videoDurationSeconds: 10,
+  })),
+}));
+vi.mock("../../services/verticalDramaRemotionRender", () => ({
+  submitVdRemotionAssembly: mockSubmitVdRemotionAssembly,
+  reconcileVdRemotionAssembly: vi.fn(async () => ({ reconciled: false })),
 }));
 
 const { mockResolveVdEpisodeTextOverlayEngineInputs } = vi.hoisted(() => ({
   mockResolveVdEpisodeTextOverlayEngineInputs: vi.fn(),
 }));
 vi.mock("../../services/verticalDramaTextOverlayResolution", () => ({
-  resolveVdEpisodeTextOverlayEngineInputs: mockResolveVdEpisodeTextOverlayEngineInputs,
+  resolveVdEpisodeTextOverlayEngineInputs:
+    mockResolveVdEpisodeTextOverlayEngineInputs,
   loadVdSeriesTextOverlayContext: vi.fn(async () => ({
     seriesTitle: "Midnight Vows",
     targetEpisodeCount: 10,
@@ -255,9 +326,7 @@ vi.mock("../../services/verticalDramaAdBanner", () => ({
   resolveAdBannerApprovalGate: mockResolveAdBannerApprovalGate,
 }));
 
-import {
-  verticalDramaEpisodesRouter,
-} from "../verticalDramaEpisodes";
+import { verticalDramaEpisodesRouter } from "../verticalDramaEpisodes";
 import * as episodeVideoAssembly from "../../services/verticalDramaEpisodeVideoAssembly";
 
 const router = verticalDramaEpisodesRouter as unknown as Record<
@@ -319,7 +388,7 @@ beforeEach(() => {
   mockResolveAdBannerApprovalGate.mockReturnValue(false);
   mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
     overlays: [],
-    watermarkImage: null,
+    watermarkImages: [],
     overlaysIncluded: 0,
   });
 });
@@ -330,11 +399,19 @@ beforeEach(() => {
 
 describe("updateEpisodeTextOverlayPlan", () => {
   const validPlan = {
-    endCard: { enabled: true, text: "ติดตามตอนต่อไป", durationSec: 3, showFollowLine: true, styleVariant: "center_card" as const },
+    endCard: {
+      enabled: true,
+      text: "ติดตามตอนต่อไป",
+      durationSec: 3,
+      showFollowLine: true,
+      styleVariant: "center_card" as const,
+    },
   };
 
   it("throws FORBIDDEN when verticalDramaSeriesTextOverlaySuite is off", async () => {
-    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesTextOverlaySuite: false });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesTextOverlaySuite: false,
+    });
 
     await expect(
       router.updateEpisodeTextOverlayPlan({
@@ -365,12 +442,21 @@ describe("updateEpisodeTextOverlayPlan", () => {
         input: {
           seriesId: "10",
           episodeId: "20",
-          plan: { endCard: { enabled: true, durationSec: 99, showFollowLine: true, styleVariant: "center_card" } },
+          plan: {
+            endCard: {
+              enabled: true,
+              durationSec: 99,
+              showFollowLine: true,
+              styleVariant: "center_card",
+            },
+          },
         },
       })
     ).rejects.toMatchObject({
       code: "BAD_REQUEST",
-      message: expect.stringContaining("VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE"),
+      message: expect.stringContaining(
+        "VD_TEXT_OVERLAY_END_CARD_DURATION_OUT_OF_RANGE"
+      ),
     });
     expect(mockDb.update).not.toHaveBeenCalled();
   });
@@ -403,7 +489,9 @@ describe("updateEpisodeTextOverlayPlan", () => {
       durationSec: 2,
       enabled: true,
     });
-    const planWithOverlap = { cards: [card("a", 0), card("b", 0.5), card("c", 1)] };
+    const planWithOverlap = {
+      cards: [card("a", 0), card("b", 0.5), card("c", 1)],
+    };
 
     const result = await router.updateEpisodeTextOverlayPlan({
       ctx: ctx(),
@@ -411,7 +499,9 @@ describe("updateEpisodeTextOverlayPlan", () => {
     });
 
     expect(result.warnings).toEqual([
-      expect.objectContaining({ code: "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS" }),
+      expect.objectContaining({
+        code: "VD_TEXT_OVERLAY_TOO_MANY_CONCURRENT_CARDS",
+      }),
     ]);
     // Still persisted despite the warning (warnings never block).
     expect(mockDb.update).toHaveBeenCalled();
@@ -435,7 +525,9 @@ describe("updateEpisodeTextOverlayPlan", () => {
 
 describe("getEpisodeDetail — Text Overlay Suite (F131AB, task #34)", () => {
   it("flag OFF: returns null plan/preview and adds ZERO extra db.select calls", async () => {
-    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesTextOverlaySuite: false });
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesTextOverlaySuite: false,
+    });
     mockDb.select
       .mockReturnValueOnce(selectChain([EPISODE_ROW_BASE])) // loadOwnedEpisode
       .mockReturnValueOnce(selectChain([])) // resolveSeriesCharacterPortraits
@@ -454,9 +546,19 @@ describe("getEpisodeDetail — Text Overlay Suite (F131AB, task #34)", () => {
   });
 
   it("flag ON: returns a preview built from the resolution service, and the parsed saved plan", async () => {
-    const savedPlan = { endCard: { enabled: true, text: "manual end card", durationSec: 3, showFollowLine: true, styleVariant: "center_card" } };
+    const savedPlan = {
+      endCard: {
+        enabled: true,
+        text: "manual end card",
+        durationSec: 3,
+        showFollowLine: true,
+        styleVariant: "center_card",
+      },
+    };
     mockDb.select
-      .mockReturnValueOnce(selectChain([{ ...EPISODE_ROW_BASE, textOverlayPlan: savedPlan }]))
+      .mockReturnValueOnce(
+        selectChain([{ ...EPISODE_ROW_BASE, textOverlayPlan: savedPlan }])
+      )
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
 
@@ -466,11 +568,14 @@ describe("getEpisodeDetail — Text Overlay Suite (F131AB, task #34)", () => {
     });
 
     expect(result.textOverlayPlan).toEqual(savedPlan);
+    // `deriveTitleBumperLines`/`deriveEpisodeIndicatorLabel`
+    // (`@shared/verticalDramaSeries/textOverlay.ts`) label sub-episodes
+    // "SUB-EP N[/target]", not "EP N[/target]" — matches the implementation.
     expect(result.textOverlayPreview).toEqual({
       endCard: { text: "auto end card", source: "fallback" },
       openerRecap: { text: "", source: "none" },
-      titleBumper: { primary: "Midnight Vows", secondary: "EP 1" },
-      episodeIndicator: { label: "EP 1/10" },
+      titleBumper: { primary: "Midnight Vows", secondary: "SUB-EP 1" },
+      episodeIndicator: { label: "SUB-EP 1/10" },
       characterIntroCards: [],
     });
     expect(result.flags.textOverlaySuite).toBe(true);
@@ -512,8 +617,10 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
     } as any);
   });
 
-  it("flag OFF: submits with no overlays/watermarkImage, returns zeroed counts", async () => {
-    mockGetTenantFeatureFlags.mockResolvedValue({ verticalDramaSeriesTextOverlaySuite: false });
+  it("flag OFF: submits with no overlays/watermarkImages, returns zeroed counts", async () => {
+    mockGetTenantFeatureFlags.mockResolvedValue({
+      verticalDramaSeriesTextOverlaySuite: false,
+    });
     mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
 
     const result = await router.assembleEpisodeVideo({
@@ -525,17 +632,26 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
     expect(result.textOverlayEventsIncluded).toBe(0);
     expect(result.watermarkIncluded).toBe(false);
     expect(mockResolveVdEpisodeTextOverlayEngineInputs).not.toHaveBeenCalled();
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    // Default render engine is Remotion (see the `verticalDramaRemotionRender`
+    // mock's own doc comment above) — the ffmpeg queue is never reached.
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.subtitles).toBeUndefined();
-    expect(call.watermarkImage).toBeUndefined();
+    expect(call.watermarkImages).toBeUndefined();
+    expect(mockQueueVerticalDramaFfmpegAssemblyJob).not.toHaveBeenCalled();
   });
 
   it("flag ON: merges resolved overlays into submitAssemblyJob's subtitles (preset falls back to no_subtitle_style)", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
-    const overlayEvent = { kind: "end_card", text: "จบแล้ว", startSec: 57, endSec: 60, endAnchored: true };
+    const overlayEvent = {
+      kind: "end_card",
+      text: "จบแล้ว",
+      startSec: 57,
+      endSec: 60,
+      endAnchored: true,
+    };
     mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
       overlays: [overlayEvent],
-      watermarkImage: null,
+      watermarkImages: [],
       overlaysIncluded: 1,
     });
 
@@ -544,19 +660,21 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.subtitles).toEqual({
       preset: "no_subtitle_style",
       lines: [],
       fontsDir: undefined,
       overlays: [overlayEvent],
     });
+    expect(call.overlays).toEqual([overlayEvent]);
     expect(result.textOverlayEventsIncluded).toBe(1);
   });
 
-  it("flag ON + resolved watermarkImage: threads it into submitAssemblyJob and marks watermarkIncluded", async () => {
+  it("flag ON + resolved watermarkImages: threads it into submitAssemblyJob and marks watermarkIncluded", async () => {
     mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
     const watermarkImage = {
+      slotId: "primary" as const,
       imageUrl: "https://cdn.example.com/logo.png",
       position: "top_right" as const,
       opacity: 0.45,
@@ -565,7 +683,7 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
     };
     mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
       overlays: [],
-      watermarkImage,
+      watermarkImages: [watermarkImage],
       overlaysIncluded: 0,
     });
 
@@ -574,12 +692,51 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
-    expect(call.watermarkImage).toEqual(watermarkImage);
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
+    expect(call.watermarkImages).toEqual([watermarkImage]);
     expect(result.watermarkIncluded).toBe(true);
   });
 
-  it("input.includeTextOverlays === false skips the whole feed for this render only", async () => {
+  it("dual watermark: two resolved watermarkImages both thread through to submitVdRemotionAssembly", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
+    const primary = {
+      slotId: "primary" as const,
+      imageUrl: "https://cdn.example.com/series-logo.png",
+      position: "top_right" as const,
+      opacity: 0.45,
+      scalePct: 10,
+      marginPx: 32,
+    };
+    const secondary = {
+      slotId: "secondary" as const,
+      imageUrl: "https://cdn.example.com/channel-logo.png",
+      position: "bottom_left" as const,
+      opacity: 0.6,
+      scalePct: 8,
+      marginPx: 16,
+    };
+    mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
+      overlays: [],
+      watermarkImages: [primary, secondary],
+      overlaysIncluded: 0,
+    });
+
+    const result = await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20" },
+    });
+
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
+    expect(call.watermarkImages).toEqual([primary, secondary]);
+    expect(result.watermarkIncluded).toBe(true);
+  });
+
+  it("input.includeTextOverlays === false drops the saved plan but STILL resolves the watermark", async () => {
+    // The two opt-outs are documented as independent. This used to gate the
+    // whole block on `includeTextOverlays`, so turning text overlays off
+    // silently dropped a configured series watermark too. `plan: null` is how
+    // "no text overlays" is expressed to the resolver (same shape the
+    // season-batch path uses).
     mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
 
     await router.assembleEpisodeVideo({
@@ -587,7 +744,52 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20", includeTextOverlays: false },
     });
 
+    expect(mockResolveVdEpisodeTextOverlayEngineInputs).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: null, includeWatermark: true })
+    );
+  });
+
+  it("includeTextOverlays: false + a configured watermark still reaches the render feed", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
+    const watermarkImage = {
+      slotId: "primary" as const,
+      imageUrl: "https://cdn.example.com/logo.png",
+      position: "top_right" as const,
+      opacity: 0.45,
+      scalePct: 10,
+      marginPx: 32,
+    };
+    mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
+      overlays: [],
+      watermarkImages: [watermarkImage],
+      overlaysIncluded: 0,
+    });
+
+    const result = await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: { seriesId: "10", episodeId: "20", includeTextOverlays: false },
+    });
+
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
+    expect(call.watermarkImages).toEqual([watermarkImage]);
+    expect(result.watermarkIncluded).toBe(true);
+  });
+
+  it("BOTH opt-outs false skips the resolver entirely (no feed at all)", async () => {
+    mockDb.select.mockReturnValueOnce(selectChain([EPISODE_ROW_BASE]));
+
+    const result = await router.assembleEpisodeVideo({
+      ctx: ctx(),
+      input: {
+        seriesId: "10",
+        episodeId: "20",
+        includeTextOverlays: false,
+        includeWatermark: false,
+      },
+    });
+
     expect(mockResolveVdEpisodeTextOverlayEngineInputs).not.toHaveBeenCalled();
+    expect(result.watermarkIncluded).toBe(false);
   });
 
   it("input.includeWatermark === false is threaded through as includeWatermark: false", async () => {
@@ -605,9 +807,13 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
 
   it("preserves dialogue-audio subtitle lines/preset when BOTH dialogue captions and text overlays are present", async () => {
     mockDb.select.mockReturnValueOnce(
-      selectChain([{ ...EPISODE_ROW_BASE, dialogueAudioPlan: { dialogueLines: [] } }])
+      selectChain([
+        { ...EPISODE_ROW_BASE, dialogueAudioPlan: { dialogueLines: [] } },
+      ])
     );
-    vi.mocked(episodeVideoAssembly.resolveEpisodeDialogueAudioAndSubtitlesRunInputs).mockReturnValue({
+    vi.mocked(
+      episodeVideoAssembly.resolveEpisodeDialogueAudioAndSubtitlesRunInputs
+    ).mockReturnValue({
       dialogueAudioSegmentsIncluded: 0,
       subtitleLinesIncluded: 1,
       subtitles: {
@@ -615,10 +821,16 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
         lines: [{ startSec: 0, endSec: 2, text: "สวัสดี" }],
       },
     } as any);
-    const overlayEvent = { kind: "episode_indicator", text: "EP 1/10", startSec: 0, endSec: 0, entireClip: true };
+    const overlayEvent = {
+      kind: "episode_indicator",
+      text: "EP 1/10",
+      startSec: 0,
+      endSec: 0,
+      entireClip: true,
+    };
     mockResolveVdEpisodeTextOverlayEngineInputs.mockResolvedValue({
       overlays: [overlayEvent],
-      watermarkImage: null,
+      watermarkImages: [],
       overlaysIncluded: 1,
     });
 
@@ -627,9 +839,12 @@ describe("assembleEpisodeVideo — Text Overlay Suite feeding (F131AB, task #34)
       input: { seriesId: "10", episodeId: "20", subtitlePreset: "classic_box" },
     });
 
-    const call = vi.mocked(episodeVideoAssembly.submitAssemblyJob).mock.calls[0]![0] as any;
+    const call = mockSubmitVdRemotionAssembly.mock.calls[0]![0] as any;
     expect(call.subtitles.preset).toBe("classic_box");
-    expect(call.subtitles.lines).toEqual([{ startSec: 0, endSec: 2, text: "สวัสดี" }]);
+    expect(call.subtitles.lines).toEqual([
+      { startSec: 0, endSec: 2, text: "สวัสดี" },
+    ]);
     expect(call.subtitles.overlays).toEqual([overlayEvent]);
+    expect(call.overlays).toEqual([overlayEvent]);
   });
 });

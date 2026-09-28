@@ -113,10 +113,12 @@ describe("computeVerticalDramaDensityMeterView", () => {
   });
 
   it("flags isOverLength when estimated speech exceeds the clip's own duration (dialogue cannot physically fit)", () => {
-    // 111 Thai chars / 8.5 chars-per-second (canonical rate) ≈ 13.06s of
-    // estimated speech inside an 8s clip.
+    // 222 Thai chars / 17 chars-per-second (canonical rate, rescaled
+    // 2026-07-15 from 8.5) ≈ 13.06s of estimated speech inside an 8s clip
+    // (fixture lengthened to 2x the original single sentence so realistic
+    // dialogue still genuinely overflows the clip under the faster rate).
     const longLine =
-      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
+      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
     const clips: VerticalDramaDensityMeterClipInput[] = [
       { shotNumber: 1, durationSeconds: 8, dialogue: [{ lineTh: longLine }] },
     ];
@@ -152,7 +154,7 @@ describe("computeVerticalDramaDensityMeterView", () => {
 
   it("exempts an over-length shot with a declared silenceIntent (Layer 3), matching every other per-clip flag", () => {
     const longLine =
-      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
+      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
     const clips: VerticalDramaDensityMeterClipInput[] = [
       {
         shotNumber: 1,
@@ -196,7 +198,7 @@ describe("VerticalDramaDensityMeter", () => {
     expect(screen.getByText("ต่ำกว่าเป้ามาก (บล็อก)")).toBeInTheDocument();
     expect(
       screen.getByTestId("vd-density-blocking-message").textContent
-    ).toContain("บทยังบางเกินไป — ซ่อมบททั้งตอนก่อน");
+    ).toContain("บทยังบางเกินไป — ซ่อมบททั้งตอนย่อยก่อน");
   });
 
   it("shows the in-range state without the blocking message or repair CTA", () => {
@@ -319,7 +321,7 @@ describe("VerticalDramaDensityMeter", () => {
 
   it("renders a visible over-length warning (text + tone) when speech cannot fit the clip's duration", () => {
     const longLine =
-      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
+      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
     const clip: VerticalDramaDensityMeterClipInput = {
       shotNumber: 1,
       durationSeconds: 8,
@@ -336,7 +338,7 @@ describe("VerticalDramaDensityMeter", () => {
 
   it("2026-07-08 wizard cross-link: an over-length chip ALSO gets the actionable hint line, pointing at the dialogue/audio step and the repair CTA", () => {
     const longLine =
-      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
+      "ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีกเพื่อให้แน่ใจว่าเกินแปดวินาทีแน่นอน";
     const clip: VerticalDramaDensityMeterClipInput = {
       shotNumber: 1,
       durationSeconds: 8,
@@ -345,7 +347,7 @@ describe("VerticalDramaDensityMeter", () => {
     render(<VerticalDramaDensityMeter locale="th" clips={[clip]} />);
     const hint = screen.getByTestId("vd-density-overlength-hint-1");
     expect(hint.textContent).toBe(
-      "เกลี่ยบทในขั้น 'บทพูด/เสียง' หรือกด 'ซ่อมบททั้งตอน'"
+      "เกลี่ยบทในขั้น 'บทพูด/เสียง' หรือกด 'ซ่อมบททั้งตอนย่อย'"
     );
   });
 
@@ -649,8 +651,12 @@ describe("VerticalDramaDensityMeter — speakability badge (2026-07-08 W9-B, rea
   });
 
   it("over-length still wins over speakability when both are true for the same shot", () => {
+    // Rescaled 2026-07-15: THAI_CHARS_PER_SECOND doubled (8.5->17), so the
+    // inner quoted sentence is now tripled (228 Thai chars ≈ 13.41s) to keep
+    // this fixture genuinely overflowing the 8s clip under the faster rate,
+    // while the leading/trailing wrapping-quote violation stays intact.
     const longUnspeakableLine =
-      "“ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีก”";
+      "“ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีก ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีก ประโยคภาษาไทยที่ยาวมากสำหรับทดสอบการพูดเกินเวลาของช็อตนี้จริงจังมากขึ้นไปอีก”";
     const clip: VerticalDramaDensityMeterClipInput = {
       shotNumber: 1,
       durationSeconds: 8,

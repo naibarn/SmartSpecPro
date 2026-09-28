@@ -76,6 +76,12 @@ export const MARKETPLACE_AUTO_REVIEW_DETAIL_STATES = [
   "input_change_recheck_required",
   "frame_vision_qa_repairing",
   "media_quarantined",
+  // Marketplace text-plan review gate (planning/marketplace-storyboard-text-
+  // gate) — every run holds here after `prompt_plan` completes and BEFORE
+  // any image credit reservation, until the user approves the text plan or
+  // requests an AI redraft. See `marketplaceAutoReviewService.ts`
+  // `holdMarketplaceAutoReviewRunAtImageGeneration`.
+  "awaiting_plan_review",
   "product_reference_blocked",
   "character_identity_blocked",
   "completion_evidence_blocked",

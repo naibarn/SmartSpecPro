@@ -1,0 +1,7 @@
+# Synthesized Specification
+
+Build a voice-guided visual matching flow in Worker App Media Workspace. The user selects or confirms a voice track and image slide clips. The app transcribes the actual voice source with HyperFrames and obtains timestamped segments (and words when available). Each image is analyzed by an authorized server-side vision skill adapter. A deterministic matcher compares spoken text with image captions/objects/actions/OCR and produces an explainable timing and order proposal.
+
+The system must distinguish project time from source-media time, persist source fingerprints and analysis revisions, and fail closed to original order when mapping or analysis is uncertain. A reorder proposal is eligible only when all moved images meet the configured confidence floor and the reordered global score beats the original-order score by a configured margin. The proposal is never applied automatically: the UI shows a preview with sentence windows, image thumbnails, confidence, reasons, and before/after order, then offers Apply original timing, Apply reordered plan, or Cancel.
+
+Applying a plan changes only image clip order, timeline start, duration, and source trim where required. Voice clips, subtitle clips, transcript text, and subtitle timing remain byte-equivalent. The prior project is stored as a revision/undo snapshot. Analysis and plan metadata are bounded, redacted, and keyed by asset/source fingerprints. All network calls use the connected worker's server-derived tenant and device authorization; no local path is sent to an LLM.

@@ -1,0 +1,106 @@
+# Feature 192 local timer classification. This is a local safety manifest,
+# not evidence that the external Cloudflare Cron bindings are deployed.
+manifest_version: feature-192-timer-inventory-v1
+hard_cutover_rule: only canonical-control-plane and product-integration-canonical timers may run in-process
+google_runtime_fallback: forbidden
+entries:
+  - initializer: initializeTrashPurgeJob
+    source: apps/web/server/jobs/purgeOldTrashItems.ts
+    disposition: canonical-control-plane
+    job_types: [library.trash_purge]
+  - initializer: initializeGDriveCleanupJob
+    source: apps/web/server/jobs/gdriveSessionCleanup.ts
+    disposition: product-integration-canonical
+    job_types: [gdrive.edit_session_cleanup]
+  - initializer: initializeDatabaseBackupJob
+    source: apps/web/server/jobs/databaseBackupJob.ts
+    disposition: canonical-control-plane
+    job_types: [database.backup.maintenance]
+  - initializer: initializeNotificationJobs
+    source: apps/web/server/jobs/notificationJobs.ts
+    disposition: canonical-control-plane
+    job_types: [notification.escalation, notification.digest, notification.retention, notification.webhook_delivery]
+  - initializer: initializeMemoryMaintenanceJobs
+    source: apps/web/server/jobs/memoryMaintenanceJobs.ts
+    disposition: canonical-control-plane
+    job_types: [memory.archive_cleanup, memory.chunk_cleanup, memory.embedding_reconciliation, memory.eviction]
+  - initializer: initializeUnifiedJobControlPlaneReconcilerJob
+    source: apps/web/server/jobs/unifiedJobControlPlaneReconcilerJob.ts
+    disposition: canonical-control-plane
+    job_types: [control-plane.reconcile]
+  - initializer: initializeWorkerStallWatchdogJob
+    source: apps/web/server/jobs/workerStallWatchdogJob.ts
+    disposition: canonical-control-plane
+    job_types: [control-plane.lease_reconcile]
+  - initializer: initializeBillingJobs
+    source: apps/web/server/jobs/billingJobs.ts
+    disposition: compatibility-drain-disabled
+    job_types: [billing.maintenance]
+  - initializer: initializeUploadPostCleanupJob
+    source: apps/web/server/jobs/uploadPostCleanup.ts
+    disposition: compatibility-drain-disabled
+    job_types: [upload_post.retention_cleanup]
+  - initializer: initializeFinanceOcrRetentionJob
+    source: apps/web/server/jobs/financeOcrRetentionJob.ts
+    disposition: compatibility-drain-disabled
+    job_types: [finance.ocr_retention]
+  - initializer: initializeContentRefreshJob
+    source: apps/web/server/jobs/contentRefreshJob.ts
+    disposition: compatibility-drain-disabled
+    job_types: [content.refresh]
+  - initializer: initializeInactiveUserJob
+    source: apps/web/server/jobs/inactiveUserJob.ts
+    disposition: compatibility-drain-disabled
+    job_types: [user.inactivity_maintenance]
+  - initializer: initializeFeedbackAutoCloseJob
+    source: apps/web/server/jobs/feedbackAutoCloseJob.ts
+    disposition: compatibility-drain-disabled
+    job_types: [feedback.auto_close]
+  - initializer: initializePendingApprovalAlertJob
+    source: apps/web/server/jobs/pendingApprovalAlert.ts
+    disposition: compatibility-drain-disabled
+    job_types: [notification.pending_approval_alert]
+  - initializer: initializeSkillMaintenanceScheduleJob
+    source: apps/web/server/jobs/skillMaintenanceSchedule.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [skill.maintenance]
+  - initializer: initializeWorkpackScheduleJob
+    source: apps/web/server/jobs/workpackScheduleJob.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [workpack.schedule]
+  - initializer: initializeRoleRoutineSchedulerJob
+    source: apps/web/server/jobs/roleRoutineSchedulerJob.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [role.routine]
+  - initializer: initializeBrowserAutomationClaimReconcilerJob
+    source: apps/web/server/jobs/browserAutomationClaimReconciler.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [automation.browser_claim_reconcile]
+  - initializer: initializeProductionExecutionReconciliationJob
+    source: apps/web/server/jobs/productionExecutionReconciliationJob.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [production.execution_reconcile]
+  - initializer: initializeMarketplaceAutoReviewJob
+    source: apps/web/server/jobs/marketplaceAutoReviewJob.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [marketplace.auto_review]
+  - initializer: initializeCeleryMediaDoctorJob
+    source: apps/web/server/jobs/celeryMediaDoctorJob.ts
+    disposition: compatibility-drain-disabled
+    job_types: []
+  - initializer: startDeferredMediaRetryWorker
+    source: apps/web/server/services/deferredMediaRetryService.ts
+    disposition: compatibility-drain-disabled
+    job_types: [media.deferred_retry]
+  - initializer: startAutoTeamMediaPipelineSweeper
+    source: apps/web/server/services/autoTeamMediaCompletionService.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [team.media_reconcile]
+  - initializer: startAutoTeamRecoverySweep
+    source: apps/web/server/services/autoTeamRecoveryService.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [team.run_recovery]
+  - initializer: startMcpStaleMediaTaskReconciler
+    source: apps/web/server/services/mcpMediaAdapter.ts
+    disposition: external-cloudflare-scheduler
+    job_types: [media.mcp_reconcile]

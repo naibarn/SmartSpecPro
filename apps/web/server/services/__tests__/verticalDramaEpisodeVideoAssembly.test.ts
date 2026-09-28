@@ -13,6 +13,10 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import fsp from "fs/promises";
+import path from "path";
+import { Readable } from "stream";
+
+const storageStreamFileMock = vi.hoisted(() => vi.fn());
 
 const dbState = {
   episode: {
@@ -45,10 +49,17 @@ vi.mock("../../db", () => {
 });
 
 vi.mock("../../storage", () => ({
+  assertR2StorageActive: vi.fn(),
   storagePutFromPath: vi.fn(async (key: string) => ({
     key,
     url: `/api/storage/files/${key}`,
   })),
+  storageStreamFile: storageStreamFileMock,
+}));
+
+vi.mock("../verticalDramaArtifactVersionService", () => ({
+  upsertVerticalDramaArtifactVersion: vi.fn(async () => ({})),
+  listVerticalDramaArtifactVersionProjections: vi.fn(async () => []),
 }));
 
 // Avoid a real network fetch in `downloadClipToFile` during `runAssemblyJob`.
@@ -66,7 +77,13 @@ import {
   buildConcatListFileContent,
   compiledVideoFilename,
   extractClipSourcesFromMotionPromptPack,
+  extractVerticalDramaManagedStorageKey,
+  buildVerticalDramaStorageProxyUrl,
+  downloadClipToFile,
+  repairVerticalDramaVideoAssetUrls,
+  normalizeVerticalDramaStoredAssetUrl,
   findMissingClips,
+  mergeVideoTaskIntoMotionPromptPack,
   getJobStatus,
   resolveClipsForAssembly,
   resolveEpisodeDialogueAudioAndSubtitlesRunInputs,
@@ -84,6 +101,7 @@ import type { VdDialogueTimelineClip } from "@shared/verticalDramaSeries/dialogu
 beforeEach(() => {
   dbState.episode.assemblyManifest = null;
   vi.clearAllMocks();
+  storageStreamFileMock.mockResolvedValue(null);
 });
 
 /**
@@ -144,6 +162,53 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     expect(findMissingClips(clips).map(m => m.clipNumber)).toEqual([2, 3]);
   });
 
+  it("uses clip-derived canonical fallback for legacy split clips", () => {
+    const result = resolveClipsForAssembly([
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        {
+          clipNumber: 302,
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          sourceShotNumbers: [3],
+          videoUrl: "/302.mp4",
+        },
+      ]);
+
+    expect(result.ordered.map(clip => clip.clipNumber)).toEqual([302]);
+    expect(result.missing).toEqual([]);
+  });
+
+  it("treats a completed legacy sibling as canonical-shot readiness", () => {
+    const { ordered, missing } = resolveClipsForAssembly(
+      [
+        { clipNumber: 1, sourceShotNumbers: [1], videoUrl: "/1.mp4" },
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        {
+          clipNumber: 302,
+          parentShotNumber: 3,
+          subShotNumber: 2,
+          sourceShotNumbers: [3],
+          videoUrl: "/302.mp4",
+        },
+        { clipNumber: 4, sourceShotNumbers: [4], videoUrl: "/4.mp4" },
+      ],
+      { storyboardShotNumbers: [1, 3, 4] },
+    );
+
+    expect(ordered.map(clip => clip.clipNumber)).toEqual([1, 302, 4]);
+    expect(missing).toEqual([]);
+  });
+
   it("throws with the missing clip list when clips are incomplete and allowPartial is not set", () => {
     const clips: EpisodeClipSource[] = [
       ...complete,
@@ -166,6 +231,25 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     expect(missing.map(m => m.clipNumber)).toEqual([2]);
   });
 
+  it("uses canonical partial assembly with clip-derived fallback", () => {
+    const { ordered, missing } = resolveClipsForAssembly(
+      [
+        { clipNumber: 1, sourceShotNumbers: [1], videoUrl: "/1.mp4" },
+        {
+          clipNumber: 301,
+          parentShotNumber: 3,
+          subShotNumber: 1,
+          sourceShotNumbers: [3],
+        },
+        { clipNumber: 4, sourceShotNumbers: [4], videoUrl: "/4.mp4" },
+      ],
+      { allowPartial: true },
+    );
+
+    expect(ordered.map(clip => clip.clipNumber)).toEqual([1, 4]);
+    expect(missing.map(item => item.clipNumber)).toEqual([3]);
+  });
+
   it("throws when there are zero completed clips even with allowPartial", () => {
     const clips: EpisodeClipSource[] = [{ clipNumber: 1 }, { clipNumber: 2 }];
     expect(() =>
@@ -177,6 +261,59 @@ describe("findMissingClips / resolveClipsForAssembly", () => {
     const { ordered, missing } = resolveClipsForAssembly(complete);
     expect(ordered).toHaveLength(3);
     expect(missing).toEqual([]);
+  });
+});
+
+describe("mergeVideoTaskIntoMotionPromptPack", () => {
+  it("merges sibling clip completions without dropping the first task", () => {
+    const pack: any = {
+      clips: [
+        {
+          clipNumber: 301,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 1,
+        },
+        {
+          clipNumber: 302,
+          sourceShotNumbers: [3],
+          parentShotNumber: 3,
+          subShotNumber: 2,
+        },
+      ],
+      warnings: [],
+    };
+
+    const withFirstCompletion = mergeVideoTaskIntoMotionPromptPack(
+      pack,
+      301,
+      { videoUrl: "/301.mp4", mediaTaskId: "task-301" }
+    );
+    const withBothCompletions = mergeVideoTaskIntoMotionPromptPack(
+      withFirstCompletion,
+      302,
+      { videoUrl: "/302.mp4", mediaTaskId: "task-302" }
+    );
+
+    expect(
+      withBothCompletions?.clips.map(clip => clip.videoTask?.videoUrl)
+    ).toEqual(["/301.mp4", "/302.mp4"]);
+  });
+
+  it("persists worker-artifact clips through the durable storage proxy", () => {
+    const pack: any = { clips: [{ clipNumber: 3 }], warnings: [] };
+    const merged = mergeVideoTaskIntoMotionPromptPack(pack, 3, {
+      videoUrl:
+        "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Signature=secret",
+    });
+    expect(merged?.clips[0].videoTask?.videoUrl).toBe(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    );
+  });
+
+  it("does not create a phantom clip when a late failed poll clears an unknown id", () => {
+    const pack: any = { clips: [{ clipNumber: 1 }], warnings: [] };
+    expect(mergeVideoTaskIntoMotionPromptPack(pack, 301, null)).toBe(pack);
   });
 });
 
@@ -204,6 +341,16 @@ describe("compiledVideoFilename", () => {
       seriesTitle: "Test/../../etc",
     });
     expect(name).not.toMatch(/[\/\\]/);
+  });
+
+  it("preserves meaningful Thai series titles in the compiled filename", () => {
+    expect(
+      compiledVideoFilename({
+        seriesId: 42,
+        episodeNumber: 29,
+        seriesTitle: "คาเฟ่รักในเวทีพิเศษ",
+      }),
+    ).toBe("series-คาเฟ่รักในเวทีพิเศษ-ep-29-compiled.mp4");
   });
 });
 
@@ -283,6 +430,99 @@ describe("extractClipSourcesFromMotionPromptPack", () => {
       .sort((a: any, b: any) => a.clipNumber - b.clipNumber)
       .map((c: any) => c.clipNumber);
     expect(ordered.map(c => c.clipNumber)).toEqual(rawSorted);
+  });
+});
+
+describe("normalizeVerticalDramaStoredAssetUrl", () => {
+  it("replaces expiring worker-artifact signatures with the durable storage proxy", () => {
+    expect(
+      normalizeVerticalDramaStoredAssetUrl(
+        "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Expires=3600&X-Amz-Signature=secret"
+      )
+    ).toBe("/api/storage/files/worker-artifacts/tenant/job/clip.mp4");
+  });
+
+  it("leaves provider URLs unchanged", () => {
+    expect(normalizeVerticalDramaStoredAssetUrl("https://provider.example/clip.mp4")).toBe(
+      "https://provider.example/clip.mp4"
+    );
+  });
+
+  it("normalizes an absolute app storage-proxy URL to its durable relative path", () => {
+    expect(
+      normalizeVerticalDramaStoredAssetUrl(
+        "https://smartaihub.app/api/storage/files/worker-artifacts/clip.mp4?download=1"
+      )
+    ).toBe("/api/storage/files/worker-artifacts/clip.mp4");
+  });
+
+  it("extracts only the durable managed key and ignores signed query parameters", () => {
+    const url =
+      "https://r2.example.test/smartspec/worker-artifacts/tenant/job/clip.mp4?X-Amz-Signature=secret";
+    expect(extractVerticalDramaManagedStorageKey(url)).toBe(
+      "worker-artifacts/tenant/job/clip.mp4"
+    );
+    expect(extractVerticalDramaManagedStorageKey(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    )).toBe("worker-artifacts/tenant/job/clip.mp4");
+    expect(extractVerticalDramaManagedStorageKey("https://provider.example/clip.mp4")).toBeNull();
+    expect(buildVerticalDramaStorageProxyUrl("worker-artifacts/tenant/job/clip.mp4")).toBe(
+      "/api/storage/files/worker-artifacts/tenant/job/clip.mp4"
+    );
+  });
+
+  it("repairs legacy clips idempotently without changing unrelated clips", () => {
+    const pack = {
+      selectedVideoModelId: "grok",
+      durationProfileId: "profile",
+      motionMode: "image_to_video" as const,
+      clips: [
+        { clipNumber: 3, sourceShotNumbers: [3], prompt: "a", videoTask: { videoUrl: "https://expired.example/3.mp4" } },
+        { clipNumber: 4, sourceShotNumbers: [4], prompt: "b", videoTask: { videoUrl: "/api/storage/files/existing.mp4", mediaAssetId: "22" } },
+      ],
+      warnings: [],
+    };
+    const resolutions = {
+      3: { mediaAssetId: 1296, url: "/api/storage/files/worker-artifacts/3.mp4" },
+    };
+    const repaired = repairVerticalDramaVideoAssetUrls(pack, resolutions);
+    expect(repaired?.clips[0]?.videoTask).toEqual({
+      videoUrl: "/api/storage/files/worker-artifacts/3.mp4",
+      mediaAssetId: "1296",
+      durabilityStatus: "ready",
+    });
+    expect(repaired?.clips[1]).toEqual(pack.clips[1]);
+    expect(repairVerticalDramaVideoAssetUrls(repaired, resolutions)).toBe(repaired);
+  });
+});
+
+describe("downloadClipToFile", () => {
+  it("reads managed storage through the server storage layer", async () => {
+    storageStreamFileMock.mockResolvedValue({
+      stream: Readable.from([Buffer.from("managed-clip")]),
+      contentType: "video/mp4",
+      isPartial: false,
+    });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockClear();
+    const tempDir = await fsp.mkdtemp("vd-download-");
+    const destPath = path.join(tempDir, "clip.mp4");
+
+    try {
+      await downloadClipToFile(
+        "https://smartaihub.app/api/storage/files/worker-artifacts/clip.mp4?download=1",
+        destPath,
+        "http://localhost:3000"
+      );
+
+      expect(storageStreamFileMock).toHaveBeenCalledWith(
+        "worker-artifacts/clip.mp4"
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+      await expect(fsp.readFile(destPath, "utf8")).resolves.toBe("managed-clip");
+    } finally {
+      await fsp.rm(tempDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -390,6 +630,7 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     expect(compiled.videoUrl).toContain("/api/storage/files/");
     expect(compiled.shotCount).toBe(2);
     expect(compiled.pendingJobId).toBeUndefined();
+    expect(compiled.error).toBeUndefined();
   });
 
   it("persists a failed status when ffmpeg exits non-zero", async () => {
@@ -407,6 +648,28 @@ describe("runAssemblyJob / submitAssemblyJob (mocked ffmpeg + db + storage)", ()
     const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
     expect(compiled.status).toBe("failed");
     expect(compiled.error).toMatch(/ffmpeg concat failed/);
+  });
+
+  it("persists a normalized capacity error when ffmpeg cannot write", async () => {
+    const failingRunner = vi.fn(async () => ({
+      code: 1,
+      stderr: "ENOSPC: no space left on device, write",
+    }));
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-storage-full-1",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: failingRunner,
+    });
+
+    const compiled = (dbState.episode.assemblyManifest as any)?.compiledVideo;
+    expect(compiled.status).toBe("failed");
+    expect(compiled.error).toMatch(
+      /storage_capacity_exhausted \[mount=\/tmp; kind=/,
+    );
   });
 });
 
@@ -491,6 +754,7 @@ describe("runAssemblyJob — final render integration-lite (banners/dialogueAudi
       subtitleLineCount: 1,
       textOverlayEventCount: 0,
       watermarkIncluded: false,
+      watermarkCount: 0,
       renderedAt: expect.any(String),
     });
   });
@@ -835,8 +1099,8 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
     });
     const bumper = result.overlays.find(o => o.kind === "title_bumper");
     const recap = result.overlays.find(o => o.kind === "opener_recap");
-    expect(bumper).toMatchObject({ startSec: 0, endSec: 1.2 });
-    expect(recap).toMatchObject({ startSec: 1.2, endSec: 5.2, secondaryText: "ความเดิม" });
+    expect(bumper).toMatchObject({ startSec: 0, endSec: 3 });
+    expect(recap).toMatchObject({ startSec: 3, endSec: 7, secondaryText: "ความเดิม" });
   });
 
   it("starts opener_recap at 0 when titleBumper is absent", () => {
@@ -873,7 +1137,7 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
   it("builds watermark_text as entireClip:true, carrying opacity/marginPx", () => {
     const result = resolveEpisodeTextOverlayRunInputs({
       ...baseParams,
-      watermarkText: { text: "@brand", position: "bottom_right", opacity: 0.5, marginPx: 24 },
+      watermarkTexts: [{ text: "@brand", position: "bottom_right", opacity: 0.5, marginPx: 24 }],
     });
     expect(result.overlays).toEqual([
       expect.objectContaining({
@@ -882,6 +1146,34 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
         variant: "bottom_right",
         opacity: 0.5,
         marginPx: 24,
+        entireClip: true,
+      }),
+    ]);
+  });
+
+  it("dual watermark: builds TWO independent watermark_text events, one per slot", () => {
+    const result = resolveEpisodeTextOverlayRunInputs({
+      ...baseParams,
+      watermarkTexts: [
+        { text: "@series-brand", position: "top_left", opacity: 0.4, marginPx: 20 },
+        { text: "@channel-brand", position: "bottom_right", opacity: 0.6, marginPx: 16 },
+      ],
+    });
+    expect(result.overlays).toEqual([
+      expect.objectContaining({
+        kind: "watermark_text",
+        text: "@series-brand",
+        variant: "top_left",
+        opacity: 0.4,
+        marginPx: 20,
+        entireClip: true,
+      }),
+      expect.objectContaining({
+        kind: "watermark_text",
+        text: "@channel-brand",
+        variant: "bottom_right",
+        opacity: 0.6,
+        marginPx: 16,
         entireClip: true,
       }),
     ]);
@@ -925,7 +1217,7 @@ describe("resolveEpisodeTextOverlayRunInputs", () => {
       openerRecap: { text: "ความเดิม", durationSec: 3 },
       titleBumper: { primary: "ซีรีส์", secondary: "EP 1" },
       episodeIndicator: { label: "EP 1/10", position: "top_right" },
-      watermarkText: { text: "@brand", position: "top_left", opacity: 0.4, marginPx: 20 },
+      watermarkTexts: [{ text: "@brand", position: "top_left", opacity: 0.4, marginPx: 20 }],
       characterIntroCards: [{ characterKey: "char-a", shotNumber: 1, name: "มาลี" }],
       cards: [{ id: "c1", kind: "narrative_hook", text: "จะเกิดอะไรขึ้น", shotNumber: 1, durationSec: 2 }],
     });
@@ -1065,18 +1357,21 @@ describe("runAssemblyJob — Text Overlay Suite integration (task #34)", () => {
           fadeSec: 0.3,
         },
       ],
-      watermarkImage: {
-        imageUrl: "https://cdn.example.com/logo.png",
-        position: "top_right",
-        opacity: 0.45,
-        scalePct: 10,
-        marginPx: 32,
-      },
+      watermarkImages: [
+        {
+          slotId: "primary",
+          imageUrl: "https://cdn.example.com/logo.png",
+          position: "top_right",
+          opacity: 0.45,
+          scalePct: 10,
+          marginPx: 32,
+        },
+      ],
     });
 
     expect(fakeRunner).toHaveBeenCalledTimes(1);
     const ffArgs = capturedArgs[0]!;
-    expect(ffArgs.some(a => a.endsWith("watermark.png"))).toBe(true);
+    expect(ffArgs.some(a => a.endsWith("watermark-primary.png"))).toBe(true);
     const filterComplex = extractFilterComplex(ffArgs);
     const fullscreenIdx = filterComplex.indexOf("overlay=0:0");
     const watermarkIdx = filterComplex.indexOf("colorchannelmixer=aa=0.45");
@@ -1085,9 +1380,61 @@ describe("runAssemblyJob — Text Overlay Suite integration (task #34)", () => {
 
     const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
     expect(finalRender.watermarkIncluded).toBe(true);
+    expect(finalRender.watermarkCount).toBe(1);
   });
 
-  it("is a complete no-op for the legacy concat path when neither overlays nor watermarkImage is supplied", async () => {
+  it("dual watermark: stages TWO watermark images without a filename collision", async () => {
+    const capturedArgs: string[][] = [];
+    const fakeRunner = vi.fn(async (ffArgs: string[]) => {
+      capturedArgs.push(ffArgs);
+      return { code: 0, stderr: "" };
+    });
+    const fakeProbe = vi.fn(async () => 10);
+
+    await runAssemblyJob({
+      owner,
+      jobId: "job-dual-watermark-image",
+      clips,
+      internalBaseUrl: "http://localhost:3000",
+      filename: "out.mp4",
+      ffmpegRunner: fakeRunner,
+      probeDurationSecondsFn: fakeProbe,
+      watermarkImages: [
+        {
+          slotId: "primary",
+          imageUrl: "https://cdn.example.com/series-logo.png",
+          position: "top_right",
+          opacity: 0.45,
+          scalePct: 10,
+          marginPx: 32,
+        },
+        {
+          slotId: "secondary",
+          imageUrl: "https://cdn.example.com/channel-logo.png",
+          position: "bottom_left",
+          opacity: 0.6,
+          scalePct: 8,
+          marginPx: 16,
+        },
+      ],
+    });
+
+    expect(fakeRunner).toHaveBeenCalledTimes(1);
+    const ffArgs = capturedArgs[0]!;
+    // Distinct staged local filenames — no collision between the two slots.
+    expect(ffArgs.some(a => a.endsWith("watermark-primary.png"))).toBe(true);
+    expect(ffArgs.some(a => a.endsWith("watermark-secondary.png"))).toBe(true);
+    const filterComplex = extractFilterComplex(ffArgs);
+    // Two independent overlay stages present in the filter graph.
+    expect(filterComplex).toContain("[wmimgprimary]");
+    expect(filterComplex).toContain("[wmimgsecondary]");
+
+    const finalRender = (dbState.episode.assemblyManifest as any)?.finalRender;
+    expect(finalRender.watermarkIncluded).toBe(true);
+    expect(finalRender.watermarkCount).toBe(2);
+  });
+
+  it("is a complete no-op for the legacy concat path when neither overlays nor watermarkImages is supplied", async () => {
     const capturedArgs: string[][] = [];
     const fakeRunner = vi.fn(async (ffArgs: string[]) => {
       capturedArgs.push(ffArgs);
@@ -1211,6 +1558,133 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
   });
 
+  /**
+   * Field incident 2026-08-01 (series 21 / episode 124): every storyboard shot
+   * showed dialogue, but the render burned in ZERO subtitles — captions were
+   * sourced only from `dialogueAudioPlan.dialogueLines`, and that episode never
+   * ran the dialogue/voice step. Its 20 lines lived on
+   * `motionPromptPack.clips[].dialogue` the whole time, on the very clips the
+   * render was already being handed.
+   */
+  describe("clip-authored dialogue fallback", () => {
+    const twoClips: VdDialogueTimelineClip[] = [
+      { clipNumber: 1, sourceShotNumbers: [1], durationSeconds: 10 },
+      { clipNumber: 2, sourceShotNumbers: [2], durationSeconds: 10 },
+    ];
+
+    it("builds subtitles from clip dialogue when the plan is absent", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        clipDialogue: new Map([
+          [
+            1,
+            [
+              { text: "จะเอาอะไรอีก ฉันให้ไปเยอะแล้วนะ", speakerName: "ปราง" },
+              { text: "มือถือเครื่องเดียว ทำไมต้องตามไม่เลิก", speakerName: "ปราง" },
+            ],
+          ],
+          [2, [{ text: "งั้นฉันจะไม่ปล่อยเธอไปคนเดียวอีก", speakerName: "ภูมิ" }]],
+        ]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "creator_pop",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(3);
+      expect(result.subtitles?.preset).toBe("creator_pop");
+      const lines = result.subtitles!.lines;
+      expect(lines.map(line => line.speakerName)).toEqual(["ปราง", "ปราง", "ภูมิ"]);
+      // Clip 1 owns [0,10), clip 2 owns [10,20) — absolute, laid end to end,
+      // with clip 1's two lines splitting its window and the last one closing
+      // it out exactly.
+      expect(lines[0].startSec).toBe(0);
+      expect(lines[1].endSec).toBeCloseTo(10, 5);
+      expect(lines[2].startSec).toBeCloseTo(10, 5);
+      expect(lines[2].endSec).toBeCloseTo(20, 5);
+      // Strictly increasing, non-overlapping.
+      for (let i = 1; i < lines.length; i += 1) {
+        expect(lines[i].startSec).toBeGreaterThanOrEqual(lines[i - 1].endSec);
+        expect(lines[i].endSec).toBeGreaterThan(lines[i].startSec);
+      }
+    });
+
+    it("prefers a real dialogue plan over clip dialogue when both exist", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: plan(),
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        clipDialogue: new Map([[1, [{ text: "clip text", speakerName: "X" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(1);
+      expect(result.subtitles?.lines[0].text).toBe("We are not done here.");
+    });
+
+    it("skips clips that were excluded from this render", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([
+          [1, [{ text: "kept", speakerName: "A" }]],
+          [2, [{ text: "dropped", speakerName: "B" }]],
+        ]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitleLinesIncluded).toBe(1);
+      expect(result.subtitles?.lines[0].text).toBe("kept");
+    });
+
+    it("treats a line with no speaker as narration (no speaker chip)", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([[1, [{ text: "เสียงบรรยาย" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result.subtitles?.lines[0].speakerName).toBeUndefined();
+    });
+
+    it("stays a no-op when subtitles are switched off, even with clip dialogue present", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1],
+        clipDialogue: new Map([[1, [{ text: "hi", speakerName: "A" }]]]),
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "none",
+      });
+
+      expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+    });
+
+    it("is byte-identical to before when no clipDialogue is supplied", () => {
+      const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
+        plan: null,
+        motionClips: twoClips,
+        includedClipNumbers: [1, 2],
+        includeDialogueAudio: false,
+        loudnessNormalize: false,
+        subtitlePreset: "classic_box",
+      });
+
+      expect(result).toEqual({ dialogueAudioSegmentsIncluded: 0, subtitleLinesIncluded: 0 });
+    });
+  });
+
   it("returns a no-op result when neither includeDialogueAudio nor a real subtitlePreset is requested", () => {
     const result = resolveEpisodeDialogueAudioAndSubtitlesRunInputs({
       plan: plan(),
@@ -1259,9 +1733,21 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
     });
     expect(result.dialogueAudio).toBeUndefined();
     expect(result.dialogueAudioSegmentsIncluded).toBe(0);
-    expect(result.subtitles).toEqual({
-      preset: "classic_box",
-      lines: [{ startSec: 0, endSec: 2, speakerName: "Aria", text: "We are not done here." }],
+    expect(result.subtitles?.preset).toBe("classic_box");
+    expect(result.subtitles?.lines).toHaveLength(1);
+    expect(result.subtitles?.lines[0]).toMatchObject({
+      startSec: 0,
+      endSec: 2,
+      speakerName: "Aria",
+      text: "We are not done here.",
+    });
+    // Every clip-resolved line also carries its clip attribution, so a renderer
+    // that has probed the real clips can re-time it
+    // (`retimeSubtitleLinesToProbedClips`).
+    expect(result.subtitles?.lines[0]).toMatchObject({
+      clipNumber: 1,
+      clipLocalStartFrac: 0,
+      clipLocalEndFrac: 0.25, // 2s of the clip's planned 8s window
     });
     expect(result.subtitleLinesIncluded).toBe(1);
   });
@@ -1341,12 +1827,12 @@ describe("resolveEpisodeDialogueAudioAndSubtitlesRunInputs", () => {
       subtitlePreset: "classic_box",
       loudnessNormalize: false,
     });
-    expect(result.subtitles?.lines[0]).toEqual({
+    expect(result.subtitles?.lines[0]).toMatchObject({
       startSec: 0,
       endSec: 2,
-      speakerName: undefined,
       text: "Once upon a time.",
     });
+    expect(result.subtitles?.lines[0].speakerName).toBeUndefined();
   });
 
   it("computes absolute startSec for dialogueAudio segments using the clip's planned duration, not shot-local time", () => {

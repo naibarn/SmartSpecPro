@@ -11,7 +11,6 @@ const featureFlagsState = vi.hoisted(() => ({
   desktopHostEnabled: false,
   desktopAdvancedLocalMode: false,
   desktopPackageSync: false,
-  desktopAgencyRuntime: false,
   desktopWorkerProjection: false,
 }));
 
@@ -244,7 +243,6 @@ describe("Settings desktop host tab", () => {
       desktopHostEnabled: false,
       desktopAdvancedLocalMode: false,
       desktopPackageSync: false,
-      desktopAgencyRuntime: false,
       desktopWorkerProjection: false,
     });
     Object.assign(desktopHostStatusState, {
@@ -278,7 +276,6 @@ describe("Settings desktop host tab", () => {
     Object.assign(featureFlagsState, {
       desktopHostEnabled: true,
       desktopPackageSync: true,
-      desktopAgencyRuntime: true,
       desktopWorkerProjection: true,
     });
     Object.assign(desktopHostStatusState, {
@@ -412,7 +409,6 @@ describe("Settings desktop host tab", () => {
             desktopHostEnabled: true,
             desktopAdvancedLocalMode: false,
             desktopPackageSync: true,
-            desktopAgencyRuntime: true,
             desktopWorkerProjection: true,
           },
           localRoots: desktopHostStatusState.status?.devices[0]?.localRoots ?? [],

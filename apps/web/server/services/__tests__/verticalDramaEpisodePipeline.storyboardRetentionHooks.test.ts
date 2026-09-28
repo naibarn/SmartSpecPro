@@ -49,7 +49,16 @@ vi.mock("../verticalDramaScriptGeneration", () => ({
   generateEpisodeScript: mockGenerateEpisodeScript,
   InsufficientCreditsError: class extends Error {},
   VdSchemaValidationError: class extends Error {},
+  // Series memory Producer B (planning/vd-series-memory-and-lineage/
+  // plan.md Stage 1.2) — best-effort no-op stub; the memory-write
+  // wiring itself is covered by
+  // verticalDramaScriptGeneration.episodeMemory.test.ts, not this file.
+  resolveScriptEpisodeMemory: vi.fn(),
 }));
+vi.mock("../verticalDramaSeriesMemoryProjection", () => ({
+  upsertEpisodeMemory: vi.fn(),
+}));
+
 vi.mock("../verticalDramaStoryboardGeneration", () => ({
   generateStoryboardShotgrid: mockGenerateStoryboardShotgrid,
   InsufficientCreditsError: class extends Error {},
@@ -184,6 +193,12 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("passes genre from the already-loaded seriesRow unconditionally, even when the flag is off/omitted", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: "romance" }]))
+      .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases` rows).
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select.
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -196,6 +211,8 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("passes genre as undefined when the series row has no genre set", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -209,6 +226,8 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
       .mockReturnValueOnce(
         selectChain([{ bible: null, locale: "th", tone: null, genre: "educational" }]),
       )
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode, false, undefined, false, true);
@@ -221,6 +240,8 @@ describe("generateRealStoryboard — genre threading (unconditional) + retention
   it("defaults opts.retentionHooksEnabled to false when the 6th argument is omitted (existing callers stay byte-identical)", async () => {
     mockDb.select
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([])) // alias rows (planning/vd-character-identity-repair/plan.md)
       .mockReturnValueOnce(selectChain([]));
 
     await pipeline.generateRealStoryboard(owner, episode);
@@ -263,6 +284,12 @@ describe("repairStage — storyboard_shotgrid threads args.retentionHooksEnabled
       .mockReturnValueOnce(selectChain([repairEpisode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null, genre: "drama" }]))
       .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases` rows).
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select.
+      .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([])); // checkpoint lookup (none found)
 
     const episodeUpdateChain = updateChain();
@@ -293,6 +320,12 @@ describe("repairStage — storyboard_shotgrid threads args.retentionHooksEnabled
     mockDb.select
       .mockReturnValueOnce(selectChain([repairEpisode]))
       .mockReturnValueOnce(selectChain([{ bible: null, locale: "th", tone: null }]))
+      .mockReturnValueOnce(selectChain([]))
+      // planning/vd-character-identity-repair/plan.md — `generateRealStoryboard`'s
+      // OWN 3rd select (this series' `vertical_drama_character_aliases` rows).
+      .mockReturnValueOnce(selectChain([]))
+      // Phase 2 of `planning/polished-toasting-gadget.md` (location visual
+      // bible, dispatch 3/3) — `generateRealStoryboard`'s 4th select.
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([])); // checkpoint lookup (none found)
 

@@ -1,8 +1,9 @@
-import { eq, desc, asc, and, sql, like, or, inArray, SQL } from "drizzle-orm";
+import { eq, desc, asc, and, sql, like, or, inArray, isNull, SQL } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages } from "../drizzle/schema";
+import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages, type User } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { normalizeAuthEmail } from "./services/emailNormalization";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -89,7 +90,9 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
-      const normalized = value ?? null;
+      const normalized = field === "email" && value !== null
+        ? normalizeAuthEmail(value)
+        : value ?? null;
       values[field] = normalized;
       updateSet[field] = normalized;
     };
@@ -164,38 +167,83 @@ export async function updateLastSignedIn(openId: string): Promise<void> {
   }
 }
 
-export async function getUserByOpenId(openId: string) {
+/**
+ * User columns required by authentication and session hydration.
+ *
+ * Keep this projection explicit so authentication only depends on the
+ * migration-gated columns it needs. Tenant identity and session revocation
+ * fields are included because they are authorization fences, not optional
+ * profile data; tenant-transfer code still uses its own wider projections.
+ */
+const AUTH_USER_SELECT_FIELDS = {
+  id: users.id,
+  openId: users.openId,
+  name: users.name,
+  email: users.email,
+  password: users.password,
+  loginMethod: users.loginMethod,
+  role: users.role,
+  registeredDomain: users.registeredDomain,
+  currentTenantId: users.currentTenantId,
+  credits: users.credits,
+  plan: users.plan,
+  isDisabled: users.isDisabled,
+  normalizedEmail: users.normalizedEmail,
+  trustScore: users.trustScore,
+  registrationIp: users.registrationIp,
+  userPreferences: users.userPreferences,
+  backupEmail: users.backupEmail,
+  backupEmailVerified: users.backupEmailVerified,
+  phone: users.phone,
+  phoneVerified: users.phoneVerified,
+  telegramChatId: users.telegramChatId,
+  telegramUsername: users.telegramUsername,
+  telegramVerified: users.telegramVerified,
+  telegramVerifiedAt: users.telegramVerifiedAt,
+  twoFactorEnabled: users.twoFactorEnabled,
+  twoFactorSecret: users.twoFactorSecret,
+  recoveryCodes: users.recoveryCodes,
+  defaultPersonaId: users.defaultPersonaId,
+  isSystemUser: users.isSystemUser,
+  voiceConsentGrantedAt: users.voiceConsentGrantedAt,
+  referredByInviteCodeId: users.referredByInviteCodeId,
+  disabledReason: users.disabledReason,
+  lastCreditUsedAt: users.lastCreditUsedAt,
+  freeCreditGrantedAt: users.freeCreditGrantedAt,
+  freeCreditPolicyCancelledAt: users.freeCreditPolicyCancelledAt,
+  freeCreditNoticeSentAt: users.freeCreditNoticeSentAt,
+  createdAt: users.createdAt,
+  updatedAt: users.updatedAt,
+  lastSignedIn: users.lastSignedIn,
+  passwordChangedAt: users.passwordChangedAt,
+  sessionRevokedAt: users.sessionRevokedAt,
+} as const;
+
+type AuthUserRow = Omit<User, "tenantIdentityMigrationReason" | "tenantIdentityMigratedAt">;
+
+async function findAuthUser(where: SQL<unknown>): Promise<AuthUserRow | undefined> {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
+  if (!db) return undefined;
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select(AUTH_USER_SELECT_FIELDS)
+    .from(users)
+    .where(where)
+    .limit(1);
 
-  return result.length > 0 ? result[0] : undefined;
+  return result.length > 0 ? (result[0] as AuthUserRow) : undefined;
+}
+
+export async function getUserByOpenId(openId: string) {
+  return findAuthUser(eq(users.openId, openId));
 }
 
 export async function getUserById(id: number) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user by id: database not available");
-    return undefined;
-  }
-  const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-  return result.length > 0 ? result[0] : undefined;
+  return findAuthUser(eq(users.id, id));
 }
 
 export async function getUserByEmail(email: string) {
-  const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user by email: database not available");
-    return undefined;
-  }
-
-  const result = await db.select().from(users).where(eq(users.email, email)).limit(1);
-
-  return result.length > 0 ? result[0] : undefined;
+  return findAuthUser(sql`lower(btrim(${users.email})) = ${normalizeAuthEmail(email)}`);
 }
 
 /**
@@ -238,7 +286,8 @@ export type GalleryType = 'image' | 'video' | 'website';
 export type AspectRatio = '1:1' | '9:16' | '16:9';
 
 export interface GalleryFilters {
-  tenantId?: number;
+  tenantId?: string;
+  includeGlobal?: boolean;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -260,7 +309,10 @@ export async function getGalleryItems(filters: GalleryFilters = {}): Promise<Gal
   const conditions = [];
 
   if (filters.tenantId !== undefined) {
-    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+    const tenantCondition = filters.includeGlobal
+      ? or(eq(galleryItems.tenantId, filters.tenantId), isNull(galleryItems.tenantId))
+      : eq(galleryItems.tenantId, filters.tenantId);
+    if (tenantCondition) conditions.push(tenantCondition);
   }
 
   if (filters.type) {
@@ -346,13 +398,24 @@ export async function updateGalleryItem(id: number, item: Partial<InsertGalleryI
 /**
  * Delete a gallery item
  */
-export async function deleteGalleryItem(id: number): Promise<void> {
+export async function deleteGalleryItem(
+  id: number,
+  tenantId: string | null,
+): Promise<boolean> {
   const db = await getDb();
   if (!db) {
     throw new Error("Database not available");
   }
 
-  await db.delete(galleryItems).where(eq(galleryItems.id, id));
+  const tenantCondition =
+    tenantId === null
+      ? or(isNull(galleryItems.tenantId), eq(galleryItems.tenantId, "NaN"))
+      : eq(galleryItems.tenantId, tenantId);
+  const deleted = await db
+    .delete(galleryItems)
+    .where(and(eq(galleryItems.id, id), tenantCondition))
+    .returning({ id: galleryItems.id });
+  return deleted.length > 0;
 }
 
 /**
@@ -435,7 +498,8 @@ export async function bulkUpdateGalleryFeatured(ids: number[], isFeatured: boole
  * Get gallery items count (for pagination)
  */
 export async function getGalleryItemsCount(filters: {
-  tenantId?: number;
+  tenantId?: string;
+  includeGlobal?: boolean;
   type?: GalleryType;
   isPublished?: boolean;
   isFeatured?: boolean;
@@ -449,7 +513,10 @@ export async function getGalleryItemsCount(filters: {
   const conditions: SQL<unknown>[] = [];
 
   if (filters.tenantId !== undefined) {
-    conditions.push(eq(galleryItems.tenantId, filters.tenantId));
+    const tenantCondition = filters.includeGlobal
+      ? or(eq(galleryItems.tenantId, filters.tenantId), isNull(galleryItems.tenantId))
+      : eq(galleryItems.tenantId, filters.tenantId);
+    if (tenantCondition) conditions.push(tenantCondition);
   }
 
   if (filters.type) {

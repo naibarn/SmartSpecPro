@@ -70,6 +70,8 @@ function mapCategoryToEnum(category?: string): string {
     "image-generation": "image_generation",
     "image_prompt_generation": "image_prompt_generation",
     "image-prompt-generation": "image_prompt_generation",
+    "character_prompt_generation": "character_prompt_generation",
+    "character-prompt-generation": "character_prompt_generation",
     "video_generation": "video_generation",
     "video-generation": "video_generation",
     "video_prompt_generation": "video_prompt_generation",
@@ -82,6 +84,14 @@ function mapCategoryToEnum(category?: string): string {
     "slide-generation": "slide_generation",
     "product_review": "product_review",
     "product-review": "product_review",
+    "quality_control": "product_review",
+    "quality-control": "product_review",
+    "video_prompting": "video_prompt_generation",
+    "video-prompting": "video_prompt_generation",
+    "story_planning": "article_generation",
+    "story-planning": "article_generation",
+    "video_prompt_qa": "video_prompt_generation",
+    "video-prompt-qa": "video_prompt_generation",
     "audio_generation": "audio_generation",
     "audio-generation": "audio_generation",
     "sound_effects": "sound_effects",
@@ -103,6 +113,7 @@ function mapCategoryToEnum(category?: string): string {
   };
   const cat = category?.toLowerCase() || "";
   if (categoryMap[cat]) return categoryMap[cat];
+  if (cat.includes("character") && cat.includes("prompt")) return "character_prompt_generation";
   if ((cat.includes("image") || cat.includes("photo")) && cat.includes("prompt")) return "image_prompt_generation";
   if ((cat.includes("video") || cat.includes("film")) && cat.includes("prompt")) return "video_prompt_generation";
   if ((cat.includes("audio") || cat.includes("music") || cat.includes("sound")) && cat.includes("prompt")) return "audio_prompt_generation";

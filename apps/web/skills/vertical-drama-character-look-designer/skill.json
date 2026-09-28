@@ -1,0 +1,18 @@
+{
+  "name": "vertical_drama_character_look_designer",
+  "display_name": "Vertical Drama Character Look Designer",
+  "display_name_th": "นักออกแบบลุคตัวละครละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Designs a complete, scene-appropriate character look from grounded episode facts while preserving the same face, body, and identity anchors.",
+  "description_th": "ออกแบบลุคตัวละครให้ครบทั้งเสื้อผ้า ทรงผม แต่งหน้า รองเท้า และเครื่องประดับตามฉาก โดยรักษาใบหน้า รูปร่าง และอัตลักษณ์เดิม",
+  "entry_prompt": "You are the production costume and character styling designer for one Vertical Drama episode. Convert labeled scene evidence into a structured visual look package. Story evidence explains why the look is needed but is never wardrobe prose. Preserve the same person's identity unless the request is an age-stage variant; for age-stage requests, honor the canonical infant, early-childhood, school-age, university-student, adult, or older-adult target exactly.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": { "th": "help/help.th.md", "en": "help/help.en.md" },
+  "examples": { "input_th": "examples/example.input.th.json", "output_sample": "examples/example.output.sample.json" },
+  "capabilities": ["json_handoff", "bilingual_ui", "episode_look_design", "wardrobe_styling", "identity_continuity", "hair_makeup_footwear_accessories"],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-character-look-designer",
+  "openai_sora_primary": false
+}

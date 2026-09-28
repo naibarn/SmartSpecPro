@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/series-dna.schema.json",
+  "title": "Series DNA",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["title", "genre", "tone", "locale", "targetAudience", "dialogueLanguage", "storyWorld", "emotionalEngine", "visualCulture", "realismLevel", "beautyDirection", "dominantColors", "signatureMotifs", "prohibitedRepetition"],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "genre": { "type": "string", "minLength": 1 },
+    "tone": { "type": "string", "minLength": 1 },
+    "locale": { "type": "string", "minLength": 1 },
+    "targetAudience": { "type": "string", "minLength": 1 },
+    "dialogueLanguage": { "type": "string", "minLength": 1 },
+    "storyWorld": { "type": "string", "minLength": 1 },
+    "emotionalEngine": { "type": "string", "minLength": 1 },
+    "visualCulture": { "type": "string", "minLength": 1 },
+    "realismLevel": { "type": "string", "minLength": 1 },
+    "beautyDirection": { "type": "string", "minLength": 1 },
+    "dominantColors": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "signatureMotifs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "prohibitedRepetition": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "settingOverrides": { "type": "array", "items": { "type": "string" } }
+  }
+}

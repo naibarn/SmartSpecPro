@@ -36,19 +36,6 @@ export interface BuildDesktopSkillPackageEnvelopeInput {
   };
 }
 
-export interface BuildDesktopAgencyPackEnvelopeInput {
-  agencyId: string;
-  version: string;
-  trustClass: DesktopPackageTrustClass;
-  topology: Record<string, unknown>;
-  instructions: Record<string, unknown>;
-  capabilityManifest: Record<string, unknown>;
-  policyDescriptor: Record<string, unknown>;
-  signer: DesktopPackageSigner & {
-    signerSecret: string;
-  };
-}
-
 export interface BuildDesktopMaterializationDescriptorInput {
   envelope: SignedDesktopPackageEnvelope;
   localBundlePath: string;
@@ -61,21 +48,12 @@ export interface DesktopMaterializationDescriptor {
   packageId: string;
   packageVersion: string;
   trustClass: DesktopPackageTrustClass;
-  runtimeDestination: "pi" | "agency_swarm" | "desktop_host" | "hybrid";
+  runtimeDestination: "pi" | "desktop_host" | "hybrid";
   localBundlePath: string;
   capabilityManifestDigest: string;
   payloadDigest: string;
   signerId: string;
   revocationCheckedAt: string;
-}
-
-export interface DesktopPiToAgencyHandoff {
-  handoffId: string;
-  sourceRuntime: "pi";
-  destinationRuntime: "agency_swarm";
-  packageId: string;
-  reason: "connector_orchestration" | "multi_agent_complexity";
-  stagedWorkspacePath: string;
 }
 
 function readSkillVersion(skill: SkillDefinition): string | null {
@@ -144,35 +122,6 @@ export function buildDesktopSkillCatalogItem(input: {
     summary: input.skill.description ?? null,
     availableOnDesktop: true,
     source: trustClass === "built_in_verified" ? "built_in" : "skill_registry",
-  };
-}
-
-export function buildDesktopAgencyCatalogItem(input: {
-  agencyId: string;
-  name: string;
-  version: string;
-  trustClass: DesktopPackageTrustClass;
-  signer: DesktopPackageSigner;
-  revocationFeed: DesktopRevocationFeedSnapshot;
-  summary?: string | null;
-}): DesktopPackageCatalogItem {
-  return {
-    packageId: input.agencyId,
-    name: input.name,
-    packageType: "agency_pack",
-    runtimeDestination: "agency_swarm",
-    trustClass: input.trustClass,
-    state: resolveDesktopPackageState({
-      packageId: input.agencyId,
-      signerId: input.signer.signerId,
-      revocationFeed: input.revocationFeed,
-    }),
-    version: input.version,
-    signerId: input.signer.signerId,
-    signerKeyVersion: input.signer.keyVersion,
-    summary: input.summary ?? null,
-    availableOnDesktop: true,
-    source: input.trustClass === "built_in_verified" ? "built_in" : "agency_registry",
   };
 }
 
@@ -306,46 +255,6 @@ export function buildDesktopSkillPackageEnvelope(
   });
 }
 
-export function buildDesktopAgencyPackEnvelope(
-  input: BuildDesktopAgencyPackEnvelopeInput,
-): SignedDesktopPackageEnvelope {
-  assertServerPublishableTrustClass(input.trustClass);
-
-  const payload = {
-    topology: input.topology,
-    instructions: input.instructions,
-    capabilityManifest: input.capabilityManifest,
-    policyDescriptor: input.policyDescriptor,
-  };
-  const payloadDigest = computeSha256Hex(JSON.stringify(payload));
-  const capabilityManifestDigest = computeSha256Hex(
-    JSON.stringify(input.capabilityManifest),
-  );
-
-  return signDesktopPackageEnvelope({
-    manifest: {
-      packageId: input.agencyId,
-      version: input.version,
-      packageType: "agency_pack",
-      runtimeDestination: "agency_swarm",
-      trustClass: input.trustClass,
-      capabilityManifestDigest,
-      payloadDigest,
-      compatibilityRange: {
-        minDesktopHostProtocolVersion: DESKTOP_HOST_PROTOCOL_VERSION,
-        maxDesktopHostProtocolVersion: null,
-        supportedRuntimeDestinations: ["agency_swarm"],
-      },
-      payload: {
-        entryKind: "agency_definition",
-        relativeBundlePath: `agencies/${input.agencyId}`,
-        manifestPath: `agencies/${input.agencyId}/agency.json`,
-      },
-    },
-    signer: input.signer,
-  });
-}
-
 export function buildDesktopMaterializationDescriptor(
   input: BuildDesktopMaterializationDescriptorInput,
 ): DesktopMaterializationDescriptor {
@@ -394,29 +303,4 @@ export function assertDesktopArtifactPromotionAllowed(input: {
       "trust-tainted desktop artifacts requires review before promotion into verified organization surfaces",
     );
   }
-}
-
-export function buildPiToAgencyHandoff(input: {
-  packageId: string;
-  reason: "connector_orchestration" | "multi_agent_complexity";
-  stagedWorkspacePath: string;
-}): DesktopPiToAgencyHandoff {
-  if (input.packageId.trim().length === 0) {
-    throw new Error("packageId is required");
-  }
-
-  return {
-    handoffId: computeSha256Hex(
-      JSON.stringify({
-        packageId: input.packageId,
-        reason: input.reason,
-        stagedWorkspacePath: input.stagedWorkspacePath,
-      }),
-    ),
-    sourceRuntime: "pi",
-    destinationRuntime: "agency_swarm",
-    packageId: input.packageId,
-    reason: input.reason,
-    stagedWorkspacePath: input.stagedWorkspacePath,
-  };
 }

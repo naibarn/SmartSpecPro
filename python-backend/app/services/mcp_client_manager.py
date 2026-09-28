@@ -1,10 +1,10 @@
 """
 McpClientManager — multi-transport MCP client with connection pooling.
 
-Supports three transports:
+Supports two transports:
   - HTTP: Enhanced JSON-RPC over HTTP with SSRF validation and DNS rebinding prevention
   - Streamable HTTP: SSE-based transport with session management
-  - stdio: Via OpenSandbox containers (no direct subprocess spawning)
+  - stdio is retired; use an approved external MCP worker instead
 
 Includes heartbeat, auto-reconnect, graceful shutdown, and response size limits.
 """
@@ -12,7 +12,6 @@ Includes heartbeat, auto-reconnect, graceful shutdown, and response size limits.
 from __future__ import annotations
 
 import asyncio
-import base64
 import ipaddress
 import json
 import re
@@ -25,10 +24,6 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 
-from app.integrations.opensandbox.client import get_sandbox_client
-from app.integrations.opensandbox.config import opensandbox_settings
-from app.integrations.opensandbox.models import SandboxConfig
-
 logger = structlog.get_logger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -36,7 +31,6 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 MAX_RESPONSE_BYTES = 1_048_576  # 1 MB
-MAX_STDIO_PER_TENANT = 2
 _SESSION_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,128}$")
 _DEFAULT_TIMEOUT = 30.0
 
@@ -137,12 +131,11 @@ def _validate_url_scheme(url: str) -> str:
 class McpConnection:
     """Represents an active connection to an MCP server."""
 
-    transport: str  # "http", "streamable_http", "stdio"
+    transport: str  # "http" or "streamable_http"
     tenant_id: int
     url: str = ""
     validated_ip: str = ""
     follow_redirects: bool = False
-    sandbox_id: str = ""
     session_id: str = ""
     sse_fallback_enabled: bool = False
     max_reconnect_attempts: int = 3
@@ -161,7 +154,6 @@ class McpClientManager:
 
     def __init__(self) -> None:
         self._connections: dict[str, McpConnection] = {}
-        self._stdio_counts: dict[int, int] = {}  # tenant_id -> active container count
         self._lock = asyncio.Lock()
 
     # -------------------------------------------------------------------
@@ -257,79 +249,6 @@ class McpClientManager:
         return bool(_SESSION_ID_RE.match(session_id))
 
     # -------------------------------------------------------------------
-    # stdio Transport (via OpenSandbox)
-    # -------------------------------------------------------------------
-
-    async def connect_stdio(
-        self,
-        command: str,
-        args: list[str],
-        env: dict[str, str],
-        tenant_id: int,
-        timeout_seconds: int = 30,
-        image: str = "node:22-slim",
-    ) -> McpConnection:
-        """Create a stdio transport connection via OpenSandbox container.
-
-        Does NOT spawn processes directly on the host. Routes through
-        OpenSandbox for isolation.
-
-        Raises McpConnectionError if:
-        - OPENSANDBOX_ENABLED is False
-        - Tenant has reached MAX_STDIO_PER_TENANT concurrent containers
-        """
-        if not opensandbox_settings.OPENSANDBOX_ENABLED:
-            raise McpConnectionError(
-                "stdio transport requires OpenSandbox (OPENSANDBOX_ENABLED=false)"
-            )
-
-        async with self._lock:
-            count = self._stdio_counts.get(tenant_id, 0)
-            if count >= MAX_STDIO_PER_TENANT:
-                raise McpConnectionError(
-                    f"Max {MAX_STDIO_PER_TENANT} stdio containers per tenant"
-                )
-            self._stdio_counts[tenant_id] = count + 1
-
-        try:
-            sandbox_client = get_sandbox_client()
-            config = SandboxConfig(
-                image=image,
-                timeout_seconds=min(timeout_seconds, 120),
-                env_vars=env,
-                cpu_limit="1000m",
-                memory_limit_mb=512,
-                network_action="deny",  # No network access from container
-                entrypoint=[command] + args,
-            )
-            sandbox_id = await sandbox_client.create_sandbox(config)
-        except Exception as exc:
-            # Roll back count on failure
-            async with self._lock:
-                current = self._stdio_counts.get(tenant_id, 1)
-                self._stdio_counts[tenant_id] = max(0, current - 1)
-            if isinstance(exc, McpConnectionError):
-                raise
-            raise McpConnectionError(f"Failed to create stdio sandbox: {exc}") from exc
-
-        conn = McpConnection(
-            transport="stdio",
-            tenant_id=tenant_id,
-            sandbox_id=sandbox_id,
-            timeout=float(timeout_seconds),
-        )
-
-        conn_id = f"stdio:{tenant_id}:{sandbox_id}"
-        self._connections[conn_id] = conn
-
-        logger.info(
-            "mcp_stdio_connected",
-            tenant_id=tenant_id,
-            sandbox_id=sandbox_id,
-        )
-        return conn
-
-    # -------------------------------------------------------------------
     # RPC Call (send JSON-RPC to any transport)
     # -------------------------------------------------------------------
 
@@ -354,8 +273,6 @@ class McpClientManager:
 
         if conn.transport in ("http", "streamable_http"):
             return await self._call_rpc_http(conn, method, params or {})
-        elif conn.transport == "stdio":
-            return await self._call_rpc_stdio(conn, method, params or {})
         else:
             raise McpConnectionError(f"Unknown transport: {conn.transport}")
 
@@ -434,66 +351,6 @@ class McpClientManager:
         except Exception as exc:
             raise McpConnectionError(f"HTTP RPC failed: {exc}") from exc
 
-    async def _call_rpc_stdio(
-        self,
-        conn: McpConnection,
-        method: str,
-        params: dict[str, Any],
-    ) -> dict[str, Any]:
-        """JSON-RPC call over stdio (OpenSandbox container)."""
-        if not conn.sandbox_id:
-            raise McpConnectionError("No sandbox_id for stdio connection")
-
-        payload = json.dumps({
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-            "id": 1,
-        }) + "\n"
-
-        try:
-            sandbox_client = get_sandbox_client()
-            # Base64-encode to prevent shell injection — payload may contain
-            # single quotes, backticks, or other shell metacharacters.
-            b64_payload = base64.b64encode(payload.encode()).decode()
-            # F13: Check payload size before sending — ARG_MAX limits may truncate
-            MAX_STDIO_PAYLOAD_BYTES = 512 * 1024  # 512KB
-            if len(b64_payload) > MAX_STDIO_PAYLOAD_BYTES:
-                raise McpConnectionError(
-                    f"stdio payload too large: {len(b64_payload)} bytes "
-                    f"(max {MAX_STDIO_PAYLOAD_BYTES})"
-                )
-            result = await sandbox_client.run_command(
-                conn.sandbox_id,
-                f"echo {b64_payload} | base64 -d",
-                timeout=int(conn.timeout),
-            )
-
-            stdout = result.stdout.strip()
-            if len(stdout.encode()) > MAX_RESPONSE_BYTES:
-                raise McpConnectionError(
-                    f"Response too large: {len(stdout.encode())} bytes"
-                )
-
-            if result.stderr:
-                logger.warning(
-                    "mcp_stdio_stderr",
-                    sandbox_id=conn.sandbox_id,
-                    stderr=result.stderr[:500],
-                )
-
-            if not stdout:
-                raise McpConnectionError("Empty response from stdio transport")
-
-            return json.loads(stdout)
-
-        except McpConnectionError:
-            raise
-        except json.JSONDecodeError as exc:
-            raise McpConnectionError(f"Invalid JSON from stdio: {exc}") from exc
-        except Exception as exc:
-            raise McpConnectionError(f"stdio RPC failed: {exc}") from exc
-
     # -------------------------------------------------------------------
     # Health Check
     # -------------------------------------------------------------------
@@ -501,11 +358,6 @@ class McpClientManager:
     async def health_check(self, conn: McpConnection) -> dict[str, Any]:
         """Ping an MCP server and return health status."""
         try:
-            if conn.transport == "stdio":
-                sandbox_client = get_sandbox_client()
-                status = await sandbox_client.get_sandbox_status(conn.sandbox_id)
-                return {"status": status.status, "transport": "stdio"}
-
             # For HTTP transports, send a ping/initialize request
             result = await self.call_rpc(conn, "initialize", {
                 "protocolVersion": "2024-11-05",
@@ -529,21 +381,6 @@ class McpClientManager:
 
     async def disconnect(self, conn: McpConnection) -> None:
         """Disconnect a single connection, cleaning up resources."""
-        if conn.transport == "stdio" and conn.sandbox_id:
-            try:
-                sandbox_client = get_sandbox_client()
-                await sandbox_client.destroy_sandbox(conn.sandbox_id)
-            except Exception as exc:
-                logger.warning(
-                    "mcp_stdio_destroy_failed",
-                    sandbox_id=conn.sandbox_id,
-                    error=str(exc),
-                )
-            finally:
-                async with self._lock:
-                    current = self._stdio_counts.get(conn.tenant_id, 1)
-                    self._stdio_counts[conn.tenant_id] = max(0, current - 1)
-
         # Remove from connection registry
         to_remove = [
             k for k, v in self._connections.items() if v is conn
@@ -567,7 +404,6 @@ class McpClientManager:
                 logger.warning("mcp_disconnect_error", error=str(exc))
 
         self._connections.clear()
-        self._stdio_counts.clear()
 
     # -------------------------------------------------------------------
     # Stats (F12: public API instead of direct _attribute access)
@@ -578,7 +414,6 @@ class McpClientManager:
         return {
             "server_count": len(self._connections),
             "active_connections": len(self._connections),
-            "stdio_process_count": sum(self._stdio_counts.values()),
         }
 
     # -------------------------------------------------------------------

@@ -15,6 +15,7 @@ import {
   sourceShotsFor,
   type ClipImportInput,
 } from "../verticalDramaAssembly";
+import { createUniformVerticalDramaDurationPlan } from "@shared/verticalDramaSeries/durationProfiles";
 
 /** 8 ready clips on the default-bridge schedule (8+8+8+8+8+8+8+4 = 60). */
 function defaultBridgeClips(): ClipImportInput[] {
@@ -83,6 +84,55 @@ describe("buildAssemblyManifest — default bridge", () => {
     expect(manifest.subtitlesSrt).toContain("สวัสดี");
     expect(manifest.ffmpegCommand).toContain("final_episode_60s_vertical.mp4");
   });
+
+  it("projects explicit still/video B-roll without provider URLs and rejects overflow", () => {
+    const { manifest, valid, errors } = buildAssemblyManifest({
+      assemblyManifestId: "vdasm_test_broll",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      profileKind: "default_bridge",
+      clips: defaultBridgeClips(),
+      brollPlan: [{
+        bindingId: "b1",
+        shotNumber: 2,
+        order: 0,
+        sourceSlotId: 10,
+        sourceAssetId: 11,
+        mediaAssetId: "44",
+        segmentId: "seg-1",
+        segmentRevision: 2,
+        mediaType: "video",
+        inSeconds: 3,
+        outSeconds: 8,
+        fitMode: "cover",
+        audioPolicy: "mute",
+        labelMode: "source",
+      }],
+    });
+    expect(valid).toBe(true);
+    expect(manifest.brollPlan?.[0]).toMatchObject({ mediaAssetId: "44", inSeconds: 3, outSeconds: 8 });
+    expect(JSON.stringify(manifest.brollPlan)).not.toContain("http");
+    const overflow = buildAssemblyManifest({
+      assemblyManifestId: "vdasm_test_broll_overflow",
+      durationProfileId: "vertical_drama_60s_9_frames_8_clips",
+      profileKind: "default_bridge",
+      clips: defaultBridgeClips(),
+      brollPlan: Array.from({ length: 2 }, (_, index) => ({
+        bindingId: `b${index}`,
+        shotNumber: 1,
+        order: index,
+        mediaAssetId: String(index + 1),
+        mediaType: "video" as const,
+        inSeconds: 0,
+        outSeconds: 40,
+        fitMode: "cover" as const,
+        audioPolicy: "keep" as const,
+        labelMode: "none" as const,
+      })),
+    });
+    expect(overflow.valid).toBe(false);
+    expect(errors).toEqual([]);
+    expect(overflow.errors.some(error => error.startsWith("broll_overflow:"))).toBe(true);
+  });
 });
 
 describe("buildAssemblyManifest — fallback profile", () => {
@@ -98,6 +148,35 @@ describe("buildAssemblyManifest — fallback profile", () => {
     expect(manifest.clips.map((c) => c.durationSeconds)).toEqual([8, 8, 8, 4, 8, 8, 4, 8, 4]);
     expect(manifest.clips[0].sourceShotNumbers).toEqual([1]);
     expect(manifest.clips.reduce((a, c) => a + c.durationSeconds, 0)).toBe(60);
+  });
+});
+
+describe("buildAssemblyManifest — selected 9-shot duration profile", () => {
+  it("uses the exact 9-shot vector and derived runtime without changing legacy profiles", () => {
+    const durationPlan = createUniformVerticalDramaDurationPlan(10);
+    const clips = durationPlan.shotDurationsSeconds.map((durationSeconds, i) => ({
+      clipNumber: i + 1,
+      durationSeconds,
+      mediaAssetId: `asset_selected_${i + 1}`,
+      status: "ready" as const,
+    }));
+
+    const { manifest, valid, errors } = buildAssemblyManifest({
+      assemblyManifestId: "vdasm_test_selected",
+      durationProfileId: durationPlan.profileId,
+      profileKind: "selected_9_shots",
+      durationPlan,
+      clips,
+    });
+
+    expect(valid).toBe(true);
+    expect(errors).toEqual([]);
+    expect(manifest.targetDurationSeconds).toBe(90);
+    expect(manifest.clips).toHaveLength(9);
+    expect(manifest.clips.map(c => c.sourceShotNumbers)).toEqual(
+      durationPlan.shotDurationsSeconds.map((_, i) => [i + 1]),
+    );
+    expect(manifest.ffmpegCommand).toContain("final_episode_90s_vertical.mp4");
   });
 });
 

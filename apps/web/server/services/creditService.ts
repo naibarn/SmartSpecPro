@@ -4,35 +4,109 @@
  */
 
 import { db } from "../db";
-import { users, creditTransactions, creditPackages, modelProviderMap, systemSettings, conversations, llmProviders } from "../../drizzle/schema";
-import { eq, desc, and, gte, lte, sql } from "drizzle-orm";
-import { randomUUID } from "crypto";
+import {
+  users,
+  creditTransactions,
+  creditPackages,
+  modelProviderMap,
+  systemSettings,
+  conversations,
+  llmProviders,
+  skillRevenueSettlements,
+  skills,
+} from "../../drizzle/schema";
+import { eq, desc, and, gte, lt, like, sql, isNull, or } from "drizzle-orm";
+import { createHash, randomUUID } from "crypto";
 import { getRedisClient, isRedisAvailable } from "./redis";
 import { getTraceId } from "./traceContext";
 import { buildModelProviderMapLookupCondition } from "./modelLookup";
 import { resolveCatalogBackedPricing } from "./llmProviderCatalog";
+import type { CreditContextRef } from "../../shared/creditContextContracts";
+import { attachCreditContextToTransaction, inferCreditContextRefFromMetadata, validateCreditContextReference } from "./creditContextBilling";
+import { normalizeCreditTransactionDescription } from "./creditBillingErrors";
 
-export type TransactionType = "purchase" | "usage" | "bonus" | "refund" | "adjustment" | "subscription" | "creator_fee";
+export type TransactionType =
+  | "purchase"
+  | "usage"
+  | "bonus"
+  | "refund"
+  | "adjustment"
+  | "subscription"
+  | "creator_fee";
 
 export type CreditSourceType =
-  | "chat" | "skill" | "media_image" | "media_video" | "media_audio"
-  | "indexing" | "rag" | "stt" | "translation" | "brainstorm"
-  | "scheduler" | "admin" | "agency" | "creator_revenue" | "other"
-  | "tts" | "browser_automation" | "widget_chat" | "webhook_chat" | "webhook_trigger"
+  | "chat"
+  | "skill"
+  | "media_image"
+  | "media_video"
+  | "media_audio"
+  | "indexing"
+  | "rag"
+  | "stt"
+  | "translation"
+  | "brainstorm"
+  | "scheduler"
+  | "admin"
+  | "agency"
+  | "creator_revenue"
+  | "other"
+  | "tts"
+  | "browser_automation"
+  | "widget_chat"
+  | "webhook_chat"
+  | "webhook_trigger"
   | "worker_runtime"
-  | "api_chat" | "api_skill" | "api_agency" | "api_job"
-  | "api_mcp" | "api_media" | "api_presentation" | "api_video_project"
+  | "api_chat"
+  | "api_skill"
+  | "api_agency"
+  | "api_job"
+  | "api_mcp"
+  | "api_media"
+  | "api_presentation"
+  | "api_video_project"
   | "voice_agent"
   // Section 07/08 — multimodal memory pipeline
-  | "vision_analysis" | "embedding_generation" | "reference_resolution";
+  | "vision_analysis"
+  | "embedding_generation"
+  | "reference_resolution";
 
 type DbCreditSourceType = Exclude<
   CreditSourceType,
   "vision_analysis" | "embedding_generation" | "reference_resolution"
 >;
 
+/** `credit_transactions.traceId` is `varchar(32)`. */
+const CREDIT_TRACE_ID_MAX_LENGTH = 32;
+
+/**
+ * Clamp a trace id to what `credit_transactions.traceId` can physically hold.
+ *
+ * Field incident 2026-07-30: the staged marketplace final render passed
+ * `staged-final-render:<runId>:r<rev>` (58 chars) and Postgres rejected the
+ * whole reservation INSERT with `22001 value too long for type character
+ * varying(32)`. The caller caught it, logged it, and silently fell back to
+ * the legacy renderer — so the Remotion final render simply never happened
+ * and the run stalled with no user-visible error. Any trace id containing a
+ * 36-char run id overflows this column, so this is a trap every caller walks
+ * into, not a one-off.
+ *
+ * A plain prefix truncation would collapse every run of the same kind onto
+ * one identical trace id, which defeats the point of a trace. Keep a
+ * readable prefix and append a short digest of the FULL value so distinct
+ * traces stay distinct and the row is still greppable by prefix.
+ */
+export function clampCreditTraceId(
+  traceId: string | null | undefined
+): string | null {
+  const value = typeof traceId === "string" ? traceId.trim() : "";
+  if (!value) return null;
+  if (value.length <= CREDIT_TRACE_ID_MAX_LENGTH) return value;
+  const digest = createHash("sha256").update(value).digest("hex").slice(0, 8);
+  return `${value.slice(0, CREDIT_TRACE_ID_MAX_LENGTH - digest.length - 1)}:${digest}`;
+}
+
 function normalizeCreditSourceType(
-  sourceType?: CreditSourceType | null,
+  sourceType?: CreditSourceType | null
 ): DbCreditSourceType | undefined {
   if (!sourceType) return undefined;
   switch (sourceType) {
@@ -50,8 +124,14 @@ export class BudgetExceededError extends Error {
   public readonly creditsUsed: number;
   public readonly budgetMonthKey: string;
 
-  constructor(monthlyLimit: number, creditsUsed: number, budgetMonthKey: string) {
-    super(`Monthly credit budget exceeded: ${creditsUsed}/${monthlyLimit} used in ${budgetMonthKey}`);
+  constructor(
+    monthlyLimit: number,
+    creditsUsed: number,
+    budgetMonthKey: string
+  ) {
+    super(
+      `Monthly credit budget exceeded: ${creditsUsed}/${monthlyLimit} used in ${budgetMonthKey}`
+    );
     this.name = "BudgetExceededError";
     this.monthlyLimit = monthlyLimit;
     this.creditsUsed = creditsUsed;
@@ -69,7 +149,12 @@ export interface DeductCreditsParams {
   /** Context fields for rich transaction tracking */
   conversationId?: number;
   skillSlug?: string;
+  /** Stable fixed-credit settlement id for a skill run. */
+  skillRunId?: string;
   sourceType?: CreditSourceType;
+  contextRef?: CreditContextRef;
+  stageLabel?: string;
+  attemptKey?: string;
   metadata?: {
     model?: string;
     provider?: string;
@@ -89,16 +174,151 @@ export interface AddCreditsParams {
   description: string;
   referenceId?: string;
   idempotencyKey?: string;
+  tenantId?: string;
   metadata?: Record<string, any>;
   /** Context fields for rich transaction tracking */
   conversationId?: number;
   skillSlug?: string;
   sourceType?: CreditSourceType;
+  contextRef?: CreditContextRef;
+  reversalOfTransactionId?: number;
+  /** Marks a positive signup/invite grant as eligible for inactivity policy. */
+  freeCreditGrant?: boolean;
 }
 
 export interface CreditBalance {
   credits: number;
   plan: string;
+}
+
+/**
+ * Transaction-scoped credit grant used by billing approval flows that must
+ * commit the balance, ledger, and business-effect state atomically.
+ */
+export async function addCreditsWithinTransaction(
+  tx: any,
+  params: AddCreditsParams
+) {
+  const {
+    userId,
+    amount,
+    type,
+    description,
+    referenceId,
+    metadata,
+    idempotencyKey,
+  } = params;
+  const normalizedDescription =
+    normalizeCreditTransactionDescription(description);
+  if (amount <= 0) {
+    throw new Error("Amount must be positive");
+  }
+
+  // Lock the balance row before checking idempotency. This prevents two
+  // concurrent grants from both incrementing the balance before one of their
+  // ledger inserts discovers the unique idempotency key.
+  const [lockedUser] = await tx
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, userId))
+    .for("update");
+  if (!lockedUser) {
+    throw new Error("User not found");
+  }
+
+  if (idempotencyKey) {
+    const [existing] = await tx
+      .select({
+        id: creditTransactions.id,
+        amount: creditTransactions.amount,
+        balanceAfter: creditTransactions.balanceAfter,
+      })
+      .from(creditTransactions)
+      .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
+      .limit(1);
+    if (existing) {
+      return {
+        success: true,
+        creditsAdded: Math.abs(existing.amount),
+        newBalance: existing.balanceAfter,
+        transactionId: existing.id,
+        duplicate: true,
+      };
+    }
+  }
+
+  if (type === "refund" && params.reversalOfTransactionId) {
+    const [original] = await tx.select({ userId: creditTransactions.userId, tenantId: creditTransactions.tenantId, amount: creditTransactions.amount, type: creditTransactions.type })
+      .from(creditTransactions)
+      .where(eq(creditTransactions.id, params.reversalOfTransactionId))
+      .for("update");
+    if (!original ||
+      (original.userId != null && original.userId !== userId) ||
+      (original.tenantId != null && original.tenantId !== (params.tenantId ?? null)) ||
+      (original.type != null && original.type !== "usage") ||
+      (original.amount != null && (original.amount >= 0 || amount > Math.abs(original.amount)))) {
+      throw new Error("Invalid credit reversal");
+    }
+    const [existingReversal] = await tx.select({ id: creditTransactions.id, reversalOfTransactionId: creditTransactions.reversalOfTransactionId }).from(creditTransactions)
+      .where(eq(creditTransactions.reversalOfTransactionId, params.reversalOfTransactionId)).limit(1);
+    if (existingReversal?.reversalOfTransactionId != null) throw new Error("Credit reversal already exists");
+  }
+
+  // Keep the timestamp as an ISO string when interpolating it into a Drizzle
+  // SQL expression. Passing a Date object through this nested sql fragment
+  // reaches postgres-js as a raw bind value and fails with ERR_INVALID_ARG_TYPE
+  // in the update path used by manual PromptPay approval.
+  const grantTimestamp = new Date().toISOString();
+
+  const [result] = await tx
+    .update(users)
+    .set({
+      credits: sql`${users.credits} + ${amount}`,
+      ...(params.freeCreditGrant
+        ? {
+            freeCreditGrantedAt: sql`COALESCE(${users.freeCreditGrantedAt}, ${grantTimestamp})`,
+          }
+        : {}),
+      ...(type === "purchase"
+        ? {
+            freeCreditPolicyCancelledAt: sql`COALESCE(${users.freeCreditPolicyCancelledAt}, ${grantTimestamp})`,
+          }
+        : {}),
+    })
+    .where(eq(users.id, userId))
+    .returning({ newBalance: users.credits });
+
+  if (!result) {
+    throw new Error("User not found");
+  }
+
+  const [txRecord] = await tx
+    .insert(creditTransactions)
+    .values({
+    userId,
+    amount,
+    type,
+    description: normalizedDescription,
+    metadata,
+    balanceAfter: result.newBalance,
+    referenceId,
+    idempotencyKey: idempotencyKey ?? null,
+    traceId: clampCreditTraceId(getTraceId() ?? null),
+    conversationId: params.conversationId ?? null,
+    skillSlug: params.skillSlug ?? null,
+    tenantId: params.tenantId ?? null,
+    reversalOfTransactionId: params.reversalOfTransactionId ?? null,
+    sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
+    })
+    .returning({ id: creditTransactions.id });
+
+  return {
+    success: true,
+    creditsAdded: amount,
+    newBalance: result.newBalance,
+    transactionId: txRecord?.id ?? 0,
+    duplicate: false,
+  };
 }
 
 const OCR_SERVICE_KEYS = ["library.ocr", "finance.ocr", "chat.ocr"] as const;
@@ -138,7 +358,7 @@ type OcrUserRow = {
 };
 
 function buildOcrWhereClause() {
-  const keys = OCR_SERVICE_KEYS.map((key) => sql`${key}`);
+  const keys = OCR_SERVICE_KEYS.map(key => sql`${key}`);
   return sql`(
     ${creditTransactions.type} = 'usage'
     AND (
@@ -183,12 +403,18 @@ async function getOcrTimeSeries(params: {
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       gte(creditTransactions.createdAt, startDate),
-      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
-      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
-    ))
+        ...(params.userId
+          ? [eq(creditTransactions.userId, params.userId)]
+          : []),
+        ...(params.tenantId
+          ? [sql`${users.currentTenantId}::text = ${params.tenantId}`]
+          : [])
+      )
+    )
     .groupBy(periodExpr)
     .orderBy(periodExpr);
 
@@ -199,7 +425,11 @@ async function getOcrTimeSeries(params: {
   }));
 }
 
-async function getOcrSourceBreakdown(params: { userId?: number; days: number; tenantId?: string | null }): Promise<OcrSourceBreakdown[]> {
+async function getOcrSourceBreakdown(params: {
+  userId?: number;
+  days: number;
+  tenantId?: string | null;
+}): Promise<OcrSourceBreakdown[]> {
   const sourceExpr = buildOcrSourceExpr();
   const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
 
@@ -211,12 +441,18 @@ async function getOcrSourceBreakdown(params: { userId?: number; days: number; te
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       gte(creditTransactions.createdAt, startDate),
-      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
-      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
-    ))
+        ...(params.userId
+          ? [eq(creditTransactions.userId, params.userId)]
+          : []),
+        ...(params.tenantId
+          ? [sql`${users.currentTenantId}::text = ${params.tenantId}`]
+          : [])
+      )
+    )
     .groupBy(sourceExpr)
     .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
 
@@ -227,7 +463,11 @@ async function getOcrSourceBreakdown(params: { userId?: number; days: number; te
   }));
 }
 
-async function getOcrProviderBreakdown(params: { userId?: number; days: number; tenantId?: string | null }): Promise<OcrSourceBreakdown[]> {
+async function getOcrProviderBreakdown(params: {
+  userId?: number;
+  days: number;
+  tenantId?: string | null;
+}): Promise<OcrSourceBreakdown[]> {
   const providerExpr = buildOcrProviderExpr();
   const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
 
@@ -239,12 +479,18 @@ async function getOcrProviderBreakdown(params: { userId?: number; days: number; 
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       gte(creditTransactions.createdAt, startDate),
-      ...(params.userId ? [eq(creditTransactions.userId, params.userId)] : []),
-      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
-    ))
+        ...(params.userId
+          ? [eq(creditTransactions.userId, params.userId)]
+          : []),
+        ...(params.tenantId
+          ? [sql`${users.currentTenantId}::text = ${params.tenantId}`]
+          : [])
+      )
+    )
     .groupBy(providerExpr)
     .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`);
 
@@ -264,11 +510,13 @@ export async function getUserOcrUsageSummary(userId: number, days: number) {
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       eq(creditTransactions.userId, userId),
-      gte(creditTransactions.createdAt, startDate),
-    ));
+        gte(creditTransactions.createdAt, startDate)
+      )
+    );
 
   return {
     totals: {
@@ -278,12 +526,25 @@ export async function getUserOcrUsageSummary(userId: number, days: number) {
     bySource: await getOcrSourceBreakdown({ userId, days }),
     byProvider: await getOcrProviderBreakdown({ userId, days }),
     daily: await getOcrTimeSeries({ userId, days, period: "day" }),
-    weekly: await getOcrTimeSeries({ userId, days: Math.max(days, 90), period: "week" }),
-    monthly: await getOcrTimeSeries({ userId, days: Math.max(days, 365), period: "month" }),
+    weekly: await getOcrTimeSeries({
+      userId,
+      days: Math.max(days, 90),
+      period: "week",
+    }),
+    monthly: await getOcrTimeSeries({
+      userId,
+      days: Math.max(days, 365),
+      period: "month",
+    }),
   };
 }
 
-export async function getAdminOcrUsageSummary(params: { days: number; limit: number; offset: number; tenantId?: string | null }) {
+export async function getAdminOcrUsageSummary(params: {
+  days: number;
+  limit: number;
+  offset: number;
+  tenantId?: string | null;
+}) {
   const startDate = new Date(Date.now() - params.days * 24 * 60 * 60 * 1000);
   const [totals] = await db
     .select({
@@ -292,11 +553,15 @@ export async function getAdminOcrUsageSummary(params: { days: number; limit: num
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       gte(creditTransactions.createdAt, startDate),
-      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
-    ));
+        ...(params.tenantId
+          ? [sql`${users.currentTenantId}::text = ${params.tenantId}`]
+          : [])
+      )
+    );
 
   const userRows = await db
     .select({
@@ -309,11 +574,15 @@ export async function getAdminOcrUsageSummary(params: { days: number; limit: num
     })
     .from(creditTransactions)
     .leftJoin(users, eq(users.id, creditTransactions.userId))
-    .where(and(
+    .where(
+      and(
       buildOcrWhereClause(),
       gte(creditTransactions.createdAt, startDate),
-      ...(params.tenantId ? [sql`${users.currentTenantId}::text = ${params.tenantId}`] : []),
-    ))
+        ...(params.tenantId
+          ? [sql`${users.currentTenantId}::text = ${params.tenantId}`]
+          : [])
+      )
+    )
     .groupBy(creditTransactions.userId, users.name, users.email)
     .orderBy(sql`SUM(ABS(${creditTransactions.amount})) DESC`)
     .limit(params.limit)
@@ -324,24 +593,45 @@ export async function getAdminOcrUsageSummary(params: { days: number; limit: num
       credits: Number(totals?.credits || 0),
       count: Number(totals?.count || 0),
     },
-    bySource: await getOcrSourceBreakdown({ days: params.days, tenantId: params.tenantId }),
-    byProvider: await getOcrProviderBreakdown({ days: params.days, tenantId: params.tenantId }),
-    daily: await getOcrTimeSeries({ days: params.days, period: "day", tenantId: params.tenantId }),
-    weekly: await getOcrTimeSeries({ days: Math.max(params.days, 90), period: "week", tenantId: params.tenantId }),
-    monthly: await getOcrTimeSeries({ days: Math.max(params.days, 365), period: "month", tenantId: params.tenantId }),
+    bySource: await getOcrSourceBreakdown({
+      days: params.days,
+      tenantId: params.tenantId,
+    }),
+    byProvider: await getOcrProviderBreakdown({
+      days: params.days,
+      tenantId: params.tenantId,
+    }),
+    daily: await getOcrTimeSeries({
+      days: params.days,
+      period: "day",
+      tenantId: params.tenantId,
+    }),
+    weekly: await getOcrTimeSeries({
+      days: Math.max(params.days, 90),
+      period: "week",
+      tenantId: params.tenantId,
+    }),
+    monthly: await getOcrTimeSeries({
+      days: Math.max(params.days, 365),
+      period: "month",
+      tenantId: params.tenantId,
+    }),
     users: userRows.map((row: OcrUserRow) => ({
       userId: row.userId,
       name: row.name ?? null,
       email: row.email ?? null,
       credits: Number(row.credits || 0),
       count: Number(row.count || 0),
-      lastUsedAt: row.lastUsedAt ? new Date(row.lastUsedAt).toISOString() : null,
+      lastUsedAt: row.lastUsedAt
+        ? new Date(row.lastUsedAt).toISOString()
+        : null,
     })),
   };
 }
 
 export interface TransactionHistoryParams {
   userId: number;
+  tenantId?: string | null;
   limit?: number;
   offset?: number;
   type?: TransactionType;
@@ -350,10 +640,53 @@ export interface TransactionHistoryParams {
   endDate?: Date;
 }
 
+export interface TransactionHistorySummary {
+  creditIn: number;
+  creditOut: number;
+  net: number;
+  transactionCount: number;
+}
+
+function buildTransactionHistoryConditions(params: TransactionHistoryParams) {
+  const conditions = [eq(creditTransactions.userId, params.userId)];
+
+  // Keep legacy user-owned rows visible while preventing a user who changes
+  // tenant context from reading another tenant's attributed ledger rows.
+  if (params.tenantId) {
+    const tenantCondition = or(eq(creditTransactions.tenantId, params.tenantId), isNull(creditTransactions.tenantId));
+    if (tenantCondition) conditions.push(tenantCondition);
+  }
+
+  if (params.type) {
+    conditions.push(eq(creditTransactions.type, params.type));
+  }
+
+  if (params.sourceType) {
+    const dbSourceType = normalizeCreditSourceType(params.sourceType);
+    if (dbSourceType) {
+      conditions.push(eq(creditTransactions.sourceType, dbSourceType));
+    }
+  }
+
+  if (params.startDate) {
+    conditions.push(gte(creditTransactions.createdAt, params.startDate));
+  }
+
+  // The client sends the next day's midnight as the exclusive end boundary,
+  // so a date picker end date includes its complete calendar day.
+  if (params.endDate) {
+    conditions.push(lt(creditTransactions.createdAt, params.endDate));
+  }
+
+  return conditions;
+}
+
 /**
  * Get user's current credit balance
  */
-export async function getCreditBalance(userId: number): Promise<CreditBalance | null> {
+export async function getCreditBalance(
+  userId: number
+): Promise<CreditBalance | null> {
   const result = await db
     .select({
       credits: users.credits,
@@ -369,7 +702,9 @@ export async function getCreditBalance(userId: number): Promise<CreditBalance | 
 /**
  * Get user's credit balance by openId
  */
-export async function getCreditBalanceByOpenId(openId: string): Promise<CreditBalance | null> {
+export async function getCreditBalanceByOpenId(
+  openId: string
+): Promise<CreditBalance | null> {
   const result = await db
     .select({
       credits: users.credits,
@@ -385,9 +720,35 @@ export async function getCreditBalanceByOpenId(openId: string): Promise<CreditBa
 /**
  * Check if user has enough credits
  */
-export async function hasEnoughCredits(userId: number, amount: number): Promise<boolean> {
+export async function hasEnoughCredits(
+  userId: number,
+  amount: number
+): Promise<boolean> {
   const balance = await getCreditBalance(userId);
   return balance !== null && balance.credits >= amount;
+}
+
+/** True only for an actual Postgres unique-violation (SQLSTATE 23505) on an
+ *  idempotency-key index. drizzle-orm wraps the real postgres error (the one
+ *  carrying `.code`/`.constraint`) inside `.cause` — a caught error's own
+ *  top-level `.code`/`.constraint` are `undefined` for a Drizzle query error,
+ *  so checking only those (as this used to) never matches, and a legitimate
+ *  idempotent retry throws instead of returning the already-recorded
+ *  transaction. Mirrors `presentationPlaybackExport.ts`'s
+ *  `isIdempotencyUniqueConstraintError`. */
+function isIdempotencyKeyUniqueViolation(err: unknown): boolean {
+  const candidate = err as {
+    code?: string;
+    constraint?: string;
+    cause?: { code?: string; constraint?: string };
+  };
+  const code = candidate?.code ?? candidate?.cause?.code;
+  const constraint = candidate?.constraint ?? candidate?.cause?.constraint;
+  return (
+    code === "23505" &&
+    typeof constraint === "string" &&
+    constraint.includes("idempotency")
+  );
 }
 
 /**
@@ -398,10 +759,81 @@ export async function hasEnoughCredits(userId: number, amount: number): Promise<
  * This prevents TOCTOU race conditions and negative balances.
  */
 export async function deductCredits(params: DeductCreditsParams) {
-  const { userId, amount, description, metadata, idempotencyKey, tenantId, skipBudgetCheck } = params;
+  const {
+    userId,
+    amount,
+    description,
+    metadata,
+    idempotencyKey,
+    tenantId,
+    skipBudgetCheck,
+  } = params;
 
   if (amount <= 0) {
     throw new Error("Deduction amount must be positive");
+  }
+
+  const effectiveContextRef = params.contextRef ?? inferCreditContextRefFromMetadata(metadata);
+
+  if (effectiveContextRef && (process.env.CREDIT_CONTEXT_WRITE_ENABLED === "true" || process.env.CREDIT_CONTEXT_STRICT_REQUIRED === "true")) {
+    await validateCreditContextReference({
+      contextRef: effectiveContextRef,
+      scope: tenantId ? { tenantId, userId, traceId: metadata?.traceId } : undefined,
+    });
+  }
+
+  // All registered skill charges use the fixed skill price and revenue split.
+  // Keep this compatibility boundary so legacy/domain skill callers cannot
+  // bypass tenant-owner and skill-owner settlement while migrating callers.
+  if (params.sourceType === "skill") {
+    if (!params.skillSlug) {
+      throw new Error("Skill billing requires skillSlug");
+    }
+    const { settleSkillRun } = await import("./skillRevenueBilling");
+    const settlement = await settleSkillRun({
+      runId: params.skillRunId ?? idempotencyKey ?? randomUUID(),
+      userId,
+      tenantId,
+      skillSlug: params.skillSlug,
+      actualWorkCredits: amount,
+      description,
+      metadata,
+    });
+    if (settlement.userTransactionId && effectiveContextRef && tenantId) {
+      await attachCreditContextToTransaction({
+        transactionId: settlement.userTransactionId,
+        contextRef: effectiveContextRef,
+        scope: { tenantId, userId, traceId: metadata?.traceId },
+      });
+      for (const revenueTransactionId of [settlement.tenantRevenueTransactionId, settlement.skillRevenueTransactionId]) {
+        if (!revenueTransactionId) continue;
+        await attachCreditContextToTransaction({
+          transactionId: revenueTransactionId,
+          contextRef: effectiveContextRef,
+          scope: { tenantId, userId, traceId: metadata?.traceId },
+          relationType: "revenue_distribution",
+          isPrimary: false,
+        });
+      }
+    }
+    const userTransaction = settlement.userTransactionId
+      ? await db
+        .select({
+          id: creditTransactions.id,
+          amount: creditTransactions.amount,
+          balanceAfter: creditTransactions.balanceAfter,
+        })
+        .from(creditTransactions)
+        .where(eq(creditTransactions.id, settlement.userTransactionId))
+        .limit(1)
+      : [];
+    return {
+      success: true,
+      creditsUsed: settlement.totalCredits,
+      newBalance: userTransaction[0]?.balanceAfter ?? 0,
+      transactionId: userTransaction[0]?.id ?? 0,
+      ...(settlement.duplicate ? { duplicate: true } : {}),
+    };
   }
 
   // Budget pre-check (only when tenantId is provided and not skipped)
@@ -414,7 +846,7 @@ export async function deductCredits(params: DeductCreditsParams) {
       throw new BudgetExceededError(
         budgetResult.monthlyLimit,
         budgetResult.creditsUsed,
-        getCurrentMonthKey(),
+        getCurrentMonthKey()
       );
     }
     if (budgetResult.alert) {
@@ -429,7 +861,17 @@ export async function deductCredits(params: DeductCreditsParams) {
       const redis = getRedisClient();
       const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
       if (cached) {
-        return JSON.parse(cached);
+        const cachedResult = JSON.parse(cached);
+        // Redis is only a fast path. Repair a missing context link before
+        // returning so retries cannot permanently bypass attribution.
+        if (cachedResult?.transactionId && effectiveContextRef) {
+          await attachCreditContextToTransaction({
+            transactionId: cachedResult.transactionId,
+            contextRef: effectiveContextRef,
+            scope: tenantId ? { tenantId, userId, traceId: metadata?.traceId } : undefined,
+          });
+        }
+        return cachedResult;
       }
     } catch {
       // Redis unavailable -- fall through to DB check
@@ -440,7 +882,7 @@ export async function deductCredits(params: DeductCreditsParams) {
   let newBalance: number = 0;
 
   try {
-    await db.transaction(async (tx) => {
+    await db.transaction(async tx => {
       // Atomic deduction: balance check + decrement in one statement
       const [result] = await tx
         .update(users)
@@ -448,7 +890,13 @@ export async function deductCredits(params: DeductCreditsParams) {
           credits: sql`${users.credits} - ${amount}`,
           lastCreditUsedAt: new Date(),
         })
-        .where(and(eq(users.id, userId), gte(users.credits, amount)))
+        .where(
+          and(
+          eq(users.id, userId),
+          eq(users.isDisabled, false),
+            gte(users.credits, amount)
+          )
+        )
         .returning({ newBalance: users.credits });
 
       if (!result) {
@@ -459,36 +907,58 @@ export async function deductCredits(params: DeductCreditsParams) {
           .where(eq(users.id, userId))
           .limit(1);
         if (!user) throw new Error("User not found");
-        throw new Error("Insufficient credits");
+        // Preserve the authoritative requested amount so the central
+        // feedback policy can distinguish an ordinary user shortfall from an
+        // anomalously large deduction after router wrappers normalize errors.
+        throw new Error(`Insufficient credits. Required: ${amount}`);
       }
 
       newBalance = result.newBalance;
 
-      const [txRecord] = await tx.insert(creditTransactions).values({
+      const [txRecord] = await tx
+        .insert(creditTransactions)
+        .values({
         userId,
         amount: -amount, // Negative for deductions
         type: "usage",
-        description,
+        description: normalizeCreditTransactionDescription(description),
         metadata,
         balanceAfter: newBalance,
         idempotencyKey: idempotencyKey ?? null,
-        traceId: getTraceId() ?? metadata?.traceId ?? null,
+          traceId: clampCreditTraceId(
+            getTraceId() ?? metadata?.traceId ?? null
+          ),
         conversationId: params.conversationId ?? null,
         skillSlug: params.skillSlug ?? null,
-        sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
-      }).returning({ id: creditTransactions.id });
+        tenantId: tenantId ?? null,
+        reversalOfTransactionId: null,
+          sourceType:
+            normalizeCreditSourceType(params.sourceType ?? null) ?? null,
+        })
+        .returning({ id: creditTransactions.id });
 
       transactionId = txRecord?.id || 0;
     });
   } catch (err: any) {
     // Handle unique constraint violation on idempotencyKey (DB safety net)
-    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+    if (idempotencyKey && isIdempotencyKeyUniqueViolation(err)) {
       const existing = await db
-        .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
+        .select({
+          id: creditTransactions.id,
+          amount: creditTransactions.amount,
+          balanceAfter: creditTransactions.balanceAfter,
+        })
         .from(creditTransactions)
         .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
         .limit(1);
       if (existing[0]) {
+        if (effectiveContextRef) {
+          await attachCreditContextToTransaction({
+            transactionId: existing[0].id,
+            contextRef: effectiveContextRef,
+            scope: tenantId ? { tenantId, userId, traceId: metadata?.traceId } : undefined,
+          });
+        }
         return {
           success: true,
           creditsUsed: Math.abs(existing[0].amount),
@@ -514,6 +984,14 @@ export async function deductCredits(params: DeductCreditsParams) {
     transactionId,
   };
 
+  if (transactionId && effectiveContextRef) {
+    await attachCreditContextToTransaction({
+      transactionId,
+      contextRef: effectiveContextRef,
+      scope: tenantId ? { tenantId, userId, traceId: metadata?.traceId } : undefined,
+    });
+  }
+
   // Budget post-update
   if (tenantId) {
     try {
@@ -534,7 +1012,12 @@ export async function deductCredits(params: DeductCreditsParams) {
   if (idempotencyKey && isRedisAvailable()) {
     try {
       const redis = getRedisClient();
-      await redis.set(`credit:idemp:${idempotencyKey}`, JSON.stringify(result), "EX", 86400);
+      await redis.set(
+        `credit:idemp:${idempotencyKey}`,
+        JSON.stringify(result),
+        "EX",
+        86400
+      );
     } catch {
       // Non-critical -- DB constraint is the safety net
     }
@@ -550,7 +1033,16 @@ export async function deductCredits(params: DeductCreditsParams) {
  * to prevent race conditions on concurrent additions.
  */
 export async function addCredits(params: AddCreditsParams) {
-  const { userId, amount, type, description, referenceId, metadata, idempotencyKey } = params;
+  const {
+    userId,
+    amount,
+    type,
+    description,
+    referenceId,
+    metadata,
+    idempotencyKey,
+  } = params;
+  const effectiveContextRef = params.contextRef ?? inferCreditContextRefFromMetadata(metadata);
 
   if (amount <= 0) {
     throw new Error("Amount must be positive");
@@ -561,7 +1053,17 @@ export async function addCredits(params: AddCreditsParams) {
       const redis = getRedisClient();
       const cached = await redis.get(`credit:idemp:${idempotencyKey}`);
       if (cached) {
-        return JSON.parse(cached);
+        const cachedResult = JSON.parse(cached);
+        // Keep the idempotency fast path consistent with the DB path: an
+        // earlier partial write must be repairable on a later retry.
+        if (cachedResult?.transactionId && effectiveContextRef) {
+          await attachCreditContextToTransaction({
+            transactionId: cachedResult.transactionId,
+            contextRef: effectiveContextRef,
+            scope: params.tenantId ? { tenantId: params.tenantId, userId } : undefined,
+          });
+        }
+        return cachedResult;
       }
     } catch {
       // Redis unavailable -- fall through to DB check
@@ -572,45 +1074,30 @@ export async function addCredits(params: AddCreditsParams) {
   let newBalance: number = 0;
 
   try {
-    await db.transaction(async (tx) => {
-      // Atomic addition
-      const [result] = await tx
-        .update(users)
-        .set({ credits: sql`${users.credits} + ${amount}` })
-        .where(eq(users.id, userId))
-        .returning({ newBalance: users.credits });
-
-      if (!result) {
-        throw new Error("User not found");
-      }
-
-      newBalance = result.newBalance;
-
-      const [txRecord] = await tx.insert(creditTransactions).values({
-        userId,
-        amount, // Positive for additions
-        type,
-        description,
-        metadata,
-        balanceAfter: newBalance,
-        referenceId,
-        idempotencyKey: idempotencyKey ?? null,
-        traceId: getTraceId() ?? null,
-        conversationId: params.conversationId ?? null,
-        skillSlug: params.skillSlug ?? null,
-        sourceType: normalizeCreditSourceType(params.sourceType ?? null) ?? null,
-      }).returning({ id: creditTransactions.id });
-
-      transactionId = txRecord?.id || 0;
+    await db.transaction(async tx => {
+      const granted = await addCreditsWithinTransaction(tx, params);
+        newBalance = granted.newBalance;
+        transactionId = granted.transactionId;
     });
   } catch (err: any) {
-    if (idempotencyKey && err?.code === "23505" && err?.constraint?.includes("idempotency")) {
+    if (idempotencyKey && isIdempotencyKeyUniqueViolation(err)) {
       const existing = await db
-        .select({ id: creditTransactions.id, amount: creditTransactions.amount, balanceAfter: creditTransactions.balanceAfter })
+        .select({
+          id: creditTransactions.id,
+          amount: creditTransactions.amount,
+          balanceAfter: creditTransactions.balanceAfter,
+        })
         .from(creditTransactions)
         .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
         .limit(1);
       if (existing[0]) {
+        if (effectiveContextRef) {
+          await attachCreditContextToTransaction({
+            transactionId: existing[0].id,
+            contextRef: effectiveContextRef,
+            scope: params.tenantId ? { tenantId: params.tenantId, userId } : undefined,
+          });
+        }
         return {
           success: true,
           creditsAdded: Math.abs(existing[0].amount),
@@ -629,10 +1116,23 @@ export async function addCredits(params: AddCreditsParams) {
     transactionId,
   };
 
+  if (transactionId && effectiveContextRef) {
+    await attachCreditContextToTransaction({
+      transactionId,
+      contextRef: effectiveContextRef,
+      scope: params.tenantId ? { tenantId: params.tenantId, userId } : undefined,
+    });
+  }
+
   if (idempotencyKey && isRedisAvailable()) {
     try {
       const redis = getRedisClient();
-      await redis.set(`credit:idemp:${idempotencyKey}`, JSON.stringify(result), "EX", 86400);
+      await redis.set(
+        `credit:idemp:${idempotencyKey}`,
+        JSON.stringify(result),
+        "EX",
+        86400
+      );
     } catch {
       // Non-critical -- DB constraint is the safety net
     }
@@ -650,30 +1150,159 @@ export interface CreditReservation {
   drawnAmount: number;
   transactionId: number;
   sourceType: CreditSourceType;
+  idempotencyKey?: string;
+  tenantId?: string;
+  skillSlug?: string;
+  /** Fixed skill settlement identity used to refund an interrupted run. */
+  skillRunId?: string;
+  contextRef?: CreditContextRef;
   createdAt: string;
   expiresAt: string;
+  /** Durable-in-Redis settlement keys prevent a provider call from being drawn twice. */
+  settledCallAmounts?: Record<string, number>;
+}
+
+/**
+ * Read the current reservation snapshot from its existing owner. This is a
+ * read-only pre-dispatch check; Redis remains the current reservation store
+ * until the credit service itself is migrated.
+ */
+export async function getCreditReservationSnapshot(
+  reservationId: string,
+): Promise<CreditReservation | null> {
+  if (!reservationId.trim() || !isRedisAvailable()) return null;
+
+  const raw = await getRedisClient().get(`credit:reservation:${reservationId}`);
+  if (!raw) return null;
+
+  const reservation = JSON.parse(raw) as CreditReservation;
+  if (
+    !reservation ||
+    typeof reservation !== "object" ||
+    reservation.reservationId !== reservationId ||
+    !Number.isSafeInteger(reservation.userId) ||
+    typeof reservation.expiresAt !== "string" ||
+    !Number.isSafeInteger(reservation.reservedAmount) ||
+    !Number.isSafeInteger(reservation.drawnAmount)
+  ) {
+    throw new Error("Credit reservation snapshot is malformed");
+  }
+  return reservation;
 }
 
 const RESERVATION_TTL_SECONDS = 600; // 10 minutes
+
+export interface CreditReservationBillingContext {
+  tenantId?: string;
+  skillSlug?: string;
+  skillRunId?: string;
+  description?: string;
+  contextRef?: CreditContextRef;
+}
+
+export interface CreditReservationOptions {
+  /**
+   * Allow a hard-cutover caller to keep the durable ledger reservation when
+   * Redis is unavailable. The caller must have a PostgreSQL recovery path for
+   * refund/settlement; ordinary Redis-backed reservations remain fail-closed.
+   */
+  allowWithoutRedis?: boolean;
+}
 
 export async function createCreditReservation(
   userId: number,
   amount: number,
   sourceType: CreditSourceType,
   metadata?: Record<string, any>,
+  idempotencyKey?: string,
+  billing?: CreditReservationBillingContext,
+  options?: CreditReservationOptions,
 ): Promise<CreditReservation> {
-  if (!isRedisAvailable()) {
+  const allowWithoutRedis =
+    options?.allowWithoutRedis === true &&
+    true;
+  if (!isRedisAvailable() && !allowWithoutRedis) {
     throw new Error("Redis unavailable — cannot create credit reservation");
   }
 
-  const reservationId = randomUUID();
+  const reservationId = idempotencyKey
+    ? `reservation-${createHash("sha256").update(idempotencyKey).digest("hex").slice(0, 32)}`
+    : randomUUID();
+  const reservationKey = `credit:reservation:${reservationId}`;
+  const redis = isRedisAvailable() ? getRedisClient() : null;
+  const skillSlug = sourceType === "skill" ? billing?.skillSlug : undefined;
+  const skillRunId =
+    sourceType === "skill"
+      ? billing?.skillRunId ?? reservationId
+      : undefined;
+  const effectiveContextRef =
+    billing?.contextRef ?? inferCreditContextRefFromMetadata(metadata);
+
+  const validateIdempotentReplay = (reservation: CreditReservation) => {
+    if (
+      reservation.reservationId !== reservationId ||
+      reservation.userId !== userId ||
+      reservation.reservedAmount !== amount ||
+      !Number.isSafeInteger(reservation.drawnAmount) ||
+      reservation.drawnAmount < 0 ||
+      reservation.drawnAmount > reservation.reservedAmount ||
+      !Number.isSafeInteger(reservation.transactionId) ||
+      reservation.sourceType !== sourceType ||
+      reservation.idempotencyKey !== idempotencyKey ||
+      (reservation.skillSlug ?? null) !== (skillSlug ?? null) ||
+      (reservation.skillRunId ?? null) !== (skillRunId ?? null) ||
+      (reservation.tenantId ?? null) !== (billing?.tenantId ?? null)
+    ) {
+      throw new Error(
+        "Credit reservation idempotency key was reused with different parameters",
+      );
+    }
+    const expiresAtMs = Date.parse(reservation.expiresAt);
+    if (!Number.isFinite(expiresAtMs) || expiresAtMs <= Date.now()) {
+      throw new Error("Credit reservation has expired; use a new idempotency key");
+    }
+  };
+
+  // A retry must observe the already-drawn state. Recreating the snapshot
+  // would reset drawnAmount and could let a caller spend the same reservation
+  // more than once.
+  if (idempotencyKey && redis) {
+    const existingRaw = await redis.get(reservationKey);
+    if (existingRaw) {
+      const existing = JSON.parse(existingRaw) as CreditReservation;
+      validateIdempotentReplay(existing);
+      return existing;
+    }
+  }
+
+  // The durable credit ledger retains idempotency beyond Redis reservation
+  // TTL. If its transaction exists but the reservation snapshot is gone, do
+  // not reconstruct a zero-drawn snapshot from the old debit: that could
+  // replay provider work after the original reservation expired or was used.
+  if (idempotencyKey) {
+    const [priorTransaction] = await db
+      .select({ id: creditTransactions.id })
+      .from(creditTransactions)
+      .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
+      .limit(1);
+    if (priorTransaction) {
+      throw new Error(
+        "Credit reservation snapshot is missing for a previously charged idempotency key",
+      );
+    }
+  }
 
   // Deduct the full amount upfront
   const deductResult = await deductCredits({
     userId,
     amount,
-    description: `Credit reservation ${reservationId}`,
+    description: billing?.description ?? `Credit reservation ${reservationId}`,
+    tenantId: billing?.tenantId,
+    skillSlug,
+    skillRunId,
     sourceType,
+    idempotencyKey,
+    contextRef: effectiveContextRef,
     metadata: { ...metadata, reservationId },
   });
 
@@ -687,18 +1316,49 @@ export async function createCreditReservation(
     drawnAmount: 0,
     transactionId: deductResult.transactionId,
     sourceType,
+    tenantId: billing?.tenantId,
+    skillSlug,
+    skillRunId,
+    contextRef: effectiveContextRef,
+    idempotencyKey,
     createdAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
   };
 
-  // Store in Redis with TTL
-  const redis = getRedisClient();
-  await redis.set(
-    `credit:reservation:${reservationId}`,
-    JSON.stringify(reservation),
-    "EX",
-    RESERVATION_TTL_SECONDS,
-  );
+  // Store in Redis with TTL when available. Hard-cutover callers that opt into
+  // the durable-only path retain the credit transaction as the recovery
+  // record; they must settle/refund from that ledger rather than assuming this
+  // cache exists.
+  if (redis) {
+    if (idempotencyKey) {
+      // NX is the final arbiter when same-key requests race after the initial
+      // read. A loser returns the winning snapshot instead of overwriting a
+      // reservation that may already have been drawn.
+      const stored = await redis.set(
+        reservationKey,
+        JSON.stringify(reservation),
+        "EX",
+        RESERVATION_TTL_SECONDS,
+        "NX",
+      );
+      if (stored !== "OK") {
+        const winnerRaw = await redis.get(reservationKey);
+        if (!winnerRaw) {
+          throw new Error("Could not confirm idempotent credit reservation");
+        }
+        const winner = JSON.parse(winnerRaw) as CreditReservation;
+        validateIdempotentReplay(winner);
+        return winner;
+      }
+    } else {
+      await redis.set(
+        reservationKey,
+        JSON.stringify(reservation),
+        "EX",
+        RESERVATION_TTL_SECONDS
+      );
+    }
+  }
 
   return reservation;
 }
@@ -708,33 +1368,47 @@ const DRAW_LUA = `
 local raw = redis.call('GET', KEYS[1])
 if not raw then return {err='not_found'} end
 local r = cjson.decode(raw)
+local settlementKey = ARGV[3]
+if settlementKey and settlementKey ~= '' then
+  r.settledCallAmounts = r.settledCallAmounts or {}
+  if r.settledCallAmounts[settlementKey] ~= nil then
+    local ttl = redis.call('TTL', KEYS[1])
+    return {0, r.reservedAmount - r.drawnAmount, 1}
+  end
+end
 local newDrawn = r.drawnAmount + tonumber(ARGV[1])
 if newDrawn > r.reservedAmount then return {err='budget_exceeded'} end
 r.drawnAmount = newDrawn
+if settlementKey and settlementKey ~= '' then
+  r.settledCallAmounts = r.settledCallAmounts or {}
+  r.settledCallAmounts[settlementKey] = tonumber(ARGV[1])
+end
 local ttl = redis.call('TTL', KEYS[1])
 if ttl < 1 then ttl = tonumber(ARGV[2]) end
 redis.call('SET', KEYS[1], cjson.encode(r), 'EX', ttl)
-return {r.reservedAmount - newDrawn}
+return {tonumber(ARGV[1]), r.reservedAmount - newDrawn, 0}
 `;
 
 export async function drawFromReservation(
   reservationId: string,
   amount: number,
   _description?: string,
-): Promise<{ drawn: number; remaining: number }> {
+  settlementKey?: string
+): Promise<{ drawn: number; remaining: number; duplicate?: boolean }> {
   if (!isRedisAvailable()) {
     throw new Error("Redis unavailable for reservation tracking");
   }
 
   const redis = getRedisClient();
   const key = `credit:reservation:${reservationId}`;
-  const result = await redis.eval(
+  const result = (await redis.eval(
     DRAW_LUA,
     1,
     key,
     String(amount),
     String(RESERVATION_TTL_SECONDS),
-  ) as any;
+    settlementKey ?? ""
+  )) as any;
 
   if (result?.err === "not_found" || result === null) {
     throw new Error(`Reservation ${reservationId} not found or expired`);
@@ -743,43 +1417,71 @@ export async function drawFromReservation(
     throw new Error(`Reservation budget exceeded`);
   }
 
-  const remaining = Number(Array.isArray(result) ? result[0] : result);
-  return { drawn: amount, remaining };
+  if (Array.isArray(result)) {
+    if (result.length === 1) {
+      return { drawn: amount, remaining: Number(result[0]) };
+    }
+    return {
+      drawn: Number(result[0]),
+      remaining: Number(result[1]),
+      duplicate: Number(result[2]) === 1,
+    };
+  }
+  // Compatibility with older Redis/Lua deployments while they roll forward.
+  return { drawn: amount, remaining: Number(result) };
 }
 
 export async function refundReservation(
   reservationId: string,
+  forceFixedSkillRefund = false,
+  reservationSnapshot?: CreditReservation,
 ): Promise<{ refundedAmount: number }> {
-  if (!isRedisAvailable()) {
+  if (!isRedisAvailable() && !reservationSnapshot) {
     return { refundedAmount: 0 };
   }
 
-  const redis = getRedisClient();
-  const raw = await redis.get(`credit:reservation:${reservationId}`);
-  if (!raw) {
+  const redis = isRedisAvailable() ? getRedisClient() : null;
+  const raw = redis ? await redis.get(`credit:reservation:${reservationId}`) : null;
+  if (!raw && !reservationSnapshot) {
     return { refundedAmount: 0 };
   }
 
-  const reservation: CreditReservation = JSON.parse(raw);
+  // A freshly-created hard-cutover reservation is allowed to use its immutable
+  // caller snapshot when Redis is unavailable. No draw can occur in that
+  // condition, so the snapshot is the safe refund basis. Callers that do not
+  // have a snapshot remain fail-closed rather than guessing from the ledger.
+  const reservation: CreditReservation = raw ? JSON.parse(raw) : reservationSnapshot!;
+  if (reservation.reservationId !== reservationId) {
+    throw new Error("Reservation snapshot does not match reservation id");
+  }
   const unused = reservation.reservedAmount - reservation.drawnAmount;
+  const refundAmount =
+    forceFixedSkillRefund && reservation.sourceType === "skill"
+      ? reservation.reservedAmount
+      : unused;
 
-  if (unused > 0) {
-    await refundCredits({
-      userId: reservation.userId,
-      amount: unused,
-      description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
-      originalTransactionId: reservation.transactionId,
-      sourceType: reservation.sourceType,
-      metadata: { reservationId },
+  if (refundAmount > 0) {
+      await refundCredits({
+        userId: reservation.userId,
+        amount: refundAmount,
+        description: `Reservation refund (${reservation.drawnAmount} of ${reservation.reservedAmount} used)`,
+        originalTransactionId: reservation.transactionId,
+        idempotencyKey: `reservation:${reservationId}:refund`,
+        tenantId: reservation.tenantId,
+        sourceType: reservation.sourceType,
+        skillSlug: reservation.skillSlug,
+        skillRunId: reservation.skillRunId,
+        contextRef: reservation.contextRef,
+        metadata: { reservationId },
     });
   }
 
-  await redis.del(`credit:reservation:${reservationId}`);
-  return { refundedAmount: unused };
+  if (redis) await redis.del(`credit:reservation:${reservationId}`);
+  return { refundedAmount: refundAmount };
 }
 
 export async function commitCreditReservation(
-  reservationId: string,
+  reservationId: string
 ): Promise<{ committedAmount: number }> {
   if (!isRedisAvailable()) {
     return { committedAmount: 0 };
@@ -793,7 +1495,10 @@ export async function commitCreditReservation(
   }
 
   const reservation: CreditReservation = JSON.parse(raw);
-  const remaining = Math.max(0, reservation.reservedAmount - reservation.drawnAmount);
+  const remaining = Math.max(
+    0,
+    reservation.reservedAmount - reservation.drawnAmount
+  );
   await redis.del(key);
   return { committedAmount: remaining };
 }
@@ -807,28 +1512,93 @@ export async function refundCredits(params: {
   description: string;
   originalTransactionId?: number;
   idempotencyKey?: string;
+  tenantId?: string;
   metadata?: Record<string, any>;
   sourceType?: CreditSourceType;
   conversationId?: number;
   skillSlug?: string;
+  /** Fixed-credit skill settlement to reverse atomically with owner revenue. */
+  skillRunId?: string;
+  contextRef?: CreditContextRef;
+  reversalOfTransactionId?: number;
 }) {
-  const { userId, amount, description, originalTransactionId, metadata } = params;
+  const { userId, amount, description, originalTransactionId, metadata } =
+    params;
+
+  // Reverse a fixed skill settlement before touching the user's balance. The
+  // settlement transaction checks for an existing auto-refund under the row
+  // lock, then reverses both owner allocations exactly once.
+  if (params.sourceType === "skill" || params.skillRunId || params.skillSlug) {
+    let runId = params.skillRunId;
+    if (!runId && originalTransactionId) {
+      const [settlement] = await db
+        .select({ runId: skillRevenueSettlements.runId })
+        .from(skillRevenueSettlements)
+        .where(
+          eq(skillRevenueSettlements.userTransactionId, originalTransactionId)
+        )
+        .limit(1);
+      runId = settlement?.runId;
+    }
+    if (runId) {
+      const { refundSkillRun } = await import("./skillRevenueBilling");
+      const reversed = await refundSkillRun({ runId, reason: description });
+      let userRefundTransactionId = 0;
+      if (params.contextRef && params.tenantId) {
+        const refundRows = await db
+          .select({ id: creditTransactions.id, userId: creditTransactions.userId })
+          .from(creditTransactions)
+          .where(and(
+            eq(creditTransactions.tenantId, params.tenantId),
+            like(creditTransactions.idempotencyKey, `skill-run:${runId}:refund:%`),
+          ));
+        for (const refundRow of refundRows) {
+          const isUserRefund = refundRow.userId === userId;
+          if (isUserRefund) userRefundTransactionId = refundRow.id;
+          await attachCreditContextToTransaction({
+            transactionId: refundRow.id,
+            contextRef: params.contextRef,
+            scope: { tenantId: params.tenantId, userId },
+            relationType: isUserRefund ? "reversal" : "revenue_distribution",
+            isPrimary: false,
+          });
+        }
+      }
+      return {
+        success: true,
+        creditsUsed: 0,
+        newBalance: 0,
+        transactionId: userRefundTransactionId,
+        revenueCreditsReversed: reversed.revenueCredits,
+        revenueDebtCredits: reversed.revenueDebtCredits,
+        duplicate: !reversed.refunded,
+      };
+    }
+    if (params.sourceType === "skill") {
+      throw new Error("Skill refund requires a settled skillRunId");
+    }
+  }
 
   return addCredits({
     userId,
     amount,
     type: "refund",
     description,
-    referenceId: originalTransactionId ? `refund-${originalTransactionId}` : undefined,
+    referenceId: originalTransactionId
+      ? `refund-${originalTransactionId}`
+      : undefined,
     idempotencyKey: params.idempotencyKey,
+    tenantId: params.tenantId,
     metadata: {
       ...metadata,
       originalTransactionId,
       reason: "operation_failed",
     },
+    reversalOfTransactionId: params.reversalOfTransactionId ?? originalTransactionId,
     sourceType: params.sourceType,
     conversationId: params.conversationId,
     skillSlug: params.skillSlug,
+    contextRef: params.contextRef,
   });
 }
 
@@ -836,28 +1606,24 @@ export async function refundCredits(params: {
  * Get transaction history for a user
  */
 export async function getTransactionHistory(params: TransactionHistoryParams) {
-  const { userId, limit = 50, offset = 0, type, sourceType, startDate, endDate } = params;
+  const {
+    userId,
+    limit = 50,
+    offset = 0,
+    type,
+    sourceType,
+    startDate,
+    endDate,
+  } = params;
 
-  const conditions = [eq(creditTransactions.userId, userId)];
-
-  if (type) {
-    conditions.push(eq(creditTransactions.type, type));
-  }
-
-  if (sourceType) {
-    const dbSourceType = normalizeCreditSourceType(sourceType);
-    if (dbSourceType) {
-      conditions.push(eq(creditTransactions.sourceType, dbSourceType));
-    }
-  }
-
-  if (startDate) {
-    conditions.push(gte(creditTransactions.createdAt, startDate));
-  }
-
-  if (endDate) {
-    conditions.push(lte(creditTransactions.createdAt, endDate));
-  }
+  const conditions = buildTransactionHistoryConditions({
+    ...params,
+    userId,
+    type,
+    sourceType,
+    startDate,
+    endDate,
+  });
 
   const transactions = await db
     .select({
@@ -871,20 +1637,55 @@ export async function getTransactionHistory(params: TransactionHistoryParams) {
       traceId: creditTransactions.traceId,
       conversationId: creditTransactions.conversationId,
       skillSlug: creditTransactions.skillSlug,
+      skillName: skills.name,
       sourceType: creditTransactions.sourceType,
       conversationTitle: conversations.title,
     })
     .from(creditTransactions)
-    .leftJoin(conversations, and(
+    .leftJoin(
+      conversations,
+      and(
       eq(creditTransactions.conversationId, conversations.id),
-      eq(conversations.userId, userId),
-    ))
+        eq(conversations.userId, userId)
+      )
+    )
+    .leftJoin(skills, eq(creditTransactions.skillSlug, skills.slug))
     .where(and(...conditions))
-    .orderBy(desc(creditTransactions.createdAt))
+    // A timestamp alone is not a stable cursor: several fixed-skill
+    // settlement rows are intentionally created in the same transaction and
+    // can share the same timestamp.  Without the secondary key, offset
+    // pagination can repeat or skip rows, which made the Credits page appear
+    // to lose LLM/skill entries.
+    .orderBy(desc(creditTransactions.createdAt), desc(creditTransactions.id))
     .limit(limit)
     .offset(offset);
 
   return transactions;
+}
+
+/**
+ * Get complete signed credit totals for every transaction matching the
+ * history filters. This intentionally does not apply pagination.
+ */
+export async function getTransactionHistorySummary(
+  params: TransactionHistoryParams,
+): Promise<TransactionHistorySummary> {
+  const [row] = await db
+    .select({
+      creditIn: sql<number>`COALESCE(SUM(CASE WHEN ${creditTransactions.amount} > 0 THEN ${creditTransactions.amount} ELSE 0 END), 0)`,
+      creditOut: sql<number>`COALESCE(SUM(CASE WHEN ${creditTransactions.amount} < 0 THEN ABS(${creditTransactions.amount}) ELSE 0 END), 0)`,
+      net: sql<number>`COALESCE(SUM(${creditTransactions.amount}), 0)`,
+      transactionCount: sql<number>`COUNT(*)`,
+    })
+    .from(creditTransactions)
+    .where(and(...buildTransactionHistoryConditions(params)));
+
+  return {
+    creditIn: Number(row?.creditIn ?? 0),
+    creditOut: Number(row?.creditOut ?? 0),
+    net: Number(row?.net ?? 0),
+    transactionCount: Number(row?.transactionCount ?? 0),
+  };
 }
 
 /**
@@ -928,7 +1729,12 @@ export async function isModelFree(modelId: string): Promise<boolean> {
     })
     .from(modelProviderMap)
     .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-    .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
+    .where(
+      and(
+        buildModelProviderMapLookupCondition(modelId),
+        eq(modelProviderMap.isEnabled, true)
+      )
+    )
     .limit(1);
   if (rows.length === 0) return false;
   const effectivePricing = resolveCatalogBackedPricing(rows[0]);
@@ -938,7 +1744,9 @@ export async function isModelFree(modelId: string): Promise<boolean> {
 /**
  * Get dynamic pricing from model_provider_map, returns null if not found
  */
-async function getModelPricingFromDb(modelId: string): Promise<{ input: number; output: number } | null> {
+async function getModelPricingFromDb(
+  modelId: string
+): Promise<{ input: number; output: number } | null> {
   const rows = await db
     .select({
       providerName: llmProviders.providerName,
@@ -950,13 +1758,21 @@ async function getModelPricingFromDb(modelId: string): Promise<{ input: number; 
     })
     .from(modelProviderMap)
     .innerJoin(llmProviders, eq(modelProviderMap.providerId, llmProviders.id))
-    .where(and(buildModelProviderMapLookupCondition(modelId), eq(modelProviderMap.isEnabled, true)))
+    .where(
+      and(
+        buildModelProviderMapLookupCondition(modelId),
+        eq(modelProviderMap.isEnabled, true)
+      )
+    )
     .limit(1);
 
   if (rows.length === 0) return null;
   const effectivePricing = resolveCatalogBackedPricing(rows[0]);
   if (effectivePricing.isFree) return { input: 0, output: 0 };
-  return { input: effectivePricing.pricingInput, output: effectivePricing.pricingOutput };
+  return {
+    input: effectivePricing.pricingInput,
+    output: effectivePricing.pricingOutput,
+  };
 }
 
 /**
@@ -972,10 +1788,15 @@ export async function deductCreditsForModel(params: {
   description?: string;
   tenantId?: string;
   idempotencyKey?: string;
+  /** Stable fixed-credit settlement id for a skill-run model usage charge. */
+  skillRunId?: string;
   conversationId?: number;
   skillSlug?: string;
   sourceType?: CreditSourceType;
   metadata?: Record<string, unknown>;
+  contextRef?: CreditContextRef;
+  stageLabel?: string;
+  attemptKey?: string;
 }): Promise<{ creditsUsed: number; wasFree: boolean }> {
   // Skip for static tokens (server-to-server calls)
   if (params.userId === 0) {
@@ -983,14 +1804,22 @@ export async function deductCreditsForModel(params: {
   }
 
   const normalizedCostUsd = Number(params.costUsd ?? 0);
-  const hasProviderReportedCost = Number.isFinite(normalizedCostUsd) && normalizedCostUsd > 0;
+  const hasProviderReportedCost =
+    Number.isFinite(normalizedCostUsd) && normalizedCostUsd > 0;
 
   // Every user-visible LLM request has a minimum 1-credit charge. Free/zero-price
   // provider mappings still help ranking and admin labeling, but they do not bypass
   // per-call platform usage accounting.
   const credits = hasProviderReportedCost
     ? calculateCreditsFromCost(normalizedCostUsd)
-    : Math.max(1, await calculateCreditsForLLMDynamic(params.inputTokens, params.outputTokens, params.model));
+    : Math.max(
+        1,
+        await calculateCreditsForLLMDynamic(
+          params.inputTokens,
+          params.outputTokens,
+          params.model
+        )
+      );
 
   const result = await deductCredits({
     userId: params.userId,
@@ -998,9 +1827,13 @@ export async function deductCreditsForModel(params: {
     description: params.description ?? `LLM usage: ${params.model}`,
     tenantId: params.tenantId,
     idempotencyKey: params.idempotencyKey,
+    skillRunId: params.skillRunId,
     conversationId: params.conversationId,
     skillSlug: params.skillSlug,
     sourceType: params.sourceType ?? "chat",
+    contextRef: params.contextRef,
+    stageLabel: params.stageLabel,
+    attemptKey: params.attemptKey,
     metadata: {
       model: params.model,
       provider: params.provider,
@@ -1016,11 +1849,17 @@ export async function deductCreditsForModel(params: {
 /**
  * Calculate credits using dynamic DB pricing first, then hardcoded fallback
  */
-export async function calculateCreditsForLLMDynamic(inputTokens: number, outputTokens: number, model: string): Promise<number> {
+export async function calculateCreditsForLLMDynamic(
+  inputTokens: number,
+  outputTokens: number,
+  model: string
+): Promise<number> {
   const dbPricing = await getModelPricingFromDb(model);
   if (dbPricing) {
     if (dbPricing.input === 0 && dbPricing.output === 0) return 1;
-    const costUsd = (inputTokens / 1_000_000) * dbPricing.input + (outputTokens / 1_000_000) * dbPricing.output;
+    const costUsd =
+      (inputTokens / 1_000_000) * dbPricing.input +
+      (outputTokens / 1_000_000) * dbPricing.output;
     return Math.max(1, Math.ceil(costUsd * 1000));
   }
   // Fallback to hardcoded pricing
@@ -1034,23 +1873,23 @@ export async function calculateCreditsForLLMDynamic(inputTokens: number, outputT
  */
 const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // OpenAI
-  "gpt-4o": { input: 2.50, output: 10.00 },
-  "gpt-4o-mini": { input: 0.15, output: 0.60 },
-  "gpt-4-turbo": { input: 10.00, output: 30.00 },
-  "gpt-4": { input: 30.00, output: 60.00 },
-  "gpt-5.2-chat": { input: 2.00, output: 8.00 },
-  "gpt-5": { input: 2.00, output: 8.00 },
-  "gpt-3.5-turbo": { input: 0.50, output: 1.50 },
+  "gpt-4o": { input: 2.5, output: 10.0 },
+  "gpt-4o-mini": { input: 0.15, output: 0.6 },
+  "gpt-4-turbo": { input: 10.0, output: 30.0 },
+  "gpt-4": { input: 30.0, output: 60.0 },
+  "gpt-5.2-chat": { input: 2.0, output: 8.0 },
+  "gpt-5": { input: 2.0, output: 8.0 },
+  "gpt-3.5-turbo": { input: 0.5, output: 1.5 },
   // Anthropic
-  "claude-3-5-sonnet-20241022": { input: 3.00, output: 15.00 },
-  "claude-3-opus-20240229": { input: 15.00, output: 75.00 },
-  "claude-3-sonnet-20240229": { input: 3.00, output: 15.00 },
+  "claude-3-5-sonnet-20241022": { input: 3.0, output: 15.0 },
+  "claude-3-opus-20240229": { input: 15.0, output: 75.0 },
+  "claude-3-sonnet-20240229": { input: 3.0, output: 15.0 },
   "claude-3-haiku-20240307": { input: 0.25, output: 1.25 },
   // Google
-  "gemini-1.5-pro": { input: 1.25, output: 5.00 },
-  "gemini-1.5-flash": { input: 0.075, output: 0.30 },
+  "gemini-1.5-pro": { input: 1.25, output: 5.0 },
+  "gemini-1.5-flash": { input: 0.075, output: 0.3 },
   // Default fallback (conservative estimate)
-  "default": { input: 1.00, output: 4.00 },
+  default: { input: 1.0, output: 4.0 },
 };
 
 /**
@@ -1080,7 +1919,11 @@ function getModelPricing(model: string): { input: number; output: number } {
 /**
  * Calculate USD cost for LLM usage
  */
-export function calculateLLMCostUsd(inputTokens: number, outputTokens: number, model: string = "gpt-4o-mini"): number {
+export function calculateLLMCostUsd(
+  inputTokens: number,
+  outputTokens: number,
+  model: string = "gpt-4o-mini"
+): number {
   const pricing = getModelPricing(model);
   const inputCost = (inputTokens / 1_000_000) * pricing.input;
   const outputCost = (outputTokens / 1_000_000) * pricing.output;
@@ -1099,7 +1942,11 @@ export function calculateLLMCostUsd(inputTokens: number, outputTokens: number, m
  * - Total cost: $0.00045
  * - Credits: 0.00045 * 1000 = 0.45 → ceil = 1 credit
  */
-export function calculateCreditsForLLM(inputTokens: number, outputTokens: number, model: string = "gpt-4o-mini"): number {
+export function calculateCreditsForLLM(
+  inputTokens: number,
+  outputTokens: number,
+  model: string = "gpt-4o-mini"
+): number {
   const costUsd = calculateLLMCostUsd(inputTokens, outputTokens, model);
   // Convert USD to credits: 1 credit = $0.001
   const credits = costUsd * 1000;
@@ -1148,13 +1995,20 @@ export async function getUsageStats(userId: number, days: number = 30) {
 /**
  * Give signup bonus credits to new user
  */
-export async function giveSignupBonus(userId: number, bonusAmount: number = 100) {
+export async function giveSignupBonus(
+  userId: number,
+  bonusAmount: number = 100
+) {
+  if (bonusAmount <= 0) {
+    return { success: true, creditsAdded: 0, newBalance: 0, transactionId: 0 };
+  }
   return addCredits({
     userId,
     amount: bonusAmount,
     type: "bonus",
     description: "Welcome bonus credits",
     metadata: { reason: "signup" },
+    freeCreditGrant: true,
   });
 }
 
@@ -1196,7 +2050,8 @@ const PRICING_DEFAULTS: CreditPricingConfig = {
   libraryUploadOtherPerStep: 5,
 };
 
-let _pricingCache: { config: CreditPricingConfig; expiresAt: number } | null = null;
+let _pricingCache: { config: CreditPricingConfig; expiresAt: number } | null =
+  null;
 
 export function clearCreditPricingCache(): void {
   _pricingCache = null;
@@ -1223,17 +2078,28 @@ export async function getCreditPricingConfig(): Promise<CreditPricingConfig> {
       else if (row.key === "ragQueryCost") config.ragQueryCost = num;
       else if (row.key === "mcpReadMaxCost") config.mcpReadMaxCost = num;
       else if (row.key === "mcpSheetMaxCost") config.mcpSheetMaxCost = num;
-      else if (row.key === "libraryUploadSizeStepMb") config.libraryUploadSizeStepMb = num;
-      else if (row.key === "libraryUploadImageBase") config.libraryUploadImageBase = num;
-      else if (row.key === "libraryUploadImagePerStep") config.libraryUploadImagePerStep = num;
-      else if (row.key === "libraryUploadVideoBase") config.libraryUploadVideoBase = num;
-      else if (row.key === "libraryUploadVideoPerStep") config.libraryUploadVideoPerStep = num;
-      else if (row.key === "libraryUploadAudioBase") config.libraryUploadAudioBase = num;
-      else if (row.key === "libraryUploadAudioPerStep") config.libraryUploadAudioPerStep = num;
-      else if (row.key === "libraryUploadDocumentBase") config.libraryUploadDocumentBase = num;
-      else if (row.key === "libraryUploadDocumentPerStep") config.libraryUploadDocumentPerStep = num;
-      else if (row.key === "libraryUploadOtherBase") config.libraryUploadOtherBase = num;
-      else if (row.key === "libraryUploadOtherPerStep") config.libraryUploadOtherPerStep = num;
+      else if (row.key === "libraryUploadSizeStepMb")
+        config.libraryUploadSizeStepMb = num;
+      else if (row.key === "libraryUploadImageBase")
+        config.libraryUploadImageBase = num;
+      else if (row.key === "libraryUploadImagePerStep")
+        config.libraryUploadImagePerStep = num;
+      else if (row.key === "libraryUploadVideoBase")
+        config.libraryUploadVideoBase = num;
+      else if (row.key === "libraryUploadVideoPerStep")
+        config.libraryUploadVideoPerStep = num;
+      else if (row.key === "libraryUploadAudioBase")
+        config.libraryUploadAudioBase = num;
+      else if (row.key === "libraryUploadAudioPerStep")
+        config.libraryUploadAudioPerStep = num;
+      else if (row.key === "libraryUploadDocumentBase")
+        config.libraryUploadDocumentBase = num;
+      else if (row.key === "libraryUploadDocumentPerStep")
+        config.libraryUploadDocumentPerStep = num;
+      else if (row.key === "libraryUploadOtherBase")
+        config.libraryUploadOtherBase = num;
+      else if (row.key === "libraryUploadOtherPerStep")
+        config.libraryUploadOtherPerStep = num;
     }
   }
 
@@ -1243,7 +2109,11 @@ export async function getCreditPricingConfig(): Promise<CreditPricingConfig> {
 
 // ─── Service-Tagged Billing Functions ───────────────────────────────
 
-export type IndexingService = "library.upload_index" | "library.save_reindex" | "gdrive.index" | "gdrive.reindex";
+export type IndexingService =
+  | "library.upload_index"
+  | "library.save_reindex"
+  | "gdrive.index"
+  | "gdrive.reindex";
 
 /**
  * Charge credits for indexing operations.
@@ -1271,10 +2141,17 @@ export async function chargeForIndexing(params: {
     description: `Indexing (${params.service}): ${params.chunkCount} chunks`,
     idempotencyKey: params.idempotencyKey,
     sourceType: "indexing",
-    metadata: { ...params.metadata, service: params.service, chunkCount: params.chunkCount },
+    metadata: {
+      ...params.metadata,
+      service: params.service,
+      chunkCount: params.chunkCount,
+    },
   });
 
-  return { creditsUsed: result.creditsUsed, transactionId: result.transactionId };
+  return {
+    creditsUsed: result.creditsUsed,
+    transactionId: result.transactionId,
+  };
 }
 
 export type RagService = "rag.semantic_search" | "rag.chat_context";
@@ -1307,7 +2184,10 @@ export async function chargeForRagQuery(params: {
     metadata: { ...params.metadata, service: params.service },
   });
 
-  return { creditsUsed: result.creditsUsed, transactionId: result.transactionId };
+  return {
+    creditsUsed: result.creditsUsed,
+    transactionId: result.transactionId,
+  };
 }
 
 /**
@@ -1327,7 +2207,12 @@ export async function estimateIndexingCost(totalSizeBytes: number): Promise<{
   };
 }
 
-export type LibraryUploadCreditCategory = "image" | "video" | "audio" | "document" | "other";
+export type LibraryUploadCreditCategory =
+  | "image"
+  | "video"
+  | "audio"
+  | "document"
+  | "other";
 
 export interface LibraryUploadCreditBreakdown {
   category: LibraryUploadCreditCategory;
@@ -1340,21 +2225,25 @@ export interface LibraryUploadCreditBreakdown {
   totalCredits: number;
 }
 
-export function classifyLibraryUploadCategory(fileType: string): LibraryUploadCreditCategory {
-  const normalized = String(fileType || "").trim().toLowerCase();
+export function classifyLibraryUploadCategory(
+  fileType: string
+): LibraryUploadCreditCategory {
+  const normalized = String(fileType || "")
+    .trim()
+    .toLowerCase();
   if (normalized.startsWith("image/")) return "image";
   if (normalized.startsWith("video/")) return "video";
   if (normalized.startsWith("audio/")) return "audio";
   if (
-    normalized === "application/pdf"
-    || normalized.includes("word")
-    || normalized.includes("presentation")
-    || normalized.includes("powerpoint")
-    || normalized.includes("excel")
-    || normalized.includes("spreadsheet")
-    || normalized.startsWith("text/")
-    || normalized === "application/json"
-    || normalized === "application/xml"
+    normalized === "application/pdf" ||
+    normalized.includes("word") ||
+    normalized.includes("presentation") ||
+    normalized.includes("powerpoint") ||
+    normalized.includes("excel") ||
+    normalized.includes("spreadsheet") ||
+    normalized.startsWith("text/") ||
+    normalized === "application/json" ||
+    normalized === "application/xml"
   ) {
     return "document";
   }
@@ -1363,7 +2252,7 @@ export function classifyLibraryUploadCategory(fileType: string): LibraryUploadCr
 
 export async function calculateLibraryUploadCreditCost(
   fileType: string,
-  fileSizeBytes: number,
+  fileSizeBytes: number
 ): Promise<LibraryUploadCreditBreakdown> {
   const pricing = await getCreditPricingConfig();
   const category = classifyLibraryUploadCategory(fileType);
@@ -1388,7 +2277,10 @@ export async function calculateLibraryUploadCreditCost(
 
   const overBaseMb = Math.max(0, fileSizeMb - sizeStepMb);
   const extraSteps = Math.ceil(overBaseMb / sizeStepMb);
-  const totalCredits = Math.max(0, Math.ceil(baseCredits + (extraSteps * stepCredits)));
+  const totalCredits = Math.max(
+    0,
+    Math.ceil(baseCredits + extraSteps * stepCredits)
+  );
 
   return {
     category,

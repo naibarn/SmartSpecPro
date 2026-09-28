@@ -317,124 +317,28 @@ main
 
 ## Integration with GitHub Actions
 
-**Workflow:** `.github/workflows/deploy-production.yml`
+**Workflow:** approved Cloudflare deployment pipeline (the historical
+`.github/workflows/deploy-production.yml` is retired and cannot deploy GCP).
 
 ```yaml
-name: Deploy to Production with Auto-Rollback
+name: Cloudflare Production Promotion (illustrative)
 
-on:
-  push:
-    tags:
-      - 'v*-prod'
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Authenticate to GCP
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
-
-      - name: Build and push Docker images
-        run: |
-          # Build node-api
-          docker build -t asia-southeast1-docker.pkg.dev/smartspecpro-mvp/smartspecpro/node-api:${{ github.ref_name }} \
-            -f apps/web/Dockerfile .
-          docker push asia-southeast1-docker.pkg.dev/smartspecpro-mvp/smartspecpro/node-api:${{ github.ref_name }}
-
-          # Build python-orchestrator
-          docker build -t asia-southeast1-docker.pkg.dev/smartspecpro-mvp/smartspecpro/python-orchestrator:${{ github.ref_name }} \
-            -f python-backend/Dockerfile .
-          docker push asia-southeast1-docker.pkg.dev/smartspecpro-mvp/smartspecpro/python-orchestrator:${{ github.ref_name }}
-
-      - name: Get current healthy revision (node-api)
-        id: healthy_node
-        run: |
-          HEALTHY_REV=$(gcloud run services describe node-api \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp \
-            --format='value(status.traffic[0].revisionName)')
-          echo "revision=$HEALTHY_REV" >> $GITHUB_OUTPUT
-
-      - name: Deploy node-api canary (10%)
-        run: |
-          # Deploy new revision with tag "canary", no traffic initially
-          gcloud run deploy node-api \
-            --image=asia-southeast1-docker.pkg.dev/smartspecpro-mvp/smartspecpro/node-api:${{ github.ref_name }} \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp \
-            --tag=canary \
-            --no-traffic
-
-          # Get canary revision name
-          CANARY_REV=$(gcloud run services describe node-api \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp \
-            --format='value(status.traffic[?(@.tag=="canary")].revisionName)')
-
-          echo "CANARY_REV=$CANARY_REV" >> $GITHUB_ENV
-
-          # Shift 10% traffic to canary
-          gcloud run services update-traffic node-api \
-            --to-revisions=$CANARY_REV=10,${{ steps.healthy_node.outputs.revision }}=90 \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp
-
-      - name: Monitor canary 10%
-        run: |
-          bash scripts/canary-monitor.sh \
-            node-api \
-            asia-southeast1 \
-            smartspecpro-mvp \
-            ${{ steps.healthy_node.outputs.revision }} \
-            ${{ env.CANARY_REV }} \
-            10
-
-      - name: Shift to 50% traffic
-        run: |
-          gcloud run services update-traffic node-api \
-            --to-revisions=${{ env.CANARY_REV }}=50,${{ steps.healthy_node.outputs.revision }}=50 \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp
-
-      - name: Monitor canary 50%
-        run: |
-          bash scripts/canary-monitor.sh \
-            node-api \
-            asia-southeast1 \
-            smartspecpro-mvp \
-            ${{ steps.healthy_node.outputs.revision }} \
-            ${{ env.CANARY_REV }} \
-            50
-
-      - name: Shift to 100% traffic
-        run: |
-          gcloud run services update-traffic node-api \
-            --to-revisions=${{ env.CANARY_REV }}=100 \
-            --region=asia-southeast1 \
-            --project=smartspecpro-mvp
-
-      - name: Monitor canary 100%
-        run: |
-          bash scripts/canary-monitor.sh \
-            node-api \
-            asia-southeast1 \
-            smartspecpro-mvp \
-            ${{ steps.healthy_node.outputs.revision }} \
-            ${{ env.CANARY_REV }} \
-            100
-
-      - name: Deployment successful
-        run: |
-          echo "✅ Deployment successful: ${{ env.CANARY_REV }} now serving 100% traffic"
-
-      # Repeat above steps for python-orchestrator...
+# The real account-specific deployment pipeline owns secrets, bindings,
+# canary routing and rollback. This document deliberately contains no gcloud,
+# Cloud Run, Artifact Registry or Google OIDC steps.
+steps:
+  - name: Verify local contract
+    run: npm --workspace @smartspec/web run verify:cloudflare-target-readiness
+  - name: Verify target account
+    run: ./ops/feature-187/run-target-account-preflight.sh
+  - name: Deploy with activation disabled
+    run: wrangler deploy --env staging
+  - name: Probe Hyperdrive and native bindings
+    run: ./ops/feature-187/run-target-account-recovery-probe.sh
+  - name: Enable Cloudflare canary
+    run: wrangler versions deploy --percentage 10
+  - name: Roll back on canonical recovery SLO breach
+    run: wrangler rollback
 ```
 
 ---
@@ -446,20 +350,13 @@ jobs:
 **How to override:**
 
 ```bash
-# 1. SSH into deployment runner or run locally with GCP credentials
+# 1. Use the approved Cloudflare deployment pipeline with an audited operator identity
 
-# 2. Kill the canary-monitor.sh process
-pkill -f "canary-monitor.sh"
+# 2. Stop the Cloudflare canary or roll back the Worker version
 
-# 3. Manually verify service health
-gcloud logging tail "resource.type=cloud_run_revision AND resource.labels.service_name=node-api" \
-  --project=smartspecpro-mvp
+# 3. Verify Worker readiness, Hyperdrive connectivity, Queue delivery and canonical outbox age
 
-# 4. If truly healthy, manually shift traffic
-gcloud run services update-traffic node-api \
-  --to-revisions=<CANARY_REVISION>=100 \
-  --region=asia-southeast1 \
-  --project=smartspecpro-mvp
+# 4. If truly healthy, continue the Cloudflare promotion through the audited pipeline
 
 # 5. Document why override was needed (for improving thresholds)
 ```

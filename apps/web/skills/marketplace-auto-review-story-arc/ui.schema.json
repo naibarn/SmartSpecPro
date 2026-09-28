@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "story_summary": { "label": "เรื่องย่อ", "inputType": "textarea" },
+    "shots": { "label": "ช็อตรีวิว", "inputType": "shot-list" },
+    "finish_reason": { "label": "ผลการตรวจ", "inputType": "status" }
+  }
+}

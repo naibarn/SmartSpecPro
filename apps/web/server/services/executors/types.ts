@@ -146,6 +146,8 @@ export interface ExecutorInput {
   skill: SkillDefinition;
   skillSlug: string;
   userId: number;
+  /** Tenant scope for durable media publication and ownership checks. */
+  tenantId?: string;
   channel: "chat" | "team_room";
   traceId?: string;
   stream?: boolean;

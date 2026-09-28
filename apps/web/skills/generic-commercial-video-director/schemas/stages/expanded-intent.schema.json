@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://smartaihub.app/schemas/stages/expanded-intent.schema.json",
+  "title": "Expanded Intent v4",
+  "type": "object",
+  "required": [
+    "targetKind",
+    "summary",
+    "commercialObjective",
+    "presentationMode",
+    "actionChain",
+    "demonstrationArc",
+    "proofMoments",
+    "visualExplanationIntent",
+    "dialogueStrategy",
+    "unknowns",
+    "assumptions",
+    "researchRecommended"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string"
+    },
+    "commercialObjective": {
+      "type": "string"
+    },
+    "presentationMode": {
+      "type": "string"
+    },
+    "actionChain": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "stepId",
+          "actor",
+          "action",
+          "target",
+          "purpose"
+        ],
+        "properties": {
+          "stepId": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "target": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "mechanismStage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "setup",
+              "input",
+              "activation",
+              "operation",
+              "internal_mechanism",
+              "observable_effect",
+              "outcome"
+            ]
+          },
+          "proofRole": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceBasis": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              null,
+              "user_fact",
+              "reference_observed",
+              "verified_research",
+              "category_convention"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "cameraIntent": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dialogueStrategy": {
+      "type": "object",
+      "required": [
+        "mode",
+        "reason"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "silent",
+            "user_dialogue",
+            "agent_dialogue",
+            "voice_over",
+            "presenter"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "researchRecommended": {
+      "type": "boolean"
+    },
+    "demonstrationArc": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "context",
+          "problem",
+          "setup",
+          "activation",
+          "operation",
+          "mechanism_explanation",
+          "proof",
+          "outcome",
+          "hero",
+          "cta",
+          "establish",
+          "approach",
+          "enter",
+          "orient",
+          "highlight_area",
+          "detail",
+          "interact",
+          "service",
+          "experience",
+          "feature",
+          "reaction",
+          "recommendation",
+          "tour",
+          "brand_story",
+          "narrative_beat"
+        ]
+      }
+    },
+    "proofMoments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visualExplanationIntent": {
+      "type": "object",
+      "required": [
+        "needed",
+        "reasons",
+        "candidateModes"
+      ],
+      "properties": {
+        "needed": {
+          "type": "boolean"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "candidateModes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "literal_demo",
+              "macro_insert",
+              "cutaway",
+              "xray_style",
+              "exploded_view",
+              "particle_flow",
+              "airflow_streamlines",
+              "thermal_gradient",
+              "moisture_flow",
+              "cleaning_lift",
+              "motion_trace",
+              "virtual_screen",
+              "ui_composite",
+              "feature_callout",
+              "before_after",
+              "time_compression",
+              "data_overlay"
+            ]
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "targetKind": {
+      "type": "string",
+      "enum": [
+        "physical_product",
+        "place_venue",
+        "service_business",
+        "digital_product",
+        "experience_event",
+        "property_accommodation",
+        "food_beverage",
+        "brand_campaign",
+        "narrative_no_promotion",
+        "unknown"
+      ]
+    },
+    "commercialArc": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "context",
+          "problem",
+          "establish",
+          "approach",
+          "enter",
+          "orient",
+          "setup",
+          "activation",
+          "operation",
+          "highlight_area",
+          "detail",
+          "interact",
+          "service",
+          "experience",
+          "feature",
+          "mechanism_explanation",
+          "proof",
+          "outcome",
+          "reaction",
+          "recommendation",
+          "tour",
+          "brand_story",
+          "narrative_beat",
+          "hero",
+          "cta"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

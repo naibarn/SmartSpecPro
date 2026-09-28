@@ -72,6 +72,10 @@ import {
   VdSchemaValidationError,
   VD_COMPACT_JSON_INSTRUCTION,
 } from "./verticalDramaStoryBible";
+import {
+  analyzeVerticalDramaStorySafety,
+  VerticalDramaStorySafetyError,
+} from "./verticalDramaStorySafety";
 import { resolveQualityLargeContextModelId } from "./verticalDramaImproveScript";
 import { resolveVerticalDramaSeriesModel } from "./verticalDramaLlmModelPolicy";
 
@@ -190,8 +194,10 @@ export interface GenerateShotImageActionParams {
    * router's Zod-validated `softenLevel` input, which TypeScript widens to
    * `number` — the actual `[0, VD_CHARACTER_LOCK_MAX_SOFTEN_LEVEL]` bound is
    * enforced by that Zod schema, not by this type.
-   */
+  */
   softenLevel?: number;
+  /** Effective image-prompt budget for the selected provider/model. */
+  promptMaxChars?: number;
   idempotencyKey?: string;
 }
 
@@ -224,6 +230,9 @@ export function buildShotImageActionUserPrompt(
     `soften_level: ${params.softenLevel ?? 0}`,
     `locale: ${params.locale ?? "th"}`,
     `shot_number: ${params.shot.shotNumber}`,
+    params.promptMaxChars
+      ? `prompt_max_chars: ${Math.min(20_000, Math.max(3_800, Math.floor(params.promptMaxChars)))}`
+      : null,
     `current_prompt: ${params.shot.currentPrompt}`,
     `current_negative_prompt: ${params.shot.currentNegativePrompt || "(none)"}`,
     params.action === "repair"
@@ -300,6 +309,11 @@ export async function generateShotImageAction(
     maxTokens: 3000,
     schema: shotImageActionOutputSchema,
     label: `Shot image action (${params.action}, shot ${params.shot.shotNumber})`,
+    verticalDramaContext: {
+      seriesId: params.seriesId,
+      episodeId: params.episodeId,
+      taskClass: "visual_bible",
+    },
   });
 
   const usage = response.usage;
@@ -308,26 +322,6 @@ export async function generateShotImageAction(
     usage?.completion_tokens ?? 0,
     model,
   );
-
-  await deductCredits({
-    userId: params.userId,
-    tenantId: params.tenantId,
-    amount: creditsUsed,
-    description: `Vertical Drama — shot image action (${params.action}, shot ${params.shot.shotNumber})`,
-    sourceType: "skill",
-    idempotencyKey: params.idempotencyKey
-      ? `${params.idempotencyKey}:shot-image-action`
-      : undefined,
-    metadata: {
-      model,
-      llmModel: model,
-      feature: "vertical_drama_series",
-      action: params.action,
-      shotNumber: params.shot.shotNumber,
-      inputTokens: usage?.prompt_tokens ?? 0,
-      outputTokens: usage?.completion_tokens ?? 0,
-    },
-  });
 
   // Child-safety post-generation safety net — see this function's doc
   // comment. Only relevant when the input actually carried the directive;
@@ -349,6 +343,38 @@ export async function generateShotImageAction(
     outputPrompt = params.shot.currentPrompt;
     outputNegativePrompt = params.shot.currentNegativePrompt;
   }
+
+  // The negative prompt is intentionally excluded: exclusion text commonly
+  // contains policy terms and must not be mistaken for depicted content.
+  const outputSafety = analyzeVerticalDramaStorySafety(outputPrompt);
+  if (outputSafety.level === "high") {
+    throw new VerticalDramaStorySafetyError(
+      "Shot image action produced a high-risk prompt; rewrite it before image generation.",
+      outputSafety,
+    );
+  }
+
+  await deductCredits({
+    userId: params.userId,
+    tenantId: params.tenantId,
+    amount: creditsUsed,
+    contextRef: params.tenantId ? { contextType: "series", sourceType: "vertical_drama_series", sourceId: String(params.seriesId) } : undefined,
+    description: `Vertical Drama — shot image action (${params.action}, shot ${params.shot.shotNumber})`,
+    skillSlug: "vertical-drama-shot-image-action",
+    sourceType: "skill",
+    idempotencyKey: params.idempotencyKey
+      ? `${params.idempotencyKey}:shot-image-action`
+      : undefined,
+    metadata: {
+      model,
+      llmModel: model,
+      feature: "vertical_drama_series",
+      action: params.action,
+      shotNumber: params.shot.shotNumber,
+      inputTokens: usage?.prompt_tokens ?? 0,
+      outputTokens: usage?.completion_tokens ?? 0,
+    },
+  });
 
   return {
     prompt: outputPrompt,

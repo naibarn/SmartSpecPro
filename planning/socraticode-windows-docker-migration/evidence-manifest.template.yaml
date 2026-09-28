@@ -1,0 +1,273 @@
+schema_version: 1
+run:
+  id: ""
+  status: planning
+  started_at_utc: ""
+  completed_at_utc: ""
+  executor: windows-codex
+  canonical_plan_sha256: ""
+  notes: []
+
+approvals:
+  migration_execution:
+    approved: false
+    approved_by: ""
+    approved_at_utc: ""
+  dirty_tracked_transfer:
+    approved: false
+    approved_paths: []
+  dirty_untracked_transfer:
+    approved: false
+    approved_paths: []
+  server_qdrant_snapshot_window:
+    approved: false
+    approved_at_utc: ""
+    window_start_utc: ""
+    window_end_utc: ""
+    approved_collections: []
+  destructive_cleanup:
+    approved: false
+
+ssh:
+  server_alias: ""
+  server_user: dev
+  server_hostname: ""
+  host_key_algorithm: ""
+  host_key_fingerprint: ""
+  fingerprint_verified_out_of_band: false
+  authentication: ssh_key
+  agent_forwarding: false
+
+paths:
+  server_repo: /home/dev/projects/SmartSpecPro
+  remote_plan_dir: /home/dev/projects/SmartSpecPro/planning/socraticode-windows-docker-migration
+  windows_stage: ""
+  wsl_stage: ""
+  wsl_repo: ""
+  local_runtime_dir: ""
+  local_log_file: ""
+
+windows:
+  hostname: ""
+  username: ""
+  product: ""
+  version: ""
+  build: ""
+  ram_bytes: 0
+  logical_processors: 0
+  free_disk_bytes: 0
+
+wsl:
+  distribution: ""
+  username: ""
+  version: 2
+  kernel: ""
+  architecture: ""
+  filesystem_type: ""
+  repo_under_linux_home: false
+  memory_limit_bytes: 0
+  processor_limit: 0
+  swap_limit_bytes: 0
+  auto_memory_reclaim: ""
+  free_disk_bytes: 0
+
+tool_versions:
+  docker_desktop: ""
+  docker_engine: ""
+  docker_compose: ""
+  node: ""
+  npm: ""
+  git: ""
+  openssh: ""
+  codex: ""
+  socraticode: "1.8.11"
+  qdrant: "1.17.0"
+  ollama: ""
+
+source:
+  server_branch: main
+  server_commit: ""
+  origin_commit: ""
+  target_commit: ""
+  server_dirty_tracked_count: 0
+  server_dirty_untracked_count: 0
+  target_git_status: ""
+  source_route: github_clone
+  dirty_tracked_included: false
+  dirty_untracked_included: false
+  excluded_patterns:
+    - ".env*"
+    - "**/.env*"
+    - ".claude/**"
+    - ".git/**"
+    - "node_modules/**"
+    - "dist/**"
+    - "build/**"
+    - "target/**"
+    - "orchestra/backups/**"
+    - "uploads/**"
+    - "logs/**"
+    - "backups/**"
+    - "core"
+
+server_socraticode:
+  launcher_path: /home/dev/tools/socraticode-docker/socraticode-mcp.sh
+  launcher_mode: ""
+  launcher_sha256: ""
+  watcher_unit_enabled: ""
+  watcher_unit_active: ""
+  index_unit_enabled: ""
+  index_unit_active: ""
+  cleanup_timer_enabled: ""
+  cleanup_timer_active: ""
+  managed_mcp_container_count: 0
+  qdrant_container_status: ""
+  qdrant_restart_policy: ""
+  qdrant_volume_size_bytes: 0
+  qdrant_image_id: ""
+  mcp_image_id: ""
+  collections: []
+
+target_architecture:
+  codex_agent: wsl2
+  mcp_transport: local_stdio
+  mcp_runtime: local_npx
+  qdrant_mode: external
+  qdrant_url: http://127.0.0.1:16333
+  qdrant_container: socraticode-local-qdrant
+  qdrant_volume: socraticode_local_qdrant_data
+  qdrant_memory_limit_bytes: 4294967296
+  ollama_route: ""
+  ollama_url: ""
+  embedding_provider: ollama
+  embedding_model: nomic-embed-text
+  embedding_dimensions: 768
+  project_id: smartspecpro
+
+migration_routes:
+  source: github_clone
+  qdrant: fresh_reindex
+  ollama: ""
+  snapshot_restore_accepted: false
+  snapshot_restore_rejection_reason: ""
+
+transfers: []
+# Each transfer entry:
+# - name: ""
+#   source: ""
+#   destination: ""
+#   classification: ""
+#   size_bytes: 0
+#   source_sha256: ""
+#   destination_sha256: ""
+#   verified: false
+#   contains_secrets: false
+
+qdrant:
+  source_version: "1.17.0"
+  target_version: "1.17.0"
+  target_image_id: ""
+  target_platform: linux/amd64
+  source_collections: []
+  restored_collections: []
+  fresh_index_collections: []
+  file_count: 0
+  chunk_count: 0
+  snapshot_archive_sha256: ""
+  stopped_volume_backup_sha256: ""
+
+health:
+  before:
+    server_public: ""
+    server_web: ""
+    server_backend: ""
+    postgres: ""
+    memory_psi: ""
+    recent_oom_events: []
+  after:
+    server_public: ""
+    server_web: ""
+    server_backend: ""
+    postgres: ""
+    memory_psi: ""
+    recent_oom_events: []
+
+resource_observations:
+  indexing_started_at_utc: ""
+  indexing_completed_at_utc: ""
+  peak_wsl_memory_bytes: 0
+  idle_wsl_memory_bytes: 0
+  peak_swap_bytes: 0
+  qdrant_peak_memory_bytes: 0
+  ollama_peak_memory_bytes: 0
+  mcp_peak_memory_bytes: 0
+  qdrant_restart_count: 0
+  ollama_restart_count: 0
+  unexpected_mcp_process_count: 0
+  unexpected_mcp_container_count: 0
+  samples: []
+
+functional_checks:
+  mcp_initialize: not_run
+  codebase_status: not_run
+  codebase_index: not_run
+  codebase_search: not_run
+  codebase_symbol: not_run
+  codebase_impact: not_run
+  codebase_graph_stats: not_run
+  watcher_incremental_update: not_run
+  three_cycle_fanout_test: not_run
+
+gates:
+  G0_ssh_identity: not_run
+  G1_plan_copy: not_run
+  G2_windows_preflight: not_run
+  G3_server_baseline: not_run
+  G4_data_lane: not_run
+  G5_source: not_run
+  G6_local_services: not_run
+  G7_index: not_run
+  G8_functional: not_run
+  G9_server_safety: not_run
+  G10_soak: not_run
+  G11_closeout: not_run
+
+observation:
+  immediate: {}
+  one_hour: {}
+  twenty_four_hours: {}
+  seventy_two_hours: {}
+
+rollback:
+  triggered: false
+  triggered_at_utc: ""
+  reason: ""
+  local_mcp_disabled: false
+  local_services_stopped: false
+  local_logs_preserved: false
+  target_volumes_preserved_or_quarantined: false
+  server_socraticode_remained_disabled: false
+  actions: []
+
+retention:
+  retain_until_utc: ""
+  server_qdrant_volume_untouched: true
+  artifacts: []
+  cleanup_requires_new_approval: true
+
+deviations: []
+commands: []
+# Each command entry should be sanitized:
+# - phase: ""
+#   timestamp_utc: ""
+#   host: windows | wsl | server
+#   command_summary: ""
+#   exit_code: 0
+#   result: ""
+
+final:
+  accepted: false
+  accepted_by: ""
+  accepted_at_utc: ""
+  summary: ""
+  unresolved_risks: []

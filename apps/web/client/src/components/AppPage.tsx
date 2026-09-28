@@ -65,6 +65,13 @@ export type AppPageProps = {
   toolbar?: React.ReactNode;
   /** Internal padding of the body content area. @default 4 */
   contentPadding?: 0 | 4;
+  /**
+   * Keep the page shell inside its parent inline size. This is useful when
+   * the parent already owns the page gutters (for example a shell with a
+   * sidebar); Astryx's default edge compensation can otherwise make the
+   * Layout border box wider than the available content column.
+   */
+  constrainToParent?: boolean;
   /** Which body state to render. @default "ready" */
   state?: AppPageState;
   /** Custom loading placeholder. Falls back to a default skeleton grid when omitted. */
@@ -180,6 +187,7 @@ export function AppPage({
   actions,
   toolbar,
   contentPadding = 4,
+  constrainToParent = false,
   state = "ready",
   loadingSkeleton,
   error,
@@ -189,10 +197,29 @@ export function AppPage({
   return (
     <Layout
       height="auto"
+      className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
+      style={{
+        width: "100%",
+        minWidth: 0,
+        maxWidth: "100%",
+        boxSizing: "border-box",
+        ...(constrainToParent ? { marginInline: 0 } : {}),
+      }}
       data-testid="app-page-root"
       header={
-        <LayoutHeader hasDivider data-testid="app-page-header">
-          <VStack gap={3}>
+        <LayoutHeader
+          hasDivider
+          padding={constrainToParent ? 0 : undefined}
+          data-testid="app-page-header"
+          className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
+          style={{
+            width: "100%",
+            minWidth: 0,
+            maxWidth: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          <VStack gap={3} className="min-w-0 w-full max-w-full">
             {breadcrumbs && breadcrumbs.length > 0 ? (
               <Breadcrumbs>
                 {breadcrumbs.map((crumb, index) => {
@@ -209,8 +236,14 @@ export function AppPage({
                 })}
               </Breadcrumbs>
             ) : null}
-            <HStack justify="between" align="center" wrap="wrap" gap={4}>
-              <VStack gap={1}>
+            <HStack
+              justify="between"
+              align="center"
+              wrap="wrap"
+              gap={4}
+              className="min-w-0 w-full max-w-full"
+            >
+              <VStack gap={1} className="min-w-0 max-w-full">
                 <Heading level={1}>{title}</Heading>
                 {description ? (
                   <Text type="body" color="secondary">
@@ -223,6 +256,7 @@ export function AppPage({
                   gap={2}
                   align="center"
                   wrap="wrap"
+                  className="max-w-full"
                   data-testid="app-page-actions"
                 >
                   {actions}
@@ -234,11 +268,21 @@ export function AppPage({
       }
       content={
         <LayoutContent
-          padding={contentPadding}
+          padding={constrainToParent ? 0 : contentPadding}
           isScrollable={false}
+          className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
+          style={{
+            width: "100%",
+            minWidth: 0,
+            maxWidth: "100%",
+            boxSizing: "border-box",
+          }}
           data-testid="app-page-content"
         >
-          <VStack gap={4}>
+          <VStack
+            gap={4}
+            className="isolate min-w-0 w-full max-w-full overflow-x-clip [contain:inline-size]"
+          >
             {toolbar ? (
               <div data-testid="app-page-toolbar">{toolbar}</div>
             ) : null}

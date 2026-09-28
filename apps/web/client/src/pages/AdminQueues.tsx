@@ -2,7 +2,7 @@
  * Admin Queue Monitoring Page
  *
  * Provides monitoring and management for:
- * - Cloud Tasks background job queues
+ * - Cloudflare canonical background job queues
  * - Bottleneck rate limiters per provider
  * - Failed job management
  * - Queue statistics and health
@@ -392,7 +392,7 @@ export default function AdminQueues() {
           <TabsContent value="queues" className="space-y-4">
             <DashboardCard
               title="Background Job Queues"
-              description="Cloud Tasks queues for async processing"
+              description="Cloudflare canonical queues backed by the PostgreSQL outbox"
             >
               <div className="space-y-4">
                 {!queueStatus.data?.available && (

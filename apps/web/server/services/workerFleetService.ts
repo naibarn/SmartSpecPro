@@ -8,6 +8,7 @@ import {
   workerHeartbeats,
   workerJobEvents,
   workerJobs,
+  tenants,
   workers,
 } from "../../drizzle/schema";
 import { auditLogger } from "./auditLogger";
@@ -92,6 +93,12 @@ export interface WorkerFleetSummary {
   workerAccessPolicyPreset: string | null;
   workerAccessPolicyScopeCount: number;
   workerAccessPolicyQuotaDisplayLabel: string;
+  /** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`
+   *  (section-07/11 shape: `{ capability, advertised, reason?, hermesVersion }`).
+   *  `undefined` when the worker never advertised this capability at all
+   *  (not even a legacy worker) — distinct from `ready: false` (advertised
+   *  but demoted, e.g. below `hermes_worker_min_version`). */
+  hermes?: { ready: boolean; version: string | null };
 }
 
 export interface WorkerDiagnosticsSnapshot {
@@ -376,6 +383,21 @@ function readRemoteEndpointPolicy(worker: WorkerRecord): WorkerRemoteEndpointPol
     return policy;
   }
   return "unknown";
+}
+
+/** Feature 135 section 12 — pure projection of `capabilitiesJson.hermesMedia`
+ *  (the shape sections 07/11 registered); read for EVERY runtimeType, not
+ *  just `hermes_agent_gateway` — the shared Hermes worker unit advertises
+ *  this capability on its own registration/heartbeat regardless of runtime
+ *  family. */
+function readHermesFleetSummary(worker: WorkerRecord): { ready: boolean; version: string | null } | undefined {
+  const capabilities = isPlainObject(worker.capabilitiesJson) ? worker.capabilitiesJson : null;
+  const hermesMedia = capabilities && isPlainObject(capabilities.hermesMedia) ? capabilities.hermesMedia : null;
+  if (!hermesMedia) return undefined;
+  return {
+    ready: hermesMedia.advertised === true,
+    version: typeof hermesMedia.hermesVersion === "string" ? hermesMedia.hermesVersion : null,
+  };
 }
 
 function readHermesPersonaSummary(worker: WorkerRecord): ReturnType<typeof summarizeHermesRuntimePersona> {
@@ -690,20 +712,12 @@ const defaultRepo: WorkerFleetRepository = {
     return readAffectedRowCount(deleted);
   },
   async cleanupJobEventsBefore(tenantId, cutoff) {
-    const db = await getDb();
-    const tenantJobs = await db
-      .select({ jobId: workerJobs.id })
-      .from(workerJobs)
-      .where(eq(workerJobs.tenantId, tenantId));
-    const jobIds = tenantJobs.map((row) => row.jobId);
-    if (!jobIds.length) {
-      return 0;
-    }
-
-    const deleted = await db
-      .delete(workerJobEvents)
-      .where(and(inArray(workerJobEvents.workerJobId, jobIds), lt(workerJobEvents.createdAt, cutoff)));
-    return readAffectedRowCount(deleted);
+    // Feature 186 makes worker_job_events the append-only canonical lifecycle
+    // ledger. Retention must archive to a separate evidence store first; a
+    // fleet cleanup must never delete recovery/audit history in place.
+    void tenantId;
+    void cutoff;
+    return 0;
   },
   async cleanupUnpublishedArtifactsBefore(tenantId, cutoff) {
     const db = await getDb();
@@ -965,6 +979,7 @@ export async function listWorkerFleet(
       workerAccessPolicyPreset: accessPolicySummary.workerAccessPolicyPreset,
       workerAccessPolicyScopeCount: accessPolicySummary.workerAccessPolicyScopeCount,
       workerAccessPolicyQuotaDisplayLabel: accessPolicySummary.workerAccessPolicyQuotaDisplayLabel,
+      hermes: readHermesFleetSummary(worker),
     };
   });
 }
@@ -1132,6 +1147,61 @@ export async function getWorkerQueueOverview(
       finishedAt: toIsoOrNull(job.finishedAt),
       leaseExpiresAt: toIsoOrNull(job.leaseExpiresAt),
     })),
+  };
+}
+
+/**
+ * Host-level aggregate used by scheduled infrastructure assessments. Capacity
+ * is a server concern, while the Admin UI remains tenant-scoped. Only counts
+ * and safe job-type summaries are returned; no tenant identifiers or payloads
+ * cross the capacity snapshot boundary.
+ */
+export async function getGlobalWorkerQueueOverview(
+  input: { hours?: number; now?: Date } = {},
+): Promise<WorkerQueueOverview> {
+  const db = await getDb();
+  const tenantRows = await db.select({ id: tenants.id }).from(tenants);
+  const overviews = await Promise.all(
+    tenantRows.map((tenant) => getWorkerQueueOverview(tenant.id, input)),
+  );
+  const oldest = overviews
+    .map((overview) => overview.oldestQueuedAt)
+    .filter((value): value is string => Boolean(value))
+    .sort()[0] ?? null;
+  const distribution = new Map<string, { runtimeType: string; runtimeVersion: string; count: number }>();
+  for (const overview of overviews) {
+    for (const item of overview.runtimeVersionDistribution) {
+      const key = `${item.runtimeType}\u0000${item.runtimeVersion}`;
+      const current = distribution.get(key) ?? { ...item, count: 0 };
+      current.count += item.count;
+      distribution.set(key, current);
+    }
+  }
+  return {
+    tenantId: "global",
+    generatedAt: input.now?.toISOString() ?? new Date().toISOString(),
+    hours: Math.min(168, Math.max(1, Math.floor(input.hours ?? 24))),
+    totalJobs: overviews.reduce((sum, item) => sum + item.totalJobs, 0),
+    queuedJobCount: overviews.reduce((sum, item) => sum + item.queuedJobCount, 0),
+    activeJobCount: overviews.reduce((sum, item) => sum + item.activeJobCount, 0),
+    stalledJobCount: overviews.reduce((sum, item) => sum + item.stalledJobCount, 0),
+    reassignableJobCount: overviews.reduce((sum, item) => sum + item.reassignableJobCount, 0),
+    completedJobCount: overviews.reduce((sum, item) => sum + item.completedJobCount, 0),
+    failedJobCount: overviews.reduce((sum, item) => sum + item.failedJobCount, 0),
+    canceledJobCount: overviews.reduce((sum, item) => sum + item.canceledJobCount, 0),
+    oldestQueuedAt: oldest,
+    oldestQueuedAgeMs: oldest ? Math.max(0, Date.now() - new Date(oldest).getTime()) : null,
+    verificationFailureCount: overviews.reduce((sum, item) => sum + item.verificationFailureCount, 0),
+    staleUploadRejectionCount: overviews.reduce((sum, item) => sum + item.staleUploadRejectionCount, 0),
+    reassignmentCount: overviews.reduce((sum, item) => sum + item.reassignmentCount, 0),
+    securityWarningCounts: {
+      tokenReplay: overviews.reduce((sum, item) => sum + item.securityWarningCounts.tokenReplay, 0),
+      deviceProofMismatch: overviews.reduce((sum, item) => sum + item.securityWarningCounts.deviceProofMismatch, 0),
+      refreshTokenReuse: overviews.reduce((sum, item) => sum + item.securityWarningCounts.refreshTokenReuse, 0),
+      autoBlockedConnection: overviews.reduce((sum, item) => sum + item.securityWarningCounts.autoBlockedConnection, 0),
+    },
+    runtimeVersionDistribution: [...distribution.values()],
+    recentJobs: [],
   };
 }
 

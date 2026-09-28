@@ -76,6 +76,9 @@ describe("mapToCategory", () => {
   it("maps relatedResourceType 'system_health' to category 'system_health'", () => {
     expect(mapToCategory("system_health")).toBe("system_health");
   });
+  it("maps relatedResourceType 'credits' to category 'credits'", () => {
+    expect(mapToCategory("credits")).toBe("credits");
+  });
   it("maps relatedResourceType 'workflow' to category 'workflow'", () => {
     expect(mapToCategory("workflow")).toBe("workflow");
   });
@@ -222,6 +225,47 @@ describe("preference-aware delivery in createNotification", () => {
 
       const result = await createNotification(baseParams({ db, priority: "high" }));
       expect(result).not.toBeNull();
+    });
+
+    it("uses the Credits setting as the persisted priority", async () => {
+      const db = mockDb();
+      const redis = mockRedis({
+        get: vi.fn().mockResolvedValue(
+          JSON.stringify({ inApp: true, email: false, telegram: false, minSeverity: "normal", mutedUntil: null })
+        ),
+      });
+
+      const result = await createNotification(
+        baseParams({ db, relatedResourceType: "credits", priority: "high" })
+      );
+
+      expect(result).not.toBeNull();
+      const insertResult = (db.insert as any).mock.results[0].value;
+      expect(insertResult.values.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          priority: "normal",
+          relatedResourceType: "credits",
+        })
+      );
+      expect(redis.get).toHaveBeenCalledWith("notification:prefs:42:credits");
+    });
+
+    it("defaults Credits notifications to High when the preference is unset", async () => {
+      const db = mockDb();
+      mockRedis({
+        get: vi.fn().mockResolvedValue(
+          JSON.stringify({ inApp: true, email: false, telegram: false, minSeverity: null, mutedUntil: null })
+        ),
+      });
+
+      await createNotification(
+        baseParams({ db, relatedResourceType: "credits", priority: "high" })
+      );
+
+      const insertResult = (db.insert as any).mock.results[0].value;
+      expect(insertResult.values.mock.calls[0][0]).toEqual(
+        expect.objectContaining({ priority: "high" })
+      );
     });
 
     it("uses defaults (inApp=true) when no preference row exists for category", async () => {

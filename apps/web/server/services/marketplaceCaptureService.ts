@@ -21,6 +21,8 @@ import {
 } from "@shared/marketplaceCapture";
 import { marketplaceCaptureError } from "./marketplaceCaptureConfig";
 import { mirrorMarketplaceImageCandidates } from "./marketplaceAssetService";
+import { marketplaceAssetMediaUrl, marketplaceMediaUrl } from "./marketplaceMediaUrl";
+import { marketplaceOwnerTenantScope } from "./marketplaceTenantScope";
 
 function id(prefix: string) {
   return `${prefix}_${crypto.randomBytes(16).toString("hex")}`;
@@ -101,7 +103,7 @@ function appendEvidence(value: unknown, next: string) {
   return Array.from(new Set([...existing, next]));
 }
 
-async function findLatestCandidateForCapture(capture: MarketplaceCaptureSession, auth: { userId: number }) {
+async function findLatestCandidateForCapture(capture: MarketplaceCaptureSession, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const raw = asRecord(capture.rawPayloadJson);
   const shopeeUrl = asRecord(raw.shopeeUrl);
@@ -132,10 +134,17 @@ async function findLatestCandidateForCapture(capture: MarketplaceCaptureSession,
         sql`CASE WHEN ${marketplaceCandidateItems.affiliateUrl} IS NOT NULL THEN 0 ELSE 1 END`,
         desc(marketplaceCandidateItems.createdAt),
       ];
-    const [candidate] = await db.select().from(marketplaceCandidateItems)
-      .where(and(...filters))
+    const [candidateRow] = await db.select({ item: marketplaceCandidateItems })
+      .from(marketplaceCandidateItems)
+      .innerJoin(marketplaceCandidateBatches, eq(marketplaceCandidateBatches.id, marketplaceCandidateItems.batchId))
+      .where(and(
+        ...filters,
+        eq(marketplaceCandidateBatches.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCandidateBatches.tenantId, auth.tenantId),
+      ))
       .orderBy(...order)
       .limit(1);
+    const candidate = candidateRow?.item;
     if (candidate) return candidate;
   }
 
@@ -148,18 +157,22 @@ async function findLatestCandidateForCapture(capture: MarketplaceCaptureSession,
   ]);
   if (sourceUrls.length === 0) return null;
 
-  const [candidate] = await db.select().from(marketplaceCandidateItems)
+  const [candidateRow] = await db.select({ item: marketplaceCandidateItems })
+    .from(marketplaceCandidateItems)
+    .innerJoin(marketplaceCandidateBatches, eq(marketplaceCandidateBatches.id, marketplaceCandidateItems.batchId))
     .where(and(
       eq(marketplaceCandidateItems.userId, auth.userId),
       eq(marketplaceCandidateItems.platform, capture.platform),
       inArray(marketplaceCandidateItems.sourceUrl, sourceUrls),
+      eq(marketplaceCandidateBatches.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCandidateBatches.tenantId, auth.tenantId),
     ))
     .orderBy(
       sql`CASE WHEN ${marketplaceCandidateItems.affiliateUrl} IS NOT NULL THEN 0 ELSE 1 END`,
       desc(marketplaceCandidateItems.createdAt),
     )
     .limit(1);
-  return candidate ?? null;
+  return candidateRow?.item ?? null;
 }
 
 function mergeMarketplaceCandidateFallback(capture: MarketplaceCaptureSession, candidate: MarketplaceCandidateItem | null) {
@@ -296,6 +309,7 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
     [existingCapture] = await db.select().from(marketplaceCaptureSessions)
       .where(and(
         eq(marketplaceCaptureSessions.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
         eq(marketplaceCaptureSessions.platform, parsed.platform),
         eq(marketplaceCaptureSessions.externalShopId, externalShopId),
         eq(marketplaceCaptureSessions.externalProductId, externalProductId),
@@ -307,6 +321,7 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
     [existingCapture] = await db.select().from(marketplaceCaptureSessions)
       .where(and(
         eq(marketplaceCaptureSessions.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
         eq(marketplaceCaptureSessions.platform, parsed.platform),
         eq(marketplaceCaptureSessions.externalProductId, externalProductId),
         eq(marketplaceCaptureSessions.sourceUrl, sourceUrl),
@@ -340,11 +355,19 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
   if (existingCapture) {
     if (existingCapture.status !== "confirmed") {
       await db.delete(marketplaceCaptureAssets)
-        .where(and(eq(marketplaceCaptureAssets.captureId, captureId), eq(marketplaceCaptureAssets.userId, auth.userId)));
+        .where(and(
+          eq(marketplaceCaptureAssets.captureId, captureId),
+          eq(marketplaceCaptureAssets.userId, auth.userId),
+          marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
+        ));
     }
     await db.update(marketplaceCaptureSessions)
       .set(baseCaptureValues)
-      .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+      .where(and(
+        eq(marketplaceCaptureSessions.id, captureId),
+        eq(marketplaceCaptureSessions.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+      ));
   } else {
     await db.insert(marketplaceCaptureSessions).values({
       id: captureId,
@@ -392,7 +415,11 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
         },
         updatedAt: new Date(),
       })
-      .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+      .where(and(
+        eq(marketplaceCaptureSessions.id, captureId),
+        eq(marketplaceCaptureSessions.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+      ));
   }
 
   return {
@@ -406,10 +433,14 @@ export async function createMarketplaceCaptureDraft(input: CreateMarketplaceCapt
   };
 }
 
-export async function getMarketplaceCaptureForUser(captureId: string, auth: { userId: number }) {
+export async function getMarketplaceCaptureForUser(captureId: string, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const [capture] = await db.select().from(marketplaceCaptureSessions)
-    .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ))
     .limit(1);
   if (!capture) throw marketplaceCaptureError("capture_not_found", "Capture not found", 404);
   const candidate = await findLatestCandidateForCapture(capture, auth);
@@ -422,15 +453,29 @@ export async function getMarketplaceCaptureForUser(captureId: string, auth: { us
         normalizedResultJson: enriched.capture.normalizedResultJson,
         updatedAt: new Date(),
       })
-      .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+      .where(and(
+        eq(marketplaceCaptureSessions.id, captureId),
+        eq(marketplaceCaptureSessions.userId, auth.userId),
+        marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+      ));
   }
   const assets = await db.select().from(marketplaceCaptureAssets)
-    .where(eq(marketplaceCaptureAssets.captureId, captureId))
+    .where(and(
+      eq(marketplaceCaptureAssets.captureId, captureId),
+      eq(marketplaceCaptureAssets.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
+    ))
     .orderBy(marketplaceCaptureAssets.sortOrder, marketplaceCaptureAssets.createdAt);
-  return { capture: enriched.capture, assets };
+  return {
+    capture: enriched.capture,
+    assets: assets.map((asset) => ({
+      ...asset,
+      url: marketplaceAssetMediaUrl(asset),
+    })),
+  };
 }
 
-export async function saveMarketplaceCaptureDraftEdits(captureId: string, input: unknown, auth: { userId: number }) {
+export async function saveMarketplaceCaptureDraftEdits(captureId: string, input: unknown, auth: { userId: number; tenantId?: string }) {
   const parsed = marketplaceConfirmProductSchema.parse(input);
   const { capture } = await getMarketplaceCaptureForUser(captureId, auth);
   const product = parsed.product;
@@ -468,60 +513,103 @@ export async function saveMarketplaceCaptureDraftEdits(captureId: string, input:
   const db = getDb();
   await db.update(marketplaceCaptureSessions)
     .set({ affiliateUrl, normalizedResultJson: savedDraft, updatedAt: new Date() })
-    .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ));
   return { captureId, status: capture.status, saved: true, savedAt: savedDraft.draftSavedAt };
 }
 
-export async function discardMarketplaceCapture(captureId: string, auth: { userId: number }) {
+export async function discardMarketplaceCapture(captureId: string, auth: { userId: number; tenantId?: string }) {
   const { capture } = await getMarketplaceCaptureForUser(captureId, auth);
   if (capture.status === "confirmed") throw marketplaceCaptureError("capture_confirmed", "Confirmed captures cannot be discarded", 409);
   const db = getDb();
   await db.update(marketplaceCaptureSessions)
     .set({ status: "discarded", updatedAt: new Date() })
-    .where(and(eq(marketplaceCaptureSessions.id, captureId), eq(marketplaceCaptureSessions.userId, auth.userId)));
+    .where(and(
+      eq(marketplaceCaptureSessions.id, captureId),
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ));
   return { captureId, status: "discarded" };
 }
 
-export async function listMarketplaceCapturesForUser(auth: { userId: number }, limit = 30) {
+export async function listMarketplaceCapturesForUser(auth: { userId: number; tenantId?: string }, limit = 30) {
   const db = getDb();
   return db.select().from(marketplaceCaptureSessions)
-    .where(eq(marketplaceCaptureSessions.userId, auth.userId))
+    .where(and(
+      eq(marketplaceCaptureSessions.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureSessions.tenantId, auth.tenantId),
+    ))
     .orderBy(desc(marketplaceCaptureSessions.createdAt))
     .limit(Math.min(Math.max(limit, 1), 100));
 }
 
-export async function listMarketplaceProductsForUser(auth: { userId: number }, limit = 30) {
+export async function listMarketplaceProductsForUser(auth: { userId: number; tenantId?: string }, limit = 30) {
   const db = getDb();
   return db.select().from(marketplaceProducts)
-    .where(eq(marketplaceProducts.userId, auth.userId))
+    .where(and(
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .orderBy(desc(marketplaceProducts.createdAt))
     .limit(Math.min(Math.max(limit, 1), 100));
 }
 
-export async function getMarketplaceProductForUser(productId: string, auth: { userId: number }) {
+export async function getMarketplaceProductForUser(productId: string, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const [product] = await db.select().from(marketplaceProducts)
-    .where(and(eq(marketplaceProducts.id, productId), eq(marketplaceProducts.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceProducts.id, productId),
+      eq(marketplaceProducts.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceProducts.tenantId, auth.tenantId),
+    ))
     .limit(1);
   if (!product) throw marketplaceCaptureError("product_not_found", "Product not found", 404);
   const images = await db.select().from(marketplaceProductImages)
     .where(eq(marketplaceProductImages.productId, productId))
     .orderBy(marketplaceProductImages.sortOrder, marketplaceProductImages.createdAt);
-  return { product, images };
+  const captureAssetIds = Array.from(new Set(images.map((image) => image.captureAssetId).filter(Boolean))) as string[];
+  const captureAssets = captureAssetIds.length > 0
+    ? await db.select().from(marketplaceCaptureAssets).where(and(
+      inArray(marketplaceCaptureAssets.id, captureAssetIds),
+      eq(marketplaceCaptureAssets.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCaptureAssets.tenantId, auth.tenantId),
+    ))
+    : [];
+  const captureAssetById = new Map(captureAssets.map((asset) => [asset.id, asset]));
+  return {
+    product,
+    images: images.map((image) => ({
+      ...image,
+      url: marketplaceMediaUrl(
+        captureAssetById.get(image.captureAssetId ?? "")?.storageKey ?? image.storageKey,
+        image.url || captureAssetById.get(image.captureAssetId ?? "")?.url,
+      ),
+    })),
+  };
 }
 
-export async function listMarketplaceCandidateBatchesForUser(auth: { userId: number }, limit = 30) {
+export async function listMarketplaceCandidateBatchesForUser(auth: { userId: number; tenantId?: string }, limit = 30) {
   const db = getDb();
   return db.select().from(marketplaceCandidateBatches)
-    .where(eq(marketplaceCandidateBatches.userId, auth.userId))
+    .where(and(
+      eq(marketplaceCandidateBatches.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCandidateBatches.tenantId, auth.tenantId),
+    ))
     .orderBy(desc(marketplaceCandidateBatches.createdAt))
     .limit(Math.min(Math.max(limit, 1), 100));
 }
 
-export async function getMarketplaceCandidateBatchForUser(batchId: string, auth: { userId: number }) {
+export async function getMarketplaceCandidateBatchForUser(batchId: string, auth: { userId: number; tenantId?: string }) {
   const db = getDb();
   const [batch] = await db.select().from(marketplaceCandidateBatches)
-    .where(and(eq(marketplaceCandidateBatches.id, batchId), eq(marketplaceCandidateBatches.userId, auth.userId)))
+    .where(and(
+      eq(marketplaceCandidateBatches.id, batchId),
+      eq(marketplaceCandidateBatches.userId, auth.userId),
+      marketplaceOwnerTenantScope(marketplaceCandidateBatches.tenantId, auth.tenantId),
+    ))
     .limit(1);
   if (!batch) throw marketplaceCaptureError("candidate_batch_not_found", "Candidate batch not found", 404);
   const items = await db.select().from(marketplaceCandidateItems)

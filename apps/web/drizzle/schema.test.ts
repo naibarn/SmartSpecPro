@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import { getTableColumns } from 'drizzle-orm';
+import { and, eq, getTableColumns, isNull } from 'drizzle-orm';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import {
   userGroups,
   groupMembers,
@@ -33,7 +34,63 @@ import {
   supportRecoveryCases,
   billingEffects,
   messages,
+  verticalDramaDraftLedgers,
+  verticalDramaSeriesSoundBibles,
+  verticalDramaAudioQcReports,
+  verticalDramaAudioManifests,
+  videoEditorProjectRevisions,
+  videoEditorProjectAssets,
+  videoEditorProjectJobs,
+  mediaModels,
 } from './schema';
+
+describe('media_models thinking mode schema', () => {
+  test('exposes a default mode and supported modes collection', () => {
+    const columns = getTableColumns(mediaModels);
+
+    expect(columns.thinkingModeDefault).toBeDefined();
+    expect(columns.thinkingModeDefault.notNull).toBe(true);
+    expect(columns.thinkingModes).toBeDefined();
+    expect(columns.thinkingModes.notNull).toBe(true);
+  });
+});
+
+describe('Feature 184 Web Video Editor revision schema', () => {
+  test('exposes immutable revision, managed asset, and worker-job link tables', () => {
+    expect(getTableColumns(videoEditorProjectRevisions).document).toBeDefined();
+    expect(getTableColumns(videoEditorProjectRevisions).documentHash).toBeDefined();
+    expect(getTableColumns(videoEditorProjectAssets).assetRef).toBeDefined();
+    expect(getTableColumns(videoEditorProjectJobs).revisionId).toBeDefined();
+    expect(getTableColumns(videoEditorProjectJobs).workerJobId).toBeDefined();
+  });
+});
+
+describe('vertical_drama_draft_ledgers Series ownership schema', () => {
+  test('exposes the Series fields used by Draft recovery queries', () => {
+    const columns = getTableColumns(verticalDramaDraftLedgers);
+
+    expect(columns.seriesId).toBeDefined();
+    expect(columns.seriesId.notNull).toBe(false);
+    expect(columns.seriesDeletedAt).toBeDefined();
+    expect(columns.seriesDeletedAt.notNull).toBe(false);
+  });
+
+  test('compiles Series recovery predicates with real column expressions', () => {
+    const compiled = new PgDialect().sqlToQuery(
+      and(
+        eq(verticalDramaDraftLedgers.seriesId, 55),
+        isNull(verticalDramaDraftLedgers.seriesDeletedAt),
+      )!,
+    );
+
+    expect(compiled.sql).toContain('"vertical_drama_draft_ledgers"."seriesId" = $1');
+    expect(compiled.sql).toContain(
+      '"vertical_drama_draft_ledgers"."seriesDeletedAt" is null',
+    );
+    expect(compiled.sql).not.toContain('( = $1');
+    expect(compiled.sql).not.toContain('and  is null');
+  });
+});
 
 describe('user_groups table schema', () => {
   test('has required columns with correct types', () => {
@@ -847,5 +904,51 @@ describe('messages.attachments assetId extension', () => {
     const cols = getTableColumns(messages);
     expect(cols.runtimeMetadata).toBeDefined();
     expect(cols.runtimeMetadata.notNull).toBeFalsy();
+  });
+});
+
+describe('Feature 175: Native Cinematic Audio tables schema', () => {
+  test('vertical_drama_series_sound_bibles has all required columns', () => {
+    const cols = getTableColumns(verticalDramaSeriesSoundBibles);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.version.notNull).toBe(true);
+    expect(cols.audioStyle.notNull).toBe(true);
+    expect(cols.characterVoiceProfiles).toBeDefined();
+    expect(cols.locationSoundProfiles).toBeDefined();
+    expect(cols.transitionPolicy).toBeDefined();
+    expect(cols.createdAt.notNull).toBe(true);
+    expect(cols.updatedAt.notNull).toBe(true);
+  });
+
+  test('vertical_drama_audio_qc_reports has all required columns', () => {
+    const cols = getTableColumns(verticalDramaAudioQcReports);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.episodeId.notNull).toBe(true);
+    expect(cols.shotNumber.notNull).toBe(true);
+    expect(cols.clipNumber.notNull).toBe(true);
+    expect(cols.overallScore.notNull).toBe(true);
+    expect(cols.bgmBleedDetected.notNull).toBe(true);
+    expect(cols.flags.notNull).toBe(true);
+    expect(cols.createdAt.notNull).toBe(true);
+  });
+
+  test('vertical_drama_audio_manifests has all required columns', () => {
+    const cols = getTableColumns(verticalDramaAudioManifests);
+    expect(cols.id).toBeDefined();
+    expect(cols.tenantId.notNull).toBe(true);
+    expect(cols.seriesId.notNull).toBe(true);
+    expect(cols.episodeId.notNull).toBe(true);
+    expect(cols.shotNumber.notNull).toBe(true);
+    expect(cols.version.notNull).toBe(true);
+    expect(cols.nativeAudioMode.notNull).toBe(true);
+    expect(cols.stems.notNull).toBe(true);
+    expect(cols.mixDeltas.notNull).toBe(true);
+    expect(cols.takeHistory.notNull).toBe(true);
+    expect(cols.createdAt.notNull).toBe(true);
+    expect(cols.updatedAt.notNull).toBe(true);
   });
 });

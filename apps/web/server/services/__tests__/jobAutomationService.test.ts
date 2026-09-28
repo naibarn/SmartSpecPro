@@ -231,6 +231,18 @@ describe("createJob — idempotency", () => {
     expect(mockDeductCredits).not.toHaveBeenCalled();
     expect(job.id).toBe("job-1");
   });
+
+  it("rejects reusing an idempotency key for a different job definition", async () => {
+    setDb({ ...mockJob, idempotencyKey: "key-123" });
+
+    await expect(
+      createJob(
+        { type: "skill_execution", params: { prompt: "different" }, idempotencyKey: "key-123" },
+        { userId: 1, tenantId: "tenant-1", apiKeyId: "k1" },
+      ),
+    ).rejects.toMatchObject({ code: "idempotency_conflict" });
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

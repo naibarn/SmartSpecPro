@@ -1,14 +1,14 @@
 /**
  * Notification Retention Job
  *
- * Daily BullMQ job (03:00 UTC) that cleans up old notifications
+ * Daily worker_jobs schedule (03:00 UTC) that cleans up old notifications
  * based on expiration, age-by-priority, and per-user row caps.
  */
 
-import { Queue, Worker } from "bullmq";
 import { sql, eq, and, lt, isNotNull } from "drizzle-orm";
 import { getDb } from "../db";
 import { userNotifications } from "../../drizzle/schema";
+import { startFeature186SystemSchedule, stopFeature186SystemSchedule, utcDailyDue } from "./feature186SystemScheduler";
 
 // ─── Constants ───
 
@@ -153,59 +153,22 @@ export async function executeRetentionCleanup(): Promise<RetentionResult> {
   return { expiredDeleted, ageDeleted, capDeleted, durationMs, errors };
 }
 
-// ─── BullMQ Registration ───
-
-let retentionQueue: Queue | null = null;
-let retentionWorker: Worker | null = null;
+// ─── Canonical worker_jobs schedule ───
 
 export async function initializeRetentionJob(): Promise<void> {
-  if (retentionQueue) return;
-
-  const { getRealtimeClient } = await import("../services/redisClients");
-  const redis = getRealtimeClient();
-
-  retentionQueue = new Queue(QUEUE_NAME, {
-    connection: redis.duplicate(),
-    defaultJobOptions: {
-      removeOnComplete: { count: 7 },
-      removeOnFail: { count: 14 },
-    },
-  });
-
-  // Register daily job at 03:00 UTC
-  await retentionQueue.upsertJobScheduler(
-    "retention-cleanup",
-    { pattern: "0 3 * * *" },
-    { name: "retention-cleanup" }
-  );
-
-  retentionWorker = new Worker(
-    QUEUE_NAME,
-    async () => {
-      await executeRetentionCleanup();
-    },
-    {
-      connection: redis.duplicate(),
-      concurrency: 1,
-    }
-  );
-
-  retentionWorker.on("failed", (job, err) => {
-    console.error("[RetentionJob] worker_job_failed", {
-      jobId: job?.id,
-      error: err.message,
-      attemptsMade: job?.attemptsMade,
-    });
+  startFeature186SystemSchedule({
+      scheduleId: "notification-retention",
+      jobType: "notification.retention",
+      executionClass: "short",
+      scheduleVersion: "1",
+      timezone: "UTC",
+      missedOccurrencePolicy: "coalesce",
+      isDue: utcDailyDue(3, 0),
+      occurrenceKey: now => now.toISOString().slice(0, 10),
+      intervalMs: 60_000,
   });
 }
 
 export async function shutdownRetentionJob(): Promise<void> {
-  if (retentionWorker) {
-    await retentionWorker.close();
-    retentionWorker = null;
-  }
-  if (retentionQueue) {
-    await retentionQueue.close();
-    retentionQueue = null;
-  }
+  stopFeature186SystemSchedule("notification-retention");
 }

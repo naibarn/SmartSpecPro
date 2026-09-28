@@ -508,6 +508,10 @@ describe("resolveAdBannerImageModelPricing", () => {
       modelId: "some-model",
       creditCost: 12,
       maxReferenceImages: 3,
+      // Feature 135 — Hermes Grok media worker (section 09): the row's
+      // configJson is now returned too (reused by the router's transport
+      // decision, no second DB read).
+      configJson: { a: 1 },
     });
     expect(mockResolveCapabilities).toHaveBeenCalledWith("some-model", {
       type: "image",
@@ -527,6 +531,7 @@ describe("resolveAdBannerImageModelPricing", () => {
       modelId: "unknown-model",
       creditCost: 10,
       maxReferenceImages: 0,
+      configJson: null,
     });
     expect(mockCalculateCreditCost).toHaveBeenCalledWith(
       { creditCost: 10, configJson: null },
@@ -558,6 +563,49 @@ describe("submitAdBannerImageGeneration", () => {
       __vd_ad_banner_id: "banner-1",
     });
     expect(mockGenerateImageAsync.mock.calls[0][1]).toBe("token");
+  });
+
+  // Feature 135 — Hermes Grok media worker (section 09, remediation row 10).
+  it("passes transportMetadata through to generateImageAsync when the router resolved an MCP-transport model", async () => {
+    mockGenerateImageAsync.mockResolvedValue({ id: "task-mcp" } as any);
+    const transportMetadata = {
+      transport: "mcp",
+      providerKey: "higgsfield",
+      connectionId: "mcp-conn-1",
+    } as any;
+
+    await submitAdBannerImageGeneration({
+      userId: 1,
+      seriesId: 10,
+      bannerId: "banner-1",
+      prompt: "a banner prompt",
+      modelId: "higgsfield/nano-banana-pro",
+      referenceImageUrls: [],
+      maxReferenceImages: 0,
+      userToken: "token",
+      transportMetadata,
+    });
+
+    const callArgs = mockGenerateImageAsync.mock.calls[0][0];
+    expect(callArgs.transportMetadata).toEqual(transportMetadata);
+  });
+
+  it("omits transportMetadata entirely when not supplied (gateway_api — byte-identical to before this param existed)", async () => {
+    mockGenerateImageAsync.mockResolvedValue({ id: "task-gw" } as any);
+
+    await submitAdBannerImageGeneration({
+      userId: 1,
+      seriesId: 10,
+      bannerId: "banner-1",
+      prompt: "a banner prompt",
+      modelId: "some-model",
+      referenceImageUrls: [],
+      maxReferenceImages: 0,
+      userToken: "token",
+    });
+
+    const callArgs = mockGenerateImageAsync.mock.calls[0][0];
+    expect(callArgs).not.toHaveProperty("transportMetadata");
   });
 
   it("omits referenceImageUrls entirely when maxReferenceImages is 0", async () => {

@@ -51,7 +51,7 @@ import {
   requiresFreshData,
   DEFAULT_MAX_SEARCH_CALLS_PER_REQUEST,
 } from "../services/searchResultCache";
-import { getRedisClient } from "../services/redis";
+import { cloudflareSearchResultCacheStore } from "../services/cloudflareSearchResultCache";
 import { runPlanner, recordStepAttempt } from "../services/taskPlannerMiddleware";
 import {
   findCatalogModel,
@@ -77,7 +77,7 @@ const SOCKET_TIMEOUT_MS = 600_000; // 10 min
 let _searchCacheInstance: SearchResultCache | null = null;
 function getSearchCache(): SearchResultCache {
   if (!_searchCacheInstance) {
-    _searchCacheInstance = new SearchResultCache(getRedisClient());
+    _searchCacheInstance = new SearchResultCache(cloudflareSearchResultCacheStore);
   }
   return _searchCacheInstance;
 }
@@ -777,6 +777,8 @@ export function registerResponsesRoutes(
       if (shouldUseSelectionRouting) {
         try {
           resolvedSelection = await resolveChatModelSelection({
+            tenantId,
+            userId,
             bodyModel: bodyModelSelection != null ? (sanitizedBody.model as string | null) : null,
             bodyPreferredProvider,
             bodyModelSelection,
@@ -1010,6 +1012,7 @@ export function registerResponsesRoutes(
             sanitizedBody,
             provider,
             userId,
+            tenantId,
             effectiveModelId,
             maxBudgetCredits,
             traceId,
@@ -1017,6 +1020,10 @@ export function registerResponsesRoutes(
             internalToken,
             deps,
             plannerResult,
+            process.env.CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED === "true" &&
+              req.get("x-sah-cache-test-fault") === "kv-get" &&
+              externalAuth?.mode === "session" &&
+              externalAuth.user?.role === "admin",
           );
         }
       } catch (err: any) {
@@ -1050,6 +1057,7 @@ async function proxyResponsesJson(
   body: Record<string, unknown>,
   provider: any,
   userId: number,
+  tenantId: string,
   requestedModelId: string,
   maxBudgetCredits: number,
   traceId: string,
@@ -1057,6 +1065,7 @@ async function proxyResponsesJson(
   internalToken: string,
   deps: any,
   plannerResult?: import("../services/taskPlannerMiddleware").PlannerResult | null,
+  injectKvGetFailure = false,
 ) {
   const controller = new AbortController();
   req.on("aborted", () => controller.abort());
@@ -1083,9 +1092,6 @@ async function proxyResponsesJson(
   let currentInput = body.input;
   let lastResponse: any = null;
   let budgetExceeded = false;
-  const tenantId = typeof (body as any)._tenantId === "string" && (body as any)._tenantId.trim().length > 0
-    ? String((body as any)._tenantId)
-    : "default";
   await enforceDelegatedWorkerSpendGuardrails({
     auth: req.auth,
     estimatedCredits: Math.max(1, Math.min(maxBudgetCredits, estimateNextRoundCredits(budget))),
@@ -1102,9 +1108,9 @@ async function proxyResponsesJson(
     if (userPrompt && !requiresFreshData(userPrompt)) {
       try {
         const searchCache = getSearchCache();
-        const cached = await searchCache.get(userId, tenantId, userPrompt);
+        const cached = await searchCache.get(userId, tenantId, userPrompt, undefined, traceId, { injectKvGetFailure });
         if (cached) {
-          debugLog("responses", "Search cache hit", { userId, traceId });
+          debugLog("responses", "Search cache hit", { traceId, provider: "cloudflare_kv" });
           // Inject cached search results as context for the model
           // rather than returning directly (model still needs to synthesize)
           const cachedContext = cached.snippets
@@ -1119,9 +1125,11 @@ async function proxyResponsesJson(
               },
             ];
           }
+        } else {
+          debugLog("responses", "Search cache miss", { traceId, provider: "cloudflare_kv" });
         }
-      } catch (err: any) {
-        debugError("responses", "Search cache lookup failed", err?.message);
+      } catch {
+        debugError("responses", "Search cache lookup failed; treating as miss", { traceId, provider: "cloudflare_kv" });
       }
     }
 
@@ -1211,10 +1219,10 @@ async function proxyResponsesJson(
             retrievedAt: new Date().toISOString(),
             queryHash: normalizeSearchQuery(userPrompt),
           };
-          await searchCache.setTenantCache(tenantId, userPrompt, cacheEntry)
-            .catch((err: any) => debugError("responses", "Cache set (tenant) failed", err?.message));
-          await searchCache.setUserCache(userId, userPrompt, cacheEntry)
-            .catch((err: any) => debugError("responses", "Cache set (user) failed", err?.message));
+          await searchCache.setTenantCache(tenantId, userPrompt, cacheEntry, traceId)
+            .catch(() => debugError("responses", "Cache set (tenant) failed", { traceId, provider: "cloudflare_kv" }));
+          await searchCache.setUserCache(userId, userPrompt, cacheEntry, undefined, traceId)
+            .catch(() => debugError("responses", "Cache set (user) failed", { traceId, provider: "cloudflare_kv" }));
         }
       } catch (err: any) {
         debugError("responses", "Cache population failed", err?.message);

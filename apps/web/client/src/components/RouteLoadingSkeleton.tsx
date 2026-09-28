@@ -29,3 +29,71 @@ export function RouteLoadingSkeleton() {
     </div>
   );
 }
+
+export function RouteLoadingError({
+  title = "Unable to load this page",
+  description = "The service did not respond in time. Please try again.",
+  retryLabel = "Retry",
+  onRetry,
+}: {
+  title?: string;
+  description?: string;
+  retryLabel?: string;
+  onRetry: () => void;
+}) {
+  return (
+    <main
+      data-testid="route-loading-error"
+      role="alert"
+      aria-live="polite"
+      className="flex min-h-screen w-full items-center justify-center bg-background px-6 text-foreground"
+    >
+      <section className="flex max-w-lg flex-col items-center gap-3 text-center">
+        <h1 className="text-lg font-semibold">{title}</h1>
+        <p className="text-sm text-muted-foreground">{description}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {retryLabel}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+export function RouteServiceRecovery({
+  autoRefreshPending,
+  onRetry,
+}: {
+  autoRefreshPending: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <main
+      data-testid="route-service-recovery"
+      role="status"
+      aria-live="polite"
+      className="flex min-h-screen w-full items-center justify-center bg-background px-6 text-foreground"
+    >
+      <section className="flex max-w-lg flex-col items-center gap-3 text-center">
+        <h1 className="text-lg font-semibold">กำลังเชื่อมต่อเซิร์ฟเวอร์ใหม่…</h1>
+        <p className="text-sm text-muted-foreground">
+          เซิร์ฟเวอร์กำลังรีสตาร์ทหรือขัดข้องชั่วคราว ระบบจะลองเชื่อมต่อให้โดยอัตโนมัติ
+        </p>
+        {autoRefreshPending ? (
+          <p className="text-xs text-muted-foreground">กำลังโหลดหน้าใหม่…</p>
+        ) : (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            ลองเชื่อมต่ออีกครั้ง
+          </button>
+        )}
+      </section>
+    </main>
+  );
+}

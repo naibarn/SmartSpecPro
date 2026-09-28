@@ -8,8 +8,11 @@ let notificationsData: any[] = [];
 let urgentRemindersData: any[] = [];
 let currentLocation = "/";
 let mockLocale: "en" | "th" = "en";
+let viewerRole: string | undefined;
 const setLocationMock = vi.fn();
 const openWindowMock = vi.fn();
+const toastSuccessMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -34,7 +37,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { id: 1 } }),
+  useAuth: () => ({ user: { id: 1, role: viewerRole } }),
 }));
 
 vi.mock("@/i18n/useScopedTranslation", () => ({
@@ -48,14 +51,58 @@ vi.mock("wouter", () => ({
   useLocation: () => [currentLocation, setLocationMock],
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    success: toastSuccessMock,
+    error: toastErrorMock,
+    warning: vi.fn(),
+  },
+}));
+
 // Mock EventSource
 (globalThis as any).EventSource = class {
-  addEventListener() {}
+  static instances: any[] = [];
+  listeners: Record<string, Array<(event: MessageEvent) => void>> = {};
+  constructor() {
+    (this.constructor as typeof EventSource & { instances: any[] }).instances.push(this);
+  }
+  addEventListener(type: string, callback: (event: MessageEvent) => void) {
+    this.listeners[type] = [...(this.listeners[type] ?? []), callback];
+  }
+  emit(type: string, event: MessageEvent) {
+    this.listeners[type]?.forEach((callback) => callback(event));
+  }
   close() {}
   set onerror(_: any) {}
 };
 
-import { GlobalAlerts } from "../GlobalAlerts";
+import {
+  GlobalAlerts,
+  isJobCompletionNotification,
+  parseNotificationSSEEvent,
+} from "../GlobalAlerts";
+
+describe("job completion notification events", () => {
+  it("parses a valid SSE payload and recognizes job-completion metadata", () => {
+    const event = parseNotificationSSEEvent({
+      data: JSON.stringify({
+        id: 99,
+        title: "สร้าง Prompt เสร็จแล้ว",
+        content: "เปิดดูผลลัพธ์ได้เลย",
+        actionUrl: "/drama-series/53/episodes/248",
+        metadata: { source: "job_completion" },
+      }),
+    } as MessageEvent);
+    expect(event).toEqual(expect.objectContaining({ id: 99, actionUrl: "/drama-series/53/episodes/248" }));
+    expect(isJobCompletionNotification(event!)).toBe(true);
+    expect(isJobCompletionNotification({ id: 100, title: "Other", metadata: { source: "billing" } })).toBe(false);
+  });
+
+  it("drops malformed or incomplete SSE payloads", () => {
+    expect(parseNotificationSSEEvent({ data: "not-json" } as MessageEvent)).toBeNull();
+    expect(parseNotificationSSEEvent({ data: JSON.stringify({ title: "missing id" }) } as MessageEvent)).toBeNull();
+  });
+});
 
 describe("GlobalNotificationBell occurrence badge", () => {
   beforeEach(() => {
@@ -66,13 +113,37 @@ describe("GlobalNotificationBell occurrence badge", () => {
     urgentRemindersData = [];
     currentLocation = "/";
     mockLocale = "en";
+    viewerRole = undefined;
     setLocationMock.mockClear();
     openWindowMock.mockReset();
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
+    (globalThis.EventSource as any).instances = [];
     Object.defineProperty(window, "open", {
       configurable: true,
       writable: true,
       value: openWindowMock,
     });
+  });
+
+  it("shows an immediate completion toast with a result navigation action", () => {
+    render(<GlobalAlerts />);
+    const eventSource = (globalThis.EventSource as any).instances[0];
+    eventSource.emit("notification", {
+      data: JSON.stringify({
+        id: 77,
+        title: "สร้าง Prompt ตอนพิเศษ เสร็จแล้ว",
+        content: "งานพร้อมเปิดดู",
+        priority: "normal",
+        actionUrl: "/drama-series/53/episodes/248",
+        actionLabel: "เปิดตอน",
+        metadata: { source: "job_completion" },
+      }),
+    });
+    expect(toastSuccessMock).toHaveBeenCalledTimes(1);
+    const options = toastSuccessMock.mock.calls[0][1] as { action?: { onClick: () => void } };
+    options.action?.onClick();
+    expect(setLocationMock).toHaveBeenCalledWith("/drama-series/53/episodes/248");
   });
 
   it("renders occurrence badge (xN) when occurrenceCount > 1", async () => {
@@ -361,12 +432,232 @@ describe("GlobalNotificationBell occurrence badge", () => {
     const openIncidentButton = await screen.findByRole("button", { name: /open incident/i });
     fireEvent.click(openIncidentButton);
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/dashboard?incident=ops-overview%3Amonitoring_stale",
+    );
+    expect(openWindowMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps external urgent actions in a new tab", async () => {
+    urgentRemindersData = [
+      {
+        id: 1000,
+        title: "External documentation",
+        content: "Read the provider documentation.",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "https://example.com/docs",
+        actionLabel: "Open Docs",
+        relatedResourceType: "system_health",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /open docs/i }));
+
+    expect(openWindowMock).toHaveBeenCalledWith(
+      "https://example.com/docs",
       "_blank",
       "noopener,noreferrer",
     );
     expect(setLocationMock).not.toHaveBeenCalled();
+  });
+
+  it("repairs a stale deduplicated feedback target from the latest ticket in the content", async () => {
+    currentLocation = "/admin/feedback-hub";
+    urgentRemindersData = [
+      {
+        id: 101,
+        title: "New Feedback: [Auto] media generation failed (image)",
+        content: "[bug] Auto-classified as bug (high priority) Ticket #250",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/feedback-hub?ticketId=249",
+        actionLabel: "View Feedback",
+        relatedResourceType: "feedback",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=250",
+    );
+  });
+
+  it("navigates directly to the feedback ticket when its notification row is clicked", async () => {
+    notificationCountData = { count: 1 };
+    notificationsData = [
+      {
+        id: 251,
+        title: "New Feedback: [tassanee.thip@gmail.com]",
+        content: "[bug] Auto-classified as general (normal priority) Ticket #510 Reporter: tassanee.thip@gmail.com",
+        isRead: false,
+        priority: "normal",
+        createdAt: new Date().toISOString(),
+        actionUrl: null,
+        relatedResourceType: "feedback",
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByLabelText(/unread notification/i));
+    });
+
+    fireEvent.click(screen.getByText("New Feedback: [tassanee.thip@gmail.com]"));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=510",
+    );
+    expect(openWindowMock).not.toHaveBeenCalled();
+  });
+
+  it("repairs legacy guardian-routed feedback notifications", async () => {
+    urgentRemindersData = [
+      {
+        id: 102,
+        title: "New Feedback: [Auto] media generation failed (image)",
+        content: "[bug] Auto-classified as bug (high priority) Ticket #398",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/system-guardian?incident=8",
+        actionLabel: "View Feedback",
+        relatedResourceType: "incident",
+        metadata: { source: "guardian.feedbackProcessor" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /view feedback/i }));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=398",
+    );
+  });
+
+  it("routes an admin-owned failed job notification to the Feedback Hub", async () => {
+    viewerRole = "admin";
+    urgentRemindersData = [
+      {
+        id: 105,
+        title: "งาน remotion_render_video ไม่สำเร็จ",
+        content: "งาน remotion_render_video ไม่สำเร็จ: idempotencyKey is empty or too long",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: null,
+        relatedResourceType: "worker_job",
+        metadata: {
+          source: "job_completion",
+          signal: "failed",
+          errorDetails: { errorMessage: "idempotencyKey is empty or too long" },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /open details/i }));
+
+    expect(setLocationMock).toHaveBeenCalledWith("/admin/feedback-hub");
+  });
+
+  it("opens the linked feedback ticket when an admin clicks a failed job notification row", async () => {
+    viewerRole = "admin";
+    notificationCountData = { count: 1 };
+    notificationsData = [
+      {
+        id: 106,
+        title: "งาน remotion_render_video ไม่สำเร็จ",
+        content: "งาน remotion_render_video ไม่สำเร็จ: revisionId is not defined",
+        isRead: false,
+        priority: "high",
+        createdAt: new Date().toISOString(),
+        actionUrl: null,
+        relatedResourceType: "worker_job",
+        relatedResourceId: "worker-job-106",
+        metadata: {
+          source: "job_completion",
+          signal: "failed",
+          relatedItems: { feedbackTicketId: "603" },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    fireEvent.click(screen.getByLabelText(/unread notification/i));
+    fireEvent.click(screen.getByText("งาน remotion_render_video ไม่สำเร็จ"));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/feedback-hub?ticketId=603",
+    );
+  });
+
+  it("does not cover an admin feedback investigation with a user purchase credit reminder", async () => {
+    currentLocation = "/admin/feedback-hub?ticketId=422";
+    urgentRemindersData = [
+      {
+        id: 103,
+        title: "เครดิตไม่เพียงพอ",
+        content: "เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        relatedResourceType: "credits",
+        groupKey: "credit-failure:user_purchase:1",
+        metadata: { source: "trpc" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByRole("dialog", { name: /เครดิตไม่เพียงพอ/i })
+    ).toBeNull();
+  });
+
+  it("explains the estimated credits and operation for a user credit reminder", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 104,
+        title: "เครดิตไม่เพียงพอ",
+        content: "เครดิตของคุณไม่เพียงพอสำหรับคำขอนี้",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        relatedResourceType: "credits",
+        groupKey: "credit-failure:user_purchase:1",
+        metadata: {
+          source: "trpc",
+          relatedItems: {
+            modelKind: "media",
+            requestedCredits: "12",
+            operation: "verticalDramaEpisodes.generateShot",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText(/เครดิตที่ระบบประเมินว่าต้องใช้: 12/i)).toBeTruthy();
+    expect(screen.getByText(/รายการที่แจ้ง:/i)).toBeTruthy();
+    expect(screen.getByText("verticalDramaEpisodes.generateShot")).toBeTruthy();
   });
 
   it("treats billing invoice due reminders as billing reminders instead of incident guidance", async () => {
@@ -401,10 +692,43 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /open invoice/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/billing/invoices/55",
-      "_blank",
-      "noopener,noreferrer",
+    );
+  });
+
+  it("shows a submitted PromptPay slip as an urgent admin alert with a billing action", async () => {
+    urgentRemindersData = [
+      {
+        id: 150,
+        title: "มีสลิปใหม่รออนุมัติ",
+        content: "Invoice: TH-INV-2026-000010\nลูกค้า: customer@example.com\nไฟล์สลิป: transfer-slip.png",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/admin/billing",
+        actionLabel: "ตรวจสอบสลิป",
+        relatedResourceType: "approval",
+        relatedResourceId: "10",
+        metadata: {
+          source: "billing",
+          relatedItems: {
+            invoiceNumber: "TH-INV-2026-000010",
+            notificationType: "promptpay_slip_submitted",
+          },
+        },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByRole("dialog", { name: /มีสลิปใหม่รออนุมัติ/i })).toBeTruthy();
+    expect(screen.getByText("Slip Review Alert")).toBeTruthy();
+    expect(screen.getByText(/customer@example\.com/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /ตรวจสอบสลิป/i }));
+
+    expect(setLocationMock).toHaveBeenCalledWith(
+      "/admin/billing",
     );
   });
 
@@ -514,6 +838,60 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(screen.queryByText("Queue backlog is rising")).toBeNull();
   });
 
+  it("gives actionable guidance for a strict story-job relationship contract failure", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 122,
+        title: "สร้างร่างละเอียดเนื้อเรื่อง ไม่สำเร็จ",
+        content:
+          "Strict relationship graph delta contract failed: episode:1:relationship_graph_delta_missing",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/drama-series/53",
+        actionLabel: "เปิดซีรีย์",
+        relatedResourceType: "system_failure",
+        metadata: { source: "vertical_drama_story_jobs" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(
+      await screen.findByText(/ข้อมูลตอนที่สร้างไว้เดิมยังไม่หาย/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/อัปเดตเนื้อเรื่องละเอียดทุกตอนย่อย/),
+    ).toBeTruthy();
+    expect(screen.queryByText(/relationship_graph_delta_missing/)).toBeNull();
+  });
+
+  it("localizes a persisted story policy failure instead of exposing provider wording", async () => {
+    mockLocale = "th";
+    urgentRemindersData = [
+      {
+        id: 123,
+        title: "ซ่อมเนื้อหาตอนย่อยทั้งตอน ไม่สำเร็จ",
+        content:
+          "Episode story contains a high-risk policy context; rewrite before media generation.",
+        priority: "high",
+        scheduledMessageId: null,
+        conversationId: null,
+        actionUrl: "/drama-series/53",
+        actionLabel: "เปิดซีรีย์",
+        relatedResourceType: "system_failure",
+        metadata: { source: "vertical_drama_story_jobs" },
+      },
+    ];
+
+    render(<GlobalAlerts />);
+
+    expect(await screen.findByText("สร้างเนื้อหาตอนใหม่ไม่สำเร็จ")).toBeTruthy();
+    expect(screen.getByText(/ไม่ผ่านการตรวจสอบความปลอดภัย/)).toBeTruthy();
+    expect(screen.queryByText(/high-risk policy context/)).toBeNull();
+  });
+
   it("does not replace an open urgent reminder while a new one arrives", async () => {
     urgentRemindersData = [
       {
@@ -559,7 +937,7 @@ describe("GlobalNotificationBell occurrence badge", () => {
     expect(await screen.findByText("Critical alerts need triage")).toBeTruthy();
   });
 
-  it("opens notification detail actions in a new tab to preserve the current page", async () => {
+  it("navigates internal notification detail actions in the current tab", async () => {
     notificationsData = [
       {
         id: 100,
@@ -583,14 +961,12 @@ describe("GlobalNotificationBell occurrence badge", () => {
     fireEvent.click(screen.getByText("Critical incident"));
     fireEvent.click(screen.getByRole("button", { name: /open incident/i }));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
+    expect(setLocationMock).toHaveBeenCalledWith(
       "/admin/dashboard?incident=ops-overview%3Aqueue_backlog",
-      "_blank",
-      "noopener,noreferrer",
     );
   });
 
-  it("opens footer navigation in a new tab from the notification bell", async () => {
+  it("navigates footer links in the current tab from the notification bell", async () => {
     notificationCountData = { count: 0 };
     currentLocation = "/dashboard";
 
@@ -602,10 +978,6 @@ describe("GlobalNotificationBell occurrence badge", () => {
 
     fireEvent.click(screen.getByText("ดูย้อนหลัง"));
 
-    expect(openWindowMock).toHaveBeenCalledWith(
-      "/notifications",
-      "_blank",
-      "noopener,noreferrer",
-    );
+    expect(setLocationMock).toHaveBeenCalledWith("/notifications");
   });
 });

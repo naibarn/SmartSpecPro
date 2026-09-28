@@ -152,6 +152,8 @@ def test_readiness_checks_distinguish_allocation_attach_and_refresh_failures():
         "provider_allocation_failed",
         "provider_attach_failed",
         "provider_token_refresh_failed",
+        "provider_backend_in_memory",
+        "provider_probe_synthetic",
     ]
 
 

@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07131d"/>
+      <stop offset="1" stop-color="#17243a"/>
+    </linearGradient>
+    <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="7" stdDeviation="9" flood-color="#000" flood-opacity=".28"/></filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#7fc8f2"/></marker>
+    <style>
+      .font { font-family: 'Noto Sans Thai', 'Inter', Arial, sans-serif; fill: #edf5ff; }
+      .title { font-size: 35px; font-weight: 700; }
+      .sub { font-size: 18px; fill: #b8cae8; }
+      .h { font-size: 20px; font-weight: 700; fill: #9ed7ff; }
+      .t { font-size: 18px; font-weight: 700; }
+      .b { font-size: 15px; fill: #c6d6ea; }
+      .s { font-size: 13px; fill: #a7b9d4; }
+      .gapTitle { font-size: 19px; font-weight: 700; fill: #ffd18a; }
+      .gapText { font-size: 15px; fill: #f0d8ac; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1080" fill="url(#bg2)"/>
+  <rect x="30" y="25" width="1540" height="105" rx="22" fill="#123c59" stroke="#3c7598" filter="url(#shadow2)"/>
+  <text x="65" y="69" class="font title">Workflow Builder → Runner Readiness → Runtime Execution</text>
+  <text x="65" y="101" class="font sub">เส้นทางที่มีอยู่จริงใน repo และจุดที่ยังต้องเติมเพื่อให้ user เลือกเครื่องมือได้ก่อนสร้าง flow</text>
+
+  <text x="60" y="170" class="font h">เส้นทางปัจจุบันที่พิสูจน์ได้จาก source</text>
+  <line x1="480" y1="163" x2="1540" y2="163" stroke="#34536d" stroke-width="2"/>
+
+  <!-- flow arrows -->
+  <path d="M260 320 L315 320" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M555 320 L610 320" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M850 320 L905 320" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1145 320 L1200 320" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M1440 320 L1490 320" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow2)">
+    <rect x="55" y="220" width="205" height="200" rx="18" fill="#173a54" stroke="#56b7e8"/>
+    <text x="78" y="260" class="font t">1. User Intent</text>
+    <text x="78" y="294" class="font b">ผู้ใช้บอกผลลัพธ์</text>
+    <text x="78" y="321" class="font b">ไม่ต้องรู้ชื่อ tool</text>
+    <text x="78" y="357" class="font s">Web / Chat / Studio UI</text>
+    <rect x="78" y="377" width="92" height="18" rx="9" fill="#1b8b70"/><text x="124" y="390" text-anchor="middle" class="font s">implemented</text>
+
+    <rect x="315" y="220" width="240" height="200" rx="18" fill="#173a54" stroke="#56b7e8"/>
+    <text x="338" y="260" class="font t">2. Studio Router</text>
+    <text x="338" y="294" class="font b">previewCandidate</text>
+    <text x="338" y="321" class="font b">createDraft / publish</text>
+    <text x="338" y="357" class="font s">workflowStudio.ts</text>
+    <rect x="338" y="377" width="92" height="18" rx="9" fill="#1b8b70"/><text x="384" y="390" text-anchor="middle" class="font s">implemented</text>
+
+    <rect x="610" y="220" width="240" height="200" rx="18" fill="#173a54" stroke="#56b7e8"/>
+    <text x="633" y="260" class="font t">3. Candidate Compile</text>
+    <text x="633" y="294" class="font b">intent + options[]</text>
+    <text x="633" y="321" class="font b">เลือก ready option แรก</text>
+    <text x="633" y="357" class="font s">workflowBuilderCompiler.ts</text>
+    <rect x="633" y="377" width="92" height="18" rx="9" fill="#c6872e"/><text x="679" y="390" text-anchor="middle" class="font s">partial</text>
+
+    <rect x="905" y="220" width="240" height="200" rx="18" fill="#173a54" stroke="#56b7e8"/>
+    <text x="928" y="260" class="font t">4. Runner Inventory</text>
+    <text x="928" y="294" class="font b">tools / capabilities</text>
+    <text x="928" y="321" class="font b">auth • health • policy</text>
+    <text x="928" y="357" class="font s">runnerNodes.list</text>
+    <rect x="928" y="377" width="92" height="18" rx="9" fill="#1b8b70"/><text x="974" y="390" text-anchor="middle" class="font s">implemented</text>
+
+    <rect x="1200" y="220" width="240" height="200" rx="18" fill="#173a54" stroke="#56b7e8"/>
+    <text x="1223" y="260" class="font t">5. Runtime Compile</text>
+    <text x="1223" y="294" class="font b">ReactFlow → StateGraph</text>
+    <text x="1223" y="321" class="font b">allowlist + edges</text>
+    <text x="1223" y="357" class="font s">Python workflow_compiler</text>
+    <rect x="1223" y="377" width="92" height="18" rx="9" fill="#1b8b70"/><text x="1269" y="390" text-anchor="middle" class="font s">implemented</text>
+    <rect x="1490" y="275" width="65" height="90" rx="16" fill="#173a54" stroke="#56b7e8"/>
+    <text x="1522" y="310" text-anchor="middle" class="font t" font-size="15">6.</text>
+    <text x="1522" y="335" text-anchor="middle" class="font b" font-size="13">execute</text>
+    <text x="1522" y="355" text-anchor="middle" class="font s">→</text>
+  </g>
+
+  <path d="M1520 420 L1520 478 L130 478 L130 520" fill="none" stroke="#7fc8f2" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="805" y="464" text-anchor="middle" class="font s">compiled candidate ต้องเข้าสู่ durable execution boundary ก่อน side effect</text>
+
+  <g filter="url(#shadow2)">
+    <rect x="55" y="520" width="330" height="150" rx="18" fill="#153f39" stroke="#49c6a5"/>
+    <text x="80" y="558" class="font t">7. LangGraph Runtime</text>
+    <text x="80" y="590" class="font b">execute • stream • resume</text>
+    <text x="80" y="618" class="font b">Postgres checkpoint / HITL</text>
+    <rect x="80" y="638" width="92" height="18" rx="9" fill="#1b8b70"/><text x="126" y="651" text-anchor="middle" class="font s">implemented</text>
+
+    <path d="M385 595 L440 595" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="440" y="520" width="330" height="150" rx="18" fill="#153f39" stroke="#49c6a5"/>
+    <text x="465" y="558" class="font t">8. Canonical Job Plane</text>
+    <text x="465" y="590" class="font b">worker_jobs + attempts</text>
+    <text x="465" y="618" class="font b">outbox + events + settlement</text>
+    <rect x="465" y="638" width="92" height="18" rx="9" fill="#1b8b70"/><text x="511" y="651" text-anchor="middle" class="font s">implemented</text>
+
+    <path d="M770 595 L825 595" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="825" y="520" width="330" height="150" rx="18" fill="#40351d" stroke="#d7a647"/>
+    <text x="850" y="558" class="font t">9. Execution Adapters</text>
+    <text x="850" y="590" class="font b">Runner • Agent • MCP • Browser</text>
+    <text x="850" y="618" class="font b">Media / Cloud targets</text>
+    <rect x="850" y="638" width="80" height="18" rx="9" fill="#c6872e"/><text x="890" y="651" text-anchor="middle" class="font s">partial</text>
+
+    <path d="M1155 595 L1210 595" stroke="#7fc8f2" stroke-width="4" marker-end="url(#arrow)"/>
+    <rect x="1210" y="520" width="340" height="150" rx="18" fill="#153f39" stroke="#49c6a5"/>
+    <text x="1235" y="558" class="font t">10. Result &amp; Evidence</text>
+    <text x="1235" y="590" class="font b">artifact / Library / trace</text>
+    <text x="1235" y="618" class="font b">credits / notification / audit</text>
+    <rect x="1235" y="638" width="80" height="18" rx="9" fill="#c6872e"/><text x="1275" y="651" text-anchor="middle" class="font s">partial</text>
+  </g>
+
+  <rect x="55" y="730" width="1495" height="260" rx="20" fill="#4a351b" stroke="#ddaa4d" stroke-width="2" filter="url(#shadow2)"/>
+  <text x="85" y="775" class="font gapTitle">⚠ จุดที่ยังขาดสำหรับ Builder ตาม requirement ของ user</text>
+  <text x="85" y="815" class="font gapText">ปัจจุบัน: previewCandidate รับ `options[]` จาก caller และเลือก ready option แรกที่ถูกส่งมา</text>
+  <text x="85" y="846" class="font gapText">มี runnerNodes.list สำหรับอ่าน inventory แต่ยังไม่ใช่ discovery/decision service แบบ end-to-end</text>
+  <line x1="85" y1="870" x2="1518" y2="870" stroke="#9a6f2f"/>
+  <text x="85" y="905" class="font gapText">ควรเพิ่มก่อนสร้าง Workflow Definition:</text>
+  <text x="360" y="905" class="font gapText">(1) discover execution option set</text>
+  <text x="675" y="905" class="font gapText">(2) probe install/auth/health/policy</text>
+  <text x="1065" y="905" class="font gapText">(3) compare + recommend</text>
+  <text x="85" y="939" class="font gapText">(4) แสดง “ทำได้เลย / ต้องติดตั้ง / ต้องเชื่อมต่อ / ใช้ไม่ได้”</text>
+  <text x="585" y="939" class="font gapText">(5) ให้ user เลือกเอง</text>
+  <text x="850" y="939" class="font gapText">(6) persist selected option + readiness evidence</text>
+  <text x="85" y="970" class="font s">หลักการสำคัญ: ระบบเตรียมการเชื่อมต่อแบบรอบด้าน แต่ไม่บังคับ framework/provider/agent/tool ใดเมื่อมีทางเลือกที่ compatible</text>
+
+  <text x="60" y="1030" class="font s">Evidence anchors: workflowStudio.ts • workflowBuilderCompiler.ts • runnerNodes.ts • workflow_compiler.py • langgraph_runtime.py • jobControlPlane.ts • runner discovery/protocol</text>
+</svg>

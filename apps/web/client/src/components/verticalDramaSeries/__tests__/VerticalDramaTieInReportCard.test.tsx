@@ -76,7 +76,7 @@ describe("VerticalDramaTieInReportCard", () => {
       "ต่ำกว่าเกณฑ์"
     );
     expect(screen.getByTestId("vd-tie-in-blocked-hint").textContent).toContain(
-      "ตอนนี้ยังต่ำกว่าเกณฑ์ความเป็นธรรมชาติของการฝังสินค้า"
+      "ตอนย่อยนี้ยังต่ำกว่าเกณฑ์ความเป็นธรรมชาติของการฝังสินค้า"
     );
     expect(
       screen.getByTestId("vd-tie-in-apply-recommendations")
@@ -140,7 +140,7 @@ describe("VerticalDramaTieInReportCard", () => {
     fireEvent.click(screen.getByTestId("vd-tie-in-defer"));
     expect(onDefer).not.toHaveBeenCalled();
     expect(screen.getByTestId("vd-tie-in-defer-confirm").textContent).toContain(
-      "จะลบตำแหน่งสินค้าออกจากตอนนี้"
+      "จะลบตำแหน่งสินค้าออกจากตอนย่อยนี้"
     );
     fireEvent.click(screen.getByTestId("vd-tie-in-defer-confirm-submit"));
     expect(onDefer).toHaveBeenCalledTimes(1);
@@ -178,7 +178,7 @@ describe("VerticalDramaTieInReportCard", () => {
         />
       );
       expect(screen.getByTestId("vd-tie-in-season-plan-status").textContent).toBe(
-        "ตามแผนซีซั่น: ตอนนี้มีสินค้า"
+        "ตามแผนซีซั่น: ตอนย่อยนี้มีสินค้า"
       );
     });
 
@@ -192,7 +192,7 @@ describe("VerticalDramaTieInReportCard", () => {
         />
       );
       expect(screen.getByTestId("vd-tie-in-season-plan-status").textContent).toBe(
-        "ตามแผนซีซั่น: ตอนนี้มีสินค้า (ย้ายมาจากตอนที่ 3)"
+        "ตามแผนซีซั่น: ตอนย่อยนี้มีสินค้า (ย้ายมาจากตอนย่อยที่ 3)"
       );
     });
 
@@ -206,7 +206,7 @@ describe("VerticalDramaTieInReportCard", () => {
         />
       );
       expect(screen.getByTestId("vd-tie-in-season-plan-status").textContent).toBe(
-        "ตอนนี้ไม่มีสินค้าตามแผน"
+        "ตอนย่อยนี้ไม่มีสินค้าตามแผน"
       );
     });
 
@@ -220,7 +220,7 @@ describe("VerticalDramaTieInReportCard", () => {
         />
       );
       expect(screen.getByTestId("vd-tie-in-season-plan-status").textContent).toBe(
-        "Per the season plan: this episode has a product (moved from episode 3)."
+        "Per the season plan: this Sub-episode has a product (moved from Sub-episode 3)."
       );
     });
   });

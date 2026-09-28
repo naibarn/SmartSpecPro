@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Download, X } from "lucide-react";
+import {
+  AuthenticatedMediaImage,
+  fetchAuthenticatedMedia,
+} from "@/components/media/AuthenticatedMediaImage";
 
 interface ImageLightboxProps {
   images: Array<{ src: string; alt?: string }>;
@@ -23,8 +27,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
     const current = images[index];
     if (!current?.src) return;
     try {
-      const res = await fetch(current.src);
-      const blob = await res.blob();
+      const blob = await fetchAuthenticatedMedia(current.src);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -91,10 +94,12 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
         </>
       )}
 
-      <img
+      <AuthenticatedMediaImage
         src={current?.src}
         alt={current?.alt || "Image"}
         className="h-[90vh] max-h-[90vh] w-auto max-w-[95vw] object-contain sm:h-[85vh] sm:max-w-[92vw]"
+        loadingLabel="Loading image..."
+        errorLabel="Image unavailable"
         onClick={(e) => e.stopPropagation()}
       />
 

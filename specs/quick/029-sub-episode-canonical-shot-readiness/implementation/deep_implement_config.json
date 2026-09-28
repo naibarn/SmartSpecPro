@@ -1,0 +1,32 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/projects/SmartSpecPro/specs/quick/029-sub-episode-canonical-shot-readiness/sections",
+  "target_dir": "/home/dev/projects/SmartSpecPro",
+  "state_dir": "/home/dev/projects/SmartSpecPro/specs/quick/029-sub-episode-canonical-shot-readiness/implementation",
+  "git_root": "/home/dev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "cd apps/web && npm test -- shared/verticalDramaSeries/__tests__/assemblyReadiness.test.ts client/src/components/verticalDramaSeries/__tests__/VerticalDramaStoryboardPanel.speakerSubShots.test.tsx server/services/__tests__/verticalDramaEpisodeVideoAssembly.test.ts server/routers/__tests__/verticalDramaEpisodes.voiceChain.test.ts",
+  "sections": [
+    "section-01-shared-canonical-readiness",
+    "section-02-ui-server-integration"
+  ],
+  "sections_state": {
+    "section-01-shared-canonical-readiness": {
+      "status": "complete",
+      "commit_hash": "44aca96dc"
+    },
+    "section-02-ui-server-integration": {
+      "status": "complete",
+      "commit_hash": "300552dd5"
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-07-13T12:28:15.232134+00:00"
+}

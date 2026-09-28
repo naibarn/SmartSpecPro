@@ -1,0 +1,25 @@
+{
+  "targetDurationSeconds": 30,
+  "recommendedStrategy": "independent_shots",
+  "shots": [
+    {
+      "shotId": "S01",
+      "durationSeconds": 10,
+      "mode": "reference_to_video",
+      "purpose": "hook"
+    },
+    {
+      "shotId": "S02",
+      "durationSeconds": 10,
+      "mode": "image_to_video",
+      "purpose": "demonstration"
+    },
+    {
+      "shotId": "S03",
+      "durationSeconds": 10,
+      "mode": "reference_to_video",
+      "purpose": "hero / CTA"
+    }
+  ],
+  "reason": "Each Grok 1.5 generation is <=15s and remains independently repairable."
+}

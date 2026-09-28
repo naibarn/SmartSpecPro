@@ -30,7 +30,6 @@ export const runSurfaceLabelValues = ["web", "desktop"] as const;
 export const runRuntimeLabelValues = [
   "platform_skill",
   "pi",
-  "agency_swarm",
   "cloud_agent",
   "openclaw_gateway",
 ] as const;
@@ -50,7 +49,6 @@ export const desktopHostFeatureFlagKeys = [
   "desktopHostEnabled",
   "desktopAdvancedLocalMode",
   "desktopPackageSync",
-  "desktopAgencyRuntime",
   "desktopWorkerProjection",
 ] as const;
 
@@ -129,14 +127,12 @@ export const desktopManagedActionStatusValues = [
 ] as const;
 export const desktopCatalogPackageTypeValues = [
   "skill_package",
-  "agency_pack",
   "hybrid_pack",
   "tooling_pack",
   "runtime_support_pack",
 ] as const;
 export const desktopCatalogRuntimeDestinationValues = [
   "pi",
-  "agency_swarm",
   "desktop_host",
   "hybrid",
 ] as const;
@@ -176,13 +172,11 @@ export const desktopWorkspaceProfileValues = [
   "indexing_worker",
   "connector_helper",
   "pi_sidecar_managed",
-  "agency_swarm_managed",
 ] as const;
 
 export const desktopRunSelectionValues = [
   "platform_skill",
   "pi",
-  "agency_swarm",
   "openclaw_gateway",
   "cloud_agent",
 ] as const;
@@ -230,7 +224,6 @@ export const desktopRolloutGateValues = [
   "signed_updates_enforced",
   "managed_file_roots_default",
   "pi_gateway_only",
-  "agency_gateway_only",
   "offboarding_cleanup_ready",
 ] as const;
 
@@ -296,7 +289,6 @@ export const desktopHostFeatureFlagsSchema = z.object({
   desktopHostEnabled: z.boolean().default(false),
   desktopAdvancedLocalMode: z.boolean().default(false),
   desktopPackageSync: z.boolean().default(false),
-  desktopAgencyRuntime: z.boolean().default(false),
   desktopWorkerProjection: z.boolean().default(false),
 });
 
@@ -658,7 +650,6 @@ export const desktopDevicePresenceSchema = z.object({
 export const desktopDevicePolicyOverridesSchema = z.object({
   allowAdvancedLocalMode: z.boolean().nullable().optional().default(null),
   allowPackageSync: z.boolean().nullable().optional().default(null),
-  allowAgencyRuntime: z.boolean().nullable().optional().default(null),
   allowWorkerProjection: z.boolean().nullable().optional().default(null),
   maxLocalRoots: z.number().int().positive().nullable().optional().default(null),
   outputWritebackMode: desktopRootWritebackModeSchema
@@ -834,7 +825,7 @@ export const desktopPackageCatalogItemSchema = z.object({
   signerKeyVersion: z.string().min(1),
   summary: z.string().min(1).nullable().optional().default(null),
   availableOnDesktop: z.boolean().default(true),
-  source: z.enum(["skill_registry", "agency_registry", "built_in"]).default("skill_registry"),
+  source: z.enum(["skill_registry", "built_in"]).default("skill_registry"),
 });
 
 export const desktopPackageCatalogResponseSchema = z.object({
