@@ -92,6 +92,13 @@ export type SourceExternalArtifactBinding = {
   kind: SourceLockedArtifact["kind"];
   platform: string;
 };
+export type SourceCargoTargetSelection = {
+  manifestPath: string;
+  target: string;
+  /** Runtime binary dependency graph: ordinary dependencies plus build/proc-macro edges, never dev-dependencies. */
+  profile: "runtime-binary-v1";
+  cargoVersion: string;
+};
 export type SourcePythonCompatibility = {
   /** Exact compressed-tag expansion emitted by the selected interpreter's packaging.tags.sys_tags(). */
   compatibleWheelTags: string[];
@@ -115,6 +122,9 @@ export type SourceBundleManifest = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  selectedCargoTargets: SourceCargoTargetSelection[];
+  selectedCargoPackageLocators: Record<string, string[]>;
+  rustCompileTimeEnvironment: Record<string, string | null>;
   /** Per-manifest dependencies included by an exact execution profile. */
   selectedManifestDependencies?: Record<string, string[]>;
   /** Per-manifest scripts whose command/runtime edges belong to this profile. */
@@ -157,6 +167,10 @@ export type SourceClosureInput = {
   /** Selected uv dependency groups and project/package extras for this exact Python profile. */
   selectedPythonDependencyGroups?: string[];
   selectedPythonExtras?: string[];
+  /** Cargo's locked/offline target graph for selected executable targets. */
+  cargoTargetSelections?: SourceCargoTargetSelection[];
+  /** Exact non-secret compile-time Rust environment bindings; null means explicitly absent. */
+  rustCompileTimeEnvironment?: Record<string, string | null>;
   /** Narrow manifest roots; statically imported packages remain mandatory. */
   selectedManifestDependencies?: Record<string, string[]>;
   /** Inspect only these script commands; unknown selected names fail closed. */
@@ -188,6 +202,9 @@ export type SourceClosureResult = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  selectedCargoTargets: SourceCargoTargetSelection[];
+  selectedCargoPackageLocators: Record<string, string[]>;
+  rustCompileTimeEnvironment: Record<string, string | null>;
   selectedManifestDependencies?: Record<string, string[]>;
   selectedManifestScripts?: Record<string, string[]>;
   requiredExternalPackages: string[];
@@ -253,6 +270,17 @@ function packagePlatformCompatible(identity: SourceExternalPackageIdentity, runt
     return (!positive.length || positive.includes(actual ?? "")) && !negative.includes(actual ?? "");
   };
   return matches(identity.os, runtimeOs) && matches(identity.cpu, runtimeCpu);
+}
+
+function cargoTargetMatchesRuntime(target: string, runtimePlatform: string | undefined): boolean {
+  const targetByPlatform: Record<string, string> = {
+    "linux-x86_64": "x86_64-unknown-linux-gnu",
+    "linux-aarch64": "aarch64-unknown-linux-gnu",
+    "windows-x86_64": "x86_64-pc-windows-msvc",
+    "macos-x86_64": "x86_64-apple-darwin",
+    "macos-aarch64": "aarch64-apple-darwin",
+  };
+  return Boolean(runtimePlatform && targetByPlatform[runtimePlatform] === target);
 }
 
 type ExternalRoot = { name: string; requesterPath: string; specifier?: string; source?: string; extras?: string[]; marker?: string; lockfileAlias?: string };
@@ -376,7 +404,7 @@ function cargoRequirementMatches(version: string, requirement: string): boolean 
   return true;
 }
 
-function cargoManifestDependencies(source: string): Array<{ name: string; alias: string; version: string | null; pathDependency: boolean }> {
+function cargoManifestDependencies(source: string, includeDevDependencies = false): Array<{ name: string; alias: string; version: string | null; pathDependency: boolean }> {
   const dependencies = new Map<string, { name: string; alias: string; version: string | null; pathDependency: boolean }>();
   let section = "";
   for (const line of source.split(/\r?\n/)) {
@@ -385,7 +413,8 @@ function cargoManifestDependencies(source: string): Array<{ name: string; alias:
       section = header[1];
       continue;
     }
-    if (!/(?:^|\.)(?:dependencies|dev-dependencies|build-dependencies)$/.test(section)) continue;
+    const dependencyKind = section.split(".").at(-1);
+    if (dependencyKind !== "dependencies" && dependencyKind !== "build-dependencies" && !(includeDevDependencies && dependencyKind === "dev-dependencies")) continue;
     const assignment = line.match(/^\s*([A-Za-z0-9_-]+)\s*=\s*(.*?)\s*(?:#.*)?$/);
     if (!assignment) continue;
     const [, alias, rawValue] = assignment;
@@ -609,7 +638,7 @@ function pythonVersionSatisfies(version: string, specifier: string | undefined):
   return true;
 }
 
-function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: ExternalRoot[], importersByLockfile: Map<string, Record<string, Record<string, string | null>>>, selectedOptionals: Set<string>, pythonExtras: Set<string>, markerEnvironment: Record<string, string>): { required: Set<string>; unresolved: string[]; rootLocators: Map<string, string> } {
+function selectExternalClosure(identities: SourceExternalPackageIdentity[], roots: ExternalRoot[], importersByLockfile: Map<string, Record<string, Record<string, string | null>>>, selectedOptionals: Set<string>, pythonExtras: Set<string>, markerEnvironment: Record<string, string>, cargoTargetLockfiles: Set<string> = new Set()): { required: Set<string>; unresolved: string[]; rootLocators: Map<string, string> } {
   const required = new Set<string>();
   const unresolved: string[] = [];
   const rootLocators = new Map<string, string>();
@@ -667,6 +696,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       unresolved.push(`transitive-package-locator-missing:${label}:${locator}`);
       continue;
     }
+    if (item.packageManager === "cargo" && cargoTargetLockfiles.has(item.lockfilePath)) continue;
     if (item.packageManager === "uv" && item.uvDependencyRelations) {
       for (const relation of item.uvDependencyRelations) {
         if (relation.extra && !pythonExtras.has(relation.extra)) continue;
@@ -850,6 +880,32 @@ async function gitText(repositoryRoot: string, args: string[], errorCode: string
   } catch {
     throw new Error(errorCode);
   }
+}
+
+async function runCargoTargetPackageList(sourceRoot: string, selection: SourceCargoTargetSelection): Promise<string[]> {
+  const manifestPath = safeRelative(sourceRoot, selection.manifestPath);
+  const manifest = await assertRegularFileWithoutSymlinkParents(sourceRoot, manifestPath);
+  const cargoVersion = await new Promise<string>((resolveCommand, rejectCommand) => {
+    execFile("cargo", ["-V"], { encoding: "utf8", timeout: 30_000, maxBuffer: 1024 * 1024 }, (error, stdout) => {
+      if (error) rejectCommand(error);
+      else resolveCommand(stdout.trim());
+    });
+  }).catch(() => "");
+  const actualCargoRelease = cargoVersion.match(/^cargo \d+\.\d+\.\d+/)?.[0];
+  if (actualCargoRelease !== selection.cargoVersion) throw new Error("SPEC224_CARGO_VERSION_MISMATCH");
+  const stdout = await new Promise<string>((resolveCommand, rejectCommand) => {
+    const environment = { ...process.env, CARGO_NET_OFFLINE: "true", CARGO_TERM_COLOR: "never" };
+    execFile("cargo", ["tree", "--quiet", "--locked", "--offline", "--target", selection.target, "--edges", "normal,build", "--prefix", "none", "--format", "{p}", "--manifest-path", manifest], {
+      encoding: "utf8",
+      timeout: 60_000,
+      maxBuffer: 8 * 1024 * 1024,
+      env: environment,
+    }, (error, output) => {
+      if (error) rejectCommand(error);
+      else resolveCommand(output);
+    });
+  });
+  return [...new Set(stdout.split(/\r?\n/).map(line => line.trim()).filter(Boolean))];
 }
 
 type GitTreeEntry = { mode: string; type: string; objectId: string; path: string };
@@ -1058,18 +1114,19 @@ function importsIn(
   const isPython = filePath.endsWith(".py");
   const isRust = filePath.endsWith(".rs");
   if (isRust) {
-    const rustSyntax = rustSyntaxOnly(source);
+    const profileSource = excludeRustTestModules(source);
+    const rustSyntax = rustSyntaxOnly(profileSource);
     const rustCode = rustSyntax.source;
     if (!rustSyntax.complete) unresolved.add("<rust-lexical-scan-incomplete>");
-    if (hasNestedOutOfLineRustModule(source)) unresolved.add("<nested-rust-module-path-unresolved>");
-    if (/#\s*\[\s*cfg(?:_attr)?\s*\([^\]]*\)\s*\]\s*(?:#\s*\[[^\]]+\]\s*)*(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/s.test(rustCode)) unresolved.add("<rust-cfg-module-selection-unresolved>");
+    if (hasNestedOutOfLineRustModule(profileSource)) unresolved.add("<nested-rust-module-path-unresolved>");
+    if (/#\s*\[\s*cfg(?:_attr)?\s*\((?!\s*test\s*\))[^\]]*\)\s*\]\s*(?:#\s*\[[^\]]+\]\s*)*(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/s.test(rustCode)) unresolved.add("<rust-cfg-module-selection-unresolved>");
     const pathAttributeRanges: Array<{ start: number; end: number }> = [];
     const pathAttributePatterns = [
       /#\s*\[\s*path\s*=\s*"([^"\n]+)"\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g,
       /#\s*\[\s*path\s*=\s*r(#+)?"([\s\S]*?)"\1\s*\]\s*mod\s+[A-Za-z_][A-Za-z0-9_]*\s*;/g,
     ];
     for (const pattern of pathAttributePatterns) {
-      for (const match of source.matchAll(pattern)) {
+      for (const match of profileSource.matchAll(pattern)) {
         const start = match.index ?? 0;
         pathAttributeRanges.push({ start, end: start + match[0].length });
         local.add(`rust-path:${match[2] ?? match[1]}`);
@@ -1086,14 +1143,14 @@ function importsIn(
       if (!["std", "core", "alloc", "crate", "self", "super"].includes(name)) external.add(name);
     }
     const localModuleNames = new Set([...rustCode.matchAll(/\bmod\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:;|\{)/g)].map(match => match[1]));
-    const qualifiedPathSource = rustCode.replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
-    for (const match of qualifiedPathSource.matchAll(/(?<![:A-Za-z0-9_])([a-z][A-Za-z0-9_]*)::/g)) {
+    const qualifiedPathSource = rustCode.replace(/#\s*\[[^\]]*\]/g, " ").replace(/\buse\s+[\s\S]*?;/g, " ").replace(/\bextern\s+crate\s+[A-Za-z_][A-Za-z0-9_]*(?:\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?\s*;/g, " ");
+    const rustStandardNamespaces = new Set(["std", "core", "alloc", "crate", "self", "super", "fs", "io", "path", "process", "time", "collections", "env", "thread", "sync", "str", "cmp", "fmt", "mem", "ops", "convert", "iter", "option", "result", "slice", "string", "vec", "cell", "rc", "borrow", "num", "marker", "any", "ffi", "net", "os", "array", "char", "task", "pin", "future", "parse", "collect", "clippy", "i8", "i16", "i32", "i64", "i128", "isize", "u8", "u16", "u32", "u64", "u128", "usize"]);
+    for (const match of qualifiedPathSource.matchAll(/(?<![:A-Za-z0-9_])([a-z][A-Za-z0-9_]*)::(?=[A-Za-z_])/g)) {
       const name = match[1];
-      if (!["std", "core", "alloc", "crate", "self", "super"].includes(name) && !localModuleNames.has(name)) external.add(name);
+      if (!rustStandardNamespaces.has(name) && !localModuleNames.has(name)) external.add(name);
     }
-    for (const match of source.matchAll(/\binclude_(?:str|bytes)!\s*\(\s*["']([^"']+)["']\s*\)/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
-    if (/\binclude(?:_str|_bytes)?!\s*\(\s*(?!["'])/.test(source)) unresolved.add("<dynamic-rust-include>");
-    if (/\b(?:env|option_env)!\s*\(/.test(source)) unresolved.add("<rust-compile-time-environment-unbound>");
+    for (const match of profileSource.matchAll(/\binclude_(?:str|bytes)!\s*\(\s*["']([^"']+)["']\s*\)/g)) local.add(match[1].startsWith(".") ? match[1] : `./${match[1]}`);
+    if (/\binclude(?:_str|_bytes)?!\s*\(\s*(?!["'])/.test(profileSource)) unresolved.add("<dynamic-rust-include>");
   } else if (isPython) {
     if (/\b(?:exec|eval)\s*\(/.test(source)) unresolved.add("<dynamic-python-code-evaluation>");
     for (const match of source.matchAll(/^\s*(?:from\s+([.\w]+)\s+import|import\s+([\w.]+))/gm)) {
@@ -1166,6 +1223,32 @@ function importsIn(
     dynamic: [...dynamic],
     unresolved: [...unresolved],
   };
+}
+
+/** Runtime binary profiles do not compile cfg(test) modules or their dev-only imports. */
+function excludeRustTestModules(source: string): string {
+  const masked = rustSyntaxOnly(source).source;
+  const ranges: Array<{ start: number; end: number }> = [];
+  const modulePattern = /#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]\s*(?:pub(?:\([^)]*\))?\s+)?mod\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/g;
+  for (const match of masked.matchAll(modulePattern)) {
+    const start = match.index ?? 0;
+    const open = start + match[0].lastIndexOf("{");
+    let depth = 0;
+    let end = open;
+    for (; end < masked.length; end++) {
+      if (masked[end] === "{") depth++;
+      else if (masked[end] === "}" && --depth === 0) {
+        end++;
+        break;
+      }
+    }
+    if (depth !== 0) continue;
+    ranges.push({ start, end });
+  }
+  if (!ranges.length) return source;
+  const chars = [...source];
+  for (const { start, end } of ranges) for (let index = start; index < end; index++) if (chars[index] !== "\n" && chars[index] !== "\r") chars[index] = " ";
+  return chars.join("");
 }
 
 type WorkspacePackage = {
@@ -1782,6 +1865,15 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     seen.add(filePath);
     const source = await readFile(file, "utf8");
+    if (filePath.endsWith(".rs")) {
+      const rustEnv = input.rustCompileTimeEnvironment ?? {};
+      const literalMacros = [...source.matchAll(/\b(env|option_env)!\s*\(\s*["']([A-Z][A-Z0-9_]*)["']\s*\)/g)];
+      const macroCount = [...source.matchAll(/\b(?:env|option_env)!\s*\(/g)].length;
+      if (macroCount !== literalMacros.length) unresolved.push({ from: filePath, specifier: "<rust-compile-time-environment-dynamic>" });
+      for (const [, macro, name] of literalMacros) {
+        if (!Object.hasOwn(rustEnv, name) || (macro === "env" && rustEnv[name] === null)) unresolved.push({ from: filePath, specifier: `rust-compile-time-environment-unbound:${name}` });
+      }
+    }
     if (/(^|\/)(?:requirements|constraints)(?:(?:[-_.][^/]*)|(?:\/[^/]+))?\.txt$/i.test(filePath)) {
       for (const [lineIndex, rawLine] of source.split(/\r?\n/).entries()) {
         const line = rawLine.replace(/\s+#.*$/, "").trim();
@@ -2074,8 +2166,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     if (filePath.endsWith("Cargo.toml")) {
       const aliases = cargoAliasesByManifest.get(filePath) ?? new Map<string, string>();
-      const packageBlock = source.match(/^\[package\]\s*([\s\S]*?)(?=^\[|^\[\[|$)/m)?.[1] ?? "";
+      const packageBlock = source.match(/^\[package\]\s*([\s\S]*?)(?=^\[|(?![\s\S]))/m)?.[1] ?? "";
       const packageName = packageBlock.match(/^name\s*=\s*["']([^"']+)["']/m)?.[1];
+      const packageVersion = packageBlock.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1];
+      if (Object.hasOwn(input.rustCompileTimeEnvironment ?? {}, "CARGO_PKG_VERSION") && input.rustCompileTimeEnvironment?.CARGO_PKG_VERSION !== packageVersion)
+        unresolved.push({ from: filePath, specifier: "<rust-cargo-pkg-version-binding-mismatch>" });
       const libraryBlock = source.match(/^\[lib\]\s*([\s\S]*?)(?=^\[|^\[\[|$)/m)?.[1] ?? "";
       const libraryPath = libraryBlock.match(/^path\s*=\s*["']([^"']+)["']/m)?.[1] ?? "src/lib.rs";
       if (packageName) {
@@ -2367,7 +2462,54 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       });
   }
   const markerEnvironment = input.runtimeIdentity?.pythonCompatibility?.markerEnvironment ?? {};
-  const { required: requiredExternalSet, unresolved: dependencyClosureIssues, rootLocators } = selectExternalClosure(lockedPackages, externalRoots, importersByLockfile, selectedOptionalSet, new Set(selectedPythonExtras), markerEnvironment);
+  const selectedCargoTargets = [...(input.cargoTargetSelections ?? [])].map(item => ({ ...item })).sort((a, b) => compareText(a.manifestPath, b.manifestPath) || compareText(a.target, b.target));
+  const rustCompileTimeEnvironment = Object.fromEntries(Object.entries(input.rustCompileTimeEnvironment ?? {}).sort(([a], [b]) => compareText(a, b)));
+  const cargoTargetLockfiles = new Set<string>();
+  const selectedCargoLocators = new Map<string, Set<string>>();
+  for (const selection of selectedCargoTargets) {
+    const manifestPath = safeRelative(sourceRoot, selection.manifestPath);
+    const lockfilePath = join(dirname(manifestPath), "Cargo.lock").split(sep).join("/");
+    const cargoIdentities = lockedPackages.filter(identity => identity.packageManager === "cargo" && identity.lockfilePath === lockfilePath);
+    if (selection.profile !== "runtime-binary-v1" || !seen.has(manifestPath) || !seen.has(lockfilePath) || !cargoIdentities.length || !cargoTargetMatchesRuntime(selection.target, input.runtimeIdentity?.platform)) {
+      unresolved.push({ from: manifestPath, specifier: "<cargo-target-profile-binding-invalid>" });
+      continue;
+    }
+    try {
+      const selectedPackages = await runCargoTargetPackageList(sourceRoot, selection);
+      const selected = new Set<string>();
+      const manifestSource = await readFile(await assertRegularFileWithoutSymlinkParents(sourceRoot, manifestPath), "utf8");
+      const rootBlock = manifestSource.match(/^\[package\]\s*([\s\S]*?)(?=^\[|(?![\s\S]))/m)?.[1] ?? "";
+      const rootName = rootBlock.match(/^name\s*=\s*["']([^"']+)["']/m)?.[1];
+      const rootVersion = rootBlock.match(/^version\s*=\s*["']([^"']+)["']/m)?.[1];
+      for (const value of selectedPackages) {
+        const match = value.match(/^(.+?) v([^\s]+)(?: \([^)]*\))?$/);
+        if (!match) {
+          unresolved.push({ from: manifestPath, specifier: `cargo-target-package-unparseable:${value}` });
+          continue;
+        }
+        const [, packageName, version] = match;
+        if (packageName === rootName && version === rootVersion) continue;
+        const candidates = cargoIdentities.filter(identity => identity.name === normalizeCargoPackageName(packageName) && identity.version === version);
+        if (candidates.length !== 1) {
+          unresolved.push({ from: manifestPath, specifier: `cargo-target-package-${candidates.length ? "ambiguous" : "not-in-lock"}:${packageName}@${version}` });
+          continue;
+        }
+        selected.add(candidates[0].locator);
+      }
+      if (!selected.size) {
+        unresolved.push({ from: manifestPath, specifier: "<cargo-target-package-graph-empty>" });
+        continue;
+      }
+      cargoTargetLockfiles.add(lockfilePath);
+      selectedCargoLocators.set(lockfilePath, selected);
+    } catch (error) {
+      unresolved.push({ from: manifestPath, specifier: `cargo-target-resolution-failed-locked-offline:${error instanceof Error ? error.message : "unknown"}` });
+    }
+  }
+  const { required: requiredExternalSet, unresolved: dependencyClosureIssues, rootLocators } = selectExternalClosure(lockedPackages, externalRoots, importersByLockfile, selectedOptionalSet, new Set(selectedPythonExtras), markerEnvironment, cargoTargetLockfiles);
+  for (const selected of selectedCargoLocators.values()) for (const locator of selected) requiredExternalSet.add(locator);
+  const selectedCargoPackageLocators = Object.fromEntries([...selectedCargoLocators].sort(([a], [b]) => compareText(a, b)).map(([path, locators]) => [path, [...locators].sort()]));
+  for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   for (const issue of dependencyClosureIssues) unresolved.push({ from: "<dependency-lockfile>", specifier: issue });
   const externalArtifacts = input.externalArtifacts ?? [];
   const externalPackageIdentities: SourceExternalPackageIdentity[] = [];
@@ -2510,7 +2652,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     }
     const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)));
     const rawPackageName = declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier);
-    const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : normalizePackageName(rawPackageName);
+    const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
     const identity = externalPackageIdentities.find(item => item.locator === locator);
     if (identity?.artifactStatus === "VERIFIED_ARTIFACT") {
@@ -2548,6 +2690,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     selectedOptionalDependencies,
     selectedPythonDependencyGroups,
     selectedPythonExtras,
+    selectedCargoTargets,
+    selectedCargoPackageLocators,
+    rustCompileTimeEnvironment,
     ...(Object.keys(selectedManifestDependencies).length ? { selectedManifestDependencies } : {}),
     ...(Object.keys(selectedManifestScripts).length ? { selectedManifestScripts } : {}),
     requiredExternalPackages: [...requiredExternalSet].sort(),
@@ -2622,6 +2767,9 @@ export async function assembleReadOnlySourceBundle(input: { sourceRoot: string; 
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
     selectedPythonDependencyGroups: [...closure.selectedPythonDependencyGroups].sort(),
     selectedPythonExtras: [...closure.selectedPythonExtras].sort(),
+    selectedCargoTargets: [...closure.selectedCargoTargets],
+    selectedCargoPackageLocators: Object.fromEntries(Object.entries(closure.selectedCargoPackageLocators).map(([path, locators]) => [path, [...locators].sort()])),
+    rustCompileTimeEnvironment: { ...closure.rustCompileTimeEnvironment },
     ...(closure.selectedManifestDependencies ? { selectedManifestDependencies: closure.selectedManifestDependencies } : {}),
     ...(closure.selectedManifestScripts ? { selectedManifestScripts: closure.selectedManifestScripts } : {}),
     requiredExternalPackages: [...closure.requiredExternalPackages].sort(),

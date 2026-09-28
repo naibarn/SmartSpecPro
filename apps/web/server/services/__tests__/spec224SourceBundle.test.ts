@@ -1205,6 +1205,49 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.unresolvedImports.some(item => item.specifier.includes("serde"))).toBe(true);
   });
 
+  it("excludes Cargo dev-dependencies from a runtime binary profile", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), "fn main() {}\n");
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n\n[dependencies]\nruntime-crate = "1"\n\n[dev-dependencies]\ntest-only-crate = "1"\n');
+    const registry = "registry+https://github.com/rust-lang/crates.io-index";
+    const runtimeHash = createHash("sha256").update("runtime crate").digest("hex");
+    const testHash = createHash("sha256").update("test crate").digest("hex");
+    await writeFile(join(root, "Cargo.lock"), `version = 4\n\n[[package]]\nname = "runtime-crate"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${runtimeHash}"\n\n[[package]]\nname = "test-only-crate"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${testHash}"\n`);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-runtime-only-profile",
+      runtimeIdentity: { cargo: "cargo 1.94.1", packageManager: "cargo@1.94.1", platform: "linux-x86_64" },
+    });
+
+    expect(closure.requiredExternalPackages).toEqual([`Cargo.lock#runtime-crate@1.0.0|source=${registry}`]);
+    expect(closure.externalPackageIdentities.find(item => item.name === "test-only-crate")?.artifactStatus).toBe("NOT_REQUIRED");
+    expect(closure.closureComplete).toBe(false); // Runtime artifact bytes are still required.
+  });
+
+  it("excludes cfg(test) module source and imports from a runtime Rust profile", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.rs"), '#[cfg(test)]\nmod tests { use test_only_crate::Fixture; }\nfn main() {}\n');
+    await writeFile(join(root, "Cargo.toml"), '[package]\nname = "fixture"\nversion = "0.1.0"\n\n[dev-dependencies]\ntest-only-crate = "1"\n');
+    const registry = "registry+https://github.com/rust-lang/crates.io-index";
+    const checksum = createHash("sha256").update("test crate").digest("hex");
+    await writeFile(join(root, "Cargo.lock"), `version = 4\n\n[[package]]\nname = "test-only-crate"\nversion = "1.0.0"\nsource = "${registry}"\nchecksum = "${checksum}"\n`);
+
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.rs"],
+      dependencyArtifacts: ["Cargo.toml", "Cargo.lock"],
+      profileId: "rust-runtime-cfg-test-excluded",
+      runtimeIdentity: { cargo: "cargo 1.94.1", packageManager: "cargo@1.94.1", platform: "linux-x86_64" },
+    });
+
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual([]);
+    expect(closure.unresolvedImports).toEqual([]);
+  });
+
   it("resolves Rust modules and Cargo.lock locators, then verifies crate bytes before sealing", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "src/main.rs"), 'mod support;\nuse wire::Serialize;\n');
@@ -1237,6 +1280,7 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.files).toContain("src/support.rs");
     expect(closure.requiredExternalPackages).toHaveLength(2);
     expect(closure.externalPackageIdentities.filter(item => item.artifactStatus === "VERIFIED_ARTIFACT")).toHaveLength(2);
+    expect(closure.dependencyEdges.filter(edge => edge.from === "Cargo.toml" && edge.status === "external-package")).toEqual([]);
     const destination = join(root, "..", "sealed-rust-bundle");
     const bundle = await assembleReadOnlySourceBundle({ sourceRoot: root, destination, closure, sourceRevision: "d".repeat(40), specDigest, dependencyArtifacts: ["Cargo.toml", "Cargo.lock"] });
     expect(bundle.files.map(file => file.path)).toContain("artifacts/serde_core-1.0.0.crate");
