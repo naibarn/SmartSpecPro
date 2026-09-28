@@ -18,6 +18,8 @@ def _database_url() -> str:
     name = parsed.path.lstrip("/")
     if parsed.hostname not in {"localhost", "127.0.0.1"} or not name.startswith("spec224_") or not name.endswith("_test"):
         raise RuntimeError("P-RECOVERY grant integration requires a loopback spec224_*_test database")
+    if raw.startswith("postgresql://"):
+        raw = "postgresql+asyncpg://" + raw.removeprefix("postgresql://")
     return raw
 
 
@@ -63,17 +65,18 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
     try:
         async with engine.begin() as connection:
             owner = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
-                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
+                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
             ), {"open_id": f"spec224-grant-owner-{suffix}"})
             owner_id = owner.scalar_one()
             other = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
-                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
+                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
             ), {"open_id": f"spec224-grant-other-{suffix}"})
             other_id = other.scalar_one()
             await connection.execute(text(
-                'INSERT INTO tenants (id, slug, name, "ownerId") VALUES (:id, :slug, :name, :owner)'
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
             ), {"id": tenant_id, "slug": f"spec224-grant-{suffix}", "name": "Spec224 Grant Test", "owner": owner_id})
 
         async with sessions() as session:
@@ -100,6 +103,81 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 workpackage_id="WP-RECOVERY-04", operation="modify_owned_paths",
                 path="python-backend/app/services/approval_db_service.py", runtime_scope="python-approval",
                 environment_scope="isolated-non-production",
+            )
+
+            runtime_binding = {
+                "tenantId": tenant_id,
+                "ownerId": owner_id,
+                "runId": f"run-{suffix}",
+                "workerJobId": f"job-{suffix}",
+                "attempt": 2,
+                "revision": 7,
+                "decisionEpoch": 3,
+                "developmentRunFencingVersion": 11,
+                "workerJobFencingVersion": 19,
+                "runnerId": f"runner-{suffix}",
+                "runnerSessionId": f"session-{suffix}",
+                "capabilitySnapshotId": f"capability-{suffix}",
+                "capabilitySnapshotRevision": "cap-r7",
+            }
+            runtime_path = "apps/web/server/services/externalAgentTaskExecutor.ts"
+            runtime_scope = _scope()
+            runtime_scope["sourceFiles"] = [
+                *runtime_scope["sourceFiles"],
+                {"path": runtime_path, "sha256": "d" * 64},
+            ]
+            runtime_scope["sourceFiles"] = sorted(runtime_scope["sourceFiles"], key=lambda item: item["path"])
+            runtime_scope["allowedWriteSet"] = [runtime_path]
+            runtime_scope["allowedOperations"] = ["protected_dispatch"]
+            runtime_scope["runtimeScope"] = "local-test-runner"
+            runtime_scope["runtimeBinding"] = runtime_binding
+            runtime_manifest = {
+                "files": runtime_scope["sourceFiles"],
+                "schemaVersion": "spec224.source-manifest.v1",
+                "sourceCommit": runtime_scope["sourceCommit"],
+            }
+            runtime_scope["sourceSha256"] = hashlib.sha256(json.dumps(
+                runtime_manifest, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")).hexdigest()
+            with pytest.raises(ValueError, match="RUNTIME_BINDING_REQUIRED"):
+                await service.issue_spec224_recovery_grant(
+                    tenant_id=tenant_id,
+                    owner_id=owner_id,
+                    idempotency_key=f"runtime-grant-missing-binding-{suffix}",
+                    scope={**runtime_scope, "runtimeBinding": None},
+                )
+            with pytest.raises(ValueError, match="RUNTIME_BINDING_INVALID"):
+                await service.issue_spec224_recovery_grant(
+                    tenant_id=tenant_id,
+                    owner_id=owner_id,
+                    idempotency_key=f"runtime-grant-bool-owner-{suffix}",
+                    scope={**runtime_scope, "runtimeBinding": {**runtime_binding, "ownerId": True}},
+                )
+            runtime_grant = await service.issue_spec224_recovery_grant(
+                tenant_id=tenant_id, owner_id=owner_id,
+                idempotency_key=f"runtime-grant-{suffix}", scope=runtime_scope,
+            )
+            runtime_validation = {
+                "grant_id": runtime_grant["grantId"],
+                "tenant_id": tenant_id,
+                "source_commit": runtime_scope["sourceCommit"],
+                "source_sha256": runtime_scope["sourceSha256"],
+                "workpackage_id": "WP-RECOVERY-04",
+                "operation": "protected_dispatch",
+                "path": runtime_path,
+                "runtime_scope": "local-test-runner",
+                "environment_scope": "isolated-non-production",
+                "runtime_binding": runtime_binding,
+            }
+            assert await service.validate_spec224_recovery_grant(**runtime_validation)
+            assert not await service.validate_spec224_recovery_grant(
+                **{**runtime_validation, "runtime_binding": {**runtime_binding, "workerJobFencingVersion": 20}}
+            )
+            assert not await service.validate_spec224_recovery_grant(
+                **{key: value for key, value in runtime_validation.items() if key != "runtime_binding"}
+            )
+            assert not await service.validate_spec224_recovery_grant(
+                **{**runtime_validation, "tenant_id": str(uuid.uuid4())}
             )
             request = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.id == grant_id))).scalar_one()
 
@@ -282,12 +360,13 @@ async def test_spec224_cancellation_replay_returns_the_same_durable_delivery():
     try:
         async with engine.begin() as connection:
             user = await connection.execute(text(
-                'INSERT INTO users ("openId", role, plan, credits, "isDisabled") '
-                'VALUES (:open_id, \'user\', \'free\', 0, false) RETURNING id'
+                'INSERT INTO users ("openId", role, plan, credits, "isDisabled", is_banned) '
+                'VALUES (:open_id, \'user\', \'free\', 0, false, false) RETURNING id'
             ), {"open_id": f"spec224-cancel-{suffix}"})
             requester_id = user.scalar_one()
             await connection.execute(text(
-                'INSERT INTO tenants (id, slug, name, "ownerId") VALUES (:id, :slug, :name, :owner)'
+                'INSERT INTO tenants (id, slug, name, status, plan, "ownerId", created_at) '
+                'VALUES (:id, :slug, :name, \'ACTIVE\', \'FREE\', :owner, now())'
             ), {"id": tenant_id, "slug": f"spec224-cancel-{suffix}", "name": "Spec224 Cancel Test", "owner": requester_id})
         correlation["requesterId"] = requester_id
 
