@@ -330,6 +330,30 @@ describe("job control plane", () => {
     expect(context?.requiresSpec224Admission).toBe(false);
   });
 
+  it("does not classify an unrelated progress projection as a DevelopmentRun", async () => {
+    const state = makeRepository();
+    const jobId = "job-generic-spec224-projection";
+    state.jobs.set(jobId, {
+      id: jobId,
+      tenantId: "tenant-generic",
+      requestedByUserId: 7,
+      jobType: "external_agent_task",
+      executionClass: "external",
+      contractVersion: "feature-186-v1",
+      status: "queued",
+      attempt: 0,
+      maxAttempts: 1,
+      fencingVersion: 0,
+      inputJson: { manifest: {} },
+      progressJson: { spec224: { note: "unrelated progress metadata" } },
+      operatorReviewRequired: false,
+      createdAt: new Date(),
+      timeoutSeconds: 60,
+    });
+    const context = await createJobControlPlane(state.repository).getContext(jobId);
+    expect(context?.requiresSpec224Admission).toBe(false);
+  });
+
   it("holds a certified computer-use action for approval and fences the decision", async () => {
     const state = makeRepository();
     const jobId = "job-p213-approval";

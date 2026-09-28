@@ -2062,8 +2062,17 @@ export function createJobControlPlane(
         const validProjectedRun = spec224Projection && typeof spec224Projection === "object" && !Array.isArray(spec224Projection)
           ? spec224Projection as Record<string, unknown>
           : null;
+        const isCanonicalProjectedRun = Boolean(
+          validProjectedRun &&
+          typeof validProjectedRun.runId === "string" && validProjectedRun.runId.trim() &&
+          validProjectedRun.tenantId === job.tenantId &&
+          Number(validProjectedRun.actorId) === job.requestedByUserId &&
+          validProjectedRun.workerJobId === job.id &&
+          Number.isSafeInteger(validProjectedRun.projectionVersion) &&
+          Number.isSafeInteger(validProjectedRun.fencingVersion)
+        );
         const requiresSpec224Admission = Boolean(
-          validProjectedRun ||
+          isCanonicalProjectedRun ||
           (validSpec224Input &&
             typeof validSpec224Input.runId === "string" && validSpec224Input.runId.trim() &&
             validSpec224Input.tenantId === job.tenantId &&
