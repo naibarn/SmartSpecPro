@@ -128,7 +128,8 @@ describe("storagePutContentAddressedIfAbsent", () => {
     mockSend
       .mockRejectedValueOnce(
         Object.assign(new Error("precondition"), {
-          name: "PreconditionFailed",
+          name: "InvalidRequest",
+          Code: "PreconditionFailed",
           $metadata: { httpStatusCode: 412 },
         })
       )
