@@ -647,11 +647,8 @@ export async function storagePutContentAddressedIfAbsent(
     );
   } catch (error: any) {
     const statusCode = error?.$metadata?.httpStatusCode;
-    if (
-      statusCode !== 412 &&
-      error?.name !== "PreconditionFailed" &&
-      error?.Code !== "PreconditionFailed"
-    ) {
+    const errorCode = error?.name ?? error?.Code ?? error?.code;
+    if (statusCode !== 412 || errorCode !== "PreconditionFailed") {
       throw error;
     }
     const existing = await storageReadBuffer(key);

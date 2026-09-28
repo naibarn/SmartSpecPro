@@ -112,11 +112,23 @@ describe("storagePutContentAddressedIfAbsent", () => {
     ).rejects.toThrow("STORAGE_CONTENT_ADDRESS_VERIFY_FAILED");
   });
 
+  it("rejects malformed or encoded traversal namespaces before storage access", async () => {
+    const { invalidateStorageCache, storagePutContentAddressedIfAbsent } =
+      await import("../storage");
+    invalidateStorageCache();
+
+    await expect(
+      storagePutContentAddressedIfAbsent("safe/%2e%2e/escape", Buffer.from("x"))
+    ).rejects.toThrow();
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
   it("accepts an existing object only when its bytes match the content address", async () => {
     const bytes = Buffer.from("bundle bytes");
     mockSend
       .mockRejectedValueOnce(
         Object.assign(new Error("precondition"), {
+          name: "PreconditionFailed",
           $metadata: { httpStatusCode: 412 },
         })
       )
@@ -141,6 +153,7 @@ describe("storagePutContentAddressedIfAbsent", () => {
     mockSend
       .mockRejectedValueOnce(
         Object.assign(new Error("precondition"), {
+          name: "PreconditionFailed",
           $metadata: { httpStatusCode: 412 },
         })
       )
@@ -175,5 +188,44 @@ describe("storagePutContentAddressedIfAbsent", () => {
       )
     ).rejects.toThrow("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
     expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it("preserves non-precondition HTTP 412 failures", async () => {
+    const failure = Object.assign(new Error("conditional header rejected"), {
+      name: "InvalidRequest",
+      $metadata: { httpStatusCode: 412 },
+    });
+    mockSend.mockRejectedValueOnce(failure);
+    const { invalidateStorageCache, storagePutContentAddressedIfAbsent } =
+      await import("../storage");
+    invalidateStorageCache();
+
+    await expect(
+      storagePutContentAddressedIfAbsent("spec224/bundles", Buffer.from("x"))
+    ).rejects.toBe(failure);
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when a precondition response has no readable object", async () => {
+    mockSend
+      .mockRejectedValueOnce(
+        Object.assign(new Error("precondition"), {
+          name: "PreconditionFailed",
+          $metadata: { httpStatusCode: 412 },
+        })
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error("missing"), {
+          name: "NoSuchKey",
+          $metadata: { httpStatusCode: 404 },
+        })
+      );
+    const { invalidateStorageCache, storagePutContentAddressedIfAbsent } =
+      await import("../storage");
+    invalidateStorageCache();
+
+    await expect(
+      storagePutContentAddressedIfAbsent("spec224/bundles", Buffer.from("x"))
+    ).rejects.toThrow("STORAGE_CONTENT_ADDRESS_CONFLICT");
   });
 });
