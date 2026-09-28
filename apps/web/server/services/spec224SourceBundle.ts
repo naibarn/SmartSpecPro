@@ -1916,6 +1916,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       runtime.packageManager !== `pnpm@${profile.runtime.pnpm}` ||
       runtime.python !== profile.runtime.python ||
       runtime.rustc !== profile.runtime.rustc ||
+      (profile.entrypoints.rust.length > 0 && runtime.cargo !== profile.runtime.cargo) ||
       runtime.platform !== `${profile.runtime.platform}-${profile.runtime.architecture}` ||
       runtime.architecture !== profile.runtime.architecture
     ) {

@@ -12,6 +12,7 @@ export type Spec224ExecutionProfile = {
     node: string;
     pnpm: string;
     python: string;
+    cargo: string;
     rustc: string;
     platform: string;
     architecture: string;
@@ -54,7 +55,7 @@ export type Spec224ExecutionProfile = {
 const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   schemaVersion: "spec224.execution-profile.v1",
   profileId: "spec224-recovery-registered-runner-nonprod",
-  version: 2,
+  version: 3,
   repository: {
     sourceCommit: "6660d212dca2c8445346cc30cc1ddbba2c2899dd",
     gitTree: "96bfd412f031dc2f6005d4cb235fa25327d155cf",
@@ -63,6 +64,7 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     node: "v22.22.3",
     pnpm: "10.4.1",
     python: "3.12.12",
+    cargo: "cargo 1.94.1",
     rustc: "1.94.1",
     platform: "linux",
     architecture: "x86_64",
