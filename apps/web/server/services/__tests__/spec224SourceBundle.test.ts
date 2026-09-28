@@ -866,6 +866,27 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({ specifier: "@shared/const", to: "shared/const.ts", status: "resolved-local" }));
   });
 
+  it("keeps dynamically imported Node builtins in the runtime, not package closure", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'export const load = () => Promise.all([import("node:crypto"), import("fs/promises"), import("dns/promises"), import("net")]);\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture" }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "node-builtin-dynamic-imports",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1" },
+    });
+    expect(closure.closureComplete, JSON.stringify(closure.unresolvedImports)).toBe(true);
+    expect(closure.externalImports).not.toContain("crypto");
+    expect(closure.externalImports).not.toContain("fs");
+    expect(closure.requiredExternalPackages).not.toContain("crypto");
+    expect(closure.requiredExternalPackages).not.toContain("fs");
+    expect(closure.requiredExternalPackages).not.toContain("dns");
+    expect(closure.requiredExternalPackages).not.toContain("net");
+  });
+
   it("requires selected scripts to include their executable dependency and nested scripts", async () => {
     const root = await sourceFixture();
     await writeFile(join(root, "src/main.ts"), "export const profile = true;\n");

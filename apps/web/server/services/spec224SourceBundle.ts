@@ -7,7 +7,7 @@ import yaml from "js-yaml";
 const BUNDLE_MANIFEST = ".spec224-source-bundle.json";
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs", ".py"];
 const PYTHON_TOP_LEVEL = new Set(["os", "sys", "typing", "pathlib", "json", "re", "hashlib", "datetime", "logging", "asyncio", "subprocess", "importlib", "__future__"]);
-const NODE_BUILTINS = new Set(["assert", "buffer", "child_process", "crypto", "events", "fs", "http", "https", "module", "os", "path", "process", "stream", "url", "util", "zlib"]);
+const NODE_BUILTINS = new Set(["assert", "buffer", "child_process", "crypto", "dns", "events", "fs", "http", "https", "module", "net", "os", "path", "process", "stream", "url", "util", "zlib"]);
 
 export type SourceInputKind = "entry" | "dependency-artifact" | "runtime-config" | "test-fixture" | "generated-artifact" | "executable" | "hook" | "workspace-manifest" | "source-import";
 export type SourceDependencyEdge = {
@@ -1740,6 +1740,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       });
     }
     for (const specifier of imports.dynamic) {
+      if (specifier.startsWith("node:") || NODE_BUILTINS.has(specifier.split("/")[0])) continue;
       if (filePath.endsWith(".py") || specifier.startsWith(".") || specifier.startsWith("/")) {
         const resolved = await resolveLocalImport(sourceRoot, filePath, specifier, input.moduleRoots);
         if (resolved) {
