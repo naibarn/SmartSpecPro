@@ -377,7 +377,8 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
   const byLocator = new Map(identities.map(identity => [identity.locator, identity]));
   const queue: Array<{ locator: string; label: string }> = [];
   for (const root of roots) {
-    const declaredPythonRoot = root.specifier ? undefined : roots.find(candidate => normalizePackageName(candidate.name) === normalizePackageName(root.name) && candidate.specifier !== undefined && candidate.requesterPath.endsWith("pyproject.toml"));
+    const isPythonRoot = isPythonDependencyPath(root.requesterPath);
+    const declaredPythonRoot = root.specifier ? undefined : roots.find(candidate => normalizePythonPackageName(candidate.name) === normalizePythonPackageName(root.name) && candidate.specifier !== undefined && candidate.requesterPath.endsWith("pyproject.toml"));
     const effectiveRoot = declaredPythonRoot ? { ...root, specifier: declaredPythonRoot.specifier, marker: declaredPythonRoot.marker, extras: declaredPythonRoot.extras, source: declaredPythonRoot.source } : root;
     if (effectiveRoot.marker) {
       const markerResult = evaluatePythonMarker(effectiveRoot.marker, markerEnvironment);
@@ -387,7 +388,9 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
         continue;
       }
     }
-    const candidates = identities.filter(item => item.name === normalizePackageName(effectiveRoot.name));
+    const effectiveIsPythonRoot = isPythonDependencyPath(effectiveRoot.requesterPath);
+    const effectiveNormalizeName = (name: string) => effectiveIsPythonRoot ? normalizePythonPackageName(name) : normalizePackageName(name);
+    const candidates = identities.filter(item => item.name === effectiveNormalizeName(effectiveRoot.name) && (effectiveIsPythonRoot ? item.packageManager === "uv" : item.packageManager !== "uv"));
     const matches: string[] = [];
     for (const item of candidates) {
       const versionMatches = pythonVersionSatisfies(item.version, effectiveRoot.specifier);
@@ -408,10 +411,10 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       else if (item.packageManager === "uv") matches.push(item.locator);
     }
     if (matches.length !== 1) {
-      unresolved.push(`${matches.length ? "external-package-resolution-ambiguous" : "external-package-lock-entry-missing"}:${normalizePackageName(effectiveRoot.name)}:${effectiveRoot.requesterPath}`);
+      unresolved.push(`${matches.length ? "external-package-resolution-ambiguous" : "external-package-lock-entry-missing"}:${effectiveNormalizeName(effectiveRoot.name)}:${effectiveRoot.requesterPath}`);
       continue;
     }
-    rootLocators.set(`${effectiveRoot.requesterPath}\0${normalizePackageName(effectiveRoot.name)}`, matches[0]);
+    rootLocators.set(`${effectiveRoot.requesterPath}\0${effectiveNormalizeName(effectiveRoot.name)}`, matches[0]);
     queue.push({ locator: matches[0], label: effectiveRoot.name });
   }
   while (queue.length) {
@@ -434,7 +437,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
             continue;
           }
         }
-        const candidates = identities.filter(candidate => candidate.packageManager === "uv" && candidate.name === normalizePackageName(relation.name) && (!relation.version || candidate.version === relation.version.replace(/^(?:==|=)\s*/, "")) && (!relation.source || candidate.source === relation.source));
+        const candidates = identities.filter(candidate => candidate.packageManager === "uv" && candidate.name === normalizePythonPackageName(relation.name) && (!relation.version || candidate.version === relation.version.replace(/^(?:==|=)\s*/, "")) && (!relation.source || candidate.source === relation.source));
         if (candidates.length !== 1) {
           unresolved.push(`transitive-package-resolution-${candidates.length ? "ambiguous" : "missing"}:${item.name}->${relation.name}`);
           continue;
@@ -840,7 +843,16 @@ type WorkspacePackage = {
 };
 
 function normalizePackageName(name: string): string {
+  // npm package names are case-insensitive but punctuation is significant.
+  return name.toLowerCase();
+}
+
+function normalizePythonPackageName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, "-");
+}
+
+function isPythonDependencyPath(path: string): boolean {
+  return path.endsWith(".py") || path.endsWith("pyproject.toml") || /(^|\/)(?:requirements|constraints)(?:(?:[-_.][^/]*)|(?:\/[^/]+))?\.txt$/i.test(path);
 }
 
 function packageLocatorId(lockfilePath: string, locator: string): string {
@@ -1006,7 +1018,7 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
       const extra = tomlStringField(entry, "extra");
       const dependencyVersion = tomlStringField(entry, "version");
       const dependencySource = tomlStringField(entry, "registry") ?? tomlStringField(entry, "url");
-      return [{ name: normalizePackageName(dependencyName), ...(marker ? { marker } : {}), ...(extra ? { extra } : {}), ...(dependencyVersion ? { version: dependencyVersion } : {}), ...(dependencySource ? { source: dependencySource } : {}) }];
+      return [{ name: normalizePythonPackageName(dependencyName), ...(marker ? { marker } : {}), ...(extra ? { extra } : {}), ...(dependencyVersion ? { version: dependencyVersion } : {}), ...(dependencySource ? { source: dependencySource } : {}) }];
     });
     const dependencies = [
       ...new Set(
@@ -1014,7 +1026,7 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
           .filter(item => !/\bextra\s*=/.test(item))
           .map(item => item.match(/name\s*=\s*["']([^"']+)["']/)?.[1])
           .filter((item): item is string => Boolean(item))
-          .map(normalizePackageName)
+          .map(normalizePythonPackageName)
       ),
     ].sort();
     const optionalDependencies = [
@@ -1023,16 +1035,16 @@ function parseUvLockPackages(source: string, lockfilePath: string): ParsedDepend
           .filter(item => /\bextra\s*=/.test(item))
           .map(item => item.match(/name\s*=\s*["']([^"']+)["']/)?.[1])
           .filter((item): item is string => Boolean(item))
-          .map(normalizePackageName)
+          .map(normalizePythonPackageName)
       ),
     ].sort();
     const contextMarkers = [...(block.match(/^resolution-markers\s*=\s*\[([\s\S]*?)^\]/m)?.[1] ?? "").matchAll(/["']([^"']+)["']/g)].map(match => match[1]);
     const sourceIdentity = sourceValue.split(",").map(value => value.trim()).filter(Boolean).sort().join(",");
     const packageBlockDigest = sha256(block.trim());
     identities.push({
-      name: normalizePackageName(name),
+      name: normalizePythonPackageName(name),
       version,
-      locator: packageLocatorId(lockfilePath, `uv:${normalizePackageName(name)}@${version}|source=${sourceIdentity}|node=${packageBlockDigest}`),
+      locator: packageLocatorId(lockfilePath, `uv:${normalizePythonPackageName(name)}@${version}|source=${sourceIdentity}|node=${packageBlockDigest}`),
       packageManager: "uv",
       lockfilePath,
       integrity,
@@ -1136,7 +1148,7 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
     }
     return { packages: result, importers };
   }
-  const lock = yaml.load(source) as { packages?: Record<string, Record<string, unknown>>; importers?: Record<string, Record<string, unknown>> } | undefined;
+  const lock = yaml.load(source) as { packages?: Record<string, Record<string, unknown>>; snapshots?: Record<string, Record<string, unknown>>; importers?: Record<string, Record<string, unknown>> } | undefined;
   const result: SourceExternalPackageIdentity[] = [];
   for (const [rawKey, value] of Object.entries(lock?.packages ?? {})) {
     const locator = rawKey.replace(/^\//, "");
@@ -1185,6 +1197,38 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
       cpu: Array.isArray(value.cpu) ? value.cpu.filter((item): item is string => typeof item === "string") : [],
     });
   }
+  const snapshotEntries = Object.entries(lock?.snapshots ?? {});
+  if (snapshotEntries.length > 0) {
+    const baseIdentities = new Map(result.map(identity => [identity.locator.slice(`${lockfilePath}#`.length), identity]));
+    const snapshotBaseLocators = new Set<string>();
+    const peerQualifiedIdentities: SourceExternalPackageIdentity[] = [];
+    for (const [rawSnapshotLocator, snapshotValue] of snapshotEntries) {
+      const snapshotLocator = rawSnapshotLocator.replace(/^\//, "");
+      const peerBoundary = snapshotLocator.indexOf("(");
+      const baseLocator = peerBoundary < 0 ? snapshotLocator : snapshotLocator.slice(0, peerBoundary);
+      const baseIdentity = baseIdentities.get(baseLocator);
+      if (!baseIdentity) continue;
+      snapshotBaseLocators.add(baseLocator);
+      const snapshotDependencies = (snapshotValue.dependencies && typeof snapshotValue.dependencies === "object" ? snapshotValue.dependencies : {}) as Record<string, unknown>;
+      const snapshotOptionalDependencies = (snapshotValue.optionalDependencies && typeof snapshotValue.optionalDependencies === "object" ? snapshotValue.optionalDependencies : {}) as Record<string, unknown>;
+      const dependencies = Object.keys(snapshotDependencies).length > 0
+        ? Object.keys(snapshotDependencies).map(normalizePackageName)
+        : baseIdentity.dependencies;
+      const optionalDependencies = Object.keys(snapshotOptionalDependencies).length > 0
+        ? Object.keys(snapshotOptionalDependencies).map(normalizePackageName)
+        : baseIdentity.optionalDependencies;
+      peerQualifiedIdentities.push({
+        ...baseIdentity,
+        locator: packageLocatorId(lockfilePath, snapshotLocator),
+        dependencies: [...new Set(dependencies)].sort(),
+        optionalDependencies: [...new Set(optionalDependencies)].sort(),
+        dependencyLocators: {},
+        optionalDependencyLocators: {},
+      });
+    }
+    const packagesWithoutSnapshots = result.filter(identity => !snapshotBaseLocators.has(identity.locator.slice(`${lockfilePath}#`.length)));
+    result.splice(0, result.length, ...peerQualifiedIdentities, ...packagesWithoutSnapshots);
+  }
   const resolvePnpmLocator = (name: string, value: unknown): string | null => {
     const version = typeof value === "string" ? value : value && typeof value === "object" && typeof (value as Record<string, unknown>).version === "string" ? (value as Record<string, unknown>).version as string : null;
     if (!version) return null;
@@ -1198,7 +1242,7 @@ function parseNodeLockPackages(source: string, lockfilePath: string): ParsedDepe
   };
   for (const identity of result) {
     const rawLocator = identity.locator.slice(`${lockfilePath}#`.length);
-    const packageEntry = lock?.packages?.[rawLocator] ?? lock?.packages?.[`/${rawLocator}`] ?? {};
+    const packageEntry = lock?.snapshots?.[rawLocator] ?? lock?.snapshots?.[`/${rawLocator}`] ?? lock?.packages?.[rawLocator] ?? lock?.packages?.[`/${rawLocator}`] ?? {};
     for (const name of identity.dependencies) identity.dependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.dependencies as Record<string, unknown> | undefined)?.[name]);
     for (const name of identity.optionalDependencies) identity.optionalDependencyLocators[name] = resolvePnpmLocator(name, (packageEntry.optionalDependencies as Record<string, unknown> | undefined)?.[name]);
   }
@@ -1445,7 +1489,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           });
           continue;
         }
-        const packageName = requirement[1].toLowerCase().replace(/[-_.]+/g, "-");
+        const packageName = normalizePythonPackageName(requirement[1]);
         external.add(packageName);
         declaredExternal.add(packageName);
         externalRoots.push({ name: packageName, requesterPath: filePath });
@@ -1476,7 +1520,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
         const requirementMatch = requirementPart.match(/^([A-Za-z0-9_.-]+)(?:\[([^\]]+)\])?\s*(.*)$/);
         const name = requirementMatch?.[1];
         if (!name) continue;
-        const packageName = normalizePackageName(name);
+        const packageName = normalizePythonPackageName(name);
         const extras = requirementMatch?.[2]?.split(",").map(item => item.trim().toLowerCase()).filter(Boolean) ?? [];
         const rawSpecifier = requirementMatch?.[3]?.trim() ?? "";
         const root: ExternalRoot = { name: packageName, requesterPath: filePath, ...(rawSpecifier ? { specifier: rawSpecifier } : {}), ...(extras.length ? { extras } : {}), ...(markerPart ? { marker: markerPart } : {}) };
@@ -2009,7 +2053,8 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   for (const edge of dependencyEdges) {
     if (edge.status !== "external-package") continue;
     const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)));
-    const packageName = normalizePackageName(declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier));
+    const rawPackageName = declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier);
+    const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : normalizePackageName(rawPackageName);
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
     const identity = externalPackageIdentities.find(item => item.locator === locator);
     if (identity?.artifactStatus === "VERIFIED_ARTIFACT") {

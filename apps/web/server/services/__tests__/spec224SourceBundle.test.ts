@@ -1006,6 +1006,114 @@ describe("Spec 224 source bundle tooling", () => {
     expect(await verifyReadOnlySourceBundle(bundlePath)).toMatchObject({ valid: true });
   });
 
+  it("resolves pnpm v9 peer variants from snapshots while taking integrity from packages", async () => {
+    const root = await sourceFixture();
+    const consumer = Buffer.from("peer consumer artifact");
+    const peerV1 = Buffer.from("peer v1 artifact");
+    const peerV2 = Buffer.from("peer v2 artifact");
+    const sri = (bytes: Buffer) => `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    await mkdir(join(root, "artifacts"), { recursive: true });
+    await writeFile(join(root, "src/main.ts"), 'import "peer-consumer";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "peer-consumer": "1.0.0" } }));
+    await writeFile(join(root, "pnpm-lock.yaml"), `lockfileVersion: '9.0'
+importers:
+  .:
+    dependencies:
+      peer-consumer:
+        specifier: 1.0.0
+        version: 1.0.0(peer@2.0.0)
+packages:
+  peer-consumer@1.0.0:
+    resolution:
+      integrity: ${sri(consumer)}
+    peerDependencies:
+      peer: ^1.0.0
+  peer@1.0.0:
+    resolution:
+      integrity: ${sri(peerV1)}
+  peer@2.0.0:
+    resolution:
+      integrity: ${sri(peerV2)}
+snapshots:
+  peer-consumer@1.0.0(peer@1.0.0):
+    dependencies:
+      peer: 1.0.0
+  peer-consumer@1.0.0(peer@2.0.0):
+    dependencies:
+      peer: 2.0.0
+  peer@1.0.0: {}
+  peer@2.0.0: {}
+`);
+    await writeFile(join(root, "artifacts/consumer.tgz"), consumer);
+    await writeFile(join(root, "artifacts/peer-v1.tgz"), peerV1);
+    await writeFile(join(root, "artifacts/peer-v2.tgz"), peerV2);
+    const consumerLocator = "pnpm-lock.yaml#peer-consumer@1.0.0(peer@2.0.0)";
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "pnpm-v9-snapshot-peer-variant",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+      externalArtifacts: [
+        { name: "peer-consumer", version: "1.0.0", locator: consumerLocator, packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/consumer.tgz", source: null, kind: "npm-tarball", platform: "linux-x64" },
+        { name: "peer", version: "2.0.0", locator: "pnpm-lock.yaml#peer@2.0.0", packageManager: "pnpm", lockfilePath: "pnpm-lock.yaml", path: "artifacts/peer-v2.tgz", source: null, kind: "npm-tarball", platform: "linux-x64" },
+      ],
+    });
+    expect(closure.closureComplete).toBe(true);
+    expect(closure.requiredExternalPackages).toEqual(expect.arrayContaining([consumerLocator, "pnpm-lock.yaml#peer@2.0.0"]));
+    expect(closure.requiredExternalPackages).not.toContain("pnpm-lock.yaml#peer-consumer@1.0.0(peer@1.0.0)");
+    expect(closure.externalPackageIdentities.find(item => item.locator === consumerLocator)).toMatchObject({ artifactStatus: "VERIFIED_ARTIFACT", artifactSha256: createHash("sha256").update(consumer).digest("hex") });
+  });
+
+  it("keeps distinct dotted and dashed npm package names distinct in the lock graph", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import "root-package";\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({ name: "fixture", dependencies: { "root-package": "1.0.0" } }));
+    const lock = [
+      "lockfileVersion: '9.0'",
+      "importers:",
+      "  .:",
+      "    dependencies:",
+      "      root-package:",
+      "        specifier: 1.0.0",
+      "        version: 1.0.0",
+      "packages:",
+      "  root-package@1.0.0:",
+      "    resolution:",
+      "      integrity: sha512-cm9vdA==",
+      "    dependencies:",
+      "      lodash.camelcase: 4.3.0",
+      "      lodash-camelcase: 4.3.0",
+      "  lodash.camelcase@4.3.0:",
+      "    resolution:",
+      "      integrity: sha512-YWJj",
+      "  lodash-camelcase@4.3.0:",
+      "    resolution:",
+      "      integrity: sha512-ZGVm",
+      "snapshots:",
+      "  root-package@1.0.0:",
+      "    dependencies:",
+      "      lodash.camelcase: 4.3.0",
+      "      lodash-camelcase: 4.3.0",
+      "  lodash.camelcase@4.3.0: {}",
+      "  lodash-camelcase@4.3.0: {}",
+      "",
+    ].join("\n");
+    await writeFile(join(root, "pnpm-lock.yaml"), lock);
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      profileId: "npm-distinct-name-normalization",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1", platform: "linux-x64" },
+    });
+    expect(closure.requiredExternalPackages).toContain("pnpm-lock.yaml#lodash.camelcase@4.3.0");
+    expect(closure.requiredExternalPackages).toContain("pnpm-lock.yaml#lodash-camelcase@4.3.0");
+    expect(closure.unresolvedImports).not.toContainEqual(expect.objectContaining({ specifier: expect.stringContaining("external-package-resolution-ambiguous") }));
+  });
+
   it("selects the uv resolution fork by version and environment marker, then seals only the compatible wheel", async () => {
     const root = await sourceFixture();
     await mkdir(join(root, "python"), { recursive: true });
