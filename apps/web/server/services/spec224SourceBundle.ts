@@ -2654,7 +2654,17 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     const rawPackageName = declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier);
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
-    const identity = externalPackageIdentities.find(item => item.locator === locator);
+    let identity = externalPackageIdentities.find(item => item.locator === locator);
+    if (!identity && edge.from.endsWith("Cargo.toml") && declaredRoot) {
+      const candidates = externalPackageIdentities.filter(item => item.packageManager === "cargo"
+        && item.lockfilePath === join(dirname(edge.from), "Cargo.lock").split(sep).join("/")
+        && item.name === packageName
+        && cargoRequirementMatches(item.version, declaredRoot.specifier ?? "*") === true
+        && requiredExternalSet.has(item.locator)
+        && item.artifactStatus === "VERIFIED_ARTIFACT");
+      if (candidates.length === 1) identity = candidates[0];
+      else if (candidates.length > 1) unresolved.push({ from: edge.from, specifier: `cargo-root-artifact-ambiguous:${packageName}` });
+    }
     if (identity?.artifactStatus === "VERIFIED_ARTIFACT") {
       edge.status = "verified-external-artifact";
       edge.to = identity.artifactPath;
