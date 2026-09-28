@@ -15,6 +15,13 @@
       "when": 1790480392733,
       "tag": "0001_sparkling_leopardon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790603207328,
+      "tag": "0002_spec224_audit_log_for_recovery",
+      "breakpoints": true
     }
   ]
 }

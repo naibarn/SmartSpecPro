@@ -31,6 +31,7 @@ export type Spec224ExecutionProfile = {
     runtime: string[];
     testOnly: string[];
   };
+  pythonDependencySelections: Record<string, { runtime?: string[]; test?: string[]; optional?: string[]; devOnly?: string[] }>;
   externalArtifacts: string[];
   scripts: {
     allowed: string[];
@@ -51,15 +52,15 @@ export type Spec224ExecutionProfile = {
 const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   schemaVersion: "spec224.execution-profile.v1",
   profileId: "spec224-recovery-registered-runner-nonprod",
-  version: 1,
+  version: 2,
   repository: {
-    sourceCommit: "08895596129d3168bb944387d76bf86b4a9b180c",
-    gitTree: "ac3ee49fae33d5fba2c54aa81396950710afb88c",
+    sourceCommit: "6660d212dca2c8445346cc30cc1ddbba2c2899dd",
+    gitTree: "96bfd412f031dc2f6005d4cb235fa25327d155cf",
   },
   runtime: {
     node: "v22.22.3",
     pnpm: "10.4.1",
-    python: "3.13.5",
+    python: "3.12.12",
     rustc: "1.94.1",
     platform: "linux",
     architecture: "x86_64",
@@ -86,8 +87,19 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     ],
     python: [
       "python-backend/app/services/approval_db_service.py",
+      "python-backend/app/api/approvals.py",
+      "python-backend/app/core/auth.py",
+      "python-backend/app/core/jwt_manager.py",
+      "python-backend/app/core/database.py",
+      "python-backend/app/core/config.py",
+      "python-backend/app/multitenancy/tenant_context.py",
+      "python-backend/app/multitenancy/tenant_model.py",
       "python-backend/app/models/approval.py",
+      "python-backend/app/models/user.py",
+      "python-backend/app/models/tenant.py",
       "python-backend/app/models/audit_log.py",
+      "python-backend/app/models/token_blacklist.py",
+      "python-backend/tests/test_spec224_external_agent_approval.py",
       "python-backend/tests/integration/test_spec224_approval_postgres.py",
       "python-backend/tests/integration/test_spec224_recovery_grant_postgres.py",
     ],
@@ -112,10 +124,10 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     { prefix: "@shared", root: "apps/web/shared", language: "javascript" },
     { prefix: "app", root: "python-backend/app", language: "python" },
   ],
-  pythonStandardLibrarySha256: "c882d02c4df0acfdb607c1fc81d33f4529965c5805c0d5647afd2977f33a142e",
+  pythonStandardLibrarySha256: "45bfd5246a3a12920cec2e9b43e016a21e6af975f7b25dec06da182dc6d36f9e",
   sourceInputs: [
     "apps/web/server/services/jobControlPlane.ts",
-    "apps/web/server/services/workerJobOutboxPublisher.ts",
+    "apps/web/server/services/jobOutboxPublisher.ts",
     "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
     "apps/web/server/services/spec224AuthorizationService.ts",
     "apps/web/drizzle/schema.ts",
@@ -123,8 +135,10 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
     "apps/web/tsconfig.json",
     "tsconfig.base.json",
     "apps/runner-app/src",
-    "python-backend/app/services",
-    "python-backend/app/models",
+    "python-backend/requirements.txt",
+    "python-backend/spec224-admission/README.md",
+    "python-backend/spec224-admission/pyproject.toml",
+    "python-backend/spec224-admission/uv.lock",
     "python-backend/tests/integration/test_spec224_approval_postgres.py",
     "python-backend/tests/integration/test_spec224_recovery_grant_postgres.py",
   ],
@@ -136,18 +150,27 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
       "apps/web/package.json",
       "apps/runner-app/Cargo.toml",
       "apps/runner-app/Cargo.lock",
-      "python-backend/pyproject.toml",
-      "python-backend/uv.lock",
+      "python-backend/requirements.txt",
+      "python-backend/spec224-admission/pyproject.toml",
+      "python-backend/spec224-admission/uv.lock",
     ],
     testOnly: [
       "apps/web/package.json#vitest",
-      "python-backend/pyproject.toml#pytest",
+      "python-backend/spec224-admission/pyproject.toml#admission-tests",
     ],
+  },
+  pythonDependencySelections: {
+    "python-backend/requirements.txt": {
+      runtime: ["fastapi", "starlette", "pydantic", "pydantic-settings", "sqlalchemy", "asyncpg", "structlog", "httpx", "python-jose"],
+      test: [],
+      optional: [],
+      devOnly: [],
+    },
   },
   externalArtifacts: [
     "pnpm-lock.yaml:resolve-required-node-artifacts",
     "apps/runner-app/Cargo.lock:resolve-linux-x86_64-runtime-artifacts",
-    "python-backend/uv.lock:resolve-python-3.13-linux-x86_64-artifacts",
+    "python-backend/spec224-admission/uv.lock:resolve-python-3.12-linux-x86_64-artifacts",
   ],
   scripts: {
     allowed: ["cargo check --locked --offline", "focused Spec 224 Vitest", "focused Spec 224 PostgreSQL pytest"],
@@ -168,7 +191,8 @@ const RECOVERY_RUNNER_PROFILE_INPUT: ExecutionProfileInput = {
   protectedOperations: ["external-agent dispatch", "approval continuation", "Runner dispatch", "receipt recovery"],
 };
 
-export const SPEC224_RECOVERY_RUNNER_PROFILE = createSpec224ExecutionProfile(RECOVERY_RUNNER_PROFILE_INPUT);
+/** Reviewed profile definition; bind it to the final source commit/tree before admission. */
+export const SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE = createSpec224ExecutionProfile(RECOVERY_RUNNER_PROFILE_INPUT);
 
 type ExecutionProfileInput = Omit<Spec224ExecutionProfile, "profileDigest">;
 
@@ -224,6 +248,20 @@ export function createSpec224ExecutionProfile(input: ExecutionProfileInput): Spe
     schemaVersion: "spec224.execution-profile.v1",
     profileDigest: sha256(canonicalJson(base)),
   };
+}
+
+/** Bind a reviewed profile definition to a frozen Git source identity before closure admission. */
+export function bindSpec224ExecutionProfileToSource(
+  profile: Spec224ExecutionProfile,
+  sourceCommit: string,
+  gitTree: string,
+): Spec224ExecutionProfile {
+  if (!verifySpec224ExecutionProfile(profile)) throw new Error("SPEC224_EXECUTION_PROFILE_DIGEST_MISMATCH");
+  const { profileDigest: _profileDigest, ...base } = profile;
+  return createSpec224ExecutionProfile({
+    ...base,
+    repository: { sourceCommit, gitTree },
+  });
 }
 
 export function verifySpec224ExecutionProfile(profile: Spec224ExecutionProfile): boolean {

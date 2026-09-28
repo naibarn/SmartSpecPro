@@ -129,6 +129,7 @@ export type SourceBundleManifest = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  pythonDependencySelections?: Record<string, { runtime?: string[]; test?: string[]; optional?: string[]; devOnly?: string[] }>;
   pythonStandardLibraryModules?: string[];
   selectedCargoTargets: SourceCargoTargetSelection[];
   selectedCargoPackageLocators: Record<string, string[]>;
@@ -177,6 +178,7 @@ export type SourceClosureInput = {
   /** Selected uv dependency groups and project/package extras for this exact Python profile. */
   selectedPythonDependencyGroups?: string[];
   selectedPythonExtras?: string[];
+  pythonDependencySelections?: Record<string, { runtime?: string[]; test?: string[]; optional?: string[]; devOnly?: string[] }>;
   /** Exact top-level modules reported by the selected Python interpreter. */
   pythonStandardLibraryModules?: string[];
   /** Require interpreter-derived stdlib evidence for this exact profile. */
@@ -223,6 +225,7 @@ export type SourceClosureResult = {
   selectedOptionalDependencies: string[];
   selectedPythonDependencyGroups: string[];
   selectedPythonExtras: string[];
+  pythonDependencySelections?: Record<string, { runtime?: string[]; test?: string[]; optional?: string[]; devOnly?: string[] }>;
   pythonStandardLibraryModules: string[];
   selectedCargoTargets: SourceCargoTargetSelection[];
   selectedCargoPackageLocators: Record<string, string[]>;
@@ -666,7 +669,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
   const unresolved: string[] = [];
   const rootLocators = new Map<string, string>();
   const byLocator = new Map(identities.map(identity => [identity.locator, identity]));
-  const queue: Array<{ locator: string; label: string }> = [];
+  const queue: Array<{ locator: string; label: string; extras: string[] }> = [];
   for (const root of roots) {
     const isPythonRoot = isPythonDependencyPath(root.requesterPath);
     const isCargoRoot = root.requesterPath.endsWith("Cargo.toml") || root.requesterPath.endsWith(".rs");
@@ -708,12 +711,17 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
       continue;
     }
     rootLocators.set(`${effectiveRoot.requesterPath}\0${effectiveNormalizeName(effectiveRoot.name)}`, matches[0]);
-    queue.push({ locator: matches[0], label: effectiveRoot.name });
+    queue.push({ locator: matches[0], label: effectiveRoot.name, extras: effectiveRoot.extras ?? [] });
   }
+  const processedExtrasByLocator = new Map<string, Set<string>>();
   while (queue.length) {
-    const { locator, label } = queue.shift()!;
-    if (required.has(locator)) continue;
+    const { locator, label, extras } = queue.shift()!;
+    const processedExtras = processedExtrasByLocator.get(locator) ?? new Set<string>();
+    const newExtras = extras.filter(extra => !processedExtras.has(extra));
+    if (required.has(locator) && newExtras.length === 0) continue;
     required.add(locator);
+    for (const extra of newExtras) processedExtras.add(extra);
+    processedExtrasByLocator.set(locator, processedExtras);
     const item = byLocator.get(locator);
     if (!item) {
       unresolved.push(`transitive-package-locator-missing:${label}:${locator}`);
@@ -722,7 +730,7 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
     if (item.packageManager === "cargo" && cargoTargetLockfiles.has(item.lockfilePath)) continue;
     if (item.packageManager === "uv" && item.uvDependencyRelations) {
       for (const relation of item.uvDependencyRelations) {
-        if (relation.extra && !pythonExtras.has(relation.extra)) continue;
+        if (relation.extra && !pythonExtras.has(relation.extra) && !processedExtras.has(relation.extra)) continue;
         if (relation.marker) {
           const markerResult = evaluatePythonMarker(relation.marker, markerEnvironment);
           if (markerResult === "false") continue;
@@ -737,18 +745,18 @@ function selectExternalClosure(identities: SourceExternalPackageIdentity[], root
           continue;
         }
         item.dependencyLocators[relation.name] = candidates[0].locator;
-        queue.push({ locator: candidates[0].locator, label: `${item.name}->${relation.name}` });
+        queue.push({ locator: candidates[0].locator, label: `${item.name}->${relation.name}`, extras: [] });
       }
     } else for (const dependency of item.dependencies) {
       const dependencyLocator = item.dependencyLocators[dependency];
       if (!dependencyLocator) unresolved.push(`transitive-package-resolution-ambiguous:${item.name}->${dependency}`);
-      else queue.push({ locator: dependencyLocator, label: `${item.name}->${dependency}` });
+      else queue.push({ locator: dependencyLocator, label: `${item.name}->${dependency}`, extras: [] });
     }
     for (const dependency of item.optionalDependencies) {
       if (!selectedOptionals.has(dependency)) continue;
       const dependencyLocator = item.optionalDependencyLocators[dependency];
       if (!dependencyLocator) unresolved.push(`optional-package-resolution-ambiguous:${item.name}->${dependency}`);
-      else queue.push({ locator: dependencyLocator, label: `${item.name}->optional:${dependency}` });
+      else queue.push({ locator: dependencyLocator, label: `${item.name}->optional:${dependency}`, extras: [] });
     }
   }
   return { required, unresolved, rootLocators };
@@ -1834,6 +1842,15 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const declaredOptionalNames = new Set<string>();
   const unresolved: Array<{ from: string; specifier: string }> = [];
   const profile = input.executionProfile;
+  const rawPythonDependencySelections = input.pythonDependencySelections ?? profile?.pythonDependencySelections ?? {};
+  const pythonDependencySelections = Object.fromEntries(Object.entries(rawPythonDependencySelections)
+    .map(([path, categories]) => [safeRelative(sourceRoot, path), Object.fromEntries(
+      Object.entries(categories).map(([category, names]) => [category, [...new Set((names ?? []).map(normalizePythonPackageName))].sort(compareText)]),
+    )])
+    .sort(([left], [right]) => compareText(left, right))) as typeof rawPythonDependencySelections;
+  if (profile && canonicalJson(pythonDependencySelections) !== canonicalJson(profile.pythonDependencySelections ?? {})) {
+    unresolved.push({ from: "<profile>", specifier: "<execution-profile-python-requirement-selection-mismatch>" });
+  }
   if (input.profileDigest && !profile) {
     unresolved.push({ from: "<profile>", specifier: "<verified-execution-profile-required>" });
   } else if (profile) {
@@ -1862,6 +1879,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     const actualDependencyManifests = [...new Set(input.dependencyArtifacts.map(path => safeRelative(sourceRoot, path)))].sort(compareText);
     if (canonicalJson(actualDependencyManifests) !== canonicalJson(expectedDependencyManifests)) {
       unresolved.push({ from: "<profile>", specifier: "<execution-profile-dependency-manifests-mismatch>" });
+    }
+    const expectedPythonGroups = [...new Set(profile.dependencyManifests.testOnly
+      .filter(value => value.split("#", 1)[0].endsWith("pyproject.toml") && value.includes("#"))
+      .map(value => value.slice(value.indexOf("#") + 1).toLowerCase()))].sort(compareText);
+    if (canonicalJson([...new Set(input.selectedPythonDependencyGroups ?? [])].map(value => value.toLowerCase()).sort(compareText)) !== canonicalJson(expectedPythonGroups)) {
+      unresolved.push({ from: "<profile>", specifier: "<execution-profile-python-groups-mismatch>" });
     }
     const actualWorkspaceManifests = [...new Set((input.workspaceManifestPaths ?? []).map(path => safeRelative(sourceRoot, path)))].sort(compareText);
     if (canonicalJson(actualWorkspaceManifests) !== canonicalJson([...profile.workspaceManifestPaths].sort(compareText))) {
@@ -2035,6 +2058,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       }
     }
     if (/(^|\/)(?:requirements|constraints)(?:(?:[-_.][^/]*)|(?:\/[^/]+))?\.txt$/i.test(filePath)) {
+      const selection = pythonDependencySelections[filePath];
+      const selectedNames = new Set(Object.values(selection ?? {}).flat());
+      const observedNames = new Set<string>();
       for (const [lineIndex, rawLine] of source.split(/\r?\n/).entries()) {
         const line = rawLine.replace(/\s+#.*$/, "").trim();
         if (!line || line.startsWith("#") || line.startsWith("--")) continue;
@@ -2069,7 +2095,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           }
           continue;
         }
-        const requirement = line.match(/^([A-Za-z0-9_.-]+)(?:\[[^\]]+\])?(.*)$/);
+        const requirement = line.match(/^([A-Za-z0-9_.-]+)(?:\[([^\]]+)\])?\s*(.*)$/);
         if (!requirement) {
           unresolved.push({
             from: filePath,
@@ -2078,21 +2104,41 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           continue;
         }
         const packageName = normalizePythonPackageName(requirement[1]);
+        const extras = requirement[2]?.split(",").map(value => value.trim().toLowerCase()).filter(Boolean) ?? [];
+        const [versionSpecifier, marker] = requirement[3].split(";", 2).map(value => value.trim());
+        const edgeSpecifier = `${packageName}${extras.length ? `[${extras.join(",")}]` : ""}${versionSpecifier ? ` ${versionSpecifier}` : ""}${marker ? `; ${marker}` : ""}`;
+        observedNames.add(packageName);
+        if (selection && !selectedNames.has(packageName)) {
+          dependencyEdges.push({
+            from: filePath,
+            specifier: edgeSpecifier,
+            to: null,
+            kind: "declared-package-dependency",
+            status: "profile-dependency-excluded",
+          });
+          continue;
+        }
         external.add(packageName);
         declaredExternal.add(packageName);
-        externalRoots.push({ name: packageName, requesterPath: filePath });
+        externalRoots.push({
+          name: packageName,
+          requesterPath: filePath,
+          ...(versionSpecifier ? { specifier: versionSpecifier } : {}),
+          ...(extras.length ? { extras } : {}),
+          ...(marker ? { marker } : {}),
+        });
         dependencyEdges.push({
           from: filePath,
-          specifier: `${packageName}${requirement[2]}`,
+          specifier: edgeSpecifier,
           to: null,
           kind: "declared-package-dependency",
           status: "external-package",
         });
-        if (!/^\s*===?\s*[^;\s]+(?:\s*;.*)?$/.test(requirement[2]))
-          unresolved.push({
-            from: filePath,
-            specifier: `unpinned-python-dependency:${packageName}`,
-          });
+      }
+      if (selection) {
+        for (const name of selectedNames) {
+          if (!observedNames.has(name)) unresolved.push({ from: filePath, specifier: `selected-python-requirement-not-declared:${name}` });
+        }
       }
     }
     if (filePath.endsWith("pyproject.toml")) {
@@ -2527,6 +2573,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   for (const path of Object.keys(selectedManifestDependencies)) {
     if (!consumedDependencySelections.has(path)) unresolved.push({ from: path, specifier: "<dependency-selection-manifest-not-in-profile>" });
   }
+  for (const path of Object.keys(pythonDependencySelections)) {
+    if (!seen.has(path)) unresolved.push({ from: path, specifier: "<python-requirement-selection-file-not-in-profile>" });
+  }
   for (const path of Object.keys(selectedManifestScripts)) {
     if (!consumedScriptSelections.has(path)) unresolved.push({ from: path, specifier: "<script-selection-manifest-not-in-profile>" });
   }
@@ -2895,6 +2944,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     selectedOptionalDependencies,
     selectedPythonDependencyGroups,
     selectedPythonExtras,
+    ...(Object.keys(pythonDependencySelections).length ? { pythonDependencySelections } : {}),
     pythonStandardLibraryModules,
     selectedCargoTargets,
     selectedCargoPackageLocators,
@@ -2993,6 +3043,7 @@ async function assembleReadOnlySourceBundleInternal(input: ReadOnlyBundleInput, 
     selectedOptionalDependencies: [...closure.selectedOptionalDependencies].sort(),
     selectedPythonDependencyGroups: [...closure.selectedPythonDependencyGroups].sort(),
     selectedPythonExtras: [...closure.selectedPythonExtras].sort(),
+    ...(closure.pythonDependencySelections ? { pythonDependencySelections: closure.pythonDependencySelections } : {}),
     ...(closure.pythonStandardLibraryModules.length
       ? { pythonStandardLibraryModules: [...closure.pythonStandardLibraryModules].sort() }
       : {}),

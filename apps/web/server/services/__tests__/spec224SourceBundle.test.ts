@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
   createSpec224ExecutionProfile,
-  SPEC224_RECOVERY_RUNNER_PROFILE,
+  SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE,
 } from "../spec224ExecutionProfile";
 
 import {
@@ -22,7 +22,7 @@ const temporaryRoots: string[] = [];
 const specDigest = "a".repeat(64);
 
 function fixtureExecutionProfile() {
-  const { profileDigest: _profileDigest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE;
+  const { profileDigest: _profileDigest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE;
   return createSpec224ExecutionProfile({
     ...base,
     profileId: "spec224-profile-binding-test",
@@ -38,6 +38,7 @@ function fixtureExecutionProfile() {
     moduleRoots: [],
     pythonStandardLibrarySha256: createHash("sha256").update("asyncio\njson").digest("hex"),
     dependencyManifests: { runtime: ["package.json", "pnpm-lock.yaml"], testOnly: [] },
+    pythonDependencySelections: {},
     externalArtifacts: ["pnpm-lock.yaml:resolve-required-node-artifacts"],
   });
 }
@@ -292,7 +293,7 @@ describe("Spec 224 source bundle tooling", () => {
     ).rejects.toThrow("SPEC224_BUNDLE_SENSITIVE_PATH_REJECTED");
   });
 
-  it("recursively inventories Python requirements and leaves unpinned external packages unresolved", async () => {
+  it("recursively inventories Python requirements and requires a matching lock entry", async () => {
     const root = await sourceFixture();
     await mkdir(join(root, "python/app"), { recursive: true });
     await writeFile(join(root, "python/main.py"), "from app.module import value\n");
@@ -312,7 +313,8 @@ describe("Spec 224 source bundle tooling", () => {
 
     expect(closure.files).toContain("requirements/base.txt");
     expect(closure.files).toContain("python/app/module.py");
-    expect(closure.unresolvedImports.some(edge => edge.specifier === "unpinned-python-dependency:sample-lib")).toBe(true);
+    expect(closure.unresolvedImports.some(edge => edge.specifier.includes("sample-lib"))).toBe(true);
+    expect(closure.unresolvedImports.some(edge => edge.specifier === "unpinned-python-dependency:sample-lib")).toBe(false);
     expect(closure.closureComplete).toBe(false);
   });
 
@@ -1874,7 +1876,7 @@ describe("Spec 224 source bundle tooling", () => {
     await writeFile(join(root, "apps/runner-app/Cargo.lock"), "version = 4\n");
     await writeFile(join(root, "python-backend/pyproject.toml"), '[project]\nname = "backend"\nversion = "1.0.0"\nrequires-python = ">=3.12"\n');
     await writeFile(join(root, "python-backend/uv.lock"), 'version = 1\nrevision = 3\nrequires-python = ">=3.12"\n');
-    const { profileDigest: _digest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE;
+    const { profileDigest: _digest, ...base } = SPEC224_RECOVERY_RUNNER_PROFILE_TEMPLATE;
     const profile = createSpec224ExecutionProfile({
       ...base,
       profileId: "workspace-roots-without-root-execution-workspace",
@@ -1888,6 +1890,7 @@ describe("Spec 224 source bundle tooling", () => {
         runtime: ["package.json", "pnpm-lock.yaml", "apps/web/package.json", "apps/runner-app/Cargo.toml", "apps/runner-app/Cargo.lock", "python-backend/pyproject.toml", "python-backend/uv.lock"],
         testOnly: [],
       },
+      pythonDependencySelections: {},
       externalArtifacts: [],
     });
     const closure = await discoverSourceClosure({
