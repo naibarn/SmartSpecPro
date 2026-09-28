@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 
 export class EphemeralAuthorizationStoreError extends Error {
   readonly code = "ephemeral_authorization_store_unavailable";
@@ -9,6 +9,24 @@ type EncryptedSession = { version: 1; keyId: string; iv: string; tag: string; ci
 function encryptionKeyring(): { activeKeyId: string; keys: Map<string, Buffer> } {
   const activeKeyId = process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID?.trim();
   const raw = process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
+  // Prefer an explicitly managed keyring. Existing installations already have
+  // LLM_ENCRYPTION_KEY configured to protect sensitive system_settings; use a
+  // domain-separated derived key as the safe default for Worker Connect so a
+  // missing optional keyring does not take pairing offline or require Redis.
+  // If either explicit setting is present, treat it as an attempted keyring
+  // configuration and fail closed instead of silently switching keys.
+  if (!activeKeyId && !raw) {
+    const masterKey = process.env.LLM_ENCRYPTION_KEY;
+    if (!masterKey) throw new EphemeralAuthorizationStoreError("Authorization session encryption keyring is not configured");
+    const key = Buffer.from(hkdfSync(
+      "sha256",
+      Buffer.from(masterKey, "utf8"),
+      "smartspec-worker-connect-session-v1",
+      "aes-256-gcm",
+      32,
+    ));
+    return { activeKeyId: "derived-v1", keys: new Map([["derived-v1", key]]) };
+  }
   if (!activeKeyId || !raw) throw new EphemeralAuthorizationStoreError("Authorization session encryption keyring is not configured");
   try {
     const parsed = JSON.parse(raw) as Record<string, string>;

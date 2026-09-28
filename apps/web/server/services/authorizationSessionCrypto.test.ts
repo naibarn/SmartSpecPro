@@ -7,6 +7,7 @@ import {
 
 const previousKeyring = process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
 const previousActiveKeyId = process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID;
+const previousLlmEncryptionKey = process.env.LLM_ENCRYPTION_KEY;
 const oldKey = Buffer.alloc(32, 11).toString("base64");
 const activeKey = Buffer.alloc(32, 22).toString("base64");
 
@@ -20,6 +21,8 @@ afterEach(() => {
   else process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON = previousKeyring;
   if (previousActiveKeyId === undefined) delete process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID;
   else process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID = previousActiveKeyId;
+  if (previousLlmEncryptionKey === undefined) delete process.env.LLM_ENCRYPTION_KEY;
+  else process.env.LLM_ENCRYPTION_KEY = previousLlmEncryptionKey;
 });
 
 describe("authorization session encryption", () => {
@@ -53,6 +56,35 @@ describe("authorization session encryption", () => {
 
   it("fails closed when the active key is absent from the configured keyring", () => {
     configureKeyring("missing", { historical: oldKey });
+
+    expect(() => encryptAuthorizationSession({ status: "pending" }))
+      .toThrow(EphemeralAuthorizationStoreError);
+  });
+
+  it("uses a domain-separated key derived from the existing encryption root when no dedicated keyring is configured", () => {
+    delete process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
+    delete process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID;
+    process.env.LLM_ENCRYPTION_KEY = "test-root-encryption-key";
+
+    const envelope = encryptAuthorizationSession({ status: "pending", deviceCode: "device-code" });
+
+    expect(envelope.keyId).toBe("derived-v1");
+    expect(decryptAuthorizationSession(envelope)).toEqual({ status: "pending", deviceCode: "device-code" });
+  });
+
+  it("does not fall back to the root key when an explicit keyring is partially configured", () => {
+    delete process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
+    process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID = "active";
+    process.env.LLM_ENCRYPTION_KEY = "test-root-encryption-key";
+
+    expect(() => encryptAuthorizationSession({ status: "pending" }))
+      .toThrow(EphemeralAuthorizationStoreError);
+  });
+
+  it("still fails closed if neither an explicit keyring nor the encryption root exists", () => {
+    delete process.env.AUTH_SESSION_ENCRYPTION_KEYS_JSON;
+    delete process.env.AUTH_SESSION_ENCRYPTION_ACTIVE_KEY_ID;
+    delete process.env.LLM_ENCRYPTION_KEY;
 
     expect(() => encryptAuthorizationSession({ status: "pending" }))
       .toThrow(EphemeralAuthorizationStoreError);
