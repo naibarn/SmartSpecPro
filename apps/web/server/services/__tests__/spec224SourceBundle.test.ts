@@ -690,9 +690,9 @@ describe("Spec 224 source bundle tooling", () => {
     const root = await sourceFixture();
     const digest = "a".repeat(64);
     await mkdir(join(root, "python"), { recursive: true });
-    await writeFile(join(root, "python/main.py"), "import sample_lib\n");
-    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "fixture"\ndependencies = [\n  "sample-lib==1.2.3",\n]\n');
-    await writeFile(join(root, "uv.lock"), `version = 1\n\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nsdist = { url = "https://example.invalid/sample-lib-1.2.3.tar.gz", hash = "sha256:${digest}" }\n`);
+    await writeFile(join(root, "python/main.py"), 'import sample_lib\nfrom jose import jwt\nimport importlib\nimportlib.import_module("jose")\n');
+    await writeFile(join(root, "pyproject.toml"), '[project]\nname = "fixture"\ndependencies = [\n  "sample-lib==1.2.3",\n  "python-jose==3.3.0",\n]\n');
+    await writeFile(join(root, "uv.lock"), `version = 1\n\n[[package]]\nname = "sample-lib"\nversion = "1.2.3"\nsource = { registry = "https://pypi.org/simple" }\nsdist = { url = "https://example.invalid/sample-lib-1.2.3.tar.gz", hash = "sha256:${digest}" }\n\n[[package]]\nname = "python-jose"\nversion = "3.3.0"\nsource = { registry = "https://pypi.org/simple" }\nsdist = { url = "https://example.invalid/python_jose-3.3.0.tar.gz", hash = "sha256:${"b".repeat(64)}" }\n`);
 
     const closure = await discoverSourceClosure({
       sourceRoot: root,
@@ -716,6 +716,10 @@ describe("Spec 224 source bundle tooling", () => {
         specifier: "UNVERIFIED_ARTIFACT:sample-lib@1.2.3",
       })
     );
+    expect(closure.unresolvedImports).not.toContainEqual(
+      expect.objectContaining({ specifier: "external-package-lock-entry-missing:jose:python/main.py" })
+    );
+    expect(closure.requiredExternalPackages.some(locator => locator.includes("python-jose@3.3.0"))).toBe(true);
     expect(closure.closureComplete).toBe(false);
     expect(closure.externalImports).toContain("sample_lib");
   });

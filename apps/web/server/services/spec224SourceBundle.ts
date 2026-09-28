@@ -1136,11 +1136,13 @@ function importsIn(
 ): {
   local: string[];
   external: string[];
+  externalSpecifiers: string[];
   dynamic: string[];
   unresolved: string[];
 } {
   const local = new Set<string>();
   const external = new Set<string>();
+  const externalSpecifiers = new Set<string>();
   const dynamic = new Set<string>();
   const unresolved = new Set<string>();
   const isPython = filePath.endsWith(".py");
@@ -1189,7 +1191,10 @@ function importsIn(
       const specifier = (match[1] ?? match[2] ?? "").trim();
       if (specifier.startsWith(".")) local.add(specifier);
       else if (specifier.split(".")[0] === "app") local.add(specifier);
-      else if (!pythonStandardLibrary.has(specifier.split(".")[0])) external.add(specifier.split(".")[0]);
+      else if (!pythonStandardLibrary.has(specifier.split(".")[0])) {
+        external.add(specifier.split(".")[0]);
+        externalSpecifiers.add(specifier);
+      }
     }
     for (const match of source.matchAll(/\b(?:importlib\.import_module|__import__)\s*\(\s*["']([^"']+)["']/g)) dynamic.add(match[1]);
     if (/\b(?:importlib\.import_module|__import__)\s*\(\s*[^"'\s]/.test(source)) unresolved.add("<dynamic-python-import>");
@@ -1252,6 +1257,7 @@ function importsIn(
   return {
     local: [...local],
     external: [...external],
+    externalSpecifiers: [...externalSpecifiers],
     dynamic: [...dynamic],
     unresolved: [...unresolved],
   };
@@ -1296,6 +1302,24 @@ function normalizePackageName(name: string): string {
 
 function normalizePythonPackageName(name: string): string {
   return name.toLowerCase().replace(/[-_.]+/g, "-");
+}
+
+const PYTHON_IMPORT_DISTRIBUTION_ALIASES: Record<string, string> = {
+  jose: "python-jose",
+  pil: "pillow",
+  "google.generativeai": "google-generativeai",
+  "google.oauth2": "google-auth",
+  "google.auth": "google-auth",
+  googleapiclient: "google-api-python-client",
+  "google.cloud.tasks": "google-cloud-tasks",
+};
+
+function pythonDistributionForImport(moduleName: string): string {
+  const normalized = moduleName.toLowerCase().replaceAll("_", "-");
+  const alias = Object.entries(PYTHON_IMPORT_DISTRIBUTION_ALIASES)
+    .filter(([prefix]) => normalized === prefix || normalized.startsWith(`${prefix}.`))
+    .sort(([left], [right]) => right.length - left.length)[0]?.[1];
+  return alias ?? normalizePythonPackageName(normalized.split(".")[0]);
 }
 
 function isPythonDependencyPath(path: string): boolean {
@@ -2430,10 +2454,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       : {
           local: [] as string[],
           external: [] as string[],
+          externalSpecifiers: [] as string[],
           dynamic: [] as string[],
           unresolved: [] as string[],
         };
-    for (const name of imports.external) {
+    for (const name of imports.externalSpecifiers.length ? imports.externalSpecifiers : imports.external) {
+      if (filePath.endsWith(".py")) external.add(name.split(".")[0]);
       const aliased = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots, rustCrateRoots);
       if (aliased) {
         dependencyEdges.push({
@@ -2466,8 +2492,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           });
         if (!resolution.files.length) unresolved.push({ from: filePath, specifier: name });
       } else {
-        const packageName = packageNameFromSpecifier(name);
-        external.add(packageName);
+        const pythonImport = filePath.endsWith(".py");
+        const packageName = pythonImport ? pythonDistributionForImport(name) : packageNameFromSpecifier(name);
+        if (!pythonImport) external.add(packageName);
         if (filePath.endsWith(".rs")) {
           const imports = cargoImports.get(filePath) ?? new Set<string>();
           imports.add(normalizeCargoPackageName(packageName.split("::")[0]));
@@ -2506,6 +2533,11 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
             status: "resolved-local",
           });
           queue.push({ path: resolved, kind: "source-import" });
+        } else if (filePath.endsWith(".py") && !specifier.startsWith(".") && !specifier.startsWith("app.")) {
+          const packageName = pythonDistributionForImport(specifier);
+          external.add(specifier.split(".")[0]);
+          externalRoots.push({ name: packageName, requesterPath: filePath });
+          dependencyEdges.push({ from: filePath, specifier, to: null, kind: "dynamic-import", status: "external-package" });
         } else {
           unresolved.push({ from: filePath, specifier });
           dependencyEdges.push({
@@ -2902,8 +2934,12 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
       }
       continue;
     }
-    const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)));
-    const rawPackageName = declaredRoot?.name ?? packageNameFromSpecifier(edge.specifier);
+    const pythonImport = edge.from.endsWith(".py") && (edge.kind === "static-import" || edge.kind === "dynamic-import");
+    const resolvedPythonName = pythonImport ? pythonDistributionForImport(edge.specifier) : null;
+    const declaredRoot = externalRoots.find(root => root.requesterPath === edge.from && (
+      root.name === resolvedPythonName || edge.specifier === root.name || edge.specifier.startsWith(`${root.name}@`) || edge.specifier.startsWith(`${root.name}=`) || edge.specifier.startsWith(`${root.name}<`) || edge.specifier.startsWith(`${root.name}/`)
+    ));
+    const rawPackageName = declaredRoot?.name ?? resolvedPythonName ?? packageNameFromSpecifier(edge.specifier);
     const packageName = isPythonDependencyPath(edge.from) ? normalizePythonPackageName(rawPackageName) : edge.from.endsWith("Cargo.toml") ? normalizeCargoPackageName(rawPackageName) : normalizePackageName(rawPackageName);
     const locator = rootLocators.get(`${edge.from}\0${packageName}`);
     let identity = externalPackageIdentities.find(item => item.locator === locator);
